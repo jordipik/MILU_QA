@@ -1,0 +1,149 @@
+<!doctype html>
+<html lang="es">
+
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>MILU – QA Artículos</title>
+
+  <style>
+    body {
+      font-family: system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif;
+      margin: 0;
+      background: #f6f7f9;
+      color: #111;
+    }
+
+    .global-nav {
+      position: sticky;
+      top: 0;
+      z-index: 9999;
+      display: flex;
+      align-items: center;
+      padding: 12px 18px;
+      border-bottom: 1px solid #ddd;
+      background: rgba(255, 255, 255, .95);
+      backdrop-filter: blur(6px);
+    }
+
+    .global-nav b {
+      font-size: 15px;
+      font-weight: 700;
+      letter-spacing: .3px;
+    }
+
+    .wrap {
+      max-width: 900px;
+      margin: 0 auto;
+      padding: 48px 20px;
+    }
+
+    h1 {
+      margin: 0 0 24px 0;
+      font-size: 26px;
+    }
+
+    .grid {
+      display: grid;
+      grid-template-columns: 1fr;
+      gap: 18px;
+    }
+
+    a.card {
+      display: block;
+      padding: 28px;
+      border: 2px solid #2563eb;
+      border-radius: 18px;
+      background: #ffffff;
+      text-decoration: none;
+      color: inherit;
+      transition: transform .05s ease, box-shadow .05s ease;
+    }
+
+    a.card:hover {
+      transform: translateY(-1px);
+      box-shadow: 0 8px 22px rgba(37, 99, 235, .15);
+    }
+
+    .t {
+      font-size: 20px;
+      font-weight: 800;
+      margin-bottom: 8px;
+      color: #1e3a8a;
+    }
+
+    .d {
+      color: #4b5563;
+      font-size: 14px;
+      max-width: 520px;
+    }
+
+    .badge {
+      display: inline-block;
+      margin-left: 10px;
+      padding: 4px 10px;
+      border-radius: 999px;
+      font-size: 11px;
+      font-weight: 700;
+      background: #2563eb;
+      color: #ffffff;
+      vertical-align: middle;
+    }
+  </style>
+</head>
+
+<body>
+  <nav class="global-nav">
+    <b>MILU · Control de calidad</b>
+  </nav>
+
+  <div class="wrap">
+    <h1>Visor QA</h1>
+
+    <div class="grid">
+      <a class="card" href="./qa_articulos.html">
+        <div class="t">
+          QA Artículos
+          <span class="badge">QA</span>
+        </div>
+        <div class="d">
+          Revisión de calidad del catálogo: imágenes, placeholders,
+          múltiples imágenes, superseded y navegación por libro y página.
+        </div>
+      </a>
+
+      <a class="card" href="./qa_web.html">
+        <div class="t">
+          QA Web
+          <span class="badge">WEB</span>
+        </div>
+        <div class="d">
+          Listado global de artículos exportados en la web (New + Superseded),
+          con filtros por engine, motores/modelos, categorías y formatos/placeholder de imagen.
+        </div>
+      </a>
+
+      <a class="card" href="./qa_web2.html">
+        <div class="t">
+          QA Web2
+          <span class="badge">WEB2</span>
+        </div>
+        <div class="d">
+          Variante de QA Web con comportamiento de paginado separado y vista compacta.
+        </div>
+      </a>
+
+      <a class="card" href="./qa_lista.html">
+        <div class="t">
+          QA Lista
+          <span class="badge">LISTA</span>
+        </div>
+        <div class="d">
+          Tabla de piezas con filtros detallados y paginado de 50 registros por página.
+        </div>
+      </a>
+    </div>
+  </div>
+</body>
+
+</html>

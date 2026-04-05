@@ -1,0 +1,1823 @@
+<!doctype html>
+// CAMBIAR NUM DE VERSION EN ARCHIVO AL INCIO DEL SCRIPT V507
+<html lang="es">
+
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>MILU • QA Web</title>
+
+  <style>
+    :root {
+      --bg: #f7f8fb;
+      --card: #ffffff;
+      --mut: #52627a;
+      --txt: #0b1220;
+      --line: #dbe2ef;
+      --acc: #2563eb;
+      --bad: #e11d48;
+      --ok: #059669;
+      --warn: #d97706;
+    }
+
+    * {
+      box-sizing: border-box
+    }
+
+    html,
+    body {
+      height: 100%
+    }
+
+    body {
+      margin: 0;
+      font-family: system-ui, -apple-system, Segoe UI, Roboto, Ubuntu, Cantarell, Noto Sans, sans-serif;
+      background: var(--bg);
+      color: var(--txt);
+      display: flex;
+      flex-direction: column;
+      min-height: 100%;
+    }
+
+    a {
+      color: var(--acc);
+      text-decoration: none
+    }
+
+    a:hover {
+      text-decoration: underline
+    }
+
+    .topbar {
+      position: sticky;
+      top: 0;
+      z-index: 50;
+      background: rgba(247, 248, 251, 0.96);
+      backdrop-filter: blur(10px);
+      border-bottom: 1px solid var(--line);
+      flex: 0 0 auto;
+    }
+
+    .wrap {
+      max-width: none;
+      margin: 0 auto;
+      padding: 8px 16px
+    }
+
+    .nav {
+      display: flex;
+      gap: 10px;
+      align-items: center;
+      flex-wrap: wrap
+    }
+
+    .pill {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      border: 1px solid var(--line);
+      background: #fff;
+      padding: 7px 10px;
+      border-radius: 999px;
+      font-size: 13px
+    }
+
+    .pill.active {
+      border-color: rgba(37, 99, 235, .6);
+      box-shadow: 0 0 0 3px rgba(37, 99, 235, .12) inset
+    }
+
+    .pill b {
+      font-weight: 650
+    }
+
+    .content {
+      max-width: none;
+      margin: 0 auto;
+      padding: 12px 16px 16px;
+      flex: 1 1 auto;
+      min-height: 0;
+      width: 100%;
+    }
+
+    .card {
+      background: var(--card);
+      border: 1px solid var(--line);
+      border-radius: 14px;
+      min-height: 0;
+    }
+
+    .main {
+      height: 100%;
+      display: grid;
+      grid-template-columns: 380px minmax(0, 1fr);
+      gap: 12px;
+      min-height: 0;
+      align-items: start;
+    }
+
+    @media (max-width: 1200px) {
+      .main {
+        grid-template-columns: 1fr
+      }
+    }
+
+    .filters {
+      padding: 10px;
+      min-height: 0;
+      overflow: auto;
+    }
+
+    .filters h2 {
+      margin: 0 0 10px 0;
+      font-size: 13px;
+      color: var(--mut);
+      font-weight: 700
+    }
+
+    label {
+      font-size: 12px;
+      color: var(--mut)
+    }
+
+    input[type="search"],
+    input[type="number"],
+    select {
+      width: 100%;
+      background: #fff;
+      border: 1px solid var(--line);
+      color: var(--txt);
+      padding: 7px 10px;
+      border-radius: 10px;
+      outline: none;
+      font-size: 12px;
+    }
+
+    select[multiple] {
+      min-height: 120px
+    }
+
+    .row2 {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 8px
+    }
+
+    .btn {
+      cursor: pointer;
+      background: #fff;
+      border: 1px solid var(--line);
+      color: var(--txt);
+      padding: 7px 10px;
+      border-radius: 10px;
+      font-size: 12px;
+    }
+
+    .btn:hover {
+      border-color: rgba(37, 99, 235, 0.6)
+    }
+
+    .btn.small {
+      padding: 6px 8px;
+      font-size: 12px;
+      border-radius: 9px
+    }
+
+    .chip {
+      display: inline-flex;
+      gap: 6px;
+      align-items: center;
+      border: 1px solid var(--line);
+      background: #fff;
+      padding: 6px 10px;
+      border-radius: 999px;
+      font-size: 12px;
+      cursor: pointer;
+      user-select: none;
+      margin-right: 6px;
+      margin-top: 6px;
+    }
+
+    .chip input {
+      accent-color: var(--acc)
+    }
+
+    .tableWrap {
+      overflow: auto;
+      min-height: 0;
+      padding: 10px
+    }
+
+    table {
+      width: 100%;
+      border-collapse: separate;
+      border-spacing: 0;
+      table-layout: fixed
+    }
+
+    th,
+    td {
+      border-bottom: 1px solid var(--line);
+      padding: 3px 6px;
+      vertical-align: middle;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+      line-height: 1.2;
+    }
+
+    thead th {
+      position: sticky;
+      top: 0;
+      z-index: 5;
+      background: #fff;
+      color: var(--mut);
+      font-weight: 650;
+      font-size: 11px;
+      border-bottom: 1px solid var(--line);
+      box-shadow: 0 2px 0 rgba(0, 0, 0, 0.04);
+      cursor: pointer;
+      user-select: none;
+    }
+
+    thead th .sort {
+      display: inline-block;
+      margin-left: 6px;
+      opacity: .7;
+      font-size: 10px;
+    }
+
+    td {
+      font-size: 12px
+    }
+
+    tbody tr {
+      cursor: pointer;
+      height: 26px;
+    }
+
+    tbody tr:hover {
+      background: #f6f8ff
+    }
+
+    tbody tr.selected {
+      outline: 2px solid rgba(37, 99, 235, .35);
+      outline-offset: -2px;
+      background: #eef4ff
+    }
+
+    .tag {
+      display: inline-block;
+      border: 1px solid var(--line);
+      padding: 2px 8px;
+      border-radius: 999px;
+      font-size: 11px;
+      color: var(--mut)
+    }
+
+    .tag.ok {
+      border-color: rgba(5, 150, 105, .35);
+      color: #047857
+    }
+
+    .tag.warn {
+      border-color: rgba(217, 119, 6, .35);
+      color: #b45309
+    }
+
+    .tag.bad {
+      border-color: rgba(225, 29, 72, .35);
+      color: #be123c
+    }
+
+    .stats {
+      display: flex;
+      gap: 8px;
+      align-items: center;
+      flex-wrap: wrap;
+      margin-top: 10px;
+    }
+
+    .stat {
+      border: 1px solid var(--line);
+      background: #fff;
+      border-radius: 12px;
+      padding: 6px 10px;
+      font-size: 12px;
+      color: var(--mut)
+    }
+
+    .stat b {
+      color: var(--txt)
+    }
+
+    .muted {
+      color: var(--mut);
+      font-size: 12px
+    }
+
+    .empty {
+      padding: 12px;
+      color: var(--mut);
+      font-size: 13px
+    }
+
+    /* preview simple (arriba) */
+    .preview {
+      margin-top: 10px;
+      border-top: 1px dashed var(--line);
+      padding-top: 10px;
+    }
+
+    .rowImgs {
+      display: flex;
+      gap: 10px;
+      overflow: auto;
+      padding-bottom: 6px;
+    }
+
+    .rowImgs a {
+      border: 1px solid var(--line);
+      border-radius: 12px;
+      overflow: hidden;
+      display: inline-flex;
+      background: #fff;
+      width: 240px;
+      height: 160px;
+      align-items: center;
+      justify-content: center;
+      flex: 0 0 auto;
+    }
+
+    .rowImgs img {
+      width: 100%;
+      height: 100%;
+      object-fit: contain;
+      display: block;
+      background: #fff;
+    }
+
+    /* ======= Detalle inferior ======= */
+    .detailCard {
+      margin-top: 12px;
+      padding: 10px;
+      border-top: 1px solid var(--line);
+      background: var(--card);
+      border: 1px solid var(--line);
+      border-radius: 14px;
+    }
+
+    .detailTitle {
+      display: flex;
+      gap: 10px;
+      align-items: center;
+      flex-wrap: wrap;
+      margin-bottom: 10px;
+    }
+
+    .detailTitle h3 {
+      margin: 0;
+      font-size: 14px;
+    }
+
+    .detailGrid {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 10px 14px;
+      margin-bottom: 12px;
+    }
+
+    @media (max-width: 1200px) {
+      .detailGrid {
+        grid-template-columns: 1fr
+      }
+    }
+
+    .kv {
+      border-bottom: 1px solid var(--line);
+      padding-bottom: 6px;
+      font-size: 12px;
+      color: var(--mut);
+    }
+
+    .kv b {
+      display: block;
+      color: var(--txt);
+      font-weight: 650;
+      word-break: break-word;
+      margin-top: 2px;
+    }
+
+    .section {
+      margin-top: 10px;
+      border: 1px solid var(--line);
+      border-radius: 12px;
+      overflow: hidden;
+      background: #fff;
+    }
+
+    .sectionHead {
+      padding: 8px 10px;
+      background: rgba(247, 248, 251, 0.95);
+      border-bottom: 1px solid var(--line);
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      flex-wrap: wrap;
+    }
+
+    .sectionHead b {
+      font-size: 12px
+    }
+
+    .sectionBody {
+      padding: 10px
+    }
+
+    .codeBox {
+      font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+      font-size: 11px;
+      white-space: pre-wrap;
+      word-break: break-word;
+      background: #0b1220;
+      color: #e6edf7;
+      padding: 10px;
+      border-radius: 10px;
+      overflow: auto;
+      max-height: 320px;
+    }
+
+    .tabs {
+      display: flex;
+      gap: 8px;
+      flex-wrap: wrap;
+      margin-top: 8px;
+    }
+
+    .tabBtn {
+      cursor: pointer;
+      border: 1px solid var(--line);
+      background: #fff;
+      color: var(--txt);
+      padding: 6px 10px;
+      border-radius: 999px;
+      font-size: 12px;
+      font-weight: 650;
+    }
+
+    .tabBtn.active {
+      border-color: rgba(37, 99, 235, .6);
+      box-shadow: 0 0 0 3px rgba(37, 99, 235, .12) inset;
+    }
+  </style>
+</head>
+
+<body>
+  <div class="topbar">
+    <div class="wrap">
+      <div class="nav">
+        <a class="pill" href="./index.html"><b>Inicio</b></a>
+        <span class="pill active"><b>QA Web</b></span>
+        <span class="muted">Listado global de artículos exportados en la web (New + Superseded)</span>
+      </div>
+    </div>
+  </div>
+
+  <div class="content">
+    <div class="main">
+
+      <!-- Panel filtros -->
+      <div class="card">
+        <div class="filters">
+          <h2>Filtros</h2>
+
+          <div style="margin-bottom:10px">
+            <label>Búsqueda</label>
+            <input id="q" type="search"
+              placeholder="Buscar por PN / description / vínculo / categoría / motor / system..." />
+          </div>
+
+          <div class="row2" style="margin-bottom:10px">
+            <div>
+              <label>Engine Series</label>
+              <select id="f_engine" multiple></select>
+              <div class="muted" style="margin-top:6px">Ctrl/Cmd para multi</div>
+            </div>
+            <div>
+              <label>Estado (SUST_TIPO)</label>
+              <select id="f_status" multiple></select>
+            </div>
+          </div>
+
+          <div style="margin-bottom:10px">
+            <label>Model Type</label>
+            <select id="f_model_type" multiple></select>
+          </div>
+
+          <div style="margin-bottom:10px">
+            <label>Categorías</label>
+            <select id="f_cats" multiple></select>
+          </div>
+
+          <div style="margin-bottom:10px">
+            <label>Origen</label>
+            <select id="f_source">
+              <option value="">(todos)</option>
+              <option value="MILU_New">MILU_New</option>
+              <option value="MILU_Superseded">MILU_Superseded</option>
+              <option value="Desconocido">Desconocido</option>
+            </select>
+          </div>
+
+          <div class="row2" style="margin-bottom:10px">
+            <div>
+              <label>Formato imagen (ext)</label>
+              <select id="f_img_fmt" multiple></select>
+            </div>
+            <div>
+              <label>Placeholder</label>
+              <select id="f_ph">
+                <option value="">(cualquiera)</option>
+                <option value="only">solo placeholder</option>
+                <option value="no">sin placeholder</option>
+              </select>
+            </div>
+          </div>
+
+          <div class="row2" style="margin-bottom:10px">
+            <div>
+              <label>Weight (KGM) min</label>
+              <input id="f_wgt_min" type="number" step="0.001" min="0" placeholder="0">
+            </div>
+            <div>
+              <label>Weight (KGM) max</label>
+              <input id="f_wgt_max" type="number" step="0.001" min="0" placeholder="99999">
+            </div>
+          </div>
+
+          <div style="margin-bottom:10px">
+            <label class="chip" title="Solo artículos con imagen real (no placeholder)">
+              <input id="f_has_img" type="checkbox" /> <b>Con imagen real</b>
+            </label>
+            <label class="chip" title="Solo artículos sin imagen real">
+              <input id="f_no_img" type="checkbox" /> <b>Sin imagen real</b>
+            </label>
+          </div>
+
+          <div style="display:flex;gap:8px;flex-wrap:wrap">
+            <button class="btn small" id="clear">Limpiar</button>
+            <button class="btn small" id="copyLink" title="Copiar enlace con filtros">🔗 Copiar</button>
+          </div>
+
+          <div class="stats">
+            <span class="stat"><b id="s_total">—</b> total</span>
+            <span class="stat"><b id="s_with_img">—</b> con img</span>
+            <span class="stat"><b id="s_without_img">—</b> sin img</span>
+            <span class="stat"><b id="s_ph_n">—</b> placeholder</span>
+            <span class="stat"><b id="s_milu_new">—</b> MILU_New</span>
+            <span class="stat"><b id="s_milu_sup">—</b> MILU_Superseded</span>
+            <span class="stat"><b id="s_desconocido">—</b> Desconocido</span>
+            <span class="stat"><b id="count">—</b> filas</span>
+          </div>
+
+          <!-- preview simple de imágenes -->
+          <div class="preview" id="previewBox" style="display:none">
+            <div class="muted" id="previewTitle" style="margin-bottom:8px"></div>
+            <div class="rowImgs" id="previewImgs"></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Tabla + detalle -->
+      <div style="min-height:0; display:flex; flex-direction:column; gap:12px;">
+
+        <!-- Tabla -->
+        <div class="card" style="min-height:0; max-height:650px; display:flex; flex-direction:column;">
+          <div id="pagerBar" style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin:8px 10px 0 10px;">
+            <button class="btn small" id="pgPrev" title="Página anterior">◀</button>
+            <span class="muted" id="pgInfo">—</span>
+            <button class="btn small" id="pgNext" title="Página siguiente">▶</button>
+            <span style="flex:1"></span>
+            <label class="muted" style="font-size:12px">Filas/página</label>
+            <select id="pgSize" style="width:auto">
+              <option value="20">20</option>
+              <option value="50" selected>50</option>
+              <option value="100">100</option>
+              <option value="250">250</option>
+            </select>
+          </div>
+
+          <div class="tableWrap" id="tableWrap" style="flex:1; min-height:0;">
+            <table>
+              <thead id="thead"></thead>
+              <tbody id="tbody"></tbody>
+            </table>
+            <div id="empty" class="empty" style="display:none">No hay resultados con estos filtros.</div>
+          </div>
+        </div>
+
+        <!-- ======= DETALLE DEL ARTÍCULO SELECCIONADO (abajo) ======= -->
+        <div class="detailCard" id="detailCard">
+          <div class="detailTitle">
+            <h3>Detalle artículo seleccionado</h3>
+            <span class="muted" id="detailHint">Selecciona una fila para ver toda la información.</span>
+            <span style="flex:1"></span>
+            <button class="btn small" id="copyJson">📋 Copiar JSON</button>
+          </div>
+
+          <div class="detailGrid" id="detailGrid"></div>
+
+          <div class="tabs">
+            <button class="tabBtn active" id="tab_det_imgs" type="button">Imágenes</button>
+            <button class="tabBtn" id="tab_det_gesa" type="button">GESA</button>
+            <button class="tabBtn" id="tab_det_sust" type="button">SUST</button>
+            <button class="tabBtn" id="tab_det_book" type="button">Libro/Pos</button>
+            <button class="tabBtn" id="tab_det_raw" type="button">RAW JSON</button>
+          </div>
+
+          <div class="section" id="sec_imgs">
+            <div class="sectionHead"><b>Imágenes relacionadas</b> <span class="muted" id="detImgMeta">—</span></div>
+            <div class="sectionBody">
+              <div class="rowImgs" id="detailImgs"></div>
+              <div class="muted" id="detailImgsEmpty">Sin imágenes</div>
+            </div>
+          </div>
+
+          <div class="section" id="sec_gesa" style="display:none">
+            <div class="sectionHead"><b>GESA</b> <span class="muted" id="gesaMeta">—</span></div>
+            <div class="sectionBody" id="detailGesa"></div>
+          </div>
+
+          <div class="section" id="sec_sust" style="display:none">
+            <div class="sectionHead"><b>SUST</b> <span class="muted" id="sustMeta">—</span></div>
+            <div class="sectionBody" id="detailSust"></div>
+          </div>
+
+          <div class="section" id="sec_book" style="display:none">
+            <div class="sectionHead"><b>Libro/Pos</b></div>
+            <div class="sectionBody" id="detailBook"></div>
+          </div>
+
+          <div class="section" id="sec_raw" style="display:none">
+            <div class="sectionHead"><b>RAW JSON</b></div>
+            <div class="sectionBody">
+              <div class="codeBox" id="detailRaw">{}</div>
+            </div>
+          </div>
+        </div>
+
+      </div>
+
+    </div>
+  </div>
+
+  <script>
+    const $ = (id) => document.getElementById(id);
+
+    const DATA_URLS = [
+      "./MILU_New_v507.json",
+      "./MILU_Superseded_v507.json",
+    ];
+    const SOURCE_MAP_URL = "./source_map.json";
+
+    let SOURCE_MAP = {};
+    let DATA = [];
+    let CURRENT = [];   // filtrado+ordenado (completo)
+    let PAGE_ROWS = []; // visible (página)
+    let SELECTED = -1;
+
+    // sorting
+    let SORT_KEY = "pn";
+    let SORT_DIR = 1; // 1 asc, -1 desc
+
+    // paging
+    let PAGE = 1;
+    let PAGE_SIZE = 50;
+
+    // detalle
+    let ACTIVE_DETAIL_TAB = "imgs";
+    let CURRENT_SELECTED_OBJ = null;
+
+    function escapeHtml(s) {
+      return String(s ?? "")
+        .replaceAll("&", "&amp;").replaceAll("<", "&lt;").replaceAll(">", "&gt;")
+        .replaceAll('"', "&quot;").replaceAll("'", "&#039;");
+    }
+    function asArray(x) {
+      if (x == null) return [];
+      if (Array.isArray(x)) return x;
+      if (typeof x === "string") {
+        const parts = x.split(/[;,\n\r]+/).map(s => s.trim()).filter(Boolean);
+        return parts.length ? parts : [x.trim()];
+      }
+      return [String(x)];
+    }
+    function splitCsvLike(s) {
+      return asArray(s).flatMap(v => String(v).split(",").map(x => x.trim()).filter(Boolean));
+    }
+    function isPlaceholderUrl(u) {
+      const s = String(u || "").toLowerCase();
+      return s.includes("sin_imagen.");
+    }
+    function normalizeLink(v) {
+      const s = String(v || "").trim();
+      if (!s) return "";
+      if (s.startsWith("http://") || s.startsWith("https://")) return s;
+      return "https://" + s.replace(/^\/+/, "");
+    }
+    // HELPERS AÑADIDOS POR JORDI PARA FLAGS Y IMAGENES ROTAS
+    function isYes(v) {
+      const s = String(v ?? "").trim().toUpperCase();
+      return ["SI", "SÍ", "YES", "Y", "1", "TRUE"].includes(s);
+    }
+    function hasText(v) {
+      return String(v ?? "").trim() !== "";
+    }
+
+    // ===== Broken images cache =====
+    const IMG_STATUS = new Map();     // url -> "ok"|"missing"|"error"
+    const IMG_CHECKING = new Set();   // in-flight
+    const IMG_CONCURRENCY = 6;
+    let IMG_INFLIGHT = 0;
+    const IMG_QUEUE = [];
+
+    function enqueueImgCheck(fn) {
+      return new Promise((resolve, reject) => {
+        IMG_QUEUE.push({ fn, resolve, reject });
+        pumpImgQueue();
+      });
+    }
+    function pumpImgQueue() {
+      while (IMG_INFLIGHT < IMG_CONCURRENCY && IMG_QUEUE.length) {
+        const job = IMG_QUEUE.shift();
+        IMG_INFLIGHT++;
+        job.fn().then(job.resolve, job.reject).finally(() => {
+          IMG_INFLIGHT--;
+          pumpImgQueue();
+        });
+      }
+    }
+
+    async function checkImageUrl(url, timeoutMs = 4500) {
+      if (!url) return "missing";
+      if (IMG_STATUS.has(url)) return IMG_STATUS.get(url);
+
+      // evita duplicados en paralelo
+      if (IMG_CHECKING.has(url)) return "error";
+      IMG_CHECKING.add(url);
+
+      const ctrl = new AbortController();
+      const t = setTimeout(() => ctrl.abort(), timeoutMs);
+
+      try {
+        // Intento HEAD (rápido si el servidor lo permite)
+        try {
+          const resH = await fetch(url, { method: "HEAD", cache: "no-store", signal: ctrl.signal });
+          if (resH.ok) {
+            IMG_STATUS.set(url, "ok");
+            return "ok";
+          }
+          // si HEAD devuelve 404, ya es suficiente
+          if (resH.status === 404) {
+            IMG_STATUS.set(url, "missing");
+            return "missing";
+          }
+          // si HEAD no sirve, caemos a GET
+        } catch (e) {
+          // ignoramos y probamos GET
+        }
+
+        const res = await fetch(url, { method: "GET", cache: "no-store", signal: ctrl.signal });
+        const st = res.ok ? "ok" : (res.status === 404 ? "missing" : "error");
+        IMG_STATUS.set(url, st);
+        return st;
+      } catch (e) {
+        IMG_STATUS.set(url, "error");
+        return "error";
+      } finally {
+        clearTimeout(t);
+        IMG_CHECKING.delete(url);
+      }
+    }
+
+    async function precheckRowImages(a, maxUrls = 25) {
+      const urls = (a.img_urls_real || []).slice(0, maxUrls);
+      if (!urls.length) {
+        a.img_broken = 0; a.img_missing = 0; a.img_error = 0;
+        return;
+      }
+
+      const results = await Promise.all(urls.map(u =>
+        enqueueImgCheck(() => checkImageUrl(u))
+      ));
+
+      a.img_missing = results.filter(x => x === "missing").length;
+      a.img_error = results.filter(x => x === "error").length;
+      a.img_broken = a.img_missing + a.img_error;
+    }
+
+
+
+
+
+    // AÑADIDO POR JORDI PARA LINK  QA_ARTICULOS
+    // === qa_articulos ===
+    const qa_articulos_url = "./qa_articulos.html";
+
+    function buildQaArticulosLink(engine, libro, pag) {
+      const url = new URL(qa_articulos_url, location.href);
+      if (engine) url.searchParams.set("engine", engine);
+      if (pag) url.searchParams.set("pag", pag);
+      if (libro) url.searchParams.set("libro", libro);
+      return url.toString();
+    }
+
+    function parseLibroPagToken(token) {
+      const t = String(token || "").trim();
+      if (!t) return { libro: "", pag: "" };
+      const i = t.lastIndexOf("-");
+      if (i > 0 && i < t.length - 1) {
+        const libro = t.slice(0, i).trim();
+        const pag = t.slice(i + 1).trim();
+        return { libro, pag };
+      }
+      return { libro: "", pag: t };
+    }
+
+    function getEngineParamFromLibro(libro, fallback) {
+      const m = String(libro || "").match(/(\d{4})/);
+      if (m) return m[1];
+      return String(fallback || "").trim();
+    }
+
+    function renderPagLinks(a) {
+      const rawTokens = asArray(a.PAG ?? a.pag ?? "")
+        .flatMap(v => String(v).split(/[;,\n\r,]+/))
+        .map(s => s.trim())
+        .filter(Boolean);
+
+      if (!rawTokens.length) return "—";
+
+      return rawTokens.map(tok => {
+        const { libro: libroFromTok, pag } = parseLibroPagToken(tok);
+        const libro =
+          libroFromTok ||
+          String(a.LIBRO ?? a.libro ?? a.book ?? "").trim();
+
+        const engineParam = getEngineParamFromLibro(libro, a.engine);
+        const href = buildQaArticulosLink(engineParam, libro, pag);
+        const label = (libro && pag) ? `${libro}-${pag}` : (pag || tok);
+
+        return `<a href="${escapeHtml(href)}" target="_blank" rel="noreferrer">${escapeHtml(label)}</a>`;
+      }).join(" · ");
+    }
+
+    function imgExt(u) {
+      const s = String(u || "").split("?")[0].trim();
+      const m = s.match(/\.([a-z0-9]+)$/i);
+      return m ? m[1].toLowerCase() : "";
+    }
+    function uniqSorted(arr) {
+      return Array.from(new Set(arr.filter(Boolean).map(x => String(x).trim()).filter(Boolean)))
+        .sort((a, b) => a.localeCompare(b, 'es'));
+    }
+    function fillMultiSelect(sel, values, placeholder) {
+      sel.innerHTML = values.length
+        ? values.map(v => `<option value="${escapeHtml(v)}">${escapeHtml(v)}</option>`).join("")
+        : `<option value="">${escapeHtml(placeholder || "—")}</option>`;
+    }
+    function getSelectedValues(sel) {
+      return Array.from(sel.selectedOptions).map(o => o.value).filter(Boolean);
+    }
+
+    function getFieldAny(obj, keys) {
+      for (const k of keys) {
+        if (obj && obj[k] != null && String(obj[k]).trim() !== "") return obj[k];
+      }
+      return "";
+    }
+
+    // ===== Flags (igual concepto que qa_articulos) =====
+    function hasGesa(a) {
+      return !!(
+        getFieldAny(a, ["designation_gesa"]) ||
+        getFieldAny(a, ["nsn", "NSN_GESA"]) ||
+        getFieldAny(a, ["weight_gesa", "wheight_gesa"]) ||
+        getFieldAny(a, ["units_gesa", "units_gesa_or_alt"]) ||
+        getFieldAny(a, ["dimensions_gesa", "dimensiones_gesa"])
+      );
+    }
+
+    function pickSust(a) {
+      return {
+        SUST_TIPO: getFieldAny(a, ["SUST_TIPO"]),
+        SUS_STATUS: getFieldAny(a, ["SUS_STATUS", "sus_status", "susStatus"]),
+        sust_hierarchie: getFieldAny(a, ["sust_hierarchie"]),
+        sust_new_part_number: getFieldAny(a, ["sust_new_part_number", "sust_new_part_nember"]),
+        sust_superseded_list: getFieldAny(a, ["sust_superseded_list"]),
+      };
+    }
+
+    function hasSust(a) {
+      const s = pickSust(a);
+      return Object.values(s).some(v => String(v || "").trim() !== "");
+    }
+
+    function sustCode(a) {
+      const sh = getFieldAny(a, ["sust_hierarchie"]);
+      const shNorm = String(sh || "").trim().toUpperCase();
+      if (!shNorm) return ""; // vacío -> no mostrar nada (igual que qa_articulos)
+      if (shNorm.includes("NEW")) return "N";
+      if (shNorm.includes("SUPERSEDED")) return "O";
+      return shNorm; // si viene otra cosa
+    }
+
+    function flagsCellHtml(a, k) {
+      if (k === "flag_props") {
+        const parts = [];
+        if (a.in_bom) parts.push(`<span class="tag ok" title="Sale en BOM">BOM</span>`);
+        if (a.in_gesa) parts.push(`<span class="tag ok" title="Aparece en GESA (GESA_NORM o GESA_NORMALIZADO)">GESA</span>`);
+        if (a.is_normalized) parts.push(`<span class="tag ok" title="PN normalizado (GESA_NORMALIZADO = SI)">NORM</span>`);
+        if (a.in_sust_excel) parts.push(`<span class="tag warn" title="Aparece en SUST (EN_EXCEL_SUSTITUCION = SI)">SUST</span>`);
+        return parts.join(" ");
+      }
+
+      if (k === "flag_images") {
+        const real = a.img_real || 0;
+        const ph = a.img_ph || 0;
+        const total = a.img_total || 0;
+        const broken = a.img_broken || 0;
+
+        const parts = [];
+        if (real > 0) parts.push(`<span class="tag ok" title="Imágenes reales">📷 ${real}</span>`);
+        if (ph > 0) parts.push(`<span class="tag warn" title="Placeholder sin_imagen">PH ${ph}</span>`);
+        if (total === 0) parts.push(`<span class="tag bad" title="Sin imágenes">Ø</span>`);
+        if (broken > 0) parts.push(`<span class="tag bad" title="Imágenes rotas (404/err)">❌ ${broken}</span>`);
+
+        // Si todavía no se ha chequeado y hay reales, mostramos “…” suave
+        if (real > 0 && a.img_broken == null) parts.push(`<span class="tag" title="Pendiente de comprobar">…</span>`);
+
+        return parts.join(" ");
+      }
+
+      return "";
+    }
+
+
+    function norm(r, sourceName) {
+      const out = Object.assign({}, r);
+      out.source = sourceName || "";
+
+      // Determinar origen basado en el source_map.json si está disponible
+      const normPn = String(out.pn ?? out.PN ?? "").trim();
+      if (normPn && SOURCE_MAP[normPn]) {
+        out.source_display = SOURCE_MAP[normPn];
+      } else if (sourceName === "MILU_New_v507.json") {
+        out.source_display = "MILU_New";
+      } else if (sourceName === "MILU_Superseded_v507.json") {
+        out.source_display = "MILU_Superseded";
+      } else {
+        out.source_display = "Desconocido";
+      }
+
+      out.pn = normPn;
+      out.description = String(out.designation ?? out.description ?? "");
+      out.engine = String(out.engine ?? "").trim();
+      out.model_type = String(out.model_type ?? "").trim();
+      out.nsn = String(out.nsn ?? "").trim();
+      out.system = String(out.fg_code_description ?? out.system ?? "");
+      out.weight_kg = (out.weight != null && out.weight !== "") ? Number(out.weight) : null;
+      out.weight_txt = String(out.weight_txt ?? out.weight ?? "").trim();
+      out.dimensions = String(out.measurement ?? out.dimensions ?? "").trim();
+
+      out.categories_all = splitCsvLike(out.exp_categorias ?? out.atributo);
+      out.categoria = out.categories_all[0] || "";
+      out.status = String(out.SUST_TIPO ?? out.status ?? "").trim();
+
+      const imgUrlsAll = splitCsvLike(out.exp_imagenes);
+      out.img_urls_all = imgUrlsAll.filter(Boolean);
+      out.img_urls_real = out.img_urls_all.filter(u => u && !isPlaceholderUrl(u));
+      out.img_urls_ph = out.img_urls_all.filter(u => u && isPlaceholderUrl(u));
+
+      out.img_count = out.img_urls_real.length;
+      out.has_img = out.img_count > 0;
+      out.has_ph = out.img_urls_ph.length > 0;
+
+      out.img_formats = Array.from(new Set(out.img_urls_all.map(imgExt).filter(Boolean)));
+      out.url = normalizeLink(out.vinculo ?? out.url ?? out.web_url);
+
+      out.model_types = splitCsvLike(out.model_type);
+
+      // ===== Propiedades PN =====
+      out.in_bom = isYes(getFieldAny(out, ["EN_BOM"])); // <- este lo crearás tú
+      out.in_gesa = hasText(getFieldAny(out, ["GESA_NORM"])) || hasText(getFieldAny(out, ["GESA_NORMALIZADO"]));
+      out.is_normalized = isYes(getFieldAny(out, ["GESA_NORMALIZADO"]));
+      out.in_sust_excel = isYes(getFieldAny(out, ["EN_EXCEL_SUSTITUCION"]));
+
+      // ===== Imágenes: contadores robustos =====
+      out.img_total = (out.img_urls_all || []).length;      // incluye PH si vienen en exp_imagenes
+      out.img_real = (out.img_urls_real || []).length;      // reales
+      out.img_ph = (out.img_urls_ph || []).length;          // placeholder sin_imagen
+      out.img_none = out.img_total === 0;                   // nada (vacío / 0 / [])
+      // rotas (lazy): out.img_broken / missing / error se rellenan luego
+
+
+      return out;
+    }
+
+    // ✅ columnas principales + flags (GESA / SUST / NEW/... / Images)
+    const COLS = [
+      { k: "pn", label: "PN", w: "150px" },
+      { k: "description", label: "Description", w: "240px" },
+      { k: "categoria", label: "Categoria", w: "160px" },
+      { k: "engine", label: "Engine Series", w: "110px" },
+      { k: "model_type", label: "Model Type", w: "220px" },
+      { k: "nsn", label: "NSN", w: "160px" },
+      { k: "system", label: "System", w: "260px" },
+      { k: "weight_txt", label: "Weight", w: "120px" },
+      { k: "dimensions", label: "Dimensions", w: "140px" },
+
+      // NUEVO
+      { k: "flag_props", label: "Props", w: "170px" },
+      { k: "flag_images", label: "Images", w: "180px" },
+      { k: "source_display", label: "Origen", w: "120px" },
+
+      { k: "web", label: "Web", w: "80px" },
+    ];
+
+    function sortIndicator(colKey) {
+      if (colKey !== SORT_KEY) return "";
+      return SORT_DIR === 1 ? "▲" : "▼";
+    }
+
+    function renderThead() {
+      $("thead").innerHTML = `
+        <tr>
+          ${COLS.map(c => `
+            <th data-k="${escapeHtml(c.k)}" style="width:${c.w}">
+              ${escapeHtml(c.label)}
+              <span class="sort">${escapeHtml(sortIndicator(c.k))}</span>
+            </th>
+          `).join("")}
+        </tr>
+      `;
+
+      $("thead").querySelectorAll("th").forEach(th => {
+        th.addEventListener("click", () => {
+          const k = th.getAttribute("data-k");
+          if (!k) return;
+          if (SORT_KEY === k) SORT_DIR *= -1;
+          else { SORT_KEY = k; SORT_DIR = 1; }
+          PAGE = 1;
+          SELECTED = -1;
+          render();
+        });
+      });
+    }
+
+    function getSortValue(a, k) {
+      if (k === "web") return a.url || "";
+      if (k === "weight_txt") {
+        const m = String(a.weight_txt || "").match(/([0-9]+(?:\.[0-9]+)?)/);
+        return m ? Number(m[1]) : (a.weight_kg ?? -1);
+      }
+      if (k === "categoria") return a.categoria || "";
+
+      // flags
+      if (k === "flag_props") {
+        // ordena por “cantidad de props activas”
+        return (a.in_bom ? 1 : 0) + (a.in_gesa ? 1 : 0) + (a.is_normalized ? 1 : 0) + (a.in_sust_excel ? 1 : 0);
+      }
+      if (k === "flag_images") {
+        const real = a.img_real || 0;
+        const ph = a.img_ph || 0;
+        const broken = a.img_broken || 0;
+        // prioridad: real, luego broken, luego ph
+        return real * 100000 + broken * 100 + ph;
+      }
+
+      if (k === "source_display") return a.source_display || "";
+
+
+      return a[k] ?? "";
+    }
+
+    function cmp(a, b, k) {
+      const va = getSortValue(a, k);
+      const vb = getSortValue(b, k);
+      const na = typeof va === "number" && !Number.isNaN(va);
+      const nb = typeof vb === "number" && !Number.isNaN(vb);
+
+      if (na && nb) return (va - vb) * SORT_DIR;
+      return String(va).localeCompare(String(vb), "es", { numeric: true, sensitivity: "base" }) * SORT_DIR;
+    }
+
+    function passes(a, f) {
+      if (f.hasImg && f.noImg) return false;
+
+      if (f.engine.length) {
+        const s = new Set(f.engine);
+        if (!s.has(a.engine)) return false;
+      }
+      if (f.status.length) {
+        const s = new Set(f.status);
+        const val = (a.status || "(vacío)");
+        if (!s.has(val)) return false;
+      }
+      if (f.modelType.length) {
+        const s = new Set(f.modelType);
+        if (!(a.model_types || []).some(x => s.has(x))) return false;
+      }
+      if (f.cats.length) {
+        const s = new Set(f.cats);
+        if (!(a.categories_all || []).some(c => s.has(c))) return false;
+      }
+      if (f.imgFmt.length) {
+        const s = new Set(f.imgFmt);
+        if (!(a.img_formats || []).some(x => s.has(x))) return false;
+      }
+      if (f.ph === "only" && !a.has_ph) return false;
+      if (f.ph === "no" && a.has_ph) return false;
+
+      if (f.hasImg && !a.has_img) return false;
+      if (f.noImg && a.has_img) return false;
+
+      const wMin = f.wgtMin !== "" ? Number(f.wgtMin) : null;
+      const wMax = f.wgtMax !== "" ? Number(f.wgtMax) : null;
+      if (wMin != null) {
+        if (a.weight_kg == null || Number.isNaN(a.weight_kg) || a.weight_kg < wMin) return false;
+      }
+      if (wMax != null) {
+        if (a.weight_kg == null || Number.isNaN(a.weight_kg) || a.weight_kg > wMax) return false;
+      }
+
+      if (f.q) {
+        const blob = [
+          a.pn, a.description, a.categoria, a.engine, a.model_type,
+          a.nsn, a.system, a.weight_txt, a.dimensions, a.url,
+          (a.categories_all || []).join(" "),
+          (a.model_types || []).join(" "),
+          JSON.stringify({
+            // también buscamos en flags/gesa/sust/libro_pos si existieran
+            gesa: {
+              designation_gesa: getFieldAny(a, ["designation_gesa"]),
+              nsn_gesa: getFieldAny(a, ["nsn_gesa", "NSN_GESA"]),
+              weight_gesa: getFieldAny(a, ["weight_gesa", "wheight_gesa"]),
+              units_gesa: getFieldAny(a, ["units_gesa", "units_gesa_or_alt"]),
+              dimensions_gesa: getFieldAny(a, ["dimensions_gesa", "dimensiones_gesa"]),
+            },
+            sust: pickSust(a),
+            pag: getFieldAny(a, ["PAG", "pag", "page", "pages", "libro_pag", "libro_pos", "book_page"]),
+            pos: getFieldAny(a, ["POS", "pos", "exp_pos"]),
+          }).toLowerCase(),
+        ].join(" ").toLowerCase();
+        if (!blob.includes(f.q)) return false;
+      }
+
+      if (f.source && f.source !== "") {
+        if (a.source_display !== f.source) return false;
+      }
+
+      return true;
+    }
+
+    /* ===========================
+       Preview simple (lateral)
+       =========================== */
+    function renderPreview(a) {
+      const box = $("previewBox");
+      const title = $("previewTitle");
+      const imgs = $("previewImgs");
+
+      if (!a) {
+        box.style.display = "none";
+        imgs.innerHTML = "";
+        return;
+      }
+
+      const links = (a.img_urls_all || []).slice(0, 12);
+      box.style.display = links.length ? "" : "none";
+      title.textContent = `${a.pn || "—"} · ${a.description || "—"} · imgs: ${a.img_urls_real.length}${a.has_ph ? " (+PH)" : ""}`;
+
+      imgs.innerHTML = links.map(u => {
+        const ph = isPlaceholderUrl(u);
+        const badge = ph ? `<span class="tag warn" style="position:absolute;left:8px;top:8px;background:#fff">PH</span>` : "";
+        return `
+          <a href="${escapeHtml(u)}" target="_blank" rel="noreferrer" title="${escapeHtml(u)}" style="position:relative">
+            ${badge}
+            <img src="${escapeHtml(u)}" alt="img">
+          </a>
+        `;
+      }).join("");
+    }
+
+    function updatePagerInfo() {
+      const total = CURRENT.length;
+      const totalPages = Math.max(1, Math.ceil(total / PAGE_SIZE));
+      PAGE = Math.max(1, Math.min(PAGE, totalPages));
+
+      const start = total ? ((PAGE - 1) * PAGE_SIZE + 1) : 0;
+      const end = Math.min(total, PAGE * PAGE_SIZE);
+
+      $("pgInfo").textContent = `${start}-${end} de ${total} · pág ${PAGE}/${totalPages}`;
+      $("pgPrev").disabled = (PAGE <= 1);
+      $("pgNext").disabled = (PAGE >= totalPages);
+
+      if (String($("pgSize").value) !== String(PAGE_SIZE)) {
+        $("pgSize").value = String(PAGE_SIZE);
+      }
+    }
+
+    /* ===========================
+       DETALLE INFERIOR
+       =========================== */
+
+    function pickGesa(a) {
+      return {
+        designation_gesa: getFieldAny(a, ["designation_gesa"]),
+        nsn_gesa: getFieldAny(a, ["nsn_gesa", "NSN_GESA"]),
+        weight_gesa: getFieldAny(a, ["weight_gesa", "wheight_gesa"]),
+        units_gesa: getFieldAny(a, ["units_gesa", "units_gesa_or_alt"]),
+        dimensions_gesa: getFieldAny(a, ["dimensions_gesa", "dimensiones_gesa"]),
+      };
+    }
+
+    function pickBookPos(a) {
+      const pag = getFieldAny(a, ["PAG", "pag", "page", "pages", "libro_pag", "libro_pos", "book_page"]);
+      const pos = getFieldAny(a, ["POS", "pos", "exp_pos"]);
+      const libro = getFieldAny(a, ["LIBRO", "libro", "book"]);
+      // mantenemos compat: para detailBook
+      return { pag, pos, libro, libro_pos: pag };
+    }
+
+    function kv(label, value) {
+      const v = (value == null || String(value).trim() === "") ? "—" : String(value);
+      return `<div class="kv">${escapeHtml(label)}<b>${escapeHtml(v)}</b></div>`;
+    }
+
+    function setDetailTab(tab) {
+      ACTIVE_DETAIL_TAB = tab;
+      ["imgs", "gesa", "sust", "book", "raw"].forEach(t => {
+        const b = $("tab_det_" + t);
+        if (b) b.classList.toggle("active", t === tab);
+      });
+      $("sec_imgs").style.display = (tab === "imgs") ? "" : "none";
+      $("sec_gesa").style.display = (tab === "gesa") ? "" : "none";
+      $("sec_sust").style.display = (tab === "sust") ? "" : "none";
+      $("sec_book").style.display = (tab === "book") ? "" : "none";
+      $("sec_raw").style.display = (tab === "raw") ? "" : "none";
+    }
+
+    function renderDetail(a) {
+      CURRENT_SELECTED_OBJ = a || null;
+
+      const grid = $("detailGrid");
+      const hint = $("detailHint");
+
+      if (!a) {
+        hint.textContent = "Selecciona una fila para ver toda la información.";
+        grid.innerHTML = "";
+        $("detailImgs").innerHTML = "";
+        $("detailImgsEmpty").style.display = "";
+        $("detailRaw").textContent = "{}";
+        $("detailGesa").innerHTML = `<div class="muted">—</div>`;
+        $("detailSust").innerHTML = `<div class="muted">—</div>`;
+        $("detailBook").innerHTML = `<div class="muted">—</div>`;
+        return;
+      }
+
+      hint.textContent = `${a.pn || "—"} · ${a.description || "—"} · ${a.source || ""}`;
+
+      const bookPos = pickBookPos(a);
+      grid.innerHTML = [
+        kv("PN", a.pn),
+        kv("Description", a.description),
+        kv("Categoria", a.categoria),
+        kv("Engine Series", a.engine),
+        kv("Model Type", a.model_type),
+        kv("NSN", a.nsn),
+        kv("System", a.system),
+        kv("Weight", a.weight_txt || (a.weight_kg != null ? a.weight_kg : "")),
+        kv("Dimensions", a.dimensions),
+        kv("Estado (SUST_TIPO)", a.status),
+        kv("Origen", a.source_display),
+        `<div class="kv">PAG<b>${renderPagLinks(a)}</b></div>`,
+        kv("POS", bookPos.pos),
+      ].join("");
+
+      const links = (a.img_urls_all || []).filter(Boolean);
+      $("detImgMeta").textContent = `total: ${links.length} · real: ${a.img_urls_real.length} · placeholder: ${a.img_urls_ph.length}`;
+
+      const imgsBox = $("detailImgs");
+      if (!links.length) {
+        imgsBox.innerHTML = "";
+        $("detailImgsEmpty").style.display = "";
+      } else {
+        $("detailImgsEmpty").style.display = "none";
+        imgsBox.innerHTML = links.slice(0, 40).map(u => {
+          const ph = isPlaceholderUrl(u);
+          const badge = ph ? `<span class="tag warn" style="position:absolute;left:8px;top:8px;background:#fff">PH</span>` : "";
+          return `
+            <a href="${escapeHtml(u)}" target="_blank" rel="noreferrer" title="${escapeHtml(u)}" style="position:relative">
+              ${badge}
+              <img src="${escapeHtml(u)}" alt="img">
+            </a>
+          `;
+        }).join("");
+      }
+
+      const g = pickGesa(a);
+      const hasG = Object.values(g).some(v => String(v || "").trim() !== "");
+      $("gesaMeta").textContent = hasG ? "ok" : "sin datos";
+      $("detailGesa").innerHTML = hasG
+        ? `
+          <div class="detailGrid" style="grid-template-columns:repeat(3,minmax(0,1fr));margin:0">
+            ${kv("designation_gesa", g.designation_gesa)}
+            ${kv("nsn_gesa", g.nsn_gesa)}
+            ${kv("weight_gesa", g.weight_gesa)}
+            ${kv("units_gesa", g.units_gesa)}
+            ${kv("dimensions_gesa", g.dimensions_gesa)}
+          </div>
+        `
+        : `<div class="muted">Sin información GESA en este artículo.</div>`;
+
+      const s = pickSust(a);
+      const hasS = Object.values(s).some(v => String(v || "").trim() !== "");
+      $("sustMeta").textContent = hasS ? "ok" : "sin datos";
+      $("detailSust").innerHTML = hasS
+        ? `
+          <div class="detailGrid" style="grid-template-columns:repeat(3,minmax(0,1fr));margin:0">
+            ${kv("SUST_TIPO", s.SUST_TIPO)}
+            ${kv("SUS_STATUS", s.SUS_STATUS)}
+            ${kv("sust_hierarchie", s.sust_hierarchie)}
+            ${kv("sust_new_part_number", s.sust_new_part_number)}
+            ${kv("sust_superseded_list", s.sust_superseded_list)}
+          </div>
+        `
+        : `<div class="muted">Sin información SUST en este artículo.</div>`;
+
+      $("detailBook").innerHTML = `
+        <div class="detailGrid" style="grid-template-columns:repeat(3,minmax(0,1fr));margin:0">
+          ${kv("libro_pos / libro_pag / pages", bookPos.libro_pos)}
+          ${kv("book", bookPos.libro)}
+          ${kv("page", bookPos.pag)}
+          ${kv("pos", bookPos.pos)}
+          ${kv("source", a.source)}
+          ${kv("web", a.url)}
+        </div>
+        <div class="muted" style="margin-top:6px">
+          Si en tu JSON existe otro campo para libro/página (ej: pages = ["LIBRO-0001",...]) aparecerá en “libro_pos / pages”.
+        </div>
+      `;
+
+      $("detailRaw").textContent = JSON.stringify(a, null, 2);
+    }
+
+    /* ===========================
+       Render principal
+       =========================== */
+    function render() {
+      const f = {
+        q: ($("q").value || "").trim().toLowerCase(),
+        engine: getSelectedValues($("f_engine")),
+        status: getSelectedValues($("f_status")),
+        modelType: getSelectedValues($("f_model_type")),
+        cats: getSelectedValues($("f_cats")),
+        imgFmt: getSelectedValues($("f_img_fmt")),
+        ph: ($("f_ph").value || "").trim(),
+        wgtMin: ($("f_wgt_min").value || "").trim(),
+        wgtMax: ($("f_wgt_max").value || "").trim(),
+        hasImg: $("f_has_img").checked,
+        noImg: $("f_no_img").checked,
+        source: ($("f_source").value || "").trim(),
+      };
+
+      let rows = DATA.filter(a => passes(a, f));
+      rows.sort((a, b) => cmp(a, b, SORT_KEY));
+      CURRENT = rows;
+
+      const total = CURRENT.length;
+      const withImg = CURRENT.filter(a => a.has_img).length;
+      const phN = CURRENT.filter(a => a.has_ph).length;
+      const withoutImg = total - withImg;
+      const miluNew = CURRENT.filter(a => a.source_display === "MILU_New").length;
+      const miluSup = CURRENT.filter(a => a.source_display === "MILU_Superseded").length;
+      const desconocido = CURRENT.filter(a => a.source_display === "Desconocido").length;
+
+      $("s_total").textContent = total;
+      $("s_with_img").textContent = withImg;
+      $("s_without_img").textContent = withoutImg;
+      $("s_ph_n").textContent = phN;
+      $("s_milu_new").textContent = miluNew;
+      $("s_milu_sup").textContent = miluSup;
+      $("s_desconocido").textContent = desconocido;
+      $("count").textContent = total;
+
+      const totalPages = Math.max(1, Math.ceil(total / PAGE_SIZE));
+      PAGE = Math.max(1, Math.min(PAGE, totalPages));
+      const startIx = (PAGE - 1) * PAGE_SIZE;
+      PAGE_ROWS = CURRENT.slice(startIx, startIx + PAGE_SIZE);
+
+      updatePagerInfo();
+
+      const tb = $("tbody");
+      if (!PAGE_ROWS.length) {
+        tb.innerHTML = "";
+        $("empty").style.display = "block";
+        renderPreview(null);
+        renderDetail(null);
+        setParams();
+        return;
+      }
+      $("empty").style.display = "none";
+
+      tb.innerHTML = PAGE_ROWS.map((a, ix) => {
+        const sel = (ix === SELECTED) ? "selected" : "";
+        const catAll = (a.categories_all || []).join(", ");
+
+        // construimos celdas según COLS (incluye flags)
+        const tds = COLS.map(c => {
+          if (c.k === "pn") return `<td title="${escapeHtml(a.pn)}">${escapeHtml(a.pn || "—")}</td>`;
+          if (c.k === "description") return `<td title="${escapeHtml(a.description)}">${escapeHtml(a.description || "—")}</td>`;
+          if (c.k === "categoria") return `<td title="${escapeHtml(catAll)}">${escapeHtml(a.categoria || "—")}</td>`;
+          if (c.k === "engine") return `<td title="${escapeHtml(a.engine)}">${escapeHtml(a.engine || "—")}</td>`;
+          if (c.k === "model_type") return `<td title="${escapeHtml(a.model_type)}">${escapeHtml(a.model_type || "—")}</td>`;
+          if (c.k === "nsn") return `<td title="${escapeHtml(a.nsn)}">${escapeHtml(a.nsn || "—")}</td>`;
+          if (c.k === "system") return `<td title="${escapeHtml(a.system)}">${escapeHtml(a.system || "—")}</td>`;
+          if (c.k === "weight_txt") {
+            const v = a.weight_txt || (a.weight_kg != null ? String(a.weight_kg) : "—");
+            return `<td title="${escapeHtml(v)}">${escapeHtml(v)}</td>`;
+          }
+          if (c.k === "dimensions") return `<td title="${escapeHtml(a.dimensions)}">${escapeHtml(a.dimensions || "—")}</td>`;
+
+          // flags
+          if (c.k === "flag_props" || c.k === "flag_images") {
+            let title = "";
+            if (c.k === "flag_images") {
+              title = `total: ${a.img_total || 0} · real: ${a.img_real || 0} · ph: ${a.img_ph || 0} · rotas: ${a.img_broken ?? "?"}`;
+            }
+            return `<td title="${escapeHtml(title)}">${flagsCellHtml(a, c.k)}</td>`;
+          }
+
+          if (c.k === "source_display") {
+            let badgeClass = "tag";
+            let title = "";
+            if (a.source_display === "MILU_New") {
+              badgeClass = "tag ok";
+              title = "Publicado en web (MILU_New)";
+            } else if (a.source_display === "MILU_Superseded") {
+              badgeClass = "tag warn";
+              title = "Artículo superseded";
+            } else {
+              badgeClass = "tag bad";
+              title = "Origen desconocido";
+            }
+            return `<td><span class="${badgeClass}" title="${escapeHtml(title)}">${escapeHtml(a.source_display)}</span></td>`;
+          }
+
+          if (c.k === "web") {
+            return `<td>${a.url ? `<a href="${escapeHtml(a.url)}" target="_blank" rel="noreferrer">Abrir</a>` : "—"}</td>`;
+          }
+
+          // fallback
+          const v = (a[c.k] == null || String(a[c.k]).trim() === "") ? "—" : String(a[c.k]);
+          return `<td title="${escapeHtml(v)}">${escapeHtml(v)}</td>`;
+        }).join("");
+
+        return `<tr class="${sel}" data-ix="${ix}">${tds}</tr>`;
+      }).join("");
+
+      tb.querySelectorAll("tr").forEach(tr => {
+        tr.addEventListener("click", () => {
+          SELECTED = parseInt(tr.getAttribute("data-ix"), 10);
+          const a = PAGE_ROWS[SELECTED];
+          renderPreview(a);
+          renderDetail(a);
+
+          // === comprobar imágenes rotas (lazy) ===
+          if (a && a.has_img && a.img_broken == null) {
+            precheckRowImages(a).then(() => {
+              render();
+            });
+          }
+          tb.querySelectorAll("tr").forEach(x => x.classList.remove("selected"));
+          tr.classList.add("selected");
+        });
+      });
+
+      if (SELECTED < 0) SELECTED = 0;
+      const a0 = PAGE_ROWS[SELECTED];
+      renderPreview(a0);
+      renderDetail(a0);
+      if (a0 && a0.has_img && a0.img_broken == null) {
+        precheckRowImages(a0).then(() => {
+          render();
+        });
+      }
+
+
+      renderThead();
+      setParams();
+    }
+
+    /* ===========================
+       URL params
+       =========================== */
+    function getParams() {
+      const p = new URLSearchParams(location.search);
+      return {
+        q: (p.get("q") || "").trim(),
+        engine: (p.get("engine") || "").split(",").map(s => s.trim()).filter(Boolean),
+        status: (p.get("status") || "").split(",").map(s => s.trim()).filter(Boolean),
+        modelType: (p.get("modelType") || "").split(",").map(s => s.trim()).filter(Boolean),
+        cats: (p.get("cats") || "").split(",").map(s => s.trim()).filter(Boolean),
+        imgFmt: (p.get("imgFmt") || "").split(",").map(s => s.trim()).filter(Boolean),
+        ph: (p.get("ph") || "").trim(),
+        wgtMin: (p.get("wgtMin") || "").trim(),
+        wgtMax: (p.get("wgtMax") || "").trim(),
+        hasImg: (p.get("hasImg") || "") === "1",
+        noImg: (p.get("noImg") || "") === "1",
+        source: (p.get("source") || "").trim(),
+        sortKey: (p.get("sortKey") || "").trim(),
+        sortDir: (p.get("sortDir") || "").trim(),
+        page: (p.get("page") || "").trim(),
+        pageSize: (p.get("pageSize") || "").trim(),
+        dt: (p.get("dt") || "").trim(),
+      };
+    }
+
+    function setParams() {
+      const p = new URLSearchParams();
+
+      const q = ($("q").value || "").trim();
+      const engine = getSelectedValues($("f_engine"));
+      const status = getSelectedValues($("f_status"));
+      const modelType = getSelectedValues($("f_model_type"));
+      const cats = getSelectedValues($("f_cats"));
+      const imgFmt = getSelectedValues($("f_img_fmt"));
+      const ph = ($("f_ph").value || "").trim();
+      const wgtMin = ($("f_wgt_min").value || "").trim();
+      const wgtMax = ($("f_wgt_max").value || "").trim();
+      const source = ($("f_source").value || "").trim();
+
+      if (q) p.set("q", q);
+      if (engine.length) p.set("engine", engine.join(","));
+      if (status.length) p.set("status", status.join(","));
+      if (modelType.length) p.set("modelType", modelType.join(","));
+      if (cats.length) p.set("cats", cats.join(","));
+      if (imgFmt.length) p.set("imgFmt", imgFmt.join(","));
+      if (ph) p.set("ph", ph);
+      if (wgtMin) p.set("wgtMin", wgtMin);
+      if (wgtMax) p.set("wgtMax", wgtMax);
+      if ($("f_has_img").checked) p.set("hasImg", "1");
+      if ($("f_no_img").checked) p.set("noImg", "1");
+      if (source) p.set("source", source);
+
+      if (SORT_KEY) p.set("sortKey", SORT_KEY);
+      p.set("sortDir", String(SORT_DIR));
+
+      p.set("page", String(PAGE));
+      p.set("pageSize", String(PAGE_SIZE));
+
+      if (ACTIVE_DETAIL_TAB) p.set("dt", ACTIVE_DETAIL_TAB);
+
+      const qs = p.toString();
+      history.replaceState(null, "", qs ? `${location.pathname}?${qs}` : location.pathname);
+    }
+
+    function applyParamsToUI() {
+      const p = getParams();
+
+      $("q").value = p.q || "";
+      $("f_ph").value = p.ph || "";
+      $("f_wgt_min").value = p.wgtMin || "";
+      $("f_wgt_max").value = p.wgtMax || "";
+      $("f_has_img").checked = !!p.hasImg;
+      $("f_no_img").checked = !!p.noImg;
+      $("f_source").value = p.source || "";
+
+      if (p.sortKey) SORT_KEY = p.sortKey;
+      if (p.sortDir) SORT_DIR = Number(p.sortDir) === -1 ? -1 : 1;
+
+      if (p.page) PAGE = Math.max(1, Number(p.page) || 1);
+      if (p.pageSize) PAGE_SIZE = Math.max(1, Number(p.pageSize) || 50);
+
+      if (p.dt) ACTIVE_DETAIL_TAB = p.dt;
+
+      function selectValues(sel, vals) {
+        const set = new Set(vals || []);
+        Array.from(sel.options).forEach(o => { o.selected = set.has(o.value); });
+      }
+      selectValues($("f_engine"), p.engine);
+      selectValues($("f_status"), p.status);
+      selectValues($("f_model_type"), p.modelType);
+      selectValues($("f_cats"), p.cats);
+      selectValues($("f_img_fmt"), p.imgFmt);
+
+      $("pgSize").value = String(PAGE_SIZE);
+      setDetailTab(ACTIVE_DETAIL_TAB || "imgs");
+    }
+
+    /* ===========================
+       Init
+       =========================== */
+    async function init() {
+      renderThead();
+
+      // Cargar mapping de origen si existe (Excel -> New/Superseded/Desconocido)
+      try {
+        const resMap = await fetch(SOURCE_MAP_URL, { cache: "no-store" });
+        if (resMap.ok) SOURCE_MAP = await resMap.json();
+      } catch (e) {
+        console.warn("No se pudo cargar source_map.json", e);
+        SOURCE_MAP = {};
+      }
+
+      const all = [];
+      for (const url of DATA_URLS) {
+        const res = await fetch(url, { cache: "no-store" });
+        if (!res.ok) throw new Error("No puedo cargar " + url + ": " + res.status + " " + res.statusText);
+        const raw = await res.json();
+        const arr = Array.isArray(raw) ? raw : (raw.items || raw.data || []);
+        const src = url.split("/").pop();
+        arr.forEach(r => all.push(norm(r, src)));
+      }
+      DATA = all;
+
+      const engines = uniqSorted(DATA.map(a => a.engine));
+      const statuses = uniqSorted(DATA.map(a => a.status ? a.status : "(vacío)"));
+      const modelTypes = uniqSorted(DATA.flatMap(a => a.model_types || []));
+      const cats = uniqSorted(DATA.flatMap(a => a.categories_all || []));
+      const fmts = uniqSorted(DATA.flatMap(a => a.img_formats || []));
+
+      fillMultiSelect($("f_engine"), engines, "Sin engine");
+      fillMultiSelect($("f_status"), statuses, "Sin estado");
+      fillMultiSelect($("f_model_type"), modelTypes, "Sin model type");
+      fillMultiSelect($("f_cats"), cats, "Sin categorías");
+      fillMultiSelect($("f_img_fmt"), fmts, "Sin formatos");
+
+      applyParamsToUI();
+      render();
+    }
+
+    /* ===========================
+       Eventos
+       =========================== */
+    function bind() {
+      const rer = () => {
+        PAGE = 1;
+        SELECTED = -1;
+        render();
+      };
+
+      $("q").addEventListener("input", rer);
+      ["f_engine", "f_status", "f_model_type", "f_cats", "f_img_fmt", "f_ph", "f_source"].forEach(id => {
+        $(id).addEventListener("change", rer);
+      });
+      ["f_wgt_min", "f_wgt_max"].forEach(id => $(id).addEventListener("input", rer));
+      $("f_has_img").addEventListener("change", rer);
+      $("f_no_img").addEventListener("change", rer);
+
+      // paginación
+      $("pgPrev").addEventListener("click", () => {
+        PAGE = Math.max(1, PAGE - 1);
+        SELECTED = -1;
+        render();
+      });
+      $("pgNext").addEventListener("click", () => {
+        const totalPages = Math.max(1, Math.ceil(CURRENT.length / PAGE_SIZE));
+        PAGE = Math.min(totalPages, PAGE + 1);
+        SELECTED = -1;
+        render();
+      });
+      $("pgSize").addEventListener("change", () => {
+        PAGE_SIZE = Number($("pgSize").value) || 50;
+        PAGE = 1;
+        SELECTED = -1;
+        render();
+      });
+
+      $("clear").addEventListener("click", () => {
+        $("q").value = "";
+        $("f_ph").value = "";
+        $("f_has_img").checked = false;
+        $("f_no_img").checked = false;
+        $("f_wgt_min").value = "";
+        $("f_wgt_max").value = "";
+        ["f_engine", "f_status", "f_model_type", "f_cats", "f_img_fmt"].forEach(id => {
+          Array.from($(id).options).forEach(o => o.selected = false);
+        });
+        SORT_KEY = "pn"; SORT_DIR = 1;
+        PAGE = 1; PAGE_SIZE = 50;
+        $("pgSize").value = String(PAGE_SIZE);
+        SELECTED = -1;
+        setDetailTab("imgs");
+        render();
+      });
+
+      $("copyLink").addEventListener("click", async () => {
+        try { await navigator.clipboard.writeText(location.href); } catch (e) { }
+      });
+
+      // tabs detalle
+      $("tab_det_imgs").addEventListener("click", () => { setDetailTab("imgs"); setParams(); });
+      $("tab_det_gesa").addEventListener("click", () => { setDetailTab("gesa"); setParams(); });
+      $("tab_det_sust").addEventListener("click", () => { setDetailTab("sust"); setParams(); });
+      $("tab_det_book").addEventListener("click", () => { setDetailTab("book"); setParams(); });
+      $("tab_det_raw").addEventListener("click", () => { setDetailTab("raw"); setParams(); });
+
+      // copiar raw json
+      $("copyJson").addEventListener("click", async () => {
+        try {
+          const txt = CURRENT_SELECTED_OBJ ? JSON.stringify(CURRENT_SELECTED_OBJ, null, 2) : "";
+          await navigator.clipboard.writeText(txt);
+        } catch (e) { }
+      });
+    }
+
+    bind();
+
+    // Jordi: navegación con teclado ↑/↓
+    window.addEventListener("keydown", onKeyNav);
+
+    function selectRowByIndex(ix) {
+      const tb = $("tbody");
+      const rows = Array.from(tb.querySelectorAll("tr"));
+      if (!rows.length) return;
+
+      ix = Math.max(0, Math.min(ix, rows.length - 1));
+      SELECTED = ix;
+
+      const a = PAGE_ROWS[SELECTED];
+      renderPreview(a);
+      renderDetail(a);
+      // === comprobar imágenes rotas (lazy) ===
+      if (a && a.has_img && a.img_broken == null) {
+        precheckRowImages(a).then(() => {
+          render();
+        });
+      }
+      rows.forEach(r => r.classList.remove("selected"));
+      const tr = rows[ix];
+      if (tr) {
+        tr.classList.add("selected");
+        tr.scrollIntoView({ block: "nearest", inline: "nearest" });
+      }
+    }
+
+    function onKeyNav(e) {
+      const tag = (e.target && e.target.tagName) ? e.target.tagName.toLowerCase() : "";
+      if (tag === "input" || tag === "textarea" || tag === "select") return;
+
+      if (e.key !== "ArrowDown" && e.key !== "ArrowUp") return;
+
+      e.preventDefault();
+
+      if (!PAGE_ROWS || !PAGE_ROWS.length) return;
+
+      if (SELECTED < 0) SELECTED = 0;
+
+      const dir = (e.key === "ArrowDown") ? 1 : -1;
+      const next = SELECTED + dir;
+
+      if (next >= 0 && next < PAGE_ROWS.length) {
+        selectRowByIndex(next);
+        return;
+      }
+
+      if (next >= PAGE_ROWS.length) {
+        const totalPages = Math.max(1, Math.ceil(CURRENT.length / PAGE_SIZE));
+        if (PAGE < totalPages) {
+          PAGE += 1;
+          SELECTED = 0;
+          render();
+          requestAnimationFrame(() => selectRowByIndex(0));
+        }
+        return;
+      }
+
+      if (next < 0) {
+        if (PAGE > 1) {
+          PAGE -= 1;
+          render();
+          requestAnimationFrame(() => {
+            const last = Math.max(0, PAGE_ROWS.length - 1);
+            selectRowByIndex(last);
+          });
+        }
+      }
+    }
+
+    init().catch(err => {
+      console.error(err);
+      $("tbody").innerHTML = "";
+      $("empty").style.display = "block";
+      $("empty").textContent = "No se pudo cargar los JSON (¿servidor local?).";
+      $("count").textContent = "Error";
+      renderDetail(null);
+    });
+  </script>
+
+</body>
+
+</html>

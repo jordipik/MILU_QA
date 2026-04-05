@@ -1,0 +1,1165 @@
+<!doctype html>
+<html lang="es">
+
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>MILU • Lista QA 02 (df_116_bom)</title>
+    <style>
+        :root {
+            --bg: #f7f8fb;
+            --card: #ffffff;
+            --mut: #52627a;
+            --txt: #0b1220;
+            --line: #dbe2ef;
+            --acc: #2563eb;
+            --bad: #e11d48;
+            --ok: #059669;
+            --warn: #d97706;
+            --color-gesa: #22c55e;
+            --color-gesa-hover: #86efada8;
+            --color-new: #f59f0b;
+            --color-new-hover: #fcd34de1;
+            --color-superseded: #ef4444;
+            --color-superseded-hover: #fca5a5;
+            --color-normalizado: #3b82f6;
+            --color-normalizado-hover: #93c5fde8;
+        }
+
+        * {
+            box-sizing: border-box;
+        }
+
+        html,
+        body {
+            height: 100%;
+            margin: 0;
+            font-family: system-ui, -apple-system, Segoe UI, Roboto, Ubuntu, Cantarell, Noto Sans, sans-serif;
+            background: var(--bg);
+            color: var(--txt);
+            display: flex;
+            flex-direction: column;
+            min-height: 100%;
+        }
+
+        a {
+            color: var(--acc);
+            text-decoration: none;
+        }
+
+        a:hover {
+            text-decoration: underline;
+        }
+
+        .topbar {
+            background: var(--card);
+            border-bottom: 1px solid var(--line);
+            padding: 12px 20px;
+        }
+
+        .nav {
+            display: flex;
+            gap: 16px;
+            align-items: center;
+        }
+
+        .pill {
+            padding: 8px 16px;
+            border-radius: 20px;
+            font-size: 14px;
+            font-weight: 600;
+        }
+
+        .pill.active {
+            background: var(--acc);
+            color: white;
+        }
+
+        .content {
+            flex: 1;
+            padding: 20px;
+            overflow: auto;
+        }
+
+        .card {
+            background: var(--card);
+            border-radius: 12px;
+            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+            overflow: hidden;
+        }
+
+        .tableWrap {
+            max-height: calc(100vh - 250px);
+            overflow: auto;
+            border-top: 1px solid var(--line);
+            border-bottom: 1px solid var(--line);
+        }
+
+        table {
+            width: 100%;
+            border-collapse: separate;
+            border-spacing: 0;
+            table-layout: fixed;
+        }
+
+        th,
+        td {
+            border-bottom: 1px solid var(--line);
+            padding: 8px 12px;
+            vertical-align: middle;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+        }
+
+        thead th {
+            position: sticky;
+            top: 0;
+            background: var(--card);
+            color: var(--mut);
+            font-weight: 600;
+            font-size: 12px;
+            border-bottom: 1px solid var(--line);
+            box-shadow: 0 2px 0 rgba(0, 0, 0, 0.04);
+            cursor: pointer;
+            user-select: none;
+        }
+
+        thead th:hover {
+            background: var(--bg);
+        }
+
+        thead th[data-sort] {
+            position: relative;
+        }
+
+        thead th[data-sort]::after {
+            content: "↕";
+            position: absolute;
+            right: 4px;
+            top: 50%;
+            transform: translateY(-50%);
+            font-size: 10px;
+            color: var(--mut);
+            opacity: 0.5;
+        }
+
+        thead th[data-sort-dir="asc"]::after {
+            content: "↑";
+            opacity: 1;
+        }
+
+        thead th[data-sort-dir="desc"]::after {
+            content: "↓";
+            opacity: 1;
+        }
+
+        td {
+            font-size: 13px;
+        }
+
+        /* Líneas verticales separadoras */
+        .separator-after {
+            border-right: 2px solid #cbd5e1;
+        }
+
+        .separator-before {
+            border-left: 2px solid #cbd5e1;
+        }
+
+        tbody tr:hover {
+            transition: all 0.2s ease;
+        }
+
+        /* Estilos para celdas coloreadas */
+        td.cell-gesa {
+            background-color: rgba(34, 197, 94, 0.452);
+        }
+
+        td.cell-gesa:hover {
+            background-color: var(--color-gesa-hover);
+            box-shadow: inset 0 0 8px rgba(34, 197, 94, 0.2);
+        }
+
+        td.cell-new {
+            background-color: rgba(245, 159, 11, 0.548);
+        }
+
+        td.cell-new:hover {
+            background-color: var(--color-new-hover);
+            box-shadow: inset 0 0 8px rgba(245, 159, 11, 0.2);
+        }
+
+        td.cell-superseded {
+            background-color: rgba(239, 68, 68, 0.651);
+        }
+
+        td.cell-superseded:hover {
+            background-color: var(--color-superseded-hover);
+            box-shadow: inset 0 0 8px rgba(239, 68, 68, 0.2);
+        }
+
+        td.cell-normalizado {
+            background-color: rgba(59, 130, 246, 0.451);
+        }
+
+        td.cell-normalizado:hover {
+            background-color: var(--color-normalizado-hover);
+            box-shadow: inset 0 0 8px rgba(59, 130, 246, 0.2);
+        }
+
+        .tag {
+            display: inline-block;
+            border: 1px solid var(--line);
+            padding: 2px 6px;
+            border-radius: 12px;
+            font-size: 11px;
+            color: var(--mut);
+        }
+
+        .tag.ok {
+            border-color: rgba(5, 150, 105, 0.35);
+            color: #047857;
+        }
+
+        .tag.bad {
+            border-color: rgba(225, 29, 72, 0.35);
+            color: #be123c;
+        }
+
+        .tag.warn {
+            border-color: rgba(217, 119, 6, 0.35);
+            color: #b45309;
+        }
+
+        .loading {
+            text-align: center;
+            padding: 40px;
+            color: var(--mut);
+        }
+
+        .error {
+            text-align: center;
+            padding: 40px;
+            color: var(--bad);
+        }
+
+        .stats {
+            display: flex;
+            gap: 16px;
+            align-items: center;
+            margin-bottom: 16px;
+            flex-wrap: wrap;
+        }
+
+        .stat {
+            border: 1px solid var(--line);
+            background: var(--card);
+            border-radius: 8px;
+            padding: 8px 12px;
+            font-size: 12px;
+            color: var(--mut);
+        }
+
+        .stat b {
+            color: var(--txt);
+        }
+
+        .stat.ok b {
+            color: var(--ok);
+        }
+
+        .stat.bad b {
+            color: var(--bad);
+        }
+
+        .pagination {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            gap: 16px;
+            padding: 16px;
+            background: var(--card);
+            border-top: 1px solid var(--line);
+        }
+
+        .pagination button {
+            padding: 8px 16px;
+            border: 1px solid var(--line);
+            background: var(--card);
+            color: var(--txt);
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 14px;
+        }
+
+        .pagination button:hover:not(:disabled) {
+            background: var(--bg);
+        }
+
+        .pagination button:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+
+        .pagination #pageInfo {
+            font-size: 14px;
+            color: var(--mut);
+        }
+
+        .filter-row th {
+            padding: 8px 12px;
+            background: var(--bg);
+            border-bottom: 1px solid var(--line);
+        }
+
+        .filter-input {
+            width: 100%;
+            padding: 4px 6px;
+            border: 1px solid var(--line);
+            border-radius: 4px;
+            font-size: 12px;
+            background: var(--card);
+            color: var(--txt);
+        }
+
+        .filter-input:focus {
+            outline: none;
+            border-color: var(--acc);
+            box-shadow: 0 0 0 2px rgba(37, 99, 235, 0.1);
+        }
+
+        .filter-select {
+            width: 100%;
+            padding: 4px 6px;
+            border: 1px solid var(--line);
+            border-radius: 4px;
+            font-size: 12px;
+            background: var(--card);
+            color: var(--txt);
+        }
+
+        .filter-select:focus {
+            outline: none;
+            border-color: var(--acc);
+            box-shadow: 0 0 0 2px rgba(37, 99, 235, 0.1);
+        }
+
+        .clear-filters {
+            margin-bottom: 16px;
+            text-align: right;
+        }
+
+        .clear-filters button {
+            padding: 6px 12px;
+            border: 1px solid var(--line);
+            background: var(--card);
+            color: var(--txt);
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 12px;
+        }
+
+        .clear-filters button:hover {
+            background: var(--bg);
+        }
+
+        /* Estilos removidos - coloreado de celdas individuales está arriba */
+    </style>
+    <script src="https://cdn.jsdelivr.net/npm/pako@2.1.0/dist/pako.min.js"></script>
+</head>
+
+<body>
+    <div class="topbar">
+        <div class="nav">
+            <a class="pill" href="index.html">Inicio</a>
+            <span class="pill active">Lista QA 02</span>
+        </div>
+    </div>
+
+    <div class="content">
+        <div class="card">
+            <div class="stats" id="stats">
+                <span class="stat">Cargando...</span>
+            </div>
+
+            <div class="clear-filters">
+                <div style="display:flex; gap:8px; flex-wrap:wrap; align-items:center;">
+                    <button id="sortBookPagePosBtn">Ordenar Libro/Página/Pos</button>
+                    <select id="bookFilterSelect" class="filter-select" data-filter="book" style="max-width:200px;">
+                        <option value="">Todos los libros</option>
+                    </select>
+                    <input id="pageFilterInput" class="filter-input" data-filter="page" placeholder="Página"
+                        style="max-width:120px;">
+                    <button id="prevBookPageBtn">Página anterior del libro</button>
+                    <button id="nextBookPageBtn">Página siguiente del libro</button>
+                    <button id="clearFiltersBtn">Limpiar filtros</button>
+                </div>
+            </div>
+
+            <div class="tableWrap">
+                <table>
+                    <thead>
+                        <tr>
+                            <th style="width:80px" data-sort="ID" class="separator-before separator-after">ID</th>
+                            <th style="width:50px" data-sort="POS">Pos</th>
+                            <th style="width:100px" data-sort="PART NO.">PN</th>
+                            <th style="width:150px" data-sort="DESIGNATION">Designation</th>
+                            <th style="width:120px" data-sort="designation_gesa">GESA Designation
+                            </th>
+                            <th style="width:100px" data-sort="MODEL/TYPE" class="separator-after">Model/Type</th>
+                            <th style="width:60px" data-sort="QTY">QTY</th>
+                            <th style="width:80px" data-sort="WEIGHT">Weight</th>
+                            <th style="width:60px" data-sort="UNITS">Units</th>
+                            <th style="width:80px" data-sort="weight_gesa">Weight GESA</th>
+                            <th style="width:60px" data-sort="units" class="separator-after">Units GESA</th>
+                            <th style="width:70px" data-sort="FG/FGS">FG/FGS</th>
+                            <th style="width:120px" data-sort="MEASUREMENT / STANDARD">Measurement/Standard</th>
+                            <th style="width:120px" data-sort="dimensions_gesa">Dimensions GESA</th>
+                            <th style="width:100px" data-sort="BOM-No.">BOM-No.</th>
+                            <th style="width:60px" data-sort="model">Model</th>
+                            <th style="width:60px" data-sort="Source Page">Página</th>
+                            <th style="width:140px" data-sort="fgs_code_description">FGS Code Description</th>
+                            <th style="width:120px" data-sort="filename_foto">Filename Foto</th>
+                            <th style="width:50px" data-sort="gesa">GESA</th>
+                            <th style="width:100px" data-sort="nsn">NSN</th>
+                            <th style="width:80px" data-sort="normalizado">Normalizado</th>
+                            <th style="width:100px" data-sort="norma">Norma</th>
+                            <th style="width:80px" data-sort="sust_status">Sust Status</th>
+                            <th style="width:120px" data-sort="sust_new_part_number">Sust New Part Number</th>
+                            <th style="width:150px" data-sort="sust_superseded_list">Sust Superseded List</th>
+                            <th style="width:100px" data-sort="esquemas">Esquemas</th>
+                            <th style="width:140px" data-sort="esquemas_circulos_all">Esquemas Circulos All</th>
+                            <th style="width:70px" data-sort="engine_model">Engine Model</th>
+                            <th style="width:100px" data-sort="categoria">Categoria</th>
+                            <th style="width:60px" data-sort="precio">Precio</th>
+                            <th style="width:50px" data-sort="FN">FN</th>
+                            <th style="width:100px" data-sort="source_file">Source File</th>
+                            <th style="width:100px" data-sort="source_sheet">Source Sheet</th>
+                            <th style="width:60px" data-sort="engine">Engine</th>
+                            <th style="width:80px" data-sort="fg_fgs_raw">FG/FGS Raw</th>
+                            <th style="width:60px" data-sort="fg_code">FG Code</th>
+                            <th style="width:120px" data-sort="fgs_description">FGS Description</th>
+                            <th style="width:80px" data-sort="atributo2">Atributo2</th>
+                            <th style="width:150px" data-sort="ruta_foto">Ruta Foto</th>
+                            <th style="width:140px" data-sort="esquemas_circulos">Esquemas Circulos</th>
+                            <th style="width:160px" data-sort="ruta_esquemas_pos">Ruta Esquemas Pos</th>
+                        </tr>
+                        <tr class="filter-row">
+                            <th><input class="filter-input" data-filter="ID" placeholder="filtrar"></th>
+                            <th><input class="filter-input" data-filter="POS" placeholder="filtrar"></th>
+                            <th><input class="filter-input" data-filter="PART NO." placeholder="filtrar"></th>
+                            <th><input class="filter-input" data-filter="DESIGNATION" placeholder="filtrar"></th>
+                            <th><input class="filter-input" data-filter="designation_gesa" placeholder="filtrar"></th>
+                            <th><input class="filter-input" data-filter="MODEL/TYPE" placeholder="filtrar"></th>
+                            <th><input class="filter-input" data-filter="QTY" placeholder="filtrar"></th>
+                            <th><input class="filter-input" data-filter="WEIGHT" placeholder="filtrar"></th>
+                            <th><input class="filter-input" data-filter="UNITS" placeholder="filtrar"></th>
+                            <th><input class="filter-input" data-filter="weight_gesa" placeholder="filtrar"></th>
+                            <th><input class="filter-input" data-filter="units" placeholder="filtrar"></th>
+                            <th><input class="filter-input" data-filter="FG/FGS" placeholder="filtrar"></th>
+                            <th><input class="filter-input" data-filter="MEASUREMENT / STANDARD" placeholder="filtrar">
+                            </th>
+                            <th><input class="filter-input" data-filter="dimensions_gesa" placeholder="filtrar"></th>
+                            <th><input class="filter-input" data-filter="BOM-No." placeholder="filtrar"></th>
+                            <th><input class="filter-input" data-filter="model" placeholder="filtrar"></th>
+                            <th><input class="filter-input" data-filter="Source Page" placeholder="filtrar"></th>
+                            <th><input class="filter-input" data-filter="fgs_code_description" placeholder="filtrar">
+                            </th>
+                            <th><input class="filter-input" data-filter="filename_foto" placeholder="filtrar"></th>
+                            <th><input class="filter-input" data-filter="gesa" placeholder="filtrar"></th>
+                            <th><input class="filter-input" data-filter="nsn" placeholder="filtrar"></th>
+                            <th><select class="filter-select" data-filter="normalizado">
+                                    <option value="">Todos</option>
+                                    <option value="SI">SI</option>
+                                    <option value="NO">NO</option>
+                                </select></th>
+                            <th><input class="filter-input" data-filter="norma" placeholder="filtrar"></th>
+                            <th><input class="filter-input" data-filter="sust_status" placeholder="filtrar"></th>
+                            <th><input class="filter-input" data-filter="sust_new_part_number" placeholder="filtrar">
+                            </th>
+                            <th><input class="filter-input" data-filter="sust_superseded_list" placeholder="filtrar">
+                            </th>
+                            <th><input class="filter-input" data-filter="esquemas" placeholder="filtrar"></th>
+                            <th><input class="filter-input" data-filter="esquemas_circulos_all" placeholder="filtrar">
+                            </th>
+                            <th><input class="filter-input" data-filter="engine_model" placeholder="filtrar"></th>
+                            <th><input class="filter-input" data-filter="categoria" placeholder="filtrar"></th>
+                            <th><input class="filter-input" data-filter="precio" placeholder="filtrar"></th>
+                            <th><input class="filter-input" data-filter="FN" placeholder="filtrar"></th>
+                            <th><select class="filter-select" data-filter="source_file">
+                                    <option value="">Todos</option>
+                                    <option value="12V4000M40A.xlsx">12V4000M40A.xlsx</option>
+                                    <option value="12V4000M53.xlsx">12V4000M53.xlsx</option>
+                                    <option value="16V4000M61.xlsx">16V4000M61.xlsx</option>
+                                    <option value="16V4000M73.xlsx">16V4000M73.xlsx</option>
+                                    <option value="16V4000M73L.xlsx">16V4000M73L.xlsx</option>
+                                    <option value="16V4000M90.xlsx">16V4000M90.xlsx</option>
+                                    <option value="20V4000M93.xlsx">20V4000M93.xlsx</option>
+                                    <option value="20V4000M93L.xlsx">20V4000M93L.xlsx</option>
+                                </select></th>
+                            <th><input class="filter-input" data-filter="source_sheet" placeholder="filtrar"></th>
+                            <th><input class="filter-input" data-filter="engine" placeholder="filtrar"></th>
+                            <th><input class="filter-input" data-filter="fg_fgs_raw" placeholder="filtrar"></th>
+                            <th><input class="filter-input" data-filter="fg_code" placeholder="filtrar"></th>
+                            <th><input class="filter-input" data-filter="fgs_description" placeholder="filtrar"></th>
+                            <th><input class="filter-input" data-filter="atributo2" placeholder="filtrar"></th>
+                            <th><input class="filter-input" data-filter="ruta_foto" placeholder="filtrar"></th>
+                            <th><input class="filter-input" data-filter="esquemas_circulos" placeholder="filtrar"></th>
+                            <th><input class="filter-input" data-filter="ruta_esquemas_pos" placeholder="filtrar"></th>
+                        </tr>
+                    </thead>
+                    <tbody id="tbody">
+                        <tr>
+                            <td colspan="40" class="loading">Cargando datos...</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+
+            <div id="pagination" class="pagination" style="display: none;">
+                <button id="prevBtn" disabled>Anterior</button>
+                <span id="pageInfo">Página 1 de 1</span>
+                <button id="nextBtn" disabled>Siguiente</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const $ = id => document.getElementById(id);
+        let allData = [];
+        let filteredData = [];
+        let currentPage = 1;
+        const pageSize = 50;
+        let sortKey = 'book_page_pos';
+        let sortAsc = true;
+        let filters = {};
+        const legacyMode = false; // false = permitimos filtros activos
+
+        // Sets para búsqueda rápida de PN en diferentes archivos
+        let newPnSet = new Set();
+        let supersededPnSet = new Set();
+        let publishedMap = new Map();
+        let productExportPnSet = new Set();
+
+        function escapeHtml(s) {
+            return String(s ?? "").replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;").replace(/'/g, "&#039;");
+        }
+
+        function val(row, key, defaultVal = "—") {
+            const v = row[key];
+            return (v != null && String(v).trim() !== "") ? v : defaultVal;
+        }
+
+        function getResourceUrl(resourceName) {
+            // Convierte rutas relativas al directorio actual (funciona con http y file)
+            return new URL(resourceName, new URL('.', window.location.href)).href;
+        }
+
+        async function fetchJsonSafe(resourceName) {
+            const url = getResourceUrl(resourceName);
+            try {
+                const response = await fetch(url, { cache: "no-store" });
+                if (!response.ok) throw new Error(`HTTP ${response.status} ${response.statusText}`);
+
+                // Si es un archivo .gz, descomprimir
+                if (resourceName.endsWith('.gz')) {
+                    const buffer = await response.arrayBuffer();
+                    const decompressed = pako.ungzip(buffer, { to: 'string' });
+                    return JSON.parse(decompressed);
+                } else {
+                    return await response.json();
+                }
+            } catch (error) {
+                // Si es file:// intentamos al menos informar mejor
+                throw new Error(`No se pudo cargar ${resourceName} (ruta ${url}): ${error.message}`);
+            }
+        }
+
+        function sortData(data, key, asc) {
+            if (!key) return data;
+            if (key === 'book_page_pos') {
+                const direction = asc ? 1 : -1;
+                return [...data].sort((a, b) => {
+                    const bookA = val(a, 'engine_model', '').toString().toLowerCase();
+                    const bookB = val(b, 'engine_model', '').toString().toLowerCase();
+                    if (bookA !== bookB) {
+                        return direction * bookA.localeCompare(bookB, undefined, { numeric: true });
+                    }
+
+                    const pageA = Number(String(val(a, 'Source Page', '')).replace(/\D/g, '')) || 0;
+                    const pageB = Number(String(val(b, 'Source Page', '')).replace(/\D/g, '')) || 0;
+                    if (pageA !== pageB) {
+                        return direction * (pageA - pageB);
+                    }
+
+                    const posA = Number(String(val(a, 'POS', '')).replace(/\D/g, '')) || 0;
+                    const posB = Number(String(val(b, 'POS', '')).replace(/\D/g, '')) || 0;
+                    return direction * (posA - posB);
+                });
+            }
+
+            if (key === 'Source Page') {
+                return [...data].sort((a, b) => {
+                    const pageA = Number(String(val(a, 'Source Page', '')).replace(/[^0-9]/g, '')) || 0;
+                    const pageB = Number(String(val(b, 'Source Page', '')).replace(/[^0-9]/g, '')) || 0;
+                    return asc ? pageA - pageB : pageB - pageA;
+                });
+            }
+
+            return [...data].sort((a, b) => {
+                const aVal = val(a, key, '').toString().toLowerCase();
+                const bVal = val(b, key, '').toString().toLowerCase();
+                if (asc) {
+                    return aVal.localeCompare(bVal, undefined, { numeric: true });
+                } else {
+                    return bVal.localeCompare(aVal, undefined, { numeric: true });
+                }
+            });
+        }
+
+        function applyFilters(data) {
+            if (legacyMode) {
+                // Volver a versión anterior: no filtrar por select/bool para evitar data inconsistente con csv/json originales
+                return data;
+            }
+
+            return data.filter(row => {
+                for (const [key, filterValue] of Object.entries(filters)) {
+                    if (!filterValue) continue;
+
+                    let rowValue;
+                    switch (key) {
+                        case 'has_img':
+                            const imgValue = (row.filename_foto || row.ruta_foto || '').toString().trim();
+                            rowValue = imgValue ? 'true' : 'false';
+                            break;
+                        case 'has_gesa':
+                            rowValue = String(row.gesa || '').toUpperCase() === 'SI' ? 'SI' : 'NO';
+                            break;
+                        case 'is_superseded':
+                            rowValue = String(row.sust_status || '').toUpperCase() === 'SI' ? 'true' : 'false';
+                            break;
+                        case 'sust_hierarchie':
+                            rowValue = row.sust_hierarchie === "New" ? 'New' :
+                                (row.sust_hierarchie && row.sust_hierarchie.toString().toUpperCase().includes("SUPERSEDED")) ? 'Old' : '';
+                            break;
+                        case 'in_new':
+                            rowValue = newPnSet.has(row['PART NO.'] || row.pn) ? 'true' : 'false';
+                            break;
+                        case 'in_superseded':
+                            rowValue = supersededPnSet.has(row['PART NO.'] || row.pn) ? 'true' : 'false';
+                            break;
+                        case 'published':
+                            rowValue = publishedMap.get(row['PART NO.'] || row.pn)?.published === true ? 'true' : 'false';
+                            break;
+                        case 'in_product_export':
+                            rowValue = productExportPnSet.has(row['PART NO.'] || row.pn) ? 'true' : 'false';
+                            break;
+                        case 'book':
+                            rowValue = val(row, 'engine_model', '').toString().toLowerCase();
+                            break;
+                        case 'page':
+                            const filterPage = Number(filterValue.toString().replace(/[^0-9]/g, ''));
+                            const rowPage = Number(val(row, 'Source Page', '').toString().replace(/[^0-9]/g, ''));
+                            if (!Number.isNaN(filterPage) && !Number.isNaN(rowPage)) {
+                                if (rowPage !== filterPage) return false;
+                                continue; // coincidencia exacta numérica en página
+                            }
+                            rowValue = val(row, 'Source Page', '').toString().toLowerCase();
+                            break;
+                        default:
+                            rowValue = val(row, key, "").toString().toLowerCase();
+                            break;
+                    }
+
+                    if (key.startsWith('has_') || key.startsWith('is_') || key.startsWith('in_') || key === 'published' || key === 'sust_hierarchie') {
+                        // Filtros booleanos/select - comparación exacta
+                        if (rowValue !== filterValue) return false;
+                    } else {
+                        // Filtros de texto - búsqueda parcial
+                        if (!rowValue.includes(filterValue.toLowerCase())) return false;
+                    }
+                }
+                return true;
+            });
+        }
+
+        function getBookPages(book) {
+            const bookFilter = (book || filters.book || '').toString().toLowerCase();
+            const pages = [...new Set(allData
+                .filter(row => {
+                    if (!bookFilter) return true;
+                    const bookValue = val(row, 'engine_model', '').toString().toLowerCase();
+                    return bookValue.includes(bookFilter);
+                })
+                .map(row => {
+                    const p = val(row, 'Source Page', '').toString().trim();
+                    const n = Number(p.toString().replace(/[^0-9]/g, ''));
+                    return Number.isFinite(n) && !Number.isNaN(n) ? n : null;
+                })
+                .filter(n => n != null)
+            )].sort((a, b) => a - b);
+            return pages;
+        }
+
+        function setPageFilterValue(pageValue) {
+            const pageInput = $("pageFilterInput");
+            if (pageInput) {
+                pageInput.value = pageValue || '';
+            }
+            if (!pageValue) {
+                delete filters.page;
+            } else {
+                filters.page = String(pageValue);
+            }
+            currentPage = 1;
+            renderTable(allData, currentPage);
+            renderPagination();
+        }
+
+        function goToNextBookPage() {
+            const book = $("bookFilterSelect")?.value || '';
+            const pages = getBookPages(book);
+            if (pages.length === 0) return;
+
+            const currentValue = Number($("pageFilterInput")?.value || 0);
+            const currentIndex = pages.indexOf(currentValue);
+            let targetPage;
+
+            if (currentIndex === -1 || currentIndex === pages.length - 1) {
+                targetPage = pages[0];
+            } else {
+                targetPage = pages[currentIndex + 1];
+            }
+
+            setPageFilterValue(targetPage);
+        }
+
+        function goToPrevBookPage() {
+            const book = $("bookFilterSelect")?.value || '';
+            const pages = getBookPages(book);
+            if (pages.length === 0) return;
+
+            const currentValue = Number($("pageFilterInput")?.value || 0);
+            const currentIndex = pages.indexOf(currentValue);
+            let targetPage;
+
+            if (currentIndex <= 0) {
+                targetPage = pages[pages.length - 1];
+            } else {
+                targetPage = pages[currentIndex - 1];
+            }
+
+            setPageFilterValue(targetPage);
+        }
+
+        function renderTable(data, page = 1) {
+            const tbody = $("tbody");
+
+            // Actualizar indicadores de ordenamiento
+            const ths = document.querySelectorAll('thead th[data-sort]');
+            ths.forEach(th => {
+                const key = th.dataset.sort;
+                if (key === sortKey) {
+                    th.setAttribute('data-sort-dir', sortAsc ? 'asc' : 'desc');
+                } else {
+                    th.removeAttribute('data-sort-dir');
+                }
+            });
+
+            // Aplicar filtros
+            filteredData = applyFilters(data);
+
+            const total = filteredData.length;
+            const totalPages = Math.max(1, Math.ceil(total / pageSize));
+            if (page < 1) page = 1;
+            if (page > totalPages) page = totalPages;
+            currentPage = page;
+
+            if (!filteredData.length) {
+                tbody.innerHTML = '<tr><td colspan="40" class="error">No se encontraron datos que coincidan con los filtros</td></tr>';
+                $("pagination").style.display = 'none';
+                $("stats").innerHTML = `<span class="stat">0 total</span>`;
+                return;
+            }
+
+            // Ordenar los datos filtrados
+            const sortedData = sortData(filteredData, sortKey, sortAsc);
+
+            // Calcular el slice para la página actual
+            const start = (page - 1) * pageSize;
+            const end = start + pageSize;
+            const pageData = sortedData.slice(start, end);
+
+            // Estadísticas basadas en datos filtrados
+            const withImages = filteredData.filter(r => {
+                const img = (r.filename_foto || r.ruta_foto || '').toString().trim();
+                return img !== '';
+            }).length;
+            const withGesa = filteredData.filter(r => String(r.gesa || '').toUpperCase() === 'SI').length;
+            const superseded = filteredData.filter(r => String(r.sust_status || '').toUpperCase() === 'SI').length;
+
+            const distinctPnFiltered = new Set(filteredData
+                .map(r => r['PART NO.'] || r.pn)
+                .filter(pn => pn != null && String(pn).trim() !== "")
+                .map(pn => String(pn).trim())
+            ).size;
+            const distinctPnTotal = new Set(data
+                .map(r => r['PART NO.'] || r.pn)
+                .filter(pn => pn != null && String(pn).trim() !== "")
+                .map(pn => String(pn).trim())
+            ).size;
+
+            $("stats").innerHTML = `
+        <span class="stat"><b>${total}</b> total</span>
+        <span class="stat ok"><b>${distinctPnFiltered}</b> PN distintos (filtrado)</span>
+        <span class="stat"><b>${distinctPnTotal}</b> PN distintos totales</span>
+        <span class="stat ok"><b>${withImages}</b> con imágenes</span>
+        <span class="stat"><b>${withGesa}</b> con GESA</span>
+        <span class="stat warn"><b>${superseded}</b> superseded</span>
+      `;
+
+            tbody.innerHTML = pageData.map(row => {
+                // Reordenadas según el nuevo orden de columnas
+                const id = val(row, "ID");
+                const pos = val(row, "POS");
+                const pn = val(row, "PART NO.");
+                const designation = val(row, "DESIGNATION");
+                const gesaDesignation = val(row, "designation_gesa");
+                const modelType = val(row, "MODEL/TYPE");
+                const qty = val(row, "QTY");
+                const units = val(row, "UNITS");
+                const unitsGesa = val(row, "units");
+                const weight = val(row, "WEIGHT") || val(row, "weight_gesa");
+                const weightGesa = val(row, "weight_gesa");
+                const fgFgs = val(row, "FG/FGS");
+                const measurementStandard = val(row, "MEASUREMENT / STANDARD");
+                const dimensionsGesa = val(row, "dimensions_gesa");
+                const bomNo = val(row, "BOM-No.");
+                const model = val(row, "model");
+                const pageNum = val(row, "Source Page");
+                const fgsCodeDescription = val(row, "fgs_code_description");
+                const filenameFoto = val(row, "filename_foto");
+                const gesa = val(row, "gesa");
+                const nsn = val(row, "nsn");
+                const normalizado = val(row, "normalizado");
+                const norma = val(row, "norma");
+                const sustStatus = val(row, "sust_status");
+                const sustNewPartNumber = val(row, "sust_new_part_number");
+                const sustSupersededList = val(row, "sust_superseded_list");
+                const esquemas = val(row, "esquemas");
+                const esquemasCirculosAll = val(row, "esquemas_circulos_all");
+                const engineModel = val(row, "engine_model");
+                const categoria = val(row, "categoria");
+                const precio = val(row, "precio");
+                const fn = val(row, "FN");
+                const sourceFile = val(row, "source_file");
+                const sourceSheet = val(row, "source_sheet");
+                const engine = val(row, "engine");
+                const fgFgsRaw = val(row, "fg_fgs_raw");
+                const fgCode = val(row, "fg_code");
+                const fgsDescription = val(row, "fgs_description");
+                const atributo2 = val(row, "atributo2");
+                const rutaFoto = val(row, "ruta_foto");
+                const esquemasCirculos = val(row, "esquemas_circulos");
+                const rutaEsquemasPos = val(row, "ruta_esquemas_pos");
+
+                // Columnas separadas para status
+
+
+                // Determinar si aplican colores según estado
+                const isGesa = String(row.gesa || '').toUpperCase() === 'SI';
+                const isNew = String(row.sust_status || '').toUpperCase() === 'SI' && row.sust_hierarchie === 'New';
+                const isSuperscededCell = String(row.sust_status || '').toUpperCase() === 'SI' && row.sust_hierarchie && row.sust_hierarchie.toString().toUpperCase().includes('SUPERSEDED');
+                const isNormalizado = String(row.normalizado || '').toUpperCase() === 'SI';
+
+                // Clases para celdas GESA
+                const classGesaDesignation = isGesa ? 'cell-gesa' : '';
+                const classWeightGesa = isGesa ? 'cell-gesa' : '';
+                const classUnitsGesa = isGesa ? 'cell-gesa' : '';
+                const classDimensionsGesa = isGesa ? 'cell-gesa' : '';
+                const classGesa = isGesa ? 'cell-gesa' : '';
+
+                // Clase para celda Normalizado
+                const classNormalizado = isNormalizado ? 'cell-normalizado' : '';
+
+                return `<tr>
+          <td class="separator-before separator-after" title="${escapeHtml(id)}">${escapeHtml(id)}</td>
+          <td  title="${escapeHtml(pos)}">${escapeHtml(pos)}</td>
+          <td  title="${escapeHtml(pn)}">${escapeHtml(pn)}</td>
+          <td  title="${escapeHtml(designation)}">${escapeHtml(designation)}</td>
+          <td class="${classGesaDesignation}" title="${escapeHtml(gesaDesignation)}">${escapeHtml(gesaDesignation)}</td>
+          <td class="separator-after" title="${escapeHtml(modelType)}">${escapeHtml(modelType)}</td>
+          <td  title="${escapeHtml(qty)}">${escapeHtml(qty)}</td>
+          <td  title="${escapeHtml(weight)}">${escapeHtml(weight)}</td>
+          <td  title="${escapeHtml(units)}">${escapeHtml(units)}</td>
+          <td class="${classWeightGesa}" title="${escapeHtml(weightGesa)}">${escapeHtml(weightGesa)}</td>
+          <td class="separator-after ${classUnitsGesa}" title="${escapeHtml(unitsGesa)}">${escapeHtml(unitsGesa)}</td>
+          <td title="${escapeHtml(fgFgs)}">${escapeHtml(fgFgs)}</td>
+          <td title="${escapeHtml(measurementStandard)}">${escapeHtml(measurementStandard)}</td>
+          <td class="${classDimensionsGesa}" title="${escapeHtml(dimensionsGesa)}">${escapeHtml(dimensionsGesa)}</td>
+          <td title="${escapeHtml(bomNo)}">${escapeHtml(bomNo)}</td>
+          <td title="${escapeHtml(model)}">${escapeHtml(model)}</td>
+          <td title="${escapeHtml(pageNum)}">${escapeHtml(pageNum)}</td>
+          <td title="${escapeHtml(fgsCodeDescription)}">${escapeHtml(fgsCodeDescription)}</td>
+          <td title="${escapeHtml(filenameFoto)}">${escapeHtml(filenameFoto)}</td>
+          <td class="${classGesa}" title="${escapeHtml(gesa)}">${escapeHtml(gesa)}</td>
+          <td title="${escapeHtml(nsn)}">${escapeHtml(nsn)}</td>
+          <td class="${classNormalizado}" title="${escapeHtml(normalizado)}">${escapeHtml(normalizado)}</td>
+          <td title="${escapeHtml(norma)}">${escapeHtml(norma)}</td>
+          <td title="${escapeHtml(sustStatus)}">${escapeHtml(sustStatus)}</td>
+          <td title="${escapeHtml(sustNewPartNumber)}">${escapeHtml(sustNewPartNumber)}</td>
+          <td title="${escapeHtml(sustSupersededList)}">${escapeHtml(sustSupersededList)}</td>
+          <td title="${escapeHtml(esquemas)}">${escapeHtml(esquemas)}</td>
+          <td title="${escapeHtml(esquemasCirculosAll)}">${escapeHtml(esquemasCirculosAll)}</td>
+          <td title="${escapeHtml(engineModel)}">${escapeHtml(engineModel)}</td>
+          <td title="${escapeHtml(categoria)}">${escapeHtml(categoria)}</td>
+          <td title="${escapeHtml(precio)}">${escapeHtml(precio)}</td>
+          <td title="${escapeHtml(fn)}">${escapeHtml(fn)}</td>
+          <td title="${escapeHtml(sourceFile)}">${escapeHtml(sourceFile)}</td>
+          <td title="${escapeHtml(sourceSheet)}">${escapeHtml(sourceSheet)}</td>
+          <td title="${escapeHtml(engine)}">${escapeHtml(engine)}</td>
+          <td title="${escapeHtml(fgFgsRaw)}">${escapeHtml(fgFgsRaw)}</td>
+          <td title="${escapeHtml(fgCode)}">${escapeHtml(fgCode)}</td>
+          <td title="${escapeHtml(fgsDescription)}">${escapeHtml(fgsDescription)}</td>
+          <td title="${escapeHtml(atributo2)}">${escapeHtml(atributo2)}</td>
+          <td title="${escapeHtml(rutaFoto)}">${escapeHtml(rutaFoto)}</td>
+          <td title="${escapeHtml(esquemasCirculos)}">${escapeHtml(esquemasCirculos)}</td>
+          <td title="${escapeHtml(rutaEsquemasPos)}">${escapeHtml(rutaEsquemasPos)}</td>
+        </tr>`;
+            }).join("");
+        }
+
+        function renderPagination() {
+            const totalPages = Math.ceil(filteredData.length / pageSize);
+            const pagination = $("pagination");
+            const pageInfo = $("pageInfo");
+            const prevBtn = $("prevBtn");
+            const nextBtn = $("nextBtn");
+
+            if (totalPages <= 1) {
+                pagination.style.display = "none";
+                return;
+            }
+
+            pagination.style.display = "flex";
+            pageInfo.textContent = `Página ${currentPage} de ${totalPages}`;
+            prevBtn.disabled = currentPage === 1;
+            nextBtn.disabled = currentPage === totalPages;
+        }
+
+        function changePage(direction) {
+            const totalPages = Math.ceil(filteredData.length / pageSize);
+            currentPage += direction;
+            if (currentPage < 1) currentPage = 1;
+            if (currentPage > totalPages) currentPage = totalPages;
+            renderTable(allData, currentPage);
+            renderPagination();
+        }
+
+        async function loadData() {
+            try {
+                const isFileProtocol = window.location.protocol === 'file:';
+                if (isFileProtocol) {
+                    $("tbody").innerHTML = '<tr><td colspan="40" class="error">Estás abriendo el archivo directamente (file://). Intenta con servidor local.</td></tr>' +
+                        '<tr><td colspan="40" class="error">Ejecuta un servidor local (python -m http.server 8000) o usa Ejecutar localhost.bat para que fetch() cargue qa_index.json.</td></tr>';
+                }
+
+                $("stats").innerHTML = '<span class="stat">Cargando datos...</span>';
+                $("pagination").style.display = 'none';
+
+                // Cargar datos principales desde df_116_bom.json
+                allData = await fetchJsonSafe('df_116_bom.json');
+                if (!Array.isArray(allData)) throw new Error("Los datos no son un array");
+
+                // Cargar MILU_New_v507.json
+                try {
+                    const newData = await fetchJsonSafe('MILU_New_v507.json');
+                    if (Array.isArray(newData)) {
+                        newPnSet = new Set(newData.map(item => item.pn));
+                    }
+                } catch (e) {
+                    console.warn("No se pudo cargar MILU_New_v507.json:", e);
+                }
+
+                // Cargar MILU_Superseded_v507.json
+                try {
+                    const supersededData = await fetchJsonSafe('MILU_Superseded_v507.json');
+                    if (Array.isArray(supersededData)) {
+                        supersededPnSet = new Set(supersededData.map(item => item.pn));
+                    }
+                } catch (e) {
+                    console.warn("No se pudo cargar MILU_Superseded_v507.json:", e);
+                }
+
+                // Cargar publication_map.json
+                try {
+                    const publication = await fetchJsonSafe('publication_map.json');
+                    if (publication && typeof publication === 'object') {
+                        publishedMap = new Map(Object.entries(publication));
+                    }
+                } catch (e) {
+                    console.warn("No se pudo cargar publication_map.json:", e);
+                }
+
+                // Cargar product_export_v507.json
+                try {
+                    const productExportData = await fetchJsonSafe('product_export_v507.json');
+                    if (Array.isArray(productExportData)) {
+                        productExportPnSet = new Set(productExportData.map(item => item.pn));
+                    }
+                } catch (e) {
+                    console.warn("No se pudo cargar product_export_v507.json:", e);
+                }
+
+                currentPage = 1;
+                sortKey = null;
+                sortAsc = true;
+                filters = {};
+
+                // Poblar select de libros con todos los libros distintos (campo engine_model)
+                const allBooks = [...new Set(allData
+                    .map(item => val(item, 'engine_model', '').toString().trim())
+                    .filter(b => b && b !== '—'))].sort((a, b) => a.localeCompare(b, undefined, { numeric: true }));
+                const bookFilterSelect = $("bookFilterSelect");
+                if (bookFilterSelect) {
+                    bookFilterSelect.innerHTML = '<option value="">Todos los libros</option>' +
+                        allBooks.map(book => `<option value="${escapeHtml(book)}">${escapeHtml(book)}</option>`).join('');
+                }
+
+                if (!Array.isArray(allData) || allData.length === 0) {
+                    $("tbody").innerHTML = '<tr><td colspan="40" class="error">No se encontró información en df_116_bom.json</td></tr>';
+                    $("stats").innerHTML = '<span class="stat">0 total</span>';
+                    $("pagination").style.display = 'none';
+                    return;
+                }
+
+                filteredData = [...allData];
+                renderTable(allData, currentPage);
+                renderPagination();
+            } catch (error) {
+                console.error("Error cargando datos:", error);
+                $("tbody").innerHTML = `<tr><td colspan="40" class="error">Error cargando datos: ${escapeHtml(error.message)}</td></tr>`;
+                $("stats").innerHTML = '<span class="stat bad">Error cargando datos</span>';
+            }
+        }
+
+        let filterTimeout = null;
+        function handleFilter(event) {
+            const input = event.target;
+            const filterKey = input.dataset.filter;
+            const filterValue = input.value.trim();
+
+            if (filterValue === "") {
+                delete filters[filterKey];
+            } else {
+                filters[filterKey] = filterValue;
+            }
+
+            if (filterTimeout) {
+                clearTimeout(filterTimeout);
+            }
+
+            filterTimeout = setTimeout(() => {
+                currentPage = 1;
+                renderTable(allData, currentPage);
+                renderPagination();
+            }, 120);
+        }
+
+        function clearFilters() {
+            // Limpiar todos los inputs de filtro
+            document.querySelectorAll('.filter-input').forEach(input => {
+                input.value = '';
+            });
+            document.querySelectorAll('.filter-select').forEach(select => {
+                select.value = '';
+            });
+
+            // Limpiar el objeto de filtros
+            filters = {};
+            currentPage = 1;
+            renderTable(allData, currentPage);
+            renderPagination();
+        }
+
+        function handleSort(event) {
+            const th = event.target.closest('th');
+            if (!th || !th.dataset.sort) return;
+
+            const key = th.dataset.sort;
+            if (sortKey === key) {
+                sortAsc = !sortAsc;
+            } else {
+                sortKey = key;
+                sortAsc = true;
+            }
+            currentPage = 1;
+            renderTable(allData, currentPage);
+            renderPagination();
+        }
+
+        // Event listeners
+        const prevBtn = $("prevBtn");
+        const nextBtn = $("nextBtn");
+        const thead = document.querySelector('thead');
+        const clearFiltersBtn = $("clearFiltersBtn");
+
+        if (prevBtn) {
+            prevBtn.addEventListener("click", () => changePage(-1));
+        } else {
+            console.warn('prevBtn not found');
+        }
+
+        if (nextBtn) {
+            nextBtn.addEventListener("click", () => changePage(1));
+        } else {
+            console.warn('nextBtn not found');
+        }
+
+        if (thead) {
+            thead.addEventListener("click", handleSort);
+        } else {
+            console.warn('thead not found');
+        }
+
+        document.querySelectorAll('.filter-input, .filter-select').forEach(elem => {
+            elem.addEventListener('input', handleFilter);
+        });
+
+        const nextBookPageBtn = $("nextBookPageBtn");
+        const prevBookPageBtn = $("prevBookPageBtn");
+        const sortBookPagePosBtn = $("sortBookPagePosBtn");
+
+        if (nextBookPageBtn) {
+            nextBookPageBtn.addEventListener('click', goToNextBookPage);
+        }
+
+        if (prevBookPageBtn) {
+            prevBookPageBtn.addEventListener('click', goToPrevBookPage);
+        }
+
+        if (sortBookPagePosBtn) {
+            sortBookPagePosBtn.addEventListener('click', () => {
+                if (sortKey === 'book_page_pos') {
+                    sortAsc = !sortAsc;
+                } else {
+                    sortKey = 'book_page_pos';
+                    sortAsc = true;
+                }
+                currentPage = 1;
+                renderTable(allData, currentPage);
+                renderPagination();
+            });
+        }
+
+        if (clearFiltersBtn) {
+            clearFiltersBtn.addEventListener('click', clearFilters);
+        }
+
+        loadData();
+    </script>
+</body>
+
+</html>
