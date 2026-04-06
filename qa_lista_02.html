@@ -40,6 +40,7 @@
             display: flex;
             flex-direction: column;
             min-height: 100%;
+            overflow: hidden;
         }
 
         a {
@@ -78,7 +79,10 @@
         .content {
             flex: 1;
             padding: 20px;
-            overflow: auto;
+            overflow: hidden;
+            min-height: 0;
+            display: flex;
+            flex-direction: column;
         }
 
         .card {
@@ -86,10 +90,16 @@
             border-radius: 12px;
             box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
             overflow: hidden;
+            display: flex;
+            flex-direction: column;
+            min-height: 0;
+            height: 100%;
         }
 
         .tableWrap {
-            max-height: calc(100vh - 250px);
+            flex: 1;
+            min-height: 0;
+            max-height: none;
             overflow: auto;
             border-top: 1px solid var(--line);
             border-bottom: 1px solid var(--line);
@@ -197,6 +207,29 @@
         td.cell-superseded:hover {
             background-color: var(--color-superseded-hover);
             box-shadow: inset 0 0 8px rgba(239, 68, 68, 0.2);
+        }
+
+        /* Estilos para redimensionamiento de columnas */
+        thead th {
+            position: relative;
+            user-select: none;
+            padding-right: 8px;
+        }
+
+        thead th::before {
+            content: '';
+            position: absolute;
+            right: 0;
+            top: 0;
+            height: 100%;
+            width: 6px;
+            cursor: col-resize;
+            background: transparent;
+        }
+
+        thead th.resizing {
+            user-select: none;
+            opacity: 0.8;
         }
 
         td.cell-normalizado {
@@ -364,7 +397,324 @@
             background: var(--bg);
         }
 
-        /* Estilos removidos - coloreado de celdas individuales está arriba */
+        .bulk-edit {
+            display: flex;
+            gap: 8px;
+            flex-wrap: wrap;
+            align-items: center;
+            margin-top: 8px;
+        }
+
+        .bulk-label {
+            font-size: 12px;
+            color: var(--mut);
+            font-weight: 600;
+        }
+
+        .bulk-select {
+            min-width: 140px;
+            padding: 4px 6px;
+            border: 1px solid var(--line);
+            border-radius: 4px;
+            font-size: 12px;
+            background: var(--card);
+            color: var(--txt);
+        }
+
+        .bulk-select:focus {
+            outline: none;
+            border-color: var(--acc);
+            box-shadow: 0 0 0 2px rgba(37, 99, 235, 0.1);
+        }
+
+        .bulk-quick-actions {
+            display: inline-flex;
+            gap: 6px;
+            align-items: center;
+        }
+
+        .bulk-quick-btn {
+            width: 24px;
+            height: 24px;
+            font-size: 12px;
+        }
+
+        .grouped-section {
+            margin: 16px;
+            border: 1px solid var(--line);
+            border-radius: 10px;
+            overflow: hidden;
+            background: var(--card);
+        }
+
+        .grouped-header {
+            padding: 10px 12px;
+            border-bottom: 1px solid var(--line);
+            display: flex;
+            gap: 12px;
+            align-items: center;
+            flex-wrap: wrap;
+            background: var(--bg);
+            font-size: 12px;
+            color: var(--mut);
+        }
+
+        .grouped-wrap {
+            max-height: 320px;
+            overflow: auto;
+        }
+
+        #groupedTable th,
+        #groupedTable td {
+            font-size: 12px;
+        }
+
+        #groupedTable td:nth-child(2),
+        #groupedTable td:nth-child(3),
+        #groupedTable td:nth-child(4) {
+            text-align: center;
+        }
+
+        .grouped-details {
+            font-size: 11px;
+        }
+
+        .grouped-details summary {
+            cursor: pointer;
+            color: var(--acc);
+            font-weight: 600;
+            user-select: none;
+        }
+
+        .grouped-details[open] summary {
+            margin-bottom: 6px;
+        }
+
+        .grouped-list {
+            margin: 0;
+            padding-left: 16px;
+            max-height: 220px;
+            overflow: auto;
+        }
+
+        .grouped-list li {
+            margin: 0 0 2px 0;
+            line-height: 1.3;
+        }
+
+        .status-col {
+            text-align: center;
+            padding: 6px 4px;
+        }
+
+        .status-head {
+            text-align: center;
+            font-size: 11px;
+        }
+
+        .quick-col {
+            text-align: center;
+            padding: 4px 3px;
+        }
+
+        .quick-actions {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            gap: 4px;
+        }
+
+        .quick-action-btn {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 10px;
+            line-height: 1;
+            width: 18px;
+            height: 18px;
+            padding: 0;
+            border-radius: 999px;
+            border: 1px solid var(--line);
+            background: #f8fafc;
+            color: #0f172a;
+            font-weight: 700;
+            cursor: pointer;
+            white-space: nowrap;
+        }
+
+        .quick-action-btn:hover {
+            filter: brightness(0.97);
+        }
+
+        .quick-action-btn.validate {
+            border-color: rgba(34, 197, 94, 0.45);
+            background: rgba(34, 197, 94, 0.16);
+            color: #166534;
+        }
+
+        .quick-action-btn.import {
+            border-color: rgba(37, 99, 235, 0.45);
+            background: rgba(37, 99, 235, 0.16);
+            color: #1e40af;
+        }
+
+        .quick-action-btn.review {
+            border-color: rgba(234, 179, 8, 0.45);
+            background: rgba(234, 179, 8, 0.18);
+            color: #854d0e;
+        }
+
+        .quick-action-btn.discard {
+            border-color: #fca5a5;
+            background: #fee2e2;
+            color: #991b1b;
+        }
+
+        .quick-action-btn.clear {
+            border-color: #cbd5e1;
+            background: #f1f5f9;
+            color: #334155;
+        }
+
+        .quick-action-btn.white {
+            border-color: #cbd5e1;
+            background: #ffffff;
+            color: #0f172a;
+        }
+
+        .status-icon {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            width: 18px;
+            height: 18px;
+            border-radius: 999px;
+            font-size: 10px;
+            font-weight: 700;
+            border: 1px solid var(--line);
+            line-height: 1;
+        }
+
+        .status-icon.yes {
+            color: #166534;
+            background: rgba(34, 197, 94, 0.16);
+            border-color: rgba(34, 197, 94, 0.45);
+        }
+
+        .status-icon.no {
+            color: #64748b;
+            background: rgba(100, 116, 139, 0.12);
+        }
+
+        .status-icon.new {
+            color: #92400e;
+            background: rgba(245, 158, 11, 0.18);
+            border-color: rgba(245, 158, 11, 0.45);
+        }
+
+        .status-icon.sup {
+            color: #9f1239;
+            background: rgba(225, 29, 72, 0.16);
+            border-color: rgba(225, 29, 72, 0.45);
+        }
+
+        .status-icon.other {
+            color: #1d4ed8;
+            background: rgba(59, 130, 246, 0.15);
+            border-color: rgba(59, 130, 246, 0.45);
+        }
+
+        .revision-select {
+            width: 100%;
+            min-width: 90px;
+            padding: 3px 4px;
+            border: 1px solid var(--line);
+            border-radius: 4px;
+            font-size: 11px;
+            /* transparent para que el fondo del <td> sea visible en todos los navegadores */
+            background: transparent;
+            color: inherit;
+        }
+
+        .revision-select:focus {
+            outline: none;
+            border-color: var(--acc);
+            box-shadow: 0 0 0 2px rgba(37, 99, 235, 0.1);
+        }
+
+        .revision-cell {
+            padding: 2px 2px 2px 5px;
+            transition: background-color 0.15s ease, border-left-color 0.15s ease;
+            border-left: 3px solid transparent;
+        }
+
+        /* vacío */
+        .revision-cell.rev-empty {
+            background: #f8fafc;
+            border-left-color: #cbd5e1;
+            color: #334155;
+        }
+
+        /* estados de revisión — fondo + banda izquierda */
+        .revision-cell.rev-estado-pendiente {
+            background: #fef3c7;
+            border-left-color: #d97706;
+            color: #92400e;
+        }
+
+        .revision-cell.rev-estado-en-revision {
+            background: rgba(234, 179, 8, 0.18);
+            border-left-color: rgba(234, 179, 8, 0.45);
+            color: #854d0e;
+        }
+
+        .revision-cell.rev-estado-revisado {
+            background: #dcfce7;
+            border-left-color: #16a34a;
+            color: #166534;
+        }
+
+        .revision-cell.rev-estado-descartado {
+            background: #fee2e2;
+            border-left-color: #dc2626;
+            color: #991b1b;
+        }
+
+        /* acciones — fondo + banda izquierda */
+        .revision-cell.rev-accion-mantener {
+            background: rgba(37, 99, 235, 0.16);
+            border-left-color: rgba(37, 99, 235, 0.45);
+            color: #1e40af;
+        }
+
+        .revision-cell.rev-accion-actualizar {
+            background: #ede9fe;
+            border-left-color: #7c3aed;
+            color: #5b21b6;
+        }
+
+        .revision-cell.rev-accion-revisar {
+            background: #ffedd5;
+            border-left-color: #ea580c;
+            color: #9a3412;
+        }
+
+        .revision-cell.rev-accion-sustituir {
+            background: #ffe4e6;
+            border-left-color: #e11d48;
+            color: #9f1239;
+        }
+
+        .revision-cell.rev-accion-eliminar {
+            background: #fecaca;
+            border-left-color: #b91c1c;
+            color: #7f1d1d;
+        }
+
+        /* color del texto en el select (siempre heredado de la celda) */
+        .revision-select {
+            color: inherit;
+        }
     </style>
     <script src="https://cdn.jsdelivr.net/npm/pako@2.1.0/dist/pako.min.js"></script>
 </head>
@@ -373,7 +723,12 @@
     <div class="topbar">
         <div class="nav">
             <a class="pill" href="index.html">Inicio</a>
+            <a class="pill" href="qa_articulos.html">Artículos</a>
+            <a class="pill" href="qa_web.html">Web</a>
+            <a class="pill" href="qa_web2.html">Web 2</a>
+            <a class="pill" href="qa_lista.html">Lista</a>
             <span class="pill active">Lista QA 02</span>
+            <a class="pill" href="qa_lista_agrupada.html">Agrupada</a>
         </div>
     </div>
 
@@ -386,6 +741,7 @@
             <div class="clear-filters">
                 <div style="display:flex; gap:8px; flex-wrap:wrap; align-items:center;">
                     <button id="sortBookPagePosBtn">Ordenar Libro/Página/Pos</button>
+                    <button id="toggleGroupedBtn">Ver tabla agrupada por PN</button>
                     <select id="bookFilterSelect" class="filter-select" data-filter="book" style="max-width:200px;">
                         <option value="">Todos los libros</option>
                     </select>
@@ -393,17 +749,51 @@
                         style="max-width:120px;">
                     <button id="prevBookPageBtn">Página anterior del libro</button>
                     <button id="nextBookPageBtn">Página siguiente del libro</button>
+                    <button id="importRevisionBtn">Importar revisión</button>
+                    <button id="exportRevisionBtn">Exportar revisión</button>
                     <button id="clearFiltersBtn">Limpiar filtros</button>
+                    <input id="revisionFileInput" type="file" accept="application/json" style="display:none;">
+                </div>
+                <div class="bulk-edit">
+                    <span class="bulk-label">Cambio masivo revisión:</span>
+                    <select id="bulkScopeSelect" class="bulk-select">
+                        <option value="filtered">Todos los filtrados</option>
+                        <option value="visible">Solo registros en pantalla</option>
+                    </select>
+                    <div class="bulk-quick-actions">
+                        <button id="bulkRevOkBtn" type="button" class="quick-action-btn bulk-quick-btn validate"
+                            title="OK masivo: solo cambia Revisión a OK">V</button>
+                        <button id="bulkRevEmptyBtn" type="button" class="quick-action-btn bulk-quick-btn white"
+                            title="Poner vacío masivo: solo cambia Revisión a vacío">P</button>
+                        <button id="bulkValidateBtn" type="button" class="quick-action-btn bulk-quick-btn import"
+                            title="Importar masivo: solo cambia Acción a Import">I</button>
+                        <button id="bulkReviewBtn" type="button" class="quick-action-btn bulk-quick-btn review"
+                            title="Revisar masivo: solo cambia Acción a Revisar">R</button>
+                        <button id="bulkDiscardBtn" type="button" class="quick-action-btn bulk-quick-btn discard"
+                            title="Eliminar masivo: solo cambia Acción a Eliminar">X</button>
+                        <button id="bulkClearBtn" type="button" class="quick-action-btn bulk-quick-btn clear"
+                            title="Vaciar masivo: Revisión y Acción en blanco">-</button>
+                    </div>
                 </div>
             </div>
 
-            <div class="tableWrap">
+            <div id="mainTableWrap" class="tableWrap">
                 <table>
                     <thead>
                         <tr>
                             <th style="width:80px" data-sort="ID" class="separator-before separator-after">ID</th>
+                            <th style="width:36px" data-sort="gesa" class="status-head">G</th>
+                            <th style="width:36px" data-sort="normalizado" class="status-head">N</th>
+                            <th style="width:44px" data-sort="sust_hierarchie" class="status-head">SH</th>
+                            <th style="width:36px" data-sort="has_img" class="status-head">F</th>
+                            <th style="width:110px" data-sort="qa_revision_estado">Revisión</th>
+                            <th style="width:120px" data-sort="qa_revision_accion">Acción</th>
+                            <th style="width:96px" class="status-head">A</th>
                             <th style="width:50px" data-sort="POS">Pos</th>
                             <th style="width:100px" data-sort="PART NO.">PN</th>
+                            <th style="width:110px" data-sort="pn_raw">PN Raw</th>
+                            <th style="width:110px" data-sort="pn_final">PN Final</th>
+                            <th style="width:130px" data-sort="criterio_pn">Criterio PN</th>
                             <th style="width:150px" data-sort="DESIGNATION">Designation</th>
                             <th style="width:120px" data-sort="designation_gesa">GESA Designation
                             </th>
@@ -421,9 +811,7 @@
                             <th style="width:60px" data-sort="Source Page">Página</th>
                             <th style="width:140px" data-sort="fgs_code_description">FGS Code Description</th>
                             <th style="width:120px" data-sort="filename_foto">Filename Foto</th>
-                            <th style="width:50px" data-sort="gesa">GESA</th>
                             <th style="width:100px" data-sort="nsn">NSN</th>
-                            <th style="width:80px" data-sort="normalizado">Normalizado</th>
                             <th style="width:100px" data-sort="norma">Norma</th>
                             <th style="width:80px" data-sort="sust_status">Sust Status</th>
                             <th style="width:120px" data-sort="sust_new_part_number">Sust New Part Number</th>
@@ -447,8 +835,47 @@
                         </tr>
                         <tr class="filter-row">
                             <th><input class="filter-input" data-filter="ID" placeholder="filtrar"></th>
+                            <th><select class="filter-select" data-filter="gesa">
+                                    <option value="">Todos</option>
+                                    <option value="SI">SI</option>
+                                    <option value="NO">NO</option>
+                                </select></th>
+                            <th><select class="filter-select" data-filter="normalizado">
+                                    <option value="">Todos</option>
+                                    <option value="SI">SI</option>
+                                    <option value="NO">NO</option>
+                                </select></th>
+                            <th><select class="filter-select" data-filter="sust_hierarchie">
+                                    <option value="">Todos</option>
+                                    <option value="New">New</option>
+                                    <option value="Old">Old</option>
+                                    <option value="empty">(Vacío)</option>
+                                </select></th>
+                            <th><select class="filter-select" data-filter="has_img">
+                                    <option value="">Todos</option>
+                                    <option value="true">Si</option>
+                                    <option value="false">No</option>
+                                </select></th>
+                            <th><select class="filter-select" data-filter="qa_revision_estado">
+                                    <option value="">Todos</option>
+                                    <option value="revisado">Ok</option>
+                                    <option value="empty">- (Vacío)</option>
+                                </select></th>
+                            <th><select class="filter-select" data-filter="qa_revision_accion">
+                                    <option value="">Todos</option>
+                                    <option value="mantener">Import</option>
+                                    <option value="actualizar">Actualizar</option>
+                                    <option value="revisar">Revisar</option>
+                                    <option value="sustituir">Sustituir</option>
+                                    <option value="eliminar">Eliminar</option>
+                                    <option value="empty">- (Vacío)</option>
+                                </select></th>
+                            <th></th>
                             <th><input class="filter-input" data-filter="POS" placeholder="filtrar"></th>
                             <th><input class="filter-input" data-filter="PART NO." placeholder="filtrar"></th>
+                            <th><input class="filter-input" data-filter="pn_raw" placeholder="filtrar"></th>
+                            <th><input class="filter-input" data-filter="pn_final" placeholder="filtrar"></th>
+                            <th><input class="filter-input" data-filter="criterio_pn" placeholder="filtrar"></th>
                             <th><input class="filter-input" data-filter="DESIGNATION" placeholder="filtrar"></th>
                             <th><input class="filter-input" data-filter="designation_gesa" placeholder="filtrar"></th>
                             <th><input class="filter-input" data-filter="MODEL/TYPE" placeholder="filtrar"></th>
@@ -467,13 +894,7 @@
                             <th><input class="filter-input" data-filter="fgs_code_description" placeholder="filtrar">
                             </th>
                             <th><input class="filter-input" data-filter="filename_foto" placeholder="filtrar"></th>
-                            <th><input class="filter-input" data-filter="gesa" placeholder="filtrar"></th>
                             <th><input class="filter-input" data-filter="nsn" placeholder="filtrar"></th>
-                            <th><select class="filter-select" data-filter="normalizado">
-                                    <option value="">Todos</option>
-                                    <option value="SI">SI</option>
-                                    <option value="NO">NO</option>
-                                </select></th>
                             <th><input class="filter-input" data-filter="norma" placeholder="filtrar"></th>
                             <th><input class="filter-input" data-filter="sust_status" placeholder="filtrar"></th>
                             <th><input class="filter-input" data-filter="sust_new_part_number" placeholder="filtrar">
@@ -511,7 +932,7 @@
                     </thead>
                     <tbody id="tbody">
                         <tr>
-                            <td colspan="40" class="loading">Cargando datos...</td>
+                            <td colspan="46" class="loading">Cargando datos...</td>
                         </tr>
                     </tbody>
                 </table>
@@ -522,6 +943,32 @@
                 <span id="pageInfo">Página 1 de 1</span>
                 <button id="nextBtn" disabled>Siguiente</button>
             </div>
+
+            <div id="groupedSection" class="grouped-section" style="display:none;">
+                <div class="grouped-header">
+                    <b>Vista agrupada por PN</b>
+                    <span id="groupedStats">Sin datos agrupados</span>
+                </div>
+                <div class="grouped-wrap">
+                    <table id="groupedTable">
+                        <thead>
+                            <tr>
+                                <th style="width:140px">PN</th>
+                                <th style="width:100px">Registros</th>
+                                <th style="width:100px">Campos Iguales</th>
+                                <th style="width:100px">Campos Distintos</th>
+                                <th style="width:300px">Campos iguales (detalle)</th>
+                                <th style="width:200px">POS (muestra)</th>
+                            </tr>
+                        </thead>
+                        <tbody id="groupedTbody">
+                            <tr>
+                                <td colspan="6" class="loading">Activa la vista agrupada para ver los datos por PN</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
         </div>
     </div>
 
@@ -530,11 +977,17 @@
         let allData = [];
         let filteredData = [];
         let currentPage = 1;
-        const pageSize = 50;
+        let pageSize = 50;
+        const MIN_PAGE_SIZE = 5;
         let sortKey = 'book_page_pos';
         let sortAsc = true;
         let filters = {};
         const legacyMode = false; // false = permitimos filtros activos
+        let groupedVisible = false;
+        const TOTAL_COLUMNS = 47;
+        const REVISION_STORAGE_KEY = 'milu_revision_data_v1';
+        let revisionData = {};
+        let revisionStorageErrorShown = false;
 
         // Sets para búsqueda rápida de PN en diferentes archivos
         let newPnSet = new Set();
@@ -549,6 +1002,386 @@
         function val(row, key, defaultVal = "—") {
             const v = row[key];
             return (v != null && String(v).trim() !== "") ? v : defaultVal;
+        }
+
+        function buildLegacyRevisionKey(row) {
+            const id = String(row?.ID ?? '').trim();
+            const pn = String(row?.['PART NO.'] ?? row?.pn ?? '').trim();
+            const page = String(row?.['Source Page'] ?? '').trim();
+            const pos = String(row?.POS ?? '').trim();
+            const source = String(row?.source_file ?? '').trim();
+            return [id, pn, page, pos, source].join('||');
+        }
+
+        function assignRevisionKeys(rows) {
+            const occurrenceByLegacyKey = new Map();
+            rows.forEach((row, index) => {
+                const legacyKey = buildLegacyRevisionKey(row);
+                const nextOccurrence = (occurrenceByLegacyKey.get(legacyKey) || 0) + 1;
+                occurrenceByLegacyKey.set(legacyKey, nextOccurrence);
+
+                // Clave estable por posicion del registro en el JSON fuente.
+                const stableIndex = index + 1;
+                row.__qa_revision_legacy_key = legacyKey;
+                row.__qa_revision_occ_key = `${legacyKey}||occ=${nextOccurrence}`;
+                row.__qa_revision_key = `idx=${stableIndex}`;
+            });
+        }
+
+        function getRevisionKey(row) {
+            if (row && typeof row.__qa_revision_key === 'string' && row.__qa_revision_key.trim() !== '') {
+                return row.__qa_revision_key;
+            }
+            const legacyKey = buildLegacyRevisionKey(row);
+            return legacyKey;
+        }
+
+        function getRevisionKeyAliases(row) {
+            if (!row) return [];
+            const aliases = [];
+            const key = getRevisionKey(row);
+            const legacyKey = String(row.__qa_revision_legacy_key || buildLegacyRevisionKey(row) || '').trim();
+            const occKey = String(row.__qa_revision_occ_key || '').trim();
+
+            if (key) aliases.push(key);
+            if (legacyKey && !aliases.includes(legacyKey)) aliases.push(legacyKey);
+            if (occKey && !aliases.includes(occKey)) aliases.push(occKey);
+            return aliases;
+        }
+
+        function normalizeRevisionRecord(record) {
+            return {
+                estado: String(record?.estado ?? '').trim(),
+                accion: String(record?.accion ?? '').trim(),
+                updated_at: String(record?.updated_at ?? '').trim()
+            };
+        }
+
+        function revisionRecordHasData(record) {
+            return !!(String(record?.estado || '').trim() || String(record?.accion || '').trim());
+        }
+
+        function getRevisionEstadoClass(value) {
+            const v = String(value || '').trim().toLowerCase();
+            if (!v) return 'rev-empty';
+            if (v === 'pendiente') return 'rev-estado-pendiente';
+            if (v === 'en revisión') return 'rev-estado-en-revision';
+            if (v === 'revisado') return 'rev-estado-revisado';
+            if (v === 'descartado') return 'rev-estado-descartado';
+            return 'rev-empty';
+        }
+
+        function getRevisionAccionClass(value) {
+            const v = String(value || '').trim().toLowerCase();
+            if (!v) return 'rev-empty';
+            if (v === 'mantener') return 'rev-accion-mantener';
+            if (v === 'actualizar') return 'rev-accion-actualizar';
+            if (v === 'revisar') return 'rev-accion-revisar';
+            if (v === 'sustituir') return 'rev-accion-sustituir';
+            if (v === 'eliminar') return 'rev-accion-eliminar';
+            return 'rev-empty';
+        }
+
+        function updateRevisionSelectVisual(selectEl) {
+            if (!(selectEl instanceof HTMLSelectElement)) return;
+            const field = selectEl.dataset.revisionField;
+            if (!field) return;
+
+            const td = selectEl.closest('td');
+            if (!td) return;
+
+            const allRevClasses = ['rev-empty',
+                'rev-estado-pendiente', 'rev-estado-en-revision', 'rev-estado-revisado', 'rev-estado-descartado',
+                'rev-accion-mantener', 'rev-accion-actualizar', 'rev-accion-revisar', 'rev-accion-sustituir', 'rev-accion-eliminar'];
+
+            // Solo afectamos el <td>; el <select> hereda color vía CSS "color: inherit"
+            td.classList.remove(...allRevClasses);
+
+            const visualClass = field === 'estado'
+                ? getRevisionEstadoClass(selectEl.value)
+                : getRevisionAccionClass(selectEl.value);
+
+            td.classList.add('revision-cell', visualClass);
+        }
+
+        function parseStableRevisionIndex(key) {
+            const m = String(key || '').match(/^idx=(\d+)$/);
+            if (!m) return null;
+            return Number(m[1]);
+        }
+
+        function loadRevisionDataFromStorage() {
+            try {
+                const raw = localStorage.getItem(REVISION_STORAGE_KEY);
+                if (!raw) {
+                    revisionData = {};
+                    return;
+                }
+                const parsed = JSON.parse(raw);
+                if (!parsed || typeof parsed !== 'object') {
+                    revisionData = {};
+                    return;
+                }
+                revisionData = {};
+
+                // Formato compacto v2: { v:2, r:[[idx, estado, accion], ...], k:{...legacyKeys} }
+                if (parsed.v === 2 && Array.isArray(parsed.r)) {
+                    parsed.r.forEach(entry => {
+                        const idx = Number(entry?.[0]);
+                        if (!Number.isFinite(idx) || idx <= 0) return;
+                        const key = `idx=${idx}`;
+                        const value = normalizeRevisionRecord({
+                            estado: entry?.[1],
+                            accion: entry?.[2],
+                            updated_at: ''
+                        });
+                        if (revisionRecordHasData(value)) {
+                            revisionData[key] = value;
+                        }
+                    });
+
+                    if (parsed.k && typeof parsed.k === 'object') {
+                        Object.entries(parsed.k).forEach(([key, value]) => {
+                            const normalized = normalizeRevisionRecord(value);
+                            if (revisionRecordHasData(normalized)) {
+                                revisionData[key] = normalized;
+                            }
+                        });
+                    }
+                    return;
+                }
+
+                // Compatibilidad con formato antiguo v1 (objeto plano)
+                Object.entries(parsed).forEach(([key, value]) => {
+                    const normalized = normalizeRevisionRecord(value);
+                    if (revisionRecordHasData(normalized)) {
+                        revisionData[key] = normalized;
+                    }
+                });
+            } catch (error) {
+                console.warn('No se pudo cargar revisión local:', error);
+                revisionData = {};
+            }
+        }
+
+        function saveRevisionDataToStorage() {
+            try {
+                const compactRows = [];
+                const legacyKeys = {};
+
+                Object.entries(revisionData).forEach(([key, value]) => {
+                    const normalized = normalizeRevisionRecord(value);
+                    if (!revisionRecordHasData(normalized)) return;
+
+                    const idx = parseStableRevisionIndex(key);
+                    if (idx != null) {
+                        compactRows.push([idx, normalized.estado, normalized.accion]);
+                    } else {
+                        legacyKeys[key] = {
+                            estado: normalized.estado,
+                            accion: normalized.accion,
+                            updated_at: ''
+                        };
+                    }
+                });
+
+                compactRows.sort((a, b) => a[0] - b[0]);
+                const payload = { v: 2, r: compactRows, k: legacyKeys };
+                localStorage.setItem(REVISION_STORAGE_KEY, JSON.stringify(payload));
+            } catch (error) {
+                console.warn('No se pudo guardar revisión local:', error);
+                if (!revisionStorageErrorShown) {
+                    revisionStorageErrorShown = true;
+                    alert('No se pudo guardar la revisión en este navegador/origen. Comprueba permisos de almacenamiento local.');
+                }
+            }
+        }
+
+        function applyRevisionDataToRows(rows) {
+            rows.forEach(row => {
+                const aliases = getRevisionKeyAliases(row);
+                let rev = null;
+                for (const alias of aliases) {
+                    if (revisionData[alias]) {
+                        rev = revisionData[alias];
+                        break;
+                    }
+                }
+                if (!rev) rev = { estado: '', accion: '', updated_at: '' };
+                row.qa_revision_estado = rev.estado || '';
+                row.qa_revision_accion = rev.accion || '';
+                row.qa_revision_updated_at = rev.updated_at || '';
+
+                // Migra automaticamente clave antigua a la nueva estable.
+                const primaryKey = aliases[0];
+                if (primaryKey && rev && !revisionData[primaryKey] && (rev.estado || rev.accion)) {
+                    revisionData[primaryKey] = normalizeRevisionRecord(rev);
+                }
+            });
+        }
+
+        function setRowRevision(row, estado, accion) {
+            const normalizedEstado = String(estado || '').trim();
+            const normalizedAccion = String(accion || '').trim();
+            const aliases = getRevisionKeyAliases(row);
+            const key = aliases[0];
+            if (!key) return;
+
+            if (!normalizedEstado && !normalizedAccion) {
+                aliases.forEach(alias => {
+                    delete revisionData[alias];
+                });
+            } else {
+                revisionData[key] = {
+                    estado: normalizedEstado,
+                    accion: normalizedAccion,
+                    updated_at: new Date().toISOString()
+                };
+                aliases.slice(1).forEach(alias => {
+                    delete revisionData[alias];
+                });
+            }
+
+            row.qa_revision_estado = normalizedEstado;
+            row.qa_revision_accion = normalizedAccion;
+            row.qa_revision_updated_at = revisionData[key]?.updated_at || '';
+            saveRevisionDataToStorage();
+        }
+
+        function setRowRevisionNoSave(row, estado, accion) {
+            const normalizedEstado = String(estado || '').trim();
+            const normalizedAccion = String(accion || '').trim();
+            const aliases = getRevisionKeyAliases(row);
+            const key = aliases[0];
+            if (!key) return;
+
+            if (!normalizedEstado && !normalizedAccion) {
+                aliases.forEach(alias => {
+                    delete revisionData[alias];
+                });
+            } else {
+                revisionData[key] = {
+                    estado: normalizedEstado,
+                    accion: normalizedAccion,
+                    updated_at: new Date().toISOString()
+                };
+                aliases.slice(1).forEach(alias => {
+                    delete revisionData[alias];
+                });
+            }
+
+            row.qa_revision_estado = normalizedEstado;
+            row.qa_revision_accion = normalizedAccion;
+            row.qa_revision_updated_at = revisionData[key]?.updated_at || '';
+        }
+
+        function getCurrentFilteredSortedRows() {
+            const filtered = applyFilters(allData);
+            return sortData(filtered, sortKey, sortAsc);
+        }
+
+        function getRowsForBulkScope(scope) {
+            const sortedRows = getCurrentFilteredSortedRows();
+            if (scope === 'visible') {
+                const start = (currentPage - 1) * pageSize;
+                const end = start + pageSize;
+                return sortedRows.slice(start, end);
+            }
+            return sortedRows;
+        }
+
+        function applyBulkQuickMode(quickMode) {
+            const scopeSelect = $('bulkScopeSelect');
+            if (!scopeSelect) return;
+
+            const quickMap = {
+                revok: { estado: 'revisado', accion: null, label: 'revisión OK' },
+                revempty: { estado: '', accion: null, label: 'revisión vacía' },
+                validate: { estado: null, accion: 'mantener', label: 'acción Import' },
+                review: { estado: null, accion: 'revisar', label: 'acción Revisar' },
+                discard: { estado: null, accion: 'eliminar', label: 'acción Eliminar' },
+                clear: { estado: '', accion: '', label: 'vaciado' }
+            };
+
+            const targetValues = quickMap[quickMode];
+            if (!targetValues) return;
+
+            const scope = scopeSelect.value;
+            const targetRows = getRowsForBulkScope(scope);
+            if (!targetRows.length) {
+                alert('No hay registros para aplicar el cambio masivo con el ámbito seleccionado.');
+                return;
+            }
+
+            const scopeText = scope === 'visible' ? 'registros visibles en pantalla' : 'registros filtrados';
+            const confirmed = window.confirm(`Se aplicará ${targetValues.label} masiva a ${targetRows.length} ${scopeText}. ¿Continuar?`);
+            if (!confirmed) return;
+
+            targetRows.forEach(row => {
+                const nextEstado = targetValues.estado === null ? String(row.qa_revision_estado || '') : targetValues.estado;
+                const nextAccion = targetValues.accion === null ? String(row.qa_revision_accion || '') : targetValues.accion;
+                setRowRevisionNoSave(row, nextEstado, nextAccion);
+            });
+
+            saveRevisionDataToStorage();
+            renderTable(allData, currentPage);
+            renderPagination();
+        }
+
+        function createRevisionExportPayload() {
+            return {
+                meta: {
+                    exported_at: new Date().toISOString(),
+                    source: 'qa_lista_02.html',
+                    version: 1,
+                    rows: Object.keys(revisionData).length
+                },
+                revisions: revisionData
+            };
+        }
+
+        function downloadJsonFile(filename, dataObj) {
+            const blob = new Blob([JSON.stringify(dataObj, null, 2)], { type: 'application/json' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = filename;
+            document.body.appendChild(a);
+            a.click();
+            a.remove();
+            URL.revokeObjectURL(url);
+        }
+
+        function handleExportRevision() {
+            const payload = createRevisionExportPayload();
+            const stamp = new Date().toISOString().replace(/[:.]/g, '-');
+            downloadJsonFile(`qa_revision_${stamp}.json`, payload);
+        }
+
+        async function handleImportRevisionFile(file) {
+            if (!file) return;
+            const text = await file.text();
+            const parsed = JSON.parse(text);
+            const importedRevisions = parsed?.revisions;
+
+            if (!importedRevisions || typeof importedRevisions !== 'object') {
+                throw new Error('JSON de revisión no válido: falta "revisions"');
+            }
+
+            Object.entries(importedRevisions).forEach(([key, value]) => {
+                const normalized = normalizeRevisionRecord(value);
+                if (!normalized.estado && !normalized.accion) {
+                    delete revisionData[key];
+                } else {
+                    revisionData[key] = normalized;
+                }
+            });
+
+            saveRevisionDataToStorage();
+            applyRevisionDataToRows(allData);
+            currentPage = 1;
+            renderTable(allData, currentPage);
+            renderPagination();
         }
 
         function getResourceUrl(resourceName) {
@@ -618,6 +1451,153 @@
             });
         }
 
+        function getPnKey(row) {
+            const pnRaw = row['PART NO.'] ?? row.pn ?? '';
+            return String(pnRaw).trim();
+        }
+
+        function summarizeFields(rows) {
+            if (!rows.length) {
+                return { equalFields: [], unequalCount: 0, equalPairs: [] };
+            }
+
+            const allKeys = new Set();
+            rows.forEach(row => {
+                Object.keys(row || {}).forEach(k => allKeys.add(k));
+            });
+
+            const ignoreKeys = new Set(['PART NO.', 'pn']);
+            const equalFields = [];
+            const equalPairs = [];
+
+            for (const key of allKeys) {
+                if (ignoreKeys.has(key)) continue;
+
+                const values = rows.map(r => String(r?.[key] ?? '').trim());
+                const first = values[0] ?? '';
+                const same = values.every(v => v === first);
+
+                if (same) {
+                    equalFields.push(key);
+                    equalPairs.push({
+                        key,
+                        value: first
+                    });
+                }
+            }
+
+            const comparableFields = [...allKeys].filter(key => !ignoreKeys.has(key)).length;
+            const unequalCount = Math.max(0, comparableFields - equalFields.length);
+
+            return { equalFields, unequalCount, equalPairs };
+        }
+
+        function buildGroupedByPn(data) {
+            const groups = new Map();
+
+            data.forEach(row => {
+                const pnKey = getPnKey(row);
+                if (!groups.has(pnKey)) {
+                    groups.set(pnKey, []);
+                }
+                groups.get(pnKey).push(row);
+            });
+
+            return [...groups.entries()].map(([pn, rows]) => {
+                const summary = summarizeFields(rows);
+                const posList = rows
+                    .map(r => String(r?.POS ?? '').trim())
+                    .filter(Boolean)
+                    .slice(0, 8);
+
+                return {
+                    pn: pn || '—',
+                    count: rows.length,
+                    equalFieldCount: summary.equalFields.length,
+                    unequalFieldCount: summary.unequalCount,
+                    equalFieldList: summary.equalFields,
+                    equalFieldPairs: summary.equalPairs,
+                    posSample: posList
+                };
+            }).sort((a, b) => {
+                if (b.count !== a.count) return b.count - a.count;
+                return a.pn.localeCompare(b.pn, undefined, { numeric: true });
+            });
+        }
+
+        function renderGroupedTable(sourceData) {
+            if (!groupedVisible) return;
+
+            const section = $('groupedSection');
+            const tbody = $('groupedTbody');
+            const groupedStats = $('groupedStats');
+            if (!section || !tbody || !groupedStats) return;
+
+            const groupedRows = buildGroupedByPn(sourceData || []);
+            const repeated = groupedRows.filter(g => g.count > 1);
+            const repeatedRows = repeated.reduce((acc, item) => acc + item.count, 0);
+
+            groupedStats.textContent = `${groupedRows.length} PN distintos · ${repeated.length} PN repetidos · ${repeatedRows} registros en PN repetidos`;
+
+            if (!groupedRows.length) {
+                tbody.innerHTML = '<tr><td colspan="6" class="error">No hay datos para agrupar</td></tr>';
+                return;
+            }
+
+            tbody.innerHTML = groupedRows.map(group => {
+                const detailSummary = group.equalFieldPairs.length
+                    ? `Ver ${group.equalFieldPairs.length} campos iguales`
+                    : 'Sin campos iguales';
+                const detailItems = group.equalFieldPairs.length
+                    ? `<ul class="grouped-list">${group.equalFieldPairs.map(item => {
+                        const valueText = item.value === '' ? '(vacio)' : item.value;
+                        return `<li><b>${escapeHtml(item.key)}</b>: ${escapeHtml(valueText)}</li>`;
+                    }).join('')}</ul>`
+                    : '';
+                const posText = group.posSample.length ? group.posSample.join(', ') : '—';
+
+                return `<tr>
+                    <td title="${escapeHtml(group.pn)}">${escapeHtml(group.pn)}</td>
+                    <td title="${group.count}">${group.count}</td>
+                    <td title="${group.equalFieldCount}">${group.equalFieldCount}</td>
+                    <td title="${group.unequalFieldCount}">${group.unequalFieldCount}</td>
+                    <td>
+                        <details class="grouped-details">
+                            <summary>${escapeHtml(detailSummary)}</summary>
+                            ${detailItems}
+                        </details>
+                    </td>
+                    <td title="${escapeHtml(posText)}">${escapeHtml(posText)}</td>
+                </tr>`;
+            }).join('');
+        }
+
+        function toggleGroupedView() {
+            groupedVisible = !groupedVisible;
+            const section = $('groupedSection');
+            const btn = $('toggleGroupedBtn');
+            const mainTableWrap = $('mainTableWrap');
+            const pagination = $('pagination');
+            if (!section || !btn || !mainTableWrap || !pagination) return;
+
+            section.style.display = groupedVisible ? 'block' : 'none';
+            mainTableWrap.style.display = groupedVisible ? 'none' : 'block';
+            if (groupedVisible) {
+                pagination.style.display = 'none';
+            }
+            btn.textContent = groupedVisible ? 'Ocultar tabla agrupada por PN' : 'Ver tabla agrupada por PN';
+
+            if (groupedVisible) {
+                renderGroupedTable(filteredData);
+                section.scrollIntoView({ behavior: 'smooth', block: 'start' });
+            } else {
+                if (syncAutoPageSize()) {
+                    renderTable(allData, currentPage);
+                }
+                renderPagination();
+            }
+        }
+
         function applyFilters(data) {
             if (legacyMode) {
                 // Volver a versión anterior: no filtrar por select/bool para evitar data inconsistente con csv/json originales
@@ -641,8 +1621,26 @@
                             rowValue = String(row.sust_status || '').toUpperCase() === 'SI' ? 'true' : 'false';
                             break;
                         case 'sust_hierarchie':
-                            rowValue = row.sust_hierarchie === "New" ? 'New' :
-                                (row.sust_hierarchie && row.sust_hierarchie.toString().toUpperCase().includes("SUPERSEDED")) ? 'Old' : '';
+                            if (filterValue === 'empty') {
+                                rowValue = (row.sust_hierarchie == null || String(row.sust_hierarchie).trim() === '') ? 'empty' : 'nonempty';
+                            } else {
+                                rowValue = row.sust_hierarchie === "New" ? 'New' :
+                                    (row.sust_hierarchie && row.sust_hierarchie.toString().toUpperCase().includes("SUPERSEDED")) ? 'Old' : '';
+                            }
+                            break;
+                        case 'qa_revision_estado':
+                            if (filterValue === 'empty') {
+                                rowValue = String(row.qa_revision_estado || '').trim() === '' ? 'empty' : 'nonempty';
+                            } else {
+                                rowValue = String(row.qa_revision_estado || '').toLowerCase();
+                            }
+                            break;
+                        case 'qa_revision_accion':
+                            if (filterValue === 'empty') {
+                                rowValue = String(row.qa_revision_accion || '').trim() === '' ? 'empty' : 'nonempty';
+                            } else {
+                                rowValue = String(row.qa_revision_accion || '').toLowerCase();
+                            }
                             break;
                         case 'in_new':
                             rowValue = newPnSet.has(row['PART NO.'] || row.pn) ? 'true' : 'false';
@@ -673,10 +1671,17 @@
                             break;
                     }
 
-                    if (key.startsWith('has_') || key.startsWith('is_') || key.startsWith('in_') || key === 'published' || key === 'sust_hierarchie') {
+                    if (key.startsWith('has_') || key.startsWith('is_') || key.startsWith('in_') || key === 'published' || key === 'sust_hierarchie' || key === 'qa_revision_estado' || key === 'qa_revision_accion') {
                         // Filtros booleanos/select - comparación exacta
                         if (rowValue !== filterValue) return false;
                     } else {
+                        if (key === 'PART NO.') {
+                            const normalizedFilter = String(filterValue || '').trim().toLowerCase();
+                            if (normalizedFilter === '(vacio)' || normalizedFilter === 'vacio' || normalizedFilter === 'empty') {
+                                if (String(rowValue || '').trim() !== '') return false;
+                                continue;
+                            }
+                        }
                         // Filtros de texto - búsqueda parcial
                         if (!rowValue.includes(filterValue.toLowerCase())) return false;
                     }
@@ -754,8 +1759,46 @@
             setPageFilterValue(targetPage);
         }
 
+        function getMainHeaderHeight() {
+            const thead = document.querySelector('#mainTableWrap table thead');
+            if (!thead) return 72;
+            const h = Math.ceil(thead.getBoundingClientRect().height);
+            return Number.isFinite(h) && h > 0 ? h : 72;
+        }
+
+        function getBodyRowHeight() {
+            const row = document.querySelector('#tbody tr');
+            if (!row || row.querySelector('.error, .loading')) return 30;
+            const h = Math.ceil(row.getBoundingClientRect().height);
+            return Number.isFinite(h) && h > 12 ? h : 30;
+        }
+
+        function calculateAutoPageSize() {
+            const wrap = $('mainTableWrap');
+            if (!wrap) return pageSize;
+            if (window.getComputedStyle(wrap).display === 'none' || wrap.clientHeight <= 0) return pageSize;
+
+            const headerHeight = getMainHeaderHeight();
+            const rowHeight = Math.max(22, getBodyRowHeight());
+            const available = wrap.clientHeight - headerHeight - 8;
+            if (!Number.isFinite(available) || available <= rowHeight) return pageSize;
+
+            const nextSize = Math.floor(available / rowHeight);
+            return Math.max(MIN_PAGE_SIZE, nextSize);
+        }
+
+        function syncAutoPageSize() {
+            const next = calculateAutoPageSize();
+            if (!Number.isFinite(next) || next < 1 || next === pageSize) return false;
+            pageSize = next;
+            return true;
+        }
+
         function renderTable(data, page = 1) {
             const tbody = $("tbody");
+
+            // Ajustar automáticamente registros por página al alto visible.
+            syncAutoPageSize();
 
             // Actualizar indicadores de ordenamiento
             const ths = document.querySelectorAll('thead th[data-sort]');
@@ -778,7 +1821,7 @@
             currentPage = page;
 
             if (!filteredData.length) {
-                tbody.innerHTML = '<tr><td colspan="40" class="error">No se encontraron datos que coincidan con los filtros</td></tr>';
+                tbody.innerHTML = `<tr><td colspan="${TOTAL_COLUMNS}" class="error">No se encontraron datos que coincidan con los filtros</td></tr>`;
                 $("pagination").style.display = 'none';
                 $("stats").innerHTML = `<span class="stat">0 total</span>`;
                 return;
@@ -811,20 +1854,34 @@
                 .map(pn => String(pn).trim())
             ).size;
 
+            const pnCountMap = new Map();
+            filteredData.forEach(r => {
+                const pn = getPnKey(r);
+                pnCountMap.set(pn, (pnCountMap.get(pn) || 0) + 1);
+            });
+            const repeatedPnGroups = [...pnCountMap.values()].filter(count => count > 1).length;
+
             $("stats").innerHTML = `
         <span class="stat"><b>${total}</b> total</span>
         <span class="stat ok"><b>${distinctPnFiltered}</b> PN distintos (filtrado)</span>
+        <span class="stat warn"><b>${repeatedPnGroups}</b> PN repetidos (filtrado)</span>
         <span class="stat"><b>${distinctPnTotal}</b> PN distintos totales</span>
         <span class="stat ok"><b>${withImages}</b> con imágenes</span>
         <span class="stat"><b>${withGesa}</b> con GESA</span>
         <span class="stat warn"><b>${superseded}</b> superseded</span>
+        <span class="stat" style="margin-left:auto; color:#64748b; font-size:11px;" title="Archivos de origen cargados">📄 df_116_bom.json · MILU_New_v507.json · MILU_Superseded_v507.json · publication_map.json · product_export_v507.json</span>
       `;
 
             tbody.innerHTML = pageData.map(row => {
                 // Reordenadas según el nuevo orden de columnas
                 const id = val(row, "ID");
+                const sustHierarchyRaw = String(row.sust_hierarchie || '').trim();
+                const sustHierarchyLabel = sustHierarchyRaw || '—';
                 const pos = val(row, "POS");
                 const pn = val(row, "PART NO.");
+                const pnRaw = val(row, "pn_raw");
+                const pnFinal = val(row, "pn_final");
+                const criterioPn = val(row, "criterio_pn");
                 const designation = val(row, "DESIGNATION");
                 const gesaDesignation = val(row, "designation_gesa");
                 const modelType = val(row, "MODEL/TYPE");
@@ -841,9 +1898,7 @@
                 const pageNum = val(row, "Source Page");
                 const fgsCodeDescription = val(row, "fgs_code_description");
                 const filenameFoto = val(row, "filename_foto");
-                const gesa = val(row, "gesa");
                 const nsn = val(row, "nsn");
-                const normalizado = val(row, "normalizado");
                 const norma = val(row, "norma");
                 const sustStatus = val(row, "sust_status");
                 const sustNewPartNumber = val(row, "sust_new_part_number");
@@ -865,29 +1920,92 @@
                 const esquemasCirculos = val(row, "esquemas_circulos");
                 const rutaEsquemasPos = val(row, "ruta_esquemas_pos");
 
-                // Columnas separadas para status
-
-
                 // Determinar si aplican colores según estado
                 const isGesa = String(row.gesa || '').toUpperCase() === 'SI';
-                const isNew = String(row.sust_status || '').toUpperCase() === 'SI' && row.sust_hierarchie === 'New';
-                const isSuperscededCell = String(row.sust_status || '').toUpperCase() === 'SI' && row.sust_hierarchie && row.sust_hierarchie.toString().toUpperCase().includes('SUPERSEDED');
                 const isNormalizado = String(row.normalizado || '').toUpperCase() === 'SI';
+                const isHierarchyNew = sustHierarchyRaw === 'New';
+                const isHierarchySuperseded = sustHierarchyRaw.toUpperCase().includes('SUPERSEDED');
+                const hasImg = (row.filename_foto || row.ruta_foto || '').toString().trim() !== '';
+                const revisionEstado = String(row.qa_revision_estado || '').trim();
+                const revisionAccion = String(row.qa_revision_accion || '').trim();
+                const revisionKey = getRevisionKey(row);
 
                 // Clases para celdas GESA
                 const classGesaDesignation = isGesa ? 'cell-gesa' : '';
                 const classWeightGesa = isGesa ? 'cell-gesa' : '';
                 const classUnitsGesa = isGesa ? 'cell-gesa' : '';
                 const classDimensionsGesa = isGesa ? 'cell-gesa' : '';
-                const classGesa = isGesa ? 'cell-gesa' : '';
 
-                // Clase para celda Normalizado
-                const classNormalizado = isNormalizado ? 'cell-normalizado' : '';
+                const gesaIcon = isGesa
+                    ? '<span class="status-icon yes" aria-label="GESA SI">G</span>'
+                    : '<span class="status-icon no" aria-label="GESA NO">-</span>';
+                const normalizadoIcon = isNormalizado
+                    ? '<span class="status-icon yes" aria-label="Normalizado SI">N</span>'
+                    : '<span class="status-icon no" aria-label="Normalizado NO">-</span>';
+
+                let hierarchyIcon = '<span class="status-icon no" aria-label="Sin sust_hierarchie">-</span>';
+                if (isHierarchyNew) {
+                    hierarchyIcon = '<span class="status-icon new" aria-label="sust_hierarchie New">N</span>';
+                } else if (isHierarchySuperseded) {
+                    hierarchyIcon = '<span class="status-icon sup" aria-label="sust_hierarchie Superseded">S</span>';
+                } else if (sustHierarchyRaw) {
+                    hierarchyIcon = '<span class="status-icon other" aria-label="sust_hierarchie Other">O</span>';
+                }
+
+                const fotoIcon = hasImg
+                    ? '<span class="status-icon yes" aria-label="Con Foto">F</span>'
+                    : '<span class="status-icon no" aria-label="Sin Foto">-</span>';
+
+                const revisionEstadoClass = getRevisionEstadoClass(revisionEstado);
+                const revisionAccionClass = getRevisionAccionClass(revisionAccion);
+
+                const revisionEstadoOptions = [
+                    { value: '', label: '—' },
+                    { value: 'pendiente', label: 'Pendiente' },
+                    { value: 'en revisión', label: 'Revisar' },
+                    { value: 'revisado', label: 'Ok' },
+                    { value: 'descartado', label: 'Eliminar' }
+                ].map(opt => `<option value="${escapeHtml(opt.value)}" ${revisionEstado === opt.value ? 'selected' : ''}>${escapeHtml(opt.label)}</option>`).join('');
+
+                const revisionAccionOptions = [
+                    { value: '', label: '—' },
+                    { value: 'mantener', label: 'Import' },
+                    { value: 'actualizar', label: 'Actualizar' },
+                    { value: 'revisar', label: 'Revisar' },
+                    { value: 'sustituir', label: 'Sustituir' },
+                    { value: 'eliminar', label: 'Eliminar' }
+                ].map(opt => `<option value="${escapeHtml(opt.value)}" ${revisionAccion === opt.value ? 'selected' : ''}>${escapeHtml(opt.label)}</option>`).join('');
 
                 return `<tr>
           <td class="separator-before separator-after" title="${escapeHtml(id)}">${escapeHtml(id)}</td>
+          <td class="status-col" title="GESA: ${isGesa ? 'SI' : 'NO'}">${gesaIcon}</td>
+          <td class="status-col" title="Normalizado: ${isNormalizado ? 'SI' : 'NO'}">${normalizadoIcon}</td>
+          <td class="status-col" title="sust_hierarchie: ${escapeHtml(sustHierarchyLabel)}">${hierarchyIcon}</td>
+          <td class="status-col" title="Foto: ${hasImg ? 'SI' : 'NO'}">${fotoIcon}</td>
+          <td class="revision-cell ${revisionEstadoClass}" title="Estado de revisión">
+              <select class="revision-select" data-revision-field="estado" data-revision-key="${escapeHtml(revisionKey)}">
+                  ${revisionEstadoOptions}
+              </select>
+          </td>
+          <td class="revision-cell ${revisionAccionClass}" title="Acción a realizar">
+              <select class="revision-select" data-revision-field="accion" data-revision-key="${escapeHtml(revisionKey)}">
+                  ${revisionAccionOptions}
+              </select>
+          </td>
+          <td class="quick-col" title="Acciones rápidas de revisión">
+              <div class="quick-actions">
+                  <button type="button" class="quick-action-btn validate" data-quick-mode="revok" data-revision-key="${escapeHtml(revisionKey)}" title="OK: solo cambia Revisión a OK">V</button>
+                  <button type="button" class="quick-action-btn white" data-quick-mode="revempty" data-revision-key="${escapeHtml(revisionKey)}" title="Poner vacío: solo cambia Revisión a vacío">P</button>
+                  <button type="button" class="quick-action-btn import" data-quick-mode="validate" data-revision-key="${escapeHtml(revisionKey)}" title="Importar: solo cambia Acción a Import">I</button>
+                  <button type="button" class="quick-action-btn review" data-quick-mode="review" data-revision-key="${escapeHtml(revisionKey)}" title="Revisar: solo cambia Acción a Revisar">R</button>
+                  <button type="button" class="quick-action-btn discard" data-quick-mode="discard" data-revision-key="${escapeHtml(revisionKey)}" title="Eliminar: solo cambia Acción a Eliminar">X</button>
+              </div>
+          </td>
           <td  title="${escapeHtml(pos)}">${escapeHtml(pos)}</td>
           <td  title="${escapeHtml(pn)}">${escapeHtml(pn)}</td>
+          <td  title="${escapeHtml(pnRaw)}">${escapeHtml(pnRaw)}</td>
+          <td  title="${escapeHtml(pnFinal)}">${escapeHtml(pnFinal)}</td>
+          <td  title="${escapeHtml(criterioPn)}">${escapeHtml(criterioPn)}</td>
           <td  title="${escapeHtml(designation)}">${escapeHtml(designation)}</td>
           <td class="${classGesaDesignation}" title="${escapeHtml(gesaDesignation)}">${escapeHtml(gesaDesignation)}</td>
           <td class="separator-after" title="${escapeHtml(modelType)}">${escapeHtml(modelType)}</td>
@@ -904,9 +2022,7 @@
           <td title="${escapeHtml(pageNum)}">${escapeHtml(pageNum)}</td>
           <td title="${escapeHtml(fgsCodeDescription)}">${escapeHtml(fgsCodeDescription)}</td>
           <td title="${escapeHtml(filenameFoto)}">${escapeHtml(filenameFoto)}</td>
-          <td class="${classGesa}" title="${escapeHtml(gesa)}">${escapeHtml(gesa)}</td>
           <td title="${escapeHtml(nsn)}">${escapeHtml(nsn)}</td>
-          <td class="${classNormalizado}" title="${escapeHtml(normalizado)}">${escapeHtml(normalizado)}</td>
           <td title="${escapeHtml(norma)}">${escapeHtml(norma)}</td>
           <td title="${escapeHtml(sustStatus)}">${escapeHtml(sustStatus)}</td>
           <td title="${escapeHtml(sustNewPartNumber)}">${escapeHtml(sustNewPartNumber)}</td>
@@ -929,6 +2045,8 @@
           <td title="${escapeHtml(rutaEsquemasPos)}">${escapeHtml(rutaEsquemasPos)}</td>
         </tr>`;
             }).join("");
+
+            renderGroupedTable(filteredData);
         }
 
         function renderPagination() {
@@ -962,8 +2080,8 @@
             try {
                 const isFileProtocol = window.location.protocol === 'file:';
                 if (isFileProtocol) {
-                    $("tbody").innerHTML = '<tr><td colspan="40" class="error">Estás abriendo el archivo directamente (file://). Intenta con servidor local.</td></tr>' +
-                        '<tr><td colspan="40" class="error">Ejecuta un servidor local (python -m http.server 8000) o usa Ejecutar localhost.bat para que fetch() cargue qa_index.json.</td></tr>';
+                    $("tbody").innerHTML = `<tr><td colspan="${TOTAL_COLUMNS}" class="error">Estás abriendo el archivo directamente (file://). Intenta con servidor local.</td></tr>` +
+                        `<tr><td colspan="${TOTAL_COLUMNS}" class="error">Ejecuta un servidor local (python -m http.server 8000) o usa Ejecutar localhost.bat para que fetch() cargue qa_index.json.</td></tr>`;
                 }
 
                 $("stats").innerHTML = '<span class="stat">Cargando datos...</span>';
@@ -1014,9 +2132,15 @@
                 }
 
                 currentPage = 1;
-                sortKey = null;
+                sortKey = 'book_page_pos';
                 sortAsc = true;
                 filters = {};
+                assignRevisionKeys(allData);
+                loadRevisionDataFromStorage();
+                applyRevisionDataToRows(allData);
+
+                // Cargar anchos de columnas del localStorage
+                loadColumnWidths();
 
                 // Poblar select de libros con todos los libros distintos (campo engine_model)
                 const allBooks = [...new Set(allData
@@ -1029,7 +2153,7 @@
                 }
 
                 if (!Array.isArray(allData) || allData.length === 0) {
-                    $("tbody").innerHTML = '<tr><td colspan="40" class="error">No se encontró información en df_116_bom.json</td></tr>';
+                    $("tbody").innerHTML = `<tr><td colspan="${TOTAL_COLUMNS}" class="error">No se encontró información en df_116_bom.json</td></tr>`;
                     $("stats").innerHTML = '<span class="stat">0 total</span>';
                     $("pagination").style.display = 'none';
                     return;
@@ -1038,9 +2162,16 @@
                 filteredData = [...allData];
                 renderTable(allData, currentPage);
                 renderPagination();
+
+                // Segundo ajuste tras el primer render para afinar filas por pantalla.
+                if (syncAutoPageSize()) {
+                    currentPage = 1;
+                    renderTable(allData, currentPage);
+                    renderPagination();
+                }
             } catch (error) {
                 console.error("Error cargando datos:", error);
-                $("tbody").innerHTML = `<tr><td colspan="40" class="error">Error cargando datos: ${escapeHtml(error.message)}</td></tr>`;
+                $("tbody").innerHTML = `<tr><td colspan="${TOTAL_COLUMNS}" class="error">Error cargando datos: ${escapeHtml(error.message)}</td></tr>`;
                 $("stats").innerHTML = '<span class="stat bad">Error cargando datos</span>';
             }
         }
@@ -1131,6 +2262,16 @@
         const nextBookPageBtn = $("nextBookPageBtn");
         const prevBookPageBtn = $("prevBookPageBtn");
         const sortBookPagePosBtn = $("sortBookPagePosBtn");
+        const toggleGroupedBtn = $("toggleGroupedBtn");
+        const exportRevisionBtn = $("exportRevisionBtn");
+        const importRevisionBtn = $("importRevisionBtn");
+        const revisionFileInput = $("revisionFileInput");
+        const bulkValidateBtn = $("bulkValidateBtn");
+        const bulkRevOkBtn = $("bulkRevOkBtn");
+        const bulkRevEmptyBtn = $("bulkRevEmptyBtn");
+        const bulkReviewBtn = $("bulkReviewBtn");
+        const bulkDiscardBtn = $("bulkDiscardBtn");
+        const bulkClearBtn = $("bulkClearBtn");
 
         if (nextBookPageBtn) {
             nextBookPageBtn.addEventListener('click', goToNextBookPage);
@@ -1157,6 +2298,197 @@
         if (clearFiltersBtn) {
             clearFiltersBtn.addEventListener('click', clearFilters);
         }
+
+        if (toggleGroupedBtn) {
+            toggleGroupedBtn.addEventListener('click', toggleGroupedView);
+        }
+
+        if (exportRevisionBtn) {
+            exportRevisionBtn.addEventListener('click', handleExportRevision);
+        }
+
+        if (importRevisionBtn && revisionFileInput) {
+            importRevisionBtn.addEventListener('click', () => {
+                revisionFileInput.click();
+            });
+
+            revisionFileInput.addEventListener('change', async (event) => {
+                const file = event.target.files?.[0];
+                if (!file) return;
+
+                try {
+                    await handleImportRevisionFile(file);
+                } catch (error) {
+                    alert(`Error importando revisión: ${error.message}`);
+                } finally {
+                    revisionFileInput.value = '';
+                }
+            });
+        }
+
+        if (bulkRevOkBtn) {
+            bulkRevOkBtn.addEventListener('click', () => applyBulkQuickMode('revok'));
+        }
+
+        if (bulkRevEmptyBtn) {
+            bulkRevEmptyBtn.addEventListener('click', () => applyBulkQuickMode('revempty'));
+        }
+
+        if (bulkValidateBtn) {
+            bulkValidateBtn.addEventListener('click', () => applyBulkQuickMode('validate'));
+        }
+
+        if (bulkReviewBtn) {
+            bulkReviewBtn.addEventListener('click', () => applyBulkQuickMode('review'));
+        }
+
+        if (bulkDiscardBtn) {
+            bulkDiscardBtn.addEventListener('click', () => applyBulkQuickMode('discard'));
+        }
+
+        if (bulkClearBtn) {
+            bulkClearBtn.addEventListener('click', () => applyBulkQuickMode('clear'));
+        }
+
+        const tbody = $("tbody");
+        if (tbody) {
+            tbody.addEventListener('click', (event) => {
+                const target = event.target;
+                if (!(target instanceof HTMLElement)) return;
+                const quickBtn = target.closest('button[data-quick-mode]');
+                if (!quickBtn) return;
+
+                const revisionKey = quickBtn.dataset.revisionKey;
+                const quickMode = quickBtn.dataset.quickMode;
+                if (!revisionKey) return;
+
+                const row = allData.find(item => getRevisionKey(item) === revisionKey);
+                if (!row) return;
+
+                const quickMap = {
+                    revok: { estado: 'revisado', accion: null },
+                    revempty: { estado: '', accion: null },
+                    validate: { estado: null, accion: 'mantener' },
+                    review: { estado: null, accion: 'revisar' },
+                    discard: { estado: null, accion: 'eliminar' }
+                };
+                const targetValues = quickMap[quickMode];
+                if (!targetValues) return;
+
+                const nextEstado = targetValues.estado === null ? String(row.qa_revision_estado || '') : targetValues.estado;
+                const nextAccion = targetValues.accion === null ? String(row.qa_revision_accion || '') : targetValues.accion;
+                setRowRevision(row, nextEstado, nextAccion);
+
+                const tr = quickBtn.closest('tr');
+                if (!tr) return;
+                const estadoSelect = tr.querySelector('select[data-revision-field="estado"]');
+                const accionSelect = tr.querySelector('select[data-revision-field="accion"]');
+
+                if (estadoSelect instanceof HTMLSelectElement) {
+                    estadoSelect.value = nextEstado;
+                    updateRevisionSelectVisual(estadoSelect);
+                }
+                if (accionSelect instanceof HTMLSelectElement) {
+                    accionSelect.value = nextAccion;
+                    updateRevisionSelectVisual(accionSelect);
+                }
+            });
+
+            tbody.addEventListener('change', (event) => {
+                const target = event.target;
+                if (!(target instanceof HTMLSelectElement)) return;
+                const revisionField = target.dataset.revisionField;
+                const revisionKey = target.dataset.revisionKey;
+                if (!revisionField || !revisionKey) return;
+
+                const row = allData.find(item => getRevisionKey(item) === revisionKey);
+                if (!row) return;
+
+                const estado = revisionField === 'estado' ? target.value : String(row.qa_revision_estado || '');
+                const accion = revisionField === 'accion' ? target.value : String(row.qa_revision_accion || '');
+                setRowRevision(row, estado, accion);
+                updateRevisionSelectVisual(target);
+            });
+        }
+
+        // Funciones para redimensionamiento de columnas
+        function saveColumnWidths() {
+            const widths = {};
+            document.querySelectorAll('#mainTableWrap thead tr:not(.filter-row) th').forEach((th, index) => {
+                widths[index] = th.style.width || th.offsetWidth + 'px';
+            });
+            localStorage.setItem('milu_table_column_widths', JSON.stringify(widths));
+        }
+
+        function loadColumnWidths() {
+            const widths = JSON.parse(localStorage.getItem('milu_table_column_widths') || '{}');
+            if (Object.keys(widths).length === 0) return;
+
+            document.querySelectorAll('#mainTableWrap thead tr:not(.filter-row) th').forEach((th, index) => {
+                if (widths[index]) {
+                    th.style.width = widths[index];
+                }
+            });
+        }
+
+        function initColumnResize() {
+            let resizingColumn = null;
+            let startX = 0;
+            let startWidth = 0;
+
+            document.querySelectorAll('#mainTableWrap thead tr:not(.filter-row) th').forEach(th => {
+                const resizeHandle = th;
+
+                resizeHandle.addEventListener('mousedown', (e) => {
+                    if (e.button !== 0) return;
+
+                    const rect = th.getBoundingClientRect();
+                    const rightEdge = rect.right;
+                    const distance = rightEdge - e.clientX;
+
+                    if (distance > 6) return; // Solo activar si está cerca del borde derecho
+
+                    resizingColumn = th;
+                    startX = e.clientX;
+                    startWidth = th.offsetWidth;
+
+                    th.classList.add('resizing');
+                    e.preventDefault();
+                });
+            });
+
+            document.addEventListener('mousemove', (e) => {
+                if (!resizingColumn) return;
+
+                const diff = e.clientX - startX;
+                const newWidth = Math.max(30, startWidth + diff);
+                resizingColumn.style.width = newWidth + 'px';
+            });
+
+            document.addEventListener('mouseup', () => {
+                if (resizingColumn) {
+                    resizingColumn.classList.remove('resizing');
+                    saveColumnWidths();
+                    resizingColumn = null;
+                }
+            });
+        }
+
+        // Inicializar redimensionamiento al cargar la página
+        initColumnResize();
+
+        let resizeTimer = null;
+        window.addEventListener('resize', () => {
+            if (resizeTimer) clearTimeout(resizeTimer);
+            resizeTimer = setTimeout(() => {
+                if (!allData.length || groupedVisible) return;
+                if (!syncAutoPageSize()) return;
+                const totalPages = Math.max(1, Math.ceil(filteredData.length / pageSize));
+                if (currentPage > totalPages) currentPage = totalPages;
+                renderTable(allData, currentPage);
+                renderPagination();
+            }, 120);
+        });
 
         loadData();
     </script>
