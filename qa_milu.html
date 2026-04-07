@@ -1157,7 +1157,7 @@
         const COLUMN_VIEW_STORAGE_KEY = 'milu_column_view_v2';
         const TABLE_COLUMN_WIDTHS_STORAGE_KEY = 'milu_table_column_widths_v2';
         const PDF_FIT_WIDTH_MARGIN = 8;
-        let columnView = 'qa';
+        let columnView = 'pdf';
         const FOCUS_COLUMN_ORDER = [
             0, 9, 8, 13, 15, 26, 16, 17, 18,
             1, 2, 3, 4, 5, 6, 7,
@@ -1187,6 +1187,7 @@
         let revisionStorageErrorShown = false;
         let revisionRemoteErrorShown = false;
         let revisionRemoteSyncTimeout = null;
+        let revisionRemoteSyncEnabled = true;
 
         // Sets para búsqueda rápida de PN en diferentes archivos
         let newPnSet = new Set();
@@ -1570,8 +1571,15 @@
             };
         }
 
+        function detectUnsupportedRemoteSyncContent(rawText) {
+            const text = String(rawText || '').trim();
+            if (!text) return false;
+            // Si el servidor devuelve el codigo PHP en bruto, no hay ejecucion de backend.
+            return text.startsWith('<?php') || text.includes('declare(strict_types=1);');
+        }
+
         async function loadRevisionDataFromRemote() {
-            if (!REVISION_REMOTE_SYNC_URL) return;
+            if (!REVISION_REMOTE_SYNC_URL || !revisionRemoteSyncEnabled) return;
             try {
                 const response = await fetch(`${REVISION_REMOTE_SYNC_URL}?t=${Date.now()}`, {
                     method: 'GET',
@@ -1582,7 +1590,14 @@
                     throw new Error(`HTTP ${response.status} ${response.statusText}`);
                 }
 
-                const parsed = await response.json();
+                const raw = await response.text();
+                if (detectUnsupportedRemoteSyncContent(raw)) {
+                    revisionRemoteSyncEnabled = false;
+                    console.warn('Sincronizacion remota desactivada: el endpoint no ejecuta PHP en este hosting.');
+                    return;
+                }
+
+                const parsed = JSON.parse(raw);
                 const normalized = normalizeRevisionDataObject(parsed);
                 if (Object.keys(normalized).length) {
                     revisionData = normalized;
@@ -1593,7 +1608,7 @@
         }
 
         async function saveRevisionDataToRemoteNow() {
-            if (!REVISION_REMOTE_SYNC_URL) return;
+            if (!REVISION_REMOTE_SYNC_URL || !revisionRemoteSyncEnabled) return;
             try {
                 const response = await fetch(REVISION_REMOTE_SYNC_URL, {
                     method: 'POST',
@@ -1613,6 +1628,14 @@
                 if (!response.ok) {
                     throw new Error(`HTTP ${response.status} ${response.statusText}`);
                 }
+
+                const raw = await response.text();
+                if (detectUnsupportedRemoteSyncContent(raw)) {
+                    revisionRemoteSyncEnabled = false;
+                    console.warn('Sincronizacion remota desactivada: el endpoint no ejecuta PHP en este hosting.');
+                    return;
+                }
+
                 revisionRemoteErrorShown = false;
             } catch (error) {
                 console.warn('No se pudo guardar revisión remota:', error);
@@ -1624,7 +1647,7 @@
         }
 
         function scheduleRemoteRevisionSync() {
-            if (!REVISION_REMOTE_SYNC_URL) return;
+            if (!REVISION_REMOTE_SYNC_URL || !revisionRemoteSyncEnabled) return;
             if (revisionRemoteSyncTimeout) {
                 clearTimeout(revisionRemoteSyncTimeout);
             }
