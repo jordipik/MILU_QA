@@ -1172,6 +1172,7 @@
             51, 30
         ];
         const REVISION_STORAGE_KEY = 'milu_revision_data_v1';
+        const REVISION_REMOTE_SYNC_URL = './qa_revision_sync.php';
         const ENGINE_JSON_FILES = [
             'engine_12V4000M40A.json',
             'engine_12V4000M53.json',
@@ -1184,6 +1185,8 @@
         ];
         let revisionData = {};
         let revisionStorageErrorShown = false;
+        let revisionRemoteErrorShown = false;
+        let revisionRemoteSyncTimeout = null;
 
         // Sets para búsqueda rápida de PN en diferentes archivos
         let newPnSet = new Set();
@@ -1491,6 +1494,145 @@
             return Number(m[1]);
         }
 
+        function normalizeRevisionDataObject(parsed) {
+            if (!parsed || typeof parsed !== 'object') return {};
+            const normalizedData = {};
+
+            // Formato exportado: { meta, revisions }
+            if (parsed.revisions && typeof parsed.revisions === 'object') {
+                return normalizeRevisionDataObject(parsed.revisions);
+            }
+
+            // Formato compacto v2: { v:2, r:[[idx, estado, accion], ...], k:{...legacyKeys} }
+            if (parsed.v === 2 && Array.isArray(parsed.r)) {
+                parsed.r.forEach(entry => {
+                    const idx = Number(entry?.[0]);
+                    if (!Number.isFinite(idx) || idx <= 0) return;
+                    const key = `idx=${idx}`;
+                    const value = normalizeRevisionRecord({
+                        estado: entry?.[1],
+                        accion: entry?.[2],
+                        updated_at: ''
+                    });
+                    if (revisionRecordHasData(value)) {
+                        normalizedData[key] = value;
+                    }
+                });
+
+                if (parsed.k && typeof parsed.k === 'object') {
+                    Object.entries(parsed.k).forEach(([key, value]) => {
+                        const normalized = normalizeRevisionRecord(value);
+                        if (revisionRecordHasData(normalized)) {
+                            normalizedData[key] = normalized;
+                        }
+                    });
+                }
+                return normalizedData;
+            }
+
+            // Compatibilidad con formato v1 (objeto plano)
+            Object.entries(parsed).forEach(([key, value]) => {
+                const normalized = normalizeRevisionRecord(value);
+                if (revisionRecordHasData(normalized)) {
+                    normalizedData[key] = normalized;
+                }
+            });
+
+            return normalizedData;
+        }
+
+        function createRevisionRemotePayload() {
+            const compactRows = [];
+            const legacyKeys = {};
+
+            Object.entries(revisionData).forEach(([key, value]) => {
+                const normalized = normalizeRevisionRecord(value);
+                if (!revisionRecordHasData(normalized)) return;
+
+                const idx = parseStableRevisionIndex(key);
+                if (idx != null) {
+                    compactRows.push([idx, normalized.estado, normalized.accion]);
+                } else {
+                    legacyKeys[key] = {
+                        estado: normalized.estado,
+                        accion: normalized.accion,
+                        updated_at: ''
+                    };
+                }
+            });
+
+            compactRows.sort((a, b) => a[0] - b[0]);
+
+            return {
+                v: 2,
+                r: compactRows,
+                k: legacyKeys
+            };
+        }
+
+        async function loadRevisionDataFromRemote() {
+            if (!REVISION_REMOTE_SYNC_URL) return;
+            try {
+                const response = await fetch(`${REVISION_REMOTE_SYNC_URL}?t=${Date.now()}`, {
+                    method: 'GET',
+                    cache: 'no-store'
+                });
+
+                if (!response.ok) {
+                    throw new Error(`HTTP ${response.status} ${response.statusText}`);
+                }
+
+                const parsed = await response.json();
+                const normalized = normalizeRevisionDataObject(parsed);
+                if (Object.keys(normalized).length) {
+                    revisionData = normalized;
+                }
+            } catch (error) {
+                console.warn('No se pudo cargar revisión remota:', error);
+            }
+        }
+
+        async function saveRevisionDataToRemoteNow() {
+            if (!REVISION_REMOTE_SYNC_URL) return;
+            try {
+                const response = await fetch(REVISION_REMOTE_SYNC_URL, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        meta: {
+                            updated_at: new Date().toISOString(),
+                            source: 'qa_milu.html',
+                            version: 2
+                        },
+                        revisions: createRevisionRemotePayload()
+                    })
+                });
+
+                if (!response.ok) {
+                    throw new Error(`HTTP ${response.status} ${response.statusText}`);
+                }
+                revisionRemoteErrorShown = false;
+            } catch (error) {
+                console.warn('No se pudo guardar revisión remota:', error);
+                if (!revisionRemoteErrorShown) {
+                    revisionRemoteErrorShown = true;
+                    alert('No se pudo guardar la revisión en servidor. Se mantiene guardada en este navegador.');
+                }
+            }
+        }
+
+        function scheduleRemoteRevisionSync() {
+            if (!REVISION_REMOTE_SYNC_URL) return;
+            if (revisionRemoteSyncTimeout) {
+                clearTimeout(revisionRemoteSyncTimeout);
+            }
+            revisionRemoteSyncTimeout = setTimeout(() => {
+                saveRevisionDataToRemoteNow();
+            }, 500);
+        }
+
         function loadRevisionDataFromStorage() {
             try {
                 const raw = localStorage.getItem(REVISION_STORAGE_KEY);
@@ -1499,76 +1641,24 @@
                     return;
                 }
                 const parsed = JSON.parse(raw);
-                if (!parsed || typeof parsed !== 'object') {
-                    revisionData = {};
-                    return;
-                }
-                revisionData = {};
-
-                // Formato compacto v2: { v:2, r:[[idx, estado, accion], ...], k:{...legacyKeys} }
-                if (parsed.v === 2 && Array.isArray(parsed.r)) {
-                    parsed.r.forEach(entry => {
-                        const idx = Number(entry?.[0]);
-                        if (!Number.isFinite(idx) || idx <= 0) return;
-                        const key = `idx=${idx}`;
-                        const value = normalizeRevisionRecord({
-                            estado: entry?.[1],
-                            accion: entry?.[2],
-                            updated_at: ''
-                        });
-                        if (revisionRecordHasData(value)) {
-                            revisionData[key] = value;
-                        }
-                    });
-
-                    if (parsed.k && typeof parsed.k === 'object') {
-                        Object.entries(parsed.k).forEach(([key, value]) => {
-                            const normalized = normalizeRevisionRecord(value);
-                            if (revisionRecordHasData(normalized)) {
-                                revisionData[key] = normalized;
-                            }
-                        });
-                    }
-                    return;
-                }
-
-                // Compatibilidad con formato antiguo v1 (objeto plano)
-                Object.entries(parsed).forEach(([key, value]) => {
-                    const normalized = normalizeRevisionRecord(value);
-                    if (revisionRecordHasData(normalized)) {
-                        revisionData[key] = normalized;
-                    }
-                });
+                revisionData = normalizeRevisionDataObject(parsed);
             } catch (error) {
                 console.warn('No se pudo cargar revisión local:', error);
                 revisionData = {};
             }
         }
 
+        async function loadRevisionData() {
+            loadRevisionDataFromStorage();
+            await loadRevisionDataFromRemote();
+            saveRevisionDataToStorage();
+        }
+
         function saveRevisionDataToStorage() {
             try {
-                const compactRows = [];
-                const legacyKeys = {};
-
-                Object.entries(revisionData).forEach(([key, value]) => {
-                    const normalized = normalizeRevisionRecord(value);
-                    if (!revisionRecordHasData(normalized)) return;
-
-                    const idx = parseStableRevisionIndex(key);
-                    if (idx != null) {
-                        compactRows.push([idx, normalized.estado, normalized.accion]);
-                    } else {
-                        legacyKeys[key] = {
-                            estado: normalized.estado,
-                            accion: normalized.accion,
-                            updated_at: ''
-                        };
-                    }
-                });
-
-                compactRows.sort((a, b) => a[0] - b[0]);
-                const payload = { v: 2, r: compactRows, k: legacyKeys };
+                const payload = createRevisionRemotePayload();
                 localStorage.setItem(REVISION_STORAGE_KEY, JSON.stringify(payload));
+                scheduleRemoteRevisionSync();
             } catch (error) {
                 console.warn('No se pudo guardar revisión local:', error);
                 if (!revisionStorageErrorShown) {
@@ -2638,7 +2728,7 @@
                 sortAsc = true;
                 filters = {};
                 assignRevisionKeys(allData);
-                loadRevisionDataFromStorage();
+                await loadRevisionData();
                 applyRevisionDataToRows(allData);
 
                 // Cargar anchos de columnas del localStorage
