@@ -487,6 +487,22 @@
             background: var(--bg);
         }
 
+        #pageFilterInput {
+            width: 56px;
+            max-width: 56px;
+            text-align: center;
+            padding-left: 4px;
+            padding-right: 4px;
+        }
+
+        .page-nav-btn {
+            width: 30px;
+            padding: 6px 0;
+            font-size: 14px;
+            line-height: 1;
+            font-weight: 700;
+        }
+
         .view-toggle-inline {
             display: inline-flex;
             align-items: center;
@@ -832,7 +848,7 @@
             <a class="pill" href="qa_web.html">Web</a>
             <a class="pill" href="qa_web2.html">Web 2</a>
             <a class="pill" href="qa_lista.html">Lista</a>
-            <span class="pill active">Lista QA 02</span>
+            <span class="pill active">qa_milu</span>
             <a class="pill" href="qa_lista_agrupada.html">Agrupada</a>
         </div>
     </div>
@@ -859,10 +875,10 @@
                         <select id="bookFilterSelect" class="filter-select" data-filter="book" style="max-width:200px;">
                             <option value="">Todos los libros</option>
                         </select>
-                        <input id="pageFilterInput" class="filter-input" data-filter="page" placeholder="Página"
-                            style="max-width:120px;">
-                        <button id="prevBookPageBtn">Página anterior del libro</button>
-                        <button id="nextBookPageBtn">Página siguiente del libro</button>
+                        <button id="prevBookPageBtn" class="page-nav-btn" title="Página anterior del libro" aria-label="Página anterior">&#9664;</button>
+                        <input id="pageFilterInput" class="filter-input" data-filter="page" placeholder="Pg"
+                            inputmode="numeric">
+                        <button id="nextBookPageBtn" class="page-nav-btn" title="Página siguiente del libro" aria-label="Página siguiente">&#9654;</button>
                         <button id="importRevisionBtn">Importar revisión</button>
                         <button id="exportRevisionBtn">Exportar revisión</button>
                         <button id="clearFiltersBtn">Limpiar filtros</button>
@@ -947,6 +963,9 @@
                                 <th style="width:150px" data-sort="ruta_foto">Ruta Foto</th>
                                 <th style="width:140px" data-sort="esquemas_circulos">Esquemas Circulos</th>
                                 <th style="width:160px" data-sort="ruta_esquemas_pos">Ruta Esquemas Pos</th>
+                                <th style="width:160px" data-sort="designation_final">Designation Final</th>
+                                <th style="width:140px" data-sort="measurement_final">Measurement Final</th>
+                                <th style="width:110px" data-sort="weight_final">Weight Final</th>
                             </tr>
                             <tr class="filter-row">
                                 <th><input class="filter-input" data-filter="ID" placeholder="filtrar"></th>
@@ -1053,11 +1072,16 @@
                                 </th>
                                 <th><input class="filter-input" data-filter="ruta_esquemas_pos" placeholder="filtrar">
                                 </th>
+                                <th><input class="filter-input" data-filter="designation_final" placeholder="filtrar">
+                                </th>
+                                <th><input class="filter-input" data-filter="measurement_final" placeholder="filtrar">
+                                </th>
+                                <th><input class="filter-input" data-filter="weight_final" placeholder="filtrar"></th>
                             </tr>
                         </thead>
                         <tbody id="tbody">
                             <tr>
-                                <td colspan="46" class="loading">Cargando datos...</td>
+                                <td colspan="53" class="loading">Cargando datos...</td>
                             </tr>
                         </tbody>
                     </table>
@@ -1141,9 +1165,9 @@
         ];
         const PDF_COLUMN_ORDER = [
             0, 1, 2, 3, 4, 5, 6,
-            7, 8, 11, 13,
-            15, 16, 18, 17,
-            22, 30
+            7, 8, 11, 50,
+            15, 16, 18, 52,
+            51, 30
         ];
         const REVISION_STORAGE_KEY = 'milu_revision_data_v1';
         let revisionData = {};
@@ -1171,6 +1195,35 @@
         function val(row, key, defaultVal = "—") {
             const v = row[key];
             return (v != null && String(v).trim() !== "") ? v : defaultVal;
+        }
+
+        function isGesaRow(row) {
+            return String(row?.gesa || '').trim().toUpperCase() === 'SI';
+        }
+
+        function getRowValueForColumn(row, key, defaultVal = '—') {
+            switch (key) {
+                case 'designation_final':
+                    return isGesaRow(row)
+                        ? val(row, 'designation_gesa', defaultVal)
+                        : val(row, 'DESIGNATION', defaultVal);
+                case 'measurement_final':
+                    return isGesaRow(row)
+                        ? val(row, 'dimensions_gesa', defaultVal)
+                        : val(row, 'MEASUREMENT / STANDARD', defaultVal);
+                case 'weight_final': {
+                    if (!isGesaRow(row)) {
+                        return val(row, 'WEIGHT', defaultVal);
+                    }
+
+                    const weightValue = String(row?.weight_gesa ?? '').trim();
+                    const unitsValue = String(row?.units ?? '').trim();
+                    if (!weightValue) return defaultVal;
+                    return unitsValue ? `${weightValue} ${unitsValue}` : weightValue;
+                }
+                default:
+                    return val(row, key, defaultVal);
+            }
         }
 
         function getCurrentColumnCount() {
@@ -1647,7 +1700,7 @@
             return {
                 meta: {
                     exported_at: new Date().toISOString(),
-                    source: 'qa_lista_02.html',
+                    source: 'qa_milu.html',
                     version: 1,
                     rows: Object.keys(revisionData).length
                 },
@@ -1756,8 +1809,8 @@
             }
 
             return [...data].sort((a, b) => {
-                const aVal = val(a, key, '').toString().toLowerCase();
-                const bVal = val(b, key, '').toString().toLowerCase();
+                const aVal = getRowValueForColumn(a, key, '').toString().toLowerCase();
+                const bVal = getRowValueForColumn(b, key, '').toString().toLowerCase();
                 if (asc) {
                     return aVal.localeCompare(bVal, undefined, { numeric: true });
                 } else {
@@ -1979,8 +2032,13 @@
                             }
                             rowValue = val(row, 'Source Page', '').toString().toLowerCase();
                             break;
+                        case 'designation_final':
+                        case 'measurement_final':
+                        case 'weight_final':
+                            rowValue = getRowValueForColumn(row, key, '').toString().toLowerCase();
+                            break;
                         default:
-                            rowValue = val(row, key, "").toString().toLowerCase();
+                            rowValue = getRowValueForColumn(row, key, "").toString().toLowerCase();
                             break;
                     }
 
@@ -2246,7 +2304,7 @@
         <span class="stat ok"><b>${withImages}</b> con imágenes</span>
         <span class="stat"><b>${withGesa}</b> con GESA</span>
         <span class="stat warn"><b>${superseded}</b> superseded</span>
-        <span class="stat" style="margin-left:auto; color:#64748b; font-size:11px;" title="Archivos de origen cargados">📄 df_116_bom.json · MILU_New_v507.json · MILU_Superseded_v507.json · publication_map.json · product_export_v507.json</span>
+                <span class="stat" style="margin-left:auto; color:#64748b; font-size:11px;" title="JSON base de esta vista">📄 df_116_bom.json</span>
       `;
 
             tbody.innerHTML = pageData.map(row => {
@@ -2270,6 +2328,9 @@
                 const fgFgs = val(row, "FG/FGS");
                 const measurementStandard = val(row, "MEASUREMENT / STANDARD");
                 const dimensionsGesa = val(row, "dimensions_gesa");
+                const designationFinal = getRowValueForColumn(row, 'designation_final');
+                const measurementFinal = getRowValueForColumn(row, 'measurement_final');
+                const weightFinal = getRowValueForColumn(row, 'weight_final');
                 const bomNo = val(row, "BOM-No.");
                 const model = val(row, "model");
                 const pageNum = val(row, "Source Page");
@@ -2420,6 +2481,9 @@
           <td title="${escapeHtml(rutaFoto)}">${escapeHtml(rutaFoto)}</td>
           <td title="${escapeHtml(esquemasCirculos)}">${escapeHtml(esquemasCirculos)}</td>
           <td title="${escapeHtml(rutaEsquemasPos)}">${escapeHtml(rutaEsquemasPos)}</td>
+                    <td class="${classGesaDesignation}" title="${escapeHtml(designationFinal)}">${escapeHtml(designationFinal)}</td>
+                    <td class="${classDimensionsGesa}" title="${escapeHtml(measurementFinal)}">${escapeHtml(measurementFinal)}</td>
+                    <td class="${classWeightGesa}" title="${escapeHtml(weightFinal)}">${escapeHtml(weightFinal)}</td>
         </tr>`;
             }).join("");
 
@@ -2628,6 +2692,14 @@
             return Boolean(target.closest('[contenteditable="true"]'));
         }
 
+        function triggerBulkRevOkFiltered() {
+            const scopeSelect = $('bulkScopeSelect');
+            if (scopeSelect) {
+                scopeSelect.value = 'filtered';
+            }
+            applyBulkQuickMode('revok');
+        }
+
         // Event listeners
         const prevBtn = $("prevBtn");
         const nextBtn = $("nextBtn");
@@ -2680,7 +2752,14 @@
 
         document.addEventListener('keydown', (event) => {
             if (event.altKey || event.ctrlKey || event.metaKey || event.shiftKey) return;
+            if (event.repeat) return;
             if (isTypingContext(event.target)) return;
+
+            if (event.key.toLowerCase() === 'v') {
+                event.preventDefault();
+                triggerBulkRevOkFiltered();
+                return;
+            }
 
             if (event.key === 'ArrowRight') {
                 event.preventDefault();
