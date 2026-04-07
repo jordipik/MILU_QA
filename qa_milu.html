@@ -875,10 +875,12 @@
                         <select id="bookFilterSelect" class="filter-select" data-filter="book" style="max-width:200px;">
                             <option value="">Todos los libros</option>
                         </select>
-                        <button id="prevBookPageBtn" class="page-nav-btn" title="Página anterior del libro" aria-label="Página anterior">&#9664;</button>
+                        <button id="prevBookPageBtn" class="page-nav-btn" title="Página anterior del libro"
+                            aria-label="Página anterior">&#9664;</button>
                         <input id="pageFilterInput" class="filter-input" data-filter="page" placeholder="Pg"
                             inputmode="numeric">
-                        <button id="nextBookPageBtn" class="page-nav-btn" title="Página siguiente del libro" aria-label="Página siguiente">&#9654;</button>
+                        <button id="nextBookPageBtn" class="page-nav-btn" title="Página siguiente del libro"
+                            aria-label="Página siguiente">&#9654;</button>
                         <button id="importRevisionBtn">Importar revisión</button>
                         <button id="exportRevisionBtn">Exportar revisión</button>
                         <button id="clearFiltersBtn">Limpiar filtros</button>
@@ -1170,6 +1172,16 @@
             51, 30
         ];
         const REVISION_STORAGE_KEY = 'milu_revision_data_v1';
+        const ENGINE_JSON_FILES = [
+            'engine_12V4000M40A.json',
+            'engine_12V4000M53.json',
+            'engine_16V4000M61.json',
+            'engine_16V4000M73.json',
+            'engine_16V4000M73L.json',
+            'engine_16V4000M90.json',
+            'engine_20V4000M93.json',
+            'engine_20V4000M93L.json'
+        ];
         let revisionData = {};
         let revisionStorageErrorShown = false;
 
@@ -1183,6 +1195,7 @@
         let currentPdfPageNumber = 0;
         let currentPdfRenderTask = null;
         let currentPdfRequestToken = 0;
+        let mainDataSourceLabel = 'engine_*.json';
 
         if (window.pdfjsLib) {
             window.pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
@@ -1777,6 +1790,51 @@
             }
         }
 
+        function inferEngineModelFromFileName(fileName) {
+            return String(fileName || '')
+                .replace(/^engine_/i, '')
+                .replace(/\.json$/i, '')
+                .trim();
+        }
+
+        function normalizeEngineModel(row, fallbackEngineModel) {
+            const existing = String(row?.engine_model ?? '').trim();
+            const normalized = existing || fallbackEngineModel;
+            return {
+                ...row,
+                engine_model: normalized
+            };
+        }
+
+        async function loadPartitionedEngineData() {
+            let loadedFileCount = 0;
+
+            const chunks = await Promise.all(ENGINE_JSON_FILES.map(async fileName => {
+                try {
+                    const data = await fetchJsonSafe(fileName);
+                    if (!Array.isArray(data)) {
+                        console.warn(`Se ignora ${fileName}: no contiene un array`);
+                        return [];
+                    }
+
+                    loadedFileCount += 1;
+                    const fallbackEngineModel = inferEngineModelFromFileName(fileName);
+                    return data.map(row => normalizeEngineModel(row, fallbackEngineModel));
+                } catch (error) {
+                    console.warn(`No se pudo cargar ${fileName}:`, error);
+                    return [];
+                }
+            }));
+
+            const merged = chunks.flat();
+            if (!merged.length) {
+                throw new Error(`No se pudo cargar ningún archivo engine_*.json (${ENGINE_JSON_FILES.length} intentados)`);
+            }
+
+            mainDataSourceLabel = `engine_*.json (${loadedFileCount}/${ENGINE_JSON_FILES.length})`;
+            return merged;
+        }
+
         function sortData(data, key, asc) {
             if (!key) return data;
             if (key === 'book_page_pos') {
@@ -2304,7 +2362,7 @@
         <span class="stat ok"><b>${withImages}</b> con imágenes</span>
         <span class="stat"><b>${withGesa}</b> con GESA</span>
         <span class="stat warn"><b>${superseded}</b> superseded</span>
-                <span class="stat" style="margin-left:auto; color:#64748b; font-size:11px;" title="JSON base de esta vista">📄 df_116_bom.json</span>
+                <span class="stat" style="margin-left:auto; color:#64748b; font-size:11px;" title="JSON base de esta vista">📄 ${escapeHtml(mainDataSourceLabel)}</span>
       `;
 
             tbody.innerHTML = pageData.map(row => {
@@ -2525,14 +2583,14 @@
                 if (isFileProtocol) {
                     const columns = getCurrentColumnCount();
                     $("tbody").innerHTML = `<tr><td colspan="${columns}" class="error">Estás abriendo el archivo directamente (file://). Intenta con servidor local.</td></tr>` +
-                        `<tr><td colspan="${columns}" class="error">Ejecuta un servidor local (python -m http.server 8000) o usa Ejecutar localhost.bat para que fetch() cargue qa_index.json.</td></tr>`;
+                        `<tr><td colspan="${columns}" class="error">Ejecuta un servidor local (python -m http.server 8000) o usa Ejecutar localhost.bat para que fetch() cargue los engine_*.json.</td></tr>`;
                 }
 
                 $("stats").innerHTML = '<span class="stat">Cargando datos...</span>';
                 $("pagination").style.display = 'none';
 
-                // Cargar datos principales desde df_116_bom.json
-                allData = await fetchJsonSafe('df_116_bom.json');
+                // Cargar datos principales desde archivos particionados por engine_model
+                allData = await loadPartitionedEngineData();
                 if (!Array.isArray(allData)) throw new Error("Los datos no son un array");
 
                 // Cargar MILU_New_v507.json
@@ -2605,7 +2663,7 @@
                 }
 
                 if (!Array.isArray(allData) || allData.length === 0) {
-                    $("tbody").innerHTML = `<tr><td colspan="${getCurrentColumnCount()}" class="error">No se encontró información en df_116_bom.json</td></tr>`;
+                    $("tbody").innerHTML = `<tr><td colspan="${getCurrentColumnCount()}" class="error">No se encontró información en los archivos engine_*.json</td></tr>`;
                     $("stats").innerHTML = '<span class="stat">0 total</span>';
                     $("pagination").style.display = 'none';
                     return;

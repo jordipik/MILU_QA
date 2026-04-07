@@ -463,9 +463,20 @@
         let filteredData = [];
         let currentPage = 1;
         const pageSize = 50;
+        const ENGINE_JSON_FILES = [
+            'engine_12V4000M40A.json',
+            'engine_12V4000M53.json',
+            'engine_16V4000M61.json',
+            'engine_16V4000M73.json',
+            'engine_16V4000M73L.json',
+            'engine_16V4000M90.json',
+            'engine_20V4000M93.json',
+            'engine_20V4000M93L.json'
+        ];
         let sortKey = null;
         let sortAsc = true;
         let filters = {};
+        let mainDataSourceLabel = 'engine_*.json';
 
         function escapeHtml(s) {
             return String(s ?? "").replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;").replace(/'/g, "&#039;");
@@ -495,6 +506,51 @@
             } catch (error) {
                 throw new Error(`No se pudo cargar ${resourceName}: ${error.message}`);
             }
+        }
+
+        function inferEngineModelFromFileName(fileName) {
+            return String(fileName || '')
+                .replace(/^engine_/i, '')
+                .replace(/\.json$/i, '')
+                .trim();
+        }
+
+        function normalizeEngineModel(row, fallbackEngineModel) {
+            const existing = String(row?.engine_model ?? '').trim();
+            const normalized = existing || fallbackEngineModel;
+            return {
+                ...row,
+                engine_model: normalized
+            };
+        }
+
+        async function loadPartitionedEngineData() {
+            let loadedFileCount = 0;
+
+            const chunks = await Promise.all(ENGINE_JSON_FILES.map(async fileName => {
+                try {
+                    const data = await fetchJsonSafe(fileName);
+                    if (!Array.isArray(data)) {
+                        console.warn(`Se ignora ${fileName}: no contiene un array`);
+                        return [];
+                    }
+
+                    loadedFileCount += 1;
+                    const fallbackEngineModel = inferEngineModelFromFileName(fileName);
+                    return data.map(row => normalizeEngineModel(row, fallbackEngineModel));
+                } catch (error) {
+                    console.warn(`No se pudo cargar ${fileName}:`, error);
+                    return [];
+                }
+            }));
+
+            const merged = chunks.flat();
+            if (!merged.length) {
+                throw new Error(`No se pudo cargar ningún archivo engine_*.json (${ENGINE_JSON_FILES.length} intentados)`);
+            }
+
+            mainDataSourceLabel = `engine_*.json (${loadedFileCount}/${ENGINE_JSON_FILES.length})`;
+            return merged;
         }
 
         function getPnKey(row) {
@@ -703,6 +759,7 @@
         <span class="stat"><b>${total}</b> PN distintos</span>
         <span class="stat warn"><b>${repeated.length}</b> PN repetidos</span>
         <span class="stat"><b>${repeatedRows}</b> registros en PN repetidos</span>
+                <span class="stat" style="margin-left:auto; color:#64748b; font-size:11px;" title="JSON base de esta vista">📄 ${escapeHtml(mainDataSourceLabel)}</span>
       `;
 
             tbody.innerHTML = pageData.map(group => {
@@ -803,12 +860,12 @@
                 $("stats").innerHTML = '<span class="stat">Cargando datos...</span>';
                 $("pagination").style.display = 'none';
 
-                // Cargar datos principales
-                allData = await fetchJsonSafe('df_116_bom.json');
+                // Cargar datos principales desde archivos particionados por engine_model
+                allData = await loadPartitionedEngineData();
                 if (!Array.isArray(allData)) throw new Error("Los datos no son un array");
 
                 if (!Array.isArray(allData) || allData.length === 0) {
-                    $("tbody").innerHTML = '<tr><td colspan="10" class="error">No se encontró información en df_116_bom.json</td></tr>';
+                    $("tbody").innerHTML = '<tr><td colspan="10" class="error">No se encontró información en los archivos engine_*.json</td></tr>';
                     $("stats").innerHTML = '<span class="stat">0 total</span>';
                     $("pagination").style.display = 'none';
                     return;
