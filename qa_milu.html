@@ -5,6 +5,9 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>MILU • Lista QA 02 (df_116_bom)</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@500;600;700;800&display=swap" rel="stylesheet">
     <style>
         :root {
             --bg: #f7f8fb;
@@ -271,6 +274,12 @@
             transition: all 0.2s ease;
         }
 
+        tbody tr.row-selected {
+            outline: 2px solid var(--acc);
+            outline-offset: -2px;
+            background: rgba(37, 99, 235, 0.08);
+        }
+
         /* Estilos para celdas coloreadas */
         td.cell-gesa {
             background-color: rgba(34, 197, 94, 0.452);
@@ -431,18 +440,18 @@
         }
 
         .filter-row th {
-            padding: 8px 12px;
-            background: var(--bg);
-            border-bottom: 1px solid var(--line);
+            padding: 5px 6px;
+            background: transparent;
+            border-bottom: 1px solid #e2e8f0;
         }
 
         .filter-input {
             width: 100%;
-            padding: 4px 6px;
-            border: 1px solid var(--line);
-            border-radius: 4px;
-            font-size: 12px;
-            background: var(--card);
+            padding: 3px 8px;
+            border: 1px solid #dbe2ea;
+            border-radius: 999px;
+            font-size: 11px;
+            background: #f8fafc;
             color: var(--txt);
         }
 
@@ -454,11 +463,11 @@
 
         .filter-select {
             width: 100%;
-            padding: 4px 6px;
-            border: 1px solid var(--line);
-            border-radius: 4px;
-            font-size: 12px;
-            background: var(--card);
+            padding: 3px 8px;
+            border: 1px solid #dbe2ea;
+            border-radius: 999px;
+            font-size: 11px;
+            background: #f8fafc;
             color: var(--txt);
         }
 
@@ -469,18 +478,180 @@
         }
 
         .clear-filters {
-            margin-bottom: 16px;
-            text-align: right;
+            margin: 0 0 12px;
+            padding: 10px;
+            border: 1px solid var(--line);
+            border-radius: 10px;
+            background: linear-gradient(180deg, #f8fafc 0%, #ffffff 100%);
+        }
+
+        .toolbar-primary,
+        .toolbar-secondary {
+            display: flex;
+            gap: 6px;
+            flex-wrap: wrap;
+            align-items: center;
+        }
+
+        .toolbar-primary {
+            align-items: stretch;
+        }
+
+        .toolbar-pane {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            padding: 6px 8px;
+            border: 1px solid #dbe2ea;
+            border-radius: 10px;
+            background: #ffffff;
+            min-height: 42px;
+        }
+
+        .toolbar-pane-book {
+            flex: 3 1 520px;
+            display: grid;
+            grid-template-columns: 140px minmax(300px, 1fr);
+            gap: 8px;
+            align-items: stretch;
+        }
+
+        .book-pane-left,
+        .book-pane-right {
+            display: flex;
+            flex-direction: column;
+            gap: 6px;
+            min-width: 0;
+        }
+
+        .book-pane-right-top {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+
+        .book-pane-right-bottom {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+
+        .book-main-select {
+            min-width: 220px;
+            max-width: 320px;
+            font-size: 12px;
+            font-weight: 700;
+        }
+
+        #sortBookPagePosBtn {
+            text-align: left;
+            padding-left: 10px;
+        }
+
+        .toolbar-pane-esq-images {
+            flex: 2.4 1 520px;
+            align-items: stretch;
+            min-height: 148px;
+        }
+
+        .toolbar-pane-pos-preview {
+            flex: 1.2 1 260px;
+            align-items: stretch;
+            min-height: 148px;
+        }
+
+        .toolbar-pane-pos-actions {
+            flex: 0 0 132px;
+            justify-content: stretch;
+            align-items: stretch;
+            flex-direction: column;
+            gap: 6px;
+        }
+
+        .toolbar-pane-pos-actions .bulk-edit {
+            margin-top: 2px;
+            width: 100%;
+            justify-content: center;
+        }
+
+        .toolbar-pane-pos-actions .bulk-select {
+            width: 100%;
+            min-width: 0;
+            height: 30px;
+        }
+
+        .toolbar-pane-pos-actions .bulk-quick-actions {
+            width: 100%;
+            justify-content: center;
+            flex-wrap: wrap;
+            gap: 4px;
+        }
+
+        .pos-top-inline {
+            display: flex;
+            flex-direction: column;
+            gap: 4px;
+            width: 100%;
+            min-width: 0;
+        }
+
+        .pos-top-meta {
+            font-size: 10px;
+            color: var(--mut);
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            display: none;
+        }
+
+        .pos-top-inline .schemas-images-strip {
+            min-height: 130px;
+            height: 100%;
+            align-items: stretch;
+        }
+
+        .pos-top-thumb {
+            width: 100%;
+            max-width: none;
+            height: 100%;
+        }
+
+        .pos-top-thumb img {
+            width: 100%;
+            height: 100%;
+            min-height: 130px;
+            border-radius: 8px;
+            object-fit: contain;
+        }
+
+        .toolbar-pane .schemas-inline,
+        .toolbar-pane .schemas-images-inline {
+            border: none;
+            background: transparent;
+            padding: 0;
+            min-height: 0;
+            max-width: none;
+            width: 100%;
+        }
+
+        .toolbar-secondary {
+            margin-top: 6px;
+        }
+
+        .toolbar-pane-pos-actions button {
+            width: 100%;
         }
 
         .clear-filters button {
-            padding: 6px 12px;
-            border: 1px solid var(--line);
+            height: 30px;
+            padding: 0 10px;
+            border: 1px solid #d7dee7;
             background: var(--card);
             color: var(--txt);
-            border-radius: 6px;
+            border-radius: 999px;
             cursor: pointer;
-            font-size: 12px;
+            font-size: 11px;
+            font-weight: 600;
         }
 
         .clear-filters button:hover {
@@ -488,19 +659,224 @@
         }
 
         #pageFilterInput {
-            width: 56px;
-            max-width: 56px;
+            width: 64px;
+            max-width: 64px;
             text-align: center;
             padding-left: 4px;
             padding-right: 4px;
+            height: 30px;
         }
 
         .page-nav-btn {
             width: 30px;
+            height: 30px;
             padding: 6px 0;
             font-size: 14px;
             line-height: 1;
             font-weight: 700;
+        }
+
+        #bookFilterSelect.book-main-select {
+            height: 30px;
+        }
+
+        .schemas-inline {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            max-width: 420px;
+            min-height: 28px;
+            padding: 4px 8px;
+            border: 1px solid var(--line);
+            border-radius: 8px;
+            background: var(--card);
+            font-size: 11px;
+            color: var(--mut);
+            line-height: 1.2;
+        }
+
+        .schemas-inline-label {
+            font-weight: 700;
+            color: var(--txt);
+            white-space: nowrap;
+        }
+
+        .schemas-inline-list {
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+        }
+
+        .schemas-images-inline {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            max-width: min(72vw, 900px);
+            min-height: 44px;
+            padding: 4px 8px;
+            border: 1px solid var(--line);
+            border-radius: 8px;
+            background: var(--card);
+        }
+
+        .schemas-images-strip {
+            display: flex;
+            gap: 6px;
+            align-items: center;
+            overflow-x: auto;
+            max-width: 100%;
+            padding-bottom: 2px;
+        }
+
+        .schema-thumb {
+            width: 140px;
+            flex: 0 0 auto;
+            text-decoration: none;
+            color: inherit;
+        }
+
+        .schema-thumb img {
+            width: 140px;
+            height: 92px;
+            object-fit: contain;
+            border: 1px solid var(--line);
+            border-radius: 6px;
+            background: #fff;
+            display: block;
+        }
+
+        .schema-thumb.large {
+            width: 170px;
+        }
+
+        .schema-thumb.large img {
+            width: 170px;
+            height: 112px;
+            border-radius: 10px;
+        }
+
+        .schemas-images-empty {
+            font-size: 11px;
+            color: var(--mut);
+            white-space: nowrap;
+        }
+
+        .toolbar-pane-esq-images .schemas-images-inline,
+        .toolbar-pane-pos-preview .pos-top-inline {
+            height: 100%;
+        }
+
+        .toolbar-pane-esq-images .schemas-images-strip,
+        .toolbar-pane-pos-preview .schemas-images-strip {
+            align-items: stretch;
+            height: 100%;
+        }
+
+        .toolbar-pane-esq-images .schema-thumb.large,
+        .toolbar-pane-pos-preview .schema-thumb {
+            height: 100%;
+        }
+
+        .toolbar-pane-esq-images .schema-thumb.large img,
+        .toolbar-pane-pos-preview .schema-thumb img {
+            width: 100%;
+            height: 100%;
+            min-height: 130px;
+        }
+
+        .toolbar-pane-esq-images .schemas-images-empty,
+        .toolbar-pane-pos-preview .schemas-images-empty {
+            display: none;
+        }
+
+        @media (max-width: 980px) {
+            .schemas-images-inline {
+                max-width: 100%;
+                width: 100%;
+            }
+
+            .toolbar-pane {
+                flex: 1 1 100%;
+            }
+
+            .toolbar-pane-book {
+                grid-template-columns: 1fr;
+            }
+
+            .book-main-select {
+                max-width: 100%;
+            }
+
+            .pos-top-thumb {
+                width: 132px;
+            }
+
+            .pos-top-thumb img {
+                width: 100%;
+                height: 88px;
+            }
+
+            .toolbar-pane-pos-actions {
+                flex: 1 1 100%;
+            }
+
+            .selected-pos-panel .schema-thumb {
+                width: 132px;
+            }
+
+            .selected-pos-panel .schema-thumb img {
+                width: 132px;
+                height: 88px;
+            }
+        }
+
+        .selected-pos-panel {
+            display: none;
+            margin-top: 10px;
+            padding: 10px;
+            border: 1px solid var(--line);
+            border-radius: 10px;
+            background: var(--card);
+        }
+
+        .selected-pos-panel .schemas-images-strip {
+            gap: 10px;
+            padding-bottom: 4px;
+        }
+
+        .selected-pos-panel .schema-thumb {
+            width: 180px;
+        }
+
+        .selected-pos-panel .schema-thumb img {
+            width: 180px;
+            height: 120px;
+            border-radius: 10px;
+            border-color: #cfd8e3;
+        }
+
+        .selected-pos-panel .schema-thumb span {
+            font-size: 11px;
+            margin-top: 4px;
+        }
+
+        .selected-pos-head {
+            display: flex;
+            gap: 10px;
+            align-items: baseline;
+            flex-wrap: wrap;
+            margin-bottom: 8px;
+        }
+
+        .selected-pos-title {
+            font-size: 12px;
+            font-weight: 700;
+            color: var(--txt);
+        }
+
+        .selected-pos-meta {
+            font-size: 11px;
+            color: var(--mut);
         }
 
         .view-toggle-inline {
@@ -523,12 +899,6 @@
             flex-wrap: wrap;
             align-items: center;
             margin-top: 8px;
-        }
-
-        .bulk-label {
-            font-size: 12px;
-            color: var(--mut);
-            font-weight: 600;
         }
 
         .bulk-select {
@@ -746,11 +1116,11 @@
 
         .revision-select {
             width: 100%;
-            min-width: 90px;
-            padding: 3px 4px;
+            min-width: 0;
+            padding: 2px 3px;
             border: 1px solid var(--line);
             border-radius: 4px;
-            font-size: 11px;
+            font-size: 10px;
             /* transparent para que el fondo del <td> sea visible en todos los navegadores */
             background: transparent;
             color: inherit;
@@ -763,9 +1133,9 @@
         }
 
         .revision-cell {
-            padding: 2px 2px 2px 5px;
+            padding: 1px 1px 1px 3px;
             transition: background-color 0.15s ease, border-left-color 0.15s ease;
-            border-left: 3px solid transparent;
+            border-left: 2px solid transparent;
         }
 
         /* vacío */
@@ -831,6 +1201,510 @@
             color: #7f1d1d;
         }
 
+        /* Refresh visual de la zona superior */
+        body {
+            font-family: "Manrope", "Segoe UI", sans-serif;
+            background:
+                radial-gradient(circle at 0% 0%, rgba(14, 165, 233, 0.12), transparent 44%),
+                radial-gradient(circle at 100% 12%, rgba(99, 102, 241, 0.08), transparent 42%),
+                linear-gradient(180deg, #f2f6ff 0%, #ecf2fa 100%);
+        }
+
+        .topbar {
+            border-bottom: none;
+            padding: 0;
+            background: transparent;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .topbar-modern {
+            margin: 14px 20px 10px;
+            padding: 16px 18px;
+            border-radius: 18px;
+            border: 1px solid rgba(191, 204, 223, 0.6);
+            background: linear-gradient(120deg, rgba(255, 255, 255, 0.94) 0%, rgba(242, 247, 255, 0.88) 100%);
+            box-shadow: 0 14px 30px rgba(15, 23, 42, 0.08);
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 14px;
+            flex-wrap: wrap;
+        }
+
+        .brand-chip {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            padding: 4px 10px;
+            border-radius: 999px;
+            border: 1px solid #c7d2fe;
+            background: rgba(99, 102, 241, 0.1);
+            color: #4338ca;
+            font-size: 11px;
+            font-weight: 800;
+            letter-spacing: 0.04em;
+            text-transform: uppercase;
+        }
+
+        .brand-title {
+            margin: 6px 0 2px;
+            font-size: 24px;
+            font-weight: 800;
+            letter-spacing: -0.02em;
+            color: #0b1220;
+        }
+
+        .brand-sub {
+            margin: 0;
+            font-size: 12px;
+            color: #4f5f79;
+            max-width: 620px;
+        }
+
+        .nav-modern {
+            gap: 8px;
+            background: rgba(255, 255, 255, 0.88);
+            border: 1px solid #dae3f0;
+            border-radius: 999px;
+            padding: 6px;
+        }
+
+        .nav-modern .pill {
+            border-radius: 999px;
+            padding: 8px 14px;
+            font-size: 12px;
+            font-weight: 700;
+            color: #1e293b;
+            transition: all 0.2s ease;
+        }
+
+        .nav-modern .pill:hover {
+            background: rgba(148, 163, 184, 0.14);
+            text-decoration: none;
+        }
+
+        .nav-modern .pill.active {
+            background: linear-gradient(135deg, #0ea5e9 0%, #3b82f6 100%);
+            color: #fff;
+            box-shadow: 0 8px 16px rgba(14, 116, 211, 0.24);
+        }
+
+        .content {
+            padding: 10px 20px 20px;
+        }
+
+        .card {
+            border: 1px solid rgba(187, 198, 216, 0.55);
+            box-shadow: 0 16px 28px rgba(15, 23, 42, 0.08);
+            border-radius: 16px;
+        }
+
+        .stats {
+            margin: 14px 14px 10px;
+            gap: 10px;
+        }
+
+        .stat {
+            border-radius: 999px;
+            border-color: #d9e1ee;
+            background: #f8fbff;
+            font-weight: 600;
+        }
+
+        .clear-filters.modern-control-deck {
+            margin: 0 14px 12px;
+            padding: 10px;
+            border: 1px solid #d6e1ef;
+            border-radius: 16px;
+            background: linear-gradient(180deg, #f9fcff 0%, #f1f6fc 100%);
+            box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.7);
+        }
+
+        .deck-head {
+            display: flex;
+            justify-content: space-between;
+            align-items: baseline;
+            gap: 10px;
+            margin: 0 0 8px;
+            flex-wrap: wrap;
+        }
+
+        .deck-title {
+            margin: 0;
+            font-size: 14px;
+            font-weight: 800;
+            color: #0f172a;
+            letter-spacing: 0.01em;
+        }
+
+        .deck-subtitle {
+            margin: 0;
+            font-size: 11px;
+            color: #5f6f88;
+        }
+
+        .toolbar-primary {
+            display: grid;
+            grid-template-columns: repeat(12, minmax(0, 1fr));
+            gap: 8px;
+        }
+
+        .toolbar-pane {
+            border: 1px solid #d7e1ef;
+            border-radius: 12px;
+            background: rgba(255, 255, 255, 0.9);
+            padding: 8px;
+            min-height: 0;
+            box-shadow: 0 6px 14px rgba(51, 65, 85, 0.07);
+            animation: deckRise 0.45s ease both;
+        }
+
+        .toolbar-pane-book {
+            grid-column: span 3;
+            display: grid;
+            grid-template-columns: minmax(0, 1fr);
+        }
+
+        .toolbar-pane-esq-images {
+            grid-column: span 4;
+            min-height: 222px;
+            border-color: #e4ebf5;
+        }
+
+        .toolbar-pane-pos-preview {
+            grid-column: span 5;
+            min-height: 306px;
+            border-color: #e4ebf5;
+        }
+
+        .toolbar-pane-pos-actions {
+            grid-column: span 1;
+            min-width: 132px;
+            display: none;
+        }
+
+        .toolbar-pane:nth-child(2) {
+            animation-delay: 0.05s;
+        }
+
+        .toolbar-pane:nth-child(3) {
+            animation-delay: 0.1s;
+        }
+
+        .toolbar-pane:nth-child(4) {
+            animation-delay: 0.15s;
+        }
+
+        .pane-label {
+            font-size: 10px;
+            text-transform: uppercase;
+            letter-spacing: 0.08em;
+            font-weight: 800;
+            color: #64748b;
+            margin: 0 0 6px;
+        }
+
+        .toolbar-pane-esq-images .pane-label,
+        .toolbar-pane-pos-preview .pane-label {
+            display: none;
+        }
+
+        .book-pane-left {
+            display: flex;
+            flex-direction: column;
+            gap: 6px;
+        }
+
+        .book-top-row {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 6px;
+            align-items: center;
+        }
+
+        .book-top-row .view-toggle-inline {
+            width: 100%;
+        }
+
+        .book-top-row .column-view-select {
+            width: 100%;
+            max-width: none;
+            min-width: 0;
+            height: 30px;
+        }
+
+        .book-pane-right {
+            gap: 6px;
+        }
+
+        .book-pane-right-bottom {
+            gap: 6px;
+        }
+
+        .book-pane-actions {
+            display: grid;
+            grid-template-columns: repeat(3, minmax(0, 1fr));
+            gap: 6px;
+            margin-top: 2px;
+        }
+
+        .book-pane-actions .bulk-edit {
+            grid-column: 1 / -1;
+            margin-top: 2px;
+            padding-top: 6px;
+            border-top: 1px dashed #d7e1ef;
+            gap: 6px;
+        }
+
+        .book-pane-actions .bulk-select {
+            width: 100%;
+            min-width: 0;
+            height: 30px;
+            border-radius: 8px;
+            font-size: 10px;
+        }
+
+        .book-pane-actions .bulk-quick-actions {
+            width: 100%;
+            justify-content: flex-start;
+            gap: 5px;
+            flex-wrap: wrap;
+        }
+
+        .modern-control-deck button,
+        .modern-control-deck select,
+        .modern-control-deck input {
+            border: 1px solid #cdd9ea;
+            border-radius: 8px;
+            background: #ffffff;
+            color: #102038;
+            font-size: 11px;
+            font-weight: 600;
+            min-height: 30px;
+        }
+
+        .modern-control-deck button {
+            cursor: pointer;
+            transition: transform 0.14s ease, box-shadow 0.16s ease;
+        }
+
+        .modern-control-deck button:hover {
+            transform: translateY(-1px);
+            box-shadow: 0 6px 14px rgba(15, 23, 42, 0.1);
+        }
+
+        #sortBookPagePosBtn {
+            background: linear-gradient(135deg, #e0f2fe 0%, #dbeafe 100%);
+            border-color: #b8d6f8;
+            color: #0c4a6e;
+            font-weight: 800;
+            text-align: center;
+            padding-left: 8px;
+        }
+
+        #importRevisionBtn {
+            background: linear-gradient(135deg, #dbeafe 0%, #eff6ff 100%);
+            color: #1e3a8a;
+            border-color: #bfdbfe;
+            font-weight: 800;
+        }
+
+        #exportRevisionBtn {
+            background: linear-gradient(135deg, #dcfce7 0%, #f0fdf4 100%);
+            color: #166534;
+            border-color: #bbf7d0;
+            font-weight: 800;
+        }
+
+        #clearFiltersBtn {
+            background: linear-gradient(135deg, #ffe4e6 0%, #fff1f2 100%);
+            color: #9f1239;
+            border-color: #fecdd3;
+            font-weight: 800;
+        }
+
+        .pos-top-meta {
+            display: none;
+            font-size: 10px;
+            font-weight: 600;
+            margin-bottom: 2px;
+        }
+
+        .schemas-images-inline {
+            min-height: 0;
+            padding: 0;
+            border-radius: 8px;
+            border-color: transparent;
+            background: transparent;
+        }
+
+        .toolbar-pane-esq-images .schemas-images-strip {
+            min-height: 182px;
+            height: 182px;
+            display: flex;
+            flex-direction: row;
+            align-items: center;
+            justify-content: flex-start;
+            overflow-y: hidden;
+            overflow-x: auto;
+            padding-bottom: 2px;
+            gap: 8px;
+        }
+
+        .toolbar-pane-pos-preview .schemas-images-strip,
+        .pos-top-inline .schemas-images-strip {
+            min-height: 270px;
+            height: 270px;
+            align-items: center;
+            justify-content: center;
+            overflow: hidden;
+        }
+
+        .toolbar-pane-esq-images .schema-thumb.large {
+            width: 252px;
+            max-width: 252px;
+            flex: 0 0 auto;
+        }
+
+        .toolbar-pane-pos-preview .schema-thumb,
+        .pos-top-thumb {
+            width: 100%;
+            max-width: 520px;
+        }
+
+        .toolbar-pane-esq-images .schema-thumb.large img {
+            width: 252px;
+            height: 148px;
+            min-height: 148px;
+            object-fit: contain;
+        }
+
+        .toolbar-pane-pos-preview .schema-thumb img,
+        .pos-top-thumb img {
+            width: 100%;
+            height: 270px;
+            min-height: 270px;
+            object-fit: contain;
+        }
+
+        .toolbar-pane-esq-images .schemas-images-empty,
+        .toolbar-pane-pos-preview .schemas-images-empty {
+            display: none;
+        }
+
+        .quick-action-btn {
+            width: 20px;
+            height: 20px;
+            border-width: 1px;
+            box-shadow: none;
+        }
+
+        @keyframes deckRise {
+            from {
+                opacity: 0;
+                transform: translateY(8px);
+            }
+
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        @media (max-width: 1280px) {
+            .toolbar-pane-book {
+                grid-column: span 4;
+            }
+
+            .toolbar-pane-esq-images {
+                grid-column: span 4;
+                min-height: 190px;
+            }
+
+            .toolbar-pane-pos-preview {
+                grid-column: span 4;
+                min-height: 250px;
+            }
+
+            .book-pane-actions {
+                grid-template-columns: 1fr 1fr 1fr;
+            }
+        }
+
+        @media (max-width: 980px) {
+            .topbar-modern {
+                margin: 10px 12px 8px;
+                padding: 14px;
+            }
+
+            .brand-title {
+                font-size: 20px;
+            }
+
+            .content {
+                padding: 8px 12px 12px;
+            }
+
+            .clear-filters.modern-control-deck {
+                margin: 0 10px 10px;
+                padding: 10px;
+            }
+
+            .toolbar-primary {
+                grid-template-columns: 1fr;
+            }
+
+            .toolbar-pane,
+            .toolbar-pane-book,
+            .toolbar-pane-esq-images,
+            .toolbar-pane-pos-preview,
+            .toolbar-pane-pos-actions {
+                grid-column: 1 / -1;
+            }
+
+            .book-pane-actions {
+                grid-template-columns: 1fr;
+            }
+
+            .book-pane-actions button {
+                width: 100%;
+            }
+
+            .toolbar-pane-esq-images .schemas-images-strip,
+            .toolbar-pane-pos-preview .schemas-images-strip,
+            .pos-top-inline .schemas-images-strip {
+                height: auto;
+                min-height: 120px;
+            }
+
+            .toolbar-pane-esq-images .schema-thumb.large,
+            .toolbar-pane-pos-preview .schema-thumb,
+            .pos-top-thumb {
+                width: 160px;
+                max-width: none;
+            }
+
+            .toolbar-pane-esq-images .schema-thumb.large img,
+            .toolbar-pane-pos-preview .schema-thumb img,
+            .pos-top-thumb img {
+                width: 160px;
+                height: 100px;
+                min-height: 100px;
+            }
+
+            .toolbar-pane-esq-images .schemas-images-strip {
+                flex-direction: row;
+                overflow-x: auto;
+                overflow-y: hidden;
+                align-items: center;
+            }
+
+            .book-top-row {
+                grid-template-columns: 1fr;
+            }
+        }
+
         /* color del texto en el select (siempre heredado de la celda) */
         .revision-select {
             color: inherit;
@@ -841,15 +1715,16 @@
 </head>
 
 <body>
-    <div class="topbar">
-        <div class="nav">
-            <a class="pill" href="index.html">Inicio</a>
-            <a class="pill" href="qa_articulos.html">Artículos</a>
-            <a class="pill" href="qa_web.html">Web</a>
-            <a class="pill" href="qa_web2.html">Web 2</a>
-            <a class="pill" href="qa_lista.html">Lista</a>
-            <span class="pill active">qa_milu</span>
-            <a class="pill" href="qa_lista_agrupada.html">Agrupada</a>
+    <div class="topbar topbar-modern">
+        <div>
+            <span class="brand-chip">MILU QA</span>
+            <p class="brand-title">Panel de revisión visual</p>
+            <p class="brand-sub">Flujo rápido para filtrar, validar y revisar artículos con contexto de esquemas y
+                posición, todo en la misma vista.</p>
+        </div>
+        <div class="nav nav-modern">
+            <span class="pill active">QA detalle</span>
+            <a class="pill" href="qa_lista_agrupada.html">Vista agrupada</a>
         </div>
     </div>
 
@@ -861,51 +1736,96 @@
                     <span class="stat">Cargando...</span>
                 </div>
 
-                <div class="clear-filters">
-                    <div style="display:flex; gap:8px; flex-wrap:wrap; align-items:center;">
-                        <button id="sortBookPagePosBtn">Ordenar Libro/Página/Pos</button>
-                        <div class="view-toggle-inline">
-                            <select id="columnViewSelect" class="filter-select column-view-select"
-                                title="Alternar orden de columnas">
-                                <option value="qa">Vista QA</option>
-                                <option value="focus">Vista foco PN</option>
-                                <option value="pdf">Vista PDF</option>
-                            </select>
-                        </div>
-                        <select id="bookFilterSelect" class="filter-select" data-filter="book" style="max-width:200px;">
-                            <option value="">Todos los libros</option>
-                        </select>
-                        <button id="prevBookPageBtn" class="page-nav-btn" title="Página anterior del libro"
-                            aria-label="Página anterior">&#9664;</button>
-                        <input id="pageFilterInput" class="filter-input" data-filter="page" placeholder="Pg"
-                            inputmode="numeric">
-                        <button id="nextBookPageBtn" class="page-nav-btn" title="Página siguiente del libro"
-                            aria-label="Página siguiente">&#9654;</button>
-                        <button id="importRevisionBtn">Importar revisión</button>
-                        <button id="exportRevisionBtn">Exportar revisión</button>
-                        <button id="clearFiltersBtn">Limpiar filtros</button>
-                        <input id="revisionFileInput" type="file" accept="application/json" style="display:none;">
+                <div class="clear-filters modern-control-deck">
+                    <div class="deck-head">
+                        <p class="deck-title">Centro de control</p>
+                        <p class="deck-subtitle">Navegación, contexto visual y acciones masivas</p>
                     </div>
-                    <div class="bulk-edit">
-                        <span class="bulk-label">Cambio masivo revisión:</span>
-                        <select id="bulkScopeSelect" class="bulk-select">
-                            <option value="filtered">Todos los filtrados</option>
-                            <option value="visible">Solo registros en pantalla</option>
-                        </select>
-                        <div class="bulk-quick-actions">
-                            <button id="bulkRevOkBtn" type="button" class="quick-action-btn bulk-quick-btn validate"
-                                title="OK masivo: solo cambia Revisión a OK">V</button>
-                            <button id="bulkRevEmptyBtn" type="button" class="quick-action-btn bulk-quick-btn white"
-                                title="Poner vacío masivo: solo cambia Revisión a vacío">P</button>
-                            <button id="bulkValidateBtn" type="button" class="quick-action-btn bulk-quick-btn import"
-                                title="Importar masivo: solo cambia Acción a Import">I</button>
-                            <button id="bulkReviewBtn" type="button" class="quick-action-btn bulk-quick-btn review"
-                                title="Revisar masivo: solo cambia Acción a Revisar">R</button>
-                            <button id="bulkDiscardBtn" type="button" class="quick-action-btn bulk-quick-btn discard"
-                                title="Eliminar masivo: solo cambia Acción a Eliminar">X</button>
-                            <button id="bulkClearBtn" type="button" class="quick-action-btn bulk-quick-btn clear"
-                                title="Vaciar masivo: Revisión y Acción en blanco">-</button>
+                    <div class="toolbar-primary">
+                        <div class="toolbar-pane toolbar-pane-book">
+                            <div class="book-pane-left">
+                                <span class="pane-label">Navegación</span>
+                                <div class="book-top-row">
+                                    <button id="sortBookPagePosBtn">Ordenar</button>
+                                    <div class="view-toggle-inline">
+                                        <select id="columnViewSelect" class="filter-select column-view-select"
+                                            title="Alternar orden de columnas">
+                                            <option value="qa">Vista QA</option>
+                                            <option value="focus">Vista foco PN</option>
+                                            <option value="pdf">Vista PDF</option>
+                                        </select>
+                                    </div>
+                                </div>
+
+                                <div class="book-pane-actions">
+                                    <button id="importRevisionBtn">Importar</button>
+                                    <button id="exportRevisionBtn">Exportar</button>
+                                    <button id="clearFiltersBtn">Limpiar</button>
+                                    <div class="bulk-edit">
+                                        <select id="bulkScopeSelect" class="bulk-select">
+                                            <option value="filtered">Todos los filtrados</option>
+                                            <option value="visible">Solo registros en pantalla</option>
+                                        </select>
+                                        <div class="bulk-quick-actions">
+                                            <button id="bulkRevOkBtn" type="button"
+                                                class="quick-action-btn bulk-quick-btn validate"
+                                                title="OK masivo: solo cambia Revisión a OK">V</button>
+                                            <button id="bulkRevEmptyBtn" type="button"
+                                                class="quick-action-btn bulk-quick-btn white"
+                                                title="Poner vacío masivo: solo cambia Revisión a vacío">P</button>
+                                            <button id="bulkValidateBtn" type="button"
+                                                class="quick-action-btn bulk-quick-btn import"
+                                                title="Importar masivo: solo cambia Acción a Import">I</button>
+                                            <button id="bulkReviewBtn" type="button"
+                                                class="quick-action-btn bulk-quick-btn review"
+                                                title="Revisar masivo: solo cambia Acción a Revisar">R</button>
+                                            <button id="bulkDiscardBtn" type="button"
+                                                class="quick-action-btn bulk-quick-btn discard"
+                                                title="Eliminar masivo: solo cambia Acción a Eliminar">X</button>
+                                            <button id="bulkClearBtn" type="button"
+                                                class="quick-action-btn bulk-quick-btn clear"
+                                                title="Vaciar masivo: Revisión y Acción en blanco">-</button>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div class="book-pane-right">
+                                <div class="book-pane-right-top">
+                                    <select id="bookFilterSelect" class="filter-select book-main-select"
+                                        data-filter="book">
+                                        <option value="">Todos los libros</option>
+                                    </select>
+                                </div>
+                                <div class="book-pane-right-bottom">
+                                    <button id="prevBookPageBtn" class="page-nav-btn" title="Página anterior del libro"
+                                        aria-label="Página anterior">&#9664;</button>
+                                    <input id="pageFilterInput" class="filter-input" data-filter="page" placeholder="Pg"
+                                        inputmode="numeric">
+                                    <button id="nextBookPageBtn" class="page-nav-btn" title="Página siguiente del libro"
+                                        aria-label="Página siguiente">&#9654;</button>
+                                </div>
+                            </div>
                         </div>
+
+                        <div class="toolbar-pane toolbar-pane-esq-images">
+                            <span class="pane-label">Esquemas del libro</span>
+                            <div id="schemasImagesInline" class="schemas-images-inline" title="Imágenes de esquemas">
+                                <div id="schemasImagesStrip" class="schemas-images-strip"></div>
+                            </div>
+                        </div>
+
+                        <div class="toolbar-pane toolbar-pane-pos-preview">
+                            <span class="pane-label">Vista de posición</span>
+                            <div class="pos-top-inline" title="Imagen de posición/círculo del artículo seleccionado">
+                                <span id="selectedPosTopMeta" class="pos-top-meta">Selecciona un registro</span>
+                                <div id="selectedPosTopStrip" class="schemas-images-strip">
+                                    <span class="schemas-images-empty">Sin pos</span>
+                                </div>
+                            </div>
+                        </div>
+
+                        <input id="revisionFileInput" type="file" accept="application/json" style="display:none;">
                     </div>
                 </div>
 
@@ -918,8 +1838,8 @@
                                 <th style="width:36px" data-sort="normalizado" class="status-head">N</th>
                                 <th style="width:44px" data-sort="sust_hierarchie" class="status-head">SH</th>
                                 <th style="width:36px" data-sort="has_img" class="status-head">F</th>
-                                <th style="width:110px" data-sort="qa_revision_estado">Revisión</th>
-                                <th style="width:120px" data-sort="qa_revision_accion">Acción</th>
+                                <th style="width:78px" data-sort="qa_revision_estado">Revisión</th>
+                                <th style="width:86px" data-sort="qa_revision_accion">Acción</th>
                                 <th style="width:96px" class="status-head">A</th>
                                 <th style="width:50px" data-sort="POS">Pos</th>
                                 <th style="width:100px" data-sort="PART NO.">PN</th>
@@ -951,7 +1871,7 @@
                                 <th style="width:150px" data-sort="sust_superseded_list">Sust Superseded List</th>
                                 <th style="width:100px" data-sort="esquemas">Esquemas</th>
                                 <th style="width:140px" data-sort="esquemas_circulos_all">Esquemas Circulos All</th>
-                                <th style="width:70px" data-sort="engine_model">Engine Model</th>
+                                <th style="width:130px" data-sort="engine_model">Libro</th>
                                 <th style="width:100px" data-sort="categoria">Categoria</th>
                                 <th style="width:60px" data-sort="precio">Precio</th>
                                 <th style="width:50px" data-sort="FN">FN</th>
@@ -1095,6 +2015,16 @@
                     <button id="nextBtn" disabled>Siguiente</button>
                 </div>
 
+                <div id="selectedPosPanel" class="selected-pos-panel">
+                    <div class="selected-pos-head">
+                        <span class="selected-pos-title">Posiciones del artículo seleccionado</span>
+                        <span id="selectedPosMeta" class="selected-pos-meta">Selecciona un registro de la tabla</span>
+                    </div>
+                    <div id="selectedPosStrip" class="schemas-images-strip">
+                        <span class="schemas-images-empty">Sin selección</span>
+                    </div>
+                </div>
+
                 <div id="groupedSection" class="grouped-section" style="display:none;">
                     <div class="grouped-header">
                         <b>Vista agrupada por PN</b>
@@ -1159,15 +2089,15 @@
         const PDF_FIT_WIDTH_MARGIN = 8;
         let columnView = 'pdf';
         const FOCUS_COLUMN_ORDER = [
-            0, 9, 8, 13, 15, 26, 16, 17, 18,
+            0, 9, 36, 26, 8, 13, 15, 16, 17, 18,
             1, 2, 3, 4, 5, 6, 7,
             10, 11, 12, 14, 19, 20, 21, 22, 23, 24, 25, 27, 28,
-            40, 41, 36, 37, 38, 39, 42, 43, 44, 45, 46, 47, 48, 49,
+            40, 41, 37, 38, 39, 42, 43, 44, 45, 46, 47, 48, 49,
             29, 30, 31, 32, 33, 34, 35
         ];
         const PDF_COLUMN_ORDER = [
             0, 1, 2, 3, 4, 5, 6,
-            7, 8, 11, 50,
+            7, 8, 9, 36, 26, 11, 50,
             15, 16, 18, 52,
             51, 30
         ];
@@ -1200,6 +2130,12 @@
         let currentPdfRenderTask = null;
         let currentPdfRequestToken = 0;
         let mainDataSourceLabel = 'engine_*.json';
+        let selectedRevisionRowKey = '';
+        const POS_PRELOAD_CONCURRENCY = 6;
+        const posCirclePreloadCache = new Set();
+        const posCirclePreloadQueued = new Set();
+        const posCirclePreloadQueue = [];
+        let posCirclePreloadActive = 0;
 
         if (window.pdfjsLib) {
             window.pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
@@ -2250,6 +3186,612 @@
             return pages;
         }
 
+        function splitSchemaTokens(rawValue) {
+            return String(rawValue || '')
+                .split(/[,;|\n]+/)
+                .map(item => item.trim())
+                .filter(Boolean);
+        }
+
+        function getNormalizedBookForSchemaPaths(bookValue) {
+            return String(bookValue || '')
+                .trim()
+                .replace(/\.pdf$/i, '');
+        }
+
+        function stripFileExtension(value) {
+            return String(value || '').trim().replace(/\.(png|webp|jpg|jpeg)$/i, '');
+        }
+
+        function buildSchemaImageCandidates(bookValue, schemaToken) {
+            const book = getNormalizedBookForSchemaPaths(bookValue);
+            const token = String(schemaToken || '').trim();
+            if (!book || !token) return [];
+
+            const tokenNoExt = stripFileExtension(token);
+            const folder = `esquemas/${encodeURIComponent(book)}_esquemas/`;
+            const extensions = ['png', 'webp', 'jpg', 'jpeg'];
+            const names = [tokenNoExt];
+
+            if (!tokenNoExt.toLowerCase().startsWith(`${book.toLowerCase()}-`)) {
+                names.push(`${book}-${tokenNoExt}`);
+            }
+
+            const paths = [];
+            const seen = new Set();
+
+            if (/\.(png|webp|jpg|jpeg)$/i.test(token)) {
+                const direct = `${folder}${encodeURIComponent(token)}`;
+                seen.add(direct);
+                paths.push(direct);
+            }
+
+            names.forEach(name => {
+                extensions.forEach(ext => {
+                    const path = `${folder}${encodeURIComponent(name)}.${ext}`;
+                    if (!seen.has(path)) {
+                        seen.add(path);
+                        paths.push(path);
+                    }
+                });
+            });
+
+            return paths;
+        }
+
+        function extractFileNameFromPath(value) {
+            const raw = String(value || '').trim();
+            if (!raw) return '';
+            try {
+                const parsed = new URL(raw);
+                const pathname = parsed.pathname || '';
+                const file = pathname.split('/').pop() || '';
+                return decodeURIComponent(file).trim();
+            } catch (_) {
+                const normalized = raw.replace(/\\/g, '/');
+                const file = normalized.split('/').pop() || '';
+                return decodeURIComponent(file).trim();
+            }
+        }
+
+        function buildSchemaPosImageCandidates(bookValue, rawTokenOrPath) {
+            const book = getNormalizedBookForSchemaPaths(bookValue);
+            const raw = String(rawTokenOrPath || '').trim();
+            if (!book || !raw) return [];
+
+            const tokenFromPath = extractFileNameFromPath(raw);
+            const token = tokenFromPath || raw;
+            const tokenNoExt = stripFileExtension(token);
+            const folder = `esquemas_pos_circulos/${encodeURIComponent(book)}-POS/`;
+            const extensions = ['webp', 'png', 'jpg', 'jpeg'];
+            const names = [tokenNoExt];
+
+            if (!tokenNoExt.toLowerCase().startsWith(`${book.toLowerCase()}-`)) {
+                names.push(`${book}-${tokenNoExt}`);
+            }
+
+            const paths = [];
+            const seen = new Set();
+            const pushPath = (path) => {
+                if (!path || seen.has(path)) return;
+                seen.add(path);
+                paths.push(path);
+            };
+
+            if (/^https?:\/\//i.test(raw)) {
+                pushPath(raw);
+            }
+
+            if (/\.(png|webp|jpg|jpeg)$/i.test(token)) {
+                pushPath(`${folder}${encodeURIComponent(token)}`);
+            }
+
+            names.forEach(name => {
+                extensions.forEach(ext => {
+                    pushPath(`${folder}${encodeURIComponent(name)}.${ext}`);
+                });
+            });
+
+            return paths;
+        }
+
+        function setSchemaImageSource(imgElement, candidates, index = 0) {
+            if (!imgElement) return;
+            if (!Array.isArray(candidates) || index >= candidates.length) {
+                imgElement.closest('.schema-thumb')?.remove();
+                return;
+            }
+            imgElement.src = candidates[index];
+            imgElement.dataset.schemaCandidateIndex = String(index);
+        }
+
+        function updateSchemasImageInline(bookValue, schemas) {
+            const strip = $('schemasImagesStrip');
+            if (!strip) return;
+
+            strip.innerHTML = '';
+            if (!schemas || schemas.length === 0) {
+                const empty = document.createElement('span');
+                empty.className = 'schemas-images-empty';
+                empty.textContent = '';
+                strip.appendChild(empty);
+                return;
+            }
+
+            schemas.slice(0, 3).forEach(schemaToken => {
+                const candidates = buildSchemaImageCandidates(bookValue, schemaToken);
+                if (!candidates.length) return;
+
+                const link = document.createElement('a');
+                link.className = 'schema-thumb large';
+                link.href = candidates[0];
+                link.target = '_blank';
+                link.rel = 'noopener noreferrer';
+                link.title = 'Abrir imagen';
+
+                const img = document.createElement('img');
+                img.alt = 'Esquema';
+                img.loading = 'lazy';
+                img.decoding = 'async';
+
+                img.addEventListener('error', () => {
+                    const currentIndex = Number(img.dataset.schemaCandidateIndex || '0');
+                    const nextIndex = currentIndex + 1;
+                    if (nextIndex >= candidates.length) {
+                        link.remove();
+                        if (!strip.querySelector('.schema-thumb') && !strip.querySelector('.schemas-images-empty')) {
+                            const empty = document.createElement('span');
+                            empty.className = 'schemas-images-empty';
+                            empty.textContent = '';
+                            strip.appendChild(empty);
+                        }
+                        return;
+                    }
+                    link.href = candidates[nextIndex];
+                    setSchemaImageSource(img, candidates, nextIndex);
+                });
+
+                link.appendChild(img);
+                strip.appendChild(link);
+                setSchemaImageSource(img, candidates, 0);
+            });
+
+            if (!strip.querySelector('.schema-thumb')) {
+                const empty = document.createElement('span');
+                empty.className = 'schemas-images-empty';
+                empty.textContent = '';
+                strip.appendChild(empty);
+            }
+        }
+
+        function getPosSchemasForBookPage(bookValue, pageValue) {
+            const book = String(bookValue || '').trim();
+            const page = String(pageValue || '').trim();
+            if (!book || !page) return [];
+
+            const requestedPage = Number(page.replace(/[^0-9]/g, ''));
+            if (!Number.isFinite(requestedPage) || Number.isNaN(requestedPage)) return [];
+
+            const itemsByLabel = new Map();
+
+            const mergeItem = (rawToken, preferredPath = '') => {
+                const cleanToken = String(rawToken || '').trim();
+                if (!cleanToken) return;
+
+                const fileName = extractFileNameFromPath(cleanToken) || cleanToken;
+                const label = stripFileExtension(fileName);
+                if (!label) return;
+
+                const candidates = [
+                    ...buildSchemaPosImageCandidates(book, preferredPath || cleanToken),
+                    ...buildSchemaPosImageCandidates(book, cleanToken)
+                ];
+
+                if (!itemsByLabel.has(label)) {
+                    itemsByLabel.set(label, {
+                        label,
+                        candidates: []
+                    });
+                }
+
+                const item = itemsByLabel.get(label);
+                const existing = new Set(item.candidates);
+                candidates.forEach(path => {
+                    if (!existing.has(path)) {
+                        existing.add(path);
+                        item.candidates.push(path);
+                    }
+                });
+            };
+
+            allData.forEach(row => {
+                const rowBook = val(row, 'engine_model', '').toString().trim();
+                const rowPage = Number(val(row, 'Source Page', '').toString().replace(/[^0-9]/g, ''));
+                if (rowBook !== book || rowPage !== requestedPage) return;
+
+                const rutasPos = splitSchemaTokens(row?.ruta_esquemas_pos);
+                const esquemasPos = splitSchemaTokens(row?.esquemas_circulos);
+
+                rutasPos.forEach(route => mergeItem(route, route));
+                esquemasPos.forEach(token => mergeItem(token));
+            });
+
+            return [...itemsByLabel.values()]
+                .filter(item => item.candidates.length > 0)
+                .sort((a, b) => a.label.localeCompare(b.label, undefined, { numeric: true }));
+        }
+
+        function updateSchemasPosImageInline(bookValue, pageValue) {
+            const strip = $('schemasPosImagesStrip');
+            if (!strip) return;
+
+            strip.innerHTML = '';
+            const posItems = getPosSchemasForBookPage(bookValue, pageValue);
+            if (!posItems.length) {
+                const empty = document.createElement('span');
+                empty.className = 'schemas-images-empty';
+                empty.textContent = 'Sin posiciones';
+                strip.appendChild(empty);
+                return;
+            }
+
+            posItems.forEach(item => {
+                const candidates = item.candidates;
+                if (!candidates.length) return;
+
+                const link = document.createElement('a');
+                link.className = 'schema-thumb';
+                link.href = candidates[0];
+                link.target = '_blank';
+                link.rel = 'noopener noreferrer';
+                link.title = item.label;
+
+                const img = document.createElement('img');
+                img.alt = item.label;
+                img.loading = 'lazy';
+                img.decoding = 'async';
+
+                img.addEventListener('error', () => {
+                    const currentIndex = Number(img.dataset.schemaCandidateIndex || '0');
+                    const nextIndex = currentIndex + 1;
+                    if (nextIndex >= candidates.length) {
+                        link.remove();
+                        if (!strip.querySelector('.schema-thumb') && !strip.querySelector('.schemas-images-empty')) {
+                            const empty = document.createElement('span');
+                            empty.className = 'schemas-images-empty';
+                            empty.textContent = 'Sin posiciones';
+                            strip.appendChild(empty);
+                        }
+                        return;
+                    }
+                    link.href = candidates[nextIndex];
+                    setSchemaImageSource(img, candidates, nextIndex);
+                });
+
+                const caption = document.createElement('span');
+                caption.textContent = item.label;
+
+                link.appendChild(img);
+                link.appendChild(caption);
+                strip.appendChild(link);
+                setSchemaImageSource(img, candidates, 0);
+            });
+
+            if (!strip.querySelector('.schema-thumb')) {
+                const empty = document.createElement('span');
+                empty.className = 'schemas-images-empty';
+                empty.textContent = 'Sin posiciones';
+                strip.appendChild(empty);
+            }
+        }
+
+        function getPosSchemasForRow(row) {
+            if (!row) return [];
+            const book = String(val(row, 'engine_model', '') || '').trim();
+            const itemsByLabel = new Map();
+
+            const mergeItem = (rawToken, preferredPath = '') => {
+                const cleanToken = String(rawToken || '').trim();
+                if (!cleanToken) return;
+
+                const fileName = extractFileNameFromPath(cleanToken) || cleanToken;
+                const label = stripFileExtension(fileName);
+                if (!label) return;
+
+                const candidates = [
+                    ...buildSchemaPosImageCandidates(book, preferredPath || cleanToken),
+                    ...buildSchemaPosImageCandidates(book, cleanToken)
+                ];
+
+                if (!itemsByLabel.has(label)) {
+                    itemsByLabel.set(label, {
+                        label,
+                        candidates: []
+                    });
+                }
+
+                const item = itemsByLabel.get(label);
+                const existing = new Set(item.candidates);
+                candidates.forEach(path => {
+                    if (!existing.has(path)) {
+                        existing.add(path);
+                        item.candidates.push(path);
+                    }
+                });
+            };
+
+            splitSchemaTokens(row?.ruta_esquemas_pos).forEach(route => mergeItem(route, route));
+            splitSchemaTokens(row?.esquemas_circulos).forEach(token => mergeItem(token));
+
+            return [...itemsByLabel.values()]
+                .filter(item => item.candidates.length > 0)
+                .sort((a, b) => a.label.localeCompare(b.label, undefined, { numeric: true }));
+        }
+
+        function pumpPosCirclePreloadQueue() {
+            while (posCirclePreloadActive < POS_PRELOAD_CONCURRENCY && posCirclePreloadQueue.length > 0) {
+                const src = posCirclePreloadQueue.shift();
+                posCirclePreloadQueued.delete(src);
+
+                if (!src || posCirclePreloadCache.has(src)) {
+                    continue;
+                }
+
+                posCirclePreloadActive += 1;
+                const img = new Image();
+                const finalize = () => {
+                    posCirclePreloadCache.add(src);
+                    posCirclePreloadActive = Math.max(0, posCirclePreloadActive - 1);
+                    pumpPosCirclePreloadQueue();
+                };
+
+                img.onload = finalize;
+                img.onerror = finalize;
+                img.decoding = 'async';
+                img.src = src;
+            }
+        }
+
+        function enqueuePosCircleCandidates(candidates) {
+            if (!Array.isArray(candidates) || !candidates.length) return;
+
+            candidates.forEach(src => {
+                if (!src || posCirclePreloadCache.has(src) || posCirclePreloadQueued.has(src)) return;
+                posCirclePreloadQueued.add(src);
+                posCirclePreloadQueue.push(src);
+            });
+
+            pumpPosCirclePreloadQueue();
+        }
+
+        function preloadVisiblePosCircleImages(rows) {
+            if (!Array.isArray(rows) || !rows.length) return;
+
+            const candidates = [];
+            rows.forEach(row => {
+                const posItems = getPosSchemasForRow(row);
+                posItems.forEach(item => {
+                    item.candidates.forEach(path => candidates.push(path));
+                });
+            });
+
+            enqueuePosCircleCandidates(candidates);
+        }
+
+        function scheduleVisiblePosCirclePreload(rows) {
+            const payload = Array.isArray(rows) ? rows.slice() : [];
+            if (!payload.length) return;
+
+            const run = () => preloadVisiblePosCircleImages(payload);
+            if (typeof window.requestIdleCallback === 'function') {
+                window.requestIdleCallback(run, { timeout: 900 });
+            } else {
+                setTimeout(run, 80);
+            }
+        }
+
+        function renderSelectedRowPosPanel(row) {
+            const strip = $('selectedPosStrip');
+            const meta = $('selectedPosMeta');
+            if (!strip || !meta) return;
+
+            strip.innerHTML = '';
+
+            if (!row) {
+                meta.textContent = 'Selecciona un registro de la tabla';
+                const empty = document.createElement('span');
+                empty.className = 'schemas-images-empty';
+                empty.textContent = 'Sin selección';
+                strip.appendChild(empty);
+                return;
+            }
+
+            const pn = String(val(row, 'PART NO.', '') || '').trim() || '—';
+            const pos = String(val(row, 'POS', '') || '').trim() || '—';
+            const book = String(val(row, 'engine_model', '') || '').trim() || '—';
+            const page = String(val(row, 'Source Page', '') || '').trim() || '—';
+            meta.textContent = `PN: ${pn} | POS: ${pos} | Libro: ${book} | Página: ${page}`;
+
+            const posItems = getPosSchemasForRow(row);
+            if (!posItems.length) {
+                const empty = document.createElement('span');
+                empty.className = 'schemas-images-empty';
+                empty.textContent = 'Este artículo no tiene imágenes de posición';
+                strip.appendChild(empty);
+                return;
+            }
+
+            posItems.forEach(item => {
+                const candidates = item.candidates;
+                if (!candidates.length) return;
+
+                const link = document.createElement('a');
+                link.className = 'schema-thumb';
+                link.href = candidates[0];
+                link.target = '_blank';
+                link.rel = 'noopener noreferrer';
+                link.title = item.label;
+
+                const img = document.createElement('img');
+                img.alt = item.label;
+                img.loading = 'lazy';
+                img.decoding = 'async';
+
+                img.addEventListener('error', () => {
+                    const currentIndex = Number(img.dataset.schemaCandidateIndex || '0');
+                    const nextIndex = currentIndex + 1;
+                    if (nextIndex >= candidates.length) {
+                        link.remove();
+                        if (!strip.querySelector('.schema-thumb') && !strip.querySelector('.schemas-images-empty')) {
+                            const empty = document.createElement('span');
+                            empty.className = 'schemas-images-empty';
+                            empty.textContent = 'Este artículo no tiene imágenes de posición';
+                            strip.appendChild(empty);
+                        }
+                        return;
+                    }
+                    link.href = candidates[nextIndex];
+                    setSchemaImageSource(img, candidates, nextIndex);
+                });
+
+                const caption = document.createElement('span');
+                caption.textContent = item.label;
+
+                link.appendChild(img);
+                link.appendChild(caption);
+                strip.appendChild(link);
+                setSchemaImageSource(img, candidates, 0);
+            });
+
+            if (!strip.querySelector('.schema-thumb')) {
+                const empty = document.createElement('span');
+                empty.className = 'schemas-images-empty';
+                empty.textContent = 'Este artículo no tiene imágenes de posición';
+                strip.appendChild(empty);
+            }
+        }
+
+        function renderSelectedRowPosTop(row) {
+            const strip = $('selectedPosTopStrip');
+            const meta = $('selectedPosTopMeta');
+            if (!strip || !meta) return;
+
+            strip.innerHTML = '';
+
+            if (!row) {
+                meta.textContent = '';
+                const empty = document.createElement('span');
+                empty.className = 'schemas-images-empty';
+                empty.textContent = '';
+                strip.appendChild(empty);
+                return;
+            }
+
+            meta.textContent = '';
+
+            const posItems = getPosSchemasForRow(row);
+            if (!posItems.length) {
+                const empty = document.createElement('span');
+                empty.className = 'schemas-images-empty';
+                empty.textContent = '';
+                strip.appendChild(empty);
+                return;
+            }
+
+            const item = posItems[0];
+            const candidates = item.candidates;
+            if (!candidates.length) {
+                const empty = document.createElement('span');
+                empty.className = 'schemas-images-empty';
+                empty.textContent = '';
+                strip.appendChild(empty);
+                return;
+            }
+
+            const link = document.createElement('a');
+            link.className = 'schema-thumb pos-top-thumb';
+            link.href = candidates[0];
+            link.target = '_blank';
+            link.rel = 'noopener noreferrer';
+            link.title = 'Abrir imagen';
+
+            const img = document.createElement('img');
+            img.alt = 'Pos circulos';
+            img.loading = 'lazy';
+            img.decoding = 'async';
+
+            img.addEventListener('error', () => {
+                const currentIndex = Number(img.dataset.schemaCandidateIndex || '0');
+                const nextIndex = currentIndex + 1;
+                if (nextIndex >= candidates.length) {
+                    link.remove();
+                    if (!strip.querySelector('.schema-thumb') && !strip.querySelector('.schemas-images-empty')) {
+                        const empty = document.createElement('span');
+                        empty.className = 'schemas-images-empty';
+                        empty.textContent = '';
+                        strip.appendChild(empty);
+                    }
+                    return;
+                }
+                link.href = candidates[nextIndex];
+                setSchemaImageSource(img, candidates, nextIndex);
+            });
+
+            link.appendChild(img);
+            strip.appendChild(link);
+            setSchemaImageSource(img, candidates, 0);
+        }
+
+        function refreshSelectedRowVisual() {
+            const tbody = $('tbody');
+            if (!tbody) return;
+            tbody.querySelectorAll('tr').forEach(tr => {
+                const rowKey = tr.getAttribute('data-revision-key') || '';
+                tr.classList.toggle('row-selected', rowKey !== '' && rowKey === selectedRevisionRowKey);
+            });
+        }
+
+        function getSchemasForBookPage(bookValue, pageValue) {
+            const book = String(bookValue || '').trim();
+            const page = String(pageValue || '').trim();
+            if (!book || !page) return [];
+
+            const requestedPage = Number(page.replace(/[^0-9]/g, ''));
+            if (!Number.isFinite(requestedPage) || Number.isNaN(requestedPage)) return [];
+
+            const schemaSet = new Set();
+            allData.forEach(row => {
+                const rowBook = val(row, 'engine_model', '').toString().trim();
+                const rowPage = Number(val(row, 'Source Page', '').toString().replace(/[^0-9]/g, ''));
+                if (rowBook !== book || rowPage !== requestedPage) return;
+
+                splitSchemaTokens(row?.esquemas).forEach(token => schemaSet.add(token));
+            });
+
+            return [...schemaSet].sort((a, b) => a.localeCompare(b, undefined, { numeric: true }));
+        }
+
+        function updateSchemasInline(bookValue, pageValue) {
+            const inlineEl = $('schemasInlineList');
+
+            const schemas = getSchemasForBookPage(bookValue, pageValue);
+            if (!schemas.length) {
+                if (inlineEl) {
+                    inlineEl.textContent = '—';
+                    inlineEl.title = 'Sin esquemas vinculados para esta página';
+                }
+                updateSchemasImageInline(bookValue, []);
+                return;
+            }
+
+            const joined = schemas.join(', ');
+            if (inlineEl) {
+                inlineEl.textContent = joined;
+                inlineEl.title = joined;
+            }
+            updateSchemasImageInline(bookValue, schemas);
+        }
+
         function applyBookSelection(bookValue, options = {}) {
             const {
                 pageValue = null,
@@ -2303,6 +3845,8 @@
                     loadPdfClear();
                 }
             }
+
+            updateSchemasInline(normalizedBook, resolvedPage);
         }
 
         function setPageFilterValue(pageValue) {
@@ -2326,6 +3870,8 @@
             } else if (!normalizedPage) {
                 loadPdfClear();
             }
+
+            updateSchemasInline(selectedBook, normalizedPage);
         }
 
         function goToNextBookPage() {
@@ -2440,6 +3986,12 @@
             const start = (page - 1) * pageSize;
             const end = start + pageSize;
             const pageData = sortedData.slice(start, end);
+
+            if (pageData.length > 0) {
+                selectedRevisionRowKey = getRevisionKey(pageData[0]);
+            } else {
+                selectedRevisionRowKey = '';
+            }
 
             // Estadísticas basadas en datos filtrados
             const withImages = filteredData.filter(r => {
@@ -2585,7 +4137,9 @@
                     { value: 'eliminar', label: 'Eliminar' }
                 ].map(opt => `<option value="${escapeHtml(opt.value)}" ${revisionAccion === opt.value ? 'selected' : ''}>${escapeHtml(opt.label)}</option>`).join('');
 
-                return `<tr>
+                const rowSelectedClass = selectedRevisionRowKey && selectedRevisionRowKey === revisionKey ? 'row-selected' : '';
+
+                return `<tr class="${rowSelectedClass}" data-revision-key="${escapeHtml(revisionKey)}">
           <td class="separator-before separator-after" title="${escapeHtml(id)}">${escapeHtml(id)}</td>
           <td class="status-col" title="GESA: ${isGesa ? 'SI' : 'NO'}">${gesaIcon}</td>
           <td class="status-col" title="Normalizado: ${isNormalizado ? 'SI' : 'NO'}">${normalizadoIcon}</td>
@@ -2658,9 +4212,70 @@
         </tr>`;
             }).join("");
 
+            refreshSelectedRowVisual();
+
+            const selectedRow = selectedRevisionRowKey
+                ? allData.find(item => getRevisionKey(item) === selectedRevisionRowKey)
+                : null;
+            renderSelectedRowPosPanel(selectedRow || null);
+            renderSelectedRowPosTop(selectedRow || null);
+
+            scheduleVisiblePosCirclePreload(pageData);
+
             applyColumnView();
 
             renderGroupedTable(filteredData);
+        }
+
+        function getVisibleTableRows() {
+            return Array.from(document.querySelectorAll('#tbody tr[data-revision-key]'));
+        }
+
+        function selectVisibleRowByIndex(index) {
+            const rows = getVisibleTableRows();
+            if (!rows.length) return;
+            const boundedIndex = Math.min(Math.max(0, index), rows.length - 1);
+            const tr = rows[boundedIndex];
+            if (!tr) return;
+            const rowKey = tr.getAttribute('data-revision-key') || '';
+            if (!rowKey) return;
+            const row = allData.find(item => getRevisionKey(item) === rowKey);
+            if (!row) return;
+            selectedRevisionRowKey = rowKey;
+            refreshSelectedRowVisual();
+            renderSelectedRowPosPanel(row);
+            renderSelectedRowPosTop(row);
+            tr.scrollIntoView({ block: 'nearest' });
+        }
+
+        function moveSelectionBy(delta) {
+            const rows = getVisibleTableRows();
+            if (!rows.length) return;
+
+            let currentIndex = rows.findIndex(tr => (tr.getAttribute('data-revision-key') || '') === selectedRevisionRowKey);
+            if (currentIndex === -1) currentIndex = 0;
+            const nextIndex = currentIndex + delta;
+
+            if (nextIndex >= 0 && nextIndex < rows.length) {
+                selectVisibleRowByIndex(nextIndex);
+                return;
+            }
+
+            if (nextIndex < 0) {
+                if (currentPage > 1) {
+                    changePage(-1);
+                    const prevRows = getVisibleTableRows();
+                    if (prevRows.length) {
+                        selectVisibleRowByIndex(prevRows.length - 1);
+                    }
+                }
+                return;
+            }
+
+            const totalPages = Math.max(1, Math.ceil(filteredData.length / pageSize));
+            if (nextIndex >= rows.length && currentPage < totalPages) {
+                changePage(1);
+            }
         }
 
         function renderPagination() {
@@ -2941,6 +4556,18 @@
             if (event.key === 'ArrowLeft') {
                 event.preventDefault();
                 goToPrevBookPage();
+                return;
+            }
+
+            if (event.key === 'ArrowDown') {
+                event.preventDefault();
+                moveSelectionBy(1);
+                return;
+            }
+
+            if (event.key === 'ArrowUp') {
+                event.preventDefault();
+                moveSelectionBy(-1);
             }
         });
 
@@ -2995,6 +4622,8 @@
                 } else if (!selectedBook || !newPage) {
                     loadPdfClear();
                 }
+
+                updateSchemasInline(selectedBook, newPage);
             });
         }
 
@@ -3090,6 +4719,26 @@
                     }
                     return;
                 }
+
+                const clickedSelect = target.closest('select');
+                if (clickedSelect) return;
+
+                const clickedLink = target.closest('a');
+                if (clickedLink) return;
+
+                const tr = target.closest('tr[data-revision-key]');
+                if (!tr) return;
+
+                const rowKey = tr.getAttribute('data-revision-key') || '';
+                if (!rowKey) return;
+
+                const row = allData.find(item => getRevisionKey(item) === rowKey);
+                if (!row) return;
+
+                selectedRevisionRowKey = rowKey;
+                refreshSelectedRowVisual();
+                renderSelectedRowPosPanel(row);
+                renderSelectedRowPosTop(row);
             });
 
             tbody.addEventListener('change', (event) => {
