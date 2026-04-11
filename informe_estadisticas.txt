@@ -1,0 +1,33 @@
+INFORME DE ESTADÍSTICAS DE ARTÍCULOS
+==================================================
+
+Detalle por libro (engine_*.json):
+  Archivo                           Únicos     Totales
+------------------------------------------------------
+- engine_12V4000M40A.json         1901       2758
+- engine_12V4000M53.json          1913       6725
+- engine_16V4000M61.json          1864       5107
+- engine_16V4000M73.json          1753      12720
+- engine_16V4000M73L.json         1979      11444
+- engine_16V4000M90.json          1754       2914
+- engine_20V4000M93.json          1900      14967
+- engine_20V4000M93L.json         1982       7279
+------------------------------------------------------
+Total artículos únicos en todos los libros: 5762
+Total registros en todos los libros: 63914
+
+Detalle por archivo de web (product-export-*.json):
+  Archivo                           Únicos     Totales
+------------------------------------------------------
+- product-export-2026-03-29-11-07.json    6733       6733
+------------------------------------------------------
+Total artículos únicos en la web: 6733
+Total registros en la web: 6733
+
+CRUCES ENTRE LIBROS Y WEB
+----------------------------------------
+Artículos en la web y en los libros: 2410
+Artículos en la web pero NO en los libros: 4323
+Artículos en los libros pero NO en la web: 3352
+
+FIN DEL INFORME
