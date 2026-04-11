@@ -1838,6 +1838,7 @@
                                 <th style="width:36px" data-sort="normalizado" class="status-head">N</th>
                                 <th style="width:44px" data-sort="sust_hierarchie" class="status-head">SH</th>
                                 <th style="width:36px" data-sort="has_img" class="status-head">F</th>
+                                <th style="width:70px" data-sort="EN_WEB">En Web</th>
                                 <th style="width:78px" data-sort="qa_revision_estado">Revisión</th>
                                 <th style="width:86px" data-sort="qa_revision_accion">Acción</th>
                                 <th style="width:96px" class="status-head">A</th>
@@ -1910,6 +1911,11 @@
                                 <th><select class="filter-select" data-filter="has_img">
                                         <option value="">Todos</option>
                                         <option value="true">Si</option>
+                                        <option value="false">No</option>
+                                    </select></th>
+                                <th><select class="filter-select" data-filter="EN_WEB">
+                                        <option value="">Todos</option>
+                                        <option value="true">Sí</option>
                                         <option value="false">No</option>
                                     </select></th>
                                 <th><select class="filter-select" data-filter="qa_revision_estado">
@@ -3127,6 +3133,10 @@
                         case 'in_product_export':
                             rowValue = productExportPnSet.has(row['PART NO.'] || row.pn) ? 'true' : 'false';
                             break;
+                        case 'EN_WEB':
+                            // Acepta booleano o string
+                            rowValue = (row.EN_WEB === true || row.EN_WEB === 'true') ? 'true' : 'false';
+                            break;
                         case 'book':
                             rowValue = val(row, 'engine_model', '').toString().toLowerCase();
                             break;
@@ -4033,6 +4043,8 @@
             tbody.innerHTML = pageData.map(row => {
                 // Reordenadas según el nuevo orden de columnas
                 const id = val(row, "ID");
+                // EN_WEB column value
+                const enWeb = row.EN_WEB === true || row.EN_WEB === "true" ? "✔️" : "";
                 const sustHierarchyRaw = String(row.sust_hierarchie || '').trim();
                 const sustHierarchyLabel = sustHierarchyRaw || '—';
                 const pos = val(row, "POS");
@@ -4145,6 +4157,7 @@
           <td class="status-col" title="Normalizado: ${isNormalizado ? 'SI' : 'NO'}">${normalizadoIcon}</td>
           <td class="status-col" title="sust_hierarchie: ${escapeHtml(sustHierarchyLabel)}">${hierarchyIcon}</td>
           <td class="status-col" title="Foto: ${hasImg ? 'SI' : 'NO'}">${fotoIcon}</td>
+          <td class="status-col" title="En Web">${enWeb}</td>
           <td class="revision-cell ${revisionEstadoClass}" title="Estado de revisión">
               <select class="revision-select" data-revision-field="estado" data-revision-key="${escapeHtml(revisionKey)}">
                   ${revisionEstadoOptions}
