@@ -16,6 +16,10 @@ app.get('/', (req, res) => {
     res.redirect('/qa_milu.html');
 });
 
+app.get('/health', (req, res) => {
+    res.json({ ok: true, service: 'milu-save-backend' });
+});
+
 // Ruta para guardar cambios en un archivo JSON
 app.post('/save-json', (req, res) => {
     const { file, id, col, value } = req.body;

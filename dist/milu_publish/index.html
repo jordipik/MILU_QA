@@ -1,0 +1,129 @@
+<!doctype html>
+<html lang="es">
+
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>MILU – Visor QA</title>
+
+  <style>
+    body {
+      font-family: system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif;
+      margin: 0;
+      background: #f6f7f9;
+      color: #111;
+    }
+
+    .global-nav {
+      position: sticky;
+      top: 0;
+      z-index: 9999;
+      display: flex;
+      align-items: center;
+      padding: 12px 18px;
+      border-bottom: 1px solid #ddd;
+      background: rgba(255, 255, 255, .95);
+      backdrop-filter: blur(6px);
+    }
+
+    .global-nav b {
+      font-size: 15px;
+      font-weight: 700;
+      letter-spacing: .3px;
+    }
+
+    .wrap {
+      max-width: 900px;
+      margin: 0 auto;
+      padding: 48px 20px;
+    }
+
+    h1 {
+      margin: 0 0 24px 0;
+      font-size: 26px;
+    }
+
+    .grid {
+      display: grid;
+      grid-template-columns: 1fr;
+      gap: 18px;
+    }
+
+    a.card {
+      display: block;
+      padding: 28px;
+      border: 2px solid #2563eb;
+      border-radius: 18px;
+      background: #ffffff;
+      text-decoration: none;
+      color: inherit;
+      transition: transform .05s ease, box-shadow .05s ease;
+    }
+
+    a.card:hover {
+      transform: translateY(-1px);
+      box-shadow: 0 8px 22px rgba(37, 99, 235, .15);
+    }
+
+    .t {
+      font-size: 20px;
+      font-weight: 800;
+      margin-bottom: 8px;
+      color: #1e3a8a;
+    }
+
+    .d {
+      color: #4b5563;
+      font-size: 14px;
+      max-width: 520px;
+    }
+
+    .badge {
+      display: inline-block;
+      margin-left: 10px;
+      padding: 4px 10px;
+      border-radius: 999px;
+      font-size: 11px;
+      font-weight: 700;
+      background: #2563eb;
+      color: #ffffff;
+      vertical-align: middle;
+    }
+  </style>
+</head>
+
+<body>
+  <nav class="global-nav">
+    <b>MILU · Control de calidad</b>
+  </nav>
+
+  <div class="wrap">
+    <h1>MILU · Visor QA</h1>
+
+    <div class="grid">
+      <a class="card" href="./qa_milu.html">
+        <div class="t">
+          QA MILU
+          <span class="badge">MILU</span>
+        </div>
+        <div class="d">
+          Tabla de revisión de PDF con filtros avanzados, cambio masivo de estado, botones rápidos V/R/X,
+          persistencia local y columnas redimensionables.
+        </div>
+      </a>
+
+      <a class="card" href="./qa_lista_agrupada.html">
+        <div class="t">
+          Lista Agrupada por PN
+          <span class="badge">GRUP</span>
+        </div>
+        <div class="d">
+          Vista agrupada por Part Number con contador de registros, panel desplegable de campos comunes y estado
+          G/N/SH/F por grupo.
+        </div>
+      </a>
+    </div>
+  </div>
+</body>
+
+</html>

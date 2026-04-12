@@ -94,7 +94,7 @@ export async function loadPdfWithPage(book, page) {
         return;
     }
 
-    const pdfUrl = `../pdf/${encodeURIComponent(bookClean)}.pdf`;
+    const pdfUrl = new URL(`pdf/${encodeURIComponent(bookClean)}.pdf`, new URL('.', window.location.href)).href;
     pdfLabel.textContent = `${bookClean} • pág ${pageClean}`;
     if (pdfMeta) pdfMeta.textContent = `${bookClean}-${pageClean}`;
     state.currentPdfPageNumber = pageNum;
