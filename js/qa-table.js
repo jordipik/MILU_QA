@@ -297,7 +297,7 @@ export function syncAutoPageSize() {
 }
 
 function editableAttr(columnKey) {
-    const editable = ['pn_final', 'criterio_pn', 'designation_gesa', 'norma'].includes(columnKey);
+    const editable = false;
     return editable ? ` data-editable="true" data-col-key="${columnKey}"` : '';
 }
 
@@ -370,9 +370,9 @@ function renderRow(row) {
       <td title="${escapeHtml(val(row, 'PART NO.'))}">${escapeHtml(val(row, 'PART NO.'))}</td>
       <td title="${escapeHtml(val(row, 'pn_raw'))}">${escapeHtml(val(row, 'pn_raw'))}</td>
     <td${editableAttr('pn_final')} title="${escapeHtml(val(row, 'pn_final'))}" class="cell-inline-editable">${escapeHtml(val(row, 'pn_final'))}</td>
-    <td${editableAttr('criterio_pn')} title="${escapeHtml(val(row, 'criterio_pn'))}" class="cell-inline-editable">${escapeHtml(val(row, 'criterio_pn'))}</td>
+    <td title="${escapeHtml(val(row, 'criterio_pn'))}">${escapeHtml(val(row, 'criterio_pn'))}</td>
       <td title="${escapeHtml(val(row, 'DESIGNATION'))}">${escapeHtml(val(row, 'DESIGNATION'))}</td>
-      <td${editableAttr('designation_gesa')} title="${escapeHtml(val(row, 'designation_gesa'))}" class="${classGesa} cell-inline-editable">${escapeHtml(val(row, 'designation_gesa'))}</td>
+    <td title="${escapeHtml(val(row, 'designation_gesa'))}" class="${classGesa}">${escapeHtml(val(row, 'designation_gesa'))}</td>
       <td class="separator-after" title="${escapeHtml(val(row, 'MODEL/TYPE'))}">${escapeHtml(val(row, 'MODEL/TYPE'))}</td>
       <td title="${escapeHtml(val(row, 'QTY'))}">${escapeHtml(val(row, 'QTY'))}</td>
       <td title="${escapeHtml(val(row, 'WEIGHT'))}">${escapeHtml(val(row, 'WEIGHT'))}</td>
@@ -408,10 +408,39 @@ function renderRow(row) {
       <td title="${escapeHtml(val(row, 'ruta_foto'))}">${escapeHtml(val(row, 'ruta_foto'))}</td>
       <td title="${escapeHtml(val(row, 'esquemas_circulos'))}">${escapeHtml(val(row, 'esquemas_circulos'))}</td>
       <td title="${escapeHtml(val(row, 'ruta_esquemas_pos'))}">${escapeHtml(val(row, 'ruta_esquemas_pos'))}</td>
-      <td class="${classGesa}" title="${escapeHtml(getRowValueForColumn(row, 'designation_final'))}">${escapeHtml(getRowValueForColumn(row, 'designation_final'))}</td>
-      <td class="${classGesa}" title="${escapeHtml(getRowValueForColumn(row, 'measurement_final'))}">${escapeHtml(getRowValueForColumn(row, 'measurement_final'))}</td>
-      <td class="${classGesa}" title="${escapeHtml(getRowValueForColumn(row, 'weight_final'))}">${escapeHtml(getRowValueForColumn(row, 'weight_final'))}</td>
+    <td${editableAttr('designation_final')} class="${classGesa} cell-inline-editable" title="${escapeHtml(getRowValueForColumn(row, 'designation_final'))}">${escapeHtml(getRowValueForColumn(row, 'designation_final'))}</td>
+    <td${editableAttr('measurement_final')} class="${classGesa} cell-inline-editable" title="${escapeHtml(getRowValueForColumn(row, 'measurement_final'))}">${escapeHtml(getRowValueForColumn(row, 'measurement_final'))}</td>
+    <td${editableAttr('weight_final')} class="${classGesa} cell-inline-editable" title="${escapeHtml(getRowValueForColumn(row, 'weight_final'))}">${escapeHtml(getRowValueForColumn(row, 'weight_final'))}</td>
     </tr>`;
+}
+
+export function refreshVisibleRowByRevisionKey(revisionKey) {
+    const key = String(revisionKey || '').trim();
+    if (!key) return false;
+
+    const tbody = document.getElementById('tbody');
+    if (!tbody) return false;
+
+    const currentTr = Array.from(tbody.querySelectorAll('tr[data-revision-key]'))
+        .find(tr => (tr.getAttribute('data-revision-key') || '') === key);
+    if (!currentTr) return false;
+
+    const row = state.allData.find(item => getRevisionKey(item) === key);
+    if (!row) return false;
+
+    const tempTbody = document.createElement('tbody');
+    tempTbody.innerHTML = renderRow(row).trim();
+    const nextTr = tempTbody.firstElementChild;
+    if (!(nextTr instanceof HTMLTableRowElement)) return false;
+
+    currentTr.replaceWith(nextTr);
+    refreshSelectedRowVisual();
+    if (state.selectedRevisionRowKey === key) {
+        renderSelectedRowPosPanel(row);
+        renderSelectedRowPosTop(row);
+    }
+    applyColumnView();
+    return true;
 }
 
 export function renderPagination() {

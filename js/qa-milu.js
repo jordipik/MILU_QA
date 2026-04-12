@@ -4,7 +4,7 @@
 
 import { state } from './state.js';
 import { escapeHtml, val } from './helpers.js';
-import { fetchJsonSafe, loadPartitionedEngineData, saveCellToServer } from './data-loader.js';
+import { checkSaveBackendConnection, fetchJsonSafe, loadPartitionedEngineData, saveCellToServer } from './data-loader.js';
 import {
     applyRevisionDataToRows,
     assignRevisionKeys,
@@ -23,7 +23,7 @@ import {
     loadColumnWidths,
     saveColumnViewPreference
 } from './column-view.js';
-import { isInlineEditableTarget, startInlineEdit, cancelInlineEdit } from './cell-editor.js';
+import { isInlineEditableTarget, cancelInlineEdit } from './cell-editor.js';
 import { loadPdfClear, loadPdfWithPage, renderPdfPage } from './pdf-viewer.js';
 import { updateSchemasInline, renderSelectedRowPosPanel, renderSelectedRowPosTop } from './schemas.js';
 import { getEngineJsonForRow } from './helpers.js';
@@ -31,6 +31,7 @@ import {
     changePage,
     getRowsForBulkScope,
     moveSelectionBy,
+    refreshVisibleRowByRevisionKey,
     renderPagination,
     renderTable,
     syncAutoPageSize,
@@ -40,7 +41,47 @@ import {
 const $ = (id) => document.getElementById(id);
 let filterTimeout = null;
 let resizeTimer = null;
-const MODAL_FIELD_KEYS = ['pn_final', 'criterio_pn', 'designation_gesa', 'norma'];
+let backendStatusTimer = null;
+const MODAL_FIELD_KEYS = ['pn_final', 'designation_final', 'weight_final', 'measurement_final', 'norma'];
+const modalUiState = {
+    tableScrollTop: 0,
+    tableScrollLeft: 0,
+    windowScrollX: 0,
+    windowScrollY: 0
+};
+
+function setBackendStatusBadge(status, message) {
+    const statusWrap = $('backendStatus');
+    const statusText = $('backendStatusText');
+    if (!statusWrap || !statusText) return;
+
+    statusWrap.classList.remove('checking', 'online', 'offline');
+    statusWrap.classList.add(status);
+    statusText.textContent = message;
+}
+
+async function refreshBackendStatus() {
+    setBackendStatusBadge('checking', 'Backend: comprobando...');
+    const result = await checkSaveBackendConnection();
+    if (result.ok) {
+        setBackendStatusBadge('online', 'Backend: conectado');
+        return;
+    }
+    setBackendStatusBadge('offline', 'Backend: sin conexion');
+}
+
+function initBackendStatusMonitor() {
+    refreshBackendStatus().catch(() => setBackendStatusBadge('offline', 'Backend: sin conexion'));
+
+    if (backendStatusTimer) clearInterval(backendStatusTimer);
+    backendStatusTimer = setInterval(() => {
+        refreshBackendStatus().catch(() => setBackendStatusBadge('offline', 'Backend: sin conexion'));
+    }, 30000);
+
+    window.addEventListener('focus', () => {
+        refreshBackendStatus().catch(() => setBackendStatusBadge('offline', 'Backend: sin conexion'));
+    });
+}
 
 function isRecordModalOpen() {
     const modal = $('qaRecordModal');
@@ -61,22 +102,63 @@ function fillRecordModal(row, revisionKey) {
     $('qaModalBook').value = String(row?.engine_model ?? '');
     $('qaModalPage').value = String(row?.['Source Page'] ?? '');
     $('qaModalPos').value = String(row?.POS ?? '');
+    $('qaModalGesa').value = String(row?.gesa ?? '');
+    $('qaModalNormalizado').value = String(row?.normalizado ?? '');
+    $('qaModalSustHierarchie').value = String(row?.sust_hierarchie ?? '');
+    $('qaModalHasImg').value = String(row?.has_img ?? '');
+    $('qaModalEnWeb').value = String(row?.EN_WEB ?? '');
 
     $('qaModalRevisionEstado').value = String(row?.qa_revision_estado || '');
     $('qaModalRevisionAccion').value = String(row?.qa_revision_accion || '');
     $('qaModalPnFinal').value = String(row?.pn_final ?? '');
-    $('qaModalCriterioPn').value = String(row?.criterio_pn ?? '');
-    $('qaModalDesignationGesa').value = String(row?.designation_gesa ?? '');
+    $('qaModalDesignationFinal').value = String(row?.designation_final ?? '');
+    $('qaModalModelType').value = String(row?.['MODEL/TYPE'] ?? '');
+    $('qaModalQty').value = String(row?.QTY ?? '');
+    $('qaModalUnits').value = String(row?.UNITS ?? '');
+    $('qaModalWeightFinal').value = String(row?.weight_final ?? '');
+    $('qaModalFn').value = String(row?.FN ?? '');
+    $('qaModalMeasurementFinal').value = String(row?.measurement_final ?? '');
     $('qaModalNorma').value = String(row?.norma ?? '');
 
     const status = $('qaRecordModalStatus');
     if (status) status.textContent = '';
 }
 
+function captureModalUiState() {
+    const tableWrap = $('mainTableWrap');
+    if (tableWrap instanceof HTMLElement) {
+        modalUiState.tableScrollTop = tableWrap.scrollTop;
+        modalUiState.tableScrollLeft = tableWrap.scrollLeft;
+    }
+    modalUiState.windowScrollX = window.scrollX || 0;
+    modalUiState.windowScrollY = window.scrollY || 0;
+}
+
+function restoreModalUiState(revisionKey) {
+    const tableWrap = $('mainTableWrap');
+    if (tableWrap instanceof HTMLElement) {
+        tableWrap.scrollTop = modalUiState.tableScrollTop;
+        tableWrap.scrollLeft = modalUiState.tableScrollLeft;
+    }
+    window.scrollTo(modalUiState.windowScrollX, modalUiState.windowScrollY);
+
+    const safeKey = String(revisionKey || '').replace(/"/g, '\\"');
+    if (!safeKey) return;
+    const targetRow = document.querySelector(`#tbody tr[data-revision-key="${safeKey}"]`);
+    if (!(targetRow instanceof HTMLTableRowElement)) return;
+    const editBtn = targetRow.querySelector('button[data-open-record-modal="true"]');
+    if (editBtn instanceof HTMLButtonElement) {
+        editBtn.focus({ preventScroll: true });
+        return;
+    }
+    targetRow.scrollIntoView({ block: 'nearest' });
+}
+
 function openRecordModal(revisionKey) {
     const row = getRowByRevisionKey(revisionKey);
     const modal = $('qaRecordModal');
     if (!row || !modal) return;
+    captureModalUiState();
     fillRecordModal(row, revisionKey);
     modal.removeAttribute('hidden');
     const firstInput = $('qaModalRevisionEstado');
@@ -93,6 +175,7 @@ function closeRecordModal() {
 
 async function handleRecordModalSubmit(event) {
     event.preventDefault();
+    event.stopPropagation();
     const form = event.target;
     if (!(form instanceof HTMLFormElement)) return;
 
@@ -113,8 +196,9 @@ async function handleRecordModalSubmit(event) {
     const nextAccion = String($('qaModalRevisionAccion')?.value || '').trim();
     const nextValues = {
         pn_final: String($('qaModalPnFinal')?.value || ''),
-        criterio_pn: String($('qaModalCriterioPn')?.value || ''),
-        designation_gesa: String($('qaModalDesignationGesa')?.value || ''),
+        designation_final: String($('qaModalDesignationFinal')?.value || ''),
+        weight_final: String($('qaModalWeightFinal')?.value || ''),
+        measurement_final: String($('qaModalMeasurementFinal')?.value || ''),
         norma: String($('qaModalNorma')?.value || '')
     };
 
@@ -131,9 +215,11 @@ async function handleRecordModalSubmit(event) {
 
         setRowRevision(row, nextEstado, nextAccion);
         state.selectedRevisionRowKey = revisionKey;
-        renderTable();
+        const updatedVisibleRow = refreshVisibleRowByRevisionKey(revisionKey);
+        if (!updatedVisibleRow) renderTable();
         renderPagination();
         closeRecordModal();
+        restoreModalUiState(revisionKey);
     } catch (error) {
         console.error('Error guardando formulario modal:', error);
         if (status) status.textContent = `No se pudo guardar: ${error.message}`;
@@ -557,12 +643,13 @@ function attachGlobalEvents() {
     tbody?.addEventListener('dblclick', (event) => {
         const target = event.target;
         if (!(target instanceof HTMLElement)) return;
-        const editableCell = target.closest('td[data-editable="true"]');
-        if (editableCell) {
-            event.preventDefault();
-            event.stopPropagation();
-            startInlineEdit(editableCell);
-        }
+        if (target.closest('button') || target.closest('select') || target.closest('a') || target.closest('input') || target.closest('textarea')) return;
+        const tr = target.closest('tr[data-revision-key]');
+        const revisionKey = tr?.getAttribute('data-revision-key') || '';
+        if (!revisionKey) return;
+        event.preventDefault();
+        event.stopPropagation();
+        openRecordModal(revisionKey);
     });
 
     tbody?.addEventListener('change', (event) => {
@@ -602,11 +689,15 @@ function attachGlobalEvents() {
         if (target.dataset.modalClose === 'true') closeRecordModal();
     });
     $('qaRecordModalForm')?.addEventListener('submit', handleRecordModalSubmit);
+    $('backendStatusRetryBtn')?.addEventListener('click', () => {
+        refreshBackendStatus().catch(() => setBackendStatusBadge('offline', 'Backend: sin conexion'));
+    });
 }
 
 function init() {
     initColumnResize();
     loadColumnViewPreference();
+    initBackendStatusMonitor();
     attachGlobalEvents();
     loadData();
 }

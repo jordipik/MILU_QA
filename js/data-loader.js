@@ -69,19 +69,12 @@ export async function loadPartitionedEngineData() {
  * @param {*} value - Nuevo valor
  */
 export async function saveCellToServer(file, id, col, value) {
-    const currentOrigin = window.location.origin && window.location.origin !== 'null'
-        ? window.location.origin
-        : '';
-    const currentHostname = String(window.location.hostname || '').trim();
-    const localPortCandidate = currentHostname ? `http://${currentHostname}:3000/save-json` : '';
-    const candidateUrls = [
-        currentOrigin ? `${currentOrigin}/save-json` : '/save-json',
-        localPortCandidate,
-        'http://localhost:3000/save-json'
-    ].filter((url, index, arr) => arr.indexOf(url) === index);
+    const candidateUrls = getSaveBackendCandidateUrls();
 
     let lastError = null;
+    let lastTriedUrl = '';
     for (const url of candidateUrls) {
+        lastTriedUrl = url;
         try {
             const response = await fetch(url, {
                 method: 'POST',
@@ -92,11 +85,8 @@ export async function saveCellToServer(file, id, col, value) {
             if (!response.ok) {
                 const data = await response.json().catch(() => ({}));
                 const message = data.error || `HTTP ${response.status}`;
-                if (response.status === 404 || response.status === 405) {
-                    lastError = new Error(`Endpoint ${url} no disponible: ${message}`);
-                    continue;
-                }
-                throw new Error(message);
+                lastError = new Error(`Guardado no disponible en ${url}: ${message}`);
+                continue;
             }
 
             return await response.json();
@@ -105,5 +95,53 @@ export async function saveCellToServer(file, id, col, value) {
         }
     }
 
-    throw new Error(lastError?.message || 'No se pudo conectar con el backend de guardado. Ejecuta server.js en localhost:3000.');
+    const lastMessage = String(lastError?.message || '').trim();
+    const isNetworkError = /failed to fetch|networkerror|load failed|fetch/i.test(lastMessage);
+    if (isNetworkError || !lastMessage) {
+        throw new Error(
+            `No se pudo conectar con el backend de guardado (${lastTriedUrl || 'sin URL'}). `
+            + 'Comprueba que server.js esta en ejecucion en http://localhost:3000.'
+        );
+    }
+    throw new Error(lastMessage);
+}
+
+function getSaveBackendCandidateUrls() {
+    const currentOrigin = window.location.origin && window.location.origin !== 'null'
+        ? window.location.origin
+        : '';
+    const currentHostname = String(window.location.hostname || '').trim();
+    const localPortCandidate = currentHostname ? `http://${currentHostname}:3000/save-json` : '';
+    const sameOriginCandidate = currentOrigin ? `${currentOrigin}/save-json` : '/save-json';
+    return [
+        localPortCandidate,
+        'http://localhost:3000/save-json',
+        sameOriginCandidate
+    ].filter((url, index, arr) => arr.indexOf(url) === index);
+}
+
+export async function checkSaveBackendConnection() {
+    const saveUrls = getSaveBackendCandidateUrls();
+    let lastError = null;
+    for (const saveUrl of saveUrls) {
+        const healthUrl = saveUrl.replace(/\/save-json$/i, '/health');
+        try {
+            const response = await fetch(healthUrl, {
+                method: 'GET',
+                cache: 'no-store'
+            });
+            if (response.ok) {
+                return { ok: true, url: saveUrl };
+            }
+            lastError = new Error(`HTTP ${response.status}`);
+        } catch (error) {
+            lastError = error instanceof Error ? error : new Error(String(error));
+        }
+    }
+
+    return {
+        ok: false,
+        url: saveUrls[0] || '',
+        error: String(lastError?.message || 'sin respuesta')
+    };
 }
