@@ -1,0 +1,32 @@
+/**
+ * Estado global compartido de la aplicación qa_milu.
+ * Todos los módulos importan este objeto y lo modifican directamente.
+ */
+export const state = {
+    allData: [],
+    filteredData: [],
+    currentPage: 1,
+    pageSize: 50,
+    MIN_PAGE_SIZE: 5,
+    sortKey: 'book_page_pos',
+    sortAsc: true,
+    filters: {},
+    groupedVisible: false,
+    selectedRevisionRowKey: '',
+    columnView: 'pdf',
+    revisionData: {},
+    revisionStorageErrorShown: false,
+    revisionRemoteErrorShown: false,
+    revisionRemoteSyncEnabled: true,
+    revisionRemoteSyncTimeout: null,
+    newPnSet: new Set(),
+    supersededPnSet: new Set(),
+    publishedMap: new Map(),
+    productExportPnSet: new Set(),
+    mainDataSourceLabel: 'engine_*.json',
+    currentPdfDocument: null,
+    currentPdfSource: '',
+    currentPdfPageNumber: 0,
+    currentPdfRenderTask: null,
+    currentPdfRequestToken: 0,
+};

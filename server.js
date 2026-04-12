@@ -10,6 +10,11 @@ const PORT = 3000;
 
 app.use(cors());
 app.use(bodyParser.json());
+app.use(express.static(__dirname));
+
+app.get('/', (req, res) => {
+    res.redirect('/qa_milu.html');
+});
 
 // Ruta para guardar cambios en un archivo JSON
 app.post('/save-json', (req, res) => {
