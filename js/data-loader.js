@@ -69,14 +69,41 @@ export async function loadPartitionedEngineData() {
  * @param {*} value - Nuevo valor
  */
 export async function saveCellToServer(file, id, col, value) {
-    const response = await fetch('/save-json', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ file, id: String(id), col, value })
-    });
-    if (!response.ok) {
-        const data = await response.json().catch(() => ({}));
-        throw new Error(data.error || `HTTP ${response.status}`);
+    const currentOrigin = window.location.origin && window.location.origin !== 'null'
+        ? window.location.origin
+        : '';
+    const currentHostname = String(window.location.hostname || '').trim();
+    const localPortCandidate = currentHostname ? `http://${currentHostname}:3000/save-json` : '';
+    const candidateUrls = [
+        currentOrigin ? `${currentOrigin}/save-json` : '/save-json',
+        localPortCandidate,
+        'http://localhost:3000/save-json'
+    ].filter((url, index, arr) => arr.indexOf(url) === index);
+
+    let lastError = null;
+    for (const url of candidateUrls) {
+        try {
+            const response = await fetch(url, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ file, id: String(id), col, value })
+            });
+
+            if (!response.ok) {
+                const data = await response.json().catch(() => ({}));
+                const message = data.error || `HTTP ${response.status}`;
+                if (response.status === 404 || response.status === 405) {
+                    lastError = new Error(`Endpoint ${url} no disponible: ${message}`);
+                    continue;
+                }
+                throw new Error(message);
+            }
+
+            return await response.json();
+        } catch (error) {
+            lastError = error instanceof Error ? error : new Error(String(error));
+        }
     }
-    return await response.json();
+
+    throw new Error(lastError?.message || 'No se pudo conectar con el backend de guardado. Ejecuta server.js en localhost:3000.');
 }

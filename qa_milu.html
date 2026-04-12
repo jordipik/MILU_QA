@@ -366,6 +366,93 @@
         </div>
     </div>
 
+    <div id="qaRecordModal" class="qa-modal" hidden>
+        <div class="qa-modal-backdrop" data-modal-close="true"></div>
+        <div class="qa-modal-dialog" role="dialog" aria-modal="true" aria-labelledby="qaRecordModalTitle">
+            <div class="qa-modal-header">
+                <div>
+                    <p class="qa-modal-kicker">Edicion de registro QA</p>
+                    <h2 id="qaRecordModalTitle">Editar registro</h2>
+                </div>
+                <button id="qaRecordModalCloseBtn" class="qa-modal-close-btn" type="button"
+                    aria-label="Cerrar modal">Cerrar</button>
+            </div>
+
+            <form id="qaRecordModalForm" class="qa-modal-form">
+                <div class="qa-modal-grid qa-modal-grid-meta">
+                    <label>
+                        <span>ID</span>
+                        <input id="qaModalId" type="text" readonly>
+                    </label>
+                    <label>
+                        <span>PN</span>
+                        <input id="qaModalPn" type="text" readonly>
+                    </label>
+                    <label>
+                        <span>Libro</span>
+                        <input id="qaModalBook" type="text" readonly>
+                    </label>
+                    <label>
+                        <span>Pagina</span>
+                        <input id="qaModalPage" type="text" readonly>
+                    </label>
+                    <label>
+                        <span>Pos</span>
+                        <input id="qaModalPos" type="text" readonly>
+                    </label>
+                </div>
+
+                <div class="qa-modal-grid">
+                    <label>
+                        <span>Revision</span>
+                        <select id="qaModalRevisionEstado" name="qa_revision_estado">
+                            <option value="">-</option>
+                            <option value="pendiente">Pendiente</option>
+                            <option value="en revisión">Revisar</option>
+                            <option value="revisado">Ok</option>
+                            <option value="descartado">Eliminar</option>
+                        </select>
+                    </label>
+                    <label>
+                        <span>Accion</span>
+                        <select id="qaModalRevisionAccion" name="qa_revision_accion">
+                            <option value="">-</option>
+                            <option value="mantener">Import</option>
+                            <option value="actualizar">Actualizar</option>
+                            <option value="revisar">Revisar</option>
+                            <option value="sustituir">Sustituir</option>
+                            <option value="eliminar">Eliminar</option>
+                        </select>
+                    </label>
+                    <label>
+                        <span>pn_final</span>
+                        <input id="qaModalPnFinal" type="text" name="pn_final">
+                    </label>
+                    <label>
+                        <span>criterio_pn</span>
+                        <input id="qaModalCriterioPn" type="text" name="criterio_pn">
+                    </label>
+                    <label>
+                        <span>designation_gesa</span>
+                        <input id="qaModalDesignationGesa" type="text" name="designation_gesa">
+                    </label>
+                    <label>
+                        <span>norma</span>
+                        <input id="qaModalNorma" type="text" name="norma">
+                    </label>
+                </div>
+
+                <div class="qa-modal-footer">
+                    <span id="qaRecordModalStatus" class="qa-modal-status" aria-live="polite"></span>
+                    <div class="qa-modal-actions">
+                        <button id="qaRecordModalCancelBtn" type="button">Cancelar</button>
+                        <button id="qaRecordModalSaveBtn" type="submit">Guardar</button>
+                    </div>
+                </div>
+            </form>
+        </div>
+    </div>
+
     <script type="module" src="js/qa-milu.js"></script>
 </body>
 

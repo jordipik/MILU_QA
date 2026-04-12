@@ -4,7 +4,7 @@
 
 import { state } from './state.js';
 import { escapeHtml, val } from './helpers.js';
-import { fetchJsonSafe, loadPartitionedEngineData } from './data-loader.js';
+import { fetchJsonSafe, loadPartitionedEngineData, saveCellToServer } from './data-loader.js';
 import {
     applyRevisionDataToRows,
     assignRevisionKeys,
@@ -26,6 +26,7 @@ import {
 import { isInlineEditableTarget, startInlineEdit, cancelInlineEdit } from './cell-editor.js';
 import { loadPdfClear, loadPdfWithPage, renderPdfPage } from './pdf-viewer.js';
 import { updateSchemasInline, renderSelectedRowPosPanel, renderSelectedRowPosTop } from './schemas.js';
+import { getEngineJsonForRow } from './helpers.js';
 import {
     changePage,
     getRowsForBulkScope,
@@ -39,6 +40,108 @@ import {
 const $ = (id) => document.getElementById(id);
 let filterTimeout = null;
 let resizeTimer = null;
+const MODAL_FIELD_KEYS = ['pn_final', 'criterio_pn', 'designation_gesa', 'norma'];
+
+function isRecordModalOpen() {
+    const modal = $('qaRecordModal');
+    return !!modal && !modal.hasAttribute('hidden');
+}
+
+function getRowByRevisionKey(revisionKey) {
+    return state.allData.find(item => getRevisionKey(item) === revisionKey);
+}
+
+function fillRecordModal(row, revisionKey) {
+    const form = $('qaRecordModalForm');
+    if (!(form instanceof HTMLFormElement)) return;
+
+    form.dataset.revisionKey = revisionKey;
+    $('qaModalId').value = String(row?.ID ?? '');
+    $('qaModalPn').value = String(row?.['PART NO.'] ?? row?.pn ?? '');
+    $('qaModalBook').value = String(row?.engine_model ?? '');
+    $('qaModalPage').value = String(row?.['Source Page'] ?? '');
+    $('qaModalPos').value = String(row?.POS ?? '');
+
+    $('qaModalRevisionEstado').value = String(row?.qa_revision_estado || '');
+    $('qaModalRevisionAccion').value = String(row?.qa_revision_accion || '');
+    $('qaModalPnFinal').value = String(row?.pn_final ?? '');
+    $('qaModalCriterioPn').value = String(row?.criterio_pn ?? '');
+    $('qaModalDesignationGesa').value = String(row?.designation_gesa ?? '');
+    $('qaModalNorma').value = String(row?.norma ?? '');
+
+    const status = $('qaRecordModalStatus');
+    if (status) status.textContent = '';
+}
+
+function openRecordModal(revisionKey) {
+    const row = getRowByRevisionKey(revisionKey);
+    const modal = $('qaRecordModal');
+    if (!row || !modal) return;
+    fillRecordModal(row, revisionKey);
+    modal.removeAttribute('hidden');
+    const firstInput = $('qaModalRevisionEstado');
+    if (firstInput instanceof HTMLElement) firstInput.focus();
+}
+
+function closeRecordModal() {
+    const modal = $('qaRecordModal');
+    if (!modal) return;
+    modal.setAttribute('hidden', '');
+    const status = $('qaRecordModalStatus');
+    if (status) status.textContent = '';
+}
+
+async function handleRecordModalSubmit(event) {
+    event.preventDefault();
+    const form = event.target;
+    if (!(form instanceof HTMLFormElement)) return;
+
+    const revisionKey = String(form.dataset.revisionKey || '');
+    const row = getRowByRevisionKey(revisionKey);
+    if (!row) {
+        alert('No se encontro el registro seleccionado para guardar.');
+        closeRecordModal();
+        return;
+    }
+
+    const saveBtn = $('qaRecordModalSaveBtn');
+    const status = $('qaRecordModalStatus');
+    if (saveBtn) saveBtn.disabled = true;
+    if (status) status.textContent = 'Guardando cambios...';
+
+    const nextEstado = String($('qaModalRevisionEstado')?.value || '').trim();
+    const nextAccion = String($('qaModalRevisionAccion')?.value || '').trim();
+    const nextValues = {
+        pn_final: String($('qaModalPnFinal')?.value || ''),
+        criterio_pn: String($('qaModalCriterioPn')?.value || ''),
+        designation_gesa: String($('qaModalDesignationGesa')?.value || ''),
+        norma: String($('qaModalNorma')?.value || '')
+    };
+
+    try {
+        const changedFields = MODAL_FIELD_KEYS.filter(key => String(row?.[key] ?? '') !== String(nextValues[key] ?? ''));
+        if (changedFields.length > 0) {
+            const engineFile = getEngineJsonForRow(row);
+            if (!engineFile) throw new Error('No se pudo determinar el archivo engine_*.json del registro.');
+            for (const fieldKey of changedFields) {
+                await saveCellToServer(engineFile, row.ID, fieldKey, nextValues[fieldKey]);
+                row[fieldKey] = nextValues[fieldKey];
+            }
+        }
+
+        setRowRevision(row, nextEstado, nextAccion);
+        state.selectedRevisionRowKey = revisionKey;
+        renderTable();
+        renderPagination();
+        closeRecordModal();
+    } catch (error) {
+        console.error('Error guardando formulario modal:', error);
+        if (status) status.textContent = `No se pudo guardar: ${error.message}`;
+        alert(`No se pudo guardar el registro: ${error.message}`);
+    } finally {
+        if (saveBtn) saveBtn.disabled = false;
+    }
+}
 
 async function tryLoadFirstJson(candidates) {
     for (const candidate of candidates) {
@@ -372,6 +475,14 @@ function attachGlobalEvents() {
     $('bulkClearBtn')?.addEventListener('click', () => applyBulkQuickMode('clear'));
 
     document.addEventListener('keydown', (event) => {
+        if (isRecordModalOpen()) {
+            if (event.key === 'Escape') {
+                event.preventDefault();
+                closeRecordModal();
+            }
+            return;
+        }
+
         if (event.altKey || event.ctrlKey || event.metaKey || event.shiftKey) return;
         if (event.repeat || isTypingContext(event.target)) return;
 
@@ -394,6 +505,14 @@ function attachGlobalEvents() {
     tbody?.addEventListener('click', (event) => {
         const target = event.target;
         if (!(target instanceof HTMLElement)) return;
+
+        const openModalBtn = target.closest('button[data-open-record-modal="true"]');
+        if (openModalBtn) {
+            const revisionKey = openModalBtn.dataset.revisionKey;
+            if (!revisionKey) return;
+            openRecordModal(revisionKey);
+            return;
+        }
 
         const quickBtn = target.closest('button[data-quick-mode]');
         if (quickBtn) {
@@ -474,6 +593,15 @@ function attachGlobalEvents() {
             renderPagination();
         }, 120);
     });
+
+    $('qaRecordModalCloseBtn')?.addEventListener('click', closeRecordModal);
+    $('qaRecordModalCancelBtn')?.addEventListener('click', closeRecordModal);
+    $('qaRecordModal')?.addEventListener('click', (event) => {
+        const target = event.target;
+        if (!(target instanceof HTMLElement)) return;
+        if (target.dataset.modalClose === 'true') closeRecordModal();
+    });
+    $('qaRecordModalForm')?.addEventListener('submit', handleRecordModalSubmit);
 }
 
 function init() {

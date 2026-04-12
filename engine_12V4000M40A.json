@@ -17,7 +17,7 @@
     "source_file": "12V4000M40A.xlsx",
     "source_sheet": "1",
     "pn_raw": null,
-    "pn_final": null,
+    "pn_final": "",
     "criterio_pn": "EMPTY",
     "detalle_cambio": null,
     "existeix_gesa": false,

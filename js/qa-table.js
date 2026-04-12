@@ -363,6 +363,7 @@ function renderRow(row) {
               <button type="button" class="quick-action-btn import" data-quick-mode="validate" data-revision-key="${escapeHtml(revisionKey)}" title="Importar: solo cambia Acción a Import">I</button>
               <button type="button" class="quick-action-btn review" data-quick-mode="review" data-revision-key="${escapeHtml(revisionKey)}" title="Revisar: solo cambia Acción a Revisar">R</button>
               <button type="button" class="quick-action-btn discard" data-quick-mode="discard" data-revision-key="${escapeHtml(revisionKey)}" title="Eliminar: solo cambia Acción a Eliminar">X</button>
+              <button type="button" class="quick-action-btn edit" data-open-record-modal="true" data-revision-key="${escapeHtml(revisionKey)}" title="Editar registro en formulario">ED</button>
           </div>
       </td>
       <td title="${escapeHtml(val(row, 'POS'))}">${escapeHtml(val(row, 'POS'))}</td>
