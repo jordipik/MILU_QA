@@ -13,6 +13,12 @@ import { applyColumnView } from './column-view.js';
 import { scheduleVisiblePosCirclePreload } from './pos-preload.js';
 import { renderSelectedRowPosPanel, renderSelectedRowPosTop } from './schemas.js';
 
+function dispatchSelectionChanged(rowKey) {
+    document.dispatchEvent(new CustomEvent('qa:selected-row-changed', {
+        detail: { revisionKey: String(rowKey || '') }
+    }));
+}
+
 function getCurrentColumnCount() {
     const headerRow = document.querySelector('#mainTableWrap thead tr:not(.filter-row)');
     if (!headerRow?.children?.length) return 50;
@@ -250,6 +256,7 @@ export function selectVisibleRowByIndex(index) {
     refreshSelectedRowVisual();
     renderSelectedRowPosPanel(row);
     renderSelectedRowPosTop(row);
+    dispatchSelectionChanged(rowKey);
     tr.scrollIntoView({ block: 'nearest' });
 }
 
@@ -492,8 +499,11 @@ export function renderTable() {
     const start = (state.currentPage - 1) * state.pageSize;
     const pageData = sortedData.slice(start, start + state.pageSize);
 
-    if (pageData.length > 0 && !state.selectedRevisionRowKey) {
-        state.selectedRevisionRowKey = getRevisionKey(pageData[0]);
+    if (pageData.length > 0) {
+        const hasSelectedInFiltered = state.filteredData.some(item => getRevisionKey(item) === state.selectedRevisionRowKey);
+        if (!hasSelectedInFiltered) {
+            state.selectedRevisionRowKey = getRevisionKey(pageData[0]);
+        }
     }
 
     const withImages = state.filteredData.filter(r => (r.filename_foto || r.ruta_foto || '').toString().trim() !== '').length;
@@ -524,6 +534,7 @@ export function renderTable() {
         : null;
     renderSelectedRowPosPanel(selectedRow || null);
     renderSelectedRowPosTop(selectedRow || null);
+    dispatchSelectionChanged(state.selectedRevisionRowKey);
     scheduleVisiblePosCirclePreload(pageData);
 
     applyColumnView();

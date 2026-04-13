@@ -112,6 +112,49 @@
             min-height: 0;
         }
 
+        .pdf-tabs {
+            display: flex;
+            gap: 6px;
+            padding: 10px 10px 0;
+            border-bottom: 1px solid var(--line);
+            background: #f8fafc;
+        }
+
+        .pdf-tab-btn {
+            appearance: none;
+            border: 1px solid #cbd5e1;
+            border-bottom: none;
+            background: #e2e8f0;
+            color: #334155;
+            border-top-left-radius: 10px;
+            border-top-right-radius: 10px;
+            height: 34px;
+            padding: 0 14px;
+            font-size: 12px;
+            font-weight: 700;
+            letter-spacing: 0.02em;
+            cursor: pointer;
+        }
+
+        .pdf-tab-btn.is-active {
+            background: #ffffff;
+            color: #0f172a;
+            border-color: #cbd5e1;
+            transform: translateY(1px);
+        }
+
+        .pdf-tab-panel {
+            flex: 1;
+            min-height: 0;
+            display: none;
+            flex-direction: column;
+            overflow: hidden;
+        }
+
+        .pdf-tab-panel.is-active {
+            display: flex;
+        }
+
         .pdfbar {
             padding: 10px;
             border-bottom: 1px solid var(--line);
@@ -176,6 +219,46 @@
 
         .pdfstatus.hidden {
             display: none;
+        }
+
+        .qa-side-header {
+            gap: 10px;
+        }
+
+        .qa-side-open-btn {
+            height: 30px;
+            border-radius: 8px;
+            border: 1px solid #cbd5e1;
+            background: #f8fafc;
+            color: #0f172a;
+            padding: 0 10px;
+            font-size: 12px;
+            font-weight: 700;
+            cursor: pointer;
+        }
+
+        .qa-side-body {
+            flex: 1;
+            min-height: 0;
+            overflow: auto;
+            background: #f1f5f9;
+            padding: 10px;
+        }
+
+        .qa-side-modal-form {
+            border: 1px solid #d6e0ee;
+            border-radius: 12px;
+            background: #ffffff;
+            padding: 10px;
+            gap: 10px;
+        }
+
+        .qa-side-grid-meta {
+            grid-template-columns: repeat(3, minmax(0, 1fr));
+        }
+
+        .qa-side-grid-main {
+            grid-template-columns: repeat(3, minmax(0, 1fr));
         }
 
         .tableWrap {
@@ -1835,7 +1918,7 @@
             display: flex;
             align-items: center;
             justify-content: center;
-            padding: 20px;
+            padding: 10px;
         }
 
         .qa-modal-backdrop {
@@ -1847,8 +1930,8 @@
 
         .qa-modal-dialog {
             position: relative;
-            width: min(840px, 100%);
-            max-height: min(92vh, 900px);
+            width: min(1720px, 99vw);
+            max-height: 96vh;
             overflow: auto;
             border: 1px solid #d6e0ee;
             border-radius: 14px;
@@ -1901,7 +1984,7 @@
 
         .qa-modal-grid {
             display: grid;
-            grid-template-columns: repeat(2, minmax(0, 1fr));
+            grid-template-columns: repeat(4, minmax(0, 1fr));
             gap: 10px;
         }
 
@@ -1941,6 +2024,136 @@
             box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.15);
         }
 
+        .qa-modal-related {
+            border: 1px solid #dbe5f1;
+            border-radius: 10px;
+            background: #f8fbff;
+            padding: 10px;
+        }
+
+        .qa-modal-related-head {
+            display: flex;
+            align-items: baseline;
+            justify-content: space-between;
+            gap: 8px;
+            margin-bottom: 8px;
+        }
+
+        .qa-modal-related-head h3 {
+            margin: 0;
+            font-size: 12px;
+            text-transform: uppercase;
+            letter-spacing: 0.04em;
+            color: #1e293b;
+        }
+
+        .qa-modal-related-controls {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            flex-wrap: wrap;
+            justify-content: flex-end;
+        }
+
+        .qa-modal-related-filter {
+            font-size: 11px;
+            color: #475569;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 0.03em;
+        }
+
+        .qa-modal-related-select {
+            height: 28px;
+            border-radius: 6px;
+            border: 1px solid #cbd5e1;
+            background: #ffffff;
+            color: #0f172a;
+            font-size: 12px;
+            padding: 0 8px;
+        }
+
+        .qa-modal-related-select:focus {
+            outline: none;
+            border-color: #3b82f6;
+            box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.15);
+        }
+
+        .qa-modal-related-count {
+            font-size: 11px;
+            color: #475569;
+            font-weight: 700;
+        }
+
+        .qa-modal-related-table-wrap {
+            max-height: 180px;
+            overflow: auto;
+            border: 1px solid #d3deeb;
+            border-radius: 8px;
+            background: #ffffff;
+        }
+
+        .qa-modal-related-table {
+            width: 100%;
+            border-collapse: collapse;
+            table-layout: fixed;
+            font-size: 12px;
+        }
+
+        .qa-modal-related-table th,
+        .qa-modal-related-table td {
+            border-bottom: 1px solid #e2e8f0;
+            padding: 6px 8px;
+            text-align: left;
+            color: #0f172a;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+
+        .qa-modal-related-table thead th {
+            position: sticky;
+            top: 0;
+            z-index: 1;
+            background: #eef4fb;
+            color: #334155;
+            font-size: 11px;
+            text-transform: uppercase;
+            letter-spacing: 0.03em;
+        }
+
+        .qa-modal-related-table tbody tr.qa-modal-related-current {
+            background: #e0f2fe;
+        }
+
+        .qa-modal-related-table tbody tr:last-child td {
+            border-bottom: none;
+        }
+
+        .qa-modal-export .qa-modal-related-head {
+            align-items: center;
+        }
+
+        .qa-modal-export-table-wrap {
+            max-height: 220px;
+            overflow: auto;
+            border: 1px solid #d3deeb;
+            border-radius: 8px;
+            background: #ffffff;
+        }
+
+        .qa-modal-export-table {
+            table-layout: auto;
+            min-width: 100%;
+            width: max-content;
+        }
+
+        .qa-modal-export-table th,
+        .qa-modal-export-table td {
+            min-width: 110px;
+            max-width: 260px;
+        }
+
         .qa-modal-footer {
             display: flex;
             align-items: center;
@@ -1965,7 +2178,9 @@
         }
 
         #qaRecordModalCancelBtn,
-        #qaRecordModalSaveBtn {
+        #qaRecordModalSaveBtn,
+        #qaSideResetBtn,
+        #qaSideSaveBtn {
             height: 34px;
             border-radius: 8px;
             border: 1px solid #cbd5e1;
@@ -1976,15 +2191,28 @@
             cursor: pointer;
         }
 
-        #qaRecordModalSaveBtn {
+        #qaRecordModalSaveBtn,
+        #qaSideSaveBtn {
             border-color: #2563eb;
             background: #2563eb;
             color: #ffffff;
         }
 
-        #qaRecordModalSaveBtn:disabled {
+        #qaRecordModalSaveBtn:disabled,
+        #qaSideSaveBtn:disabled {
             opacity: 0.7;
             cursor: wait;
+        }
+
+        @media (max-width: 1200px) {
+            .qa-modal-grid {
+                grid-template-columns: repeat(3, minmax(0, 1fr));
+            }
+
+            .qa-side-grid-meta,
+            .qa-side-grid-main {
+                grid-template-columns: repeat(2, minmax(0, 1fr));
+            }
         }
 
         @media (max-width: 960px) {
@@ -1992,7 +2220,21 @@
                 padding: 12px;
             }
 
-            .qa-modal-grid.qa-modal-grid-meta,
+            .qa-modal-grid {
+                grid-template-columns: repeat(2, minmax(0, 1fr));
+            }
+
+            .qa-modal-grid.qa-modal-grid-meta {
+                grid-template-columns: 1fr;
+            }
+
+            .qa-side-grid-meta,
+            .qa-side-grid-main {
+                grid-template-columns: 1fr;
+            }
+        }
+
+        @media (max-width: 640px) {
             .qa-modal-grid {
                 grid-template-columns: 1fr;
             }

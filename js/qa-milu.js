@@ -50,6 +50,28 @@ const modalUiState = {
     windowScrollY: 0
 };
 
+function setRightPanelTab(tabName) {
+    const resolvedTab = tabName === 'record' ? 'record' : 'pdf';
+    state.rightPanelTab = resolvedTab;
+
+    document.querySelectorAll('[data-pdf-tab]').forEach(btn => {
+        const isActive = btn.dataset.pdfTab === resolvedTab;
+        btn.classList.toggle('is-active', isActive);
+        btn.setAttribute('aria-selected', isActive ? 'true' : 'false');
+    });
+
+    document.querySelectorAll('[data-pdf-panel]').forEach(panel => {
+        const isActive = panel.dataset.pdfPanel === resolvedTab;
+        panel.classList.toggle('is-active', isActive);
+        panel.toggleAttribute('hidden', !isActive);
+    });
+
+    if (resolvedTab === 'pdf' && state.currentPdfSource && state.currentPdfPageNumber > 0) {
+        renderPdfPage(state.currentPdfSource, state.currentPdfPageNumber)
+            .catch(error => console.error('Error reajustando PDF al cambiar de pestaña:', error));
+    }
+}
+
 function setBackendStatusBadge(status, message) {
     const statusWrap = $('backendStatus');
     const statusText = $('backendStatusText');
@@ -88,8 +110,269 @@ function isRecordModalOpen() {
     return !!modal && !modal.hasAttribute('hidden');
 }
 
+function getBookEngineCode(row) {
+    const sourceFile = String(row?.source_file ?? '').trim();
+    if (sourceFile) return sourceFile.replace(/\.xlsx$/i, '');
+
+    const engineModel = String(row?.engine_model ?? '').trim();
+    if (!engineModel) return '';
+
+    return engineModel
+        .replace(/^engine_/i, '')
+        .replace(/\.json$/i, '')
+        .trim();
+}
+
+
+function getModalMatchesByPn(row) {
+    const pn = normModalMatch(row?.['PART NO.'] ?? row?.pn ?? '');
+    if (!pn) return [];
+    return state.allData
+        .filter(item => normModalMatch(item?.['PART NO.'] ?? item?.pn ?? '') === pn)
+        .map(item => ({
+            revisionKey: getRevisionKey(item),
+            page: String(item?.['Source Page'] ?? ''),
+            pos: String(item?.POS ?? ''),
+            id: String(item?.ID ?? ''),
+            estado: String(item?.qa_revision_estado ?? ''),
+            accion: String(item?.qa_revision_accion ?? ''),
+            book: getBookEngineCode(item)
+        }));
+}
+
+function syncRecordModalBookFilter(row, matches, selectId = 'qaModalMatchesBookFilter') {
+    const select = $(selectId);
+    if (!(select instanceof HTMLSelectElement)) return;
+
+    const currentBook = getBookEngineCode(row);
+    const previousValue = String(select.value || '__current__');
+    const books = [...new Set(matches.map(item => String(item.book || '').trim()).filter(Boolean))]
+        .sort((a, b) => a.localeCompare(b, 'es', { numeric: true, sensitivity: 'base' }));
+
+    const options = [
+        { value: '__current__', label: currentBook ? `Libro actual (${currentBook})` : 'Libro actual' },
+        { value: '__all__', label: 'Todos los libros' },
+        ...books.map(book => ({ value: book, label: book }))
+    ];
+
+    select.innerHTML = options
+        .map(opt => `<option value="${escapeHtml(opt.value)}">${escapeHtml(opt.label)}</option>`)
+        .join('');
+
+    const hasPrevious = options.some(opt => opt.value === previousValue);
+    select.value = hasPrevious ? previousValue : '__current__';
+}
 function getRowByRevisionKey(revisionKey) {
     return state.allData.find(item => getRevisionKey(item) === revisionKey);
+}
+
+function normModalMatch(value) {
+    return String(value ?? '').trim().toLowerCase();
+}
+
+function pageSortValue(page) {
+    const raw = String(page ?? '').trim();
+    const numeric = Number(raw.replace(/[^0-9]/g, ''));
+    return Number.isFinite(numeric) && !Number.isNaN(numeric) ? numeric : Number.MAX_SAFE_INTEGER;
+}
+
+function formatModalExportValue(value) {
+    if (value == null) return '';
+    if (Array.isArray(value)) return value.join(', ');
+    if (typeof value === 'object') {
+        try {
+            return JSON.stringify(value);
+        } catch (_) {
+            return String(value);
+        }
+    }
+    return String(value);
+}
+
+function setModalSectionVisibility(tableBodyElement, visible) {
+    const section = tableBodyElement?.closest('section.qa-modal-related');
+    if (section instanceof HTMLElement) {
+        section.hidden = false;
+    }
+}
+
+function getModalExportColumns(matches) {
+    const columns = [];
+    const seen = new Set();
+    for (const item of matches) {
+        for (const key of Object.keys(item || {})) {
+            if (seen.has(key)) continue;
+            seen.add(key);
+            columns.push(key);
+        }
+    }
+    return columns;
+}
+
+function renderRecordModalExport(row, options = {}) {
+    const {
+        headRowId = 'qaModalExportHeadRow',
+        bodyId = 'qaModalExportBody',
+        countId = 'qaModalExportCount'
+    } = options;
+    const headRow = $(headRowId);
+    const body = $(bodyId);
+    const count = $(countId);
+    if (!(headRow instanceof HTMLElement) || !(body instanceof HTMLElement)) return;
+
+    const pn = normModalMatch(row?.['PART NO.'] ?? row?.pn ?? '');
+    if (!pn) {
+        headRow.innerHTML = '<th>Sin datos</th>';
+        body.innerHTML = '<tr><td>No se pudo determinar el codigo PN del registro.</td></tr>';
+        if (count) count.textContent = '0 registros';
+        setModalSectionVisibility(body, false);
+        return;
+    }
+
+    if (!Array.isArray(state.miluNewData) || state.miluNewData.length === 0) {
+        headRow.innerHTML = '<th>Sin datos</th>';
+        body.innerHTML = '<tr><td>No se pudo cargar MILU_New para exportacion.</td></tr>';
+        if (count) count.textContent = '0 registros';
+        setModalSectionVisibility(body, false);
+        return;
+    }
+
+    const matches = state.miluNewData.filter(item => normModalMatch(item?.pn ?? item?.['PART NO.'] ?? '') === pn);
+    if (!matches.length) {
+        headRow.innerHTML = '<th>Sin coincidencias</th>';
+        body.innerHTML = '<tr><td>El codigo no aparece en MILU_New.</td></tr>';
+        if (count) count.textContent = '0 registros';
+        setModalSectionVisibility(body, false);
+        return;
+    }
+
+    const columns = getModalExportColumns(matches);
+    headRow.innerHTML = columns.map(col => `<th>${escapeHtml(col)}</th>`).join('');
+
+    body.innerHTML = matches.map(item => '<tr>'
+        + columns.map(col => {
+            const rawValue = formatModalExportValue(item?.[col]);
+            const displayValue = rawValue || '-';
+            return `<td title="${escapeHtml(rawValue)}">${escapeHtml(displayValue)}</td>`;
+        }).join('')
+        + '</tr>').join('');
+
+    if (count) count.textContent = `${matches.length} registro${matches.length === 1 ? '' : 's'}`;
+    setModalSectionVisibility(body, true);
+}
+
+function renderRecordModalSuperseded(row, options = {}) {
+    const {
+        headRowId = 'qaModalSupersededHeadRow',
+        bodyId = 'qaModalSupersededBody',
+        countId = 'qaModalSupersededCount'
+    } = options;
+    const headRow = $(headRowId);
+    const body = $(bodyId);
+    const count = $(countId);
+    if (!(headRow instanceof HTMLElement) || !(body instanceof HTMLElement)) return;
+
+    const pn = normModalMatch(row?.['PART NO.'] ?? row?.pn ?? '');
+    if (!pn) {
+        headRow.innerHTML = '<th>Sin datos</th>';
+        body.innerHTML = '<tr><td>No se pudo determinar el codigo PN del registro.</td></tr>';
+        if (count) count.textContent = '0 registros';
+        setModalSectionVisibility(body, false);
+        return;
+    }
+
+    if (!Array.isArray(state.miluSupersededData) || state.miluSupersededData.length === 0) {
+        headRow.innerHTML = '<th>Sin datos</th>';
+        body.innerHTML = '<tr><td>No se pudo cargar MILU_Superseded para exportacion.</td></tr>';
+        if (count) count.textContent = '0 registros';
+        setModalSectionVisibility(body, false);
+        return;
+    }
+
+    const matches = state.miluSupersededData.filter(item => normModalMatch(item?.pn ?? item?.['PART NO.'] ?? '') === pn);
+    if (!matches.length) {
+        headRow.innerHTML = '<th>Sin coincidencias</th>';
+        body.innerHTML = '<tr><td>El codigo no aparece en MILU_Superseded.</td></tr>';
+        if (count) count.textContent = '0 registros';
+        setModalSectionVisibility(body, false);
+        return;
+    }
+
+    const columns = getModalExportColumns(matches);
+    headRow.innerHTML = columns.map(col => `<th>${escapeHtml(col)}</th>`).join('');
+
+    body.innerHTML = matches.map(item => '<tr>'
+        + columns.map(col => {
+            const rawValue = formatModalExportValue(item?.[col]);
+            const displayValue = rawValue || '-';
+            return `<td title="${escapeHtml(rawValue)}">${escapeHtml(displayValue)}</td>`;
+        }).join('')
+        + '</tr>').join('');
+
+    if (count) count.textContent = `${matches.length} registro${matches.length === 1 ? '' : 's'}`;
+    setModalSectionVisibility(body, true);
+}
+
+function renderRecordModalMatches(row, currentRevisionKey, options = {}) {
+    const {
+        bodyId = 'qaModalMatchesBody',
+        countId = 'qaModalMatchesCount',
+        bookFilterId = 'qaModalMatchesBookFilter'
+    } = options;
+    const body = $(bodyId);
+    const count = $(countId);
+    if (!(body instanceof HTMLElement)) return;
+
+    const matchesByPn = getModalMatchesByPn(row);
+    const currentBook = normModalMatch(getBookEngineCode(row));
+
+    if (!matchesByPn.length) {
+        body.innerHTML = '<tr><td colspan="6">No se pudo determinar PN/libro del registro.</td></tr>';
+        if (count) count.textContent = '0 coincidencias';
+        setModalSectionVisibility(body, false);
+        return;
+    }
+
+    syncRecordModalBookFilter(row, matchesByPn, bookFilterId);
+    const selectedBookFilter = String($(bookFilterId)?.value || '__current__');
+
+    const filteredMatches = matchesByPn.filter(item => {
+        const itemBook = normModalMatch(item.book);
+        if (selectedBookFilter === '__all__') return true;
+        if (selectedBookFilter === '__current__') return !!currentBook && itemBook === currentBook;
+        return itemBook === normModalMatch(selectedBookFilter);
+    });
+
+    const matches = filteredMatches
+        .sort((a, b) => {
+            const byPage = pageSortValue(a.page) - pageSortValue(b.page);
+            if (byPage !== 0) return byPage;
+            const byPos = a.pos.localeCompare(b.pos, 'es', { numeric: true, sensitivity: 'base' });
+            if (byPos !== 0) return byPos;
+            return a.id.localeCompare(b.id, 'es', { numeric: true, sensitivity: 'base' });
+        });
+
+    if (!matches.length) {
+        body.innerHTML = '<tr><td colspan="6">Sin coincidencias para el filtro seleccionado.</td></tr>';
+        if (count) count.textContent = '0 coincidencias';
+        setModalSectionVisibility(body, false);
+        return;
+    }
+
+    body.innerHTML = matches.map(item => {
+        const isCurrent = item.revisionKey === currentRevisionKey;
+        return `<tr class="${isCurrent ? 'qa-modal-related-current' : ''}">`
+            + `<td>${escapeHtml(item.book || '-')}</td>`
+            + `<td>${escapeHtml(item.page || '-')}</td>`
+            + `<td>${escapeHtml(item.pos || '-')}</td>`
+            + `<td>${escapeHtml(item.id || '-')}</td>`
+            + `<td>${escapeHtml(item.estado || '-')}</td>`
+            + `<td>${escapeHtml(item.accion || '-')}</td>`
+            + '</tr>';
+    }).join('');
+
+    if (count) count.textContent = `${matches.length} coincidencias`;
+    setModalSectionVisibility(body, true);
 }
 
 function fillRecordModal(row, revisionKey) {
@@ -120,8 +403,98 @@ function fillRecordModal(row, revisionKey) {
     $('qaModalMeasurementFinal').value = String(row?.measurement_final ?? '');
     $('qaModalNorma').value = String(row?.norma ?? '');
 
+    renderRecordModalMatches(row, revisionKey);
+    renderRecordModalExport(row);
+    renderRecordModalSuperseded(row);
+
     const status = $('qaRecordModalStatus');
     if (status) status.textContent = '';
+}
+
+function fillSideRecordForm(row, revisionKey) {
+    const form = $('qaSideRecordForm');
+    if (!(form instanceof HTMLFormElement)) return;
+
+    form.dataset.revisionKey = revisionKey;
+    $('qaSideId').value = String(row?.ID ?? '');
+    $('qaSidePn').value = String(row?.['PART NO.'] ?? row?.pn ?? '');
+    $('qaSideBook').value = String(row?.engine_model ?? '');
+    $('qaSidePage').value = String(row?.['Source Page'] ?? '');
+    $('qaSidePos').value = String(row?.POS ?? '');
+    $('qaSideGesa').value = String(row?.gesa ?? '');
+    $('qaSideNormalizado').value = String(row?.normalizado ?? '');
+    $('qaSideSustHierarchie').value = String(row?.sust_hierarchie ?? '');
+    $('qaSideHasImg').value = String(row?.has_img ?? '');
+    $('qaSideEnWeb').value = String(row?.EN_WEB ?? '');
+
+    $('qaSideRevisionEstado').value = String(row?.qa_revision_estado || '');
+    $('qaSideRevisionAccion').value = String(row?.qa_revision_accion || '');
+    $('qaSidePnFinal').value = String(row?.pn_final ?? '');
+    $('qaSideDesignationFinal').value = String(row?.designation_final ?? '');
+    $('qaSideModelType').value = String(row?.['MODEL/TYPE'] ?? '');
+    $('qaSideQty').value = String(row?.QTY ?? '');
+    $('qaSideUnits').value = String(row?.UNITS ?? '');
+    $('qaSideWeightFinal').value = String(row?.weight_final ?? '');
+    $('qaSideFn').value = String(row?.FN ?? '');
+    $('qaSideMeasurementFinal').value = String(row?.measurement_final ?? '');
+    $('qaSideNorma').value = String(row?.norma ?? '');
+
+    const sideLabel = $('qaSideLabel');
+    if (sideLabel) {
+        sideLabel.textContent = `${String(row?.engine_model ?? '-')} • pág ${String(row?.['Source Page'] ?? '-')} • ID ${String(row?.ID ?? '-')}`;
+    }
+
+    renderRecordModalMatches(row, revisionKey, {
+        bodyId: 'qaSideMatchesBody',
+        countId: 'qaSideMatchesCount',
+        bookFilterId: 'qaSideMatchesBookFilter'
+    });
+    renderRecordModalExport(row, {
+        headRowId: 'qaSideExportHeadRow',
+        bodyId: 'qaSideExportBody',
+        countId: 'qaSideExportCount'
+    });
+    renderRecordModalSuperseded(row, {
+        headRowId: 'qaSideSupersededHeadRow',
+        bodyId: 'qaSideSupersededBody',
+        countId: 'qaSideSupersededCount'
+    });
+
+    const status = $('qaSideStatus');
+    if (status) status.textContent = '';
+}
+
+function clearSideRecordForm() {
+    const form = $('qaSideRecordForm');
+    if (!(form instanceof HTMLFormElement)) return;
+
+    form.dataset.revisionKey = '';
+    form.querySelectorAll('input').forEach(input => { input.value = ''; });
+    form.querySelectorAll('select').forEach(select => {
+        if (select.id === 'qaSideMatchesBookFilter') select.value = '__current__';
+        else select.value = '';
+    });
+
+    const sideLabel = $('qaSideLabel');
+    if (sideLabel) sideLabel.textContent = 'Selecciona una fila para cargar la ficha';
+
+    $('qaSideMatchesBody').innerHTML = '<tr><td colspan="6">Sin seleccion</td></tr>';
+    $('qaSideExportHeadRow').innerHTML = '<th>Sin datos</th>';
+    $('qaSideExportBody').innerHTML = '<tr><td>Sin seleccion.</td></tr>';
+    $('qaSideSupersededHeadRow').innerHTML = '<th>Sin datos</th>';
+    $('qaSideSupersededBody').innerHTML = '<tr><td>Sin seleccion.</td></tr>';
+    const status = $('qaSideStatus');
+    if (status) status.textContent = 'Selecciona una fila para editarla aqui.';
+}
+
+function syncSideRecordFormWithSelection() {
+    const revisionKey = String(state.selectedRevisionRowKey || '');
+    const row = getRowByRevisionKey(revisionKey);
+    if (!row || !revisionKey) {
+        clearSideRecordForm();
+        return;
+    }
+    fillSideRecordForm(row, revisionKey);
 }
 
 function captureModalUiState() {
@@ -218,10 +591,72 @@ async function handleRecordModalSubmit(event) {
         const updatedVisibleRow = refreshVisibleRowByRevisionKey(revisionKey);
         if (!updatedVisibleRow) renderTable();
         renderPagination();
+        syncSideRecordFormWithSelection();
         closeRecordModal();
         restoreModalUiState(revisionKey);
     } catch (error) {
         console.error('Error guardando formulario modal:', error);
+        if (status) status.textContent = `No se pudo guardar: ${error.message}`;
+        alert(`No se pudo guardar el registro: ${error.message}`);
+    } finally {
+        if (saveBtn) saveBtn.disabled = false;
+    }
+}
+
+async function handleSideRecordSubmit(event) {
+    event.preventDefault();
+    event.stopPropagation();
+    const form = event.target;
+    if (!(form instanceof HTMLFormElement)) return;
+
+    const revisionKey = String(form.dataset.revisionKey || '');
+    const row = getRowByRevisionKey(revisionKey);
+    if (!row) {
+        alert('Selecciona un registro de la tabla para editar la ficha lateral.');
+        return;
+    }
+
+    const saveBtn = $('qaSideSaveBtn');
+    const status = $('qaSideStatus');
+    if (saveBtn) saveBtn.disabled = true;
+    if (status) status.textContent = 'Guardando cambios...';
+
+    const nextEstado = String($('qaSideRevisionEstado')?.value || '').trim();
+    const nextAccion = String($('qaSideRevisionAccion')?.value || '').trim();
+    const nextValues = {
+        pn_final: String($('qaSidePnFinal')?.value || ''),
+        designation_final: String($('qaSideDesignationFinal')?.value || ''),
+        weight_final: String($('qaSideWeightFinal')?.value || ''),
+        measurement_final: String($('qaSideMeasurementFinal')?.value || ''),
+        norma: String($('qaSideNorma')?.value || '')
+    };
+
+    try {
+        const changedFields = MODAL_FIELD_KEYS.filter(key => String(row?.[key] ?? '') !== String(nextValues[key] ?? ''));
+        if (changedFields.length > 0) {
+            const engineFile = getEngineJsonForRow(row);
+            if (!engineFile) throw new Error('No se pudo determinar el archivo engine_*.json del registro.');
+            for (const fieldKey of changedFields) {
+                await saveCellToServer(engineFile, row.ID, fieldKey, nextValues[fieldKey]);
+                row[fieldKey] = nextValues[fieldKey];
+            }
+        }
+
+        setRowRevision(row, nextEstado, nextAccion);
+        state.selectedRevisionRowKey = revisionKey;
+        const updatedVisibleRow = refreshVisibleRowByRevisionKey(revisionKey);
+        if (!updatedVisibleRow) renderTable();
+        renderPagination();
+
+        const modalForm = $('qaRecordModalForm');
+        if (modalForm instanceof HTMLFormElement && String(modalForm.dataset.revisionKey || '') === revisionKey) {
+            fillRecordModal(row, revisionKey);
+        }
+
+        fillSideRecordForm(row, revisionKey);
+        if (status) status.textContent = 'Cambios guardados.';
+    } catch (error) {
+        console.error('Error guardando ficha lateral:', error);
         if (status) status.textContent = `No se pudo guardar: ${error.message}`;
         alert(`No se pudo guardar el registro: ${error.message}`);
     } finally {
@@ -431,10 +866,20 @@ async function loadData() {
         if (!Array.isArray(state.allData)) throw new Error('Los datos no son un array');
 
         const newData = await tryLoadFirstJson(['MILU_New_v507.json', 'MILU_New_v506.json']);
-        if (Array.isArray(newData)) state.newPnSet = new Set(newData.map(item => item.pn));
+        if (Array.isArray(newData)) {
+            state.newPnSet = new Set(newData.map(item => item.pn));
+            state.miluNewData = newData;
+        } else {
+            state.miluNewData = [];
+        }
 
         const supersededData = await tryLoadFirstJson(['MILU_Superseded_v507.json', 'MILU_Superseded_v506.json']);
-        if (Array.isArray(supersededData)) state.supersededPnSet = new Set(supersededData.map(item => item.pn));
+        if (Array.isArray(supersededData)) {
+            state.supersededPnSet = new Set(supersededData.map(item => item.pn));
+            state.miluSupersededData = supersededData;
+        } else {
+            state.miluSupersededData = [];
+        }
 
         const publication = await tryLoadFirstJson(['publication_map.json']);
         if (publication && typeof publication === 'object') state.publishedMap = new Map(Object.entries(publication));
@@ -474,6 +919,7 @@ async function loadData() {
         state.filteredData = [...state.allData];
         renderTable();
         renderPagination();
+        syncSideRecordFormWithSelection();
 
         if (syncAutoPageSize()) {
             state.currentPage = 1;
@@ -488,6 +934,10 @@ async function loadData() {
 }
 
 function attachGlobalEvents() {
+    document.addEventListener('qa:selected-row-changed', () => {
+        syncSideRecordFormWithSelection();
+    });
+
     $('prevBtn')?.addEventListener('click', () => changePage(-1));
     $('nextBtn')?.addEventListener('click', () => changePage(1));
     document.querySelector('thead')?.addEventListener('click', handleSort);
@@ -560,6 +1010,33 @@ function attachGlobalEvents() {
     $('bulkDiscardBtn')?.addEventListener('click', () => applyBulkQuickMode('discard'));
     $('bulkClearBtn')?.addEventListener('click', () => applyBulkQuickMode('clear'));
 
+    document.querySelectorAll('[data-pdf-tab]').forEach(tabBtn => {
+        tabBtn.addEventListener('click', () => setRightPanelTab(tabBtn.dataset.pdfTab || 'pdf'));
+    });
+
+    $('qaSideOpenModalBtn')?.addEventListener('click', () => {
+        const revisionKey = String($('qaSideRecordForm')?.dataset.revisionKey || '');
+        if (!revisionKey) {
+            alert('Selecciona un registro para abrir el modal.');
+            return;
+        }
+        openRecordModal(revisionKey);
+    });
+
+    $('qaSideMatchesBookFilter')?.addEventListener('change', () => {
+        const revisionKey = String($('qaSideRecordForm')?.dataset.revisionKey || '');
+        const row = getRowByRevisionKey(revisionKey);
+        if (!row) return;
+        renderRecordModalMatches(row, revisionKey, {
+            bodyId: 'qaSideMatchesBody',
+            countId: 'qaSideMatchesCount',
+            bookFilterId: 'qaSideMatchesBookFilter'
+        });
+    });
+
+    $('qaSideResetBtn')?.addEventListener('click', syncSideRecordFormWithSelection);
+    $('qaSideRecordForm')?.addEventListener('submit', handleSideRecordSubmit);
+
     document.addEventListener('keydown', (event) => {
         if (isRecordModalOpen()) {
             if (event.key === 'Escape') {
@@ -624,6 +1101,7 @@ function attachGlobalEvents() {
             const accionSelect = tr?.querySelector('select[data-revision-field="accion"]');
             if (estadoSelect instanceof HTMLSelectElement) { estadoSelect.value = nextEstado; updateRevisionSelectVisual(estadoSelect); }
             if (accionSelect instanceof HTMLSelectElement) { accionSelect.value = nextAccion; updateRevisionSelectVisual(accionSelect); }
+            syncSideRecordFormWithSelection();
             return;
         }
 
@@ -638,6 +1116,7 @@ function attachGlobalEvents() {
         refreshSelectedRowVisual();
         renderSelectedRowPosPanel(row);
         renderSelectedRowPosTop(row);
+        syncSideRecordFormWithSelection();
     });
 
     tbody?.addEventListener('dblclick', (event) => {
@@ -664,12 +1143,13 @@ function attachGlobalEvents() {
         const accion = revisionField === 'accion' ? target.value : String(row.qa_revision_accion || '');
         setRowRevision(row, estado, accion);
         updateRevisionSelectVisual(target);
+        syncSideRecordFormWithSelection();
     });
 
     window.addEventListener('resize', () => {
         if (resizeTimer) clearTimeout(resizeTimer);
         resizeTimer = setTimeout(() => {
-            if (state.currentPdfSource && state.currentPdfPageNumber > 0) {
+            if (state.rightPanelTab === 'pdf' && state.currentPdfSource && state.currentPdfPageNumber > 0) {
                 renderPdfPage(state.currentPdfSource, state.currentPdfPageNumber).catch(error => console.error('Error reajustando PDF:', error));
             }
             if (!state.allData.length || state.groupedVisible) return;
@@ -688,6 +1168,16 @@ function attachGlobalEvents() {
         if (!(target instanceof HTMLElement)) return;
         if (target.dataset.modalClose === 'true') closeRecordModal();
     });
+
+    $('qaModalMatchesBookFilter')?.addEventListener('change', () => {
+        const form = $('qaRecordModalForm');
+        if (!(form instanceof HTMLFormElement)) return;
+        const revisionKey = String(form.dataset.revisionKey || '');
+        const row = getRowByRevisionKey(revisionKey);
+        if (!row) return;
+        renderRecordModalMatches(row, revisionKey);
+    });
+
     $('qaRecordModalForm')?.addEventListener('submit', handleRecordModalSubmit);
     $('backendStatusRetryBtn')?.addEventListener('click', () => {
         refreshBackendStatus().catch(() => setBackendStatusBadge('offline', 'Backend: sin conexion'));
@@ -699,6 +1189,8 @@ function init() {
     loadColumnViewPreference();
     initBackendStatusMonitor();
     attachGlobalEvents();
+    setRightPanelTab(state.rightPanelTab);
+    clearSideRecordForm();
     loadData();
 }
 

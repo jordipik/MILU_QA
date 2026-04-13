@@ -20,7 +20,9 @@ export const state = {
     revisionRemoteSyncEnabled: true,
     revisionRemoteSyncTimeout: null,
     newPnSet: new Set(),
+    miluNewData: [],
     supersededPnSet: new Set(),
+    miluSupersededData: [],
     publishedMap: new Map(),
     productExportPnSet: new Set(),
     mainDataSourceLabel: 'engine_*.json',
@@ -29,4 +31,5 @@ export const state = {
     currentPdfPageNumber: 0,
     currentPdfRenderTask: null,
     currentPdfRequestToken: 0,
+    rightPanelTab: 'pdf',
 };
