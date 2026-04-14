@@ -19,7 +19,7 @@ export const FOCUS_COLUMN_ORDER = [
 export const PDF_COLUMN_ORDER = [
     // Sin ID. Se mantienen estados hasta "Acción" y luego columnas de exportación PDF.
     1, 2, 3, 4, 5, 6, 7, 8,
-    9, 12, 51, 16, 17, 19, 53, 40, 52, 31
+    9, 12, 51, 16, 17, 18, 23, 40, 52, 31
 ];
 
 function getColumnOrderForView(totalColumns) {

@@ -8,8 +8,8 @@
             --bad: #e11d48;
             --ok: #059669;
             --warn: #d97706;
-            --color-gesa: #22c55e;
-            --color-gesa-hover: #86efada8;
+            --color-gesa: #73c78f;
+            --color-gesa-hover: rgba(115, 199, 143, 0.34);
             --color-new: #f59f0b;
             --color-new-hover: #fcd34de1;
             --color-superseded: #ef4444;
@@ -271,12 +271,12 @@
 
         /* Estilos para celdas coloreadas */
         td.cell-gesa {
-            background-color: rgba(34, 197, 94, 0.452);
+            background-color: rgba(115, 199, 143, 0.2);
         }
 
         td.cell-gesa:hover {
             background-color: var(--color-gesa-hover);
-            box-shadow: inset 0 0 8px rgba(34, 197, 94, 0.2);
+            box-shadow: inset 0 0 8px rgba(115, 199, 143, 0.16);
         }
 
         td.cell-new {

@@ -371,16 +371,16 @@ function renderRow(row) {
       <td title="${escapeHtml(val(row, 'pn_raw'))}">${escapeHtml(val(row, 'pn_raw'))}</td>
     <td${editableAttr('pn_final')} title="${escapeHtml(val(row, 'pn_final'))}" class="cell-inline-editable">${escapeHtml(val(row, 'pn_final'))}</td>
     <td title="${escapeHtml(val(row, 'criterio_pn'))}">${escapeHtml(val(row, 'criterio_pn'))}</td>
-      <td title="${escapeHtml(val(row, 'DESIGNATION'))}">${escapeHtml(val(row, 'DESIGNATION'))}</td>
+    <td title="${escapeHtml(getRowValueForColumn(row, 'designation_final'))}">${escapeHtml(getRowValueForColumn(row, 'designation_final'))}</td>
     <td title="${escapeHtml(val(row, 'designation_gesa'))}" class="${classGesa}">${escapeHtml(val(row, 'designation_gesa'))}</td>
       <td class="separator-after" title="${escapeHtml(val(row, 'MODEL/TYPE'))}">${escapeHtml(val(row, 'MODEL/TYPE'))}</td>
       <td title="${escapeHtml(val(row, 'QTY'))}">${escapeHtml(val(row, 'QTY'))}</td>
-      <td title="${escapeHtml(val(row, 'WEIGHT'))}">${escapeHtml(val(row, 'WEIGHT'))}</td>
+    <td class="${classGesa}" title="${escapeHtml(val(row, 'WEIGHT'))}">${escapeHtml(val(row, 'WEIGHT'))}</td>
       <td title="${escapeHtml(val(row, 'UNITS'))}">${escapeHtml(val(row, 'UNITS'))}</td>
       <td class="${classGesa}" title="${escapeHtml(val(row, 'weight_gesa'))}">${escapeHtml(val(row, 'weight_gesa'))}</td>
       <td class="separator-after ${classGesa}" title="${escapeHtml(val(row, 'units'))}">${escapeHtml(val(row, 'units'))}</td>
       <td title="${escapeHtml(val(row, 'FG/FGS'))}">${escapeHtml(val(row, 'FG/FGS'))}</td>
-      <td title="${escapeHtml(val(row, 'MEASUREMENT / STANDARD'))}">${escapeHtml(val(row, 'MEASUREMENT / STANDARD'))}</td>
+    <td class="${classGesa}" title="${escapeHtml(val(row, 'MEASUREMENT / STANDARD'))}">${escapeHtml(val(row, 'MEASUREMENT / STANDARD'))}</td>
       <td class="${classGesa}" title="${escapeHtml(val(row, 'dimensions_gesa'))}">${escapeHtml(val(row, 'dimensions_gesa'))}</td>
       <td title="${escapeHtml(val(row, 'BOM-No.'))}">${escapeHtml(val(row, 'BOM-No.'))}</td>
       <td title="${escapeHtml(val(row, 'model'))}">${escapeHtml(val(row, 'model'))}</td>

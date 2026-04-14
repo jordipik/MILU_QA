@@ -34,18 +34,29 @@ def add_final_fields(record):
             record["measurement_final"] = record.get("dimensions_gesa")
         else:
             record["measurement_final"] = record.get("MEASUREMENT / STANDARD", None)
-    
-    # wheight_final: si hay WEIGHT usa ese, si no combina weight_gesa + " " + units
-    if "wheight_final" not in record:
+
+    # Corregir typo legado: wheight_final -> weight_final.
+    legacy_weight_final = record.get("wheight_final")
+    current_weight_final = record.get("weight_final")
+    current_weight_final_text = "" if current_weight_final is None else str(current_weight_final).strip()
+    legacy_weight_final_text = "" if legacy_weight_final is None else str(legacy_weight_final).strip()
+
+    # Si weight_final no existe o esta vacio, reutiliza el valor legado si existe.
+    if ("weight_final" not in record or current_weight_final_text == "") and legacy_weight_final_text:
+        record["weight_final"] = legacy_weight_final
+    elif "weight_final" not in record:
         if record.get("WEIGHT"):
-            record["wheight_final"] = record.get("WEIGHT")
+            record["weight_final"] = record.get("WEIGHT")
         else:
             weight_gesa = record.get("weight_gesa", "")
             units = record.get("units", "")
             if weight_gesa:
-                record["wheight_final"] = f"{weight_gesa} {units}".strip()
+                record["weight_final"] = f"{weight_gesa} {units}".strip()
             else:
-                record["wheight_final"] = None
+                record["weight_final"] = None
+
+    if "wheight_final" in record:
+        del record["wheight_final"]
     
     return record
 
@@ -85,16 +96,5 @@ for filename in engine_files:
         process_file(file_path)
     else:
         print(f"Archivo no encontrado: {file_path}")
-
-# Procesar archivos en json_originales/
-print("\n\nProcesando archivos engine*.json en json_originales/:\n")
-original_dir = base_dir / "json_originales"
-if original_dir.exists():
-    for filename in engine_files:
-        file_path = original_dir / filename
-        if file_path.exists():
-            process_file(file_path)
-        else:
-            print(f"Archivo no encontrado: {file_path}")
 
 print("\n✓ Proceso completado")

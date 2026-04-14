@@ -556,7 +556,7 @@ function renderRecordModalMatches(row, currentRevisionKey, options = {}) {
     const currentBook = normModalMatch(getBookEngineCode(row));
 
     if (!matchesByPn.length) {
-        body.innerHTML = '<tr><td colspan="6">No se pudo determinar PN/libro del registro.</td></tr>';
+        body.innerHTML = '<tr><td colspan="5">No se pudo determinar PN/libro del registro.</td></tr>';
         if (count) count.textContent = '0 coincidencias';
         setModalSectionVisibility(body, false);
         return;
@@ -574,6 +574,8 @@ function renderRecordModalMatches(row, currentRevisionKey, options = {}) {
 
     const matches = filteredMatches
         .sort((a, b) => {
+            const byBook = String(a.book || '').localeCompare(String(b.book || ''), 'es', { numeric: true, sensitivity: 'base' });
+            if (byBook !== 0) return byBook;
             const byPage = pageSortValue(a.page) - pageSortValue(b.page);
             if (byPage !== 0) return byPage;
             const byPos = a.pos.localeCompare(b.pos, 'es', { numeric: true, sensitivity: 'base' });
@@ -582,7 +584,7 @@ function renderRecordModalMatches(row, currentRevisionKey, options = {}) {
         });
 
     if (!matches.length) {
-        body.innerHTML = '<tr><td colspan="6">Sin coincidencias para el filtro seleccionado.</td></tr>';
+        body.innerHTML = '<tr><td colspan="5">Sin coincidencias para el filtro seleccionado.</td></tr>';
         if (count) count.textContent = '0 coincidencias';
         setModalSectionVisibility(body, false);
         return;
@@ -594,7 +596,6 @@ function renderRecordModalMatches(row, currentRevisionKey, options = {}) {
             + `<td>${escapeHtml(item.book || '-')}</td>`
             + `<td>${escapeHtml(item.page || '-')}</td>`
             + `<td>${escapeHtml(item.pos || '-')}</td>`
-            + `<td>${escapeHtml(item.id || '-')}</td>`
             + `<td>${escapeHtml(item.estado || '-')}</td>`
             + `<td>${escapeHtml(item.accion || '-')}</td>`
             + '</tr>';
@@ -707,7 +708,7 @@ function clearSideRecordForm() {
     const sideLabel = $('qaSideLabel');
     if (sideLabel) sideLabel.textContent = 'Selecciona una fila para cargar la ficha';
 
-    $('qaSideMatchesBody').innerHTML = '<tr><td colspan="6">Sin seleccion</td></tr>';
+    $('qaSideMatchesBody').innerHTML = '<tr><td colspan="5">Sin seleccion</td></tr>';
     $('qaSideExportHeadRow').innerHTML = '<th>Sin datos</th>';
     $('qaSideExportBody').innerHTML = '<tr><td>Sin seleccion.</td></tr>';
     $('qaSideSupersededHeadRow').innerHTML = '<th>Sin datos</th>';
