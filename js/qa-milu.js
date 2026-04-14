@@ -3,11 +3,13 @@
  */
 
 import { state } from './state.js';
-import { escapeHtml, val } from './helpers.js';
+import { escapeHtml, getRowValueForColumn, val } from './helpers.js';
 import { checkSaveBackendConnection, fetchJsonSafe, loadPartitionedEngineData, saveCellToServer } from './data-loader.js';
 import {
+    applyImportedRevisionToEngineJson,
     applyRevisionDataToRows,
     assignRevisionKeys,
+    createRevisionExportPayload,
     getRevisionKey,
     handleExportRevision,
     handleImportRevisionFile,
@@ -43,6 +45,43 @@ let filterTimeout = null;
 let resizeTimer = null;
 let backendStatusTimer = null;
 const MODAL_FIELD_KEYS = ['pn_final', 'designation_final', 'weight_final', 'measurement_final', 'norma'];
+const SYNTHETIC_NEW_EXPORT_COLUMNS = [
+    'Id',
+    'fecha_version',
+    'POS',
+    'designation',
+    'engine',
+    'model_type',
+    'type',
+    'pn',
+    'nsn',
+    'GESA_NORM',
+    'GESA_NORMALIZADO',
+    'fg_code',
+    'fg_description',
+    'fg_code_description',
+    'weight',
+    'weight_txt',
+    'measurement',
+    'TIPOARTICULO',
+    'PAG',
+    'BOM_no',
+    'esquema_general',
+    'exp_motor',
+    'exp_categorias',
+    'atributo',
+    'SUST_TIPO',
+    'new_pn_relacionado',
+    'old_pn_relacionados',
+    'EN_EXCEL_SUSTITUCION',
+    'ruta_foto',
+    'exp_imagenes',
+    'vinculo'
+];
+const SYNTHETIC_SUPERSEDED_EXPORT_COLUMNS = [
+    ...SYNTHETIC_NEW_EXPORT_COLUMNS,
+    'vinculo'
+];
 const modalUiState = {
     tableScrollTop: 0,
     tableScrollLeft: 0,
@@ -189,6 +228,226 @@ function formatModalExportValue(value) {
     return String(value);
 }
 
+function formatExportVersionStamp(date = new Date()) {
+    const year = date.getFullYear();
+    const month = String(date.getMonth() + 1).padStart(2, '0');
+    const day = String(date.getDate()).padStart(2, '0');
+    const hour = String(date.getHours()).padStart(2, '0');
+    const minute = String(date.getMinutes()).padStart(2, '0');
+    return `${year}${month}${day}.${hour}${minute}`;
+}
+
+function escapeRegExp(value) {
+    return String(value || '').replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+}
+
+function normalizeModelTypeForExport(row) {
+    const rawModel = String(row?.model ?? '').trim();
+    if (rawModel) return rawModel;
+
+    const engineModel = String(row?.engine_model ?? '').trim();
+    if (!engineModel) return '';
+    return engineModel.replace('4000', '').trim();
+}
+
+function normalizePageLabelForExport(row) {
+    const book = String(row?.engine_model ?? '').trim();
+    const pageRaw = String(row?.['Source Page'] ?? '').trim();
+    if (!book || !pageRaw) return '';
+    const digits = pageRaw.replace(/[^0-9]/g, '');
+    const page = digits ? digits.padStart(4, '0') : pageRaw;
+    return `${book}-${page}`;
+}
+
+function getPreferredRowsForPn(row) {
+    const currentPn = String(row?.['PART NO.'] ?? row?.pn ?? '').trim();
+    if (!currentPn) return [];
+    const normalizedPn = normModalMatch(currentPn);
+    return state.allData.filter(item => normModalMatch(item?.['PART NO.'] ?? item?.pn ?? '') === normalizedPn);
+}
+
+function uniqueSortedValues(values, compareAsNumeric = false) {
+    const unique = [...new Set(values.map(value => String(value ?? '').trim()).filter(Boolean))];
+    return unique.sort((a, b) => {
+        if (compareAsNumeric) {
+            return a.localeCompare(b, 'es', { numeric: true, sensitivity: 'base' });
+        }
+        return a.localeCompare(b, 'es', { sensitivity: 'base' });
+    });
+}
+
+function parseWeightNumber(value) {
+    const text = String(value ?? '').trim();
+    if (!text) return null;
+
+    const normalized = text.replace(/\s+/g, ' ');
+    const match = normalized.match(/(\d+[\d.,]*)\s*(KGM|KG|G)\b/i);
+    if (!match) return null;
+
+    let numericText = match[1].replace(/\s/g, '');
+    if (numericText.includes(',') && numericText.includes('.')) {
+        numericText = numericText.replace(/\./g, '').replace(',', '.');
+    } else if (numericText.includes(',')) {
+        numericText = numericText.replace(',', '.');
+    }
+
+    const parsed = Number(numericText);
+    if (!Number.isFinite(parsed)) return null;
+
+    const unit = match[2].toUpperCase();
+    if (unit === 'G') return parsed / 1000;
+    return parsed;
+}
+
+function resolveWeightForExport(row) {
+    const gesaWeight = Number(row?.weight_gesa);
+    if (Number.isFinite(gesaWeight)) return gesaWeight;
+
+    const finalWeight = parseWeightNumber(getRowValueForColumn(row, 'weight_final', ''));
+    if (Number.isFinite(finalWeight)) return finalWeight;
+
+    return parseWeightNumber(row?.WEIGHT);
+}
+
+function formatWeightTextForExport(row, weightValue) {
+    if (!Number.isFinite(weightValue)) {
+        return String(getRowValueForColumn(row, 'weight_final', '') || row?.WEIGHT || '').trim();
+    }
+    const unit = String(row?.units || 'KGM').trim() || 'KGM';
+    return `${weightValue.toFixed(3)} ${unit}`;
+}
+
+function resolveMeasurementForExport(row) {
+    const explicitFinal = String(row?.measurement_final ?? '').trim();
+    if (explicitFinal) return explicitFinal;
+
+    const gesaMeasurement = String(row?.dimensions_gesa ?? '').trim();
+    if (gesaMeasurement) return gesaMeasurement;
+
+    let rawMeasurement = String(row?.['MEASUREMENT / STANDARD'] ?? '').trim();
+    const norma = String(row?.norma ?? '').trim();
+    if (rawMeasurement && norma) {
+        rawMeasurement = rawMeasurement.replace(new RegExp(`\\b${escapeRegExp(norma)}\\b`, 'ig'), '').trim();
+    }
+    return rawMeasurement.replace(/\s{2,}/g, ' ').trim();
+}
+
+function firstNonEmptyValue(rows, getter) {
+    for (const row of rows) {
+        const value = getter(row);
+        if (value != null && String(value).trim() !== '') return value;
+    }
+    return null;
+}
+
+function buildSyntheticNewExportRow(row) {
+    const matches = getPreferredRowsForPn(row);
+    if (!matches.length) return null;
+
+    const weightValue = resolveWeightForExport(row);
+    const pageLabels = uniqueSortedValues(matches.map(item => normalizePageLabelForExport(item)), true);
+    const modelTypes = uniqueSortedValues(matches.map(item => normalizeModelTypeForExport(item)), true);
+    const engineModels = uniqueSortedValues(matches.map(item => String(item?.engine_model ?? '').trim()), true);
+    const categoryValues = uniqueSortedValues(matches.map(item => String(item?.atributo ?? item?.exp_categorias ?? '').trim()));
+    const imageValue = firstNonEmptyValue([row, ...matches], item => item?.ruta_esquemas_pos || item?.ruta_foto || '');
+    const routeFotoValue = firstNonEmptyValue([row, ...matches], item => item?.ruta_foto || '');
+    const normalizedPn = String(row?.['PART NO.'] ?? row?.pn ?? '').trim();
+    const hierarchy = String(row?.sust_hierarchie ?? '').trim();
+    const supersededList = String(row?.sust_superseded_list ?? '').trim();
+    const hasSubstitution = hierarchy !== '' || supersededList !== '' || String(row?.sust_new_part_number ?? '').trim() !== '';
+
+    return {
+        Id: String(row?.ID ?? '').trim(),
+        fecha_version: formatExportVersionStamp(),
+        POS: String(row?.POS ?? '').trim(),
+        designation: String(getRowValueForColumn(row, 'designation_final', '')).trim(),
+        engine: String(row?.engine ?? '').trim() || '4000',
+        model_type: modelTypes.join(', '),
+        type: '',
+        pn: normalizedPn,
+        nsn: String(row?.nsn ?? '').trim(),
+        GESA_NORM: String(row?.norma ?? '').trim(),
+        GESA_NORMALIZADO: String(row?.normalizado ?? '').trim(),
+        fg_code: row?.fg_code ?? '',
+        fg_description: String(row?.fgs_description ?? '').trim(),
+        fg_code_description: String(row?.fgs_code_description ?? '').trim(),
+        weight: Number.isFinite(weightValue) ? Number(weightValue.toFixed(3)) : '',
+        weight_txt: formatWeightTextForExport(row, weightValue),
+        measurement: resolveMeasurementForExport(row),
+        TIPOARTICULO: String(row?.TIPOARTICULO ?? '').trim() || 'piezas',
+        PAG: pageLabels.join(', '),
+        BOM_no: String(row?.['BOM-No.'] ?? '').trim(),
+        esquema_general: '',
+        exp_motor: engineModels.join(', '),
+        exp_categorias: categoryValues.join(', '),
+        atributo: categoryValues.join(', '),
+        SUST_TIPO: hierarchy || null,
+        new_pn_relacionado: hierarchy === 'New'
+            ? normalizedPn
+            : (String(row?.sust_new_part_number ?? '').trim() || null),
+        old_pn_relacionados: supersededList || null,
+        EN_EXCEL_SUSTITUCION: hasSubstitution ? 'SI' : '',
+        ruta_foto: routeFotoValue,
+        exp_imagenes: imageValue,
+        vinculo: normalizedPn ? `milu-naval.mystagingwebsite.com/producto/${normalizedPn}` : ''
+    };
+}
+
+function buildSyntheticSupersededExportRow(row) {
+    const matches = getPreferredRowsForPn(row);
+    if (!matches.length) return null;
+
+    const hierarchy = String(row?.sust_hierarchie ?? '').trim();
+    const relatedNewPn = String(row?.sust_new_part_number ?? '').trim()
+        || String(row?.['New Part Number'] ?? '').trim();
+    if (!relatedNewPn && hierarchy !== 'Superseded') return null;
+
+    const weightValue = resolveWeightForExport(row);
+    const pageLabels = uniqueSortedValues(matches.map(item => normalizePageLabelForExport(item)), true);
+    const modelTypes = uniqueSortedValues(matches.map(item => normalizeModelTypeForExport(item)), true);
+    const engineModels = uniqueSortedValues(matches.map(item => String(item?.engine_model ?? '').trim()), true);
+    const categoryValues = uniqueSortedValues(matches.map(item => String(item?.atributo ?? item?.exp_categorias ?? '').trim()));
+    const imageValue = firstNonEmptyValue([row, ...matches], item => item?.ruta_esquemas_pos || item?.ruta_foto || '');
+    const routeFotoValue = firstNonEmptyValue([row, ...matches], item => item?.ruta_foto || '');
+    const normalizedPn = String(row?.['PART NO.'] ?? row?.pn ?? '').trim();
+    const resolvedRelatedPn = relatedNewPn || normalizedPn;
+    const hasSubstitution = hierarchy === 'Superseded' || resolvedRelatedPn !== '';
+
+    return {
+        Id: String(row?.ID ?? '').trim(),
+        fecha_version: formatExportVersionStamp(),
+        POS: String(row?.POS ?? '').trim(),
+        designation: String(getRowValueForColumn(row, 'designation_final', '')).trim(),
+        engine: String(row?.engine ?? '').trim() || '4000',
+        model_type: modelTypes.join(', '),
+        type: '',
+        pn: normalizedPn,
+        nsn: String(row?.nsn ?? '').trim(),
+        GESA_NORM: String(row?.norma ?? '').trim(),
+        GESA_NORMALIZADO: String(row?.normalizado ?? '').trim(),
+        fg_code: row?.fg_code ?? '',
+        fg_description: String(row?.fgs_description ?? '').trim(),
+        fg_code_description: String(row?.fgs_code_description ?? '').trim(),
+        weight: Number.isFinite(weightValue) ? Number(weightValue.toFixed(3)) : '',
+        weight_txt: formatWeightTextForExport(row, weightValue),
+        measurement: resolveMeasurementForExport(row),
+        TIPOARTICULO: String(row?.TIPOARTICULO ?? '').trim() || 'piezas',
+        PAG: pageLabels.join(', '),
+        BOM_no: String(row?.['BOM-No.'] ?? '').trim(),
+        esquema_general: '',
+        exp_motor: engineModels.join(', '),
+        exp_categorias: categoryValues.join(', '),
+        atributo: categoryValues.join(', '),
+        SUST_TIPO: hierarchy || 'Superseded',
+        new_pn_relacionado: resolvedRelatedPn || null,
+        old_pn_relacionados: null,
+        EN_EXCEL_SUSTITUCION: hasSubstitution ? 'SI' : '',
+        ruta_foto: routeFotoValue,
+        exp_imagenes: imageValue,
+        vinculo: resolvedRelatedPn ? `milu-naval.mystagingwebsite.com/producto/${resolvedRelatedPn}` : ''
+    };
+}
+
 function setModalSectionVisibility(tableBodyElement, visible) {
     const section = tableBodyElement?.closest('section.qa-modal-related');
     if (section instanceof HTMLElement) {
@@ -220,8 +479,8 @@ function renderRecordModalExport(row, options = {}) {
     const count = $(countId);
     if (!(headRow instanceof HTMLElement) || !(body instanceof HTMLElement)) return;
 
-    const pn = normModalMatch(row?.['PART NO.'] ?? row?.pn ?? '');
-    if (!pn) {
+    const syntheticRow = buildSyntheticNewExportRow(row);
+    if (!syntheticRow) {
         headRow.innerHTML = '<th>Sin datos</th>';
         body.innerHTML = '<tr><td>No se pudo determinar el codigo PN del registro.</td></tr>';
         if (count) count.textContent = '0 registros';
@@ -229,24 +488,9 @@ function renderRecordModalExport(row, options = {}) {
         return;
     }
 
-    if (!Array.isArray(state.miluNewData) || state.miluNewData.length === 0) {
-        headRow.innerHTML = '<th>Sin datos</th>';
-        body.innerHTML = '<tr><td>No se pudo cargar MILU_New para exportacion.</td></tr>';
-        if (count) count.textContent = '0 registros';
-        setModalSectionVisibility(body, false);
-        return;
-    }
-
-    const matches = state.miluNewData.filter(item => normModalMatch(item?.pn ?? item?.['PART NO.'] ?? '') === pn);
-    if (!matches.length) {
-        headRow.innerHTML = '<th>Sin coincidencias</th>';
-        body.innerHTML = '<tr><td>El codigo no aparece en MILU_New.</td></tr>';
-        if (count) count.textContent = '0 registros';
-        setModalSectionVisibility(body, false);
-        return;
-    }
-
-    const columns = getModalExportColumns(matches);
+    const sourceMatches = getPreferredRowsForPn(row);
+    const matches = [syntheticRow];
+    const columns = SYNTHETIC_NEW_EXPORT_COLUMNS.filter(col => Object.prototype.hasOwnProperty.call(syntheticRow, col));
     headRow.innerHTML = columns.map(col => `<th>${escapeHtml(col)}</th>`).join('');
 
     body.innerHTML = matches.map(item => '<tr>'
@@ -257,7 +501,7 @@ function renderRecordModalExport(row, options = {}) {
         }).join('')
         + '</tr>').join('');
 
-    if (count) count.textContent = `${matches.length} registro${matches.length === 1 ? '' : 's'}`;
+    if (count) count.textContent = `1 registro reconstruido · ${sourceMatches.length} aparicion${sourceMatches.length === 1 ? '' : 'es'}`;
     setModalSectionVisibility(body, true);
 }
 
@@ -272,33 +516,18 @@ function renderRecordModalSuperseded(row, options = {}) {
     const count = $(countId);
     if (!(headRow instanceof HTMLElement) || !(body instanceof HTMLElement)) return;
 
-    const pn = normModalMatch(row?.['PART NO.'] ?? row?.pn ?? '');
-    if (!pn) {
+    const syntheticRow = buildSyntheticSupersededExportRow(row);
+    if (!syntheticRow) {
         headRow.innerHTML = '<th>Sin datos</th>';
-        body.innerHTML = '<tr><td>No se pudo determinar el codigo PN del registro.</td></tr>';
+        body.innerHTML = '<tr><td>El registro no tiene datos suficientes para reconstruir MILU_Superseded.</td></tr>';
         if (count) count.textContent = '0 registros';
         setModalSectionVisibility(body, false);
         return;
     }
 
-    if (!Array.isArray(state.miluSupersededData) || state.miluSupersededData.length === 0) {
-        headRow.innerHTML = '<th>Sin datos</th>';
-        body.innerHTML = '<tr><td>No se pudo cargar MILU_Superseded para exportacion.</td></tr>';
-        if (count) count.textContent = '0 registros';
-        setModalSectionVisibility(body, false);
-        return;
-    }
-
-    const matches = state.miluSupersededData.filter(item => normModalMatch(item?.pn ?? item?.['PART NO.'] ?? '') === pn);
-    if (!matches.length) {
-        headRow.innerHTML = '<th>Sin coincidencias</th>';
-        body.innerHTML = '<tr><td>El codigo no aparece en MILU_Superseded.</td></tr>';
-        if (count) count.textContent = '0 registros';
-        setModalSectionVisibility(body, false);
-        return;
-    }
-
-    const columns = getModalExportColumns(matches);
+    const sourceMatches = getPreferredRowsForPn(row);
+    const matches = [syntheticRow];
+    const columns = SYNTHETIC_SUPERSEDED_EXPORT_COLUMNS.filter(col => Object.prototype.hasOwnProperty.call(syntheticRow, col));
     headRow.innerHTML = columns.map(col => `<th>${escapeHtml(col)}</th>`).join('');
 
     body.innerHTML = matches.map(item => '<tr>'
@@ -309,7 +538,7 @@ function renderRecordModalSuperseded(row, options = {}) {
         }).join('')
         + '</tr>').join('');
 
-    if (count) count.textContent = `${matches.length} registro${matches.length === 1 ? '' : 's'}`;
+    if (count) count.textContent = `1 registro reconstruido · ${sourceMatches.length} aparicion${sourceMatches.length === 1 ? '' : 'es'}`;
     setModalSectionVisibility(body, true);
 }
 
@@ -813,7 +1042,7 @@ function isTypingContext(target) {
     return tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT' || target.isContentEditable || Boolean(target.closest('[contenteditable="true"]'));
 }
 
-function applyBulkQuickMode(quickMode) {
+async function applyBulkQuickMode(quickMode) {
     const scopeSelect = $('bulkScopeSelect');
     if (!scopeSelect) return;
 
@@ -845,6 +1074,12 @@ function applyBulkQuickMode(quickMode) {
         const nextAccion = targetValues.accion === null ? String(row.qa_revision_accion || '') : targetValues.accion;
         setRowRevisionNoSave(row, nextEstado, nextAccion);
     });
+
+    try {
+        await applyImportedRevisionToEngineJson(createRevisionExportPayload());
+    } catch (error) {
+        alert(`No se pudo persistir el cambio masivo en los JSON: ${error.message}`);
+    }
 
     renderTable();
     renderPagination();
@@ -991,11 +1226,14 @@ function attachGlobalEvents() {
         const file = event.target.files?.[0];
         if (!file) return;
         try {
-            await handleImportRevisionFile(file);
+            const importedPayload = await handleImportRevisionFile(file);
+            const backendApply = await applyImportedRevisionToEngineJson(importedPayload);
             applyRevisionDataToRows(state.allData);
             state.currentPage = 1;
             renderTable();
             renderPagination();
+            const appliedCount = Number(backendApply?.totalApplied || 0);
+            alert(`Revision importada y aplicada a JSON de libros. Filas actualizadas: ${appliedCount}.`);
         } catch (error) {
             alert(`Error importando revisión: ${error.message}`);
         } finally {

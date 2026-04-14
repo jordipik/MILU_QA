@@ -6,7 +6,7 @@
 import { state } from './state.js';
 
 export const REVISION_STORAGE_KEY = 'milu_revision_data_v1';
-export const REVISION_REMOTE_SYNC_URL = './qa_revision_sync.php';
+export const REVISION_REMOTE_SYNC_URL = '/qa_revision_sync.php';
 
 // ─── Claves de revisión ──────────────────────────────────────────────────────
 
@@ -224,7 +224,15 @@ export function applyRevisionDataToRows(rows) {
         for (const alias of aliases) {
             if (state.revisionData[alias]) { rev = state.revisionData[alias]; break; }
         }
-        if (!rev) rev = { estado: '', accion: '', updated_at: '' };
+        if (!rev) {
+            const fromRow = normalizeRevisionRecord({
+                estado: row?.qa_revision_estado,
+                accion: row?.qa_revision_accion,
+                updated_at: row?.qa_revision_updated_at
+            });
+            rev = revisionRecordHasData(fromRow) ? fromRow : { estado: '', accion: '', updated_at: '' };
+        }
+
         row.qa_revision_estado = rev.estado || '';
         row.qa_revision_accion = rev.accion || '';
         row.qa_revision_updated_at = rev.updated_at || '';

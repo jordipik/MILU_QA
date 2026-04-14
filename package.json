@@ -1,4 +1,7 @@
 {
+  "scripts": {
+    "generate:synthetic": "node generate_synthetic_exports.js"
+  },
   "dependencies": {
     "body-parser": "^2.2.2",
     "cors": "^2.8.6",

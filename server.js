@@ -4,12 +4,136 @@ const fs = require('fs');
 const path = require('path');
 const bodyParser = require('body-parser');
 const cors = require('cors');
+const { applyRevisionPayload } = require('./apply_revision_to_engines');
 
 const app = express();
 const PORT = 3000;
+const REVISION_DATA_FILE = path.join(__dirname, 'qa_revision_server_data.json');
 
 app.use(cors());
-app.use(bodyParser.json());
+app.use(bodyParser.json({ limit: '10mb' }));
+
+function buildEmptyRevisionPayload() {
+    return {
+        meta: {
+            source: 'server.js',
+            version: 2,
+            rows: 0
+        },
+        revisions: {
+            v: 2,
+            r: [],
+            k: {}
+        }
+    };
+}
+
+function readRevisionPayloadFromDisk() {
+    if (!fs.existsSync(REVISION_DATA_FILE)) return buildEmptyRevisionPayload();
+    const raw = fs.readFileSync(REVISION_DATA_FILE, 'utf8').trim();
+    if (!raw) return buildEmptyRevisionPayload();
+    const parsed = JSON.parse(raw);
+    if (!parsed || typeof parsed !== 'object') return buildEmptyRevisionPayload();
+    return parsed;
+}
+
+function sanitizeIncomingRevisions(revisions) {
+    const version = Number.isFinite(Number(revisions?.v)) ? Number(revisions.v) : 2;
+    const rows = [];
+    const legacy = {};
+
+    if (Array.isArray(revisions?.r)) {
+        revisions.r.forEach(entry => {
+            if (!Array.isArray(entry) || entry.length < 3) return;
+            const idx = Number(entry[0]);
+            if (!Number.isFinite(idx) || idx <= 0) return;
+            const estado = String(entry[1] ?? '').trim();
+            const accion = String(entry[2] ?? '').trim();
+            if (!estado && !accion) return;
+            rows.push([idx, estado, accion]);
+        });
+    }
+
+    if (revisions?.k && typeof revisions.k === 'object' && !Array.isArray(revisions.k)) {
+        Object.entries(revisions.k).forEach(([key, value]) => {
+            if (!value || typeof value !== 'object') return;
+            const estado = String(value.estado ?? '').trim();
+            const accion = String(value.accion ?? '').trim();
+            if (!estado && !accion) return;
+            legacy[String(key)] = { estado, accion, updated_at: '' };
+        });
+    }
+
+    rows.sort((a, b) => a[0] - b[0]);
+    return { version, rows, legacy };
+}
+
+function writeRevisionPayloadToDisk(payload) {
+    const tmp = `${REVISION_DATA_FILE}.tmp`;
+    fs.writeFileSync(tmp, `${JSON.stringify(payload, null, 2)}\n`, 'utf8');
+    fs.renameSync(tmp, REVISION_DATA_FILE);
+}
+
+app.options('/qa_revision_sync.php', (_req, res) => {
+    res.sendStatus(204);
+});
+
+app.get('/qa_revision_sync.php', (_req, res) => {
+    try {
+        const payload = readRevisionPayloadFromDisk();
+        res.json(payload);
+    } catch (error) {
+        res.status(500).json({ ok: false, error: `No se pudo leer revisiones: ${error.message}` });
+    }
+});
+
+app.post('/qa_revision_sync.php', (req, res) => {
+    try {
+        const revisions = req.body?.revisions;
+        if (!revisions || typeof revisions !== 'object' || Array.isArray(revisions)) {
+            return res.status(400).json({ ok: false, error: 'Falta objeto revisions.' });
+        }
+
+        const { version, rows, legacy } = sanitizeIncomingRevisions(revisions);
+        const payload = {
+            meta: {
+                updated_at: new Date().toISOString(),
+                source: 'server.js',
+                version: 2,
+                rows: rows.length + Object.keys(legacy).length
+            },
+            revisions: {
+                v: version,
+                r: rows,
+                k: legacy
+            }
+        };
+
+        writeRevisionPayloadToDisk(payload);
+        return res.json({ ok: true, saved_rows: payload.meta.rows });
+    } catch (error) {
+        return res.status(500).json({ ok: false, error: `No se pudo guardar revisiones: ${error.message}` });
+    }
+});
+
+app.post('/apply-revision-to-engines', (req, res) => {
+    try {
+        const payload = req.body;
+        if (!payload || typeof payload !== 'object' || Array.isArray(payload)) {
+            return res.status(400).json({ ok: false, error: 'Payload de revisión no válido.' });
+        }
+
+        const result = applyRevisionPayload(payload, {
+            repoRoot: __dirname,
+            sourceName: 'import_from_ui'
+        });
+
+        return res.json({ ok: true, ...result });
+    } catch (error) {
+        return res.status(500).json({ ok: false, error: `No se pudo aplicar revisión a libros: ${error.message}` });
+    }
+});
+
 app.use(express.static(__dirname));
 
 app.get('/', (req, res) => {
