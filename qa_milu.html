@@ -308,9 +308,11 @@
                 </div>
 
                 <div id="pagination" class="pagination" style="display: none;">
+                    <button id="firstBtn" disabled>Primero</button>
                     <button id="prevBtn" disabled>Anterior</button>
                     <span id="pageInfo">Página 1 de 1</span>
                     <button id="nextBtn" disabled>Siguiente</button>
+                    <button id="lastBtn" disabled>Último</button>
                 </div>
 
                 <div id="selectedPosPanel" class="selected-pos-panel">
@@ -382,6 +384,15 @@
                         <button id="qaSideOpenModalBtn" type="button" class="qa-side-open-btn">Abrir modal</button>
                     </div>
                     <div class="qa-side-body">
+                        <section class="qa-side-search" aria-label="Buscador rapido de articulos">
+                            <div class="qa-side-search-row">
+                                <input id="qaSideSearchArticle" type="text" placeholder="Articulo (ID o PN)">
+                                <input id="qaSideSearchBook" type="text" placeholder="Libro">
+                                <input id="qaSideSearchPage" type="text" inputmode="numeric" placeholder="Pagina">
+                                <button id="qaSideSearchBtn" type="button">Buscar</button>
+                            </div>
+                            <p id="qaSideSearchStatus" class="qa-side-search-status" aria-live="polite"></p>
+                        </section>
                         <form id="qaSideRecordForm" class="qa-modal-form qa-side-modal-form">
                             <div class="qa-modal-top-split">
                                 <div class="qa-modal-left-stack">

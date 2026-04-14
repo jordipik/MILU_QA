@@ -26,12 +26,14 @@ import {
     saveColumnViewPreference
 } from './column-view.js';
 import { isInlineEditableTarget, cancelInlineEdit } from './cell-editor.js';
-import { loadPdfClear, loadPdfWithPage, renderPdfPage } from './pdf-viewer.js';
+import { loadPdfClear, loadPdfWithPage, renderPdfPage, setPdfSelection } from './pdf-viewer.js';
 import { updateSchemasInline, renderSelectedRowPosPanel, renderSelectedRowPosTop } from './schemas.js';
 import { getEngineJsonForRow } from './helpers.js';
 import {
     changePage,
+    focusRevisionRowInMainTable,
     getRowsForBulkScope,
+    jumpToPage,
     moveSelectionBy,
     refreshVisibleRowByRevisionKey,
     renderPagination,
@@ -592,7 +594,8 @@ function renderRecordModalMatches(row, currentRevisionKey, options = {}) {
 
     body.innerHTML = matches.map(item => {
         const isCurrent = item.revisionKey === currentRevisionKey;
-        return `<tr class="${isCurrent ? 'qa-modal-related-current' : ''}">`
+        const revisionKeyAttr = escapeHtml(String(item.revisionKey || ''));
+        return `<tr class="${isCurrent ? 'qa-modal-related-current' : ''}" data-revision-key="${revisionKeyAttr}" title="Doble click para ir al registro en tabla principal">`
             + `<td>${escapeHtml(item.book || '-')}</td>`
             + `<td>${escapeHtml(item.page || '-')}</td>`
             + `<td>${escapeHtml(item.pos || '-')}</td>`
@@ -976,6 +979,165 @@ function setPageFilterValue(pageValue) {
     updateSchemasInline(selectedBook, normalizedPage);
 }
 
+function syncPdfWithSelectedRow(revisionKey) {
+    const normalizedKey = String(revisionKey || '').trim();
+    if (!normalizedKey) {
+        setPdfSelection(null);
+        loadPdfClear();
+        return;
+    }
+
+    const selectedRow = state.allData.find(item => getRevisionKey(item) === normalizedKey);
+    if (!selectedRow) {
+        setPdfSelection(null);
+        loadPdfClear();
+        return;
+    }
+
+    setPdfSelection(selectedRow);
+    const book = String(val(selectedRow, 'engine_model', '') || '').trim();
+    const page = String(val(selectedRow, 'Source Page', '') || '').trim();
+    if (book && page) {
+        loadPdfWithPage(book, page);
+        return;
+    }
+
+    loadPdfClear();
+}
+
+function normalizePageNumber(value) {
+    const digits = String(value || '').replace(/[^0-9]/g, '');
+    if (!digits) return '';
+    const parsed = Number(digits);
+    return Number.isFinite(parsed) && !Number.isNaN(parsed) ? String(parsed) : '';
+}
+
+function resolveBookValue(rawBook) {
+    const candidate = String(rawBook || '').trim();
+    if (!candidate) return '';
+    const normalizedCandidate = candidate.toLowerCase();
+
+    const books = [...new Set(state.allData
+        .map(item => String(item?.engine_model ?? '').trim())
+        .filter(Boolean))];
+
+    const exact = books.find(book => book.toLowerCase() === normalizedCandidate);
+    if (exact) return exact;
+
+    const partial = books.find(book => book.toLowerCase().includes(normalizedCandidate));
+    return partial || candidate;
+}
+
+function setSideSearchStatus(message, kind = '') {
+    const status = $('qaSideSearchStatus');
+    if (!(status instanceof HTMLElement)) return;
+    status.classList.remove('ok', 'error');
+    if (kind) status.classList.add(kind);
+    status.textContent = String(message || '');
+}
+
+function findRowByArticleToken(rows, token) {
+    const normalizedToken = String(token || '').trim().toLowerCase();
+    if (!normalizedToken) return null;
+
+    const byIdExact = rows.find(item => String(item?.ID ?? '').trim().toLowerCase() === normalizedToken);
+    if (byIdExact) return byIdExact;
+
+    const byPnExact = rows.find(item => {
+        const pn = String(item?.['PART NO.'] ?? item?.pn ?? '').trim().toLowerCase();
+        return pn === normalizedToken;
+    });
+    if (byPnExact) return byPnExact;
+
+    const byContains = rows.find(item => {
+        const id = String(item?.ID ?? '').trim().toLowerCase();
+        const pn = String(item?.['PART NO.'] ?? item?.pn ?? '').trim().toLowerCase();
+        const designation = String(getRowValueForColumn(item, 'designation_final', '')).trim().toLowerCase();
+        return id.includes(normalizedToken) || pn.includes(normalizedToken) || designation.includes(normalizedToken);
+    });
+    return byContains || null;
+}
+
+function runSideQuickSearch() {
+    const rawArticle = String($('qaSideSearchArticle')?.value || '').trim();
+    const rawBook = String($('qaSideSearchBook')?.value || '').trim();
+    const rawPage = String($('qaSideSearchPage')?.value || '').trim();
+
+    if (!rawArticle && !rawBook && !rawPage) {
+        setSideSearchStatus('Escribe articulo, libro o pagina para buscar.', 'error');
+        return;
+    }
+
+    const resolvedBook = resolveBookValue(rawBook);
+    const normalizedPage = normalizePageNumber(rawPage);
+
+    let candidateRows = [...state.allData];
+    if (resolvedBook) {
+        const normalizedBook = resolvedBook.toLowerCase();
+        candidateRows = candidateRows.filter(item => String(item?.engine_model ?? '').trim().toLowerCase() === normalizedBook);
+    }
+    if (normalizedPage) {
+        candidateRows = candidateRows.filter(item => normalizePageNumber(item?.['Source Page']) === normalizedPage);
+    }
+
+    if (!candidateRows.length) {
+        setSideSearchStatus('No hay registros para ese libro/pagina.', 'error');
+        return;
+    }
+
+    if (rawArticle) {
+        const targetRow = findRowByArticleToken(candidateRows, rawArticle);
+        if (!targetRow) {
+            setSideSearchStatus('No se encontro ese articulo con los criterios indicados.', 'error');
+            return;
+        }
+
+        const targetBook = String(targetRow?.engine_model ?? '').trim();
+        const targetPage = normalizePageNumber(targetRow?.['Source Page']);
+        applyBookSelection(targetBook, {
+            pageValue: targetPage,
+            fallbackToFirstAvailablePage: true,
+            render: true,
+            updatePdf: true
+        });
+
+        const revisionKey = getRevisionKey(targetRow);
+        const moved = focusRevisionRowInMainTable(revisionKey);
+        if (!moved) {
+            setSideSearchStatus('Se encontro el articulo, pero no se pudo enfocar en la tabla principal.', 'error');
+            return;
+        }
+
+        setSideSearchStatus(`Articulo encontrado: ID ${String(targetRow?.ID ?? '-')}, libro ${targetBook || '-'}, pagina ${targetPage || '-'}.`, 'ok');
+        return;
+    }
+
+    if (resolvedBook) {
+        applyBookSelection(resolvedBook, {
+            pageValue: normalizedPage,
+            fallbackToFirstAvailablePage: true,
+            render: true,
+            updatePdf: true
+        });
+        setSideSearchStatus(`Navegando a libro ${resolvedBook}${normalizedPage ? `, pagina ${normalizedPage}` : ''}.`, 'ok');
+        return;
+    }
+
+    const currentBook = String($('bookFilterSelect')?.value || '').trim();
+    if (!currentBook) {
+        setSideSearchStatus('Para buscar solo por pagina, selecciona o escribe tambien un libro.', 'error');
+        return;
+    }
+
+    applyBookSelection(currentBook, {
+        pageValue: normalizedPage,
+        fallbackToFirstAvailablePage: true,
+        render: true,
+        updatePdf: true
+    });
+    setSideSearchStatus(`Navegando a pagina ${normalizedPage} del libro ${currentBook}.`, 'ok');
+}
+
 function goToNextBookPage() {
     const book = $('bookFilterSelect')?.value || '';
     const pages = getBookPages(book);
@@ -1101,7 +1263,7 @@ async function loadData() {
         state.allData = await loadPartitionedEngineData();
         if (!Array.isArray(state.allData)) throw new Error('Los datos no son un array');
 
-        const newData = await tryLoadFirstJson(['MILU_New_v507.json', 'MILU_New_v506.json']);
+        const newData = await tryLoadFirstJson(['MILU_New_v506.json', 'MILU_New_v507.json']);
         if (Array.isArray(newData)) {
             state.newPnSet = new Set(newData.map(item => item.pn));
             state.miluNewData = newData;
@@ -1109,7 +1271,7 @@ async function loadData() {
             state.miluNewData = [];
         }
 
-        const supersededData = await tryLoadFirstJson(['MILU_Superseded_v507.json', 'MILU_Superseded_v506.json']);
+        const supersededData = await tryLoadFirstJson(['MILU_Superseded_v506.json', 'MILU_Superseded_v507.json']);
         if (Array.isArray(supersededData)) {
             state.supersededPnSet = new Set(supersededData.map(item => item.pn));
             state.miluSupersededData = supersededData;
@@ -1117,10 +1279,9 @@ async function loadData() {
             state.miluSupersededData = [];
         }
 
-        const publication = await tryLoadFirstJson(['publication_map.json']);
-        if (publication && typeof publication === 'object') state.publishedMap = new Map(Object.entries(publication));
+        state.publishedMap = new Map();
 
-        const productExportData = await tryLoadFirstJson(['product_export_v507.json', 'product-export-2026-03-29-11-07.json']);
+        const productExportData = await tryLoadFirstJson(['product-export-2026-03-29-11-07.json', 'product_export_v507.json']);
         if (Array.isArray(productExportData)) state.productExportPnSet = new Set(productExportData.map(item => item.pn));
 
         state.currentPage = 1;
@@ -1170,12 +1331,15 @@ async function loadData() {
 }
 
 function attachGlobalEvents() {
-    document.addEventListener('qa:selected-row-changed', () => {
+    document.addEventListener('qa:selected-row-changed', (event) => {
+        syncPdfWithSelectedRow(event?.detail?.revisionKey || state.selectedRevisionRowKey);
         syncSideRecordFormWithSelection();
     });
 
+    $('firstBtn')?.addEventListener('click', () => jumpToPage(1));
     $('prevBtn')?.addEventListener('click', () => changePage(-1));
     $('nextBtn')?.addEventListener('click', () => changePage(1));
+    $('lastBtn')?.addEventListener('click', () => jumpToPage(Number.MAX_SAFE_INTEGER));
     document.querySelector('thead')?.addEventListener('click', handleSort);
 
     document.querySelectorAll('.filter-input[data-filter], .filter-select[data-filter]').forEach(elem => {
@@ -1273,6 +1437,31 @@ function attachGlobalEvents() {
         });
     });
 
+    $('qaSideMatchesBody')?.addEventListener('dblclick', (event) => {
+        const target = event.target;
+        if (!(target instanceof HTMLElement)) return;
+        const tr = target.closest('tr[data-revision-key]');
+        const revisionKey = String(tr?.getAttribute('data-revision-key') || '').trim();
+        if (!revisionKey) return;
+
+        event.preventDefault();
+        event.stopPropagation();
+
+        const moved = focusRevisionRowInMainTable(revisionKey);
+        if (!moved) {
+            alert('No se pudo navegar al registro en la tabla principal. Puede estar fuera de los filtros activos.');
+        }
+    });
+
+    $('qaSideSearchBtn')?.addEventListener('click', runSideQuickSearch);
+    ['qaSideSearchArticle', 'qaSideSearchBook', 'qaSideSearchPage'].forEach(id => {
+        $(id)?.addEventListener('keydown', (event) => {
+            if (event.key !== 'Enter') return;
+            event.preventDefault();
+            runSideQuickSearch();
+        });
+    });
+
     $('qaSideResetBtn')?.addEventListener('click', syncSideRecordFormWithSelection);
     $('qaSideRecordForm')?.addEventListener('submit', handleSideRecordSubmit);
 
@@ -1355,7 +1544,9 @@ function attachGlobalEvents() {
         refreshSelectedRowVisual();
         renderSelectedRowPosPanel(row);
         renderSelectedRowPosTop(row);
-        syncSideRecordFormWithSelection();
+        document.dispatchEvent(new CustomEvent('qa:selected-row-changed', {
+            detail: { revisionKey: rowKey }
+        }));
     });
 
     tbody?.addEventListener('dblclick', (event) => {

@@ -203,6 +203,26 @@
             box-shadow: 0 4px 20px rgba(15, 23, 42, 0.18);
         }
 
+        .pdf-selection-layer {
+            position: absolute;
+            inset: 0;
+            pointer-events: none;
+            z-index: 2;
+        }
+
+        .pdf-selection-layer.is-active {
+            display: block;
+        }
+
+        .pdf-selection-highlight {
+            position: absolute;
+            border: 2px solid rgba(190, 24, 93, 0.92);
+            background: rgba(244, 114, 182, 0.25);
+            border-radius: 2px;
+            box-shadow: 0 0 0 2px rgba(255, 255, 255, 0.88);
+            pointer-events: none;
+        }
+
         .pdfstatus {
             position: absolute;
             top: 16px;
@@ -215,6 +235,7 @@
             color: var(--mut);
             font-size: 12px;
             box-shadow: 0 2px 8px rgba(15, 23, 42, 0.08);
+            z-index: 3;
         }
 
         .pdfstatus.hidden {
@@ -243,6 +264,70 @@
             overflow: auto;
             background: #f1f5f9;
             padding: 10px;
+        }
+
+        .qa-side-search {
+            border: 1px solid #d6e0ee;
+            border-radius: 12px;
+            background: #ffffff;
+            padding: 10px;
+            margin-bottom: 10px;
+        }
+
+        .qa-side-search-row {
+            display: grid;
+            grid-template-columns: minmax(0, 1.2fr) minmax(0, 1fr) 90px 84px;
+            gap: 8px;
+            align-items: center;
+        }
+
+        .qa-side-search-row input {
+            width: 100%;
+            min-width: 0;
+            height: 32px;
+            border: 1px solid #d1d5db;
+            border-radius: 8px;
+            padding: 0 9px;
+            font-size: 12px;
+            color: #0f172a;
+            background: #ffffff;
+        }
+
+        .qa-side-search-row input:focus {
+            outline: none;
+            border-color: var(--acc);
+            box-shadow: 0 0 0 2px rgba(37, 99, 235, 0.12);
+        }
+
+        #qaSideSearchBtn {
+            height: 32px;
+            border-radius: 8px;
+            border: 1px solid #2563eb;
+            background: #2563eb;
+            color: #ffffff;
+            font-size: 12px;
+            font-weight: 700;
+            cursor: pointer;
+            padding: 0 10px;
+        }
+
+        #qaSideSearchBtn:hover {
+            filter: brightness(0.96);
+        }
+
+        .qa-side-search-status {
+            margin: 8px 2px 0;
+            min-height: 16px;
+            font-size: 11px;
+            color: #64748b;
+        }
+
+        .qa-side-search-status.ok {
+            color: #166534;
+        }
+
+        .qa-side-search-status.error {
+            color: #991b1b;
         }
 
         .qa-side-modal-form {
@@ -2040,9 +2125,12 @@
             box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.15);
         }
 
-        .qa-modal-row-primary,
+        .qa-modal-row-primary {
+            grid-template-columns: minmax(0, 1.4fr) repeat(4, minmax(0, 1fr)) minmax(0, 0.9fr);
+        }
+
         .qa-modal-row-secondary {
-            grid-template-columns: repeat(6, minmax(0, 1fr));
+            grid-template-columns: minmax(0, 0.6fr) minmax(0, 0.85fr) minmax(0, 1fr) minmax(0, 0.85fr) minmax(0, 1fr) minmax(0, 1fr);
         }
 
         .qa-modal-row-status {
@@ -2340,6 +2428,10 @@
                 padding: 12px;
             }
 
+            .qa-side-search-row {
+                grid-template-columns: repeat(2, minmax(0, 1fr));
+            }
+
             .qa-modal-row-primary,
             .qa-modal-row-secondary,
             .qa-modal-row-book,
@@ -2371,6 +2463,10 @@
         }
 
         @media (max-width: 640px) {
+
+            .qa-side-search-row {
+                grid-template-columns: 1fr;
+            }
 
             .qa-modal-row-primary,
             .qa-modal-row-secondary,

@@ -268,6 +268,25 @@ export function moveSelectionBy(delta) {
     const nextIndex = currentIndex + delta;
     if (nextIndex >= 0 && nextIndex < rows.length) {
         selectVisibleRowByIndex(nextIndex);
+        return;
+    }
+
+    const totalPages = Math.max(1, Math.ceil(state.filteredData.length / state.pageSize));
+    if (delta > 0 && nextIndex >= rows.length && state.currentPage < totalPages) {
+        state.currentPage += 1;
+        renderTable();
+        renderPagination();
+        selectVisibleRowByIndex(0);
+        return;
+    }
+
+    if (delta < 0 && nextIndex < 0 && state.currentPage > 1) {
+        state.currentPage -= 1;
+        renderTable();
+        renderPagination();
+        const nextRows = getVisibleTableRows();
+        if (!nextRows.length) return;
+        selectVisibleRowByIndex(nextRows.length - 1);
     }
 }
 
@@ -452,8 +471,10 @@ export function renderPagination() {
     const totalPages = Math.ceil(state.filteredData.length / state.pageSize);
     const pagination = document.getElementById('pagination');
     const pageInfo = document.getElementById('pageInfo');
+    const firstBtn = document.getElementById('firstBtn');
     const prevBtn = document.getElementById('prevBtn');
     const nextBtn = document.getElementById('nextBtn');
+    const lastBtn = document.getElementById('lastBtn');
     if (!pagination || !pageInfo || !prevBtn || !nextBtn) return;
     if (totalPages <= 1) {
         pagination.style.display = 'none';
@@ -461,8 +482,23 @@ export function renderPagination() {
     }
     pagination.style.display = 'flex';
     pageInfo.textContent = `Página ${state.currentPage} de ${totalPages}`;
+    if (firstBtn instanceof HTMLButtonElement) firstBtn.disabled = state.currentPage === 1;
     prevBtn.disabled = state.currentPage === 1;
     nextBtn.disabled = state.currentPage === totalPages;
+    if (lastBtn instanceof HTMLButtonElement) lastBtn.disabled = state.currentPage === totalPages;
+}
+
+export function jumpToPage(pageNumber) {
+    const totalPages = Math.max(1, Math.ceil(state.filteredData.length / state.pageSize));
+    const requestedPage = Number(pageNumber);
+    if (!Number.isFinite(requestedPage)) return;
+
+    const boundedPage = Math.min(Math.max(1, Math.trunc(requestedPage)), totalPages);
+    if (boundedPage === state.currentPage) return;
+
+    state.currentPage = boundedPage;
+    renderTable();
+    renderPagination();
 }
 
 export function renderTable() {
@@ -546,6 +582,32 @@ export function changePage(direction) {
     if (state.currentPage > totalPages) state.currentPage = totalPages;
     renderTable();
     renderPagination();
+}
+
+export function focusRevisionRowInMainTable(revisionKey) {
+    const targetKey = String(revisionKey || '').trim();
+    if (!targetKey) return false;
+
+    const targetRow = state.allData.find(item => getRevisionKey(item) === targetKey);
+    if (!targetRow) return false;
+
+    const filteredSortedRows = getCurrentFilteredSortedRows();
+    const targetIndex = filteredSortedRows.findIndex(item => getRevisionKey(item) === targetKey);
+    if (targetIndex === -1) return false;
+
+    state.selectedRevisionRowKey = targetKey;
+    state.currentPage = Math.floor(targetIndex / state.pageSize) + 1;
+
+    renderTable();
+    renderPagination();
+
+    const safeKey = targetKey.replace(/"/g, '\\"');
+    const visibleRow = document.querySelector(`#tbody tr[data-revision-key="${safeKey}"]`);
+    if (visibleRow instanceof HTMLTableRowElement) {
+        visibleRow.scrollIntoView({ block: 'nearest' });
+    }
+
+    return true;
 }
 
 export function toggleGroupedView() {

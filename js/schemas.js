@@ -63,6 +63,8 @@ export function buildSchemaPosImageCandidates(bookValue, rawTokenOrPath) {
 
     const tokenFromPath = extractFileNameFromPath(raw) || raw;
     const tokenNoExt = stripFileExtension(tokenFromPath);
+    const tokenExtMatch = tokenFromPath.match(/\.(png|webp|jpg|jpeg)$/i);
+    const tokenExt = tokenExtMatch ? tokenExtMatch[1].toLowerCase() : '';
     const folder = `esquemas_pos_circulos/${encodeURIComponent(book)}-POS/`;
     const extensions = ['webp', 'png', 'jpg', 'jpeg'];
     const names = [tokenNoExt];
@@ -75,8 +77,11 @@ export function buildSchemaPosImageCandidates(bookValue, rawTokenOrPath) {
     const pushPath = (p) => { if (!p || seen.has(p)) return; seen.add(p); paths.push(p); };
 
     if (/^https?:\/\//i.test(raw)) pushPath(raw);
-    if (/\.(png|webp|jpg|jpeg)$/i.test(tokenFromPath)) pushPath(`${folder}${encodeURIComponent(tokenFromPath)}`);
     names.forEach(name => { extensions.forEach(ext => { pushPath(`${folder}${encodeURIComponent(name)}.${ext}`); }); });
+    if (tokenExt === 'webp') pushPath(`${folder}${encodeURIComponent(tokenFromPath)}`);
+    else if (tokenExt) {
+        names.forEach(name => { pushPath(`${folder}${encodeURIComponent(name)}.${tokenExt}`); });
+    }
     return paths;
 }
 

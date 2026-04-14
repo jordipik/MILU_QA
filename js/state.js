@@ -26,5 +26,7 @@ export const state = {
     currentPdfPageNumber: 0,
     currentPdfRenderTask: null,
     currentPdfRequestToken: 0,
+    currentPdfSelection: null,
+    currentPdfSelectionRects: [],
     rightPanelTab: 'pdf',
 };
