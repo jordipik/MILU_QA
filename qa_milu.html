@@ -142,6 +142,7 @@
                                 <th style="width:36px" data-sort="normalizado" class="status-head">N</th>
                                 <th style="width:44px" data-sort="sust_hierarchie" class="status-head">H</th>
                                 <th style="width:36px" data-sort="has_img" class="status-head">F</th>
+                                <th style="width:36px" data-sort="has_error" class="status-head">E</th>
                                 <th style="width:70px" data-sort="EN_WEB">W</th>
                                 <th style="width:78px" data-sort="qa_revision_estado">Rev</th>
                                 <th style="width:86px" data-sort="qa_revision_accion">Acc</th>
@@ -212,6 +213,11 @@
                                         <option value="">Todos</option>
                                         <option value="true">Si</option>
                                         <option value="false">No</option>
+                                    </select></th>
+                                <th><select class="filter-select" data-filter="has_error">
+                                        <option value="">Todos</option>
+                                        <option value="true">Con error</option>
+                                        <option value="false">Sin error</option>
                                     </select></th>
                                 <th><select class="filter-select" data-filter="EN_WEB">
                                         <option value="">Todos</option>
@@ -301,7 +307,7 @@
                         </thead>
                         <tbody id="tbody">
                             <tr>
-                                <td colspan="53" class="loading">Cargando datos...</td>
+                                <td colspan="54" class="loading">Cargando datos...</td>
                             </tr>
                         </tbody>
                     </table>

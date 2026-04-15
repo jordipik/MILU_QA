@@ -3,7 +3,7 @@
  */
 
 import { state } from './state.js';
-import { escapeHtml, getPnKey, getRowValueForColumn, val } from './helpers.js';
+import { escapeHtml, getPnKey, getRowValueForColumn, val, hasRowError, getRowErrorType } from './helpers.js';
 import {
     getRevisionAccionClass,
     getRevisionEstadoClass,
@@ -74,6 +74,11 @@ export function applyFilters(data) {
                 case 'has_img': {
                     const imgValue = (row.filename_foto || row.ruta_foto || '').toString().trim();
                     rowValue = imgValue ? 'true' : 'false';
+                    break;
+                }
+                case 'has_error': {
+                    const errorType = getRowErrorType(row);
+                    rowValue = errorType ? 'true' : 'false';
                     break;
                 }
                 case 'sust_hierarchie':
@@ -337,6 +342,7 @@ function renderRow(row) {
     const isHierarchyNew = sustHierarchyRaw === 'New';
     const isHierarchySuperseded = sustHierarchyRaw.toUpperCase().includes('SUPERSEDED');
     const hasImg = (row.filename_foto || row.ruta_foto || '').toString().trim() !== '';
+    const errorType = getRowErrorType(row);
     const revisionEstado = String(row.qa_revision_estado || '').trim();
     const revisionAccion = String(row.qa_revision_accion || '').trim();
     const revisionKey = getRevisionKey(row);
@@ -348,6 +354,9 @@ function renderRow(row) {
     else if (isHierarchySuperseded) hierarchyIcon = '<span class="status-icon sup" aria-label="sust_hierarchie Superseded">S</span>';
     else if (sustHierarchyRaw) hierarchyIcon = '<span class="status-icon other" aria-label="sust_hierarchie Other">O</span>';
     const fotoIcon = hasImg ? '<span class="status-icon yes" aria-label="Con Foto">F</span>' : '<span class="status-icon no" aria-label="Sin Foto">-</span>';
+    const errorIcon = errorType === 'critical' ? '<span class="status-icon error" aria-label="Error crítico">✕</span>'
+        : errorType === 'warning' ? '<span class="status-icon warning" aria-label="Advertencia">⚠</span>'
+            : '';
 
     const revisionEstadoOptions = [
         { value: '', label: '—' },
@@ -375,6 +384,7 @@ function renderRow(row) {
       <td class="status-col" title="Normalizado: ${isNormalizado ? 'SI' : 'NO'}">${normalizadoIcon}</td>
       <td class="status-col" title="sust_hierarchie: ${escapeHtml(sustHierarchyLabel)}">${hierarchyIcon}</td>
       <td class="status-col" title="Foto: ${hasImg ? 'SI' : 'NO'}">${fotoIcon}</td>
+      <td class="status-col" title="Error: ${errorType ? 'SI' : 'NO'}">${errorIcon}</td>
       <td class="status-col" title="En Web">${enWeb}</td>
       <td class="revision-cell ${getRevisionEstadoClass(revisionEstado)}" title="Estado de revisión">
           <select class="revision-select" data-revision-field="estado" data-revision-key="${escapeHtml(revisionKey)}">${revisionEstadoOptions}</select>

@@ -1281,6 +1281,29 @@
             border-color: rgba(59, 130, 246, 0.45);
         }
 
+        .status-icon.error {
+            color: #991b1b;
+            background: transparent;
+            border-color: transparent;
+            font-size: 16px;
+            width: auto;
+            height: auto;
+            padding: 0;
+            font-weight: 700;
+        }
+
+        .status-icon.warning {
+            color: rgba(180, 83, 9, 0.7);
+            background: transparent;
+            border-color: transparent;
+            font-size: 14px;
+            width: auto;
+            height: auto;
+            padding: 0;
+            font-weight: 500;
+            opacity: 1;
+        }
+
         .revision-select {
             width: 100%;
             min-width: 0;
