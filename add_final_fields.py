@@ -17,10 +17,28 @@ engine_files = [
     "engine_20V4000M93L.json",
 ]
 
+DEFAULT_EXP_IMAGENES = "https://milu-naval.mystagingwebsite.com/wp-content/uploads/2026/01/sin_imagen.jpeg"
+
 def add_final_fields(record):
     """
     Agrega los campos finales a cada registro con criterio específico.
     """
+    def normalize_spaces(value):
+        if value is None:
+            return None
+        text = str(value).strip()
+        if not text:
+            return None
+        return " ".join(text.split())
+
+    # Limpia espacios duplicados en dimensions_gesa para dejar una sola separación.
+    cleaned_dimensions = normalize_spaces(record.get("dimensions_gesa"))
+    record["dimensions_gesa"] = cleaned_dimensions
+
+    # Limpia también MEASUREMENT / STANDARD para evitar dobles espacios en fallback.
+    cleaned_measurement_standard = normalize_spaces(record.get("MEASUREMENT / STANDARD"))
+    record["MEASUREMENT / STANDARD"] = cleaned_measurement_standard
+
     # designation_final: si hay designation_gesa usa ese, si no usa DESIGNATION
     if "designation_final" not in record:
         if record.get("designation_gesa"):
@@ -28,12 +46,8 @@ def add_final_fields(record):
         else:
             record["designation_final"] = record.get("DESIGNATION", None)
     
-    # measurement_final: si hay dimensions_gesa usa ese, si no usa MEASUREMENT / STANDARD
-    if "measurement_final" not in record:
-        if record.get("dimensions_gesa"):
-            record["measurement_final"] = record.get("dimensions_gesa")
-        else:
-            record["measurement_final"] = record.get("MEASUREMENT / STANDARD", None)
+    # measurement_final: siempre prioriza dimensions_gesa, si no usa MEASUREMENT / STANDARD.
+    record["measurement_final"] = cleaned_dimensions or cleaned_measurement_standard
 
     # Corregir typo legado: wheight_final -> weight_final.
     legacy_weight_final = record.get("wheight_final")
@@ -57,6 +71,22 @@ def add_final_fields(record):
 
     if "wheight_final" in record:
         del record["wheight_final"]
+
+    # exp_imagenes: prioridad 1: ruta_foto, 2: ruta_esquemas_pos
+    # Si hay ambas, combinarlas (foto, esquema). Si no hay ninguna, usar sin_imagen
+    ruta_foto = record.get("ruta_foto")
+    ruta_esquemas_pos = record.get("ruta_esquemas_pos")
+    
+    imagenes = []
+    if ruta_foto and str(ruta_foto).strip():
+        imagenes.append(str(ruta_foto).strip())
+    if ruta_esquemas_pos and str(ruta_esquemas_pos).strip():
+        imagenes.append(str(ruta_esquemas_pos).strip())
+    
+    if imagenes:
+        record["exp_imagenes"] = ", ".join(imagenes)
+    else:
+        record["exp_imagenes"] = DEFAULT_EXP_IMAGENES
     
     return record
 

@@ -21,11 +21,21 @@ function val(row, key) {
     return v != null && String(v).trim() !== '' ? v : '';
 }
 
+function isSupersededArticle(row) {
+    const hierarchy = String(row?.sust_hierarchie ?? '').trim().toUpperCase();
+    return hierarchy.includes('SUPERSEDED');
+}
+
 function isGesaRow(row) {
     return String(row?.gesa || '').trim().toUpperCase() === 'SI';
 }
 
 function getRowValueForColumn(row, key) {
+    const normalizeMeasurementText = (value) => {
+        const text = String(value ?? '').trim();
+        return text ? text.replace(/\s{2,}/g, ' ') : '';
+    };
+
     switch (key) {
         case 'designation_final': {
             const explicitFinal = String(row?.designation_final ?? '').trim();
@@ -34,10 +44,13 @@ function getRowValueForColumn(row, key) {
             return String(val(row, 'DESIGNATION'));
         }
         case 'measurement_final': {
-            const explicitFinal = String(row?.measurement_final ?? '').trim();
-            if (explicitFinal) return explicitFinal;
-            if (isGesaRow(row)) return String(val(row, 'dimensions_gesa'));
-            return String(val(row, 'MEASUREMENT / STANDARD'));
+            const gesaMeasurement = normalizeMeasurementText(row?.dimensions_gesa);
+            if (gesaMeasurement) return gesaMeasurement;
+
+            const rawMeasurement = normalizeMeasurementText(row?.['MEASUREMENT / STANDARD']);
+            if (rawMeasurement) return rawMeasurement;
+
+            return normalizeMeasurementText(row?.measurement_final);
         }
         case 'weight_final': {
             const explicitFinal = String(row?.weight_final ?? '').trim();
@@ -130,17 +143,17 @@ function formatWeightTextForExport(row, weightValue) {
 }
 
 function resolveMeasurementForExport(row) {
-    const explicitFinal = String(row?.measurement_final ?? '').trim();
-    if (explicitFinal) return explicitFinal;
-    const gesaMeasurement = String(row?.dimensions_gesa ?? '').trim();
+    const gesaMeasurement = String(row?.dimensions_gesa ?? '').trim().replace(/\s{2,}/g, ' ');
     if (gesaMeasurement) return gesaMeasurement;
 
-    let rawMeasurement = String(row?.['MEASUREMENT / STANDARD'] ?? '').trim();
+    let rawMeasurement = String(row?.['MEASUREMENT / STANDARD'] ?? '').trim().replace(/\s{2,}/g, ' ');
     const norma = String(row?.norma ?? '').trim();
     if (rawMeasurement && norma) {
         rawMeasurement = rawMeasurement.replace(new RegExp(`\\b${escapeRegExp(norma)}\\b`, 'ig'), '').trim();
     }
-    return rawMeasurement.replace(/\s{2,}/g, ' ').trim();
+    if (rawMeasurement) return rawMeasurement;
+
+    return String(row?.measurement_final ?? '').trim().replace(/\s{2,}/g, ' ');
 }
 
 function firstNonEmptyValue(rows, getter) {
@@ -151,16 +164,38 @@ function firstNonEmptyValue(rows, getter) {
     return null;
 }
 
+function mergeImageValues(primaryValue, secondaryValue) {
+    const merged = [];
+    const seen = new Set();
+
+    const addValue = (value) => {
+        const parts = String(value ?? '')
+            .split(',')
+            .map(part => part.trim())
+            .filter(Boolean);
+        for (const part of parts) {
+            const key = norm(part);
+            if (seen.has(key)) continue;
+            seen.add(key);
+            merged.push(part);
+        }
+    };
+
+    addValue(primaryValue);
+    addValue(secondaryValue);
+    return merged.join(', ');
+}
+
 function buildSyntheticNewExportRow(row, matches) {
     if (!matches.length) return null;
+    if (isSupersededArticle(row)) return null;
 
     const weightValue = resolveWeightForExport(row);
     const pageLabels = uniqueSortedValues(matches.map(normalizePageLabelForExport), true);
     const modelTypes = uniqueSortedValues(matches.map(normalizeModelTypeForExport), true);
     const engineModels = uniqueSortedValues(matches.map(item => String(item?.engine_model ?? '').trim()), true);
-    const categoryValues = uniqueSortedValues(matches.map(item => String(item?.atributo ?? item?.exp_categorias ?? '').trim()));
-    const imageValue = firstNonEmptyValue([row, ...matches], item => item?.ruta_esquemas_pos || item?.ruta_foto || '');
-    const routeFotoValue = firstNonEmptyValue([row, ...matches], item => item?.ruta_foto || '');
+    const categoryValues = uniqueSortedValues(matches.map(item => String(item?.categoria ?? item?.atributo ?? item?.exp_categorias ?? '').trim()));
+    const imageValue = firstNonEmptyValue([row, ...matches], item => item?.exp_imagenes || '');
     const normalizedPn = String(row?.['PART NO.'] ?? row?.pn ?? '').trim();
     const hierarchy = String(row?.sust_hierarchie ?? '').trim();
     const supersededList = String(row?.sust_superseded_list ?? '').trim();
@@ -193,14 +228,14 @@ function buildSyntheticNewExportRow(row, matches) {
         new_pn_relacionado: hierarchy === 'New' ? normalizedPn : (String(row?.sust_new_part_number ?? '').trim() || null),
         old_pn_relacionados: supersededList || null,
         EN_EXCEL_SUSTITUCION: hasSubstitution ? 'SI' : '',
-        ruta_foto: routeFotoValue,
-        exp_imagenes: imageValue,
-        vinculo: normalizedPn ? `milu-naval.mystagingwebsite.com/producto/${normalizedPn}` : ''
+        ruta_foto: String(row?.ruta_foto ?? '').trim() || null,
+        exp_imagenes: imageValue
     };
 }
 
 function buildSyntheticSupersededExportRow(row, matches) {
     if (!matches.length) return null;
+    if (!isSupersededArticle(row)) return null;
 
     const hierarchy = String(row?.sust_hierarchie ?? '').trim();
     const relatedNewPn = String(row?.sust_new_part_number ?? '').trim() || String(row?.['New Part Number'] ?? '').trim();
@@ -210,9 +245,8 @@ function buildSyntheticSupersededExportRow(row, matches) {
     const pageLabels = uniqueSortedValues(matches.map(normalizePageLabelForExport), true);
     const modelTypes = uniqueSortedValues(matches.map(normalizeModelTypeForExport), true);
     const engineModels = uniqueSortedValues(matches.map(item => String(item?.engine_model ?? '').trim()), true);
-    const categoryValues = uniqueSortedValues(matches.map(item => String(item?.atributo ?? item?.exp_categorias ?? '').trim()));
-    const imageValue = firstNonEmptyValue([row, ...matches], item => item?.ruta_esquemas_pos || item?.ruta_foto || '');
-    const routeFotoValue = firstNonEmptyValue([row, ...matches], item => item?.ruta_foto || '');
+    const categoryValues = uniqueSortedValues(matches.map(item => String(item?.categoria ?? item?.atributo ?? item?.exp_categorias ?? '').trim()));
+    const imageValue = firstNonEmptyValue([row, ...matches], item => item?.exp_imagenes || '');
     const normalizedPn = String(row?.['PART NO.'] ?? row?.pn ?? '').trim();
     const resolvedRelatedPn = relatedNewPn || normalizedPn;
     const hasSubstitution = hierarchy === 'Superseded' || resolvedRelatedPn !== '';
@@ -244,7 +278,7 @@ function buildSyntheticSupersededExportRow(row, matches) {
         new_pn_relacionado: resolvedRelatedPn || null,
         old_pn_relacionados: null,
         EN_EXCEL_SUSTITUCION: hasSubstitution ? 'SI' : '',
-        ruta_foto: routeFotoValue,
+        ruta_foto: String(row?.ruta_foto ?? '').trim() || null,
         exp_imagenes: imageValue,
         vinculo: resolvedRelatedPn ? `milu-naval.mystagingwebsite.com/producto/${resolvedRelatedPn}` : ''
     };

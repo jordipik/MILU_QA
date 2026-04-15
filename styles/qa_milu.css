@@ -2316,6 +2316,30 @@
             border-bottom: none;
         }
 
+        .qa-modal-related-table td.qa-modal-cell-diff {
+            background: #fee2e2;
+            color: #7f1d1d;
+            font-weight: 700;
+        }
+
+        .qa-modal-related-table td.qa-modal-cell-diff-warn {
+            background: #fef3c7;
+            color: #78350f;
+            font-weight: 700;
+        }
+
+        .qa-modal-related-table td.qa-modal-cell-diff-origin {
+            background: #fecaca;
+            color: #7f1d1d;
+            font-weight: 700;
+        }
+
+        .qa-modal-related-table td.qa-modal-cell-diff-origin-warn {
+            background: #fde68a;
+            color: #78350f;
+            font-weight: 700;
+        }
+
         .qa-modal-export .qa-modal-related-head {
             align-items: center;
         }
@@ -2338,6 +2362,15 @@
         .qa-modal-export-table td {
             min-width: 110px;
             max-width: 260px;
+        }
+
+        .qa-modal-export-table-new th,
+        .qa-modal-export-table-new td {
+            white-space: normal;
+            overflow: visible;
+            text-overflow: clip;
+            word-break: break-word;
+            max-width: none;
         }
 
         .qa-modal-footer {
