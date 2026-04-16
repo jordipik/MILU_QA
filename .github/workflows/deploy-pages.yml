@@ -1,3 +1,4 @@
+# No-op change to force a fresh Pages deployment from main.
 name: Deploy MILU to GitHub Pages
 
 on:
