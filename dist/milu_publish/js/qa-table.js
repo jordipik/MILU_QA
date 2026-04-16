@@ -3,7 +3,7 @@
  */
 
 import { state } from './state.js';
-import { escapeHtml, getPnKey, getRowValueForColumn, val } from './helpers.js';
+import { escapeHtml, getPnKey, getRowValueForColumn, val, hasRowError, getRowErrorType } from './helpers.js';
 import {
     getRevisionAccionClass,
     getRevisionEstadoClass,
@@ -12,6 +12,12 @@ import {
 import { applyColumnView } from './column-view.js';
 import { scheduleVisiblePosCirclePreload } from './pos-preload.js';
 import { renderSelectedRowPosPanel, renderSelectedRowPosTop } from './schemas.js';
+
+function dispatchSelectionChanged(rowKey) {
+    document.dispatchEvent(new CustomEvent('qa:selected-row-changed', {
+        detail: { revisionKey: String(rowKey || '') }
+    }));
+}
 
 function getCurrentColumnCount() {
     const headerRow = document.querySelector('#mainTableWrap thead tr:not(.filter-row)');
@@ -68,6 +74,11 @@ export function applyFilters(data) {
                 case 'has_img': {
                     const imgValue = (row.filename_foto || row.ruta_foto || '').toString().trim();
                     rowValue = imgValue ? 'true' : 'false';
+                    break;
+                }
+                case 'has_error': {
+                    const errorType = getRowErrorType(row);
+                    rowValue = errorType ? 'true' : 'false';
                     break;
                 }
                 case 'sust_hierarchie':
@@ -250,6 +261,7 @@ export function selectVisibleRowByIndex(index) {
     refreshSelectedRowVisual();
     renderSelectedRowPosPanel(row);
     renderSelectedRowPosTop(row);
+    dispatchSelectionChanged(rowKey);
     tr.scrollIntoView({ block: 'nearest' });
 }
 
@@ -261,6 +273,25 @@ export function moveSelectionBy(delta) {
     const nextIndex = currentIndex + delta;
     if (nextIndex >= 0 && nextIndex < rows.length) {
         selectVisibleRowByIndex(nextIndex);
+        return;
+    }
+
+    const totalPages = Math.max(1, Math.ceil(state.filteredData.length / state.pageSize));
+    if (delta > 0 && nextIndex >= rows.length && state.currentPage < totalPages) {
+        state.currentPage += 1;
+        renderTable();
+        renderPagination();
+        selectVisibleRowByIndex(0);
+        return;
+    }
+
+    if (delta < 0 && nextIndex < 0 && state.currentPage > 1) {
+        state.currentPage -= 1;
+        renderTable();
+        renderPagination();
+        const nextRows = getVisibleTableRows();
+        if (!nextRows.length) return;
+        selectVisibleRowByIndex(nextRows.length - 1);
     }
 }
 
@@ -311,6 +342,7 @@ function renderRow(row) {
     const isHierarchyNew = sustHierarchyRaw === 'New';
     const isHierarchySuperseded = sustHierarchyRaw.toUpperCase().includes('SUPERSEDED');
     const hasImg = (row.filename_foto || row.ruta_foto || '').toString().trim() !== '';
+    const errorType = getRowErrorType(row);
     const revisionEstado = String(row.qa_revision_estado || '').trim();
     const revisionAccion = String(row.qa_revision_accion || '').trim();
     const revisionKey = getRevisionKey(row);
@@ -322,6 +354,9 @@ function renderRow(row) {
     else if (isHierarchySuperseded) hierarchyIcon = '<span class="status-icon sup" aria-label="sust_hierarchie Superseded">S</span>';
     else if (sustHierarchyRaw) hierarchyIcon = '<span class="status-icon other" aria-label="sust_hierarchie Other">O</span>';
     const fotoIcon = hasImg ? '<span class="status-icon yes" aria-label="Con Foto">F</span>' : '<span class="status-icon no" aria-label="Sin Foto">-</span>';
+    const errorIcon = errorType === 'critical' ? '<span class="status-icon error" aria-label="Error crítico">✕</span>'
+        : errorType === 'warning' ? '<span class="status-icon warning" aria-label="Advertencia">⚠</span>'
+            : '';
 
     const revisionEstadoOptions = [
         { value: '', label: '—' },
@@ -349,6 +384,7 @@ function renderRow(row) {
       <td class="status-col" title="Normalizado: ${isNormalizado ? 'SI' : 'NO'}">${normalizadoIcon}</td>
       <td class="status-col" title="sust_hierarchie: ${escapeHtml(sustHierarchyLabel)}">${hierarchyIcon}</td>
       <td class="status-col" title="Foto: ${hasImg ? 'SI' : 'NO'}">${fotoIcon}</td>
+      <td class="status-col" title="Error: ${errorType ? 'SI' : 'NO'}">${errorIcon}</td>
       <td class="status-col" title="En Web">${enWeb}</td>
       <td class="revision-cell ${getRevisionEstadoClass(revisionEstado)}" title="Estado de revisión">
           <select class="revision-select" data-revision-field="estado" data-revision-key="${escapeHtml(revisionKey)}">${revisionEstadoOptions}</select>
@@ -375,12 +411,12 @@ function renderRow(row) {
     <td title="${escapeHtml(val(row, 'designation_gesa'))}" class="${classGesa}">${escapeHtml(val(row, 'designation_gesa'))}</td>
       <td class="separator-after" title="${escapeHtml(val(row, 'MODEL/TYPE'))}">${escapeHtml(val(row, 'MODEL/TYPE'))}</td>
       <td title="${escapeHtml(val(row, 'QTY'))}">${escapeHtml(val(row, 'QTY'))}</td>
-    <td class="${classGesa}" title="${escapeHtml(val(row, 'WEIGHT'))}">${escapeHtml(val(row, 'WEIGHT'))}</td>
+    <td class="${classGesa}" title="${escapeHtml(getRowValueForColumn(row, 'weight_final'))}">${escapeHtml(getRowValueForColumn(row, 'weight_final'))}</td>
       <td title="${escapeHtml(val(row, 'UNITS'))}">${escapeHtml(val(row, 'UNITS'))}</td>
       <td class="${classGesa}" title="${escapeHtml(val(row, 'weight_gesa'))}">${escapeHtml(val(row, 'weight_gesa'))}</td>
       <td class="separator-after ${classGesa}" title="${escapeHtml(val(row, 'units'))}">${escapeHtml(val(row, 'units'))}</td>
       <td title="${escapeHtml(val(row, 'FG/FGS'))}">${escapeHtml(val(row, 'FG/FGS'))}</td>
-    <td class="${classGesa}" title="${escapeHtml(val(row, 'MEASUREMENT / STANDARD'))}">${escapeHtml(val(row, 'MEASUREMENT / STANDARD'))}</td>
+    <td class="${classGesa}" title="${escapeHtml(getRowValueForColumn(row, 'measurement_final'))}">${escapeHtml(getRowValueForColumn(row, 'measurement_final'))}</td>
       <td class="${classGesa}" title="${escapeHtml(val(row, 'dimensions_gesa'))}">${escapeHtml(val(row, 'dimensions_gesa'))}</td>
       <td title="${escapeHtml(val(row, 'BOM-No.'))}">${escapeHtml(val(row, 'BOM-No.'))}</td>
       <td title="${escapeHtml(val(row, 'model'))}">${escapeHtml(val(row, 'model'))}</td>
@@ -409,8 +445,6 @@ function renderRow(row) {
       <td title="${escapeHtml(val(row, 'esquemas_circulos'))}">${escapeHtml(val(row, 'esquemas_circulos'))}</td>
       <td title="${escapeHtml(val(row, 'ruta_esquemas_pos'))}">${escapeHtml(val(row, 'ruta_esquemas_pos'))}</td>
     <td${editableAttr('designation_final')} class="${classGesa} cell-inline-editable" title="${escapeHtml(getRowValueForColumn(row, 'designation_final'))}">${escapeHtml(getRowValueForColumn(row, 'designation_final'))}</td>
-    <td${editableAttr('measurement_final')} class="${classGesa} cell-inline-editable" title="${escapeHtml(getRowValueForColumn(row, 'measurement_final'))}">${escapeHtml(getRowValueForColumn(row, 'measurement_final'))}</td>
-    <td${editableAttr('weight_final')} class="${classGesa} cell-inline-editable" title="${escapeHtml(getRowValueForColumn(row, 'weight_final'))}">${escapeHtml(getRowValueForColumn(row, 'weight_final'))}</td>
     </tr>`;
 }
 
@@ -447,8 +481,10 @@ export function renderPagination() {
     const totalPages = Math.ceil(state.filteredData.length / state.pageSize);
     const pagination = document.getElementById('pagination');
     const pageInfo = document.getElementById('pageInfo');
+    const firstBtn = document.getElementById('firstBtn');
     const prevBtn = document.getElementById('prevBtn');
     const nextBtn = document.getElementById('nextBtn');
+    const lastBtn = document.getElementById('lastBtn');
     if (!pagination || !pageInfo || !prevBtn || !nextBtn) return;
     if (totalPages <= 1) {
         pagination.style.display = 'none';
@@ -456,8 +492,23 @@ export function renderPagination() {
     }
     pagination.style.display = 'flex';
     pageInfo.textContent = `Página ${state.currentPage} de ${totalPages}`;
+    if (firstBtn instanceof HTMLButtonElement) firstBtn.disabled = state.currentPage === 1;
     prevBtn.disabled = state.currentPage === 1;
     nextBtn.disabled = state.currentPage === totalPages;
+    if (lastBtn instanceof HTMLButtonElement) lastBtn.disabled = state.currentPage === totalPages;
+}
+
+export function jumpToPage(pageNumber) {
+    const totalPages = Math.max(1, Math.ceil(state.filteredData.length / state.pageSize));
+    const requestedPage = Number(pageNumber);
+    if (!Number.isFinite(requestedPage)) return;
+
+    const boundedPage = Math.min(Math.max(1, Math.trunc(requestedPage)), totalPages);
+    if (boundedPage === state.currentPage) return;
+
+    state.currentPage = boundedPage;
+    renderTable();
+    renderPagination();
 }
 
 export function renderTable() {
@@ -492,8 +543,11 @@ export function renderTable() {
     const start = (state.currentPage - 1) * state.pageSize;
     const pageData = sortedData.slice(start, start + state.pageSize);
 
-    if (pageData.length > 0 && !state.selectedRevisionRowKey) {
-        state.selectedRevisionRowKey = getRevisionKey(pageData[0]);
+    if (pageData.length > 0) {
+        const hasSelectedInFiltered = state.filteredData.some(item => getRevisionKey(item) === state.selectedRevisionRowKey);
+        if (!hasSelectedInFiltered) {
+            state.selectedRevisionRowKey = getRevisionKey(pageData[0]);
+        }
     }
 
     const withImages = state.filteredData.filter(r => (r.filename_foto || r.ruta_foto || '').toString().trim() !== '').length;
@@ -524,6 +578,7 @@ export function renderTable() {
         : null;
     renderSelectedRowPosPanel(selectedRow || null);
     renderSelectedRowPosTop(selectedRow || null);
+    dispatchSelectionChanged(state.selectedRevisionRowKey);
     scheduleVisiblePosCirclePreload(pageData);
 
     applyColumnView();
@@ -537,6 +592,32 @@ export function changePage(direction) {
     if (state.currentPage > totalPages) state.currentPage = totalPages;
     renderTable();
     renderPagination();
+}
+
+export function focusRevisionRowInMainTable(revisionKey) {
+    const targetKey = String(revisionKey || '').trim();
+    if (!targetKey) return false;
+
+    const targetRow = state.allData.find(item => getRevisionKey(item) === targetKey);
+    if (!targetRow) return false;
+
+    const filteredSortedRows = getCurrentFilteredSortedRows();
+    const targetIndex = filteredSortedRows.findIndex(item => getRevisionKey(item) === targetKey);
+    if (targetIndex === -1) return false;
+
+    state.selectedRevisionRowKey = targetKey;
+    state.currentPage = Math.floor(targetIndex / state.pageSize) + 1;
+
+    renderTable();
+    renderPagination();
+
+    const safeKey = targetKey.replace(/"/g, '\\"');
+    const visibleRow = document.querySelector(`#tbody tr[data-revision-key="${safeKey}"]`);
+    if (visibleRow instanceof HTMLTableRowElement) {
+        visibleRow.scrollIntoView({ block: 'nearest' });
+    }
+
+    return true;
 }
 
 export function toggleGroupedView() {

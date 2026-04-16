@@ -3,11 +3,13 @@
  */
 
 import { state } from './state.js';
-import { escapeHtml, val } from './helpers.js';
+import { escapeHtml, getRowValueForColumn, val } from './helpers.js';
 import { checkSaveBackendConnection, fetchJsonSafe, loadPartitionedEngineData, saveCellToServer } from './data-loader.js';
 import {
+    applyImportedRevisionToEngineJson,
     applyRevisionDataToRows,
     assignRevisionKeys,
+    createRevisionExportPayload,
     getRevisionKey,
     handleExportRevision,
     handleImportRevisionFile,
@@ -24,12 +26,14 @@ import {
     saveColumnViewPreference
 } from './column-view.js';
 import { isInlineEditableTarget, cancelInlineEdit } from './cell-editor.js';
-import { loadPdfClear, loadPdfWithPage, renderPdfPage } from './pdf-viewer.js';
+import { loadPdfClear, loadPdfWithPage, renderPdfPage, setPdfSelection } from './pdf-viewer.js';
 import { updateSchemasInline, renderSelectedRowPosPanel, renderSelectedRowPosTop } from './schemas.js';
 import { getEngineJsonForRow } from './helpers.js';
 import {
     changePage,
+    focusRevisionRowInMainTable,
     getRowsForBulkScope,
+    jumpToPage,
     moveSelectionBy,
     refreshVisibleRowByRevisionKey,
     renderPagination,
@@ -42,13 +46,88 @@ const $ = (id) => document.getElementById(id);
 let filterTimeout = null;
 let resizeTimer = null;
 let backendStatusTimer = null;
-const MODAL_FIELD_KEYS = ['pn_final', 'designation_final', 'weight_final', 'measurement_final', 'norma'];
+const MODAL_FIELD_KEYS = [
+    'pn_final',
+    'designation_final',
+    'weight_final',
+    'measurement_final',
+    'norma',
+    'MODEL/TYPE',
+    'QTY',
+    'UNITS',
+    'FN',
+    'gesa',
+    'normalizado',
+    'sust_hierarchie',
+    'has_img',
+    'EN_WEB',
+    'engine_model',
+    'Source Page'
+];
+const SYNTHETIC_NEW_EXPORT_COLUMNS = [
+    'Id',
+    'fecha_version',
+    'POS',
+    'designation',
+    'engine',
+    'model_type',
+    'type',
+    'pn',
+    'nsn',
+    'GESA_NORM',
+    'GESA_NORMALIZADO',
+    'fg_code',
+    'fg_description',
+    'fg_code_description',
+    'weight',
+    'weight_txt',
+    'measurement',
+    'TIPOARTICULO',
+    'PAG',
+    'BOM_no',
+    'esquema_general',
+    'exp_motor',
+    'exp_categorias',
+    'atributo',
+    'SUST_TIPO',
+    'new_pn_relacionado',
+    'old_pn_relacionados',
+    'EN_EXCEL_SUSTITUCION',
+    'ruta_foto',
+    'exp_imagenes'
+];
+const SYNTHETIC_SUPERSEDED_EXPORT_COLUMNS = [
+    ...SYNTHETIC_NEW_EXPORT_COLUMNS,
+    'vinculo'
+];
 const modalUiState = {
     tableScrollTop: 0,
     tableScrollLeft: 0,
     windowScrollX: 0,
     windowScrollY: 0
 };
+
+function setRightPanelTab(tabName) {
+    const resolvedTab = tabName === 'record' ? 'record' : 'pdf';
+    state.rightPanelTab = resolvedTab;
+
+    document.querySelectorAll('[data-pdf-tab]').forEach(btn => {
+        const isActive = btn.dataset.pdfTab === resolvedTab;
+        btn.classList.toggle('is-active', isActive);
+        btn.setAttribute('aria-selected', isActive ? 'true' : 'false');
+    });
+
+    document.querySelectorAll('[data-pdf-panel]').forEach(panel => {
+        const isActive = panel.dataset.pdfPanel === resolvedTab;
+        panel.classList.toggle('is-active', isActive);
+        panel.toggleAttribute('hidden', !isActive);
+    });
+
+    if (resolvedTab === 'pdf' && state.currentPdfSource && state.currentPdfPageNumber > 0) {
+        renderPdfPage(state.currentPdfSource, state.currentPdfPageNumber)
+            .catch(error => console.error('Error reajustando PDF al cambiar de pestaña:', error));
+    }
+}
 
 function setBackendStatusBadge(status, message) {
     const statusWrap = $('backendStatus');
@@ -88,8 +167,539 @@ function isRecordModalOpen() {
     return !!modal && !modal.hasAttribute('hidden');
 }
 
+function getBookEngineCode(row) {
+    const sourceFile = String(row?.source_file ?? '').trim();
+    if (sourceFile) return sourceFile.replace(/\.xlsx$/i, '');
+
+    const engineModel = String(row?.engine_model ?? '').trim();
+    if (!engineModel) return '';
+
+    return engineModel
+        .replace(/^engine_/i, '')
+        .replace(/\.json$/i, '')
+        .trim();
+}
+
+
+function getModalMatchesByPn(row) {
+    const pn = normModalMatch(row?.['PART NO.'] ?? row?.pn ?? '');
+    if (!pn) return [];
+    return state.allData
+        .filter(item => normModalMatch(item?.['PART NO.'] ?? item?.pn ?? '') === pn)
+        .map(item => ({
+            revisionKey: getRevisionKey(item),
+            page: String(item?.['Source Page'] ?? ''),
+            pos: String(item?.POS ?? ''),
+            id: String(item?.ID ?? ''),
+            estado: String(item?.qa_revision_estado ?? ''),
+            accion: String(item?.qa_revision_accion ?? ''),
+            book: getBookEngineCode(item)
+        }));
+}
+
+function syncRecordModalBookFilter(row, matches, selectId = 'qaModalMatchesBookFilter') {
+    const select = $(selectId);
+    if (!(select instanceof HTMLSelectElement)) return;
+
+    const currentBook = getBookEngineCode(row);
+    const previousValue = String(select.value || '__current__');
+    const books = [...new Set(matches.map(item => String(item.book || '').trim()).filter(Boolean))]
+        .sort((a, b) => a.localeCompare(b, 'es', { numeric: true, sensitivity: 'base' }));
+
+    const options = [
+        { value: '__current__', label: currentBook ? `Libro actual (${currentBook})` : 'Libro actual' },
+        { value: '__all__', label: 'Todos los libros' },
+        ...books.map(book => ({ value: book, label: book }))
+    ];
+
+    select.innerHTML = options
+        .map(opt => `<option value="${escapeHtml(opt.value)}">${escapeHtml(opt.label)}</option>`)
+        .join('');
+
+    const hasPrevious = options.some(opt => opt.value === previousValue);
+    select.value = hasPrevious ? previousValue : '__current__';
+}
 function getRowByRevisionKey(revisionKey) {
     return state.allData.find(item => getRevisionKey(item) === revisionKey);
+}
+
+function normModalMatch(value) {
+    return String(value ?? '').trim().toLowerCase();
+}
+
+function pageSortValue(page) {
+    const raw = String(page ?? '').trim();
+    const numeric = Number(raw.replace(/[^0-9]/g, ''));
+    return Number.isFinite(numeric) && !Number.isNaN(numeric) ? numeric : Number.MAX_SAFE_INTEGER;
+}
+
+function formatModalExportValue(value) {
+    if (value == null) return '';
+    if (Array.isArray(value)) return value.join(', ');
+    if (typeof value === 'object') {
+        try {
+            return JSON.stringify(value);
+        } catch (_) {
+            return String(value);
+        }
+    }
+    return String(value);
+}
+
+function normalizeComparisonValue(value) {
+    return formatModalExportValue(value)
+        .replace(/\s+/g, ' ')
+        .trim();
+}
+
+function formatExportVersionStamp(date = new Date()) {
+    const year = date.getFullYear();
+    const month = String(date.getMonth() + 1).padStart(2, '0');
+    const day = String(date.getDate()).padStart(2, '0');
+    const hour = String(date.getHours()).padStart(2, '0');
+    const minute = String(date.getMinutes()).padStart(2, '0');
+    return `${year}${month}${day}.${hour}${minute}`;
+}
+
+function escapeRegExp(value) {
+    return String(value || '').replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+}
+
+function normalizeModelTypeForExport(row) {
+    const rawModel = String(row?.model ?? '').trim();
+    if (rawModel) return rawModel;
+
+    const engineModel = String(row?.engine_model ?? '').trim();
+    if (!engineModel) return '';
+    return engineModel.replace('4000', '').trim();
+}
+
+function normalizePageLabelForExport(row) {
+    const book = String(row?.engine_model ?? '').trim();
+    const pageRaw = String(row?.['Source Page'] ?? '').trim();
+    if (!book || !pageRaw) return '';
+    const digits = pageRaw.replace(/[^0-9]/g, '');
+    const page = digits ? digits.padStart(4, '0') : pageRaw;
+    return `${book}-${page}`;
+}
+
+function getPreferredRowsForPn(row) {
+    const currentPn = String(row?.['PART NO.'] ?? row?.pn ?? '').trim();
+    if (!currentPn) return [];
+    const normalizedPn = normModalMatch(currentPn);
+    return state.allData.filter(item => normModalMatch(item?.['PART NO.'] ?? item?.pn ?? '') === normalizedPn);
+}
+
+function getMiluNewRowForPn(row) {
+    const currentPn = String(row?.['PART NO.'] ?? row?.pn ?? '').trim();
+    if (!currentPn || !Array.isArray(state.miluNewData) || !state.miluNewData.length) return null;
+    const normalizedPn = normModalMatch(currentPn);
+    return state.miluNewData.find(item => normModalMatch(item?.pn ?? '') === normalizedPn) || null;
+}
+
+function isSupersededArticle(row) {
+    const hierarchy = String(row?.sust_hierarchie ?? '').trim().toUpperCase();
+    return hierarchy.includes('SUPERSEDED');
+}
+
+function uniqueSortedValues(values, compareAsNumeric = false) {
+    const unique = [...new Set(values.map(value => String(value ?? '').trim()).filter(Boolean))];
+    return unique.sort((a, b) => {
+        if (compareAsNumeric) {
+            return a.localeCompare(b, 'es', { numeric: true, sensitivity: 'base' });
+        }
+        return a.localeCompare(b, 'es', { sensitivity: 'base' });
+    });
+}
+
+function parseWeightNumber(value) {
+    const text = String(value ?? '').trim();
+    if (!text) return null;
+
+    const normalized = text.replace(/\s+/g, ' ');
+    const match = normalized.match(/(\d+[\d.,]*)\s*(KGM|KG|G)\b/i);
+    if (!match) return null;
+
+    let numericText = match[1].replace(/\s/g, '');
+    if (numericText.includes(',') && numericText.includes('.')) {
+        numericText = numericText.replace(/\./g, '').replace(',', '.');
+    } else if (numericText.includes(',')) {
+        numericText = numericText.replace(',', '.');
+    }
+
+    const parsed = Number(numericText);
+    if (!Number.isFinite(parsed)) return null;
+
+    const unit = match[2].toUpperCase();
+    if (unit === 'G') return parsed / 1000;
+    return parsed;
+}
+
+function resolveWeightForExport(row) {
+    const gesaWeight = Number(row?.weight_gesa);
+    if (Number.isFinite(gesaWeight)) return gesaWeight;
+
+    const finalWeight = parseWeightNumber(getRowValueForColumn(row, 'weight_final', ''));
+    if (Number.isFinite(finalWeight)) return finalWeight;
+
+    return parseWeightNumber(row?.WEIGHT);
+}
+
+function formatWeightTextForExport(row, weightValue) {
+    if (!Number.isFinite(weightValue)) {
+        return String(getRowValueForColumn(row, 'weight_final', '') || row?.WEIGHT || '').trim();
+    }
+    const unit = String(row?.units || 'KGM').trim() || 'KGM';
+    return `${weightValue.toFixed(3)} ${unit}`;
+}
+
+function resolveMeasurementForExport(row) {
+    const gesaMeasurement = String(row?.dimensions_gesa ?? '').trim().replace(/\s{2,}/g, ' ');
+    if (gesaMeasurement) return gesaMeasurement;
+
+    let rawMeasurement = String(row?.['MEASUREMENT / STANDARD'] ?? '').trim().replace(/\s{2,}/g, ' ');
+    const norma = String(row?.norma ?? '').trim();
+    if (rawMeasurement && norma) {
+        rawMeasurement = rawMeasurement.replace(new RegExp(`\\b${escapeRegExp(norma)}\\b`, 'ig'), '').trim();
+    }
+    if (rawMeasurement) return rawMeasurement;
+
+    return String(row?.measurement_final ?? '').trim().replace(/\s{2,}/g, ' ');
+}
+
+function firstNonEmptyValue(rows, getter) {
+    for (const row of rows) {
+        const value = getter(row);
+        if (value != null && String(value).trim() !== '') return value;
+    }
+    return null;
+}
+
+function mergeImageValues(primaryValue, secondaryValue) {
+    const merged = [];
+    const seen = new Set();
+
+    const addValue = (value) => {
+        const parts = String(value ?? '')
+            .split(',')
+            .map(part => part.trim())
+            .filter(Boolean);
+        for (const part of parts) {
+            const key = normModalMatch(part);
+            if (seen.has(key)) continue;
+            seen.add(key);
+            merged.push(part);
+        }
+    };
+
+    addValue(primaryValue);
+    addValue(secondaryValue);
+    return merged.join(', ');
+}
+
+function buildSyntheticNewExportRow(row) {
+    const matches = getPreferredRowsForPn(row);
+    if (!matches.length) return null;
+    if (isSupersededArticle(row)) return null;
+
+    const weightValue = resolveWeightForExport(row);
+    const pageLabels = uniqueSortedValues(matches.map(item => normalizePageLabelForExport(item)), true);
+    const modelTypes = uniqueSortedValues(matches.map(item => normalizeModelTypeForExport(item)), true);
+    const engineModels = uniqueSortedValues(matches.map(item => String(item?.engine_model ?? '').trim()), true);
+    const categoryValues = uniqueSortedValues(matches.map(item => String(item?.categoria ?? item?.atributo ?? item?.exp_categorias ?? '').trim()));
+    const imageValue = firstNonEmptyValue([row, ...matches], item => item?.exp_imagenes || item?.ruta_foto || '');
+    const routeFotoValue = firstNonEmptyValue([row, ...matches], item => item?.ruta_foto || '');
+    const exportImagesValue = mergeImageValues(routeFotoValue, imageValue);
+    const normalizedPn = String(row?.['PART NO.'] ?? row?.pn ?? '').trim();
+    const hierarchy = String(row?.sust_hierarchie ?? '').trim();
+    const supersededList = String(row?.sust_superseded_list ?? '').trim();
+    const hasSubstitution = hierarchy !== '' || supersededList !== '' || String(row?.sust_new_part_number ?? '').trim() !== '';
+
+    return {
+        Id: String(row?.ID ?? '').trim(),
+        fecha_version: formatExportVersionStamp(),
+        POS: String(row?.POS ?? '').trim(),
+        designation: String(getRowValueForColumn(row, 'designation_final', '')).trim(),
+        engine: String(row?.engine ?? '').trim() || '4000',
+        model_type: modelTypes.join(', '),
+        type: '',
+        pn: normalizedPn,
+        nsn: String(row?.nsn ?? '').trim(),
+        GESA_NORM: String(row?.norma ?? '').trim(),
+        GESA_NORMALIZADO: String(row?.normalizado ?? '').trim(),
+        fg_code: row?.fg_code ?? '',
+        fg_description: String(row?.fgs_description ?? '').trim(),
+        fg_code_description: String(row?.fgs_code_description ?? '').trim(),
+        weight: Number.isFinite(weightValue) ? Number(weightValue.toFixed(3)) : '',
+        weight_txt: formatWeightTextForExport(row, weightValue),
+        measurement: resolveMeasurementForExport(row),
+        TIPOARTICULO: String(row?.TIPOARTICULO ?? '').trim() || 'piezas',
+        PAG: pageLabels.join(', '),
+        BOM_no: String(row?.['BOM-No.'] ?? '').trim(),
+        esquema_general: '',
+        exp_motor: engineModels.join(', '),
+        exp_categorias: categoryValues.join(', '),
+        atributo: categoryValues.join(', '),
+        SUST_TIPO: hierarchy || null,
+        new_pn_relacionado: hierarchy === 'New'
+            ? normalizedPn
+            : (String(row?.sust_new_part_number ?? '').trim() || null),
+        old_pn_relacionados: supersededList || null,
+        EN_EXCEL_SUSTITUCION: hasSubstitution ? 'SI' : '',
+        ruta_foto: routeFotoValue,
+        exp_imagenes: exportImagesValue
+    };
+}
+
+function buildSyntheticSupersededExportRow(row) {
+    const matches = getPreferredRowsForPn(row);
+    if (!matches.length) return null;
+    if (!isSupersededArticle(row)) return null;
+
+    const hierarchy = String(row?.sust_hierarchie ?? '').trim();
+    const relatedNewPn = String(row?.sust_new_part_number ?? '').trim()
+        || String(row?.['New Part Number'] ?? '').trim();
+    if (!relatedNewPn && hierarchy !== 'Superseded') return null;
+
+    const weightValue = resolveWeightForExport(row);
+    const pageLabels = uniqueSortedValues(matches.map(item => normalizePageLabelForExport(item)), true);
+    const modelTypes = uniqueSortedValues(matches.map(item => normalizeModelTypeForExport(item)), true);
+    const engineModels = uniqueSortedValues(matches.map(item => String(item?.engine_model ?? '').trim()), true);
+    const categoryValues = uniqueSortedValues(matches.map(item => String(item?.categoria ?? item?.atributo ?? item?.exp_categorias ?? '').trim()));
+    const imageValue = firstNonEmptyValue([row, ...matches], item => item?.exp_imagenes || item?.ruta_foto || '');
+    const routeFotoValue = firstNonEmptyValue([row, ...matches], item => item?.ruta_foto || '');
+    const exportImagesValue = mergeImageValues(routeFotoValue, imageValue);
+    const normalizedPn = String(row?.['PART NO.'] ?? row?.pn ?? '').trim();
+    const resolvedRelatedPn = relatedNewPn || normalizedPn;
+    const hasSubstitution = hierarchy === 'Superseded' || resolvedRelatedPn !== '';
+
+    return {
+        Id: String(row?.ID ?? '').trim(),
+        fecha_version: formatExportVersionStamp(),
+        POS: String(row?.POS ?? '').trim(),
+        designation: String(getRowValueForColumn(row, 'designation_final', '')).trim(),
+        engine: String(row?.engine ?? '').trim() || '4000',
+        model_type: modelTypes.join(', '),
+        type: '',
+        pn: normalizedPn,
+        nsn: String(row?.nsn ?? '').trim(),
+        GESA_NORM: String(row?.norma ?? '').trim(),
+        GESA_NORMALIZADO: String(row?.normalizado ?? '').trim(),
+        fg_code: row?.fg_code ?? '',
+        fg_description: String(row?.fgs_description ?? '').trim(),
+        fg_code_description: String(row?.fgs_code_description ?? '').trim(),
+        weight: Number.isFinite(weightValue) ? Number(weightValue.toFixed(3)) : '',
+        weight_txt: formatWeightTextForExport(row, weightValue),
+        measurement: resolveMeasurementForExport(row),
+        TIPOARTICULO: String(row?.TIPOARTICULO ?? '').trim() || 'piezas',
+        PAG: pageLabels.join(', '),
+        BOM_no: String(row?.['BOM-No.'] ?? '').trim(),
+        esquema_general: '',
+        exp_motor: engineModels.join(', '),
+        exp_categorias: categoryValues.join(', '),
+        atributo: categoryValues.join(', '),
+        SUST_TIPO: hierarchy || 'Superseded',
+        new_pn_relacionado: resolvedRelatedPn || null,
+        old_pn_relacionados: null,
+        EN_EXCEL_SUSTITUCION: hasSubstitution ? 'SI' : '',
+        ruta_foto: routeFotoValue,
+        exp_imagenes: exportImagesValue,
+        vinculo: resolvedRelatedPn ? `milu-naval.mystagingwebsite.com/producto/${resolvedRelatedPn}` : ''
+    };
+}
+
+function setModalSectionVisibility(tableBodyElement, visible) {
+    const section = tableBodyElement?.closest('section.qa-modal-related');
+    if (section instanceof HTMLElement) {
+        section.hidden = false;
+    }
+}
+
+function getModalExportColumns(matches) {
+    const columns = [];
+    const seen = new Set();
+    for (const item of matches) {
+        for (const key of Object.keys(item || {})) {
+            if (seen.has(key)) continue;
+            seen.add(key);
+            columns.push(key);
+        }
+    }
+    return columns;
+}
+
+function renderRecordModalExport(row, options = {}) {
+    const {
+        headRowId = 'qaModalExportHeadRow',
+        bodyId = 'qaModalExportBody',
+        countId = 'qaModalExportCount'
+    } = options;
+    const headRow = $(headRowId);
+    const body = $(bodyId);
+    const count = $(countId);
+    if (!(headRow instanceof HTMLElement) || !(body instanceof HTMLElement)) return;
+
+    const syntheticRow = buildSyntheticNewExportRow(row);
+    if (!syntheticRow) {
+        headRow.innerHTML = '<th>Sin datos</th>';
+        body.innerHTML = '<tr><td>No se pudo determinar el codigo PN del registro.</td></tr>';
+        if (count) count.textContent = '0 registros';
+        setModalSectionVisibility(body, false);
+        return;
+    }
+
+    const sourceMatches = getPreferredRowsForPn(row);
+    const miluNewRow = getMiluNewRowForPn(row);
+    const matches = [
+        ...(miluNewRow ? [{ origen: 'MILU_New_v506', ...miluNewRow }] : []),
+        { origen: 'Synthetic', ...syntheticRow }
+    ];
+    const columns = ['origen', ...SYNTHETIC_NEW_EXPORT_COLUMNS];
+    const diffColumns = new Set();
+    const volatileComparisonColumns = new Set(['Id', 'fecha_version']);
+    const warningComparisonColumns = new Set(['exp_categorias', 'atributo']);
+    if (matches.length >= 2) {
+        const firstRow = matches[0];
+        const lastRow = matches[matches.length - 1];
+        columns.forEach(col => {
+            if (col === 'origen') return;
+            if (volatileComparisonColumns.has(col)) return;
+            const firstValue = normalizeComparisonValue(firstRow?.[col]);
+            const lastValue = normalizeComparisonValue(lastRow?.[col]);
+            if (firstValue !== lastValue) diffColumns.add(col);
+        });
+    }
+    const hasWarningMismatch = [...diffColumns].some(col => warningComparisonColumns.has(col));
+    const hasCriticalMismatch = [...diffColumns].some(col => !warningComparisonColumns.has(col));
+    headRow.innerHTML = columns.map(col => `<th>${escapeHtml(col)}</th>`).join('');
+
+    body.innerHTML = matches.map((item, rowIndex) => '<tr>'
+        + columns.map(col => {
+            const rawValue = formatModalExportValue(item?.[col]);
+            const displayValue = rawValue || '-';
+            const isComparedEdgeRow = rowIndex === 0 || rowIndex === matches.length - 1;
+            const isFieldMismatch = isComparedEdgeRow && diffColumns.has(col);
+            const isWarningFieldMismatch = isFieldMismatch && warningComparisonColumns.has(col);
+            const isCriticalFieldMismatch = isFieldMismatch && !warningComparisonColumns.has(col);
+            const isOriginCriticalFlag = isComparedEdgeRow && col === 'origen' && hasCriticalMismatch;
+            const isOriginWarningFlag = isComparedEdgeRow && col === 'origen' && !hasCriticalMismatch && hasWarningMismatch;
+            const tdClasses = [
+                isCriticalFieldMismatch ? 'qa-modal-cell-diff' : '',
+                isWarningFieldMismatch ? 'qa-modal-cell-diff-warn' : '',
+                isOriginCriticalFlag ? 'qa-modal-cell-diff-origin' : '',
+                isOriginWarningFlag ? 'qa-modal-cell-diff-origin-warn' : ''
+            ].filter(Boolean).join(' ');
+            return `<td class="${tdClasses}" title="${escapeHtml(rawValue)}">${escapeHtml(displayValue)}</td>`;
+        }).join('')
+        + '</tr>').join('');
+
+    if (count) {
+        const comparedRows = matches.length;
+        const comparedLabel = miluNewRow ? '2 registros comparados (v506 + synthetic)' : '1 registro (solo synthetic; sin match en v506)';
+        count.textContent = `${comparedLabel} · ${sourceMatches.length} aparicion${sourceMatches.length === 1 ? '' : 'es'}`;
+    }
+    setModalSectionVisibility(body, true);
+}
+
+function renderRecordModalSuperseded(row, options = {}) {
+    const {
+        headRowId = 'qaModalSupersededHeadRow',
+        bodyId = 'qaModalSupersededBody',
+        countId = 'qaModalSupersededCount'
+    } = options;
+    const headRow = $(headRowId);
+    const body = $(bodyId);
+    const count = $(countId);
+    if (!(headRow instanceof HTMLElement) || !(body instanceof HTMLElement)) return;
+
+    const syntheticRow = buildSyntheticSupersededExportRow(row);
+    if (!syntheticRow) {
+        headRow.innerHTML = '<th>Sin datos</th>';
+        body.innerHTML = '<tr><td>El registro no tiene datos suficientes para reconstruir MILU_Superseded.</td></tr>';
+        if (count) count.textContent = '0 registros';
+        setModalSectionVisibility(body, false);
+        return;
+    }
+
+    const sourceMatches = getPreferredRowsForPn(row);
+    const matches = [syntheticRow];
+    const columns = SYNTHETIC_SUPERSEDED_EXPORT_COLUMNS.filter(col => Object.prototype.hasOwnProperty.call(syntheticRow, col));
+    headRow.innerHTML = columns.map(col => `<th>${escapeHtml(col)}</th>`).join('');
+
+    body.innerHTML = matches.map(item => '<tr>'
+        + columns.map(col => {
+            const rawValue = formatModalExportValue(item?.[col]);
+            const displayValue = rawValue || '-';
+            return `<td title="${escapeHtml(rawValue)}">${escapeHtml(displayValue)}</td>`;
+        }).join('')
+        + '</tr>').join('');
+
+    if (count) count.textContent = `1 registro reconstruido · ${sourceMatches.length} aparicion${sourceMatches.length === 1 ? '' : 'es'}`;
+    setModalSectionVisibility(body, true);
+}
+
+function renderRecordModalMatches(row, currentRevisionKey, options = {}) {
+    const {
+        bodyId = 'qaModalMatchesBody',
+        countId = 'qaModalMatchesCount',
+        bookFilterId = 'qaModalMatchesBookFilter'
+    } = options;
+    const body = $(bodyId);
+    const count = $(countId);
+    if (!(body instanceof HTMLElement)) return;
+
+    const matchesByPn = getModalMatchesByPn(row);
+    const currentBook = normModalMatch(getBookEngineCode(row));
+
+    if (!matchesByPn.length) {
+        body.innerHTML = '<tr><td colspan="5">No se pudo determinar PN/libro del registro.</td></tr>';
+        if (count) count.textContent = '0 coincidencias';
+        setModalSectionVisibility(body, false);
+        return;
+    }
+
+    syncRecordModalBookFilter(row, matchesByPn, bookFilterId);
+    const selectedBookFilter = String($(bookFilterId)?.value || '__current__');
+
+    const filteredMatches = matchesByPn.filter(item => {
+        const itemBook = normModalMatch(item.book);
+        if (selectedBookFilter === '__all__') return true;
+        if (selectedBookFilter === '__current__') return !!currentBook && itemBook === currentBook;
+        return itemBook === normModalMatch(selectedBookFilter);
+    });
+
+    const matches = filteredMatches
+        .sort((a, b) => {
+            const byBook = String(a.book || '').localeCompare(String(b.book || ''), 'es', { numeric: true, sensitivity: 'base' });
+            if (byBook !== 0) return byBook;
+            const byPage = pageSortValue(a.page) - pageSortValue(b.page);
+            if (byPage !== 0) return byPage;
+            const byPos = a.pos.localeCompare(b.pos, 'es', { numeric: true, sensitivity: 'base' });
+            if (byPos !== 0) return byPos;
+            return a.id.localeCompare(b.id, 'es', { numeric: true, sensitivity: 'base' });
+        });
+
+    if (!matches.length) {
+        body.innerHTML = '<tr><td colspan="5">Sin coincidencias para el filtro seleccionado.</td></tr>';
+        if (count) count.textContent = '0 coincidencias';
+        setModalSectionVisibility(body, false);
+        return;
+    }
+
+    body.innerHTML = matches.map(item => {
+        const isCurrent = item.revisionKey === currentRevisionKey;
+        const revisionKeyAttr = escapeHtml(String(item.revisionKey || ''));
+        return `<tr class="${isCurrent ? 'qa-modal-related-current' : ''}" data-revision-key="${revisionKeyAttr}" title="Doble click para ir al registro en tabla principal">`
+            + `<td>${escapeHtml(item.book || '-')}</td>`
+            + `<td>${escapeHtml(item.page || '-')}</td>`
+            + `<td>${escapeHtml(item.pos || '-')}</td>`
+            + `<td>${escapeHtml(item.estado || '-')}</td>`
+            + `<td>${escapeHtml(item.accion || '-')}</td>`
+            + '</tr>';
+    }).join('');
+
+    if (count) count.textContent = `${matches.length} coincidencias`;
+    setModalSectionVisibility(body, true);
 }
 
 function fillRecordModal(row, revisionKey) {
@@ -120,8 +730,120 @@ function fillRecordModal(row, revisionKey) {
     $('qaModalMeasurementFinal').value = String(row?.measurement_final ?? '');
     $('qaModalNorma').value = String(row?.norma ?? '');
 
+    renderRecordModalMatches(row, revisionKey);
+    renderRecordModalExport(row);
+    renderRecordModalSuperseded(row);
+
     const status = $('qaRecordModalStatus');
     if (status) status.textContent = '';
+}
+
+function fillSideRecordForm(row, revisionKey) {
+    const form = $('qaSideRecordForm');
+    if (!(form instanceof HTMLFormElement)) return;
+
+    form.dataset.revisionKey = revisionKey;
+    $('qaSideId').value = String(row?.ID ?? '');
+    $('qaSidePn').value = String(row?.['PART NO.'] ?? row?.pn ?? '');
+    $('qaSideBook').value = String(row?.engine_model ?? '');
+    $('qaSidePage').value = String(row?.['Source Page'] ?? '');
+    $('qaSidePos').value = String(row?.POS ?? '');
+    $('qaSideGesa').value = String(row?.gesa ?? '');
+    $('qaSideNormalizado').value = String(row?.normalizado ?? '');
+    $('qaSideSustHierarchie').value = String(row?.sust_hierarchie ?? '');
+    $('qaSideHasImg').value = String(row?.has_img ?? '');
+    $('qaSideEnWeb').value = String(row?.EN_WEB ?? '');
+
+    $('qaSideRevisionEstado').value = String(row?.qa_revision_estado || '');
+    $('qaSideRevisionAccion').value = String(row?.qa_revision_accion || '');
+    $('qaSidePnFinal').value = String(row?.pn_final ?? '');
+    $('qaSideDesignationFinal').value = String(row?.designation_final ?? '');
+    $('qaSideModelType').value = String(row?.['MODEL/TYPE'] ?? '');
+    $('qaSideQty').value = String(row?.QTY ?? '');
+    $('qaSideUnits').value = String(row?.UNITS ?? '');
+    $('qaSideWeightFinal').value = String(row?.weight_final ?? '');
+    $('qaSideFn').value = String(row?.FN ?? '');
+    $('qaSideMeasurementFinal').value = String(row?.measurement_final ?? '');
+    $('qaSideNorma').value = String(row?.norma ?? '');
+
+    const sideLabel = $('qaSideLabel');
+    if (sideLabel) {
+        sideLabel.textContent = `${String(row?.engine_model ?? '-')} • pág ${String(row?.['Source Page'] ?? '-')} • ID ${String(row?.ID ?? '-')}`;
+    }
+
+    renderRecordModalMatches(row, revisionKey, {
+        bodyId: 'qaSideMatchesBody',
+        countId: 'qaSideMatchesCount',
+        bookFilterId: 'qaSideMatchesBookFilter'
+    });
+    renderRecordModalExport(row, {
+        headRowId: 'qaSideExportHeadRow',
+        bodyId: 'qaSideExportBody',
+        countId: 'qaSideExportCount'
+    });
+    renderRecordModalSuperseded(row, {
+        headRowId: 'qaSideSupersededHeadRow',
+        bodyId: 'qaSideSupersededBody',
+        countId: 'qaSideSupersededCount'
+    });
+
+    const status = $('qaSideStatus');
+    if (status) status.textContent = '';
+}
+
+function getRecordFormValues(scope) {
+    const prefix = scope === 'side' ? 'qaSide' : 'qaModal';
+    return {
+        pn_final: String($(`${prefix}PnFinal`)?.value || ''),
+        designation_final: String($(`${prefix}DesignationFinal`)?.value || ''),
+        weight_final: String($(`${prefix}WeightFinal`)?.value || ''),
+        measurement_final: String($(`${prefix}MeasurementFinal`)?.value || ''),
+        norma: String($(`${prefix}Norma`)?.value || ''),
+        'MODEL/TYPE': String($(`${prefix}ModelType`)?.value || ''),
+        QTY: String($(`${prefix}Qty`)?.value || ''),
+        UNITS: String($(`${prefix}Units`)?.value || ''),
+        FN: String($(`${prefix}Fn`)?.value || ''),
+        gesa: String($(`${prefix}Gesa`)?.value || ''),
+        normalizado: String($(`${prefix}Normalizado`)?.value || ''),
+        sust_hierarchie: String($(`${prefix}SustHierarchie`)?.value || ''),
+        has_img: String($(`${prefix}HasImg`)?.value || ''),
+        EN_WEB: String($(`${prefix}EnWeb`)?.value || ''),
+        engine_model: String($(`${prefix}Book`)?.value || ''),
+        'Source Page': String($(`${prefix}Page`)?.value || '')
+    };
+}
+
+function clearSideRecordForm() {
+    const form = $('qaSideRecordForm');
+    if (!(form instanceof HTMLFormElement)) return;
+
+    form.dataset.revisionKey = '';
+    form.querySelectorAll('input').forEach(input => { input.value = ''; });
+    form.querySelectorAll('select').forEach(select => {
+        if (select.id === 'qaSideMatchesBookFilter') select.value = '__current__';
+        else select.value = '';
+    });
+
+    const sideLabel = $('qaSideLabel');
+    if (sideLabel) sideLabel.textContent = 'Selecciona una fila para cargar la ficha';
+
+    $('qaSideMatchesBody').innerHTML = '<tr><td colspan="5">Sin seleccion</td></tr>';
+    $('qaSideExportHeadRow').innerHTML = '<th>Sin datos</th>';
+    $('qaSideExportBody').innerHTML = '<tr><td>Sin seleccion.</td></tr>';
+    $('qaSideSupersededHeadRow').innerHTML = '<th>Sin datos</th>';
+    $('qaSideSupersededBody').innerHTML = '<tr><td>Sin seleccion.</td></tr>';
+    const status = $('qaSideStatus');
+    if (status) status.textContent = 'Selecciona una fila para editarla aqui.';
+}
+
+function syncSideRecordFormWithSelection() {
+    const revisionKey = String(state.selectedRevisionRowKey || '');
+    const row = getRowByRevisionKey(revisionKey);
+    if (!row || !revisionKey) {
+        clearSideRecordForm();
+        return;
+    }
+    fillSideRecordForm(row, revisionKey);
 }
 
 function captureModalUiState() {
@@ -194,13 +916,7 @@ async function handleRecordModalSubmit(event) {
 
     const nextEstado = String($('qaModalRevisionEstado')?.value || '').trim();
     const nextAccion = String($('qaModalRevisionAccion')?.value || '').trim();
-    const nextValues = {
-        pn_final: String($('qaModalPnFinal')?.value || ''),
-        designation_final: String($('qaModalDesignationFinal')?.value || ''),
-        weight_final: String($('qaModalWeightFinal')?.value || ''),
-        measurement_final: String($('qaModalMeasurementFinal')?.value || ''),
-        norma: String($('qaModalNorma')?.value || '')
-    };
+    const nextValues = getRecordFormValues('modal');
 
     try {
         const changedFields = MODAL_FIELD_KEYS.filter(key => String(row?.[key] ?? '') !== String(nextValues[key] ?? ''));
@@ -218,10 +934,66 @@ async function handleRecordModalSubmit(event) {
         const updatedVisibleRow = refreshVisibleRowByRevisionKey(revisionKey);
         if (!updatedVisibleRow) renderTable();
         renderPagination();
+        syncSideRecordFormWithSelection();
         closeRecordModal();
         restoreModalUiState(revisionKey);
     } catch (error) {
         console.error('Error guardando formulario modal:', error);
+        if (status) status.textContent = `No se pudo guardar: ${error.message}`;
+        alert(`No se pudo guardar el registro: ${error.message}`);
+    } finally {
+        if (saveBtn) saveBtn.disabled = false;
+    }
+}
+
+async function handleSideRecordSubmit(event) {
+    event.preventDefault();
+    event.stopPropagation();
+    const form = event.target;
+    if (!(form instanceof HTMLFormElement)) return;
+
+    const revisionKey = String(form.dataset.revisionKey || '');
+    const row = getRowByRevisionKey(revisionKey);
+    if (!row) {
+        alert('Selecciona un registro de la tabla para editar la ficha lateral.');
+        return;
+    }
+
+    const saveBtn = $('qaSideSaveBtn');
+    const status = $('qaSideStatus');
+    if (saveBtn) saveBtn.disabled = true;
+    if (status) status.textContent = 'Guardando cambios...';
+
+    const nextEstado = String($('qaSideRevisionEstado')?.value || '').trim();
+    const nextAccion = String($('qaSideRevisionAccion')?.value || '').trim();
+    const nextValues = getRecordFormValues('side');
+
+    try {
+        const changedFields = MODAL_FIELD_KEYS.filter(key => String(row?.[key] ?? '') !== String(nextValues[key] ?? ''));
+        if (changedFields.length > 0) {
+            const engineFile = getEngineJsonForRow(row);
+            if (!engineFile) throw new Error('No se pudo determinar el archivo engine_*.json del registro.');
+            for (const fieldKey of changedFields) {
+                await saveCellToServer(engineFile, row.ID, fieldKey, nextValues[fieldKey]);
+                row[fieldKey] = nextValues[fieldKey];
+            }
+        }
+
+        setRowRevision(row, nextEstado, nextAccion);
+        state.selectedRevisionRowKey = revisionKey;
+        const updatedVisibleRow = refreshVisibleRowByRevisionKey(revisionKey);
+        if (!updatedVisibleRow) renderTable();
+        renderPagination();
+
+        const modalForm = $('qaRecordModalForm');
+        if (modalForm instanceof HTMLFormElement && String(modalForm.dataset.revisionKey || '') === revisionKey) {
+            fillRecordModal(row, revisionKey);
+        }
+
+        fillSideRecordForm(row, revisionKey);
+        if (status) status.textContent = 'Cambios guardados.';
+    } catch (error) {
+        console.error('Error guardando ficha lateral:', error);
         if (status) status.textContent = `No se pudo guardar: ${error.message}`;
         alert(`No se pudo guardar el registro: ${error.message}`);
     } finally {
@@ -311,6 +1083,165 @@ function setPageFilterValue(pageValue) {
     updateSchemasInline(selectedBook, normalizedPage);
 }
 
+function syncPdfWithSelectedRow(revisionKey) {
+    const normalizedKey = String(revisionKey || '').trim();
+    if (!normalizedKey) {
+        setPdfSelection(null);
+        loadPdfClear();
+        return;
+    }
+
+    const selectedRow = state.allData.find(item => getRevisionKey(item) === normalizedKey);
+    if (!selectedRow) {
+        setPdfSelection(null);
+        loadPdfClear();
+        return;
+    }
+
+    setPdfSelection(selectedRow);
+    const book = String(val(selectedRow, 'engine_model', '') || '').trim();
+    const page = String(val(selectedRow, 'Source Page', '') || '').trim();
+    if (book && page) {
+        loadPdfWithPage(book, page);
+        return;
+    }
+
+    loadPdfClear();
+}
+
+function normalizePageNumber(value) {
+    const digits = String(value || '').replace(/[^0-9]/g, '');
+    if (!digits) return '';
+    const parsed = Number(digits);
+    return Number.isFinite(parsed) && !Number.isNaN(parsed) ? String(parsed) : '';
+}
+
+function resolveBookValue(rawBook) {
+    const candidate = String(rawBook || '').trim();
+    if (!candidate) return '';
+    const normalizedCandidate = candidate.toLowerCase();
+
+    const books = [...new Set(state.allData
+        .map(item => String(item?.engine_model ?? '').trim())
+        .filter(Boolean))];
+
+    const exact = books.find(book => book.toLowerCase() === normalizedCandidate);
+    if (exact) return exact;
+
+    const partial = books.find(book => book.toLowerCase().includes(normalizedCandidate));
+    return partial || candidate;
+}
+
+function setSideSearchStatus(message, kind = '') {
+    const status = $('qaSideSearchStatus');
+    if (!(status instanceof HTMLElement)) return;
+    status.classList.remove('ok', 'error');
+    if (kind) status.classList.add(kind);
+    status.textContent = String(message || '');
+}
+
+function findRowByArticleToken(rows, token) {
+    const normalizedToken = String(token || '').trim().toLowerCase();
+    if (!normalizedToken) return null;
+
+    const byIdExact = rows.find(item => String(item?.ID ?? '').trim().toLowerCase() === normalizedToken);
+    if (byIdExact) return byIdExact;
+
+    const byPnExact = rows.find(item => {
+        const pn = String(item?.['PART NO.'] ?? item?.pn ?? '').trim().toLowerCase();
+        return pn === normalizedToken;
+    });
+    if (byPnExact) return byPnExact;
+
+    const byContains = rows.find(item => {
+        const id = String(item?.ID ?? '').trim().toLowerCase();
+        const pn = String(item?.['PART NO.'] ?? item?.pn ?? '').trim().toLowerCase();
+        const designation = String(getRowValueForColumn(item, 'designation_final', '')).trim().toLowerCase();
+        return id.includes(normalizedToken) || pn.includes(normalizedToken) || designation.includes(normalizedToken);
+    });
+    return byContains || null;
+}
+
+function runSideQuickSearch() {
+    const rawArticle = String($('qaSideSearchArticle')?.value || '').trim();
+    const rawBook = String($('qaSideSearchBook')?.value || '').trim();
+    const rawPage = String($('qaSideSearchPage')?.value || '').trim();
+
+    if (!rawArticle && !rawBook && !rawPage) {
+        setSideSearchStatus('Escribe articulo, libro o pagina para buscar.', 'error');
+        return;
+    }
+
+    const resolvedBook = resolveBookValue(rawBook);
+    const normalizedPage = normalizePageNumber(rawPage);
+
+    let candidateRows = [...state.allData];
+    if (resolvedBook) {
+        const normalizedBook = resolvedBook.toLowerCase();
+        candidateRows = candidateRows.filter(item => String(item?.engine_model ?? '').trim().toLowerCase() === normalizedBook);
+    }
+    if (normalizedPage) {
+        candidateRows = candidateRows.filter(item => normalizePageNumber(item?.['Source Page']) === normalizedPage);
+    }
+
+    if (!candidateRows.length) {
+        setSideSearchStatus('No hay registros para ese libro/pagina.', 'error');
+        return;
+    }
+
+    if (rawArticle) {
+        const targetRow = findRowByArticleToken(candidateRows, rawArticle);
+        if (!targetRow) {
+            setSideSearchStatus('No se encontro ese articulo con los criterios indicados.', 'error');
+            return;
+        }
+
+        const targetBook = String(targetRow?.engine_model ?? '').trim();
+        const targetPage = normalizePageNumber(targetRow?.['Source Page']);
+        applyBookSelection(targetBook, {
+            pageValue: targetPage,
+            fallbackToFirstAvailablePage: true,
+            render: true,
+            updatePdf: true
+        });
+
+        const revisionKey = getRevisionKey(targetRow);
+        const moved = focusRevisionRowInMainTable(revisionKey);
+        if (!moved) {
+            setSideSearchStatus('Se encontro el articulo, pero no se pudo enfocar en la tabla principal.', 'error');
+            return;
+        }
+
+        setSideSearchStatus(`Articulo encontrado: ID ${String(targetRow?.ID ?? '-')}, libro ${targetBook || '-'}, pagina ${targetPage || '-'}.`, 'ok');
+        return;
+    }
+
+    if (resolvedBook) {
+        applyBookSelection(resolvedBook, {
+            pageValue: normalizedPage,
+            fallbackToFirstAvailablePage: true,
+            render: true,
+            updatePdf: true
+        });
+        setSideSearchStatus(`Navegando a libro ${resolvedBook}${normalizedPage ? `, pagina ${normalizedPage}` : ''}.`, 'ok');
+        return;
+    }
+
+    const currentBook = String($('bookFilterSelect')?.value || '').trim();
+    if (!currentBook) {
+        setSideSearchStatus('Para buscar solo por pagina, selecciona o escribe tambien un libro.', 'error');
+        return;
+    }
+
+    applyBookSelection(currentBook, {
+        pageValue: normalizedPage,
+        fallbackToFirstAvailablePage: true,
+        render: true,
+        updatePdf: true
+    });
+    setSideSearchStatus(`Navegando a pagina ${normalizedPage} del libro ${currentBook}.`, 'ok');
+}
+
 function goToNextBookPage() {
     const book = $('bookFilterSelect')?.value || '';
     const pages = getBookPages(book);
@@ -378,7 +1309,7 @@ function isTypingContext(target) {
     return tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT' || target.isContentEditable || Boolean(target.closest('[contenteditable="true"]'));
 }
 
-function applyBulkQuickMode(quickMode) {
+async function applyBulkQuickMode(quickMode) {
     const scopeSelect = $('bulkScopeSelect');
     if (!scopeSelect) return;
 
@@ -411,6 +1342,12 @@ function applyBulkQuickMode(quickMode) {
         setRowRevisionNoSave(row, nextEstado, nextAccion);
     });
 
+    try {
+        await applyImportedRevisionToEngineJson(createRevisionExportPayload());
+    } catch (error) {
+        alert(`No se pudo persistir el cambio masivo en los JSON: ${error.message}`);
+    }
+
     renderTable();
     renderPagination();
 }
@@ -430,16 +1367,25 @@ async function loadData() {
         state.allData = await loadPartitionedEngineData();
         if (!Array.isArray(state.allData)) throw new Error('Los datos no son un array');
 
-        const newData = await tryLoadFirstJson(['MILU_New_v507.json', 'MILU_New_v506.json']);
-        if (Array.isArray(newData)) state.newPnSet = new Set(newData.map(item => item.pn));
+        const newData = await tryLoadFirstJson(['MILU_New_v506.json', 'MILU_New_v507.json']);
+        if (Array.isArray(newData)) {
+            state.newPnSet = new Set(newData.map(item => item.pn));
+            state.miluNewData = newData;
+        } else {
+            state.miluNewData = [];
+        }
 
-        const supersededData = await tryLoadFirstJson(['MILU_Superseded_v507.json', 'MILU_Superseded_v506.json']);
-        if (Array.isArray(supersededData)) state.supersededPnSet = new Set(supersededData.map(item => item.pn));
+        const supersededData = await tryLoadFirstJson(['MILU_Superseded_v506.json', 'MILU_Superseded_v507.json']);
+        if (Array.isArray(supersededData)) {
+            state.supersededPnSet = new Set(supersededData.map(item => item.pn));
+            state.miluSupersededData = supersededData;
+        } else {
+            state.miluSupersededData = [];
+        }
 
-        const publication = await tryLoadFirstJson(['publication_map.json']);
-        if (publication && typeof publication === 'object') state.publishedMap = new Map(Object.entries(publication));
+        state.publishedMap = new Map();
 
-        const productExportData = await tryLoadFirstJson(['product_export_v507.json', 'product-export-2026-03-29-11-07.json']);
+        const productExportData = await tryLoadFirstJson(['product-export-2026-03-29-11-07.json', 'product_export_v507.json']);
         if (Array.isArray(productExportData)) state.productExportPnSet = new Set(productExportData.map(item => item.pn));
 
         state.currentPage = 1;
@@ -474,6 +1420,7 @@ async function loadData() {
         state.filteredData = [...state.allData];
         renderTable();
         renderPagination();
+        syncSideRecordFormWithSelection();
 
         if (syncAutoPageSize()) {
             state.currentPage = 1;
@@ -488,8 +1435,15 @@ async function loadData() {
 }
 
 function attachGlobalEvents() {
+    document.addEventListener('qa:selected-row-changed', (event) => {
+        syncPdfWithSelectedRow(event?.detail?.revisionKey || state.selectedRevisionRowKey);
+        syncSideRecordFormWithSelection();
+    });
+
+    $('firstBtn')?.addEventListener('click', () => jumpToPage(1));
     $('prevBtn')?.addEventListener('click', () => changePage(-1));
     $('nextBtn')?.addEventListener('click', () => changePage(1));
+    $('lastBtn')?.addEventListener('click', () => jumpToPage(Number.MAX_SAFE_INTEGER));
     document.querySelector('thead')?.addEventListener('click', handleSort);
 
     document.querySelectorAll('.filter-input[data-filter], .filter-select[data-filter]').forEach(elem => {
@@ -541,11 +1495,14 @@ function attachGlobalEvents() {
         const file = event.target.files?.[0];
         if (!file) return;
         try {
-            await handleImportRevisionFile(file);
+            const importedPayload = await handleImportRevisionFile(file);
+            const backendApply = await applyImportedRevisionToEngineJson(importedPayload);
             applyRevisionDataToRows(state.allData);
             state.currentPage = 1;
             renderTable();
             renderPagination();
+            const appliedCount = Number(backendApply?.totalApplied || 0);
+            alert(`Revision importada y aplicada a JSON de libros. Filas actualizadas: ${appliedCount}.`);
         } catch (error) {
             alert(`Error importando revisión: ${error.message}`);
         } finally {
@@ -559,6 +1516,58 @@ function attachGlobalEvents() {
     $('bulkReviewBtn')?.addEventListener('click', () => applyBulkQuickMode('review'));
     $('bulkDiscardBtn')?.addEventListener('click', () => applyBulkQuickMode('discard'));
     $('bulkClearBtn')?.addEventListener('click', () => applyBulkQuickMode('clear'));
+
+    document.querySelectorAll('[data-pdf-tab]').forEach(tabBtn => {
+        tabBtn.addEventListener('click', () => setRightPanelTab(tabBtn.dataset.pdfTab || 'pdf'));
+    });
+
+    $('qaSideOpenModalBtn')?.addEventListener('click', () => {
+        const revisionKey = String($('qaSideRecordForm')?.dataset.revisionKey || '');
+        if (!revisionKey) {
+            alert('Selecciona un registro para abrir el modal.');
+            return;
+        }
+        openRecordModal(revisionKey);
+    });
+
+    $('qaSideMatchesBookFilter')?.addEventListener('change', () => {
+        const revisionKey = String($('qaSideRecordForm')?.dataset.revisionKey || '');
+        const row = getRowByRevisionKey(revisionKey);
+        if (!row) return;
+        renderRecordModalMatches(row, revisionKey, {
+            bodyId: 'qaSideMatchesBody',
+            countId: 'qaSideMatchesCount',
+            bookFilterId: 'qaSideMatchesBookFilter'
+        });
+    });
+
+    $('qaSideMatchesBody')?.addEventListener('dblclick', (event) => {
+        const target = event.target;
+        if (!(target instanceof HTMLElement)) return;
+        const tr = target.closest('tr[data-revision-key]');
+        const revisionKey = String(tr?.getAttribute('data-revision-key') || '').trim();
+        if (!revisionKey) return;
+
+        event.preventDefault();
+        event.stopPropagation();
+
+        const moved = focusRevisionRowInMainTable(revisionKey);
+        if (!moved) {
+            alert('No se pudo navegar al registro en la tabla principal. Puede estar fuera de los filtros activos.');
+        }
+    });
+
+    $('qaSideSearchBtn')?.addEventListener('click', runSideQuickSearch);
+    ['qaSideSearchArticle', 'qaSideSearchBook', 'qaSideSearchPage'].forEach(id => {
+        $(id)?.addEventListener('keydown', (event) => {
+            if (event.key !== 'Enter') return;
+            event.preventDefault();
+            runSideQuickSearch();
+        });
+    });
+
+    $('qaSideResetBtn')?.addEventListener('click', syncSideRecordFormWithSelection);
+    $('qaSideRecordForm')?.addEventListener('submit', handleSideRecordSubmit);
 
     document.addEventListener('keydown', (event) => {
         if (isRecordModalOpen()) {
@@ -624,6 +1633,7 @@ function attachGlobalEvents() {
             const accionSelect = tr?.querySelector('select[data-revision-field="accion"]');
             if (estadoSelect instanceof HTMLSelectElement) { estadoSelect.value = nextEstado; updateRevisionSelectVisual(estadoSelect); }
             if (accionSelect instanceof HTMLSelectElement) { accionSelect.value = nextAccion; updateRevisionSelectVisual(accionSelect); }
+            syncSideRecordFormWithSelection();
             return;
         }
 
@@ -638,6 +1648,9 @@ function attachGlobalEvents() {
         refreshSelectedRowVisual();
         renderSelectedRowPosPanel(row);
         renderSelectedRowPosTop(row);
+        document.dispatchEvent(new CustomEvent('qa:selected-row-changed', {
+            detail: { revisionKey: rowKey }
+        }));
     });
 
     tbody?.addEventListener('dblclick', (event) => {
@@ -664,12 +1677,13 @@ function attachGlobalEvents() {
         const accion = revisionField === 'accion' ? target.value : String(row.qa_revision_accion || '');
         setRowRevision(row, estado, accion);
         updateRevisionSelectVisual(target);
+        syncSideRecordFormWithSelection();
     });
 
     window.addEventListener('resize', () => {
         if (resizeTimer) clearTimeout(resizeTimer);
         resizeTimer = setTimeout(() => {
-            if (state.currentPdfSource && state.currentPdfPageNumber > 0) {
+            if (state.rightPanelTab === 'pdf' && state.currentPdfSource && state.currentPdfPageNumber > 0) {
                 renderPdfPage(state.currentPdfSource, state.currentPdfPageNumber).catch(error => console.error('Error reajustando PDF:', error));
             }
             if (!state.allData.length || state.groupedVisible) return;
@@ -688,6 +1702,16 @@ function attachGlobalEvents() {
         if (!(target instanceof HTMLElement)) return;
         if (target.dataset.modalClose === 'true') closeRecordModal();
     });
+
+    $('qaModalMatchesBookFilter')?.addEventListener('change', () => {
+        const form = $('qaRecordModalForm');
+        if (!(form instanceof HTMLFormElement)) return;
+        const revisionKey = String(form.dataset.revisionKey || '');
+        const row = getRowByRevisionKey(revisionKey);
+        if (!row) return;
+        renderRecordModalMatches(row, revisionKey);
+    });
+
     $('qaRecordModalForm')?.addEventListener('submit', handleRecordModalSubmit);
     $('backendStatusRetryBtn')?.addEventListener('click', () => {
         refreshBackendStatus().catch(() => setBackendStatusBadge('offline', 'Backend: sin conexion'));
@@ -699,6 +1723,8 @@ function init() {
     loadColumnViewPreference();
     initBackendStatusMonitor();
     attachGlobalEvents();
+    setRightPanelTab(state.rightPanelTab);
+    clearSideRecordForm();
     loadData();
 }
 

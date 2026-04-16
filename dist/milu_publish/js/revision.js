@@ -1,12 +1,12 @@
 /**
  * Gestión de datos de revisión (estado, acción) por fila.
- * Los datos se guardan en localStorage y opcionalmente en un servidor PHP.
+ * Los datos viven en los propios engine_*.json y se guardan vía backend.
  */
 
 import { state } from './state.js';
+import { saveCellToServer } from './data-loader.js';
 
-export const REVISION_STORAGE_KEY = 'milu_revision_data_v1';
-export const REVISION_REMOTE_SYNC_URL = '/qa_revision_sync.php';
+const REVISION_APPLY_ENDPOINT = '/apply-revision-to-engines';
 
 // ─── Claves de revisión ──────────────────────────────────────────────────────
 
@@ -102,181 +102,73 @@ export function normalizeRevisionDataObject(parsed) {
     return normalizedData;
 }
 
-// ─── Payload de sincronización ───────────────────────────────────────────────
-
-export function createRevisionRemotePayload() {
-    const compactRows = [];
-    const legacyKeys = {};
-    Object.entries(state.revisionData).forEach(([key, value]) => {
-        const normalized = normalizeRevisionRecord(value);
-        if (!revisionRecordHasData(normalized)) return;
-        const idx = parseStableRevisionIndex(key);
-        if (idx != null) {
-            compactRows.push([idx, normalized.estado, normalized.accion]);
-        } else {
-            legacyKeys[key] = { estado: normalized.estado, accion: normalized.accion, updated_at: '' };
-        }
-    });
-    compactRows.sort((a, b) => a[0] - b[0]);
-    return { v: 2, r: compactRows, k: legacyKeys };
-}
-
-function detectUnsupportedRemoteSyncContent(rawText) {
-    const text = String(rawText || '').trim();
-    if (!text) return false;
-    return text.startsWith('<?php') || text.includes('declare(strict_types=1);');
-}
-
-// ─── Remote sync ─────────────────────────────────────────────────────────────
-
-export async function loadRevisionDataFromRemote() {
-    if (!REVISION_REMOTE_SYNC_URL || !state.revisionRemoteSyncEnabled) return;
-    try {
-        const response = await fetch(`${REVISION_REMOTE_SYNC_URL}?t=${Date.now()}`, { method: 'GET', cache: 'no-store' });
-        if (!response.ok) throw new Error(`HTTP ${response.status} ${response.statusText}`);
-        const raw = await response.text();
-        if (detectUnsupportedRemoteSyncContent(raw)) {
-            state.revisionRemoteSyncEnabled = false;
-            console.warn('Sincronizacion remota desactivada: el endpoint no ejecuta PHP en este hosting.');
-            return;
-        }
-        const parsed = JSON.parse(raw);
-        const normalized = normalizeRevisionDataObject(parsed);
-        if (Object.keys(normalized).length) state.revisionData = normalized;
-    } catch (error) {
-        console.warn('No se pudo cargar revisión remota:', error);
-    }
-}
-
-export async function saveRevisionDataToRemoteNow() {
-    if (!REVISION_REMOTE_SYNC_URL || !state.revisionRemoteSyncEnabled) return;
-    try {
-        const response = await fetch(REVISION_REMOTE_SYNC_URL, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-                meta: { updated_at: new Date().toISOString(), source: 'qa_milu.html', version: 2 },
-                revisions: createRevisionRemotePayload()
-            })
-        });
-        if (!response.ok) throw new Error(`HTTP ${response.status} ${response.statusText}`);
-        const raw = await response.text();
-        if (detectUnsupportedRemoteSyncContent(raw)) {
-            state.revisionRemoteSyncEnabled = false;
-            console.warn('Sincronizacion remota desactivada: el endpoint no ejecuta PHP en este hosting.');
-            return;
-        }
-        state.revisionRemoteErrorShown = false;
-    } catch (error) {
-        console.warn('No se pudo guardar revisión remota:', error);
-        if (!state.revisionRemoteErrorShown) {
-            state.revisionRemoteErrorShown = true;
-            alert('No se pudo guardar la revisión en servidor. Se mantiene guardada en este navegador.');
-        }
-    }
-}
-
-export function scheduleRemoteRevisionSync() {
-    if (!REVISION_REMOTE_SYNC_URL || !state.revisionRemoteSyncEnabled) return;
-    if (state.revisionRemoteSyncTimeout) clearTimeout(state.revisionRemoteSyncTimeout);
-    state.revisionRemoteSyncTimeout = setTimeout(() => { saveRevisionDataToRemoteNow(); }, 500);
-}
-
-// ─── localStorage ────────────────────────────────────────────────────────────
-
-export function loadRevisionDataFromStorage() {
-    try {
-        const raw = localStorage.getItem(REVISION_STORAGE_KEY);
-        if (!raw) { state.revisionData = {}; return; }
-        state.revisionData = normalizeRevisionDataObject(JSON.parse(raw));
-    } catch (error) {
-        console.warn('No se pudo cargar revisión local:', error);
-        state.revisionData = {};
-    }
-}
-
-export function saveRevisionDataToStorage() {
-    try {
-        const payload = createRevisionRemotePayload();
-        localStorage.setItem(REVISION_STORAGE_KEY, JSON.stringify(payload));
-        scheduleRemoteRevisionSync();
-    } catch (error) {
-        console.warn('No se pudo guardar revisión local:', error);
-        if (!state.revisionStorageErrorShown) {
-            state.revisionStorageErrorShown = true;
-            alert('No se pudo guardar la revisión en este navegador/origen. Comprueba permisos de almacenamiento local.');
-        }
-    }
-}
-
 export async function loadRevisionData() {
-    loadRevisionDataFromStorage();
-    await loadRevisionDataFromRemote();
-    saveRevisionDataToStorage();
+    // Las revisiones ya vienen en qa_revision_* dentro de engine_*.json.
 }
 
 // ─── Aplicar revisiones a las filas ──────────────────────────────────────────
 
 export function applyRevisionDataToRows(rows) {
     rows.forEach(row => {
-        const aliases = getRevisionKeyAliases(row);
-        let rev = null;
-        for (const alias of aliases) {
-            if (state.revisionData[alias]) { rev = state.revisionData[alias]; break; }
-        }
-        if (!rev) {
-            const fromRow = normalizeRevisionRecord({
-                estado: row?.qa_revision_estado,
-                accion: row?.qa_revision_accion,
-                updated_at: row?.qa_revision_updated_at
-            });
-            rev = revisionRecordHasData(fromRow) ? fromRow : { estado: '', accion: '', updated_at: '' };
-        }
-
+        const rev = normalizeRevisionRecord({
+            estado: row?.qa_revision_estado,
+            accion: row?.qa_revision_accion,
+            updated_at: row?.qa_revision_updated_at
+        });
         row.qa_revision_estado = rev.estado || '';
         row.qa_revision_accion = rev.accion || '';
         row.qa_revision_updated_at = rev.updated_at || '';
-
-        const primaryKey = aliases[0];
-        if (primaryKey && rev && !state.revisionData[primaryKey] && (rev.estado || rev.accion)) {
-            state.revisionData[primaryKey] = normalizeRevisionRecord(rev);
-        }
     });
+}
+
+function getEngineFileForRow(row) {
+    const sourceFile = String(row?.source_file || '').trim();
+    if (sourceFile) {
+        const base = sourceFile
+            .replace(/^engine_/i, '')
+            .replace(/\.xlsx$/i, '')
+            .replace(/\.json$/i, '')
+            .trim();
+        if (base) return `engine_${base}.json`;
+    }
+
+    const engineModel = String(row?.engine_model || '').trim();
+    if (!engineModel) return '';
+    if (/\.json$/i.test(engineModel)) return engineModel;
+    if (/^engine_/i.test(engineModel)) return `${engineModel}.json`;
+    return `engine_${engineModel}.json`;
+}
+
+async function persistRevisionRowToServer(row) {
+    const engineFile = getEngineFileForRow(row);
+    const id = String(row?.ID ?? '').trim();
+    if (!engineFile || !id) {
+        throw new Error('No se pudo determinar archivo/ID para guardar revisión.');
+    }
+
+    await saveCellToServer(engineFile, id, 'qa_revision_estado', String(row.qa_revision_estado || ''));
+    await saveCellToServer(engineFile, id, 'qa_revision_accion', String(row.qa_revision_accion || ''));
 }
 
 export function setRowRevision(row, estado, accion) {
     const normalizedEstado = String(estado || '').trim();
     const normalizedAccion = String(accion || '').trim();
-    const aliases = getRevisionKeyAliases(row);
-    const key = aliases[0];
-    if (!key) return;
-    if (!normalizedEstado && !normalizedAccion) {
-        aliases.forEach(alias => { delete state.revisionData[alias]; });
-    } else {
-        state.revisionData[key] = { estado: normalizedEstado, accion: normalizedAccion, updated_at: new Date().toISOString() };
-        aliases.slice(1).forEach(alias => { delete state.revisionData[alias]; });
-    }
     row.qa_revision_estado = normalizedEstado;
     row.qa_revision_accion = normalizedAccion;
-    row.qa_revision_updated_at = state.revisionData[key]?.updated_at || '';
-    saveRevisionDataToStorage();
+    row.qa_revision_updated_at = new Date().toISOString();
+
+    persistRevisionRowToServer(row).catch(error => {
+        console.warn('No se pudo guardar revisión en engine JSON:', error);
+        alert(`No se pudo guardar la revisión en servidor: ${error.message}`);
+    });
 }
 
 export function setRowRevisionNoSave(row, estado, accion) {
     const normalizedEstado = String(estado || '').trim();
     const normalizedAccion = String(accion || '').trim();
-    const aliases = getRevisionKeyAliases(row);
-    const key = aliases[0];
-    if (!key) return;
-    if (!normalizedEstado && !normalizedAccion) {
-        aliases.forEach(alias => { delete state.revisionData[alias]; });
-    } else {
-        state.revisionData[key] = { estado: normalizedEstado, accion: normalizedAccion, updated_at: new Date().toISOString() };
-        aliases.slice(1).forEach(alias => { delete state.revisionData[alias]; });
-    }
     row.qa_revision_estado = normalizedEstado;
     row.qa_revision_accion = normalizedAccion;
-    row.qa_revision_updated_at = state.revisionData[key]?.updated_at || '';
+    row.qa_revision_updated_at = new Date().toISOString();
 }
 
 // ─── Clases visuales ─────────────────────────────────────────────────────────
@@ -321,9 +213,20 @@ export function updateRevisionSelectVisual(selectEl) {
 // ─── Export / Import ─────────────────────────────────────────────────────────
 
 export function createRevisionExportPayload() {
+    const revisions = {};
+    state.allData.forEach(row => {
+        const revision = normalizeRevisionRecord({
+            estado: row?.qa_revision_estado,
+            accion: row?.qa_revision_accion,
+            updated_at: row?.qa_revision_updated_at
+        });
+        if (!revisionRecordHasData(revision)) return;
+        revisions[getRevisionKey(row)] = revision;
+    });
+
     return {
-        meta: { exported_at: new Date().toISOString(), source: 'qa_milu.html', version: 1, rows: Object.keys(state.revisionData).length },
-        revisions: state.revisionData
+        meta: { exported_at: new Date().toISOString(), source: 'qa_milu.html', version: 1, rows: Object.keys(revisions).length },
+        revisions
     };
 }
 
@@ -346,13 +249,43 @@ export async function handleImportRevisionFile(file) {
     if (!importedRevisions || typeof importedRevisions !== 'object') {
         throw new Error('JSON de revisión no válido: falta "revisions"');
     }
-    Object.entries(importedRevisions).forEach(([key, value]) => {
-        const normalized = normalizeRevisionRecord(value);
-        if (!normalized.estado && !normalized.accion) {
-            delete state.revisionData[key];
-        } else {
-            state.revisionData[key] = normalized;
+    const normalizedImport = normalizeRevisionDataObject(parsed);
+
+    state.allData.forEach(row => {
+        const aliases = getRevisionKeyAliases(row);
+        let imported = null;
+        for (const alias of aliases) {
+            if (normalizedImport[alias]) {
+                imported = normalizedImport[alias];
+                break;
+            }
         }
+        if (!imported) return;
+
+        const normalized = normalizeRevisionRecord(imported);
+        row.qa_revision_estado = normalized.estado;
+        row.qa_revision_accion = normalized.accion;
+        row.qa_revision_updated_at = normalized.updated_at || new Date().toISOString();
     });
-    saveRevisionDataToStorage();
+
+    return parsed;
+}
+
+export async function applyImportedRevisionToEngineJson(parsedRevisionPayload) {
+    if (!parsedRevisionPayload || typeof parsedRevisionPayload !== 'object') {
+        throw new Error('No hay payload de revisión para aplicar en backend.');
+    }
+
+    const response = await fetch(REVISION_APPLY_ENDPOINT, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(parsedRevisionPayload)
+    });
+
+    if (!response.ok) {
+        const data = await response.json().catch(() => ({}));
+        throw new Error(data.error || `HTTP ${response.status}`);
+    }
+
+    return await response.json();
 }

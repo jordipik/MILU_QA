@@ -142,6 +142,7 @@
                                 <th style="width:36px" data-sort="normalizado" class="status-head">N</th>
                                 <th style="width:44px" data-sort="sust_hierarchie" class="status-head">H</th>
                                 <th style="width:36px" data-sort="has_img" class="status-head">F</th>
+                                <th style="width:36px" data-sort="has_error" class="status-head">E</th>
                                 <th style="width:70px" data-sort="EN_WEB">W</th>
                                 <th style="width:78px" data-sort="qa_revision_estado">Rev</th>
                                 <th style="width:86px" data-sort="qa_revision_accion">Acc</th>
@@ -155,12 +156,12 @@
                                 <th style="width:120px" data-sort="designation_gesa">GESA Designation</th>
                                 <th style="width:100px" data-sort="MODEL/TYPE" class="separator-after">Model/Type</th>
                                 <th style="width:60px" data-sort="QTY">QTY</th>
-                                <th style="width:80px" data-sort="WEIGHT">Weight</th>
+                                <th style="width:110px" data-sort="weight_final">Weight Final</th>
                                 <th style="width:60px" data-sort="UNITS">Units</th>
                                 <th style="width:80px" data-sort="weight_gesa">Weight GESA</th>
                                 <th style="width:60px" data-sort="units" class="separator-after">Units GESA</th>
                                 <th style="width:70px" data-sort="FG/FGS">FG/FGS</th>
-                                <th style="width:120px" data-sort="MEASUREMENT / STANDARD">Measurement/Standard</th>
+                                <th style="width:140px" data-sort="measurement_final">Measurement Final</th>
                                 <th style="width:120px" data-sort="dimensions_gesa">Dimensions GESA</th>
                                 <th style="width:100px" data-sort="BOM-No.">BOM-No.</th>
                                 <th style="width:60px" data-sort="model">Model</th>
@@ -189,8 +190,6 @@
                                 <th style="width:140px" data-sort="esquemas_circulos">Esquemas Circulos</th>
                                 <th style="width:160px" data-sort="ruta_esquemas_pos">Ruta Esquemas Pos</th>
                                 <th style="width:160px" data-sort="designation_final">Designation Final</th>
-                                <th style="width:140px" data-sort="measurement_final">Measurement Final</th>
-                                <th style="width:110px" data-sort="weight_final">Weight Final</th>
                             </tr>
                             <tr class="filter-row">
                                 <th><input class="filter-input" data-filter="ID" placeholder="filtrar"></th>
@@ -214,6 +213,11 @@
                                         <option value="">Todos</option>
                                         <option value="true">Si</option>
                                         <option value="false">No</option>
+                                    </select></th>
+                                <th><select class="filter-select" data-filter="has_error">
+                                        <option value="">Todos</option>
+                                        <option value="true">Con error</option>
+                                        <option value="false">Sin error</option>
                                     </select></th>
                                 <th><select class="filter-select" data-filter="EN_WEB">
                                         <option value="">Todos</option>
@@ -245,13 +249,13 @@
                                 </th>
                                 <th><input class="filter-input" data-filter="MODEL/TYPE" placeholder="filtrar"></th>
                                 <th><input class="filter-input" data-filter="QTY" placeholder="filtrar"></th>
-                                <th><input class="filter-input" data-filter="WEIGHT" placeholder="filtrar"></th>
+                                <th><input class="filter-input" data-filter="weight_final" placeholder="filtrar"></th>
                                 <th><input class="filter-input" data-filter="UNITS" placeholder="filtrar"></th>
                                 <th><input class="filter-input" data-filter="weight_gesa" placeholder="filtrar"></th>
                                 <th><input class="filter-input" data-filter="units" placeholder="filtrar"></th>
                                 <th><input class="filter-input" data-filter="FG/FGS" placeholder="filtrar"></th>
-                                <th><input class="filter-input" data-filter="MEASUREMENT / STANDARD"
-                                        placeholder="filtrar"></th>
+                                <th><input class="filter-input" data-filter="measurement_final" placeholder="filtrar">
+                                </th>
                                 <th><input class="filter-input" data-filter="dimensions_gesa" placeholder="filtrar">
                                 </th>
                                 <th><input class="filter-input" data-filter="BOM-No." placeholder="filtrar"></th>
@@ -299,23 +303,22 @@
                                 </th>
                                 <th><input class="filter-input" data-filter="designation_final" placeholder="filtrar">
                                 </th>
-                                <th><input class="filter-input" data-filter="measurement_final" placeholder="filtrar">
-                                </th>
-                                <th><input class="filter-input" data-filter="weight_final" placeholder="filtrar"></th>
                             </tr>
                         </thead>
                         <tbody id="tbody">
                             <tr>
-                                <td colspan="53" class="loading">Cargando datos...</td>
+                                <td colspan="54" class="loading">Cargando datos...</td>
                             </tr>
                         </tbody>
                     </table>
                 </div>
 
                 <div id="pagination" class="pagination" style="display: none;">
+                    <button id="firstBtn" disabled>Primero</button>
                     <button id="prevBtn" disabled>Anterior</button>
                     <span id="pageInfo">Página 1 de 1</span>
                     <button id="nextBtn" disabled>Siguiente</button>
+                    <button id="lastBtn" disabled>Último</button>
                 </div>
 
                 <div id="selectedPosPanel" class="selected-pos-panel">
@@ -357,15 +360,244 @@
             </div>
 
             <div class="card pdfbox" id="pdfBox">
-                <div class="pdfbar">
-                    <span class="pdfmeta"><b>PDF</b> <span id="pdfLabel">—</span></span>
-                    <span class="sp"></span>
-                    <span class="pdfmeta" id="pdfMeta">Selecciona libro y página para ver el PDF</span>
+                <div class="pdf-tabs" role="tablist" aria-label="Panel lateral QA">
+                    <button id="pdfTabPdf" class="pdf-tab-btn is-active" type="button" role="tab" aria-selected="true"
+                        aria-controls="pdfTabPanelPdf" data-pdf-tab="pdf">PDF</button>
+                    <button id="pdfTabRecord" class="pdf-tab-btn" type="button" role="tab" aria-selected="false"
+                        aria-controls="pdfTabPanelRecord" data-pdf-tab="record">Ficha QA</button>
                 </div>
-                <div id="pdfViewer" class="pdfviewer">
-                    <div class="pdfviewer-inner">
-                        <div id="pdfStatus" class="pdfstatus">Selecciona libro y página para ver el PDF</div>
-                        <canvas id="pdfCanvas" class="pdfcanvas"></canvas>
+
+                <div id="pdfTabPanelPdf" class="pdf-tab-panel is-active" role="tabpanel" aria-labelledby="pdfTabPdf"
+                    data-pdf-panel="pdf">
+                    <div class="pdfbar">
+                        <span class="pdfmeta"><b>PDF</b> <span id="pdfLabel">—</span></span>
+                        <span class="sp"></span>
+                        <span class="pdfmeta" id="pdfMeta">Selecciona libro y página para ver el PDF</span>
+                    </div>
+                    <div id="pdfViewer" class="pdfviewer">
+                        <div class="pdfviewer-inner">
+                            <div id="pdfStatus" class="pdfstatus">Selecciona libro y página para ver el PDF</div>
+                            <canvas id="pdfCanvas" class="pdfcanvas"></canvas>
+                        </div>
+                    </div>
+                </div>
+
+                <div id="pdfTabPanelRecord" class="pdf-tab-panel" role="tabpanel" aria-labelledby="pdfTabRecord"
+                    data-pdf-panel="record" hidden>
+                    <div class="pdfbar qa-side-header">
+                        <span class="pdfmeta"><b>Ficha QA</b> <span id="qaSideLabel">Sin seleccion</span></span>
+                        <span class="sp"></span>
+                        <button id="qaSideOpenModalBtn" type="button" class="qa-side-open-btn">Abrir modal</button>
+                    </div>
+                    <div class="qa-side-body">
+                        <section class="qa-side-search" aria-label="Buscador rapido de articulos">
+                            <div class="qa-side-search-row">
+                                <input id="qaSideSearchArticle" type="text" placeholder="Articulo (ID o PN)">
+                                <input id="qaSideSearchBook" type="text" placeholder="Libro">
+                                <input id="qaSideSearchPage" type="text" inputmode="numeric" placeholder="Pagina">
+                                <button id="qaSideSearchBtn" type="button">Buscar</button>
+                            </div>
+                            <p id="qaSideSearchStatus" class="qa-side-search-status" aria-live="polite"></p>
+                        </section>
+                        <form id="qaSideRecordForm" class="qa-modal-form qa-side-modal-form">
+                            <div class="qa-modal-top-split">
+                                <div class="qa-modal-left-stack">
+                                    <input id="qaSideId" type="hidden">
+                                    <input id="qaSidePn" type="hidden">
+                                    <input id="qaSidePos" type="hidden">
+
+                                    <div class="qa-modal-row qa-modal-row-primary">
+                                        <label>
+                                            <span>PN FINAL</span>
+                                            <input id="qaSidePnFinal" type="text" name="pn_final">
+                                        </label>
+                                        <label class="qa-modal-field-span-4">
+                                            <span>DESIGN FINAL</span>
+                                            <input id="qaSideDesignationFinal" type="text" name="designation_final">
+                                        </label>
+                                        <label>
+                                            <span>Model/Type</span>
+                                            <input id="qaSideModelType" type="text">
+                                        </label>
+                                    </div>
+
+                                    <div class="qa-modal-row qa-modal-row-secondary">
+                                        <label>
+                                            <span>QTY</span>
+                                            <input id="qaSideQty" type="text">
+                                        </label>
+                                        <label>
+                                            <span>Units</span>
+                                            <input id="qaSideUnits" type="text">
+                                        </label>
+                                        <label>
+                                            <span>Weight Final</span>
+                                            <input id="qaSideWeightFinal" type="text" name="weight_final">
+                                        </label>
+                                        <label>
+                                            <span>FN</span>
+                                            <input id="qaSideFn" type="text">
+                                        </label>
+                                        <label>
+                                            <span>Dim Fin</span>
+                                            <input id="qaSideMeasurementFinal" type="text" name="measurement_final">
+                                        </label>
+                                        <label>
+                                            <span>Norma</span>
+                                            <input id="qaSideNorma" type="text" name="norma">
+                                        </label>
+                                    </div>
+
+                                    <div class="qa-modal-row-spacer" aria-hidden="true"></div>
+
+                                    <div class="qa-modal-row qa-modal-row-status">
+                                        <label>
+                                            <span>Revision</span>
+                                            <select id="qaSideRevisionEstado" name="qa_revision_estado">
+                                                <option value="">-</option>
+                                                <option value="pendiente">Pendiente</option>
+                                                <option value="en revisión">Revisar</option>
+                                                <option value="revisado">Ok</option>
+                                                <option value="descartado">Eliminar</option>
+                                            </select>
+                                        </label>
+                                        <label>
+                                            <span>Accion</span>
+                                            <select id="qaSideRevisionAccion" name="qa_revision_accion">
+                                                <option value="">-</option>
+                                                <option value="mantener">Import</option>
+                                                <option value="actualizar">Actualizar</option>
+                                                <option value="revisar">Revisar</option>
+                                                <option value="sustituir">Sustituir</option>
+                                                <option value="eliminar">Eliminar</option>
+                                            </select>
+                                        </label>
+                                    </div>
+
+                                    <div class="qa-modal-row qa-modal-row-flags">
+                                        <label>
+                                            <span>Gesa</span>
+                                            <input id="qaSideGesa" type="text">
+                                        </label>
+                                        <label>
+                                            <span>Norm.</span>
+                                            <input id="qaSideNormalizado" type="text">
+                                        </label>
+                                        <label>
+                                            <span>New/Sup</span>
+                                            <input id="qaSideSustHierarchie" type="text">
+                                        </label>
+                                        <label>
+                                            <span>Foto</span>
+                                            <input id="qaSideHasImg" type="text">
+                                        </label>
+                                        <label>
+                                            <span>En Web</span>
+                                            <input id="qaSideEnWeb" type="text">
+                                        </label>
+                                    </div>
+
+                                    <div class="qa-modal-row qa-modal-row-book">
+                                        <label class="qa-modal-field-span-4">
+                                            <span>Libro</span>
+                                            <input id="qaSideBook" type="text">
+                                        </label>
+                                        <label>
+                                            <span>Pagina</span>
+                                            <input id="qaSidePage" type="text">
+                                        </label>
+                                    </div>
+                                </div>
+
+                                <section class="qa-modal-related qa-modal-related-matches">
+                                    <div class="qa-modal-related-head">
+                                        <h3>Apariciones de este PN</h3>
+                                        <div class="qa-modal-related-controls">
+                                            <label class="qa-modal-related-filter"
+                                                for="qaSideMatchesBookFilter">Libro</label>
+                                            <select id="qaSideMatchesBookFilter" class="qa-modal-related-select"
+                                                aria-label="Filtrar apariciones por libro">
+                                                <option value="__current__">Libro actual</option>
+                                                <option value="__all__">Todos</option>
+                                            </select>
+                                            <span id="qaSideMatchesCount" class="qa-modal-related-count"></span>
+                                        </div>
+                                    </div>
+                                    <div class="qa-modal-related-table-wrap">
+                                        <table class="qa-modal-related-table"
+                                            aria-label="Paginas del mismo PN en el libro actual">
+                                            <thead>
+                                                <tr>
+                                                    <th>Libro</th>
+                                                    <th>Pagina</th>
+                                                    <th>Pos</th>
+                                                    <th>Estado</th>
+                                                    <th>Accion</th>
+                                                </tr>
+                                            </thead>
+                                            <tbody id="qaSideMatchesBody">
+                                                <tr>
+                                                    <td colspan="5">Sin datos</td>
+                                                </tr>
+                                            </tbody>
+                                        </table>
+                                    </div>
+                                </section>
+                            </div>
+
+                            <section class="qa-modal-related qa-modal-export">
+                                <div class="qa-modal-related-head">
+                                    <h3>Exportacion MILU_New para este codigo</h3>
+                                    <span id="qaSideExportCount" class="qa-modal-related-count"></span>
+                                </div>
+                                <div class="qa-modal-export-table-wrap">
+                                    <table
+                                        class="qa-modal-related-table qa-modal-export-table qa-modal-export-table-new"
+                                        aria-label="Campos de exportacion MILU_New del codigo actual">
+                                        <thead>
+                                            <tr id="qaSideExportHeadRow">
+                                                <th>Sin datos</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody id="qaSideExportBody">
+                                            <tr>
+                                                <td>No hay datos de exportacion.</td>
+                                            </tr>
+                                        </tbody>
+                                    </table>
+                                </div>
+                            </section>
+
+                            <section class="qa-modal-related qa-modal-export">
+                                <div class="qa-modal-related-head">
+                                    <h3>Exportacion MILU_Superseded para este codigo</h3>
+                                    <span id="qaSideSupersededCount" class="qa-modal-related-count"></span>
+                                </div>
+                                <div class="qa-modal-export-table-wrap">
+                                    <table class="qa-modal-related-table qa-modal-export-table"
+                                        aria-label="Campos de exportacion MILU_Superseded del codigo actual">
+                                        <thead>
+                                            <tr id="qaSideSupersededHeadRow">
+                                                <th>Sin datos</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody id="qaSideSupersededBody">
+                                            <tr>
+                                                <td>No hay datos de exportacion.</td>
+                                            </tr>
+                                        </tbody>
+                                    </table>
+                                </div>
+                            </section>
+
+                            <div class="qa-modal-footer">
+                                <span id="qaSideStatus" class="qa-modal-status" aria-live="polite"></span>
+                                <div class="qa-modal-actions">
+                                    <button id="qaSideResetBtn" type="button">Recargar</button>
+                                    <button id="qaSideSaveBtn" type="submit">Guardar</button>
+                                </div>
+                            </div>
+                        </form>
                     </div>
                 </div>
             </div>
@@ -385,108 +617,192 @@
             </div>
 
             <form id="qaRecordModalForm" class="qa-modal-form">
-                <div class="qa-modal-grid qa-modal-grid-meta">
-                    <label>
-                        <span>ID</span>
-                        <input id="qaModalId" type="text" readonly>
-                    </label>
-                    <label>
-                        <span>PN</span>
-                        <input id="qaModalPn" type="text" readonly>
-                    </label>
-                    <label>
-                        <span>Libro</span>
-                        <input id="qaModalBook" type="text" readonly>
-                    </label>
-                    <label>
-                        <span>Pagina</span>
-                        <input id="qaModalPage" type="text" readonly>
-                    </label>
-                    <label>
-                        <span>Pos</span>
-                        <input id="qaModalPos" type="text" readonly>
-                    </label>
-                    <label>
-                        <span>G</span>
-                        <input id="qaModalGesa" type="text" readonly>
-                    </label>
-                    <label>
-                        <span>N</span>
-                        <input id="qaModalNormalizado" type="text" readonly>
-                    </label>
-                    <label>
-                        <span>H</span>
-                        <input id="qaModalSustHierarchie" type="text" readonly>
-                    </label>
-                    <label>
-                        <span>F</span>
-                        <input id="qaModalHasImg" type="text" readonly>
-                    </label>
-                    <label>
-                        <span>W</span>
-                        <input id="qaModalEnWeb" type="text" readonly>
-                    </label>
+                <div class="qa-modal-top-split">
+                    <div class="qa-modal-left-stack">
+                        <input id="qaModalId" type="hidden">
+                        <input id="qaModalPn" type="hidden">
+                        <input id="qaModalPos" type="hidden">
+
+                        <div class="qa-modal-row qa-modal-row-primary">
+                            <label>
+                                <span>PN FINAL</span>
+                                <input id="qaModalPnFinal" type="text" name="pn_final">
+                            </label>
+                            <label class="qa-modal-field-span-4">
+                                <span>DESIGN FINAL</span>
+                                <input id="qaModalDesignationFinal" type="text" name="designation_final">
+                            </label>
+                            <label>
+                                <span>Model/Type</span>
+                                <input id="qaModalModelType" type="text">
+                            </label>
+                        </div>
+
+                        <div class="qa-modal-row qa-modal-row-secondary">
+                            <label>
+                                <span>QTY</span>
+                                <input id="qaModalQty" type="text">
+                            </label>
+                            <label>
+                                <span>Units</span>
+                                <input id="qaModalUnits" type="text">
+                            </label>
+                            <label>
+                                <span>Weight Final</span>
+                                <input id="qaModalWeightFinal" type="text" name="weight_final">
+                            </label>
+                            <label>
+                                <span>FN</span>
+                                <input id="qaModalFn" type="text">
+                            </label>
+                            <label>
+                                <span>Meas Fin</span>
+                                <input id="qaModalMeasurementFinal" type="text" name="measurement_final">
+                            </label>
+                            <label>
+                                <span>Norma</span>
+                                <input id="qaModalNorma" type="text" name="norma">
+                            </label>
+                        </div>
+
+                        <div class="qa-modal-row-spacer" aria-hidden="true"></div>
+
+                        <div class="qa-modal-row qa-modal-row-status">
+                            <label>
+                                <span>Revision</span>
+                                <select id="qaModalRevisionEstado" name="qa_revision_estado">
+                                    <option value="">-</option>
+                                    <option value="pendiente">Pendiente</option>
+                                    <option value="en revisión">Revisar</option>
+                                    <option value="revisado">Ok</option>
+                                    <option value="descartado">Eliminar</option>
+                                </select>
+                            </label>
+                            <label>
+                                <span>Accion</span>
+                                <select id="qaModalRevisionAccion" name="qa_revision_accion">
+                                    <option value="">-</option>
+                                    <option value="mantener">Import</option>
+                                    <option value="actualizar">Actualizar</option>
+                                    <option value="revisar">Revisar</option>
+                                    <option value="sustituir">Sustituir</option>
+                                    <option value="eliminar">Eliminar</option>
+                                </select>
+                            </label>
+                        </div>
+
+                        <div class="qa-modal-row qa-modal-row-flags">
+                            <label>
+                                <span>Gesa</span>
+                                <input id="qaModalGesa" type="text">
+                            </label>
+                            <label>
+                                <span>Norm.</span>
+                                <input id="qaModalNormalizado" type="text">
+                            </label>
+                            <label>
+                                <span>New/Sup</span>
+                                <input id="qaModalSustHierarchie" type="text">
+                            </label>
+                            <label>
+                                <span>Foto</span>
+                                <input id="qaModalHasImg" type="text">
+                            </label>
+                            <label>
+                                <span>En Web</span>
+                                <input id="qaModalEnWeb" type="text">
+                            </label>
+                        </div>
+
+                        <div class="qa-modal-row qa-modal-row-book">
+                            <label class="qa-modal-field-span-4">
+                                <span>Libro</span>
+                                <input id="qaModalBook" type="text">
+                            </label>
+                            <label>
+                                <span>Pagina</span>
+                                <input id="qaModalPage" type="text">
+                            </label>
+                        </div>
+                    </div>
+
+                    <section class="qa-modal-related qa-modal-related-matches">
+                        <div class="qa-modal-related-head">
+                            <h3>Apariciones de este PN</h3>
+                            <div class="qa-modal-related-controls">
+                                <label class="qa-modal-related-filter" for="qaModalMatchesBookFilter">Libro</label>
+                                <select id="qaModalMatchesBookFilter" class="qa-modal-related-select"
+                                    aria-label="Filtrar apariciones por libro">
+                                    <option value="__current__">Libro actual</option>
+                                    <option value="__all__">Todos</option>
+                                </select>
+                                <span id="qaModalMatchesCount" class="qa-modal-related-count"></span>
+                            </div>
+                        </div>
+                        <div class="qa-modal-related-table-wrap">
+                            <table class="qa-modal-related-table" aria-label="Paginas del mismo PN en el libro actual">
+                                <thead>
+                                    <tr>
+                                        <th>Libro</th>
+                                        <th>Pagina</th>
+                                        <th>Pos</th>
+                                        <th>Estado</th>
+                                        <th>Accion</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="qaModalMatchesBody">
+                                    <tr>
+                                        <td colspan="5">Sin datos</td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </section>
                 </div>
 
-                <div class="qa-modal-grid">
-                    <label>
-                        <span>Revision</span>
-                        <select id="qaModalRevisionEstado" name="qa_revision_estado">
-                            <option value="">-</option>
-                            <option value="pendiente">Pendiente</option>
-                            <option value="en revisión">Revisar</option>
-                            <option value="revisado">Ok</option>
-                            <option value="descartado">Eliminar</option>
-                        </select>
-                    </label>
-                    <label>
-                        <span>Accion</span>
-                        <select id="qaModalRevisionAccion" name="qa_revision_accion">
-                            <option value="">-</option>
-                            <option value="mantener">Import</option>
-                            <option value="actualizar">Actualizar</option>
-                            <option value="revisar">Revisar</option>
-                            <option value="sustituir">Sustituir</option>
-                            <option value="eliminar">Eliminar</option>
-                        </select>
-                    </label>
-                    <label>
-                        <span>pn_final</span>
-                        <input id="qaModalPnFinal" type="text" name="pn_final">
-                    </label>
-                    <label>
-                        <span>designation_final</span>
-                        <input id="qaModalDesignationFinal" type="text" name="designation_final">
-                    </label>
-                    <label>
-                        <span>Model/Type</span>
-                        <input id="qaModalModelType" type="text" readonly>
-                    </label>
-                    <label>
-                        <span>QTY</span>
-                        <input id="qaModalQty" type="text" readonly>
-                    </label>
-                    <label>
-                        <span>UNITS</span>
-                        <input id="qaModalUnits" type="text" readonly>
-                    </label>
-                    <label>
-                        <span>weight_final</span>
-                        <input id="qaModalWeightFinal" type="text" name="weight_final">
-                    </label>
-                    <label>
-                        <span>FN</span>
-                        <input id="qaModalFn" type="text" readonly>
-                    </label>
-                    <label>
-                        <span>measurement_final</span>
-                        <input id="qaModalMeasurementFinal" type="text" name="measurement_final">
-                    </label>
-                    <label>
-                        <span>norma</span>
-                        <input id="qaModalNorma" type="text" name="norma">
-                    </label>
-                </div>
+                <section class="qa-modal-related qa-modal-export">
+                    <div class="qa-modal-related-head">
+                        <h3>Exportacion MILU_New para este codigo</h3>
+                        <span id="qaModalExportCount" class="qa-modal-related-count"></span>
+                    </div>
+                    <div class="qa-modal-export-table-wrap">
+                        <table class="qa-modal-related-table qa-modal-export-table qa-modal-export-table-new"
+                            aria-label="Campos de exportacion MILU_New del codigo actual">
+                            <thead>
+                                <tr id="qaModalExportHeadRow">
+                                    <th>Sin datos</th>
+                                </tr>
+                            </thead>
+                            <tbody id="qaModalExportBody">
+                                <tr>
+                                    <td>No hay datos de exportacion.</td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </section>
+
+                <section class="qa-modal-related qa-modal-export">
+                    <div class="qa-modal-related-head">
+                        <h3>Exportacion MILU_Superseded para este codigo</h3>
+                        <span id="qaModalSupersededCount" class="qa-modal-related-count"></span>
+                    </div>
+                    <div class="qa-modal-export-table-wrap">
+                        <table class="qa-modal-related-table qa-modal-export-table"
+                            aria-label="Campos de exportacion MILU_Superseded del codigo actual">
+                            <thead>
+                                <tr id="qaModalSupersededHeadRow">
+                                    <th>Sin datos</th>
+                                </tr>
+                            </thead>
+                            <tbody id="qaModalSupersededBody">
+                                <tr>
+                                    <td>No hay datos de exportacion.</td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </section>
 
                 <div class="qa-modal-footer">
                     <span id="qaRecordModalStatus" class="qa-modal-status" aria-live="polite"></span>
