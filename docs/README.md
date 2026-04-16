@@ -6,6 +6,7 @@
 - Data flow: [02_data_flow.md](02_data_flow.md)
 - Data models: [03_data_models.md](03_data_models.md)
 - AI critical context: [04_ai_context.md](04_ai_context.md)
+- QA errors checks and stats: [05_qa_errors_checks.md](05_qa_errors_checks.md)
 - Quick AI context: [AI_QUICK_CONTEXT.md](AI_QUICK_CONTEXT.md)
 - Ultra-compact AI context: [AI_QUICK_CONTEXT_COMPACT.md](AI_QUICK_CONTEXT_COMPACT.md)
 

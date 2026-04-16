@@ -1,16 +1,7 @@
 const fs = require('fs');
 const path = require('path');
-
-const ENGINE_JSON_FILES = [
-    'engine_12V4000M40A.json',
-    'engine_12V4000M53.json',
-    'engine_16V4000M61.json',
-    'engine_16V4000M73.json',
-    'engine_16V4000M73L.json',
-    'engine_16V4000M90.json',
-    'engine_20V4000M93.json',
-    'engine_20V4000M93L.json'
-];
+const { ENGINE_JSON_FILES } = require('./engine_files');
+const { applyQaErrorsToRows } = require('./qa_errors');
 
 function normalizeRevisionRecord(record) {
     return {
@@ -114,11 +105,16 @@ function applyRevisionPayload(parsed, options = {}) {
             changedInFile += 1;
         });
 
+        let qaErrorsSummary = null;
         if (changedInFile > 0) {
+            qaErrorsSummary = applyQaErrorsToRows(rows);
             fs.writeFileSync(filePath, `${JSON.stringify(rows, null, 2)}\n`, 'utf8');
         }
 
-        appliedByFile[fileName] = changedInFile;
+        appliedByFile[fileName] = {
+            revisionChanges: changedInFile,
+            qaErrors: qaErrorsSummary
+        };
         totalApplied += changedInFile;
     });
 

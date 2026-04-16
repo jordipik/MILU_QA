@@ -18,6 +18,7 @@ const requiredStaticEntries = [
     'CNAME',
     'js',
     'styles',
+    'pdf',
     'esquemas',
     'esquemas_pos_circulos'
 ];

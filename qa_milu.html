@@ -24,6 +24,10 @@
         <div class="nav nav-modern">
             <span class="pill active">QA detalle</span>
             <a class="pill" href="qa_lista_agrupada.html">Vista agrupada</a>
+            <button id="openQaChecksModalBtn" type="button" class="qa-checks-topbar-btn">
+                <span>⚙️ QA</span>
+                <span id="qaChecksSummaryBadge" class="qa-checks-badge">8/8</span>
+            </button>
             <div id="backendStatus" class="backend-status checking" aria-live="polite"
                 title="Estado del backend de guardado">
                 <span class="backend-status-dot" aria-hidden="true"></span>
@@ -507,6 +511,19 @@
                                             <input id="qaSidePage" type="text">
                                         </label>
                                     </div>
+
+                                    <section class="qa-modal-related qa-record-errors-panel">
+                                        <div class="qa-modal-related-head qa-record-errors-head">
+                                            <h3>Errores QA del registro</h3>
+                                            <span id="qaSideErrorsSummary" class="qa-record-errors-summary">
+                                                <span class="qa-record-errors-pill is-empty">Sin seleccion</span>
+                                            </span>
+                                        </div>
+                                        <ul id="qaSideErrorsList" class="qa-record-errors-list">
+                                            <li class="qa-record-errors-empty">Selecciona una fila para ver sus errores.
+                                            </li>
+                                        </ul>
+                                    </section>
                                 </div>
 
                                 <section class="qa-modal-related qa-modal-related-matches">
@@ -724,6 +741,18 @@
                                 <input id="qaModalPage" type="text">
                             </label>
                         </div>
+
+                        <section class="qa-modal-related qa-record-errors-panel">
+                            <div class="qa-modal-related-head qa-record-errors-head">
+                                <h3>Errores QA del registro</h3>
+                                <span id="qaModalErrorsSummary" class="qa-record-errors-summary">
+                                    <span class="qa-record-errors-pill is-empty">Sin cargar</span>
+                                </span>
+                            </div>
+                            <ul id="qaModalErrorsList" class="qa-record-errors-list">
+                                <li class="qa-record-errors-empty">Abre un registro para ver sus errores.</li>
+                            </ul>
+                        </section>
                     </div>
 
                     <section class="qa-modal-related qa-modal-related-matches">
@@ -812,6 +841,66 @@
                     </div>
                 </div>
             </form>
+        </div>
+    </div>
+
+    <!-- Modal de Comprobaciones QA -->
+    <div id="qaChecksModalOverlay" class="qa-checks-modal-overlay" style="display: none;">
+        <div class="qa-checks-modal-dialog">
+            <div class="qa-checks-modal-header">
+                <h3>Comprobaciones QA</h3>
+                <button id="closeQaChecksModalBtn" type="button" class="qa-checks-modal-close"
+                    aria-label="Cerrar">&times;</button>
+            </div>
+            <div class="qa-checks-modal-body">
+                <p class="qa-checks-modal-desc">Selecciona las tipologías de comprobación que deseas aplicar. Solo se
+                    marcarán los errores de las categorías activas.</p>
+                <div id="qaChecksList" class="qa-checks-modal-list" aria-label="Seleccion de comprobaciones QA"></div>
+
+                <!-- Área de estadísticas (oculta hasta que se aplique) -->
+                <div id="qaChecksStatsArea" class="qa-checks-stats-area" style="display: none;">
+                    <h4>Estadísticas de errores</h4>
+                    <div class="qa-checks-stats-grid">
+                        <div class="qa-checks-stat-item">
+                            <span class="qa-checks-stat-label">Total registros</span>
+                            <span id="qaChecksStat_total" class="qa-checks-stat-value">—</span>
+                        </div>
+                        <div class="qa-checks-stat-item">
+                            <span class="qa-checks-stat-label">Con errores</span>
+                            <span id="qaChecksStat_errors" class="qa-checks-stat-value">—</span>
+                        </div>
+                        <div class="qa-checks-stat-item">
+                            <span class="qa-checks-stat-label">Sin errores</span>
+                            <span id="qaChecksStat_ok" class="qa-checks-stat-value">—</span>
+                        </div>
+                        <div class="qa-checks-stat-item">
+                            <span class="qa-checks-stat-label">Críticos</span>
+                            <span id="qaChecksStat_critical" class="qa-checks-stat-value">—</span>
+                        </div>
+                    </div>
+                    <div class="qa-checks-stats-breakdown">
+                        <div class="qa-checks-stats-breakdown-head">
+                            <span>Desglose por comprobación activa</span>
+                        </div>
+                        <ul id="qaChecksStatCodes" class="qa-checks-stat-codes-list">
+                            <li class="qa-checks-stat-codes-empty">Aplica el cálculo para ver el detalle.</li>
+                        </ul>
+                    </div>
+                </div>
+
+                <!-- Área de progreso (oculta hasta que se aplique) -->
+                <div id="qaChecksProgressArea" class="qa-checks-progress-area" style="display: none;">
+                    <p class="qa-checks-progress-text">Procesando y guardando cambios...</p>
+                    <div class="qa-checks-progress-spinner"></div>
+                </div>
+            </div>
+            <div class="qa-checks-modal-footer">
+                <button id="qaChecksAllBtn" type="button" class="qa-checks-modal-footer-btn">Activar todas</button>
+                <button id="qaChecksNoneBtn" type="button"
+                    class="qa-checks-modal-footer-btn qa-checks-modal-footer-btn-secondary">Desactivar todas</button>
+                <button id="applyQaChecksFilterBtn" type="button"
+                    class="qa-checks-modal-footer-btn qa-checks-modal-footer-btn-primary">Aplicar filtro</button>
+            </div>
         </div>
     </div>
 

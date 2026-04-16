@@ -1,6 +1,7 @@
 {
   "scripts": {
     "generate:synthetic": "node generate_synthetic_exports.js",
+    "errors:rebuild": "node scripts/rebuild_engine_errors.js",
     "pages:prepare": "node scripts/prepare-pages-dist.js",
     "pages:prepare:dry": "node scripts/prepare-pages-dist.js --dry-run",
     "pages:prepare:incremental": "node scripts/prepare-pages-dist.js --incremental",

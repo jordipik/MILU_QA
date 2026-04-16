@@ -3,7 +3,7 @@
  */
 
 import { state } from './state.js';
-import { escapeHtml, getPnKey, getRowValueForColumn, val, hasRowError, getRowErrorType } from './helpers.js';
+import { escapeHtml, getPnKey, getRowValueForColumn, val, getRowErrorFields, getRowErrorType } from './helpers.js';
 import {
     getRevisionAccionClass,
     getRevisionEstadoClass,
@@ -12,6 +12,55 @@ import {
 import { applyColumnView } from './column-view.js';
 import { scheduleVisiblePosCirclePreload } from './pos-preload.js';
 import { renderSelectedRowPosPanel, renderSelectedRowPosTop } from './schemas.js';
+
+const qaErrorMetaCache = {
+    signature: '',
+    entries: new WeakMap()
+};
+
+function getActiveErrorSignature() {
+    return [...(state.activeQaErrorChecks || [])]
+        .map(code => String(code || '').trim())
+        .filter(Boolean)
+        .sort((a, b) => a.localeCompare(b))
+        .join('|');
+}
+
+function getRowErrorCacheMarker(row) {
+    const qaErrors = row?.qa_errors_active || row?.qa_errors;
+    const updatedAt = String(qaErrors?.updated_at || '');
+    const severity = String(qaErrors?.severity || '');
+    const signature = String(qaErrors?.signature || '');
+    const codesLength = Array.isArray(qaErrors?.codes) ? qaErrors.codes.length : 0;
+    const pn = String(row?.['PART NO.'] ?? row?.pn ?? row?.pn_final ?? '');
+    return `${updatedAt}|${severity}|${signature}|${codesLength}|${pn}`;
+}
+
+function getRowErrorMeta(row) {
+    const signature = getActiveErrorSignature();
+    if (qaErrorMetaCache.signature !== signature) {
+        qaErrorMetaCache.signature = signature;
+        qaErrorMetaCache.entries = new WeakMap();
+    }
+
+    const marker = getRowErrorCacheMarker(row);
+    const cached = qaErrorMetaCache.entries.get(row);
+    if (cached && cached.marker === marker) {
+        return cached.value;
+    }
+
+    const activeCodes = state.activeQaErrorChecks;
+    const errorType = getRowErrorType(row, { activeCodes });
+    const errorFields = getRowErrorFields(row, { activeCodes });
+    const value = {
+        errorType,
+        errorFields,
+        hasError: !!errorType
+    };
+
+    qaErrorMetaCache.entries.set(row, { marker, value });
+    return value;
+}
 
 function dispatchSelectionChanged(rowKey) {
     document.dispatchEvent(new CustomEvent('qa:selected-row-changed', {
@@ -77,8 +126,7 @@ export function applyFilters(data) {
                     break;
                 }
                 case 'has_error': {
-                    const errorType = getRowErrorType(row);
-                    rowValue = errorType ? 'true' : 'false';
+                    rowValue = getRowErrorMeta(row).hasError ? 'true' : 'false';
                     break;
                 }
                 case 'sust_hierarchie':
@@ -342,10 +390,19 @@ function renderRow(row) {
     const isHierarchyNew = sustHierarchyRaw === 'New';
     const isHierarchySuperseded = sustHierarchyRaw.toUpperCase().includes('SUPERSEDED');
     const hasImg = (row.filename_foto || row.ruta_foto || '').toString().trim() !== '';
-    const errorType = getRowErrorType(row);
+    const errorMeta = getRowErrorMeta(row);
+    const errorType = errorMeta.errorType;
     const revisionEstado = String(row.qa_revision_estado || '').trim();
     const revisionAccion = String(row.qa_revision_accion || '').trim();
     const revisionKey = getRevisionKey(row);
+    const errorFields = errorMeta.errorFields;
+
+    const withErrorClass = (baseClass, fieldKey) => {
+        const classes = [];
+        if (baseClass) classes.push(baseClass);
+        if (errorFields.has(fieldKey)) classes.push('cell-error-field');
+        return classes.join(' ');
+    };
 
     const gesaIcon = isGesa ? '<span class="status-icon yes" aria-label="GESA SI">G</span>' : '<span class="status-icon no" aria-label="GESA NO">-</span>';
     const normalizadoIcon = isNormalizado ? '<span class="status-icon yes" aria-label="Normalizado SI">N</span>' : '<span class="status-icon no" aria-label="Normalizado NO">-</span>';
@@ -379,17 +436,17 @@ function renderRow(row) {
     const rowSelectedClass = state.selectedRevisionRowKey && state.selectedRevisionRowKey === revisionKey ? 'row-selected' : '';
 
     return `<tr class="${rowSelectedClass}" data-revision-key="${escapeHtml(revisionKey)}">
-      <td class="separator-before separator-after" title="${escapeHtml(id)}">${escapeHtml(id)}</td>
+    <td class="${withErrorClass('separator-before separator-after', 'ID')}" title="${escapeHtml(id)}">${escapeHtml(id)}</td>
       <td class="status-col" title="GESA: ${isGesa ? 'SI' : 'NO'}">${gesaIcon}</td>
       <td class="status-col" title="Normalizado: ${isNormalizado ? 'SI' : 'NO'}">${normalizadoIcon}</td>
       <td class="status-col" title="sust_hierarchie: ${escapeHtml(sustHierarchyLabel)}">${hierarchyIcon}</td>
       <td class="status-col" title="Foto: ${hasImg ? 'SI' : 'NO'}">${fotoIcon}</td>
       <td class="status-col" title="Error: ${errorType ? 'SI' : 'NO'}">${errorIcon}</td>
       <td class="status-col" title="En Web">${enWeb}</td>
-      <td class="revision-cell ${getRevisionEstadoClass(revisionEstado)}" title="Estado de revisión">
+      <td class="${withErrorClass(`revision-cell ${getRevisionEstadoClass(revisionEstado)}`, 'qa_revision_estado')}" title="Estado de revisión">
           <select class="revision-select" data-revision-field="estado" data-revision-key="${escapeHtml(revisionKey)}">${revisionEstadoOptions}</select>
       </td>
-      <td class="revision-cell ${getRevisionAccionClass(revisionAccion)}" title="Acción a realizar">
+      <td class="${withErrorClass(`revision-cell ${getRevisionAccionClass(revisionAccion)}`, 'qa_revision_accion')}" title="Acción a realizar">
           <select class="revision-select" data-revision-field="accion" data-revision-key="${escapeHtml(revisionKey)}">${revisionAccionOptions}</select>
       </td>
       <td class="quick-col" title="Acciones rápidas de revisión">
@@ -402,25 +459,25 @@ function renderRow(row) {
               <button type="button" class="quick-action-btn edit" data-open-record-modal="true" data-revision-key="${escapeHtml(revisionKey)}" title="Editar registro en formulario">ED</button>
           </div>
       </td>
-      <td title="${escapeHtml(val(row, 'POS'))}">${escapeHtml(val(row, 'POS'))}</td>
-      <td title="${escapeHtml(val(row, 'PART NO.'))}">${escapeHtml(val(row, 'PART NO.'))}</td>
+    <td class="${withErrorClass('', 'POS')}" title="${escapeHtml(val(row, 'POS'))}">${escapeHtml(val(row, 'POS'))}</td>
+    <td class="${withErrorClass('', 'PART NO.')}" title="${escapeHtml(val(row, 'PART NO.'))}">${escapeHtml(val(row, 'PART NO.'))}</td>
       <td title="${escapeHtml(val(row, 'pn_raw'))}">${escapeHtml(val(row, 'pn_raw'))}</td>
-    <td${editableAttr('pn_final')} title="${escapeHtml(val(row, 'pn_final'))}" class="cell-inline-editable">${escapeHtml(val(row, 'pn_final'))}</td>
+    <td${editableAttr('pn_final')} title="${escapeHtml(val(row, 'pn_final'))}" class="${withErrorClass('cell-inline-editable', 'pn_final')}">${escapeHtml(val(row, 'pn_final'))}</td>
     <td title="${escapeHtml(val(row, 'criterio_pn'))}">${escapeHtml(val(row, 'criterio_pn'))}</td>
-    <td title="${escapeHtml(getRowValueForColumn(row, 'designation_final'))}">${escapeHtml(getRowValueForColumn(row, 'designation_final'))}</td>
-    <td title="${escapeHtml(val(row, 'designation_gesa'))}" class="${classGesa}">${escapeHtml(val(row, 'designation_gesa'))}</td>
+    <td class="${withErrorClass('', 'designation_final')}" title="${escapeHtml(getRowValueForColumn(row, 'designation_final'))}">${escapeHtml(getRowValueForColumn(row, 'designation_final'))}</td>
+    <td title="${escapeHtml(val(row, 'designation_gesa'))}" class="${withErrorClass(classGesa, 'designation_gesa')}">${escapeHtml(val(row, 'designation_gesa'))}</td>
       <td class="separator-after" title="${escapeHtml(val(row, 'MODEL/TYPE'))}">${escapeHtml(val(row, 'MODEL/TYPE'))}</td>
       <td title="${escapeHtml(val(row, 'QTY'))}">${escapeHtml(val(row, 'QTY'))}</td>
-    <td class="${classGesa}" title="${escapeHtml(getRowValueForColumn(row, 'weight_final'))}">${escapeHtml(getRowValueForColumn(row, 'weight_final'))}</td>
-      <td title="${escapeHtml(val(row, 'UNITS'))}">${escapeHtml(val(row, 'UNITS'))}</td>
-      <td class="${classGesa}" title="${escapeHtml(val(row, 'weight_gesa'))}">${escapeHtml(val(row, 'weight_gesa'))}</td>
-      <td class="separator-after ${classGesa}" title="${escapeHtml(val(row, 'units'))}">${escapeHtml(val(row, 'units'))}</td>
+        <td class="${withErrorClass(classGesa, 'weight_final')}" title="${escapeHtml(getRowValueForColumn(row, 'weight_final'))}">${escapeHtml(getRowValueForColumn(row, 'weight_final'))}</td>
+            <td class="${withErrorClass('', 'UNITS')}" title="${escapeHtml(val(row, 'UNITS'))}">${escapeHtml(val(row, 'UNITS'))}</td>
+            <td class="${withErrorClass(classGesa, 'weight_gesa')}" title="${escapeHtml(val(row, 'weight_gesa'))}">${escapeHtml(val(row, 'weight_gesa'))}</td>
+            <td class="${withErrorClass(`separator-after ${classGesa}`, 'units')}" title="${escapeHtml(val(row, 'units'))}">${escapeHtml(val(row, 'units'))}</td>
       <td title="${escapeHtml(val(row, 'FG/FGS'))}">${escapeHtml(val(row, 'FG/FGS'))}</td>
-    <td class="${classGesa}" title="${escapeHtml(getRowValueForColumn(row, 'measurement_final'))}">${escapeHtml(getRowValueForColumn(row, 'measurement_final'))}</td>
-      <td class="${classGesa}" title="${escapeHtml(val(row, 'dimensions_gesa'))}">${escapeHtml(val(row, 'dimensions_gesa'))}</td>
+        <td class="${withErrorClass(classGesa, 'measurement_final')}" title="${escapeHtml(getRowValueForColumn(row, 'measurement_final'))}">${escapeHtml(getRowValueForColumn(row, 'measurement_final'))}</td>
+            <td class="${withErrorClass(classGesa, 'dimensions_gesa')}" title="${escapeHtml(val(row, 'dimensions_gesa'))}">${escapeHtml(val(row, 'dimensions_gesa'))}</td>
       <td title="${escapeHtml(val(row, 'BOM-No.'))}">${escapeHtml(val(row, 'BOM-No.'))}</td>
       <td title="${escapeHtml(val(row, 'model'))}">${escapeHtml(val(row, 'model'))}</td>
-      <td title="${escapeHtml(val(row, 'Source Page'))}">${escapeHtml(val(row, 'Source Page'))}</td>
+    <td class="${withErrorClass('', 'Source Page')}" title="${escapeHtml(val(row, 'Source Page'))}">${escapeHtml(val(row, 'Source Page'))}</td>
       <td title="${escapeHtml(val(row, 'fgs_code_description'))}">${escapeHtml(val(row, 'fgs_code_description'))}</td>
       <td title="${escapeHtml(val(row, 'filename_foto'))}">${escapeHtml(val(row, 'filename_foto'))}</td>
       <td title="${escapeHtml(val(row, 'nsn'))}">${escapeHtml(val(row, 'nsn'))}</td>
@@ -434,7 +491,7 @@ function renderRow(row) {
       <td title="${escapeHtml(val(row, 'categoria'))}">${escapeHtml(val(row, 'categoria'))}</td>
       <td title="${escapeHtml(val(row, 'precio'))}">${escapeHtml(val(row, 'precio'))}</td>
       <td title="${escapeHtml(val(row, 'FN'))}">${escapeHtml(val(row, 'FN'))}</td>
-      <td title="${escapeHtml(val(row, 'source_file'))}">${escapeHtml(val(row, 'source_file'))}</td>
+    <td class="${withErrorClass('', 'source_file')}" title="${escapeHtml(val(row, 'source_file'))}">${escapeHtml(val(row, 'source_file'))}</td>
       <td title="${escapeHtml(val(row, 'source_sheet'))}">${escapeHtml(val(row, 'source_sheet'))}</td>
       <td title="${escapeHtml(val(row, 'engine'))}">${escapeHtml(val(row, 'engine'))}</td>
       <td title="${escapeHtml(val(row, 'fg_fgs_raw'))}">${escapeHtml(val(row, 'fg_fgs_raw'))}</td>

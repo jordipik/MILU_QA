@@ -5,6 +5,8 @@ const path = require('path');
 const bodyParser = require('body-parser');
 const cors = require('cors');
 const { applyRevisionPayload } = require('./apply_revision_to_engines');
+const { ENGINE_JSON_FILES } = require('./engine_files');
+const { applyQaErrorsToRows, applyActiveQaErrorsToRows, recomputeQaErrorsInFile, getQaErrorsStats } = require('./qa_errors');
 
 const app = express();
 const PORT = 3000;
@@ -134,6 +136,32 @@ app.post('/apply-revision-to-engines', (req, res) => {
     }
 });
 
+app.post('/recompute-qa-errors', (_req, res) => {
+    try {
+        const perFile = {};
+        let totalRows = 0;
+        let rowsWithErrors = 0;
+        let changedRows = 0;
+
+        ENGINE_JSON_FILES.forEach((fileName) => {
+            const filePath = path.join(__dirname, fileName);
+            const summary = recomputeQaErrorsInFile(filePath);
+            perFile[fileName] = summary;
+            totalRows += summary.totalRows;
+            rowsWithErrors += summary.rowsWithErrors;
+            changedRows += summary.changedRows;
+        });
+
+        return res.json({
+            ok: true,
+            totals: { totalRows, rowsWithErrors, changedRows },
+            perFile
+        });
+    } catch (error) {
+        return res.status(500).json({ ok: false, error: `No se pudo recalcular qa_errors: ${error.message}` });
+    }
+});
+
 app.use(express.static(__dirname));
 
 app.get('/', (req, res) => {
@@ -151,16 +179,7 @@ app.post('/save-json', (req, res) => {
         return res.status(400).json({ error: 'Faltan parámetros requeridos' });
     }
     // Solo permitir archivos válidos
-    const allowedFiles = [
-        'engine_12V4000M40A.json',
-        'engine_12V4000M53.json',
-        'engine_16V4000M61.json',
-        'engine_16V4000M73.json',
-        'engine_16V4000M73L.json',
-        'engine_16V4000M90.json',
-        'engine_20V4000M93.json',
-        'engine_20V4000M93L.json'
-    ];
+    const allowedFiles = ENGINE_JSON_FILES;
     if (!allowedFiles.includes(file)) {
         return res.status(400).json({ error: 'Archivo no permitido' });
     }
@@ -179,11 +198,71 @@ app.post('/save-json', (req, res) => {
             return res.status(404).json({ error: 'Registro no encontrado' });
         }
         row[col] = value;
+        const qaErrorsSummary = applyQaErrorsToRows(json);
         fs.writeFile(filePath, JSON.stringify(json, null, 2), 'utf8', err2 => {
             if (err2) return res.status(500).json({ error: 'No se pudo guardar el archivo' });
-            res.json({ ok: true });
+            res.json({ ok: true, qaErrorsSummary });
         });
     });
+});
+
+app.post('/apply-qa-checks-filter', (req, res) => {
+    const { activeCodes } = req.body;
+    if (!Array.isArray(activeCodes)) {
+        return res.status(400).json({ error: 'activeCodes debe ser un array' });
+    }
+
+    const globalStats = {
+        totalRows: 0,
+        rowsWithErrors: 0,
+        rowsOk: 0,
+        codeCount: {},
+        severityCount: { none: 0, warning: 0, critical: 0 },
+        fileStats: {}
+    };
+
+    try {
+        ENGINE_JSON_FILES.forEach((file) => {
+            const filePath = path.join(__dirname, file);
+            if (!fs.existsSync(filePath)) return;
+
+            const data = fs.readFileSync(filePath, 'utf8');
+            const rows = JSON.parse(data);
+            if (!Array.isArray(rows)) return;
+
+            // Recalcular el conjunto completo de errores y persistirlo en disco.
+            applyQaErrorsToRows(rows);
+            applyActiveQaErrorsToRows(rows, activeCodes);
+
+            fs.writeFileSync(filePath, JSON.stringify(rows, null, 2) + '\n', 'utf8');
+
+            const fileStats = getQaErrorsStats(rows, activeCodes);
+            globalStats.fileStats[file] = fileStats;
+
+            // Actualizar estadísticas globales
+            globalStats.totalRows += fileStats.totalRows;
+            globalStats.rowsWithErrors += fileStats.rowsWithErrors;
+            globalStats.rowsOk += fileStats.rowsOk;
+
+            Object.entries(fileStats.codeCount).forEach(([code, count]) => {
+                globalStats.codeCount[code] = (globalStats.codeCount[code] || 0) + count;
+            });
+
+            Object.entries(fileStats.severityCount).forEach(([severity, count]) => {
+                globalStats.severityCount[severity] = (globalStats.severityCount[severity] || 0) + count;
+            });
+        });
+
+        res.json({
+            ok: true,
+            activeCodes,
+            timestamp: new Date().toISOString(),
+            stats: globalStats
+        });
+    } catch (err) {
+        console.error('Error in /apply-qa-checks-filter:', err);
+        res.status(500).json({ error: 'Error al procesar el filtro de QA checks' });
+    }
 });
 
 app.listen(PORT, () => {

@@ -95,7 +95,7 @@ export function normalizeEngineModel(row, fallbackEngineModel) {
  * Devuelve array de strings con códigos/mensajes de error.
  * Vacío si no hay errores.
  */
-export function getRowErrors(row) {
+function getDynamicRowErrors(row) {
     const errors = [];
 
     // Error: No tiene PN (PART NO. ni pn_final ni pn)
@@ -210,6 +210,75 @@ function normalizeFieldForComparison(field, value) {
     return String(value ?? '').replace(/\s+/g, ' ').trim();
 }
 
+function normalizePersistedQaErrors(row) {
+    const raw = row?.qa_errors;
+    if (!raw || typeof raw !== 'object') return null;
+    return raw;
+}
+
+function getActiveCodesSignature(activeCodes) {
+    const resolved = activeCodes instanceof Set
+        ? [...activeCodes]
+        : Array.isArray(activeCodes)
+            ? activeCodes
+            : [...resolveActiveErrorCodes(activeCodes)];
+
+    return [...new Set(resolved.map(code => String(code ?? '').trim()).filter(Boolean))]
+        .sort((a, b) => a.localeCompare(b))
+        .join('|');
+}
+
+function normalizePersistedActiveQaErrors(row, activeCodes) {
+    const raw = row?.qa_errors_active;
+    if (!raw || typeof raw !== 'object') return null;
+    const expectedSignature = getActiveCodesSignature(activeCodes);
+    if (String(raw.signature || '') !== expectedSignature) return null;
+    return raw;
+}
+
+function resolveActiveErrorCodes(activeCodes) {
+    if (activeCodes instanceof Set) return activeCodes;
+    if (Array.isArray(activeCodes)) return new Set(activeCodes.map(code => String(code ?? '').trim()).filter(Boolean));
+    if (state.activeQaErrorChecks instanceof Set && state.activeQaErrorChecks.size > 0) return state.activeQaErrorChecks;
+    return new Set((state.qaErrorCheckDefinitions || []).map(def => String(def?.code ?? '').trim()).filter(Boolean));
+}
+
+function filterByActiveCodes(codes, activeCodes) {
+    const active = resolveActiveErrorCodes(activeCodes);
+    return [...new Set((codes || [])
+        .map(code => String(code ?? '').trim())
+        .filter(code => code && active.has(code)))];
+}
+
+function getPersistedErrorCodes(row, activeCodes) {
+    const activePersisted = normalizePersistedActiveQaErrors(row, activeCodes);
+    if (activePersisted && Array.isArray(activePersisted.codes)) return activePersisted.codes;
+
+    const persisted = normalizePersistedQaErrors(row);
+    if (!persisted || !Array.isArray(persisted.codes)) return [];
+    return filterByActiveCodes(persisted.codes, activeCodes);
+}
+
+export function getRowErrorFields(row, options = {}) {
+    const activePersisted = normalizePersistedActiveQaErrors(row, options.activeCodes);
+    if (activePersisted && typeof activePersisted.fields === 'object' && activePersisted.fields) {
+        return new Set(Object.keys(activePersisted.fields).map(field => String(field ?? '').trim()).filter(Boolean));
+    }
+
+    const active = resolveActiveErrorCodes(options.activeCodes);
+    const persisted = normalizePersistedQaErrors(row);
+    if (!persisted || typeof persisted.fields !== 'object' || !persisted.fields) {
+        return new Set();
+    }
+
+    const fieldNames = Object.keys(persisted.fields).filter(field => {
+        const codes = Array.isArray(persisted.fields[field]) ? persisted.fields[field] : [];
+        return codes.some(code => active.has(String(code ?? '').trim()));
+    }).map(field => String(field ?? '').trim()).filter(Boolean);
+
+    return new Set(fieldNames);
+}
+
 /**
  * Devuelve true si el registro tiene algún error.
  */
@@ -221,13 +290,39 @@ export function hasRowError(row) {
  * Devuelve el tipo de error más grave (para mostrar ícono rojo o naranja).
  * 'critical' = rojo, 'warning' = naranja, null = sin error
  */
-export function getRowErrorType(row) {
-    const errors = getRowErrors(row);
-    if (errors.includes('no_pn') || errors.includes('export_inconsistency') || errors.includes('export_mismatch_critical')) {
+export function getRowErrorType(row, options = {}) {
+    const activePersisted = normalizePersistedActiveQaErrors(row, options.activeCodes);
+    if (activePersisted) {
+        if (!Array.isArray(activePersisted.codes) || activePersisted.codes.length === 0) return null;
+        return String(activePersisted.severity || '').trim() === 'critical' ? 'critical' : 'warning';
+    }
+
+    const errors = getRowErrors(row, options);
+    if (!errors.length) return null;
+
+    const criticalCodes = new Set([
+        'missing_id',
+        'missing_part_no',
+        'duplicate_id',
+        'no_pn',
+        'export_inconsistency',
+        'export_mismatch_critical'
+    ]);
+
+    if (errors.some(code => criticalCodes.has(code))) {
         return 'critical';
     }
-    if (errors.includes('export_mismatch_warning')) {
-        return 'warning';
+    return 'warning';
+}
+
+export function getRowErrors(row, options = {}) {
+    const activePersisted = normalizePersistedActiveQaErrors(row, options.activeCodes);
+    if (activePersisted && Array.isArray(activePersisted.codes)) {
+        return [...new Set(activePersisted.codes.map(code => String(code ?? '').trim()).filter(Boolean))];
     }
-    return null;
+
+    const activeCodes = resolveActiveErrorCodes(options.activeCodes);
+    const dynamicErrors = filterByActiveCodes(getDynamicRowErrors(row), activeCodes);
+    const persistedErrors = getPersistedErrorCodes(row, activeCodes);
+    return [...new Set([...persistedErrors, ...dynamicErrors])];
 }

@@ -3,7 +3,7 @@
  */
 
 import { state } from './state.js';
-import { escapeHtml, getRowValueForColumn, val } from './helpers.js';
+import { escapeHtml, getRowErrors, getRowErrorType, getRowValueForColumn, val } from './helpers.js';
 import { checkSaveBackendConnection, fetchJsonSafe, loadPartitionedEngineData, saveCellToServer } from './data-loader.js';
 import {
     applyImportedRevisionToEngineJson,
@@ -46,6 +46,7 @@ const $ = (id) => document.getElementById(id);
 let filterTimeout = null;
 let resizeTimer = null;
 let backendStatusTimer = null;
+const QA_CHECKS_STORAGE_KEY = 'milu:qa-active-error-checks:v1';
 const MODAL_FIELD_KEYS = [
     'pn_final',
     'designation_final',
@@ -702,6 +703,129 @@ function renderRecordModalMatches(row, currentRevisionKey, options = {}) {
     setModalSectionVisibility(body, true);
 }
 
+function getQaErrorDefinitionMap() {
+    return new Map((state.qaErrorCheckDefinitions || [])
+        .map(def => [String(def?.code || '').trim(), String(def?.label || def?.code || '').trim()])
+        .filter(([code]) => code));
+}
+
+function getQaActiveSignature(activeCodes) {
+    return [...new Set((activeCodes || []).map(code => String(code || '').trim()).filter(Boolean))]
+        .sort((a, b) => a.localeCompare(b))
+        .join('|');
+}
+
+function buildRowActiveQaErrors(row, activeCodes) {
+    const activeSet = new Set((activeCodes || []).map(code => String(code || '').trim()).filter(Boolean));
+    const source = row?.qa_errors;
+    if (!source || typeof source !== 'object') {
+        return {
+            version: 1,
+            severity: 'none',
+            codes: [],
+            fields: {},
+            issues: [],
+            signature: getQaActiveSignature(activeCodes),
+            updated_at: new Date().toISOString()
+        };
+    }
+
+    const codes = Array.isArray(source.codes) ? source.codes.filter(code => activeSet.has(String(code || '').trim())) : [];
+    const issues = Array.isArray(source.issues)
+        ? source.issues.filter(issue => activeSet.has(String(issue?.code || '').trim()))
+        : [];
+    const fields = {};
+    issues.forEach(issue => {
+        (Array.isArray(issue?.fields) ? issue.fields : []).forEach(field => {
+            const normalizedField = String(field || '').trim();
+            const normalizedCode = String(issue?.code || '').trim();
+            if (!normalizedField || !normalizedCode) return;
+            if (!fields[normalizedField]) fields[normalizedField] = [];
+            if (!fields[normalizedField].includes(normalizedCode)) fields[normalizedField].push(normalizedCode);
+        });
+    });
+
+    let severity = 'none';
+    issues.forEach(issue => {
+        const current = String(issue?.severity || '').trim();
+        if (current === 'critical') severity = 'critical';
+        else if (current === 'warning' && severity !== 'critical') severity = 'warning';
+    });
+
+    return {
+        version: Number(source.version || 1),
+        severity,
+        codes,
+        fields,
+        issues,
+        signature: getQaActiveSignature(activeCodes),
+        updated_at: String(source.updated_at || new Date().toISOString())
+    };
+}
+
+function applyActiveQaErrorsToClientRows(activeCodes) {
+    state.allData.forEach(row => {
+        row.qa_errors_active = buildRowActiveQaErrors(row, activeCodes);
+    });
+}
+
+function renderRecordQaErrors(row, options = {}) {
+    const summaryId = options.summaryId || 'qaModalErrorsSummary';
+    const listId = options.listId || 'qaModalErrorsList';
+    const summary = $(summaryId);
+    const list = $(listId);
+    if (!(summary instanceof HTMLElement) || !(list instanceof HTMLElement)) return;
+
+    const activeCodes = state.activeQaErrorChecks instanceof Set ? state.activeQaErrorChecks : new Set();
+    const type = getRowErrorType(row, { activeCodes }) || 'none';
+    const definitionMap = getQaErrorDefinitionMap();
+    const sourceErrors = row?.qa_errors_active && row.qa_errors_active.signature === getQaActiveSignature([...activeCodes])
+        ? row.qa_errors_active
+        : row?.qa_errors;
+    const rawIssues = Array.isArray(sourceErrors?.issues) ? sourceErrors.issues : [];
+    const filteredIssues = rawIssues.filter(issue => {
+        const code = String(issue?.code || '').trim();
+        return code && activeCodes.has(code);
+    });
+
+    const fallbackCodes = getRowErrors(row, { activeCodes });
+    const issueItems = filteredIssues.length > 0
+        ? filteredIssues.map(issue => {
+            const code = String(issue?.code || '').trim();
+            const fields = Array.isArray(issue?.fields) ? issue.fields.filter(Boolean).join(', ') : '';
+            const label = definitionMap.get(code) || code;
+            const message = String(issue?.message || '').trim() || label;
+            const severity = String(issue?.severity || type || 'warning').trim();
+            const fieldHtml = fields ? `<span class="qa-record-errors-fields">${escapeHtml(fields)}</span>` : '';
+            return `<li class="qa-record-errors-item is-${escapeHtml(severity)}">
+                <div class="qa-record-errors-item-main">
+                    <span class="qa-record-errors-code">${escapeHtml(label)}</span>
+                    ${fieldHtml}
+                </div>
+                <span class="qa-record-errors-message">${escapeHtml(message)}</span>
+            </li>`;
+        })
+        : fallbackCodes.map(code => {
+            const label = definitionMap.get(code) || code;
+            return `<li class="qa-record-errors-item is-${escapeHtml(type === 'critical' ? 'critical' : 'warning')}">
+                <div class="qa-record-errors-item-main">
+                    <span class="qa-record-errors-code">${escapeHtml(label)}</span>
+                </div>
+                <span class="qa-record-errors-message">Error activo en este registro.</span>
+            </li>`;
+        });
+
+    if (issueItems.length === 0) {
+        summary.innerHTML = '<span class="qa-record-errors-pill is-ok">Sin errores activos</span>';
+        list.innerHTML = '<li class="qa-record-errors-empty">Este registro no tiene errores para las comprobaciones activas.</li>';
+        return;
+    }
+
+    const severityLabel = type === 'critical' ? 'Criticos' : 'Avisos';
+    summary.innerHTML = `<span class="qa-record-errors-pill is-${escapeHtml(type)}">${issueItems.length} ${escapeHtml(severityLabel)}</span>`;
+    list.innerHTML = issueItems.join('');
+}
+
 function fillRecordModal(row, revisionKey) {
     const form = $('qaRecordModalForm');
     if (!(form instanceof HTMLFormElement)) return;
@@ -730,6 +854,7 @@ function fillRecordModal(row, revisionKey) {
     $('qaModalMeasurementFinal').value = String(row?.measurement_final ?? '');
     $('qaModalNorma').value = String(row?.norma ?? '');
 
+    renderRecordQaErrors(row);
     renderRecordModalMatches(row, revisionKey);
     renderRecordModalExport(row);
     renderRecordModalSuperseded(row);
@@ -771,6 +896,10 @@ function fillSideRecordForm(row, revisionKey) {
         sideLabel.textContent = `${String(row?.engine_model ?? '-')} • pág ${String(row?.['Source Page'] ?? '-')} • ID ${String(row?.ID ?? '-')}`;
     }
 
+    renderRecordQaErrors(row, {
+        summaryId: 'qaSideErrorsSummary',
+        listId: 'qaSideErrorsList'
+    });
     renderRecordModalMatches(row, revisionKey, {
         bodyId: 'qaSideMatchesBody',
         countId: 'qaSideMatchesCount',
@@ -832,6 +961,8 @@ function clearSideRecordForm() {
     $('qaSideExportBody').innerHTML = '<tr><td>Sin seleccion.</td></tr>';
     $('qaSideSupersededHeadRow').innerHTML = '<th>Sin datos</th>';
     $('qaSideSupersededBody').innerHTML = '<tr><td>Sin seleccion.</td></tr>';
+    $('qaSideErrorsSummary').innerHTML = '<span class="qa-record-errors-pill is-empty">Sin seleccion</span>';
+    $('qaSideErrorsList').innerHTML = '<li class="qa-record-errors-empty">Selecciona una fila para ver sus errores.</li>';
     const status = $('qaSideStatus');
     if (status) status.textContent = 'Selecciona una fila para editarla aqui.';
 }
@@ -1262,6 +1393,196 @@ function goToPrevBookPage() {
     setPageFilterValue(targetPage);
 }
 
+function getAllQaCheckCodes() {
+    return (state.qaErrorCheckDefinitions || [])
+        .map(def => String(def?.code || '').trim())
+        .filter(Boolean);
+}
+
+function persistActiveQaChecks() {
+    try {
+        const payload = JSON.stringify([...state.activeQaErrorChecks]);
+        localStorage.setItem(QA_CHECKS_STORAGE_KEY, payload);
+    } catch (_) {
+        // Ignore localStorage errors.
+    }
+}
+
+function ensureQaChecksState() {
+    const allCodes = getAllQaCheckCodes();
+    if (!allCodes.length) {
+        state.activeQaErrorChecks = new Set();
+        return;
+    }
+
+    let restored = [];
+    let hasStoredValue = false;
+    try {
+        const raw = localStorage.getItem(QA_CHECKS_STORAGE_KEY);
+        hasStoredValue = raw !== null;
+        const parsed = raw ? JSON.parse(raw) : null;
+        if (Array.isArray(parsed)) restored = parsed;
+    } catch (_) {
+        restored = [];
+        hasStoredValue = false;
+    }
+
+    const restoredSet = new Set(restored.map(code => String(code || '').trim()).filter(Boolean));
+    const active = hasStoredValue
+        ? allCodes.filter(code => restoredSet.has(code))
+        : allCodes;
+
+    state.activeQaErrorChecks = new Set(active);
+}
+
+function updateQaChecksSummary() {
+    const badge = $('qaChecksSummaryBadge');
+    if (!(badge instanceof HTMLElement)) return;
+    const total = getAllQaCheckCodes().length;
+    const active = state.activeQaErrorChecks.size;
+    badge.textContent = `${active}/${total}`;
+}
+
+function showQaChecksProgress() {
+    const area = $('qaChecksProgressArea');
+    if (!(area instanceof HTMLElement)) return;
+    area.style.display = 'flex';
+}
+
+function hideQaChecksProgress() {
+    const area = $('qaChecksProgressArea');
+    if (!(area instanceof HTMLElement)) return;
+    area.style.display = 'none';
+}
+
+function showQaChecksStats(stats) {
+    const statsArea = $('qaChecksStatsArea');
+    if (!(statsArea instanceof HTMLElement)) return;
+
+    const globalStats = stats?.stats;
+    if (!globalStats) {
+        statsArea.style.display = 'none';
+        return;
+    }
+
+    const totalElem = $('qaChecksStat_total');
+    if (totalElem) totalElem.textContent = String(globalStats.totalRows || 0);
+
+    const errorsElem = $('qaChecksStat_errors');
+    if (errorsElem) errorsElem.textContent = String(globalStats.rowsWithErrors || 0);
+
+    const okElem = $('qaChecksStat_ok');
+    if (okElem) okElem.textContent = String(globalStats.rowsOk || 0);
+
+    const criticalElem = $('qaChecksStat_critical');
+    if (criticalElem) criticalElem.textContent = String(globalStats.severityCount?.critical || 0);
+
+    const definitionMap = getQaErrorDefinitionMap();
+    const codesList = $('qaChecksStatCodes');
+    if (codesList instanceof HTMLElement) {
+        const entries = Object.entries(globalStats.codeCount || {})
+            .sort((a, b) => Number(b[1] || 0) - Number(a[1] || 0) || String(a[0]).localeCompare(String(b[0])));
+
+        if (!entries.length) {
+            codesList.innerHTML = '<li class="qa-checks-stat-codes-empty">No hay errores para las comprobaciones activas.</li>';
+        } else {
+            codesList.innerHTML = entries.map(([code, count]) => {
+                const label = definitionMap.get(code) || code;
+                return `<li class="qa-checks-stat-code-item">
+                    <span class="qa-checks-stat-code-label">${escapeHtml(label)}</span>
+                    <span class="qa-checks-stat-code-count">${escapeHtml(String(count))}</span>
+                </li>`;
+            }).join('');
+        }
+    }
+
+    statsArea.style.display = 'block';
+}
+
+async function applyQaChecksFilter() {
+    const activeCodes = Array.from(state.activeQaErrorChecks);
+
+    showQaChecksProgress();
+    hideQaChecksStats();
+
+    try {
+        const response = await fetch('http://localhost:3000/apply-qa-checks-filter', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ activeCodes })
+        });
+
+        if (!response.ok) {
+            throw new Error(`Error HTTP ${response.status}`);
+        }
+
+        const result = await response.json();
+
+        hideQaChecksProgress();
+        showQaChecksStats(result);
+        persistActiveQaChecks();
+        applyActiveQaErrorsToClientRows(activeCodes);
+
+        // Actualizar tabla después del éxito
+        state.currentPage = 1;
+        renderTable();
+        renderPagination();
+
+    } catch (err) {
+        console.error('Error applying QA checks filter:', err);
+        hideQaChecksProgress();
+        alert('Error al procesar el filtro. Revisa la consola.');
+    }
+}
+
+function hideQaChecksStats() {
+    const statsArea = $('qaChecksStatsArea');
+    if (!(statsArea instanceof HTMLElement)) return;
+    statsArea.style.display = 'none';
+
+    const codesList = $('qaChecksStatCodes');
+    if (codesList instanceof HTMLElement) {
+        codesList.innerHTML = '<li class="qa-checks-stat-codes-empty">Aplica el cálculo para ver el detalle.</li>';
+    }
+}
+
+function openQaChecksModal() {
+    const overlay = $('qaChecksModalOverlay');
+    if (!(overlay instanceof HTMLElement)) return;
+    renderQaChecksPanel();
+    overlay.style.display = 'flex';
+    // Prevent body scroll
+    document.body.style.overflow = 'hidden';
+}
+
+function closeQaChecksModal() {
+    const overlay = $('qaChecksModalOverlay');
+    if (!(overlay instanceof HTMLElement)) return;
+    overlay.style.display = 'none';
+    // Restore body scroll
+    document.body.style.overflow = '';
+}
+
+function renderQaChecksPanel() {
+    ensureQaChecksState();
+
+    const container = $('qaChecksList');
+    if (!(container instanceof HTMLElement)) return;
+
+    const items = state.qaErrorCheckDefinitions || [];
+    container.innerHTML = items.map(def => {
+        const code = String(def?.code || '').trim();
+        const label = String(def?.label || code);
+        const checked = state.activeQaErrorChecks.has(code) ? 'checked' : '';
+        return `<label class="qa-check-item" title="${escapeHtml(code)}">
+            <input type="checkbox" data-qa-check-code="${escapeHtml(code)}" ${checked}>
+            <span>${escapeHtml(label)}</span>
+        </label>`;
+    }).join('');
+
+    updateQaChecksSummary();
+}
+
 function clearFilters() {
     document.querySelectorAll('.filter-input[data-filter]').forEach(input => { input.value = ''; });
     document.querySelectorAll('.filter-select[data-filter]').forEach(select => { select.value = ''; });
@@ -1454,6 +1775,46 @@ function attachGlobalEvents() {
     $('nextBookPageBtn')?.addEventListener('click', goToNextBookPage);
     $('prevBookPageBtn')?.addEventListener('click', goToPrevBookPage);
     $('clearFiltersBtn')?.addEventListener('click', clearFilters);
+
+    // QA Checks Modal
+    $('openQaChecksModalBtn')?.addEventListener('click', openQaChecksModal);
+    $('closeQaChecksModalBtn')?.addEventListener('click', closeQaChecksModal);
+    $('applyQaChecksFilterBtn')?.addEventListener('click', async () => {
+        await applyQaChecksFilter();
+        // No cerrar modal aún, para que usuario vea estadísticas
+    });
+
+    // Close modal on overlay click
+    $('qaChecksModalOverlay')?.addEventListener('click', (event) => {
+        if (event.target.id === 'qaChecksModalOverlay') closeQaChecksModal();
+    });
+
+    // QA Checks list changes - use event delegation with 'input' (bubbles)
+    const qaChecksList = $('qaChecksList');
+    if (qaChecksList instanceof HTMLElement) {
+        qaChecksList.addEventListener('input', (event) => {
+            const target = event.target;
+            if (!(target instanceof HTMLInputElement) || target.type !== 'checkbox') return;
+            const code = String(target.dataset.qaCheckCode || '').trim();
+            if (!code) return;
+
+            if (target.checked) state.activeQaErrorChecks.add(code);
+            else state.activeQaErrorChecks.delete(code);
+
+            // Solo actualizar badge, NO renderizar tabla
+            updateQaChecksSummary();
+        });
+    }
+
+    $('qaChecksAllBtn')?.addEventListener('click', () => {
+        state.activeQaErrorChecks = new Set(getAllQaCheckCodes());
+        renderQaChecksPanel();
+    });
+
+    $('qaChecksNoneBtn')?.addEventListener('click', () => {
+        state.activeQaErrorChecks = new Set();
+        renderQaChecksPanel();
+    });
 
     $('sortBookPagePosBtn')?.addEventListener('click', () => {
         if (state.sortKey === 'book_page_pos') state.sortAsc = !state.sortAsc;
@@ -1722,6 +2083,8 @@ function init() {
     initColumnResize();
     loadColumnViewPreference();
     initBackendStatusMonitor();
+    ensureQaChecksState();
+    updateQaChecksSummary();
     attachGlobalEvents();
     setRightPanelTab(state.rightPanelTab);
     clearSideRecordForm();
