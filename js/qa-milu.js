@@ -46,6 +46,14 @@ const $ = (id) => document.getElementById(id);
 let filterTimeout = null;
 let resizeTimer = null;
 let backendStatusTimer = null;
+
+function queueColumnViewRefresh() {
+    requestAnimationFrame(() => {
+        applyColumnView();
+        requestAnimationFrame(() => applyColumnView());
+    });
+}
+
 const QA_CHECKS_STORAGE_KEY = 'milu:qa-active-error-checks:v1';
 const MODAL_FIELD_KEYS = [
     'pn_final',
@@ -1742,11 +1750,13 @@ async function loadData() {
         renderTable();
         renderPagination();
         syncSideRecordFormWithSelection();
+        queueColumnViewRefresh();
 
         if (syncAutoPageSize()) {
             state.currentPage = 1;
             renderTable();
             renderPagination();
+            queueColumnViewRefresh();
         }
     } catch (error) {
         console.error('Error cargando datos:', error);
@@ -1829,7 +1839,7 @@ function attachGlobalEvents() {
         saveColumnViewPreference();
         renderTable();
         renderPagination();
-        applyColumnView();
+        queueColumnViewRefresh();
     });
 
     $('bookFilterSelect')?.addEventListener('change', () => {

@@ -60,7 +60,7 @@
                                             title="Alternar orden de columnas">
                                             <option value="qa">Vista QA</option>
                                             <option value="focus">Vista foco PN</option>
-                                            <option value="pdf">Vista PDF</option>
+                                            <option value="pdf" selected>Vista PDF</option>
                                         </select>
                                     </div>
                                 </div>
@@ -150,13 +150,13 @@
                                 <th style="width:70px" data-sort="EN_WEB">W</th>
                                 <th style="width:78px" data-sort="qa_revision_estado">Rev</th>
                                 <th style="width:86px" data-sort="qa_revision_accion">Acc</th>
-                                <th style="width:96px" class="status-head">A</th>
-                                <th style="width:50px" data-sort="POS">Pos</th>
+                                <th style="width:96px" class="status-head" data-column-key="quick_actions">A</th>
                                 <th style="width:100px" data-sort="PART NO.">PN</th>
-                                <th style="width:110px" data-sort="pn_raw">PN Raw</th>
+                                <th style="width:50px" data-sort="POS">Pos</th>
                                 <th style="width:110px" data-sort="pn_final">PN Final</th>
-                                <th style="width:130px" data-sort="criterio_pn">Criterio PN</th>
                                 <th style="width:150px" data-sort="DESIGNATION">Designation Final</th>
+                                <th style="width:110px" data-sort="pn_raw">PN Raw</th>
+                                <th style="width:130px" data-sort="criterio_pn">Criterio PN</th>
                                 <th style="width:120px" data-sort="designation_gesa">GESA Designation</th>
                                 <th style="width:100px" data-sort="MODEL/TYPE" class="separator-after">Model/Type</th>
                                 <th style="width:60px" data-sort="QTY">QTY</th>
@@ -243,12 +243,12 @@
                                         <option value="empty">- (Vacío)</option>
                                     </select></th>
                                 <th></th>
-                                <th><input class="filter-input" data-filter="POS" placeholder="filtrar"></th>
                                 <th><input class="filter-input" data-filter="PART NO." placeholder="filtrar"></th>
-                                <th><input class="filter-input" data-filter="pn_raw" placeholder="filtrar"></th>
+                                <th><input class="filter-input" data-filter="POS" placeholder="filtrar"></th>
                                 <th><input class="filter-input" data-filter="pn_final" placeholder="filtrar"></th>
-                                <th><input class="filter-input" data-filter="criterio_pn" placeholder="filtrar"></th>
                                 <th><input class="filter-input" data-filter="DESIGNATION" placeholder="filtrar"></th>
+                                <th><input class="filter-input" data-filter="pn_raw" placeholder="filtrar"></th>
+                                <th><input class="filter-input" data-filter="criterio_pn" placeholder="filtrar"></th>
                                 <th><input class="filter-input" data-filter="designation_gesa" placeholder="filtrar">
                                 </th>
                                 <th><input class="filter-input" data-filter="MODEL/TYPE" placeholder="filtrar"></th>
@@ -904,7 +904,7 @@
         </div>
     </div>
 
-    <script type="module" src="js/qa-milu.js?v=20260413"></script>
+    <script type="module" src="js/qa-milu.js?v=20260417b"></script>
 </body>
 
 </html>

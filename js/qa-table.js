@@ -18,6 +18,13 @@ const qaErrorMetaCache = {
     entries: new WeakMap()
 };
 
+function queueColumnViewRefresh() {
+    requestAnimationFrame(() => {
+        applyColumnView();
+        requestAnimationFrame(() => applyColumnView());
+    });
+}
+
 function getActiveErrorSignature() {
     return [...(state.activeQaErrorChecks || [])]
         .map(code => String(code || '').trim())
@@ -459,12 +466,12 @@ function renderRow(row) {
               <button type="button" class="quick-action-btn edit" data-open-record-modal="true" data-revision-key="${escapeHtml(revisionKey)}" title="Editar registro en formulario">ED</button>
           </div>
       </td>
-    <td class="${withErrorClass('', 'POS')}" title="${escapeHtml(val(row, 'POS'))}">${escapeHtml(val(row, 'POS'))}</td>
     <td class="${withErrorClass('', 'PART NO.')}" title="${escapeHtml(val(row, 'PART NO.'))}">${escapeHtml(val(row, 'PART NO.'))}</td>
-      <td title="${escapeHtml(val(row, 'pn_raw'))}">${escapeHtml(val(row, 'pn_raw'))}</td>
+        <td class="${withErrorClass('', 'POS')}" title="${escapeHtml(val(row, 'POS'))}">${escapeHtml(val(row, 'POS'))}</td>
     <td${editableAttr('pn_final')} title="${escapeHtml(val(row, 'pn_final'))}" class="${withErrorClass('cell-inline-editable', 'pn_final')}">${escapeHtml(val(row, 'pn_final'))}</td>
-    <td title="${escapeHtml(val(row, 'criterio_pn'))}">${escapeHtml(val(row, 'criterio_pn'))}</td>
     <td class="${withErrorClass('', 'designation_final')}" title="${escapeHtml(getRowValueForColumn(row, 'designation_final'))}">${escapeHtml(getRowValueForColumn(row, 'designation_final'))}</td>
+            <td title="${escapeHtml(val(row, 'pn_raw'))}">${escapeHtml(val(row, 'pn_raw'))}</td>
+        <td title="${escapeHtml(val(row, 'criterio_pn'))}">${escapeHtml(val(row, 'criterio_pn'))}</td>
     <td title="${escapeHtml(val(row, 'designation_gesa'))}" class="${withErrorClass(classGesa, 'designation_gesa')}">${escapeHtml(val(row, 'designation_gesa'))}</td>
       <td class="separator-after" title="${escapeHtml(val(row, 'MODEL/TYPE'))}">${escapeHtml(val(row, 'MODEL/TYPE'))}</td>
       <td title="${escapeHtml(val(row, 'QTY'))}">${escapeHtml(val(row, 'QTY'))}</td>
@@ -639,6 +646,7 @@ export function renderTable() {
     scheduleVisiblePosCirclePreload(pageData);
 
     applyColumnView();
+    queueColumnViewRefresh();
     renderGroupedTable(state.filteredData);
 }
 

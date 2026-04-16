@@ -7,26 +7,70 @@ import { state } from './state.js';
 
 const COLUMN_VIEW_STORAGE_KEY = 'milu_column_view_v2';
 const TABLE_COLUMN_WIDTHS_STORAGE_KEY = 'milu_table_column_widths_v2';
+const DEFAULT_COLUMN_VIEW = 'pdf';
 
 export const FOCUS_COLUMN_ORDER = [
-    0, 9, 36, 26, 8, 13, 15, 16, 17, 18,
-    1, 2, 3, 4, 5, 6, 7,
-    10, 11, 12, 14, 19, 20, 21, 22, 23, 24, 25, 27, 28,
-    40, 41, 37, 38, 39, 42, 43, 44, 45, 46, 47, 48, 49,
-    29, 30, 31, 32, 33, 34, 35
+    'ID', 'quick_actions', 'esquemas', 'BOM-No.', 'qa_revision_accion', 'pn_final', 'DESIGNATION', 'designation_gesa', 'MODEL/TYPE', 'QTY',
+    'gesa', 'normalizado', 'sust_hierarchie', 'has_img', 'has_error', 'EN_WEB', 'qa_revision_estado',
+    'POS', 'PART NO.', 'pn_raw', 'criterio_pn', 'weight_final', 'UNITS', 'weight_gesa', 'units', 'FG/FGS', 'measurement_final', 'dimensions_gesa', 'model', 'Source Page',
+    'precio', 'FN', 'esquemas_circulos_all', 'engine_model', 'categoria', 'source_file', 'source_sheet', 'engine', 'fg_fgs_raw', 'fg_code', 'fgs_description', 'atributo2', 'ruta_foto',
+    'esquemas_circulos', 'fgs_code_description', 'filename_foto', 'nsn', 'norma', 'sust_status', 'sust_new_part_number', 'sust_superseded_list'
 ];
 
 export const PDF_COLUMN_ORDER = [
-    // Sin ID. Se mantienen estados hasta "Acción" y luego columnas de exportación PDF.
-    1, 2, 3, 4, 5, 6, 7, 8,
-    9, 12, 51, 16, 17, 18, 23, 40, 52, 31
+    // Sin ID. Se mantienen estados hasta "Acción" y luego columnas clave de consulta rápida.
+    'gesa', 'normalizado', 'sust_hierarchie', 'has_img', 'has_error', 'EN_WEB', 'qa_revision_estado', 'qa_revision_accion',
+    'quick_actions', 'pn_final', 'ruta_esquemas_pos', 'designation_gesa', 'MODEL/TYPE', 'QTY', 'FG/FGS', 'precio', 'designation_final', 'nsn'
 ];
 
-function getColumnOrderForView(totalColumns) {
+function syncColumnViewStateFromControl() {
+    const viewSelect = document.getElementById('columnViewSelect');
+    if (!(viewSelect instanceof HTMLSelectElement)) return state.columnView;
+    const controlValue = String(viewSelect.value || '').trim();
+    if (controlValue === 'qa' || controlValue === 'focus' || controlValue === 'pdf') {
+        state.columnView = controlValue;
+    }
+    return state.columnView;
+}
+
+function getCellOrderKey(cell, index) {
+    if (!(cell instanceof HTMLElement)) return `idx:${index}`;
+    const explicitKey = String(cell.dataset.columnKey || '').trim();
+    if (explicitKey) return explicitKey;
+    const sortKey = String(cell.dataset.sort || '').trim();
+    if (sortKey) return sortKey;
+    return `idx:${index}`;
+}
+
+function resolveColumnOrder(preferredKeys, headerRow, totalColumns) {
+    const defaultOrder = Array.from({ length: totalColumns }, (_, i) => i);
+    if (!headerRow) return defaultOrder;
+
+    const cells = Array.from(headerRow.children || []);
+    const indexByKey = new Map();
+    cells.forEach((cell, index) => {
+        const key = getCellOrderKey(cell, index);
+        const rawIndex = Number(cell.dataset.colIndex);
+        const originalIndex = Number.isInteger(rawIndex) ? rawIndex : index;
+        if (!indexByKey.has(key)) indexByKey.set(key, originalIndex);
+    });
+
+    const resolved = [];
+    preferredKeys.forEach(key => {
+        const index = indexByKey.get(key);
+        if (Number.isInteger(index)) resolved.push(index);
+    });
+
+    return resolved.length ? resolved : defaultOrder;
+}
+
+function getColumnOrderForView(totalColumns, headerRow) {
     const defaultOrder = Array.from({ length: totalColumns }, (_, i) => i);
     const preferred = state.columnView === 'focus'
-        ? FOCUS_COLUMN_ORDER
-        : (state.columnView === 'pdf' ? PDF_COLUMN_ORDER : defaultOrder);
+        ? resolveColumnOrder(FOCUS_COLUMN_ORDER, headerRow, totalColumns)
+        : (state.columnView === 'pdf'
+            ? resolveColumnOrder(PDF_COLUMN_ORDER, headerRow, totalColumns)
+            : defaultOrder);
     const seen = new Set();
     const normalized = [];
     preferred.forEach(i => {
@@ -40,13 +84,10 @@ function getColumnOrderForView(totalColumns) {
     return normalized;
 }
 
-function getVisibleColumnCountForView(totalColumns) {
-    if (state.columnView !== 'pdf') return totalColumns;
-    const visible = new Set();
-    PDF_COLUMN_ORDER.forEach(i => {
-        if (Number.isInteger(i) && i >= 0 && i < totalColumns) visible.add(i);
-    });
-    return visible.size > 0 ? visible.size : totalColumns;
+function getVisibleColumnIndexesForView(totalColumns, headerRow) {
+    if (state.columnView !== 'pdf') return null;
+    const visible = new Set(resolveColumnOrder(PDF_COLUMN_ORDER, headerRow, totalColumns));
+    return visible.size > 0 ? visible : null;
 }
 
 function ensureRowColumnIndexes(row) {
@@ -74,13 +115,19 @@ function reorderRowCells(row, order) {
     });
 }
 
-function setRowColumnVisibility(row, visibleCount) {
+function setRowColumnVisibility(row, visibleIndexes) {
     if (!row) return;
     const cells = Array.from(row.children || []);
     if (cells.length <= 1) return;
     cells.forEach((cell, index) => {
         if (!(cell instanceof HTMLElement)) return;
-        cell.style.display = index < visibleCount ? '' : 'none';
+        if (visibleIndexes === null) {
+            cell.style.display = '';
+            return;
+        }
+        const originalIndex = Number(cell.dataset.colIndex);
+        const fallbackIndex = Number.isInteger(originalIndex) ? originalIndex : index;
+        cell.style.display = visibleIndexes.has(fallbackIndex) ? '' : 'none';
     });
 }
 
@@ -89,21 +136,23 @@ export function applyColumnView() {
     const filterRow = document.querySelector('#mainTableWrap thead tr.filter-row');
     if (!headerRow || !filterRow) return;
 
-    const totalColumns = headerRow.children.length;
-    const order = getColumnOrderForView(totalColumns);
-    const visibleCount = getVisibleColumnCountForView(totalColumns);
-
     ensureRowColumnIndexes(headerRow);
     ensureRowColumnIndexes(filterRow);
+
+    syncColumnViewStateFromControl();
+
+    const totalColumns = headerRow.children.length;
+    const order = getColumnOrderForView(totalColumns, headerRow);
+    const visibleIndexes = getVisibleColumnIndexesForView(totalColumns, headerRow);
     reorderRowCells(headerRow, order);
     reorderRowCells(filterRow, order);
-    setRowColumnVisibility(headerRow, visibleCount);
-    setRowColumnVisibility(filterRow, visibleCount);
+    setRowColumnVisibility(headerRow, visibleIndexes);
+    setRowColumnVisibility(filterRow, visibleIndexes);
 
     document.querySelectorAll('#tbody tr').forEach(row => {
         ensureRowColumnIndexes(row);
         reorderRowCells(row, order);
-        setRowColumnVisibility(row, visibleCount);
+        setRowColumnVisibility(row, visibleIndexes);
     });
 }
 
@@ -113,12 +162,18 @@ export function saveColumnViewPreference() {
 }
 
 export function loadColumnViewPreference() {
+    state.columnView = DEFAULT_COLUMN_VIEW;
     try {
         const saved = localStorage.getItem(COLUMN_VIEW_STORAGE_KEY);
-        if (saved === 'qa' || saved === 'focus' || saved === 'pdf') state.columnView = saved;
+        if (saved === 'qa' || saved === 'focus' || saved === 'pdf') {
+            state.columnView = DEFAULT_COLUMN_VIEW;
+        }
     } catch (e) { console.warn('No se pudo leer la vista de columnas:', e); }
     const viewSelect = document.getElementById('columnViewSelect');
-    if (viewSelect) viewSelect.value = state.columnView;
+    if (viewSelect instanceof HTMLSelectElement) {
+        viewSelect.value = state.columnView;
+        syncColumnViewStateFromControl();
+    }
 }
 
 // ─── Anchos de columna ────────────────────────────────────────────────────────

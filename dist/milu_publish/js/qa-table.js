@@ -19,6 +19,13 @@ function dispatchSelectionChanged(rowKey) {
     }));
 }
 
+function queueColumnViewRefresh() {
+    requestAnimationFrame(() => {
+        applyColumnView();
+        requestAnimationFrame(() => applyColumnView());
+    });
+}
+
 function getCurrentColumnCount() {
     const headerRow = document.querySelector('#mainTableWrap thead tr:not(.filter-row)');
     if (!headerRow?.children?.length) return 50;
@@ -582,6 +589,7 @@ export function renderTable() {
     scheduleVisiblePosCirclePreload(pageData);
 
     applyColumnView();
+    queueColumnViewRefresh();
     renderGroupedTable(state.filteredData);
 }
 
