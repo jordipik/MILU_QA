@@ -1,6 +1,16 @@
 {
   "scripts": {
-    "generate:synthetic": "node generate_synthetic_exports.js"
+    "generate:synthetic": "node generate_synthetic_exports.js",
+    "pages:prepare": "node scripts/prepare-pages-dist.js",
+    "pages:prepare:dry": "node scripts/prepare-pages-dist.js --dry-run",
+    "pages:prepare:incremental": "node scripts/prepare-pages-dist.js --incremental",
+    "pages:prepare:incremental:dry": "node scripts/prepare-pages-dist.js --incremental --dry-run",
+    "pages:publish": "powershell -ExecutionPolicy Bypass -File ./scripts/publish-pages.ps1",
+    "pages:publish:nopush": "powershell -ExecutionPolicy Bypass -File ./scripts/publish-pages.ps1 -NoPush",
+    "pages:publish:stage-only": "powershell -ExecutionPolicy Bypass -File ./scripts/publish-pages.ps1 -NoCommit -NoPush",
+    "pages:publish:full": "powershell -ExecutionPolicy Bypass -File ./scripts/publish-pages.ps1 -FullPrepare",
+    "pages:publish:full:nopush": "powershell -ExecutionPolicy Bypass -File ./scripts/publish-pages.ps1 -FullPrepare -NoPush",
+    "pages:publish:safe": "powershell -ExecutionPolicy Bypass -File ./scripts/publish-safe.ps1"
   },
   "dependencies": {
     "body-parser": "^2.2.2",

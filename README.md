@@ -19,6 +19,57 @@ Proyecto web local para revision y mantenimiento de datos tecnicos de motores.
 3. Abrir la app:
    - `http://localhost:3000/qa_milu.html`
 
+## Publicacion automatica (GitHub Pages)
+
+El repo ya incluye workflow de despliegue automatico en:
+- `.github/workflows/deploy-pages.yml`
+
+Comportamiento:
+- Publica el contenido de `dist/milu_publish/` en GitHub Pages.
+- Se ejecuta en `push` a las ramas `main` y `pasar-a-javascript` cuando hay cambios en `dist/milu_publish/**`.
+- Tambien permite ejecucion manual desde la pestaña Actions (`workflow_dispatch`).
+
+Configuracion unica en GitHub (solo la primera vez):
+1. Ir a `Settings > Pages` del repositorio.
+2. En `Source`, seleccionar `GitHub Actions`.
+
+Dominio personalizado:
+- El archivo `CNAME` se publica desde `dist/milu_publish/CNAME` (actualmente `milu.alentio.es`).
+- Si cambias de dominio, actualiza ese archivo y haz push.
+
+Preparar `dist/milu_publish` en local (recomendado antes de push):
+1. Revisar sin copiar (dry-run):
+   - `npm run pages:prepare:incremental:dry`
+2. Generar carpeta publicable (incremental, recomendado):
+   - `npm run pages:prepare:incremental`
+3. Generar carpeta publicable completa (full reset + copia total):
+   - `npm run pages:prepare`
+4. Commit + push de los cambios en `dist/milu_publish/**`.
+
+El script copia a `dist/milu_publish/`:
+- HTML y estilos de entrada
+- carpetas `js/`, `styles/`, `esquemas/`, `esquemas_pos_circulos/`
+- `CNAME` y `qa_revision_sync.php`
+- todos los `engine_*.json`
+
+Publicar con un comando (prepare + stage + commit + push):
+- `npm run pages:publish`
+
+Por defecto `pages:publish` usa prepare incremental para reducir tiempo.
+
+Variantes utiles:
+- Solo hasta commit (sin push): `npm run pages:publish:nopush`
+- Solo preparar y dejar stage listo (sin commit ni push): `npm run pages:publish:stage-only`
+- Publicacion con prepare completo: `npm run pages:publish:full`
+- Publicacion con prepare completo sin push: `npm run pages:publish:full:nopush`
+
+Notas del script de publicacion:
+- Hace `npm run pages:prepare` automaticamente.
+- Hace `git add dist/milu_publish CNAME`.
+- Si no hay cambios, termina sin error.
+- Hace commit con mensaje por defecto: `chore: publish pages`.
+- Hace push a la rama actual (`origin/<rama_actual>`), salvo que uses `nopush`.
+
 ## Endpoints clave
 
 - `GET /health`
