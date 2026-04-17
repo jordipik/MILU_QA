@@ -6,7 +6,7 @@ const bodyParser = require('body-parser');
 const cors = require('cors');
 const { applyRevisionPayload } = require('./apply_revision_to_engines');
 const { ENGINE_JSON_FILES } = require('./engine_files');
-const { DEFAULT_ACTIVE_QA_CODES, applyQaErrorsToRows, applyActiveQaErrorsToRows, recomputeQaErrorsInFile, getQaErrorsStats } = require('./qa_errors');
+const { DEFAULT_ACTIVE_QA_CODES, applyQaErrorsToRows, applyActiveQaErrorsToRows, recomputeQaErrorsInFile, getQaErrorsStats, validateRow, filterQaErrorsByCodes, getActiveCodesSignature } = require('./qa_errors');
 
 const app = express();
 const PORT = 3000;
@@ -207,9 +207,91 @@ app.post('/save-json', async (req, res) => {
 });
 
 app.post('/apply-qa-checks-filter', async (req, res) => {
-    const { activeCodes } = req.body;
+    const { activeCodes, scope, revisionKeys } = req.body;
     if (!Array.isArray(activeCodes)) {
         return res.status(400).json({ error: 'activeCodes debe ser un array' });
+    }
+
+    const resolvedScope = String(scope || 'all').trim().toLowerCase() === 'visible' ? 'visible' : 'all';
+
+    if (resolvedScope === 'visible') {
+        const parsedIndexes = Array.isArray(revisionKeys)
+            ? revisionKeys
+                .map(key => {
+                    const match = String(key || '').match(/^idx=(\d+)$/);
+                    if (!match) return null;
+                    const parsed = Number(match[1]);
+                    return Number.isInteger(parsed) && parsed > 0 ? parsed : null;
+                })
+                .filter(Number.isInteger)
+            : [];
+
+        const uniqueIndexes = new Set(parsedIndexes);
+        if (uniqueIndexes.size === 0) {
+            return res.status(400).json({ error: 'Para scope=visible se requiere revisionKeys con formato idx=<n>.' });
+        }
+
+        const signature = getActiveCodesSignature(activeCodes);
+        const touchedRows = [];
+        const touchedRowsPayload = [];
+        let globalIndex = 0;
+        let updatedRows = 0;
+
+        try {
+            for (const file of ENGINE_JSON_FILES) {
+                const filePath = path.join(__dirname, file);
+                if (!fs.existsSync(filePath)) continue;
+
+                const data = fs.readFileSync(filePath, 'utf8');
+                const rows = JSON.parse(data);
+                if (!Array.isArray(rows)) continue;
+
+                let fileChanged = false;
+                for (const row of rows) {
+                    globalIndex += 1;
+                    if (!uniqueIndexes.has(globalIndex)) continue;
+
+                    const nextQaErrors = await validateRow(row);
+                    const nowIso = new Date().toISOString();
+                    row.qa_errors = {
+                        ...nextQaErrors,
+                        updated_at: nowIso
+                    };
+
+                    row.qa_errors_active = {
+                        ...filterQaErrorsByCodes(row.qa_errors, activeCodes),
+                        signature
+                    };
+
+                    touchedRows.push(row);
+                    touchedRowsPayload.push({
+                        revisionKey: `idx=${globalIndex}`,
+                        qa_errors: row.qa_errors,
+                        qa_errors_active: row.qa_errors_active
+                    });
+                    updatedRows += 1;
+                    fileChanged = true;
+                }
+
+                if (fileChanged) {
+                    fs.writeFileSync(filePath, JSON.stringify(rows, null, 2) + '\n', 'utf8');
+                }
+            }
+
+            const visibleStats = getQaErrorsStats(touchedRows, activeCodes);
+            return res.json({
+                ok: true,
+                scope: 'visible',
+                activeCodes,
+                updatedRows,
+                rows: touchedRowsPayload,
+                stats: visibleStats,
+                timestamp: new Date().toISOString()
+            });
+        } catch (err) {
+            console.error('Error in /apply-qa-checks-filter (visible):', err);
+            return res.status(500).json({ error: 'Error al procesar el filtro visible de QA checks' });
+        }
     }
 
     const globalStats = {
@@ -255,6 +337,7 @@ app.post('/apply-qa-checks-filter', async (req, res) => {
 
         res.json({
             ok: true,
+            scope: 'all',
             activeCodes,
             timestamp: new Date().toISOString(),
             stats: globalStats

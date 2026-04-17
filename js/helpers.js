@@ -116,6 +116,15 @@ function normalizePersistedActiveQaErrors(row, activeCodes) {
     return raw;
 }
 
+function resolveScopedActiveQaErrors(row, activeCodes) {
+    const scopedRows = state.qaChecksScopedRows;
+    if (scopedRows instanceof Set && scopedRows.size > 0 && !scopedRows.has(row)) {
+        const raw = row?.qa_errors_active;
+        if (raw && typeof raw === 'object') return raw;
+    }
+    return normalizePersistedActiveQaErrors(row, activeCodes);
+}
+
 function resolveActiveErrorCodes(activeCodes) {
     if (activeCodes instanceof Set) return activeCodes;
     if (Array.isArray(activeCodes)) return new Set(activeCodes.map(code => String(code ?? '').trim()).filter(Boolean));
@@ -140,7 +149,7 @@ function getPersistedErrorCodes(row, activeCodes) {
 }
 
 export function getRowErrorFields(row, options = {}) {
-    const activePersisted = normalizePersistedActiveQaErrors(row, options.activeCodes);
+    const activePersisted = resolveScopedActiveQaErrors(row, options.activeCodes);
     if (activePersisted && typeof activePersisted.fields === 'object' && activePersisted.fields) {
         return new Set(Object.keys(activePersisted.fields).map(field => String(field ?? '').trim()).filter(Boolean));
     }
@@ -171,27 +180,19 @@ export function hasRowError(row) {
  * 'critical' = rojo, 'warning' = naranja, null = sin error
  */
 export function getRowErrorType(row, options = {}) {
-    const activePersisted = normalizePersistedActiveQaErrors(row, options.activeCodes);
+    const activePersisted = resolveScopedActiveQaErrors(row, options.activeCodes);
     if (activePersisted) {
         if (!Array.isArray(activePersisted.codes) || activePersisted.codes.length === 0) return null;
-        return String(activePersisted.severity || '').trim() === 'critical' ? 'critical' : 'warning';
+        return 'critical';
     }
 
     const errors = getRowErrors(row, options);
     if (!errors.length) return null;
-
-    const criticalCodes = new Set([
-        'missing_part_no'
-    ]);
-
-    if (errors.some(code => criticalCodes.has(code))) {
-        return 'critical';
-    }
-    return 'warning';
+    return 'critical';
 }
 
 export function getRowErrors(row, options = {}) {
-    const activePersisted = normalizePersistedActiveQaErrors(row, options.activeCodes);
+    const activePersisted = resolveScopedActiveQaErrors(row, options.activeCodes);
     if (activePersisted && Array.isArray(activePersisted.codes)) {
         return [...new Set(activePersisted.codes.map(code => String(code ?? '').trim()).filter(Boolean))];
     }

@@ -3,7 +3,7 @@
  */
 
 import { state } from './state.js';
-import { escapeHtml, getPnKey, getRowValueForColumn, val, getRowErrorFields, getRowErrorType } from './helpers.js';
+import { escapeHtml, getPnKey, getRowValueForColumn, val, getRowErrorFields, getRowErrorType, getRowErrors } from './helpers.js';
 import {
     getRevisionAccionClass,
     getRevisionEstadoClass,
@@ -291,16 +291,19 @@ export function renderGroupedTable(sourceData) {
 }
 
 export function refreshSelectedRowVisual() {
-    const tbody = document.getElementById('tbody');
-    if (!tbody) return;
-    tbody.querySelectorAll('tr').forEach(tr => {
-        const rowKey = tr.getAttribute('data-revision-key') || '';
-        tr.classList.toggle('row-selected', rowKey !== '' && rowKey === state.selectedRevisionRowKey);
+    ['tbody', 'errorViewTbody'].forEach(tbodyId => {
+        const tbody = document.getElementById(tbodyId);
+        if (!tbody) return;
+        tbody.querySelectorAll('tr').forEach(tr => {
+            const rowKey = tr.getAttribute('data-revision-key') || '';
+            tr.classList.toggle('row-selected', rowKey !== '' && rowKey === state.selectedRevisionRowKey);
+        });
     });
 }
 
 export function getVisibleTableRows() {
-    return Array.from(document.querySelectorAll('#tbody tr[data-revision-key]'));
+    const tbodySelector = state.tableMode === 'errors' ? '#errorViewTbody' : '#tbody';
+    return Array.from(document.querySelectorAll(`${tbodySelector} tr[data-revision-key]`));
 }
 
 export function selectVisibleRowByIndex(index) {
@@ -512,7 +515,146 @@ function renderRow(row) {
     </tr>`;
 }
 
+function getErrorViewDefinitions() {
+    return (state.qaErrorCheckDefinitions || [])
+        .map(def => ({
+            code: String(def?.code || '').trim(),
+            label: String(def?.label || def?.code || '').trim()
+        }))
+        .filter(def => def.code);
+}
+
+function getRowErrorSet(row) {
+    return new Set(getRowErrors(row, { activeCodes: state.activeQaErrorChecks }));
+}
+
+function getErrorViewColumnCount() {
+    const pdfViewColumns = 8;  // gesa, normalizado, sust_hierarchie, has_img, has_error, EN_WEB, estado, accion
+    const baseColumns = 8;      // ID, Libro, Pagina, POS, PN, Designation Final, #Errores, Errores activos
+    return pdfViewColumns + baseColumns + getErrorViewDefinitions().length;
+}
+
+function renderErrorViewHeader(definitions) {
+    const thead = document.getElementById('errorViewThead');
+    if (!thead) return;
+
+    // Columnas de Vista Pdf (al inicio)
+    const pdfViewHeaders = `
+        <th style="width:50px">gesa</th>
+        <th style="width:80px">normalizado</th>
+        <th style="width:80px">sust_hier</th>
+        <th style="width:50px">img</th>
+        <th style="width:50px">error</th>
+        <th style="width:60px">EN_WEB</th>
+        <th style="width:100px">Estado</th>
+        <th style="width:100px">Accion</th>
+    `;
+
+    const baseHeaders = `
+        <th style="width:84px">ID</th>
+        <th style="width:130px">Libro</th>
+        <th style="width:70px">Pagina</th>
+        <th style="width:70px">POS</th>
+        <th style="width:120px">PN</th>
+        <th style="width:220px">Designation Final</th>
+        <th style="width:90px">#Errores</th>
+        <th style="width:200px">Errores activos</th>
+    `;
+
+    const checkHeaders = definitions.map(def => {
+        return `<th class="error-check-col" title="${escapeHtml(def.code)}">${escapeHtml(def.label || def.code)}</th>`;
+    }).join('');
+
+    thead.innerHTML = `<tr>${pdfViewHeaders}${baseHeaders}${checkHeaders}</tr>`;
+}
+
+function renderErrorViewRow(row, definitions) {
+    const revisionKey = getRevisionKey(row);
+    const errorCodes = getRowErrorSet(row);
+    const errorListLabel = [...errorCodes].join(' | ') || '—';
+    const selectedClass = state.selectedRevisionRowKey && state.selectedRevisionRowKey === revisionKey ? 'row-selected' : '';
+
+    const checkCells = definitions.map(def => {
+        const hasCode = errorCodes.has(def.code);
+        return `<td class="error-check-cell ${hasCode ? 'is-hit' : ''}" title="${hasCode ? 'Detectado' : 'Sin error'}">${hasCode ? '1' : ''}</td>`;
+    }).join('');
+
+    // Datos de Vista Pdf (al inicio)
+    const gesaVal = escapeHtml(val(row, 'gesa', ''));
+    const normalizadoVal = escapeHtml(val(row, 'normalizado', ''));
+    const sustHierVal = escapeHtml(val(row, 'sust_hierarchie', ''));
+    const hasImgVal = escapeHtml(val(row, 'has_img', ''));
+    const hasErrorVal = escapeHtml(val(row, 'has_error', ''));
+    const enWebVal = escapeHtml(val(row, 'EN_WEB', ''));
+    const estadoVal = escapeHtml(val(row, 'qa_revision_estado', ''));
+    const accionVal = escapeHtml(val(row, 'qa_revision_accion', ''));
+    const estadoClass = getRevisionEstadoClass(row);
+    const accionClass = getRevisionAccionClass(row);
+
+    return `<tr class="${selectedClass}" data-revision-key="${escapeHtml(revisionKey)}">
+        <td title="${gesaVal}">${gesaVal}</td>
+        <td title="${normalizadoVal}">${normalizadoVal}</td>
+        <td title="${sustHierVal}">${sustHierVal}</td>
+        <td title="${hasImgVal}">${hasImgVal}</td>
+        <td title="${hasErrorVal}">${hasErrorVal}</td>
+        <td title="${enWebVal}">${enWebVal}</td>
+        <td class="revision-cell ${estadoClass}" title="${estadoVal}">${estadoVal}</td>
+        <td class="revision-cell ${accionClass}" title="${accionVal}">${accionVal}</td>
+        <td title="${escapeHtml(val(row, 'ID'))}">${escapeHtml(val(row, 'ID'))}</td>
+        <td title="${escapeHtml(val(row, 'engine_model'))}">${escapeHtml(val(row, 'engine_model'))}</td>
+        <td title="${escapeHtml(val(row, 'Source Page'))}">${escapeHtml(val(row, 'Source Page'))}</td>
+        <td title="${escapeHtml(val(row, 'POS'))}">${escapeHtml(val(row, 'POS'))}</td>
+        <td title="${escapeHtml(val(row, 'PART NO.'))}">${escapeHtml(val(row, 'PART NO.'))}</td>
+        <td title="${escapeHtml(getRowValueForColumn(row, 'designation_final'))}">${escapeHtml(getRowValueForColumn(row, 'designation_final'))}</td>
+        <td title="${errorCodes.size}">${errorCodes.size}</td>
+        <td title="${escapeHtml(errorListLabel)}">${escapeHtml(errorListLabel)}</td>
+        ${checkCells}
+    </tr>`;
+}
+
+function renderErrorTableStats(filteredRows, definitions) {
+    const stats = document.getElementById('stats');
+    if (!stats) return;
+
+    const codeCount = new Map(definitions.map(def => [def.code, 0]));
+    filteredRows.forEach(row => {
+        getRowErrorSet(row).forEach(code => {
+            if (!codeCount.has(code)) return;
+            codeCount.set(code, (codeCount.get(code) || 0) + 1);
+        });
+    });
+
+    const codeStats = definitions
+        .filter(def => (codeCount.get(def.code) || 0) > 0)
+        .map(def => `<span class="stat bad"><b>${codeCount.get(def.code) || 0}</b> ${escapeHtml(def.label || def.code)}</span>`)
+        .join('');
+
+    stats.innerHTML = `
+        <span class="stat"><b>${filteredRows.length}</b> registros con error</span>
+        <span class="stat"><b>${definitions.length}</b> tipos de error</span>
+        ${codeStats || '<span class="stat">Sin desglose por tipo para el filtro actual</span>'}
+        <span class="stat" style="margin-left:auto; color:#64748b; font-size:11px;" title="JSON base de esta vista">📄 ${escapeHtml(state.mainDataSourceLabel)}</span>
+    `;
+}
+
+function setTableModeVisibility() {
+    const mainTableWrap = document.getElementById('mainTableWrap');
+    const errorViewWrap = document.getElementById('errorViewWrap');
+    const groupedSection = document.getElementById('groupedSection');
+    if (!mainTableWrap || !errorViewWrap) return;
+
+    const errorsMode = state.tableMode === 'errors';
+    mainTableWrap.style.display = errorsMode ? 'none' : 'block';
+    errorViewWrap.style.display = errorsMode ? 'block' : 'none';
+    if (groupedSection) groupedSection.style.display = 'none';
+}
+
 export function refreshVisibleRowByRevisionKey(revisionKey) {
+    if (state.tableMode === 'errors') {
+        renderTable();
+        return true;
+    }
+
     const key = String(revisionKey || '').trim();
     if (!key) return false;
 
@@ -577,9 +719,12 @@ export function jumpToPage(pageNumber) {
 
 export function renderTable() {
     const tbody = document.getElementById('tbody');
+    const errorViewTbody = document.getElementById('errorViewTbody');
     const stats = document.getElementById('stats');
     const pagination = document.getElementById('pagination');
-    if (!tbody || !stats || !pagination) return;
+    if (!tbody || !errorViewTbody || !stats || !pagination) return;
+
+    setTableModeVisibility();
 
     syncAutoPageSize();
 
@@ -589,17 +734,25 @@ export function renderTable() {
         else th.removeAttribute('data-sort-dir');
     });
 
-    state.filteredData = applyFilters(state.allData);
+    const errorsMode = state.tableMode === 'errors';
+    const baseFiltered = applyFilters(state.allData);
+    state.filteredData = errorsMode
+        ? baseFiltered.filter(row => getRowErrors(row, { activeCodes: state.activeQaErrorChecks }).length > 0)
+        : baseFiltered;
     const total = state.filteredData.length;
     const totalPages = Math.max(1, Math.ceil(total / state.pageSize));
     if (state.currentPage < 1) state.currentPage = 1;
     if (state.currentPage > totalPages) state.currentPage = totalPages;
 
     if (!state.filteredData.length) {
-        tbody.innerHTML = `<tr><td colspan="${getCurrentColumnCount()}" class="error">No se encontraron datos que coincidan con los filtros</td></tr>`;
+        const noDataMessage = errorsMode
+            ? 'No hay registros con error para los filtros y checks activos'
+            : 'No se encontraron datos que coincidan con los filtros';
+        tbody.innerHTML = `<tr><td colspan="${getCurrentColumnCount()}" class="error">${noDataMessage}</td></tr>`;
+        errorViewTbody.innerHTML = `<tr><td colspan="${getErrorViewColumnCount()}" class="error">${noDataMessage}</td></tr>`;
         pagination.style.display = 'none';
         stats.innerHTML = '<span class="stat">0 total</span>';
-        applyColumnView();
+        if (!errorsMode) applyColumnView();
         return;
     }
 
@@ -614,27 +767,37 @@ export function renderTable() {
         }
     }
 
-    const withImages = state.filteredData.filter(r => (r.filename_foto || r.ruta_foto || '').toString().trim() !== '').length;
-    const withGesa = state.filteredData.filter(r => String(r.gesa || '').toUpperCase() === 'SI').length;
-    const superseded = state.filteredData.filter(r => String(r.sust_status || '').toUpperCase() === 'SI').length;
-    const distinctPnFiltered = new Set(state.filteredData.map(r => r['PART NO.'] || r.pn).filter(Boolean).map(pn => String(pn).trim())).size;
-    const distinctPnTotal = new Set(state.allData.map(r => r['PART NO.'] || r.pn).filter(Boolean).map(pn => String(pn).trim())).size;
-    const pnCountMap = new Map();
-    state.filteredData.forEach(r => pnCountMap.set(getPnKey(r), (pnCountMap.get(getPnKey(r)) || 0) + 1));
-    const repeatedPnGroups = [...pnCountMap.values()].filter(count => count > 1).length;
+    if (errorsMode) {
+        const definitions = getErrorViewDefinitions();
+        renderErrorViewHeader(definitions);
+        renderErrorTableStats(state.filteredData, definitions);
+        errorViewTbody.innerHTML = pageData.map(row => renderErrorViewRow(row, definitions)).join('');
+        tbody.innerHTML = '';
+    } else {
+        const withImages = state.filteredData.filter(r => (r.filename_foto || r.ruta_foto || '').toString().trim() !== '').length;
+        const withGesa = state.filteredData.filter(r => String(r.gesa || '').toUpperCase() === 'SI').length;
+        const superseded = state.filteredData.filter(r => String(r.sust_status || '').toUpperCase() === 'SI').length;
+        const distinctPnFiltered = new Set(state.filteredData.map(r => r['PART NO.'] || r.pn).filter(Boolean).map(pn => String(pn).trim())).size;
+        const distinctPnTotal = new Set(state.allData.map(r => r['PART NO.'] || r.pn).filter(Boolean).map(pn => String(pn).trim())).size;
+        const pnCountMap = new Map();
+        state.filteredData.forEach(r => pnCountMap.set(getPnKey(r), (pnCountMap.get(getPnKey(r)) || 0) + 1));
+        const repeatedPnGroups = [...pnCountMap.values()].filter(count => count > 1).length;
 
-    stats.innerHTML = `
-      <span class="stat"><b>${total}</b> total</span>
-      <span class="stat ok"><b>${distinctPnFiltered}</b> PN distintos (filtrado)</span>
-      <span class="stat warn"><b>${repeatedPnGroups}</b> PN repetidos (filtrado)</span>
-      <span class="stat"><b>${distinctPnTotal}</b> PN distintos totales</span>
-      <span class="stat ok"><b>${withImages}</b> con imágenes</span>
-      <span class="stat"><b>${withGesa}</b> con GESA</span>
-      <span class="stat warn"><b>${superseded}</b> superseded</span>
-      <span class="stat" style="margin-left:auto; color:#64748b; font-size:11px;" title="JSON base de esta vista">📄 ${escapeHtml(state.mainDataSourceLabel)}</span>
-    `;
+        stats.innerHTML = `
+                    <span class="stat"><b>${total}</b> total</span>
+                    <span class="stat ok"><b>${distinctPnFiltered}</b> PN distintos (filtrado)</span>
+                    <span class="stat warn"><b>${repeatedPnGroups}</b> PN repetidos (filtrado)</span>
+                    <span class="stat"><b>${distinctPnTotal}</b> PN distintos totales</span>
+                    <span class="stat ok"><b>${withImages}</b> con imágenes</span>
+                    <span class="stat"><b>${withGesa}</b> con GESA</span>
+                    <span class="stat warn"><b>${superseded}</b> superseded</span>
+                    <span class="stat" style="margin-left:auto; color:#64748b; font-size:11px;" title="JSON base de esta vista">📄 ${escapeHtml(state.mainDataSourceLabel)}</span>
+                `;
 
-    tbody.innerHTML = pageData.map(renderRow).join('');
+        tbody.innerHTML = pageData.map(renderRow).join('');
+        errorViewTbody.innerHTML = '';
+    }
+
     refreshSelectedRowVisual();
 
     const selectedRow = state.selectedRevisionRowKey
@@ -645,9 +808,11 @@ export function renderTable() {
     dispatchSelectionChanged(state.selectedRevisionRowKey);
     scheduleVisiblePosCirclePreload(pageData);
 
-    applyColumnView();
-    queueColumnViewRefresh();
-    renderGroupedTable(state.filteredData);
+    if (!errorsMode) {
+        applyColumnView();
+        queueColumnViewRefresh();
+        renderGroupedTable(state.filteredData);
+    }
 }
 
 export function changePage(direction) {

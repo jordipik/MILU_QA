@@ -16,6 +16,8 @@ const DEFAULT_ACTIVE_QA_CODES = [
     'missing_designation_final',
     'designation_final_not_in_pdf'
 ];
+const PN_NEAR_BY_X_MAX = 240;
+const TOKEN_MERGE_GAP_MAX = 28;
 
 function text(value) {
     if (value == null) return '';
@@ -35,6 +37,67 @@ function normalizePdfToken(value) {
 
 function compactPdfToken(value) {
     return normalizePdfToken(value).replace(/\s+/g, '');
+}
+
+function tokenMatches(itemText, tokenValue, allowContains) {
+    if (!itemText || !tokenValue) return false;
+    if (itemText === tokenValue) return true;
+
+    if (!allowContains) return false;
+
+    const separatorRegex = /[\s\-\,\.\;\/\(\)]/;
+    let searchIndex = itemText.indexOf(tokenValue);
+
+    while (searchIndex !== -1) {
+        const endIndex = searchIndex + tokenValue.length;
+        const beforeOk = searchIndex === 0 || separatorRegex.test(itemText[searchIndex - 1]);
+        const afterOk = endIndex === itemText.length || separatorRegex.test(itemText[endIndex]);
+        if (beforeOk && afterOk) return true;
+        searchIndex = itemText.indexOf(tokenValue, searchIndex + 1);
+    }
+
+    return false;
+}
+
+function buildPageLines(rects) {
+    if (!Array.isArray(rects) || rects.length === 0) return [];
+
+    const sorted = [...rects].sort((a, b) => {
+        const yDelta = b.centerY - a.centerY;
+        if (Math.abs(yDelta) > 2) return yDelta;
+        return a.left - b.left;
+    });
+
+    const lines = [];
+    sorted.forEach((rect) => {
+        const lineThreshold = Math.max(rect.height, 12) * 0.5 + 2;
+        const line = lines.find(item => Math.abs(item.centerY - rect.centerY) <= lineThreshold);
+        if (line) {
+            line.rects.push(rect);
+            line.centerY = (line.centerY + rect.centerY) / 2;
+            return;
+        }
+        lines.push({ centerY: rect.centerY, rects: [rect] });
+    });
+
+    return lines;
+}
+
+function hasExactDesignationInPage(pageRects, normalizedDesignation) {
+    if (!Array.isArray(pageRects) || !pageRects.length) return false;
+    if (!normalizedDesignation) return false;
+
+    if (pageRects.some(rect => tokenMatches(rect.normalizedText, normalizedDesignation, true))) return true;
+
+    const lines = buildPageLines(pageRects);
+    return lines.some((line) => {
+        const lineRects = [...line.rects].sort((a, b) => a.left - b.left);
+        const clusters = buildTextClusters(lineRects);
+        return clusters.some((cluster) => {
+            const clusterText = normalizePdfToken(cluster.words.join(' '));
+            return tokenMatches(clusterText, normalizedDesignation, true);
+        });
+    });
 }
 
 function isGesaRow(row) {
@@ -108,12 +171,32 @@ async function extractPdfPageTextIndex(pdfPath) {
         for (let pageNumber = 1; pageNumber <= pdfDocument.numPages; pageNumber++) {
             const page = await pdfDocument.getPage(pageNumber);
             const textContent = await page.getTextContent();
-            const rawText = (textContent.items || [])
+            const items = textContent.items || [];
+            const rawText = items
                 .map(item => String(item?.str || ''))
                 .join(' ');
+
+            const rects = items.map((item) => {
+                const tx = item?.transform || [];
+                const left = Number(tx?.[4] || 0);
+                const top = Number(tx?.[5] || 0);
+                const width = Number(item?.width || 0);
+                const height = Number(item?.height || 12) || 12;
+                return {
+                    text: String(item?.str || ''),
+                    normalizedText: normalizePdfToken(item?.str),
+                    left,
+                    top,
+                    width,
+                    height,
+                    centerY: top - (height / 2)
+                };
+            }).filter(rect => rect.normalizedText);
+
             pageIndex.set(pageNumber, {
                 normalized: normalizePdfToken(rawText),
-                compact: compactPdfToken(rawText)
+                compact: compactPdfToken(rawText),
+                rects
             });
         }
         return pageIndex;
@@ -136,11 +219,78 @@ async function getPdfPageTextIndex(pdfPath) {
     return pdfPageTextCache.get(pdfPath);
 }
 
+function buildTextClusters(rects) {
+    if (!Array.isArray(rects) || rects.length === 0) return [];
+    const clusters = [];
+    let currentCluster = null;
+
+    rects.forEach((rect) => {
+        if (!currentCluster) {
+            currentCluster = {
+                left: rect.left,
+                right: rect.left + rect.width,
+                words: [rect.normalizedText]
+            };
+            return;
+        }
+
+        const gap = rect.left - currentCluster.right;
+        if (gap <= TOKEN_MERGE_GAP_MAX) {
+            currentCluster.words.push(rect.normalizedText);
+            currentCluster.right = Math.max(currentCluster.right, rect.left + rect.width);
+            return;
+        }
+
+        clusters.push(currentCluster);
+        currentCluster = {
+            left: rect.left,
+            right: rect.left + rect.width,
+            words: [rect.normalizedText]
+        };
+    });
+
+    if (currentCluster) clusters.push(currentCluster);
+    return clusters;
+}
+
+function hasDesignationNearPartNumber(pageRects, normalizedPartNumber, normalizedDesignation) {
+    if (!Array.isArray(pageRects) || !pageRects.length) return false;
+    if (!normalizedPartNumber || !normalizedDesignation) return false;
+
+    const allowPnContains = normalizedPartNumber.length >= 6;
+    const pnRects = pageRects.filter(rect => tokenMatches(rect.normalizedText, normalizedPartNumber, allowPnContains));
+    if (!pnRects.length) return false;
+
+    return pnRects.some((pnRect) => {
+        const sameLineThreshold = Math.max(pnRect.height, 12) * 0.9 + 6;
+        const lineRects = pageRects
+            .filter((rect) => {
+                const verticalGap = Math.abs(rect.centerY - pnRect.centerY);
+                if (verticalGap > sameLineThreshold) return false;
+
+                const xStart = pnRect.left + pnRect.width - 2;
+                const xDelta = rect.left - xStart;
+                return xDelta >= 0 && xDelta <= PN_NEAR_BY_X_MAX;
+            })
+            .sort((a, b) => a.left - b.left);
+
+        if (!lineRects.length) return false;
+
+        const clusters = buildTextClusters(lineRects);
+        return clusters.some((cluster) => {
+            const clusterText = normalizePdfToken(cluster.words.join(' '));
+            return tokenMatches(clusterText, normalizedDesignation, true);
+        });
+    });
+}
+
 async function findDesignationInAssignedPdf(row, designation) {
     const pdfPath = resolveAssignedPdfPath(row);
     const pageNumber = resolvePageNumber(row?.['Source Page']);
+    const partNumber = getPartNumber(row);
     const normalizedDesignation = normalizePdfToken(designation);
     const compactDesignation = compactPdfToken(designation);
+    const normalizedPartNumber = normalizePdfToken(partNumber);
 
     if (!pdfPath || !pageNumber || !normalizedDesignation) {
         return {
@@ -171,8 +321,14 @@ async function findDesignationInAssignedPdf(row, designation) {
         };
     }
 
-    const found = pageText.normalized.includes(normalizedDesignation)
-        || (!!compactDesignation && pageText.compact.includes(compactDesignation));
+    const foundByDesignationOnly = hasExactDesignationInPage(pageText.rects || [], normalizedDesignation);
+
+    let found = foundByDesignationOnly;
+    if (normalizedPartNumber && normalizedDesignation) {
+        found = hasDesignationNearPartNumber(pageText.rects || [], normalizedPartNumber, normalizedDesignation);
+    } else if (compactDesignation) {
+        found = foundByDesignationOnly;
+    }
 
     return {
         checked: true,
@@ -216,11 +372,11 @@ async function validateRow(row) {
     }
 
     if (!pos) {
-        addIssue(result, 'missing_pos', 'warning', ['POS'], 'POS vacio');
+        addIssue(result, 'missing_pos', 'critical', ['POS'], 'POS vacio');
     }
 
     if (!designation) {
-        addIssue(result, 'missing_designation_final', 'warning', ['designation_final', 'designation_gesa', 'DESIGNATION'], 'Designation Final vacio');
+        addIssue(result, 'missing_designation_final', 'critical', ['designation_final', 'designation_gesa', 'DESIGNATION'], 'Designation Final vacio');
     } else {
         const pdfLookup = await findDesignationInAssignedPdf(row, designation);
         if (pdfLookup.checked && !pdfLookup.found) {
@@ -229,7 +385,7 @@ async function validateRow(row) {
             addIssue(
                 result,
                 'designation_final_not_in_pdf',
-                'warning',
+                'critical',
                 ['designation_final', 'designation_gesa', 'DESIGNATION', 'Source Page', 'source_file', 'engine_model'],
                 `Designation Final no se encuentra en el PDF asignado${pageSuffix}${pdfSuffix}`
             );
@@ -372,11 +528,7 @@ function filterQaErrorsByCodes(qaErrors, activeCodes) {
         });
     });
 
-    let severity = 'none';
-    filteredIssues.forEach((issue) => {
-        if (issue.severity === 'critical') severity = 'critical';
-        else if (issue.severity === 'warning' && severity !== 'critical') severity = 'warning';
-    });
+    const severity = filteredIssues.length > 0 ? 'critical' : 'none';
 
     return {
         version: qaErrors.version || 1,
@@ -430,7 +582,7 @@ function getQaErrorsStats(rows, activeCodes) {
 
         if (qaErrors.codes.length > 0) {
             rowsWithErrors++;
-            severityCount[qaErrors.severity] = (severityCount[qaErrors.severity] || 0) + 1;
+            severityCount.critical = (severityCount.critical || 0) + 1;
             qaErrors.codes.forEach((code) => {
                 codeCount[code] = (codeCount[code] || 0) + 1;
             });

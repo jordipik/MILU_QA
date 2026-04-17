@@ -5,6 +5,7 @@
 export const state = {
     allData: [],
     filteredData: [],
+    tableMode: 'qa',
     currentPage: 1,
     pageSize: 50,
     MIN_PAGE_SIZE: 5,
@@ -28,6 +29,7 @@ export const state = {
     currentPdfRequestToken: 0,
     currentPdfSelection: null,
     currentPdfSelectionRects: [],
+    currentPdfZoom: 'fit',
     rightPanelTab: 'pdf',
     qaErrorCheckDefinitions: [
         { code: 'missing_part_no', label: 'PN vacio' },
@@ -36,4 +38,5 @@ export const state = {
         { code: 'designation_final_not_in_pdf', label: 'Designation Final no se encuentra en el PDF asignado' }
     ],
     activeQaErrorChecks: new Set(),
+    qaChecksScopedRows: null,
 };

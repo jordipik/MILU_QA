@@ -26,7 +26,7 @@
             <a class="pill" href="qa_lista_agrupada.html">Vista agrupada</a>
             <button id="openQaChecksModalBtn" type="button" class="qa-checks-topbar-btn">
                 <span>⚙️ QA</span>
-                <span id="qaChecksSummaryBadge" class="qa-checks-badge">8/8</span>
+                <span id="qaChecksSummaryBadge" class="qa-checks-badge">4/4</span>
             </button>
             <div id="backendStatus" class="backend-status checking" aria-live="polite"
                 title="Estado del backend de guardado">
@@ -57,10 +57,11 @@
                                     <button id="sortBookPagePosBtn">Ordenar</button>
                                     <div class="view-toggle-inline">
                                         <select id="columnViewSelect" class="filter-select column-view-select"
-                                            title="Alternar orden de columnas">
+                                            title="Seleccionar vista de tabla">
                                             <option value="qa">Vista QA</option>
                                             <option value="focus">Vista foco PN</option>
                                             <option value="pdf" selected>Vista PDF</option>
+                                            <option value="errors">Vista errores</option>
                                         </select>
                                     </div>
                                 </div>
@@ -108,8 +109,10 @@
                                 <div class="book-pane-right-bottom">
                                     <button id="prevBookPageBtn" class="page-nav-btn" title="Página anterior del libro"
                                         aria-label="Página anterior">&#9664;</button>
-                                    <input id="pageFilterInput" class="filter-input" data-filter="page" placeholder="Pg"
-                                        inputmode="numeric">
+                                    <select id="pageFilterSelect" class="filter-select page-main-select"
+                                        data-filter="page" title="Filtrar por página o ver todas las páginas del libro">
+                                        <option value="">Todas las páginas</option>
+                                    </select>
                                     <button id="nextBookPageBtn" class="page-nav-btn" title="Página siguiente del libro"
                                         aria-label="Página siguiente">&#9654;</button>
                                 </div>
@@ -317,6 +320,29 @@
                     </table>
                 </div>
 
+                <div id="errorViewWrap" class="tableWrap" style="display:none;">
+                    <table id="errorViewTable">
+                        <thead id="errorViewThead">
+                            <tr>
+                                <th style="width:84px">ID</th>
+                                <th style="width:130px">Libro</th>
+                                <th style="width:70px">Pagina</th>
+                                <th style="width:70px">POS</th>
+                                <th style="width:120px">PN</th>
+                                <th style="width:220px">Designation Final</th>
+                                <th style="width:90px">#Errores</th>
+                                <th style="width:200px">Errores activos</th>
+                            </tr>
+                        </thead>
+                        <tbody id="errorViewTbody">
+                            <tr>
+                                <td colspan="8" class="loading">Activa la vista de errores para ver solo registros con
+                                    incidencias.</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+
                 <div id="pagination" class="pagination" style="display: none;">
                     <button id="firstBtn" disabled>Primero</button>
                     <button id="prevBtn" disabled>Anterior</button>
@@ -375,6 +401,19 @@
                     data-pdf-panel="pdf">
                     <div class="pdfbar">
                         <span class="pdfmeta"><b>PDF</b> <span id="pdfLabel">—</span></span>
+                        <label class="pdf-zoom-wrap" for="pdfZoomSelect">
+                            <span class="pdfmeta"><b>Zoom</b></span>
+                            <button id="pdfZoomOutBtn" class="pdf-zoom-btn" type="button" aria-label="Reducir zoom PDF">-</button>
+                            <select id="pdfZoomSelect" class="pdf-zoom-select" aria-label="Zoom del visor PDF">
+                                <option value="fit" selected>Ajustar</option>
+                                <option value="75">75%</option>
+                                <option value="100">100%</option>
+                                <option value="125">125%</option>
+                                <option value="150">150%</option>
+                                <option value="200">200%</option>
+                            </select>
+                            <button id="pdfZoomInBtn" class="pdf-zoom-btn" type="button" aria-label="Aumentar zoom PDF">+</button>
+                        </label>
                         <span class="sp"></span>
                         <span class="pdfmeta" id="pdfMeta">Selecciona libro y página para ver el PDF</span>
                     </div>
@@ -408,7 +447,6 @@
                                 <div class="qa-modal-left-stack">
                                     <input id="qaSideId" type="hidden">
                                     <input id="qaSidePn" type="hidden">
-                                    <input id="qaSidePos" type="hidden">
 
                                     <div class="qa-modal-row qa-modal-row-primary">
                                         <label>
@@ -510,6 +548,10 @@
                                             <span>Pagina</span>
                                             <input id="qaSidePage" type="text">
                                         </label>
+                                        <label>
+                                            <span>Pos</span>
+                                            <input id="qaSidePos" type="text">
+                                        </label>
                                     </div>
 
                                     <section class="qa-modal-related qa-record-errors-panel">
@@ -537,24 +579,26 @@
                                                 <option value="__current__">Libro actual</option>
                                                 <option value="__all__">Todos</option>
                                             </select>
+                                            <button id="qaSideOpenMatchesModalBtn" type="button"
+                                                class="qa-modal-related-expand-btn"
+                                                aria-label="Abrir apariciones en modal grande">Ver en grande</button>
                                             <span id="qaSideMatchesCount" class="qa-modal-related-count"></span>
                                         </div>
                                     </div>
                                     <div class="qa-modal-related-table-wrap">
-                                        <table class="qa-modal-related-table"
+                                        <table class="qa-modal-related-table qa-side-matches-table"
                                             aria-label="Paginas del mismo PN en el libro actual">
                                             <thead>
                                                 <tr>
                                                     <th>Libro</th>
                                                     <th>Pagina</th>
                                                     <th>Pos</th>
-                                                    <th>Estado</th>
-                                                    <th>Accion</th>
+                                                    <th>Designacion final</th>
                                                 </tr>
                                             </thead>
                                             <tbody id="qaSideMatchesBody">
                                                 <tr>
-                                                    <td colspan="5">Sin datos</td>
+                                                    <td colspan="4">Sin datos</td>
                                                 </tr>
                                             </tbody>
                                         </table>
@@ -621,6 +665,85 @@
         </div>
     </div>
 
+    <div id="qaMatchesModal" class="qa-modal" hidden>
+        <div class="qa-modal-backdrop" data-matches-modal-close="true"></div>
+        <div class="qa-modal-dialog qa-matches-modal-dialog" role="dialog" aria-modal="true"
+            aria-labelledby="qaMatchesModalTitle">
+            <div class="qa-modal-header qa-matches-modal-header">
+                <div>
+                    <p class="qa-modal-kicker">Apariciones de PN</p>
+                    <h2 id="qaMatchesModalTitle">Vista ampliada de apariciones</h2>
+                </div>
+                <button id="qaMatchesModalCloseBtn" class="qa-modal-close-btn" type="button"
+                    aria-label="Cerrar modal">Cerrar</button>
+            </div>
+
+            <section class="qa-matches-modal-summary" aria-label="Resumen del PN seleccionado">
+                <div class="qa-matches-modal-summary-item">
+                    <span class="qa-matches-modal-summary-label">PN</span>
+                    <strong id="qaMatchesModalPn" class="qa-matches-modal-summary-value">-</strong>
+                </div>
+                <div class="qa-matches-modal-summary-item">
+                    <span class="qa-matches-modal-summary-label">Registro actual</span>
+                    <strong id="qaMatchesModalCurrent" class="qa-matches-modal-summary-value">-</strong>
+                </div>
+                <div class="qa-matches-modal-summary-item qa-matches-modal-summary-item-count">
+                    <span class="qa-matches-modal-summary-label">Coincidencias</span>
+                    <strong id="qaMatchesModalCount" class="qa-matches-modal-summary-value">0</strong>
+                </div>
+            </section>
+
+            <section class="qa-matches-modal-filters" aria-label="Filtros de apariciones">
+                <label>
+                    <span>Libro</span>
+                    <select id="qaMatchesModalBookFilter" class="qa-modal-related-select">
+                        <option value="__current__">Libro actual</option>
+                        <option value="__all__">Todos</option>
+                    </select>
+                </label>
+                <label>
+                    <span>Pagina</span>
+                    <input id="qaMatchesModalPageFilter" class="filter-input" type="text" placeholder="ej. 12">
+                </label>
+                <label>
+                    <span>Pos</span>
+                    <input id="qaMatchesModalPosFilter" class="filter-input" type="text" placeholder="ej. 16">
+                </label>
+                <label>
+                    <span>ID</span>
+                    <input id="qaMatchesModalIdFilter" class="filter-input" type="text" placeholder="ej. 1045">
+                </label>
+                <label class="qa-matches-modal-filter-wide qa-matches-modal-filter-text">
+                    <span>Texto (ID / designacion)</span>
+                    <input id="qaMatchesModalTextFilter" class="filter-input" type="text"
+                        placeholder="Buscar por ID o designacion">
+                </label>
+            </section>
+
+            <section class="qa-matches-modal-table-wrap" aria-label="Tabla ampliada de apariciones">
+                <table class="qa-modal-related-table qa-matches-modal-table">
+                    <thead>
+                        <tr>
+                            <th>Libro</th>
+                            <th>Pagina</th>
+                            <th>Pos</th>
+                            <th>ID</th>
+                            <th>Designacion final</th>
+                            <th>Weight final</th>
+                            <th>Measurement final</th>
+                            <th>fg_code_description</th>
+                        </tr>
+                    </thead>
+                    <tbody id="qaMatchesModalBody">
+                        <tr>
+                            <td colspan="8">Selecciona un registro en la ficha para ver apariciones.</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </section>
+        </div>
+    </div>
+
     <div id="qaRecordModal" class="qa-modal" hidden>
         <div class="qa-modal-backdrop" data-modal-close="true"></div>
         <div class="qa-modal-dialog" role="dialog" aria-modal="true" aria-labelledby="qaRecordModalTitle">
@@ -638,7 +761,6 @@
                     <div class="qa-modal-left-stack">
                         <input id="qaModalId" type="hidden">
                         <input id="qaModalPn" type="hidden">
-                        <input id="qaModalPos" type="hidden">
 
                         <div class="qa-modal-row qa-modal-row-primary">
                             <label>
@@ -740,6 +862,10 @@
                                 <span>Pagina</span>
                                 <input id="qaModalPage" type="text">
                             </label>
+                            <label>
+                                <span>Pos</span>
+                                <input id="qaModalPos" type="text">
+                            </label>
                         </div>
 
                         <section class="qa-modal-related qa-record-errors-panel">
@@ -775,7 +901,7 @@
                                         <th>Libro</th>
                                         <th>Pagina</th>
                                         <th>Pos</th>
-                                        <th>Estado</th>
+                                        <th>Designacion final</th>
                                         <th>Accion</th>
                                     </tr>
                                 </thead>
@@ -853,13 +979,18 @@
                     aria-label="Cerrar">&times;</button>
             </div>
             <div class="qa-checks-modal-body">
-                <p class="qa-checks-modal-desc">Selecciona las tipologías de comprobación que deseas aplicar. Solo se
-                    marcarán los errores de las categorías activas.</p>
+                <div class="qa-checks-modal-desc-wrap">
+                    <p class="qa-checks-modal-desc">Selecciona las tipologías de comprobación que deseas aplicar. Puedes
+                        ejecutar el cálculo para todos los artículos o solo para los visibles en pantalla.</p>
+                </div>
                 <div id="qaChecksList" class="qa-checks-modal-list" aria-label="Seleccion de comprobaciones QA"></div>
 
                 <!-- Área de estadísticas (oculta hasta que se aplique) -->
                 <div id="qaChecksStatsArea" class="qa-checks-stats-area" style="display: none;">
-                    <h4>Estadísticas de errores</h4>
+                    <h4>
+                        <span>Estadísticas de errores</span>
+                        <span id="qaChecksStatsScope" class="qa-checks-stats-scope">Todos los articulos</span>
+                    </h4>
                     <div class="qa-checks-stats-grid">
                         <div class="qa-checks-stat-item">
                             <span class="qa-checks-stat-label">Total registros</span>
@@ -886,6 +1017,33 @@
                             <li class="qa-checks-stat-codes-empty">Aplica el cálculo para ver el detalle.</li>
                         </ul>
                     </div>
+
+                    <div class="qa-checks-found-list-wrap">
+                        <div class="qa-checks-stats-breakdown-head qa-checks-found-list-head">
+                            <span>Registros encontrados con error</span>
+                            <span id="qaChecksFoundCount" class="qa-checks-found-count">0</span>
+                        </div>
+                        <div class="qa-checks-found-list-table-wrap">
+                            <table class="qa-checks-found-list-table" aria-label="Registros encontrados">
+                                <thead>
+                                    <tr>
+                                        <th>ID</th>
+                                        <th>Libro</th>
+                                        <th>Página</th>
+                                        <th>POS</th>
+                                        <th>PN</th>
+                                        <th>Errores</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="qaChecksFoundRows">
+                                    <tr>
+                                        <td colspan="6" class="qa-checks-found-empty">Aplica el cálculo para ver
+                                            registros.</td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
                 </div>
 
                 <!-- Área de progreso (oculta hasta que se aplique) -->
@@ -898,8 +1056,11 @@
                 <button id="qaChecksAllBtn" type="button" class="qa-checks-modal-footer-btn">Activar todas</button>
                 <button id="qaChecksNoneBtn" type="button"
                     class="qa-checks-modal-footer-btn qa-checks-modal-footer-btn-secondary">Desactivar todas</button>
-                <button id="applyQaChecksFilterBtn" type="button"
-                    class="qa-checks-modal-footer-btn qa-checks-modal-footer-btn-primary">Aplicar filtro</button>
+                <button id="applyQaChecksVisibleBtn" type="button"
+                    class="qa-checks-modal-footer-btn qa-checks-modal-footer-btn-secondary">Aplicar solo
+                    visibles</button>
+                <button id="applyQaChecksAllBtn" type="button"
+                    class="qa-checks-modal-footer-btn qa-checks-modal-footer-btn-primary">Aplicar a todos</button>
             </div>
         </div>
     </div>
