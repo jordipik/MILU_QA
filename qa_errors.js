@@ -1,7 +1,21 @@
 const fs = require('fs');
+const path = require('path');
 
-const REVISION_ESTADO_ALLOWED = new Set(['', 'pendiente', 'en revision', 'revisado', 'descartado']);
-const REVISION_ACCION_ALLOWED = new Set(['', 'mantener', 'actualizar', 'revisar', 'sustituir', 'eliminar']);
+const PDF_DIRECTORY = path.join(__dirname, 'pdf');
+const PDFJS_STANDARD_FONTS_DIRECTORY = path.resolve(
+    path.dirname(require.resolve('pdfjs-dist/legacy/build/pdf.mjs')),
+    '..',
+    '..',
+    'standard_fonts'
+);
+const pdfPageTextCache = new Map();
+let pdfJsModulePromise = null;
+const DEFAULT_ACTIVE_QA_CODES = [
+    'missing_part_no',
+    'missing_pos',
+    'missing_designation_final',
+    'designation_final_not_in_pdf'
+];
 
 function text(value) {
     if (value == null) return '';
@@ -12,11 +26,15 @@ function normalizeSpaces(value) {
     return text(value).replace(/\s+/g, ' ').trim();
 }
 
-function normalizeRevisionValue(value) {
+function normalizePdfToken(value) {
     return normalizeSpaces(value)
         .toLowerCase()
         .normalize('NFD')
         .replace(/[\u0300-\u036f]/g, '');
+}
+
+function compactPdfToken(value) {
+    return normalizePdfToken(value).replace(/\s+/g, '');
 }
 
 function isGesaRow(row) {
@@ -29,45 +47,139 @@ function getFinalDesignation(row) {
     return isGesaRow(row) ? text(row?.designation_gesa) : text(row?.DESIGNATION);
 }
 
-function getFinalMeasurement(row) {
-    const fromGesa = normalizeSpaces(row?.dimensions_gesa);
-    if (fromGesa) return fromGesa;
-    const fromRaw = normalizeSpaces(row?.['MEASUREMENT / STANDARD']);
-    if (fromRaw) return fromRaw;
-    return normalizeSpaces(row?.measurement_final);
+function getPartNumber(row) {
+    return text(row?.['PART NO.'] || row?.pn_final || row?.pn);
 }
 
-function getFinalWeight(row) {
-    const explicit = text(row?.weight_final);
-    if (explicit) return explicit;
-
-    if (!isGesaRow(row)) return text(row?.WEIGHT);
-
-    const w = text(row?.weight_gesa);
-    const units = text(row?.units);
-    if (!w) return '';
-    return units ? `${w} ${units}` : w;
+function resolveAssignedPdfBaseName(row) {
+    const sourceFileBase = text(row?.source_file).replace(/\.xlsx$/i, '');
+    if (sourceFileBase) return sourceFileBase;
+    return text(row?.engine_model);
 }
 
-function createContext(rows) {
-    const idCount = new Map();
-    const logicalKeyCount = new Map();
+function resolveAssignedPdfPath(row) {
+    const baseName = resolveAssignedPdfBaseName(row);
+    if (!baseName) return '';
+    return path.join(PDF_DIRECTORY, `${baseName}.pdf`);
+}
 
-    rows.forEach((row) => {
-        const id = text(row?.ID);
-        if (id) idCount.set(id, (idCount.get(id) || 0) + 1);
+function resolvePageNumber(value) {
+    const digits = text(value).replace(/[^0-9]/g, '');
+    if (!digits) return null;
+    const parsed = Number(digits);
+    return Number.isInteger(parsed) && parsed > 0 ? parsed : null;
+}
 
-        const pn = text(row?.['PART NO.'] || row?.pn_final || row?.pn);
-        const page = text(row?.['Source Page']);
-        const pos = text(row?.POS);
-        const source = text(row?.source_file);
-        if (pn && page && pos && source) {
-            const key = `${pn}||${page}||${pos}||${source}`.toLowerCase();
-            logicalKeyCount.set(key, (logicalKeyCount.get(key) || 0) + 1);
+async function loadPdfJsModule() {
+    if (!pdfJsModulePromise) {
+        pdfJsModulePromise = import('pdfjs-dist/legacy/build/pdf.mjs');
+    }
+    return pdfJsModulePromise;
+}
+
+async function extractPdfPageTextIndex(pdfPath) {
+    const { getDocument } = await loadPdfJsModule();
+    const data = new Uint8Array(fs.readFileSync(pdfPath));
+    class NodeStandardFontDataFactory {
+        constructor({ baseUrl = PDFJS_STANDARD_FONTS_DIRECTORY } = {}) {
+            this.baseUrl = baseUrl;
         }
-    });
 
-    return { idCount, logicalKeyCount };
+        async fetch({ filename }) {
+            if (!filename) {
+                throw new Error('Font filename must be specified.');
+            }
+            const fontPath = path.join(this.baseUrl, filename);
+            return new Uint8Array(await fs.promises.readFile(fontPath));
+        }
+    }
+    const loadingTask = getDocument({
+        data,
+        useWorkerFetch: false,
+        isEvalSupported: false,
+        disableFontFace: true,
+        standardFontDataUrl: `${PDFJS_STANDARD_FONTS_DIRECTORY}${path.sep}`,
+        StandardFontDataFactory: NodeStandardFontDataFactory
+    });
+    const pdfDocument = await loadingTask.promise;
+
+    try {
+        const pageIndex = new Map();
+        for (let pageNumber = 1; pageNumber <= pdfDocument.numPages; pageNumber++) {
+            const page = await pdfDocument.getPage(pageNumber);
+            const textContent = await page.getTextContent();
+            const rawText = (textContent.items || [])
+                .map(item => String(item?.str || ''))
+                .join(' ');
+            pageIndex.set(pageNumber, {
+                normalized: normalizePdfToken(rawText),
+                compact: compactPdfToken(rawText)
+            });
+        }
+        return pageIndex;
+    } finally {
+        if (typeof pdfDocument.cleanup === 'function') pdfDocument.cleanup();
+        if (typeof pdfDocument.destroy === 'function') {
+            await pdfDocument.destroy().catch(() => { });
+        }
+    }
+}
+
+async function getPdfPageTextIndex(pdfPath) {
+    if (!pdfPageTextCache.has(pdfPath)) {
+        const promise = extractPdfPageTextIndex(pdfPath).catch((error) => {
+            pdfPageTextCache.delete(pdfPath);
+            throw error;
+        });
+        pdfPageTextCache.set(pdfPath, promise);
+    }
+    return pdfPageTextCache.get(pdfPath);
+}
+
+async function findDesignationInAssignedPdf(row, designation) {
+    const pdfPath = resolveAssignedPdfPath(row);
+    const pageNumber = resolvePageNumber(row?.['Source Page']);
+    const normalizedDesignation = normalizePdfToken(designation);
+    const compactDesignation = compactPdfToken(designation);
+
+    if (!pdfPath || !pageNumber || !normalizedDesignation) {
+        return {
+            checked: false,
+            found: false,
+            pageNumber: pageNumber || null,
+            pdfFileName: pdfPath ? path.basename(pdfPath) : ''
+        };
+    }
+
+    if (!fs.existsSync(pdfPath)) {
+        return {
+            checked: false,
+            found: false,
+            pageNumber,
+            pdfFileName: path.basename(pdfPath)
+        };
+    }
+
+    const pageIndex = await getPdfPageTextIndex(pdfPath);
+    const pageText = pageIndex.get(pageNumber);
+    if (!pageText) {
+        return {
+            checked: false,
+            found: false,
+            pageNumber,
+            pdfFileName: path.basename(pdfPath)
+        };
+    }
+
+    const found = pageText.normalized.includes(normalizedDesignation)
+        || (!!compactDesignation && pageText.compact.includes(compactDesignation));
+
+    return {
+        checked: true,
+        found,
+        pageNumber,
+        pdfFileName: path.basename(pdfPath)
+    };
 }
 
 function addIssue(target, code, severity, fields, message) {
@@ -86,7 +198,7 @@ function addIssue(target, code, severity, fields, message) {
     }
 }
 
-function validateRow(row, context) {
+async function validateRow(row) {
     const result = {
         version: 1,
         severity: 'none',
@@ -95,69 +207,33 @@ function validateRow(row, context) {
         issues: []
     };
 
-    const id = text(row?.ID);
-    const pn = text(row?.['PART NO.'] || row?.pn_final || row?.pn);
-    const sourceFile = text(row?.source_file);
-    const sourcePage = text(row?.['Source Page']);
+    const pn = getPartNumber(row);
     const pos = text(row?.POS);
-
-    if (!id) {
-        addIssue(result, 'missing_id', 'critical', ['ID'], 'ID vacio');
-    }
+    const designation = getFinalDesignation(row);
 
     if (!pn) {
-        addIssue(result, 'missing_part_no', 'critical', ['PART NO.', 'pn_final', 'pn'], 'Sin PN en PART NO./pn_final/pn');
-    }
-
-    if (!sourceFile) {
-        addIssue(result, 'missing_source_file', 'warning', ['source_file'], 'source_file vacio');
-    }
-
-    if (!sourcePage) {
-        addIssue(result, 'missing_source_page', 'warning', ['Source Page'], 'Source Page vacio');
+        addIssue(result, 'missing_part_no', 'critical', ['PART NO.', 'pn_final', 'pn'], 'PN vacio');
     }
 
     if (!pos) {
         addIssue(result, 'missing_pos', 'warning', ['POS'], 'POS vacio');
     }
 
-    if (!getFinalDesignation(row)) {
-        addIssue(result, 'missing_designation_final', 'warning', ['designation_final', 'designation_gesa', 'DESIGNATION'], 'designation_final vacio');
-    }
-
-    if (!getFinalMeasurement(row)) {
-        addIssue(result, 'missing_measurement_final', 'warning', ['measurement_final', 'dimensions_gesa', 'MEASUREMENT / STANDARD'], 'measurement_final vacio');
-    }
-
-    if (!getFinalWeight(row)) {
-        addIssue(result, 'missing_weight_final', 'warning', ['weight_final', 'weight_gesa', 'units', 'WEIGHT', 'UNITS'], 'weight_final vacio');
-    }
-
-    if (id && (context.idCount.get(id) || 0) > 1) {
-        addIssue(result, 'duplicate_id', 'critical', ['ID'], 'ID repetido dentro del mismo engine_*.json');
-    }
-
-    if (pn && sourcePage && pos && sourceFile) {
-        const key = `${pn}||${sourcePage}||${pos}||${sourceFile}`.toLowerCase();
-        if ((context.logicalKeyCount.get(key) || 0) > 1) {
-            addIssue(result, 'duplicate_logical_row', 'warning', ['PART NO.', 'Source Page', 'POS', 'source_file'], 'Duplicado por PN+Page+POS+source_file');
+    if (!designation) {
+        addIssue(result, 'missing_designation_final', 'warning', ['designation_final', 'designation_gesa', 'DESIGNATION'], 'Designation Final vacio');
+    } else {
+        const pdfLookup = await findDesignationInAssignedPdf(row, designation);
+        if (pdfLookup.checked && !pdfLookup.found) {
+            const pageSuffix = pdfLookup.pageNumber ? ` en pagina ${pdfLookup.pageNumber}` : '';
+            const pdfSuffix = pdfLookup.pdfFileName ? ` (${pdfLookup.pdfFileName})` : '';
+            addIssue(
+                result,
+                'designation_final_not_in_pdf',
+                'warning',
+                ['designation_final', 'designation_gesa', 'DESIGNATION', 'Source Page', 'source_file', 'engine_model'],
+                `Designation Final no se encuentra en el PDF asignado${pageSuffix}${pdfSuffix}`
+            );
         }
-    }
-
-    const revisionEstado = normalizeRevisionValue(row?.qa_revision_estado);
-    if (!REVISION_ESTADO_ALLOWED.has(revisionEstado)) {
-        addIssue(result, 'invalid_revision_estado', 'warning', ['qa_revision_estado'], 'qa_revision_estado fuera del catalogo permitido');
-    }
-
-    const revisionAccion = normalizeRevisionValue(row?.qa_revision_accion);
-    if (!REVISION_ACCION_ALLOWED.has(revisionAccion)) {
-        addIssue(result, 'invalid_revision_accion', 'warning', ['qa_revision_accion'], 'qa_revision_accion fuera del catalogo permitido');
-    }
-
-    const enWeb = row?.EN_WEB === true || String(row?.EN_WEB || '').toLowerCase() === 'true';
-    const hasPhoto = !!(text(row?.filename_foto) || text(row?.ruta_foto));
-    if (enWeb && !hasPhoto) {
-        addIssue(result, 'en_web_without_photo', 'warning', ['EN_WEB', 'filename_foto', 'ruta_foto'], 'EN_WEB=true sin imagen');
     }
 
     result.codes.sort((a, b) => a.localeCompare(b));
@@ -200,18 +276,17 @@ function stableSnapshot(errors) {
     return JSON.stringify(normalized);
 }
 
-function applyQaErrorsToRows(rows, options = {}) {
+async function applyQaErrorsToRows(rows, options = {}) {
     if (!Array.isArray(rows)) {
         throw new Error('applyQaErrorsToRows espera un array de filas');
     }
 
     const nowIso = text(options.nowIso) || new Date().toISOString();
-    const context = createContext(rows);
     let changedRows = 0;
     let rowsWithErrors = 0;
 
-    rows.forEach((row) => {
-        const next = validateRow(row, context);
+    for (const row of rows) {
+        const next = await validateRow(row);
         if (next.codes.length > 0) rowsWithErrors += 1;
 
         const prev = row?.qa_errors;
@@ -220,12 +295,12 @@ function applyQaErrorsToRows(rows, options = {}) {
                 row.qa_errors = { ...next, updated_at: nowIso };
                 changedRows += 1;
             }
-            return;
+            continue;
         }
 
         row.qa_errors = { ...next, updated_at: nowIso };
         changedRows += 1;
-    });
+    }
 
     return {
         totalRows: rows.length,
@@ -234,19 +309,27 @@ function applyQaErrorsToRows(rows, options = {}) {
     };
 }
 
-function recomputeQaErrorsInFile(filePath, options = {}) {
+async function recomputeQaErrorsInFile(filePath, options = {}) {
     const raw = fs.readFileSync(filePath, 'utf8');
     const rows = JSON.parse(raw);
     if (!Array.isArray(rows)) {
         throw new Error(`El archivo no contiene un array JSON: ${filePath}`);
     }
 
-    const summary = applyQaErrorsToRows(rows, options);
-    if (summary.changedRows > 0 || options.forceWrite === true) {
+    const summary = await applyQaErrorsToRows(rows, options);
+    const activeSummary = Array.isArray(options.activeCodes)
+        ? applyActiveQaErrorsToRows(rows, options.activeCodes)
+        : { changedRows: 0, signature: '' };
+    const totalChangedRows = summary.changedRows + activeSummary.changedRows;
+    if (totalChangedRows > 0 || options.forceWrite === true) {
         fs.writeFileSync(filePath, `${JSON.stringify(rows, null, 2)}\n`, 'utf8');
     }
 
-    return summary;
+    return {
+        ...summary,
+        changedRows: totalChangedRows,
+        activeChangedRows: activeSummary.changedRows
+    };
 }
 
 function getActiveCodesSignature(activeCodes) {
@@ -366,6 +449,7 @@ function getQaErrorsStats(rows, activeCodes) {
 }
 
 module.exports = {
+    DEFAULT_ACTIVE_QA_CODES,
     applyQaErrorsToRows,
     applyActiveQaErrorsToRows,
     recomputeQaErrorsInFile,

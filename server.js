@@ -6,7 +6,7 @@ const bodyParser = require('body-parser');
 const cors = require('cors');
 const { applyRevisionPayload } = require('./apply_revision_to_engines');
 const { ENGINE_JSON_FILES } = require('./engine_files');
-const { applyQaErrorsToRows, applyActiveQaErrorsToRows, recomputeQaErrorsInFile, getQaErrorsStats } = require('./qa_errors');
+const { DEFAULT_ACTIVE_QA_CODES, applyQaErrorsToRows, applyActiveQaErrorsToRows, recomputeQaErrorsInFile, getQaErrorsStats } = require('./qa_errors');
 
 const app = express();
 const PORT = 3000;
@@ -118,14 +118,14 @@ app.post('/qa_revision_sync.php', (req, res) => {
     }
 });
 
-app.post('/apply-revision-to-engines', (req, res) => {
+app.post('/apply-revision-to-engines', async (req, res) => {
     try {
         const payload = req.body;
         if (!payload || typeof payload !== 'object' || Array.isArray(payload)) {
             return res.status(400).json({ ok: false, error: 'Payload de revisión no válido.' });
         }
 
-        const result = applyRevisionPayload(payload, {
+        const result = await applyRevisionPayload(payload, {
             repoRoot: __dirname,
             sourceName: 'import_from_ui'
         });
@@ -136,21 +136,21 @@ app.post('/apply-revision-to-engines', (req, res) => {
     }
 });
 
-app.post('/recompute-qa-errors', (_req, res) => {
+app.post('/recompute-qa-errors', async (_req, res) => {
     try {
         const perFile = {};
         let totalRows = 0;
         let rowsWithErrors = 0;
         let changedRows = 0;
 
-        ENGINE_JSON_FILES.forEach((fileName) => {
+        for (const fileName of ENGINE_JSON_FILES) {
             const filePath = path.join(__dirname, fileName);
-            const summary = recomputeQaErrorsInFile(filePath);
+            const summary = await recomputeQaErrorsInFile(filePath, { activeCodes: DEFAULT_ACTIVE_QA_CODES });
             perFile[fileName] = summary;
             totalRows += summary.totalRows;
             rowsWithErrors += summary.rowsWithErrors;
             changedRows += summary.changedRows;
-        });
+        }
 
         return res.json({
             ok: true,
@@ -173,7 +173,7 @@ app.get('/health', (req, res) => {
 });
 
 // Ruta para guardar cambios en un archivo JSON
-app.post('/save-json', (req, res) => {
+app.post('/save-json', async (req, res) => {
     const { file, id, col, value } = req.body;
     if (!file || !id || !col) {
         return res.status(400).json({ error: 'Faltan parámetros requeridos' });
@@ -184,29 +184,29 @@ app.post('/save-json', (req, res) => {
         return res.status(400).json({ error: 'Archivo no permitido' });
     }
     const filePath = path.join(__dirname, file);
-    fs.readFile(filePath, 'utf8', (err, data) => {
-        if (err) return res.status(500).json({ error: 'No se pudo leer el archivo' });
+    try {
+        const data = await fs.promises.readFile(filePath, 'utf8');
         let json;
         try {
             json = JSON.parse(data);
-        } catch (e) {
+        } catch (_parseError) {
             return res.status(500).json({ error: 'JSON inválido' });
         }
-        // Buscar el registro por ID
         const row = json.find(r => String(r.ID) === String(id));
         if (!row) {
             return res.status(404).json({ error: 'Registro no encontrado' });
         }
         row[col] = value;
-        const qaErrorsSummary = applyQaErrorsToRows(json);
-        fs.writeFile(filePath, JSON.stringify(json, null, 2), 'utf8', err2 => {
-            if (err2) return res.status(500).json({ error: 'No se pudo guardar el archivo' });
-            res.json({ ok: true, qaErrorsSummary });
-        });
-    });
+        const qaErrorsSummary = await applyQaErrorsToRows(json);
+        applyActiveQaErrorsToRows(json, DEFAULT_ACTIVE_QA_CODES);
+        await fs.promises.writeFile(filePath, `${JSON.stringify(json, null, 2)}\n`, 'utf8');
+        return res.json({ ok: true, qaErrorsSummary });
+    } catch (_error) {
+        return res.status(500).json({ error: 'No se pudo guardar el archivo' });
+    }
 });
 
-app.post('/apply-qa-checks-filter', (req, res) => {
+app.post('/apply-qa-checks-filter', async (req, res) => {
     const { activeCodes } = req.body;
     if (!Array.isArray(activeCodes)) {
         return res.status(400).json({ error: 'activeCodes debe ser un array' });
@@ -222,7 +222,7 @@ app.post('/apply-qa-checks-filter', (req, res) => {
     };
 
     try {
-        ENGINE_JSON_FILES.forEach((file) => {
+        for (const file of ENGINE_JSON_FILES) {
             const filePath = path.join(__dirname, file);
             if (!fs.existsSync(filePath)) return;
 
@@ -231,7 +231,7 @@ app.post('/apply-qa-checks-filter', (req, res) => {
             if (!Array.isArray(rows)) return;
 
             // Recalcular el conjunto completo de errores y persistirlo en disco.
-            applyQaErrorsToRows(rows);
+            await applyQaErrorsToRows(rows);
             applyActiveQaErrorsToRows(rows, activeCodes);
 
             fs.writeFileSync(filePath, JSON.stringify(rows, null, 2) + '\n', 'utf8');
@@ -251,7 +251,7 @@ app.post('/apply-qa-checks-filter', (req, res) => {
             Object.entries(fileStats.severityCount).forEach(([severity, count]) => {
                 globalStats.severityCount[severity] = (globalStats.severityCount[severity] || 0) + count;
             });
-        });
+        }
 
         res.json({
             ok: true,

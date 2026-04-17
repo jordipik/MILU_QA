@@ -1,7 +1,7 @@
 const fs = require('fs');
 const path = require('path');
 const { ENGINE_JSON_FILES } = require('./engine_files');
-const { applyQaErrorsToRows } = require('./qa_errors');
+const { DEFAULT_ACTIVE_QA_CODES, applyQaErrorsToRows, applyActiveQaErrorsToRows } = require('./qa_errors');
 
 function normalizeRevisionRecord(record) {
     return {
@@ -60,7 +60,7 @@ function buildLegacyRevisionKey(row) {
     return [id, pn, page, pos, source].join('||');
 }
 
-function applyRevisionPayload(parsed, options = {}) {
+async function applyRevisionPayload(parsed, options = {}) {
     const repoRoot = options.repoRoot || process.cwd();
     const sourceName = options.sourceName || 'inline_payload';
     const revisionData = normalizeRevisionDataObject(parsed);
@@ -70,7 +70,7 @@ function applyRevisionPayload(parsed, options = {}) {
     const appliedByFile = {};
     const occCounter = new Map();
 
-    ENGINE_JSON_FILES.forEach((fileName) => {
+    for (const fileName of ENGINE_JSON_FILES) {
         const filePath = path.join(repoRoot, fileName);
         if (!fs.existsSync(filePath)) {
             throw new Error(`No existe el JSON de libro: ${filePath}`);
@@ -107,7 +107,8 @@ function applyRevisionPayload(parsed, options = {}) {
 
         let qaErrorsSummary = null;
         if (changedInFile > 0) {
-            qaErrorsSummary = applyQaErrorsToRows(rows);
+            qaErrorsSummary = await applyQaErrorsToRows(rows);
+            applyActiveQaErrorsToRows(rows, DEFAULT_ACTIVE_QA_CODES);
             fs.writeFileSync(filePath, `${JSON.stringify(rows, null, 2)}\n`, 'utf8');
         }
 
@@ -116,7 +117,7 @@ function applyRevisionPayload(parsed, options = {}) {
             qaErrors: qaErrorsSummary
         };
         totalApplied += changedInFile;
-    });
+    }
 
     return {
         revisionFile: sourceName,
@@ -126,7 +127,7 @@ function applyRevisionPayload(parsed, options = {}) {
     };
 }
 
-function applyRevisionFile(revisionFilePath, options = {}) {
+async function applyRevisionFile(revisionFilePath, options = {}) {
     const repoRoot = options.repoRoot || process.cwd();
     const absoluteRevisionPath = path.isAbsolute(revisionFilePath)
         ? revisionFilePath
@@ -140,14 +141,17 @@ function applyRevisionFile(revisionFilePath, options = {}) {
     return applyRevisionPayload(parsed, { repoRoot, sourceName: absoluteRevisionPath });
 }
 
-function main() {
+async function main() {
     const revisionArg = process.argv[2] || 'qa_revision_2026-04-09T10-11-31-442Z.json';
-    const result = applyRevisionFile(revisionArg);
+    const result = await applyRevisionFile(revisionArg);
     console.log(JSON.stringify(result, null, 2));
 }
 
 if (require.main === module) {
-    main();
+    main().catch((error) => {
+        console.error(error);
+        process.exitCode = 1;
+    });
 }
 
 module.exports = {

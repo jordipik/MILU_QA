@@ -49,19 +49,10 @@ El campo signature identifica exactamente el conjunto de checks activos usado pa
 ## Reglas persistidas en backend
 Estas reglas se calculan en qa_errors y se guardan en cada registro.
 
-1. missing_id
-2. missing_part_no
-3. missing_source_file
-4. missing_source_page
-5. missing_pos
-6. missing_designation_final
-7. missing_measurement_final
-8. missing_weight_final
-9. duplicate_id
-10. duplicate_logical_row
-11. invalid_revision_estado
-12. invalid_revision_accion
-13. en_web_without_photo
+1. missing_part_no
+2. missing_pos
+3. missing_designation_final
+4. designation_final_not_in_pdf
 
 Implementacion principal:
 - qa_errors.js: validateRow
@@ -70,18 +61,7 @@ Implementacion principal:
 - qa_errors.js: recomputeQaErrorsInFile
 - qa_errors.js: getQaErrorsStats
 
-## Comprobaciones dinamicas en frontend
-Ademas del campo persistido, la UI sigue contemplando comprobaciones dinamicas de export:
-- no_pn
-- export_inconsistency
-- export_mismatch_critical
-- export_mismatch_warning
-
-Implementacion:
-- js/helpers.js: getDynamicRowErrors
-- js/helpers.js: getRowErrors
-- js/helpers.js: getRowErrorType
-- js/helpers.js: getRowErrorFields
+La comprobacion designation_final_not_in_pdf usa el PDF asignado al registro segun source_file o engine_model y comprueba la pagina indicada en Source Page.
 
 Nota:
 - si existe qa_errors_active y su signature coincide con los checks activos, la UI prioriza ese campo derivado
