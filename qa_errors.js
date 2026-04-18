@@ -13,6 +13,8 @@ let pdfJsModulePromise = null;
 const DEFAULT_ACTIVE_QA_CODES = [
     'missing_part_no',
     'missing_pos',
+    'missing_pn_final',
+    'pn_final_not_in_pdf',
     'missing_designation_final',
     'designation_final_not_in_pdf'
 ];
@@ -284,6 +286,52 @@ function hasDesignationNearPartNumber(pageRects, normalizedPartNumber, normalize
     });
 }
 
+async function findPnFinalInAssignedPdf(row, pnFinal) {
+    const pdfPath = resolveAssignedPdfPath(row);
+    const pageNumber = resolvePageNumber(row?.['Source Page']);
+    const normalizedPn = normalizePdfToken(pnFinal);
+
+    if (!pdfPath || !pageNumber || !normalizedPn) {
+        return {
+            checked: false,
+            found: false,
+            pageNumber: pageNumber || null,
+            pdfFileName: pdfPath ? path.basename(pdfPath) : ''
+        };
+    }
+
+    if (!fs.existsSync(pdfPath)) {
+        return {
+            checked: false,
+            found: false,
+            pageNumber,
+            pdfFileName: path.basename(pdfPath)
+        };
+    }
+
+    const pageIndex = await getPdfPageTextIndex(pdfPath);
+    const pageText = pageIndex.get(pageNumber);
+    if (!pageText) {
+        return {
+            checked: false,
+            found: false,
+            pageNumber,
+            pdfFileName: path.basename(pdfPath)
+        };
+    }
+
+    // Coincidencia exacta: el rect del PDF debe ser exactamente igual a pn_final normalizado.
+    // Si el PDF tiene 0023912760297149 y pn_final es 912760297149, no coincide (igual que el visor).
+    const found = pageText.rects.some(rect => rect.normalizedText === normalizedPn);
+
+    return {
+        checked: true,
+        found,
+        pageNumber,
+        pdfFileName: path.basename(pdfPath)
+    };
+}
+
 async function findDesignationInAssignedPdf(row, designation) {
     const pdfPath = resolveAssignedPdfPath(row);
     const pageNumber = resolvePageNumber(row?.['Source Page']);
@@ -364,6 +412,7 @@ async function validateRow(row) {
     };
 
     const pn = getPartNumber(row);
+    const pnFinal = text(row?.pn_final);
     const pos = text(row?.POS);
     const designation = getFinalDesignation(row);
 
@@ -373,6 +422,23 @@ async function validateRow(row) {
 
     if (!pos) {
         addIssue(result, 'missing_pos', 'critical', ['POS'], 'POS vacio');
+    }
+
+    if (!pnFinal) {
+        addIssue(result, 'missing_pn_final', 'critical', ['pn_final'], 'PN Final vacio');
+    } else {
+        const pnPdfLookup = await findPnFinalInAssignedPdf(row, pnFinal);
+        if (pnPdfLookup.checked && !pnPdfLookup.found) {
+            const pageSuffix = pnPdfLookup.pageNumber ? ` en pagina ${pnPdfLookup.pageNumber}` : '';
+            const pdfSuffix = pnPdfLookup.pdfFileName ? ` (${pnPdfLookup.pdfFileName})` : '';
+            addIssue(
+                result,
+                'pn_final_not_in_pdf',
+                'critical',
+                ['pn_final', 'PART NO.', 'Source Page', 'source_file', 'engine_model'],
+                `PN Final no se encuentra en el PDF asignado${pageSuffix}${pdfSuffix}`
+            );
+        }
     }
 
     if (!designation) {

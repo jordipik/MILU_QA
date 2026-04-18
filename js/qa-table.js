@@ -208,10 +208,21 @@ export function getCurrentFilteredSortedRows() {
 export function getRowsForBulkScope(scope) {
     const sortedRows = getCurrentFilteredSortedRows();
     if (scope === 'visible') {
+        if (!state.paginationEnabled) return sortedRows;
         const start = (state.currentPage - 1) * state.pageSize;
         return sortedRows.slice(start, start + state.pageSize);
     }
     return sortedRows;
+}
+
+function getEffectivePageSize(totalRows) {
+    if (state.paginationEnabled) return state.pageSize;
+    return Math.max(1, Number(totalRows) || 0);
+}
+
+function getEffectiveTotalPages(totalRows) {
+    const pageSize = getEffectivePageSize(totalRows);
+    return Math.max(1, Math.ceil((Number(totalRows) || 0) / pageSize));
 }
 
 function summarizeFields(rows) {
@@ -334,7 +345,7 @@ export function moveSelectionBy(delta) {
         return;
     }
 
-    const totalPages = Math.max(1, Math.ceil(state.filteredData.length / state.pageSize));
+    const totalPages = getEffectiveTotalPages(state.filteredData.length);
     if (delta > 0 && nextIndex >= rows.length && state.currentPage < totalPages) {
         state.currentPage += 1;
         renderTable();
@@ -379,6 +390,7 @@ function calculateAutoPageSize() {
 }
 
 export function syncAutoPageSize() {
+    if (!state.paginationEnabled) return false;
     const next = calculateAutoPageSize();
     if (!Number.isFinite(next) || next < 1 || next === state.pageSize) return false;
     state.pageSize = next;
@@ -427,7 +439,7 @@ function renderRow(row) {
 
     const revisionEstadoOptions = [
         { value: '', label: '—' },
-        { value: 'pendiente', label: 'Pendiente' },
+        { value: 'copia', label: 'Copia' },
         { value: 'en revisión', label: 'Revisar' },
         { value: 'revisado', label: 'Ok' },
         { value: 'descartado', label: 'Eliminar' }
@@ -684,7 +696,7 @@ export function refreshVisibleRowByRevisionKey(revisionKey) {
 }
 
 export function renderPagination() {
-    const totalPages = Math.ceil(state.filteredData.length / state.pageSize);
+    const totalPages = getEffectiveTotalPages(state.filteredData.length);
     const pagination = document.getElementById('pagination');
     const pageInfo = document.getElementById('pageInfo');
     const firstBtn = document.getElementById('firstBtn');
@@ -692,6 +704,10 @@ export function renderPagination() {
     const nextBtn = document.getElementById('nextBtn');
     const lastBtn = document.getElementById('lastBtn');
     if (!pagination || !pageInfo || !prevBtn || !nextBtn) return;
+    if (!state.paginationEnabled) {
+        pagination.style.display = 'none';
+        return;
+    }
     if (totalPages <= 1) {
         pagination.style.display = 'none';
         return;
@@ -705,7 +721,7 @@ export function renderPagination() {
 }
 
 export function jumpToPage(pageNumber) {
-    const totalPages = Math.max(1, Math.ceil(state.filteredData.length / state.pageSize));
+    const totalPages = getEffectiveTotalPages(state.filteredData.length);
     const requestedPage = Number(pageNumber);
     if (!Number.isFinite(requestedPage)) return;
 
@@ -726,7 +742,7 @@ export function renderTable() {
 
     setTableModeVisibility();
 
-    syncAutoPageSize();
+    if (state.paginationEnabled) syncAutoPageSize();
 
     document.querySelectorAll('thead th[data-sort]').forEach(th => {
         const key = th.dataset.sort;
@@ -740,7 +756,8 @@ export function renderTable() {
         ? baseFiltered.filter(row => getRowErrors(row, { activeCodes: state.activeQaErrorChecks }).length > 0)
         : baseFiltered;
     const total = state.filteredData.length;
-    const totalPages = Math.max(1, Math.ceil(total / state.pageSize));
+    const effectivePageSize = getEffectivePageSize(total);
+    const totalPages = Math.max(1, Math.ceil(total / effectivePageSize));
     if (state.currentPage < 1) state.currentPage = 1;
     if (state.currentPage > totalPages) state.currentPage = totalPages;
 
@@ -757,8 +774,8 @@ export function renderTable() {
     }
 
     const sortedData = sortData(state.filteredData, state.sortKey, state.sortAsc);
-    const start = (state.currentPage - 1) * state.pageSize;
-    const pageData = sortedData.slice(start, start + state.pageSize);
+    const start = (state.currentPage - 1) * effectivePageSize;
+    const pageData = sortedData.slice(start, start + effectivePageSize);
 
     if (pageData.length > 0) {
         const hasSelectedInFiltered = state.filteredData.some(item => getRevisionKey(item) === state.selectedRevisionRowKey);
@@ -816,7 +833,7 @@ export function renderTable() {
 }
 
 export function changePage(direction) {
-    const totalPages = Math.ceil(state.filteredData.length / state.pageSize);
+    const totalPages = getEffectiveTotalPages(state.filteredData.length);
     state.currentPage += direction;
     if (state.currentPage < 1) state.currentPage = 1;
     if (state.currentPage > totalPages) state.currentPage = totalPages;
@@ -836,7 +853,8 @@ export function focusRevisionRowInMainTable(revisionKey) {
     if (targetIndex === -1) return false;
 
     state.selectedRevisionRowKey = targetKey;
-    state.currentPage = Math.floor(targetIndex / state.pageSize) + 1;
+    const effectivePageSize = getEffectivePageSize(filteredSortedRows.length);
+    state.currentPage = Math.floor(targetIndex / effectivePageSize) + 1;
 
     renderTable();
     renderPagination();

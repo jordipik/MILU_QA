@@ -18,43 +18,7 @@ export function isGesaRow(row) {
 }
 
 export function getRowValueForColumn(row, key, defaultVal = '—') {
-    const normalizeMeasurementText = (value) => {
-        const text = String(value ?? '').trim();
-        return text ? text.replace(/\s{2,}/g, ' ') : '';
-    };
-
-    switch (key) {
-        case 'designation_final': {
-            const explicitFinal = String(row?.designation_final ?? '').trim();
-            if (explicitFinal) return explicitFinal;
-            return isGesaRow(row)
-                ? val(row, 'designation_gesa', defaultVal)
-                : val(row, 'DESIGNATION', defaultVal);
-        }
-        case 'measurement_final': {
-            const gesaMeasurement = normalizeMeasurementText(row?.dimensions_gesa);
-            if (gesaMeasurement) return gesaMeasurement;
-
-            const rawMeasurement = normalizeMeasurementText(row?.['MEASUREMENT / STANDARD']);
-            if (rawMeasurement) return rawMeasurement;
-
-            const explicitFinal = normalizeMeasurementText(row?.measurement_final);
-            if (explicitFinal) return explicitFinal;
-
-            return defaultVal;
-        }
-        case 'weight_final': {
-            const explicitFinal = String(row?.weight_final ?? '').trim();
-            if (explicitFinal) return explicitFinal;
-            if (!isGesaRow(row)) return val(row, 'WEIGHT', defaultVal);
-            const weightValue = String(row?.weight_gesa ?? '').trim();
-            const unitsValue = String(row?.units ?? '').trim();
-            if (!weightValue) return defaultVal;
-            return unitsValue ? `${weightValue} ${unitsValue}` : weightValue;
-        }
-        default:
-            return val(row, key, defaultVal);
-    }
+    return val(row, key, defaultVal);
 }
 
 export function normalizeText(text) {

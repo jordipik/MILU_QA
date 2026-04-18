@@ -1,0 +1,1 @@
+const fs = require("fs"); function check(path) { const data = JSON.parse(fs.readFileSync(path, "utf8")); console.log(`\nPath: ${path}`); for(let i=0; i<Math.min(data.length, 10); i++) { if(data[i]["PART NO."]) { console.log(`Index ${i} has PART NO: ${data[i]["PART NO."]}`); break; } } } check("engine_12V4000M40A.json"); check("json_originales/qa_12V4000M40A.json");

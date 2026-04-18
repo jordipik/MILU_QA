@@ -8,6 +8,7 @@ export const state = {
     tableMode: 'qa',
     currentPage: 1,
     pageSize: 50,
+    paginationEnabled: true,
     MIN_PAGE_SIZE: 5,
     sortKey: 'book_page_pos',
     sortAsc: true,
@@ -34,6 +35,8 @@ export const state = {
     qaErrorCheckDefinitions: [
         { code: 'missing_part_no', label: 'PN vacio' },
         { code: 'missing_pos', label: 'POS vacio' },
+        { code: 'missing_pn_final', label: 'PN Final vacio' },
+        { code: 'pn_final_not_in_pdf', label: 'PN Final no se encuentra en el PDF asignado' },
         { code: 'missing_designation_final', label: 'Designation Final vacio' },
         { code: 'designation_final_not_in_pdf', label: 'Designation Final no se encuentra en el PDF asignado' }
     ],

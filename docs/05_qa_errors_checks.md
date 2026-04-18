@@ -51,8 +51,10 @@ Estas reglas se calculan en qa_errors y se guardan en cada registro.
 
 1. missing_part_no
 2. missing_pos
-3. missing_designation_final
-4. designation_final_not_in_pdf
+3. missing_pn_final
+4. pn_final_not_in_pdf
+5. missing_designation_final
+6. designation_final_not_in_pdf
 
 Implementacion principal:
 - qa_errors.js: validateRow
@@ -60,6 +62,8 @@ Implementacion principal:
 - qa_errors.js: applyActiveQaErrorsToRows
 - qa_errors.js: recomputeQaErrorsInFile
 - qa_errors.js: getQaErrorsStats
+
+La comprobacion pn_final_not_in_pdf busca el valor de pn_final en el PDF asignado (pagina indicada en Source Page). Usa tokenMatches con allowContains: true si el PN tiene 6+ caracteres, de modo que un pn_final sin prefijo (ej. 912760297039) se considera presente si el PDF contiene la forma con prefijo (ej. 0023912760297039).
 
 La comprobacion designation_final_not_in_pdf usa el PDF asignado al registro segun source_file o engine_model y comprueba la pagina indicada en Source Page.
 

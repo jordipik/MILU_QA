@@ -55,6 +55,8 @@
                                 <span class="pane-label">Navegación</span>
                                 <div class="book-top-row">
                                     <button id="sortBookPagePosBtn">Ordenar</button>
+                                    <button id="togglePaginationBtn" type="button"
+                                        title="Activar o desactivar paginación">Paginación: ON</button>
                                     <div class="view-toggle-inline">
                                         <select id="columnViewSelect" class="filter-select column-view-select"
                                             title="Seleccionar vista de tabla">
@@ -403,7 +405,8 @@
                         <span class="pdfmeta"><b>PDF</b> <span id="pdfLabel">—</span></span>
                         <label class="pdf-zoom-wrap" for="pdfZoomSelect">
                             <span class="pdfmeta"><b>Zoom</b></span>
-                            <button id="pdfZoomOutBtn" class="pdf-zoom-btn" type="button" aria-label="Reducir zoom PDF">-</button>
+                            <button id="pdfZoomOutBtn" class="pdf-zoom-btn" type="button"
+                                aria-label="Reducir zoom PDF">-</button>
                             <select id="pdfZoomSelect" class="pdf-zoom-select" aria-label="Zoom del visor PDF">
                                 <option value="fit" selected>Ajustar</option>
                                 <option value="75">75%</option>
@@ -412,7 +415,8 @@
                                 <option value="150">150%</option>
                                 <option value="200">200%</option>
                             </select>
-                            <button id="pdfZoomInBtn" class="pdf-zoom-btn" type="button" aria-label="Aumentar zoom PDF">+</button>
+                            <button id="pdfZoomInBtn" class="pdf-zoom-btn" type="button"
+                                aria-label="Aumentar zoom PDF">+</button>
                         </label>
                         <span class="sp"></span>
                         <span class="pdfmeta" id="pdfMeta">Selecciona libro y página para ver el PDF</span>
@@ -497,7 +501,7 @@
                                             <span>Revision</span>
                                             <select id="qaSideRevisionEstado" name="qa_revision_estado">
                                                 <option value="">-</option>
-                                                <option value="pendiente">Pendiente</option>
+                                                <option value="copia">Copia</option>
                                                 <option value="en revisión">Revisar</option>
                                                 <option value="revisado">Ok</option>
                                                 <option value="descartado">Eliminar</option>
@@ -514,6 +518,14 @@
                                                 <option value="eliminar">Eliminar</option>
                                             </select>
                                         </label>
+                                    </div>
+
+                                    <div class="qa-modal-row" style="margin-top: 8px;">
+                                        <button id="qaSideApplyToMatches" class="qa-button-apply-matches"
+                                            title="Aplica el estado Ok a todos los registros con el mismo Part Number que estén en estado Copia"
+                                            style="width: 100%; padding: 8px; background: #10b981; color: white; border: none; border-radius: 4px; cursor: pointer; font-weight: bold;">
+                                            Aplicar a Iguales
+                                        </button>
                                     </div>
 
                                     <div class="qa-modal-row qa-modal-row-flags">
@@ -811,7 +823,7 @@
                                 <span>Revision</span>
                                 <select id="qaModalRevisionEstado" name="qa_revision_estado">
                                     <option value="">-</option>
-                                    <option value="pendiente">Pendiente</option>
+                                    <option value="copia">Copia</option>
                                     <option value="en revisión">Revisar</option>
                                     <option value="revisado">Ok</option>
                                     <option value="descartado">Eliminar</option>
@@ -1065,7 +1077,7 @@
         </div>
     </div>
 
-    <script type="module" src="js/qa-milu.js?v=20260417b"></script>
+    <script type="module" src="js/qa-milu.js?v=20260418a"></script>
 </body>
 
 </html>

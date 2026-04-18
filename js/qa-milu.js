@@ -28,6 +28,7 @@ import {
 import { isInlineEditableTarget, cancelInlineEdit } from './cell-editor.js';
 import { initPdfZoomControls, loadPdfClear, loadPdfWithPage, renderPdfPage, setPdfSelection } from './pdf-viewer.js';
 import { updateSchemasInline, renderSelectedRowPosPanel, renderSelectedRowPosTop } from './schemas.js';
+import './bulk-revision-helper.js';
 import { getEngineJsonForRow } from './helpers.js';
 import {
     changePage,
@@ -54,7 +55,7 @@ function queueColumnViewRefresh() {
     });
 }
 
-const QA_CHECKS_STORAGE_KEY = 'milu:qa-active-error-checks:v1';
+const QA_CHECKS_STORAGE_KEY = 'milu:qa-active-error-checks:v2';
 const MODAL_FIELD_KEYS = [
     'POS',
     'pn_final',
@@ -1985,6 +1986,12 @@ function isTypingContext(target) {
     return tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT' || target.isContentEditable || Boolean(target.closest('[contenteditable="true"]'));
 }
 
+function updatePaginationToggleLabel() {
+    const btn = $('togglePaginationBtn');
+    if (!(btn instanceof HTMLButtonElement)) return;
+    btn.textContent = state.paginationEnabled ? 'Paginación: ON' : 'Paginación: OFF';
+}
+
 async function applyBulkQuickMode(quickMode) {
     const scopeSelect = $('bulkScopeSelect');
     if (!scopeSelect) return;
@@ -2067,6 +2074,7 @@ async function loadData() {
         state.currentPage = 1;
         state.sortKey = 'book_page_pos';
         state.sortAsc = true;
+        state.paginationEnabled = true;
         state.tableMode = 'qa';
         state.filters = {};
         state.qaChecksScopedRows = null;
@@ -2103,6 +2111,7 @@ async function loadData() {
         state.filteredData = [...state.allData];
         renderTable();
         renderPagination();
+        updatePaginationToggleLabel();
         syncSideRecordFormWithSelection();
         queueColumnViewRefresh();
 
@@ -2140,6 +2149,13 @@ function attachGlobalEvents() {
     $('nextBookPageBtn')?.addEventListener('click', goToNextBookPage);
     $('prevBookPageBtn')?.addEventListener('click', goToPrevBookPage);
     $('clearFiltersBtn')?.addEventListener('click', clearFilters);
+    $('togglePaginationBtn')?.addEventListener('click', () => {
+        state.paginationEnabled = !state.paginationEnabled;
+        state.currentPage = 1;
+        renderTable();
+        renderPagination();
+        updatePaginationToggleLabel();
+    });
 
     // QA Checks Modal
     $('openQaChecksModalBtn')?.addEventListener('click', openQaChecksModal);
@@ -2276,6 +2292,10 @@ function attachGlobalEvents() {
             return;
         }
         openMatchesModal(revisionKey);
+    });
+
+    $('qaSideApplyToMatches')?.addEventListener('click', () => {
+        window.qaRevisionBulk?.applySelectedToMatches();
     });
 
     $('qaSideMatchesBookFilter')?.addEventListener('change', () => {

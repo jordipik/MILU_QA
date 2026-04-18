@@ -176,7 +176,7 @@ export function setRowRevisionNoSave(row, estado, accion) {
 export function getRevisionEstadoClass(value) {
     const v = String(value || '').trim().toLowerCase();
     if (!v) return 'rev-empty';
-    if (v === 'pendiente') return 'rev-estado-pendiente';
+    if (v === 'copia') return 'rev-estado-copia';
     if (v === 'en revisión') return 'rev-estado-en-revision';
     if (v === 'revisado') return 'rev-estado-revisado';
     if (v === 'descartado') return 'rev-estado-descartado';
@@ -202,7 +202,7 @@ export function updateRevisionSelectVisual(selectEl) {
     if (!td) return;
     const allRevClasses = [
         'rev-empty',
-        'rev-estado-pendiente', 'rev-estado-en-revision', 'rev-estado-revisado', 'rev-estado-descartado',
+        'rev-estado-copia', 'rev-estado-en-revision', 'rev-estado-revisado', 'rev-estado-descartado',
         'rev-accion-mantener', 'rev-accion-actualizar', 'rev-accion-revisar', 'rev-accion-sustituir', 'rev-accion-eliminar'
     ];
     td.classList.remove(...allRevClasses);
@@ -288,4 +288,73 @@ export async function applyImportedRevisionToEngineJson(parsedRevisionPayload) {
     }
 
     return await response.json();
+}
+
+// ─── Aplicar revisión a registros con igual part number ─────────────────────
+
+/**
+ * Aplica el estado de revisión de un registro seleccionado a todos los
+ * registros con el mismo part number que estén en estado "copia",
+ * sin modificar el registro original.
+ * 
+ * @param {Object} selectedRow - La fila seleccionada (debe tener estado "revisado")
+ * @returns {Promise<Object>} Resumen de registros actualizados
+ */
+export async function applyRevisionToMatchingPartNumbers(selectedRow) {
+    if (!selectedRow) {
+        throw new Error('Debe seleccionar un registro primero.');
+    }
+
+    // Obtener part number
+    const selectedPn = String(selectedRow?.['PART NO.'] ?? selectedRow?.pn ?? '').trim();
+    if (!selectedPn) {
+        throw new Error('El registro seleccionado no tiene un Part Number.');
+    }
+
+    // Verificar que el estado es "revisado"
+    const selectedEstado = String(selectedRow?.qa_revision_estado || '').trim().toLowerCase();
+    if (selectedEstado !== 'revisado') {
+        throw new Error('El registro seleccionado debe tener estado "Ok" (revisado) para aplicar esta operación.');
+    }
+
+    // Obtener acción del registro seleccionado
+    const selectedAccion = String(selectedRow?.qa_revision_accion || '').trim();
+
+    // Buscar todos los registros con igual part number y estado "copia"
+    const targetRows = state.allData.filter(row => {
+        if (row === selectedRow) return false; // Excluir el registro seleccionado
+        const pn = String(row?.['PART NO.'] ?? row?.pn ?? '').trim();
+        const estado = String(row?.qa_revision_estado || '').trim().toLowerCase();
+        return pn === selectedPn && estado === 'copia';
+    });
+
+    if (targetRows.length === 0) {
+        return {
+            success: true,
+            message: 'No hay registros con el mismo Part Number en estado "Copia".',
+            updated: 0,
+            targetPn: selectedPn
+        };
+    }
+
+    // Actualizar todos los registros encontrados
+    const errors = [];
+    for (const row of targetRows) {
+        try {
+            setRowRevision(row, 'revisado', selectedAccion);
+        } catch (error) {
+            errors.push({
+                id: String(row?.ID || ''),
+                error: error.message
+            });
+        }
+    }
+
+    return {
+        success: errors.length === 0,
+        message: `Se actualizaron ${targetRows.length} registros con Part Number "${selectedPn}" de "Copia" a "Ok".`,
+        updated: targetRows.length,
+        targetPn: selectedPn,
+        errors: errors.length > 0 ? errors : undefined
+    };
 }

@@ -169,7 +169,7 @@ function getSelectionSearchTokens(selection) {
         pn,
         pos,
         designationFinal,
-        allowPnContains: pn.length >= 6,
+        allowPnContains: false,
         allowPosContains: false,
         allowDesignationContains: designationFinal.length >= 8
     };
@@ -526,7 +526,7 @@ export function setPdfSelection(row) {
     state.currentPdfSelection = {
         id: String(row?.ID ?? '').trim(),
         pos: String(row?.POS ?? '').trim(),
-        pn: String(row?.['PART NO.'] ?? row?.pn ?? '').trim(),
+        pn: String(row?.pn_final ?? row?.['PART NO.'] ?? row?.pn ?? '').trim(),
         designationFinal: String(row?.designation_final ?? row?.DESIGNATION ?? '').trim(),
         book: String(row?.engine_model ?? '').trim(),
         page: String(row?.['Source Page'] ?? '').trim(),

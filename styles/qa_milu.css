@@ -1901,7 +1901,7 @@
         }
 
         /* estados de revisiÃ³n â€” fondo + banda izquierda */
-        .revision-cell.rev-estado-pendiente {
+        .revision-cell.rev-estado-copia {
             background: #fef3c7;
             border-left-color: #d97706;
             color: #92400e;
