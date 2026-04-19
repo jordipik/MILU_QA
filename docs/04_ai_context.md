@@ -8,7 +8,6 @@ Minimize startup reading for an AI assistant while preserving enough context to 
 2. `js/state.js`
 3. `js/data-loader.js`
 4. `js/revision.js`
-5. `apply_revision_to_engines.js`
 6. `js/qa-table.js`
 7. `js/qa-milu.js`
 8. `js/helpers.js`
@@ -22,12 +21,11 @@ Optional early reads when task is specialized:
 - Single-page frontend with shared mutable `state` object.
 - Backend is local Express, no DB.
 - Main source-of-truth data is the 8 `engine_*.json` files.
-- Revision data can exist in both row fields and centralized sync payload file.
+- Revision data lives in row fields inside `engine_*.json`.
 
 ## Safe Debug Priority
 1. backend health: `GET /health`
-2. sync endpoint behavior: `GET/POST /qa_revision_sync.php`
-3. persistence endpoint behavior: `/save-json` or `/apply-revision-to-engines`
+ 2. persistence endpoint behavior: `/save-json`
 4. payload from frontend
 5. actual disk write in JSON files
 6. only then UI rendering logic
@@ -47,16 +45,13 @@ Ignore unless task explicitly asks for them:
 - frontend uses ES modules; backend uses CommonJS.
 - avoid full table re-renders for selection-only changes.
 - revision key aliases matter (`idx`, legacy key, occurrence key).
-- route `/qa_revision_sync.php` must be explicitly handled before static middleware.
 
 ## Common Failure Patterns
 - Backend not running but UI still loaded from static files.
 - Save endpoint hit with wrong engine file name inferred from row.
-- Imported revision payload mismatch due to key alias expectations.
 - Row update visually stale due to not refreshing selected row state.
 
 ## Recommended Validation After Changes
 - open `http://localhost:3000/qa_milu.html`
 - verify backend badge transitions to connected
 - perform one revision change and confirm write in target `engine_*.json`
-- run import/apply scenario if revision logic changed

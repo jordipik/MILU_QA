@@ -109,9 +109,6 @@ Core state object:
 }
 ```
 
-### `/apply-revision-to-engines` request
-- entire revision payload object (v2 or compatible object accepted after normalization).
-
 ### `/health` response
 ```json
 {

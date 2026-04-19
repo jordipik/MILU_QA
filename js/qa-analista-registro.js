@@ -23,7 +23,7 @@ const CRITICAL_CODES = new Set([
 
 let currentRow = null;
 let reviewedHistory = [];
-const PIPELINE_TOTAL_CHECKS = 7;
+const TOTAL_PROCESS_CHECKS = 7;
 
 function txt(value, fallback = '-') {
     const normalized = String(value ?? '').trim();
@@ -192,7 +192,7 @@ function buildHistoryEntry(row) {
         pos: txt(row?.POS, ''),
         pn: txt(row?.pn_final, txt(row?.['PART NO.'], '')),
         failedChecks,
-        passedChecks: Math.max(PIPELINE_TOTAL_CHECKS - failedChecks, 0),
+        passedChecks: Math.max(TOTAL_PROCESS_CHECKS - failedChecks, 0),
         outcome: getRowQuickOutcome(row)
     };
 }
@@ -447,7 +447,7 @@ function computeVerdict(row) {
         return {
             status: 'ko',
             title: 'Estado: REGISTRO_KO',
-            message: `Falla ${critical.length + major.length} checks del pipeline (${critical.length} criticos).`,
+            message: `Falla ${critical.length + major.length} checks del proceso (${critical.length} criticos).`,
             critical,
             major,
             warnings
@@ -466,9 +466,9 @@ function computeVerdict(row) {
     };
 }
 
-function renderPipeline(row, verdict) {
-    const list = $('pipelineList');
-    const summary = $('pipelineSummary');
+function renderProcessChecks(row, verdict) {
+    const list = $('processList');
+    const summary = $('processSummary');
     if (!(list instanceof HTMLElement) || !(summary instanceof HTMLElement)) return;
 
     const codes = getRowCodes(row);
@@ -527,11 +527,11 @@ function renderPipeline(row, verdict) {
     list.innerHTML = checks.map((check) => {
         const cssState = check.pass ? 'pass' : (check.warn ? 'warn' : 'fail');
         const marker = check.pass ? 'OK' : (check.warn ? '!' : 'X');
-        return `<li class="pipeline-item ${cssState}">
-            <span class="pipeline-marker">${marker}</span>
+        return `<li class="process-item ${cssState}">
+            <span class="process-marker">${marker}</span>
             <div>
-                <p class="pipeline-title">${check.title}</p>
-                <p class="pipeline-detail">${check.detail}</p>
+                <p class="process-title">${check.title}</p>
+                <p class="process-detail">${check.detail}</p>
             </div>
         </li>`;
     }).join('');
@@ -574,8 +574,8 @@ function renderHeader(row, verdict) {
     globalVerdict.classList.add(verdict.status === 'ok' ? 'status-ok' : 'status-ko');
     globalVerdict.textContent = verdict.title;
     const failedChecks = getRowCodes(row).length;
-    const passedChecks = Math.max(PIPELINE_TOTAL_CHECKS - failedChecks, 0);
-    statusText.textContent = `${verdict.message} Pipeline: ${passedChecks}/${PIPELINE_TOTAL_CHECKS} filtros correctos.`;
+    const passedChecks = Math.max(TOTAL_PROCESS_CHECKS - failedChecks, 0);
+    statusText.textContent = `${verdict.message} Proceso: ${passedChecks}/${TOTAL_PROCESS_CHECKS} filtros correctos.`;
 }
 
 function syncOutcomeButtons(row) {
@@ -607,7 +607,7 @@ function renderRecord(row) {
     renderHeaderStrip(row);
     renderSelectedContext(row);
     renderCorrelationMatrix(row);
-    renderPipeline(row, verdict);
+    renderProcessChecks(row, verdict);
     renderEvidence(row, verdict);
     fillEditForm(row);
     syncOutcomeButtons(row);

@@ -319,7 +319,7 @@ function getConsistencyWarnings(row) {
     return warnings;
 }
 
-function buildPipeline(row) {
+function buildProcessSteps(row) {
     const codes = new Set(getRowCodes(row));
     const warnings = getConsistencyWarnings(row);
 
@@ -369,8 +369,8 @@ function buildPipeline(row) {
     ];
 }
 
-function computePipelineState(row) {
-    const steps = buildPipeline(row);
+function computeProcessState(row) {
+    const steps = buildProcessSteps(row);
     const executed = Math.max(0, Math.min(currentProcessIndex, steps.length));
     const executedSteps = steps.slice(0, executed);
     const failedExecuted = executedSteps.filter(step => !step.pass);
@@ -390,7 +390,7 @@ function computePipelineState(row) {
         return {
             status: 'ko',
             title: 'Estado: REGISTRO_KO',
-            message: `Pipeline completo con ${failedExecuted.length} procesos fallidos.`,
+            message: `Proceso completo con ${failedExecuted.length} procesos fallidos.`,
             steps,
             executed,
             failedExecuted
@@ -400,7 +400,7 @@ function computePipelineState(row) {
     return {
         status: 'ok',
         title: 'Estado: REGISTRO_OK',
-        message: 'Pipeline completo sin fallos. Registro listo para OK.',
+        message: 'Proceso completo sin fallos. Registro listo para OK.',
         steps,
         executed,
         failedExecuted
@@ -562,12 +562,18 @@ function resolveEngineFile(row) {
 }
 
 function fillEditFields(row) {
-    $('editPnFinal').value = txt(row?.pn_final, '');
-    $('editDesignationFinal').value = txt(row?.designation_final, '');
-    $('editMeasurementFinal').value = txt(row?.measurement_final, '');
-    $('editWeightFinal').value = txt(row?.weight_final, '');
-    $('editRevisionEstado').value = txt(row?.qa_revision_estado, '');
-    $('editRevisionAccion').value = txt(row?.qa_revision_accion, '');
+    const pnFinal = $('editPnFinal');
+    const desigFinal = $('editDesignationFinal');
+    const measFinal = $('editMeasurementFinal');
+    const weightFinal = $('editWeightFinal');
+    const revEstado = $('editRevisionEstado');
+    const revAccion = $('editRevisionAccion');
+    if (pnFinal) pnFinal.value = txt(row?.pn_final, '');
+    if (desigFinal) desigFinal.value = txt(row?.designation_final, '');
+    if (measFinal) measFinal.value = txt(row?.measurement_final, '');
+    if (weightFinal) weightFinal.value = txt(row?.weight_final, '');
+    if (revEstado) revEstado.value = txt(row?.qa_revision_estado, '');
+    if (revAccion) revAccion.value = txt(row?.qa_revision_accion, '');
 }
 
 function renderRecordPosition(row) {
@@ -757,19 +763,19 @@ async function renderComparisonTable(row) {
     setPdfReadTokens(dedupedReadTokens);
 }
 
-function renderPipeline(row, pipelineState) {
-    const list = $('pipelineList');
-    const summary = $('pipelineSummary');
+function renderProcessList(row, processState) {
+    const list = $('processList');
+    const summary = $('processSummary');
     if (!(list instanceof HTMLElement) || !(summary instanceof HTMLElement)) return;
 
-    const steps = pipelineState.steps;
-    summary.textContent = `${pipelineState.executed}/${steps.length} procesos ejecutados`;
+    const steps = processState.steps;
+    summary.textContent = `${processState.executed}/${steps.length} procesos ejecutados`;
 
     list.innerHTML = steps.map((step, index) => {
         let cssClass = 'pending';
         let stateLabel = 'PENDIENTE';
 
-        if (index < pipelineState.executed) {
+        if (index < processState.executed) {
             if (step.pass) {
                 cssClass = 'pass';
                 stateLabel = 'PASS';
@@ -789,16 +795,16 @@ function renderPipeline(row, pipelineState) {
     }).join('');
 }
 
-function renderEvidence(row, pipelineState) {
+function renderEvidence(row, processState) {
     const statusText = $('statusText');
     const evidence = $('evidenceList');
     if (!(statusText instanceof HTMLElement) || !(evidence instanceof HTMLElement)) return;
 
-    statusText.textContent = pipelineState.message;
+    statusText.textContent = processState.message;
 
     const lines = [];
     lines.push(`<li>Registro: PN/PART NO ${getDisplayPn(row)} | ${txt(row?.engine_model)} / ${txt(row?.['Source Page'])} / POS ${txt(row?.POS)}</li>`);
-    lines.push(`<li class="${pipelineState.status === 'ok' ? 'ok' : pipelineState.status === 'ko' ? 'ko' : ''}">Veredicto actual: ${pipelineState.title}</li>`);
+    lines.push(`<li class="${processState.status === 'ok' ? 'ok' : processState.status === 'ko' ? 'ko' : ''}">Veredicto actual: ${processState.title}</li>`);
 
     const codes = getRowCodes(row);
     if (codes.length) {
@@ -812,13 +818,13 @@ function renderEvidence(row, pipelineState) {
     evidence.innerHTML = lines.join('');
 }
 
-function renderVerdict(pipelineState) {
+function renderVerdict(processState) {
     const verdict = $('globalVerdict');
     if (!(verdict instanceof HTMLElement)) return;
 
     verdict.classList.remove('raw', 'ok', 'ko');
-    verdict.classList.add(pipelineState.status);
-    verdict.textContent = pipelineState.title;
+    verdict.classList.add(processState.status);
+    verdict.textContent = processState.title;
 }
 
 function syncPdfWithCurrentRow(row) {
@@ -852,10 +858,10 @@ function renderRecord(row) {
     });
     fillEditFields(row);
 
-    const pipelineState = computePipelineState(row);
-    renderPipeline(row, pipelineState);
-    renderEvidence(row, pipelineState);
-    renderVerdict(pipelineState);
+    const processState = computeProcessState(row);
+    renderProcessList(row, processState);
+    renderEvidence(row, processState);
+    renderVerdict(processState);
     syncPdfWithCurrentRow(row);
 }
 
@@ -929,12 +935,12 @@ async function saveCurrentFieldChanges() {
     }
 
     const changes = [
-        ['pn_final', $('editPnFinal').value],
-        ['designation_final', $('editDesignationFinal').value],
-        ['measurement_final', $('editMeasurementFinal').value],
-        ['weight_final', $('editWeightFinal').value],
-        ['qa_revision_estado', $('editRevisionEstado').value],
-        ['qa_revision_accion', $('editRevisionAccion').value]
+        ['pn_final', $('editPnFinal')?.value ?? txt(currentRow?.pn_final, '')],
+        ['designation_final', $('editDesignationFinal')?.value ?? txt(currentRow?.designation_final, '')],
+        ['measurement_final', $('editMeasurementFinal')?.value ?? txt(currentRow?.measurement_final, '')],
+        ['weight_final', $('editWeightFinal')?.value ?? txt(currentRow?.weight_final, '')],
+        ['qa_revision_estado', $('editRevisionEstado')?.value ?? txt(currentRow?.qa_revision_estado, '')],
+        ['qa_revision_accion', $('editRevisionAccion')?.value ?? txt(currentRow?.qa_revision_accion, '')]
     ];
 
     for (const [field, value] of changes) {
@@ -949,7 +955,7 @@ async function saveCurrentFieldChanges() {
 async function setOutcome(kind) {
     $('editRevisionEstado').value = kind === 'ok' ? 'revisado' : 'descartado';
     $('editRevisionAccion').value = kind === 'ok' ? 'mantener' : 'revisar';
-    currentProcessIndex = buildPipeline(currentRow).length;
+    currentProcessIndex = buildProcessSteps(currentRow).length;
     await saveCurrentFieldChanges();
 }
 
@@ -1015,7 +1021,7 @@ async function runNextProcess() {
 
     await revalidateCurrentRow();
 
-    const total = buildPipeline(currentRow).length;
+    const total = buildProcessSteps(currentRow).length;
     if (currentProcessIndex >= total) {
         alert('Todos los procesos ya fueron ejecutados para este registro.');
         return;
@@ -1032,7 +1038,7 @@ async function runAllProcesses() {
     }
 
     await revalidateCurrentRow();
-    currentProcessIndex = buildPipeline(currentRow).length;
+    currentProcessIndex = buildProcessSteps(currentRow).length;
     renderRecord(currentRow);
 }
 
@@ -1091,25 +1097,6 @@ $('revalidateBtn').addEventListener('click', () => {
     revalidateCurrentRow().catch((error) => alert(`No se pudo revalidar: ${error.message}`));
 });
 
-$('runNextProcessBtn').addEventListener('click', () => {
-    runNextProcess().catch((error) => alert(`No se pudo ejecutar proceso: ${error.message}`));
-});
-
-$('runAllProcessBtn').addEventListener('click', () => {
-    runAllProcesses().catch((error) => alert(`No se pudo ejecutar pipeline completo: ${error.message}`));
-});
-
-$('saveFieldsBtn').addEventListener('click', () => {
-    saveCurrentFieldChanges().catch((error) => alert(`No se pudieron guardar cambios: ${error.message}`));
-});
-
-$('markOkBtn').addEventListener('click', () => {
-    setOutcome('ok').catch((error) => alert(`No se pudo marcar registro_ok: ${error.message}`));
-});
-
-$('markKoBtn').addEventListener('click', () => {
-    setOutcome('ko').catch((error) => alert(`No se pudo marcar registro_ko: ${error.message}`));
-});
 
 $('recordIdInput').addEventListener('keydown', (event) => {
     if (event.key !== 'Enter') return;

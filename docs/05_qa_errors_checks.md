@@ -77,7 +77,6 @@ Nota:
 Se produce en estos casos:
 - POST /save-json al guardar una celda editable
 - POST /recompute-qa-errors para recálculo masivo completo
-- apply_revision_to_engines.js al aplicar revisiones masivas
 - npm run errors:rebuild para rebuild offline de todos los engine_*.json
 
 Resultado:

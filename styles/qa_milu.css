@@ -2345,20 +2345,6 @@
             padding-left: 8px;
         }
 
-        #importRevisionBtn {
-            background: linear-gradient(135deg, #dbeafe 0%, #eff6ff 100%);
-            color: #1e3a8a;
-            border-color: #bfdbfe;
-            font-weight: 800;
-        }
-
-        #exportRevisionBtn {
-            background: linear-gradient(135deg, #dcfce7 0%, #f0fdf4 100%);
-            color: #166534;
-            border-color: #bbf7d0;
-            font-weight: 800;
-        }
-
         #clearFiltersBtn {
             background: linear-gradient(135deg, #ffe4e6 0%, #fff1f2 100%);
             color: #9f1239;

@@ -3,12 +3,11 @@
 ## Top-Level Layout
 
 ### Runtime core
-- `server.js`: Express backend for health, revision sync, single-cell save, batch apply
+- `server.js`: Express backend for health, single-cell save and QA checks
 - `qa_milu.html`: main QA application page
 - `js/`: frontend ES modules
 - `styles/qa_milu.css`: main UI styling
 - `engine_*.json` (8 files): runtime datasets
-- `qa_revision_server_data.json`: persisted revision payload data
 
 ### Runtime support assets
 - `pdf/`: source PDF files displayed in viewer
@@ -43,7 +42,7 @@
 - `state.js`: shared global mutable state
 - `data-loader.js`: fetch/load/save helpers and backend health check
 - `qa-table.js`: filtering, sorting, pagination, row rendering, grouped mode
-- `revision.js`: revision keying, import/export, row revision updates
+- `revision.js`: revision keying and row revision updates
 - `helpers.js`: pure helper and validation logic
 - `cell-editor.js`: inline cell editing
 - `column-view.js`: column order/visibility modes and width persistence
@@ -53,7 +52,6 @@
 
 ## Backend and Node Script Map
 - `server.js`: API layer + static serving
-- `apply_revision_to_engines.js`: batch revision application to 8 engine files
 - `generate_synthetic_exports.js`: produces synthetic New/Superseded outputs
 
 ## Important File Categories to Treat as Generated or Output

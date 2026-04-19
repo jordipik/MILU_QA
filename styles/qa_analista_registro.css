@@ -419,20 +419,20 @@ body {
     font-size: 11px;
 }
 
-.pipeline-item {
+.process-item {
     font-size: 11px;
 }
 
-.pipeline-item .pipeline-marker {
+.process-item .process-marker {
     display: none;
 }
 
-.pipeline-title {
+.process-title {
     margin: 0;
     font-weight: 600;
 }
 
-.pipeline-detail {
+.process-detail {
     margin: 2px 0 0;
     font-size: 11px;
     color: var(--muted);

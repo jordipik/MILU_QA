@@ -6,8 +6,6 @@
 import { state } from './state.js';
 import { saveCellToServer } from './data-loader.js';
 
-const REVISION_APPLY_ENDPOINT = '/apply-revision-to-engines';
-
 // ─── Claves de revisión ──────────────────────────────────────────────────────
 
 export function buildLegacyRevisionKey(row) {
@@ -70,40 +68,8 @@ export function parseStableRevisionIndex(key) {
     return Number(m[1]);
 }
 
-export function normalizeRevisionDataObject(parsed) {
-    if (!parsed || typeof parsed !== 'object') return {};
-    const normalizedData = {};
-
-    if (parsed.revisions && typeof parsed.revisions === 'object') {
-        return normalizeRevisionDataObject(parsed.revisions);
-    }
-
-    if (parsed.v === 2 && Array.isArray(parsed.r)) {
-        parsed.r.forEach(entry => {
-            const idx = Number(entry?.[0]);
-            if (!Number.isFinite(idx) || idx <= 0) return;
-            const key = `idx=${idx}`;
-            const value = normalizeRevisionRecord({ estado: entry?.[1], accion: entry?.[2], updated_at: '' });
-            if (revisionRecordHasData(value)) normalizedData[key] = value;
-        });
-        if (parsed.k && typeof parsed.k === 'object') {
-            Object.entries(parsed.k).forEach(([key, value]) => {
-                const normalized = normalizeRevisionRecord(value);
-                if (revisionRecordHasData(normalized)) normalizedData[key] = normalized;
-            });
-        }
-        return normalizedData;
-    }
-
-    Object.entries(parsed).forEach(([key, value]) => {
-        const normalized = normalizeRevisionRecord(value);
-        if (revisionRecordHasData(normalized)) normalizedData[key] = normalized;
-    });
-    return normalizedData;
-}
-
 export async function loadRevisionData() {
-    // Las revisiones ya vienen en qa_revision_* dentro de engine_*.json.
+    // Sin import/export de revisiones: no hay carga adicional.
 }
 
 // ─── Aplicar revisiones a las filas ──────────────────────────────────────────
@@ -163,14 +129,6 @@ export function setRowRevision(row, estado, accion) {
     });
 }
 
-export function setRowRevisionNoSave(row, estado, accion) {
-    const normalizedEstado = String(estado || '').trim();
-    const normalizedAccion = String(accion || '').trim();
-    row.qa_revision_estado = normalizedEstado;
-    row.qa_revision_accion = normalizedAccion;
-    row.qa_revision_updated_at = new Date().toISOString();
-}
-
 // ─── Clases visuales ─────────────────────────────────────────────────────────
 
 export function getRevisionEstadoClass(value) {
@@ -208,86 +166,6 @@ export function updateRevisionSelectVisual(selectEl) {
     td.classList.remove(...allRevClasses);
     const visualClass = field === 'estado' ? getRevisionEstadoClass(selectEl.value) : getRevisionAccionClass(selectEl.value);
     td.classList.add('revision-cell', visualClass);
-}
-
-// ─── Export / Import ─────────────────────────────────────────────────────────
-
-export function createRevisionExportPayload() {
-    const revisions = {};
-    state.allData.forEach(row => {
-        const revision = normalizeRevisionRecord({
-            estado: row?.qa_revision_estado,
-            accion: row?.qa_revision_accion,
-            updated_at: row?.qa_revision_updated_at
-        });
-        if (!revisionRecordHasData(revision)) return;
-        revisions[getRevisionKey(row)] = revision;
-    });
-
-    return {
-        meta: { exported_at: new Date().toISOString(), source: 'qa_milu.html', version: 1, rows: Object.keys(revisions).length },
-        revisions
-    };
-}
-
-export function handleExportRevision() {
-    const payload = createRevisionExportPayload();
-    const stamp = new Date().toISOString().replace(/[:.]/g, '-');
-    const blob = new Blob([JSON.stringify(payload, null, 2)], { type: 'application/json' });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url; a.download = `qa_revision_${stamp}.json`;
-    document.body.appendChild(a); a.click(); a.remove();
-    URL.revokeObjectURL(url);
-}
-
-export async function handleImportRevisionFile(file) {
-    if (!file) return;
-    const text = await file.text();
-    const parsed = JSON.parse(text);
-    const importedRevisions = parsed?.revisions;
-    if (!importedRevisions || typeof importedRevisions !== 'object') {
-        throw new Error('JSON de revisión no válido: falta "revisions"');
-    }
-    const normalizedImport = normalizeRevisionDataObject(parsed);
-
-    state.allData.forEach(row => {
-        const aliases = getRevisionKeyAliases(row);
-        let imported = null;
-        for (const alias of aliases) {
-            if (normalizedImport[alias]) {
-                imported = normalizedImport[alias];
-                break;
-            }
-        }
-        if (!imported) return;
-
-        const normalized = normalizeRevisionRecord(imported);
-        row.qa_revision_estado = normalized.estado;
-        row.qa_revision_accion = normalized.accion;
-        row.qa_revision_updated_at = normalized.updated_at || new Date().toISOString();
-    });
-
-    return parsed;
-}
-
-export async function applyImportedRevisionToEngineJson(parsedRevisionPayload) {
-    if (!parsedRevisionPayload || typeof parsedRevisionPayload !== 'object') {
-        throw new Error('No hay payload de revisión para aplicar en backend.');
-    }
-
-    const response = await fetch(REVISION_APPLY_ENDPOINT, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(parsedRevisionPayload)
-    });
-
-    if (!response.ok) {
-        const data = await response.json().catch(() => ({}));
-        throw new Error(data.error || `HTTP ${response.status}`);
-    }
-
-    return await response.json();
 }
 
 // ─── Aplicar revisión a registros con igual part number ─────────────────────

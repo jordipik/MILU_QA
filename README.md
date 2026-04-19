@@ -49,7 +49,7 @@ Preparar `dist/milu_publish` en local (recomendado antes de push):
 El script copia a `dist/milu_publish/`:
 - HTML y estilos de entrada
 - carpetas `js/`, `styles/`, `esquemas/`, `esquemas_pos_circulos/`
-- `CNAME` y `qa_revision_sync.php`
+- `CNAME`
 - todos los `engine_*.json`
 
 Publicar con un comando (prepare + stage + commit + push):
@@ -73,12 +73,7 @@ Notas del script de publicacion:
 ## Endpoints clave
 
 - `GET /health`
-- `GET/POST /qa_revision_sync.php`
 - `POST /save-json` (edicion puntual de un campo en `engine_*.json`)
-- `POST /apply-revision-to-engines` (aplicacion masiva de revisiones)
-
-Archivo de persistencia de revisiones:
-- [qa_revision_server_data.json](qa_revision_server_data.json)
 
 ## Proceso oficial: pasar de JSON originales a JSON definitivos
 

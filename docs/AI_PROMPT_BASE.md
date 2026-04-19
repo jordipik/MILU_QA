@@ -14,7 +14,6 @@ Read this context first:
 
 If task is backend persistence related, read next:
 - docs/modules/server.md
-- docs/modules/apply_revision_to_engines.md
 
 If task is frontend table/revision related, read next:
 - docs/modules/js_state.md
@@ -28,10 +27,9 @@ Execution rules:
 - do not edit generated/legacy folders unless explicitly requested
 - validate persistence issues in this order:
   1) GET /health
-  2) GET/POST /qa_revision_sync.php
-  3) /save-json or /apply-revision-to-engines
-  4) verify JSON disk write
-  5) then inspect UI rendering
+  2) POST /save-json
+  3) verify JSON disk write
+  4) then inspect UI rendering
 
 Output format:
 - first: concise diagnosis/plan

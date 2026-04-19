@@ -6,16 +6,10 @@ import { state } from './state.js';
 import { escapeHtml, getRowErrors, getRowErrorType, getRowValueForColumn, val } from './helpers.js';
 import { checkSaveBackendConnection, fetchJsonSafe, loadPartitionedEngineData, saveCellToServer } from './data-loader.js';
 import {
-    applyImportedRevisionToEngineJson,
     applyRevisionDataToRows,
     assignRevisionKeys,
-    createRevisionExportPayload,
     getRevisionKey,
-    handleExportRevision,
-    handleImportRevisionFile,
-    loadRevisionData,
     setRowRevision,
-    setRowRevisionNoSave,
     updateRevisionSelectVisual
 } from './revision.js';
 import {
@@ -1994,16 +1988,27 @@ async function applyBulkQuickMode(quickMode) {
     const confirmed = window.confirm(`Se aplicará ${targetValues.label} masiva a ${targetRows.length} ${scopeText}. ¿Continuar?`);
     if (!confirmed) return;
 
-    targetRows.forEach(row => {
+    const failedRows = [];
+    for (const row of targetRows) {
         const nextEstado = targetValues.estado === null ? String(row.qa_revision_estado || '') : targetValues.estado;
         const nextAccion = targetValues.accion === null ? String(row.qa_revision_accion || '') : targetValues.accion;
-        setRowRevisionNoSave(row, nextEstado, nextAccion);
-    });
+        const engineFile = getEngineJsonForRow(row);
 
-    try {
-        await applyImportedRevisionToEngineJson(createRevisionExportPayload());
-    } catch (error) {
-        alert(`No se pudo persistir el cambio masivo en los JSON: ${error.message}`);
+        try {
+            if (!engineFile) throw new Error('No se pudo resolver engine JSON');
+            await saveCellToServer(engineFile, row.ID, 'qa_revision_estado', nextEstado);
+            await saveCellToServer(engineFile, row.ID, 'qa_revision_accion', nextAccion);
+            row.qa_revision_estado = nextEstado;
+            row.qa_revision_accion = nextAccion;
+            row.qa_revision_updated_at = new Date().toISOString();
+        } catch (error) {
+            failedRows.push(String(row?.ID || ''));
+            console.warn('No se pudo aplicar cambio masivo de revision:', error);
+        }
+    }
+
+    if (failedRows.length > 0) {
+        alert(`No se pudieron guardar ${failedRows.length} registros en el cambio masivo.`);
     }
 
     renderTable();
@@ -2062,7 +2067,6 @@ async function loadData() {
         }
 
         assignRevisionKeys(state.allData);
-        await loadRevisionData();
         applyRevisionDataToRows(state.allData);
         loadColumnWidths();
 
@@ -2217,29 +2221,6 @@ function attachGlobalEvents() {
 
     $('pageFilterSelect')?.addEventListener('change', () => {
         setPageFilterValue($('pageFilterSelect')?.value || '');
-    });
-
-    $('exportRevisionBtn')?.addEventListener('click', handleExportRevision);
-
-    const revisionFileInput = $('revisionFileInput');
-    $('importRevisionBtn')?.addEventListener('click', () => revisionFileInput?.click());
-    revisionFileInput?.addEventListener('change', async (event) => {
-        const file = event.target.files?.[0];
-        if (!file) return;
-        try {
-            const importedPayload = await handleImportRevisionFile(file);
-            const backendApply = await applyImportedRevisionToEngineJson(importedPayload);
-            applyRevisionDataToRows(state.allData);
-            state.currentPage = 1;
-            renderTable();
-            renderPagination();
-            const appliedCount = Number(backendApply?.totalApplied || 0);
-            alert(`Revision importada y aplicada a JSON de libros. Filas actualizadas: ${appliedCount}.`);
-        } catch (error) {
-            alert(`Error importando revisión: ${error.message}`);
-        } finally {
-            revisionFileInput.value = '';
-        }
     });
 
     $('bulkRevOkBtn')?.addEventListener('click', () => applyBulkQuickMode('revok'));
