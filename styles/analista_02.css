@@ -342,6 +342,7 @@ body.a2-resizing * {
     width: 100%;
     border-collapse: collapse;
     font-size: 12px;
+    table-layout: fixed;
 }
 
 .a2-compare-table th,
@@ -351,6 +352,8 @@ body.a2-resizing * {
     padding: 8px;
     text-align: left;
     white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
 }
 
 .a2-compare-table th:last-child,
@@ -364,6 +367,25 @@ body.a2-resizing * {
     text-transform: uppercase;
     font-size: 10px;
     letter-spacing: 0.05em;
+    position: relative;
+    user-select: none;
+    padding-right: 8px;
+}
+
+.a2-compare-table th::before {
+    content: '';
+    position: absolute;
+    right: 0;
+    top: 0;
+    height: 100%;
+    width: 6px;
+    cursor: col-resize;
+    background: transparent;
+}
+
+.a2-compare-table th.resizing {
+    user-select: none;
+    opacity: 0.8;
 }
 
 .a2-compare-table td.field {

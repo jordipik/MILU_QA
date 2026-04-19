@@ -1,5 +1,5 @@
 import { state } from './state.js';
-import { loadPartitionedEngineData, saveCellToServer } from './data-loader.js';
+import { getEngineJsonFiles, loadFirstEngineData, saveCellToServer } from './data-loader.js';
 import { assignRevisionKeys, applyRevisionDataToRows } from './revision.js';
 import { initPdfZoomControls, loadPdfClear, loadPdfWithPage, requestPdfRelayout, setPdfReadTokens, setPdfSelection } from './pdf-viewer.js';
 
@@ -22,6 +22,8 @@ const pdfPageTextCache = new Map();
 const PDF_CLUSTER_GAP_MAX = 24;
 const PDF_LINE_Y_TOLERANCE = 2;
 const RIGHT_PANEL_WIDTH_KEY = 'analista02:right-panel-width';
+const COMPARISON_WIDTHS_KEY = 'analista02:comparison-column-widths';
+const COMPARISON_MIN_COL_WIDTH = 30;
 
 function txt(value, fallback = '-') {
     const normalized = String(value ?? '').trim();
@@ -465,6 +467,69 @@ function initHorizontalSplitter() {
         requestPdfRelayout();
         event.preventDefault();
     });
+}
+
+function saveComparisonColumnWidths() {
+    const widths = {};
+    document.querySelectorAll('.a2-compare-table thead th').forEach((th, index) => {
+        const key = (th.dataset.sort || th.textContent || `idx_${index}`).trim();
+        widths[key] = th.style.width || `${th.offsetWidth}px`;
+    });
+    try { localStorage.setItem(COMPARISON_WIDTHS_KEY, JSON.stringify(widths)); }
+    catch (error) { console.warn('No se pudieron guardar anchos de comparativa:', error); }
+}
+
+function loadComparisonColumnWidths() {
+    let widths = {};
+    try { widths = JSON.parse(localStorage.getItem(COMPARISON_WIDTHS_KEY) || '{}'); }
+    catch (error) {
+        console.warn('No se pudieron cargar anchos de comparativa:', error);
+        return;
+    }
+    if (!Object.keys(widths).length) return;
+
+    document.querySelectorAll('.a2-compare-table thead th').forEach((th, index) => {
+        const key = (th.dataset.sort || th.textContent || `idx_${index}`).trim();
+        if (widths[key]) th.style.width = widths[key];
+    });
+}
+
+function initComparisonColumnResize() {
+    const table = document.querySelector('.a2-compare-table');
+    if (!(table instanceof HTMLTableElement)) return;
+    if (table.dataset.columnsResizable === '1') return;
+
+    let resizingColumn = null;
+    let startX = 0;
+    let startWidth = 0;
+
+    document.querySelectorAll('.a2-compare-table thead th').forEach((th) => {
+        th.addEventListener('mousedown', (event) => {
+            if (event.button !== 0) return;
+            const rect = th.getBoundingClientRect();
+            if (rect.right - event.clientX > 6) return;
+            resizingColumn = th;
+            startX = event.clientX;
+            startWidth = th.offsetWidth;
+            th.classList.add('resizing');
+            event.preventDefault();
+        });
+    });
+
+    document.addEventListener('mousemove', (event) => {
+        if (!resizingColumn) return;
+        const newWidth = Math.max(COMPARISON_MIN_COL_WIDTH, startWidth + (event.clientX - startX));
+        resizingColumn.style.width = `${newWidth}px`;
+    });
+
+    document.addEventListener('mouseup', () => {
+        if (!resizingColumn) return;
+        resizingColumn.classList.remove('resizing');
+        saveComparisonColumnWidths();
+        resizingColumn = null;
+    });
+
+    table.dataset.columnsResizable = '1';
 }
 
 function buildEngineOptions() {
@@ -975,15 +1040,24 @@ async function initialize() {
     try {
         state.rightPanelTab = 'pdf';
         initHorizontalSplitter();
+        initComparisonColumnResize();
+        loadComparisonColumnWidths();
         initPdfZoomControls();
         loadPdfClear();
 
-        const loadedRows = await loadPartitionedEngineData();
+        const initialEngineFile = getEngineJsonFiles()[0];
+        const loadedRows = await loadFirstEngineData();
         state.allData = sortRowsByBookPagePos(loadedRows);
 
         assignRevisionKeys(state.allData);
         applyRevisionDataToRows(state.allData);
         buildEngineOptions();
+
+        const engineSelect = $('engineFilterSelect');
+        if (engineSelect instanceof HTMLSelectElement && initialEngineFile) {
+            engineSelect.disabled = true;
+            engineSelect.title = `Carga limitada a ${initialEngineFile}`;
+        }
 
         const firstRow = state.allData[0] || null;
         if (firstRow) {

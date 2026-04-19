@@ -88,7 +88,90 @@
     "units": null,
     "UNITS": "PC",
     "Valid From Date": null,
-    "WEIGHT": "1.707 TO"
+    "WEIGHT": "1.707 TO",
+    "qa_errors": {
+      "version": 1,
+      "severity": "critical",
+      "codes": [
+        "missing_part_no",
+        "missing_pn_final"
+      ],
+      "fields": {
+        "PART NO.": [
+          "missing_part_no"
+        ],
+        "pn_final": [
+          "missing_part_no",
+          "missing_pn_final"
+        ],
+        "pn": [
+          "missing_part_no"
+        ]
+      },
+      "issues": [
+        {
+          "code": "missing_part_no",
+          "severity": "critical",
+          "fields": [
+            "PART NO.",
+            "pn_final",
+            "pn"
+          ],
+          "message": "PN vacio"
+        },
+        {
+          "code": "missing_pn_final",
+          "severity": "critical",
+          "fields": [
+            "pn_final"
+          ],
+          "message": "PN Final vacio"
+        }
+      ],
+      "updated_at": "2026-04-19T21:54:09.421Z"
+    },
+    "qa_errors_active": {
+      "version": 1,
+      "severity": "critical",
+      "codes": [
+        "missing_part_no",
+        "missing_pn_final"
+      ],
+      "fields": {
+        "PART NO.": [
+          "missing_part_no"
+        ],
+        "pn_final": [
+          "missing_part_no",
+          "missing_pn_final"
+        ],
+        "pn": [
+          "missing_part_no"
+        ]
+      },
+      "issues": [
+        {
+          "code": "missing_part_no",
+          "severity": "critical",
+          "fields": [
+            "PART NO.",
+            "pn_final",
+            "pn"
+          ],
+          "message": "PN vacio"
+        },
+        {
+          "code": "missing_pn_final",
+          "severity": "critical",
+          "fields": [
+            "pn_final"
+          ],
+          "message": "PN Final vacio"
+        }
+      ],
+      "signature": "designation_final_not_in_pdf|missing_designation_final|missing_part_no|missing_pn_final|missing_pos|pn_final_not_equal_pn_pdf",
+      "updated_at": "2026-04-19T21:54:09.421Z"
+    }
   },
   {
     "ID": "1100400",
@@ -181,7 +264,24 @@
     "units": "KGM",
     "UNITS": "PC",
     "Valid From Date": "1996-04-01",
-    "WEIGHT": null
+    "WEIGHT": null,
+    "qa_errors": {
+      "version": 1,
+      "severity": "none",
+      "codes": [],
+      "fields": {},
+      "issues": [],
+      "updated_at": "2026-04-19T21:54:14.756Z"
+    },
+    "qa_errors_active": {
+      "version": 1,
+      "severity": "none",
+      "codes": [],
+      "fields": {},
+      "issues": [],
+      "signature": "designation_final_not_in_pdf|missing_designation_final|missing_part_no|missing_pn_final|missing_pos|pn_final_not_equal_pn_pdf",
+      "updated_at": "2026-04-19T21:54:14.756Z"
+    }
   },
   {
     "ID": "1100501",
@@ -280,7 +380,24 @@
     "units": "KGM",
     "UNITS": "PC",
     "Valid From Date": "1994-03-01",
-    "WEIGHT": "3,100 G"
+    "WEIGHT": "3,100 G",
+    "qa_errors": {
+      "version": 1,
+      "severity": "none",
+      "codes": [],
+      "fields": {},
+      "issues": [],
+      "updated_at": "2026-04-19T21:48:15.636Z"
+    },
+    "qa_errors_active": {
+      "version": 1,
+      "severity": "none",
+      "codes": [],
+      "fields": {},
+      "issues": [],
+      "signature": "designation_final_not_in_pdf|missing_designation_final|missing_part_no|missing_pn_final|missing_pos|pn_final_not_equal_pn_pdf",
+      "updated_at": "2026-04-19T21:48:15.636Z"
+    }
   },
   {
     "ID": "1100646",
@@ -379,7 +496,24 @@
     "units": "KGM",
     "UNITS": "PC",
     "Valid From Date": "1997-10-01",
-    "WEIGHT": "12 G"
+    "WEIGHT": "12 G",
+    "qa_errors": {
+      "version": 1,
+      "severity": "none",
+      "codes": [],
+      "fields": {},
+      "issues": [],
+      "updated_at": "2026-04-19T21:48:17.129Z"
+    },
+    "qa_errors_active": {
+      "version": 1,
+      "severity": "none",
+      "codes": [],
+      "fields": {},
+      "issues": [],
+      "signature": "designation_final_not_in_pdf|missing_designation_final|missing_part_no|missing_pn_final|missing_pos|pn_final_not_equal_pn_pdf",
+      "updated_at": "2026-04-19T21:48:17.129Z"
+    }
   },
   {
     "ID": "1100672",
@@ -478,7 +612,94 @@
     "units": "KGM",
     "UNITS": "PC",
     "Valid From Date": "1997-01-01",
-    "WEIGHT": "64 G"
+    "WEIGHT": "64 G",
+    "qa_errors": {
+      "version": 1,
+      "severity": "critical",
+      "codes": [
+        "designation_final_not_in_pdf"
+      ],
+      "fields": {
+        "designation_final": [
+          "designation_final_not_in_pdf"
+        ],
+        "designation_gesa": [
+          "designation_final_not_in_pdf"
+        ],
+        "DESIGNATION": [
+          "designation_final_not_in_pdf"
+        ],
+        "Source Page": [
+          "designation_final_not_in_pdf"
+        ],
+        "source_file": [
+          "designation_final_not_in_pdf"
+        ],
+        "engine_model": [
+          "designation_final_not_in_pdf"
+        ]
+      },
+      "issues": [
+        {
+          "code": "designation_final_not_in_pdf",
+          "severity": "critical",
+          "fields": [
+            "designation_final",
+            "designation_gesa",
+            "DESIGNATION",
+            "Source Page",
+            "source_file",
+            "engine_model"
+          ],
+          "message": "Designation Final no se encuentra en el PDF asignado en pagina 13 (12V4000M40A.pdf)"
+        }
+      ],
+      "updated_at": "2026-04-19T21:48:18.736Z"
+    },
+    "qa_errors_active": {
+      "version": 1,
+      "severity": "critical",
+      "codes": [
+        "designation_final_not_in_pdf"
+      ],
+      "fields": {
+        "designation_final": [
+          "designation_final_not_in_pdf"
+        ],
+        "designation_gesa": [
+          "designation_final_not_in_pdf"
+        ],
+        "DESIGNATION": [
+          "designation_final_not_in_pdf"
+        ],
+        "Source Page": [
+          "designation_final_not_in_pdf"
+        ],
+        "source_file": [
+          "designation_final_not_in_pdf"
+        ],
+        "engine_model": [
+          "designation_final_not_in_pdf"
+        ]
+      },
+      "issues": [
+        {
+          "code": "designation_final_not_in_pdf",
+          "severity": "critical",
+          "fields": [
+            "designation_final",
+            "designation_gesa",
+            "DESIGNATION",
+            "Source Page",
+            "source_file",
+            "engine_model"
+          ],
+          "message": "Designation Final no se encuentra en el PDF asignado en pagina 13 (12V4000M40A.pdf)"
+        }
+      ],
+      "signature": "designation_final_not_in_pdf|missing_designation_final|missing_part_no|missing_pn_final|missing_pos|pn_final_not_equal_pn_pdf",
+      "updated_at": "2026-04-19T21:48:18.736Z"
+    }
   },
   {
     "ID": "1100725",
