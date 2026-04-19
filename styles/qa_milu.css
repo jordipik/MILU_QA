@@ -355,7 +355,7 @@
 
         .qa-side-search-row {
             display: grid;
-            grid-template-columns: minmax(0, 1.2fr) minmax(0, 1fr) 90px 84px;
+            grid-template-columns: 1fr;
             gap: 8px;
             align-items: center;
         }
@@ -503,13 +503,21 @@
         }
 
         .error-check-col {
-            min-width: 120px;
+            min-width: 156px;
         }
 
         .error-check-cell {
             text-align: center;
             font-weight: 700;
             color: #475569;
+            font-size: 12px;
+        }
+
+        .error-total-cell {
+            text-align: center;
+            font-size: 11px;
+            font-weight: 700;
+            color: #334155;
         }
 
         .error-check-cell.is-hit {
@@ -3060,23 +3068,59 @@
 
         .qa-side-matches-table th:nth-child(1),
         .qa-side-matches-table td:nth-child(1) {
-            width: 34%;
+            width: 26%;
         }
 
         .qa-side-matches-table th:nth-child(2),
         .qa-side-matches-table td:nth-child(2),
         .qa-side-matches-table th:nth-child(3),
         .qa-side-matches-table td:nth-child(3) {
-            width: 11%;
+            width: 9%;
             text-align: center;
         }
 
         .qa-side-matches-table th:nth-child(4),
         .qa-side-matches-table td:nth-child(4) {
-            width: 44%;
+            width: 40%;
             white-space: normal;
             word-break: break-word;
             line-height: 1.25;
+        }
+
+        .qa-side-matches-table th:nth-child(5),
+        .qa-side-matches-table td:nth-child(5) {
+            width: 16%;
+            text-align: center;
+        }
+
+        .qa-side-match-part-number {
+            font-weight: 700;
+            letter-spacing: 0.01em;
+        }
+
+        .qa-side-match-st {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            min-width: 34px;
+            height: 22px;
+            border-radius: 8px;
+            font-size: 11px;
+            font-weight: 700;
+            letter-spacing: 0.03em;
+            border: 1px solid transparent;
+        }
+
+        .qa-side-match-st.ok {
+            background: #dcfce7;
+            color: #166534;
+            border-color: #bbf7d0;
+        }
+
+        .qa-side-match-st.ko {
+            background: #fee2e2;
+            color: #b91c1c;
+            border-color: #fecaca;
         }
 
         .qa-modal-related-table tbody tr.qa-modal-related-current {
@@ -3355,7 +3399,7 @@
             }
 
             .qa-side-search-row {
-                grid-template-columns: repeat(2, minmax(0, 1fr));
+                grid-template-columns: 1fr;
             }
 
             .qa-modal-row-primary,

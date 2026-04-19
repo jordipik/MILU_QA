@@ -24,6 +24,7 @@
         <div class="nav nav-modern">
             <span class="pill active">QA detalle</span>
             <a class="pill" href="qa_lista_agrupada.html">Vista agrupada</a>
+            <a class="pill" href="qa_analista_registro.html">Analista registro</a>
             <button id="openQaChecksModalBtn" type="button" class="qa-checks-topbar-btn">
                 <span>⚙️ QA</span>
                 <span id="qaChecksSummaryBadge" class="qa-checks-badge">4/4</span>
@@ -439,10 +440,7 @@
                     <div class="qa-side-body">
                         <section class="qa-side-search" aria-label="Buscador rapido de articulos">
                             <div class="qa-side-search-row">
-                                <input id="qaSideSearchArticle" type="text" placeholder="Articulo (ID o PN)">
-                                <input id="qaSideSearchBook" type="text" placeholder="Libro">
-                                <input id="qaSideSearchPage" type="text" inputmode="numeric" placeholder="Pagina">
-                                <button id="qaSideSearchBtn" type="button">Buscar</button>
+                                <input id="qaSideSearchArticle" type="text" placeholder="Buscar...">
                             </div>
                             <p id="qaSideSearchStatus" class="qa-side-search-status" aria-live="polite"></p>
                         </section>
@@ -602,15 +600,16 @@
                                             aria-label="Paginas del mismo PN en el libro actual">
                                             <thead>
                                                 <tr>
-                                                    <th>Libro</th>
-                                                    <th>Pagina</th>
-                                                    <th>Pos</th>
-                                                    <th>Designacion final</th>
+                                                    <th>LIBRO</th>
+                                                    <th>PAG</th>
+                                                    <th>POS</th>
+                                                    <th>PART NUMBER</th>
+                                                    <th>ST</th>
                                                 </tr>
                                             </thead>
                                             <tbody id="qaSideMatchesBody">
                                                 <tr>
-                                                    <td colspan="4">Sin datos</td>
+                                                    <td colspan="5">Sin datos</td>
                                                 </tr>
                                             </tbody>
                                         </table>

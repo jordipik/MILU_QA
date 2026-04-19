@@ -208,6 +208,7 @@ function getModalMatchesByPn(row) {
             page: String(item?.['Source Page'] ?? ''),
             pos: String(item?.POS ?? ''),
             id: String(item?.ID ?? ''),
+            partNumber: String(item?.['PART NO.'] ?? item?.pn ?? ''),
             estado: String(item?.qa_revision_estado ?? ''),
             designationFinal: String(item?.designation_final ?? item?.DESIGNATION ?? ''),
             weightFinal: String(item?.weight_final ?? ''),
@@ -673,7 +674,7 @@ function renderRecordModalMatches(row, currentRevisionKey, options = {}) {
     const matchesByPn = getModalMatchesByPn(row);
     const currentBook = normModalMatch(getBookEngineCode(row));
 
-    const emptyColspan = showAction ? 5 : 4;
+    const emptyColspan = 5;
 
     if (!matchesByPn.length) {
         body.innerHTML = `<tr><td colspan="${emptyColspan}">No se pudo determinar PN/libro del registro.</td></tr>`;
@@ -713,12 +714,17 @@ function renderRecordModalMatches(row, currentRevisionKey, options = {}) {
     body.innerHTML = matches.map(item => {
         const isCurrent = item.revisionKey === currentRevisionKey;
         const revisionKeyAttr = escapeHtml(String(item.revisionKey || ''));
+        const normalizedEstado = normModalMatch(item.estado);
+        const isOkStatus = normalizedEstado === 'revisado' || normalizedEstado === 'ok';
+        const sideStatusClass = isOkStatus ? 'ok' : 'ko';
+        const sideStatusLabel = isOkStatus ? 'OK' : 'KO';
         return `<tr class="${isCurrent ? 'qa-modal-related-current' : ''}" data-revision-key="${revisionKeyAttr}" title="Doble click para ir al registro en tabla principal">`
             + `<td>${escapeHtml(item.book || '-')}</td>`
             + `<td>${escapeHtml(item.page || '-')}</td>`
             + `<td>${escapeHtml(item.pos || '-')}</td>`
-            + `<td>${escapeHtml(item.designationFinal || '-')}</td>`
-            + (showAction ? `<td>${escapeHtml(item.accion || '-')}</td>` : '')
+            + (showAction
+                ? `<td>${escapeHtml(item.designationFinal || '-')}</td><td>${escapeHtml(item.accion || '-')}</td>`
+                : `<td class="qa-side-match-part-number">${escapeHtml(item.partNumber || '-')}</td><td><span class="qa-side-match-st ${sideStatusClass}">${sideStatusLabel}</span></td>`)
             + '</tr>';
     }).join('');
 
@@ -1031,7 +1037,7 @@ function clearSideRecordForm() {
     const sideLabel = $('qaSideLabel');
     if (sideLabel) sideLabel.textContent = 'Selecciona una fila para cargar la ficha';
 
-    $('qaSideMatchesBody').innerHTML = '<tr><td colspan="4">Sin seleccion</td></tr>';
+    $('qaSideMatchesBody').innerHTML = '<tr><td colspan="5">Sin seleccion</td></tr>';
     $('qaSideExportHeadRow').innerHTML = '<th>Sin datos</th>';
     $('qaSideExportBody').innerHTML = '<tr><td>Sin seleccion.</td></tr>';
     $('qaSideSupersededHeadRow').innerHTML = '<th>Sin datos</th>';
@@ -1526,82 +1532,35 @@ function findRowByArticleToken(rows, token) {
 
 function runSideQuickSearch() {
     const rawArticle = String($('qaSideSearchArticle')?.value || '').trim();
-    const rawBook = String($('qaSideSearchBook')?.value || '').trim();
-    const rawPage = String($('qaSideSearchPage')?.value || '').trim();
 
-    if (!rawArticle && !rawBook && !rawPage) {
-        setSideSearchStatus('Escribe articulo, libro o pagina para buscar.', 'error');
+    if (!rawArticle) {
+        setSideSearchStatus('Escribe un articulo o part number para buscar.', 'error');
         return;
     }
 
-    const resolvedBook = resolveBookValue(rawBook);
-    const normalizedPage = normalizePageNumber(rawPage);
-
-    let candidateRows = [...state.allData];
-    if (resolvedBook) {
-        const normalizedBook = resolvedBook.toLowerCase();
-        candidateRows = candidateRows.filter(item => String(item?.engine_model ?? '').trim().toLowerCase() === normalizedBook);
-    }
-    if (normalizedPage) {
-        candidateRows = candidateRows.filter(item => normalizePageNumber(item?.['Source Page']) === normalizedPage);
-    }
-
-    if (!candidateRows.length) {
-        setSideSearchStatus('No hay registros para ese libro/pagina.', 'error');
+    const targetRow = findRowByArticleToken(state.allData, rawArticle);
+    if (!targetRow) {
+        setSideSearchStatus('No se encontro ese articulo.', 'error');
         return;
     }
 
-    if (rawArticle) {
-        const targetRow = findRowByArticleToken(candidateRows, rawArticle);
-        if (!targetRow) {
-            setSideSearchStatus('No se encontro ese articulo con los criterios indicados.', 'error');
-            return;
-        }
-
-        const targetBook = String(targetRow?.engine_model ?? '').trim();
-        const targetPage = normalizePageNumber(targetRow?.['Source Page']);
-        applyBookSelection(targetBook, {
-            pageValue: targetPage,
-            fallbackToFirstAvailablePage: true,
-            render: true,
-            updatePdf: true
-        });
-
-        const revisionKey = getRevisionKey(targetRow);
-        const moved = focusRevisionRowInMainTable(revisionKey);
-        if (!moved) {
-            setSideSearchStatus('Se encontro el articulo, pero no se pudo enfocar en la tabla principal.', 'error');
-            return;
-        }
-
-        setSideSearchStatus(`Articulo encontrado: ID ${String(targetRow?.ID ?? '-')}, libro ${targetBook || '-'}, pagina ${targetPage || '-'}.`, 'ok');
-        return;
-    }
-
-    if (resolvedBook) {
-        applyBookSelection(resolvedBook, {
-            pageValue: normalizedPage,
-            fallbackToFirstAvailablePage: true,
-            render: true,
-            updatePdf: true
-        });
-        setSideSearchStatus(`Navegando a libro ${resolvedBook}${normalizedPage ? `, pagina ${normalizedPage}` : ''}.`, 'ok');
-        return;
-    }
-
-    const currentBook = String($('bookFilterSelect')?.value || '').trim();
-    if (!currentBook) {
-        setSideSearchStatus('Para buscar solo por pagina, selecciona o escribe tambien un libro.', 'error');
-        return;
-    }
-
-    applyBookSelection(currentBook, {
-        pageValue: normalizedPage,
+    const targetBook = String(targetRow?.engine_model ?? '').trim();
+    const targetPage = normalizePageNumber(targetRow?.['Source Page']);
+    applyBookSelection(targetBook, {
+        pageValue: targetPage,
         fallbackToFirstAvailablePage: true,
         render: true,
         updatePdf: true
     });
-    setSideSearchStatus(`Navegando a pagina ${normalizedPage} del libro ${currentBook}.`, 'ok');
+
+    const revisionKey = getRevisionKey(targetRow);
+    const moved = focusRevisionRowInMainTable(revisionKey);
+    if (!moved) {
+        setSideSearchStatus('Se encontro el articulo, pero no se pudo enfocar en la tabla principal.', 'error');
+        return;
+    }
+
+    setSideSearchStatus(`Articulo encontrado: ID ${String(targetRow?.ID ?? '-')}, libro ${targetBook || '-'}, pagina ${targetPage || '-'}.`, 'ok');
 }
 
 function goToNextBookPage() {
@@ -2359,7 +2318,7 @@ function attachGlobalEvents() {
     });
 
     $('qaSideSearchBtn')?.addEventListener('click', runSideQuickSearch);
-    ['qaSideSearchArticle', 'qaSideSearchBook', 'qaSideSearchPage'].forEach(id => {
+    ['qaSideSearchArticle'].forEach(id => {
         $(id)?.addEventListener('keydown', (event) => {
             if (event.key !== 'Enter') return;
             event.preventDefault();
@@ -2522,6 +2481,21 @@ function attachGlobalEvents() {
         event.preventDefault();
         event.stopPropagation();
         openRecordModal(revisionKey);
+    });
+
+    errorViewTbody?.addEventListener('change', (event) => {
+        const target = event.target;
+        if (!(target instanceof HTMLSelectElement)) return;
+        const revisionField = target.dataset.revisionField;
+        const revisionKey = target.dataset.revisionKey;
+        if (!revisionField || !revisionKey) return;
+        const row = state.allData.find(item => getRevisionKey(item) === revisionKey);
+        if (!row) return;
+        const estado = revisionField === 'estado' ? target.value : String(row.qa_revision_estado || '');
+        const accion = revisionField === 'accion' ? target.value : String(row.qa_revision_accion || '');
+        setRowRevision(row, estado, accion);
+        updateRevisionSelectVisual(target);
+        syncSideRecordFormWithSelection();
     });
 
     window.addEventListener('resize', () => {

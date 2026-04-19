@@ -402,6 +402,27 @@ function editableAttr(columnKey) {
     return editable ? ` data-editable="true" data-col-key="${columnKey}"` : '';
 }
 
+function getRevisionEstadoOptionsHtml(revisionEstado) {
+    return [
+        { value: '', label: '—' },
+        { value: 'copia', label: 'Copia' },
+        { value: 'en revisión', label: 'Revisar' },
+        { value: 'revisado', label: 'Ok' },
+        { value: 'descartado', label: 'Eliminar' }
+    ].map(opt => `<option value="${escapeHtml(opt.value)}" ${revisionEstado === opt.value ? 'selected' : ''}>${escapeHtml(opt.label)}</option>`).join('');
+}
+
+function getRevisionAccionOptionsHtml(revisionAccion) {
+    return [
+        { value: '', label: '—' },
+        { value: 'mantener', label: 'Import' },
+        { value: 'actualizar', label: 'Actualizar' },
+        { value: 'revisar', label: 'Revisar' },
+        { value: 'sustituir', label: 'Sustituir' },
+        { value: 'eliminar', label: 'Eliminar' }
+    ].map(opt => `<option value="${escapeHtml(opt.value)}" ${revisionAccion === opt.value ? 'selected' : ''}>${escapeHtml(opt.label)}</option>`).join('');
+}
+
 function renderRow(row) {
     const id = val(row, 'ID');
     const enWeb = row.EN_WEB === true || row.EN_WEB === 'true' ? '✔️' : '';
@@ -437,22 +458,8 @@ function renderRow(row) {
         : errorType === 'warning' ? '<span class="status-icon warning" aria-label="Advertencia">⚠</span>'
             : '';
 
-    const revisionEstadoOptions = [
-        { value: '', label: '—' },
-        { value: 'copia', label: 'Copia' },
-        { value: 'en revisión', label: 'Revisar' },
-        { value: 'revisado', label: 'Ok' },
-        { value: 'descartado', label: 'Eliminar' }
-    ].map(opt => `<option value="${escapeHtml(opt.value)}" ${revisionEstado === opt.value ? 'selected' : ''}>${escapeHtml(opt.label)}</option>`).join('');
-
-    const revisionAccionOptions = [
-        { value: '', label: '—' },
-        { value: 'mantener', label: 'Import' },
-        { value: 'actualizar', label: 'Actualizar' },
-        { value: 'revisar', label: 'Revisar' },
-        { value: 'sustituir', label: 'Sustituir' },
-        { value: 'eliminar', label: 'Eliminar' }
-    ].map(opt => `<option value="${escapeHtml(opt.value)}" ${revisionAccion === opt.value ? 'selected' : ''}>${escapeHtml(opt.label)}</option>`).join('');
+    const revisionEstadoOptions = getRevisionEstadoOptionsHtml(revisionEstado);
+    const revisionAccionOptions = getRevisionAccionOptionsHtml(revisionAccion);
 
     const classGesa = isGesa ? 'cell-gesa' : '';
     const rowSelectedClass = state.selectedRevisionRowKey && state.selectedRevisionRowKey === revisionKey ? 'row-selected' : '';
@@ -542,7 +549,7 @@ function getRowErrorSet(row) {
 
 function getErrorViewColumnCount() {
     const pdfViewColumns = 8;  // gesa, normalizado, sust_hierarchie, has_img, has_error, EN_WEB, estado, accion
-    const baseColumns = 8;      // ID, Libro, Pagina, POS, PN, Designation Final, #Errores, Errores activos
+    const baseColumns = 6;      // Libro, Pagina, POS, PN, Designation Final, #Errores
     return pdfViewColumns + baseColumns + getErrorViewDefinitions().length;
 }
 
@@ -552,25 +559,23 @@ function renderErrorViewHeader(definitions) {
 
     // Columnas de Vista Pdf (al inicio)
     const pdfViewHeaders = `
-        <th style="width:50px">gesa</th>
-        <th style="width:80px">normalizado</th>
-        <th style="width:80px">sust_hier</th>
-        <th style="width:50px">img</th>
-        <th style="width:50px">error</th>
-        <th style="width:60px">EN_WEB</th>
-        <th style="width:100px">Estado</th>
-        <th style="width:100px">Accion</th>
+        <th style="width:36px" class="status-head">G</th>
+        <th style="width:36px" class="status-head">N</th>
+        <th style="width:44px" class="status-head">H</th>
+        <th style="width:36px" class="status-head">F</th>
+        <th style="width:36px" class="status-head">E</th>
+        <th style="width:70px">W</th>
+        <th style="width:78px">Rev</th>
+        <th style="width:86px">Acc</th>
     `;
 
     const baseHeaders = `
-        <th style="width:84px">ID</th>
         <th style="width:130px">Libro</th>
         <th style="width:70px">Pagina</th>
         <th style="width:70px">POS</th>
         <th style="width:120px">PN</th>
         <th style="width:220px">Designation Final</th>
-        <th style="width:90px">#Errores</th>
-        <th style="width:200px">Errores activos</th>
+        <th style="width:56px">#</th>
     `;
 
     const checkHeaders = definitions.map(def => {
@@ -583,7 +588,6 @@ function renderErrorViewHeader(definitions) {
 function renderErrorViewRow(row, definitions) {
     const revisionKey = getRevisionKey(row);
     const errorCodes = getRowErrorSet(row);
-    const errorListLabel = [...errorCodes].join(' | ') || '—';
     const selectedClass = state.selectedRevisionRowKey && state.selectedRevisionRowKey === revisionKey ? 'row-selected' : '';
 
     const checkCells = definitions.map(def => {
@@ -591,35 +595,53 @@ function renderErrorViewRow(row, definitions) {
         return `<td class="error-check-cell ${hasCode ? 'is-hit' : ''}" title="${hasCode ? 'Detectado' : 'Sin error'}">${hasCode ? '1' : ''}</td>`;
     }).join('');
 
-    // Datos de Vista Pdf (al inicio)
-    const gesaVal = escapeHtml(val(row, 'gesa', ''));
-    const normalizadoVal = escapeHtml(val(row, 'normalizado', ''));
-    const sustHierVal = escapeHtml(val(row, 'sust_hierarchie', ''));
-    const hasImgVal = escapeHtml(val(row, 'has_img', ''));
-    const hasErrorVal = escapeHtml(val(row, 'has_error', ''));
-    const enWebVal = escapeHtml(val(row, 'EN_WEB', ''));
-    const estadoVal = escapeHtml(val(row, 'qa_revision_estado', ''));
-    const accionVal = escapeHtml(val(row, 'qa_revision_accion', ''));
-    const estadoClass = getRevisionEstadoClass(row);
-    const accionClass = getRevisionAccionClass(row);
+    const sustHierarchyRaw = String(row.sust_hierarchie || '').trim();
+    const sustHierarchyLabel = sustHierarchyRaw || '—';
+    const isGesa = String(row.gesa || '').toUpperCase() === 'SI';
+    const isNormalizado = String(row.normalizado || '').toUpperCase() === 'SI';
+    const isHierarchyNew = sustHierarchyRaw === 'New';
+    const isHierarchySuperseded = sustHierarchyRaw.toUpperCase().includes('SUPERSEDED');
+    const hasImg = (row.filename_foto || row.ruta_foto || '').toString().trim() !== '';
+    const errorType = getRowErrorType(row, { activeCodes: state.activeQaErrorChecks });
+    const revisionEstado = String(row.qa_revision_estado || '').trim();
+    const revisionAccion = String(row.qa_revision_accion || '').trim();
+
+    const gesaIcon = isGesa ? '<span class="status-icon yes" aria-label="GESA SI">G</span>' : '<span class="status-icon no" aria-label="GESA NO">-</span>';
+    const normalizadoIcon = isNormalizado ? '<span class="status-icon yes" aria-label="Normalizado SI">N</span>' : '<span class="status-icon no" aria-label="Normalizado NO">-</span>';
+    let hierarchyIcon = '<span class="status-icon no" aria-label="Sin sust_hierarchie">-</span>';
+    if (isHierarchyNew) hierarchyIcon = '<span class="status-icon new" aria-label="sust_hierarchie New">N</span>';
+    else if (isHierarchySuperseded) hierarchyIcon = '<span class="status-icon sup" aria-label="sust_hierarchie Superseded">S</span>';
+    else if (sustHierarchyRaw) hierarchyIcon = '<span class="status-icon other" aria-label="sust_hierarchie Other">O</span>';
+    const fotoIcon = hasImg ? '<span class="status-icon yes" aria-label="Con Foto">F</span>' : '<span class="status-icon no" aria-label="Sin Foto">-</span>';
+    const errorIcon = errorType === 'critical' ? '<span class="status-icon error" aria-label="Error crítico">✕</span>'
+        : errorType === 'warning' ? '<span class="status-icon warning" aria-label="Advertencia">⚠</span>'
+            : '';
+
+    const enWeb = row.EN_WEB === true || row.EN_WEB === 'true' ? '✔️' : '';
+    const revisionEstadoOptions = getRevisionEstadoOptionsHtml(revisionEstado);
+    const revisionAccionOptions = getRevisionAccionOptionsHtml(revisionAccion);
+    const estadoClass = getRevisionEstadoClass(revisionEstado);
+    const accionClass = getRevisionAccionClass(revisionAccion);
 
     return `<tr class="${selectedClass}" data-revision-key="${escapeHtml(revisionKey)}">
-        <td title="${gesaVal}">${gesaVal}</td>
-        <td title="${normalizadoVal}">${normalizadoVal}</td>
-        <td title="${sustHierVal}">${sustHierVal}</td>
-        <td title="${hasImgVal}">${hasImgVal}</td>
-        <td title="${hasErrorVal}">${hasErrorVal}</td>
-        <td title="${enWebVal}">${enWebVal}</td>
-        <td class="revision-cell ${estadoClass}" title="${estadoVal}">${estadoVal}</td>
-        <td class="revision-cell ${accionClass}" title="${accionVal}">${accionVal}</td>
-        <td title="${escapeHtml(val(row, 'ID'))}">${escapeHtml(val(row, 'ID'))}</td>
+        <td class="status-col" title="GESA: ${isGesa ? 'SI' : 'NO'}">${gesaIcon}</td>
+        <td class="status-col" title="Normalizado: ${isNormalizado ? 'SI' : 'NO'}">${normalizadoIcon}</td>
+        <td class="status-col" title="sust_hierarchie: ${escapeHtml(sustHierarchyLabel)}">${hierarchyIcon}</td>
+        <td class="status-col" title="Foto: ${hasImg ? 'SI' : 'NO'}">${fotoIcon}</td>
+        <td class="status-col" title="Error: ${errorType ? 'SI' : 'NO'}">${errorIcon}</td>
+        <td class="status-col" title="En Web">${enWeb}</td>
+        <td class="revision-cell ${estadoClass}" title="Estado de revisión">
+            <select class="revision-select" data-revision-field="estado" data-revision-key="${escapeHtml(revisionKey)}">${revisionEstadoOptions}</select>
+        </td>
+        <td class="revision-cell ${accionClass}" title="Acción a realizar">
+            <select class="revision-select" data-revision-field="accion" data-revision-key="${escapeHtml(revisionKey)}">${revisionAccionOptions}</select>
+        </td>
         <td title="${escapeHtml(val(row, 'engine_model'))}">${escapeHtml(val(row, 'engine_model'))}</td>
         <td title="${escapeHtml(val(row, 'Source Page'))}">${escapeHtml(val(row, 'Source Page'))}</td>
         <td title="${escapeHtml(val(row, 'POS'))}">${escapeHtml(val(row, 'POS'))}</td>
         <td title="${escapeHtml(val(row, 'PART NO.'))}">${escapeHtml(val(row, 'PART NO.'))}</td>
         <td title="${escapeHtml(getRowValueForColumn(row, 'designation_final'))}">${escapeHtml(getRowValueForColumn(row, 'designation_final'))}</td>
-        <td title="${errorCodes.size}">${errorCodes.size}</td>
-        <td title="${escapeHtml(errorListLabel)}">${escapeHtml(errorListLabel)}</td>
+        <td class="error-total-cell" title="${errorCodes.size}">${errorCodes.size}</td>
         ${checkCells}
     </tr>`;
 }
