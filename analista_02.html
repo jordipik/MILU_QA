@@ -1,0 +1,174 @@
+<!doctype html>
+<html lang="es">
+
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>MILU - Analista 02</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link
+        href="https://fonts.googleapis.com/css2?family=Manrope:wght@500;600;700;800&family=IBM+Plex+Mono:wght@400;500&display=swap"
+        rel="stylesheet">
+    <link rel="stylesheet" href="styles/analista_02.css" />
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
+</head>
+
+<body>
+    <header class="a2-topbar">
+        <div class="a2-brand">
+            <span class="a2-chip">MILU</span>
+            <div>
+                <p class="a2-title">Analista de registro 02</p>
+                <p class="a2-sub">De registro_raw a registro_ok o registro_ko, proceso por proceso.</p>
+            </div>
+        </div>
+        <nav class="a2-nav" aria-label="Navegacion">
+            <a href="qa_milu.html">QA detalle</a>
+            <a href="qa_analista_registro.html">Analista 01</a>
+            <span class="active">Analista 02</span>
+        </nav>
+    </header>
+
+    <main class="a2-layout">
+        <section class="a2-main">
+            <div class="a2-toolbar">
+                <select id="engineFilterSelect" aria-label="Filtro de libro">
+                </select>
+                <input id="recordIdInput" type="text" placeholder="PN o PART NO." autocomplete="off">
+                <button id="loadRecordBtn" type="button">Cargar PN</button>
+                <button id="prevRecordBtn" type="button">Anterior</button>
+                <button id="nextRecordBtn" type="button">Siguiente</button>
+                <button id="revalidateBtn" type="button">Revalidar</button>
+            </div>
+
+            <div class="a2-status-row">
+                <p id="recordPositionText">Registro 0 de 0</p>
+                <span id="backendBadge" class="backend-badge checking">Backend: comprobando...</span>
+            </div>
+
+            <div id="recordMeta" class="a2-meta">Sin registro cargado.</div>
+
+            <section class="a2-compare-table-card" aria-label="Comparativa RAW, GESA y FINAL">
+                <table class="a2-compare-table">
+                    <thead>
+                        <tr>
+                            <th>Campo</th>
+                            <th>RAW</th>
+                            <th>GESA</th>
+                            <th>FINAL</th>
+                            <th>PDF</th>
+                        </tr>
+                    </thead>
+                    <tbody id="comparisonBody">
+                        <tr>
+                            <td colspan="5">Selecciona un registro para ver la comparativa.</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </section>
+
+            <section class="a2-process-card">
+                <div class="a2-process-head">
+                    <h3>Pipeline de procesos</h3>
+                    <div class="a2-process-actions">
+                        <button id="runNextProcessBtn" type="button">Ejecutar siguiente</button>
+                        <button id="runAllProcessBtn" type="button">Ejecutar todo</button>
+                    </div>
+                </div>
+                <p id="pipelineSummary" class="a2-pipeline-summary">0 procesos evaluados</p>
+                <ol id="pipelineList" class="a2-pipeline-list"></ol>
+            </section>
+
+            <section class="a2-edit-grid" aria-label="Edicion de campos finales">
+                <label>
+                    <span>pn_final</span>
+                    <input id="editPnFinal" type="text">
+                </label>
+                <label>
+                    <span>designation_final</span>
+                    <input id="editDesignationFinal" type="text">
+                </label>
+                <label>
+                    <span>measurement_final</span>
+                    <input id="editMeasurementFinal" type="text">
+                </label>
+                <label>
+                    <span>weight_final</span>
+                    <input id="editWeightFinal" type="text">
+                </label>
+                <label>
+                    <span>qa_revision_estado</span>
+                    <select id="editRevisionEstado">
+                        <option value="">(vacio)</option>
+                        <option value="copia">copia</option>
+                        <option value="en revision">en revision</option>
+                        <option value="revisado">revisado</option>
+                        <option value="descartado">descartado</option>
+                    </select>
+                </label>
+                <label>
+                    <span>qa_revision_accion</span>
+                    <select id="editRevisionAccion">
+                        <option value="">(vacio)</option>
+                        <option value="mantener">mantener</option>
+                        <option value="actualizar">actualizar</option>
+                        <option value="revisar">revisar</option>
+                        <option value="sustituir">sustituir</option>
+                        <option value="eliminar">eliminar</option>
+                    </select>
+                </label>
+            </section>
+
+            <div class="a2-outcome-row">
+                <button id="saveFieldsBtn" type="button" class="primary">Guardar cambios</button>
+                <button id="markOkBtn" type="button" class="ok">Marcar registro_ok</button>
+                <button id="markKoBtn" type="button" class="ko">Marcar registro_ko</button>
+                <div id="globalVerdict" class="a2-verdict raw">Estado: RAW</div>
+            </div>
+
+            <section class="a2-evidence-card">
+                <h3>Evidencias</h3>
+                <p id="statusText">Carga un registro para iniciar el analisis.</p>
+                <ul id="evidenceList"></ul>
+            </section>
+        </section>
+
+        <div id="a2Splitter" class="a2-splitter" role="separator" aria-orientation="vertical" tabindex="0"
+            aria-label="Ajustar ancho del panel PDF"></div>
+
+        <aside class="a2-right">
+            <div class="pdf-toolbar">
+                <label class="pdf-zoom-wrap" for="pdfZoomSelect">
+                    <button id="pdfZoomOutBtn" class="pdf-zoom-btn" type="button"
+                        aria-label="Reducir zoom PDF">-</button>
+                    <select id="pdfZoomSelect" class="pdf-zoom-select" aria-label="Zoom del visor PDF">
+                        <option value="fit">100%</option>
+                        <option value="75">75%</option>
+                        <option value="100">100%</option>
+                        <option value="125">125%</option>
+                        <option value="150">150%</option>
+                        <option value="200">200%</option>
+                    </select>
+                    <button id="pdfZoomInBtn" class="pdf-zoom-btn" type="button"
+                        aria-label="Aumentar zoom PDF">+</button>
+                </label>
+                <span class="pdf-page">1 / 12</span>
+            </div>
+
+            <div id="pdfViewer" class="pdfviewer">
+                <div class="pdfviewer-inner">
+                    <div id="pdfStatus" class="pdfstatus">Selecciona libro y pagina para ver el PDF</div>
+                    <canvas id="pdfCanvas" class="pdfcanvas"></canvas>
+                </div>
+            </div>
+
+            <div id="pdfMeta" class="pdf-meta-foot">Documento: -</div>
+            <span id="pdfLabel" hidden>-</span>
+        </aside>
+    </main>
+
+    <script type="module" src="js/analista-02.js"></script>
+</body>
+
+</html>

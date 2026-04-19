@@ -1,0 +1,1067 @@
+import { state } from './state.js';
+import { checkSaveBackendConnection, loadPartitionedEngineData, saveCellToServer } from './data-loader.js';
+import { assignRevisionKeys, applyRevisionDataToRows } from './revision.js';
+import { initPdfZoomControls, loadPdfClear, loadPdfWithPage, setPdfReadTokens, setPdfSelection } from './pdf-viewer.js';
+
+const $ = (id) => document.getElementById(id);
+
+const QA_LABELS = {
+    missing_part_no: 'PART NO. vacio',
+    missing_pos: 'POS vacio',
+    missing_pn_final: 'pn_final vacio',
+    pn_final_not_in_pdf: 'pn_final no localizado en PDF',
+    missing_designation_final: 'designation_final vacio',
+    designation_final_not_in_pdf: 'designation_final no localizada en PDF'
+};
+
+let currentRow = null;
+let currentProcessIndex = 0;
+let comparisonRenderToken = 0;
+const pdfDocumentPromiseCache = new Map();
+const pdfPageTextCache = new Map();
+const PDF_CLUSTER_GAP_MAX = 24;
+const PDF_LINE_Y_TOLERANCE = 2;
+const RIGHT_PANEL_WIDTH_KEY = 'analista02:right-panel-width';
+
+function txt(value, fallback = '-') {
+    const normalized = String(value ?? '').trim();
+    return normalized || fallback;
+}
+
+function escapeHtml(value) {
+    return String(value ?? '')
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#039;');
+}
+
+function normalizeString(value) {
+    return String(value ?? '').trim().replace(/\s+/g, ' ');
+}
+
+function normalizeCompareValue(value) {
+    const normalized = normalizeString(value);
+    if (!normalized || normalized === '-') return '';
+    return normalized
+        .toLowerCase()
+        .normalize('NFD')
+        .replace(/[\u0300-\u036f]/g, '');
+}
+
+function isCompareMatch(left, right) {
+    const normalizedLeft = normalizeCompareValue(left);
+    const normalizedRight = normalizeCompareValue(right);
+    return normalizedLeft !== '' && normalizedRight !== '' && normalizedLeft === normalizedRight;
+}
+
+function isRequiredComparisonField(fieldName) {
+    const normalized = String(fieldName ?? '').trim().toUpperCase();
+    return normalized === 'POS' || normalized === 'PART NO.' || normalized === 'DESIGNATION';
+}
+
+function getComparisonCellClasses(entry, pdfValue) {
+    const finalValue = txt(entry?.final);
+    const gesaValue = txt(entry?.gesa);
+    const pdfResolvedValue = txt(pdfValue);
+    const finalMissing = isRequiredComparisonField(entry?.field) && normalizeCompareValue(finalValue) === '';
+    const gesaMatchesFinal = isCompareMatch(gesaValue, finalValue);
+    const pdfMatchesFinal = isCompareMatch(pdfResolvedValue, finalValue);
+
+    return {
+        finalClass: finalMissing ? 'compare-missing' : (gesaMatchesFinal || pdfMatchesFinal ? 'compare-match' : ''),
+        gesaClass: gesaMatchesFinal ? 'compare-match' : '',
+        pdfClass: pdfMatchesFinal ? 'compare-match' : ''
+    };
+}
+
+function normalizePdfToken(value) {
+    return String(value ?? '').trim().toLowerCase().replace(/\s+/g, ' ');
+}
+
+function escapeRegExp(value) {
+    return String(value ?? '').replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+}
+
+function extractExactPdfSubstring(sourceText, candidate) {
+    const source = String(sourceText ?? '').trim();
+    const rawCandidate = String(candidate ?? '').trim();
+    if (!source || !rawCandidate) return '';
+
+    const directIndex = source.toLowerCase().indexOf(rawCandidate.toLowerCase());
+    if (directIndex >= 0) {
+        return source.slice(directIndex, directIndex + rawCandidate.length);
+    }
+
+    const pattern = rawCandidate
+        .split(/\s+/)
+        .filter(Boolean)
+        .map(part => escapeRegExp(part))
+        .join('\\s+');
+    if (!pattern) return '';
+
+    const regex = new RegExp(pattern, 'i');
+    const match = source.match(regex);
+    return match?.[0] || '';
+}
+
+function tokenMatchesPdf(pageText, candidateValue) {
+    if (!pageText || !candidateValue) return false;
+    if (pageText === candidateValue) return true;
+
+    if (!pageText.includes(candidateValue)) return false;
+
+    const separatorRegex = /[\s\-\,\.\;\/\(\)]/;
+    let searchIndex = pageText.indexOf(candidateValue);
+    while (searchIndex !== -1) {
+        const endIndex = searchIndex + candidateValue.length;
+        const beforeOk = searchIndex === 0 || separatorRegex.test(pageText[searchIndex - 1]);
+        const afterOk = endIndex === pageText.length || separatorRegex.test(pageText[endIndex]);
+        if (beforeOk && afterOk) return true;
+        searchIndex = pageText.indexOf(candidateValue, searchIndex + 1);
+    }
+
+    return false;
+}
+
+function resolvePdfPageNumber(value) {
+    const parsed = Number(String(value ?? '').replace(/[^0-9]/g, ''));
+    return Number.isInteger(parsed) && parsed > 0 ? parsed : null;
+}
+
+async function getPdfPageNormalizedText(book, sourcePage) {
+    if (!window.pdfjsLib) {
+        return { normalizedText: '', items: [], clusters: [] };
+    }
+
+    const bookClean = String(book ?? '').trim();
+    const pageNum = resolvePdfPageNumber(sourcePage);
+    if (!bookClean || !pageNum) {
+        return { normalizedText: '', items: [], clusters: [] };
+    }
+
+    const pageCacheKey = `${bookClean}::${pageNum}`;
+    if (pdfPageTextCache.has(pageCacheKey)) {
+        return pdfPageTextCache.get(pageCacheKey);
+    }
+
+    const pdfUrl = new URL(`pdf/${encodeURIComponent(bookClean)}.pdf`, new URL('.', window.location.href)).href;
+    if (!pdfDocumentPromiseCache.has(pdfUrl)) {
+        pdfDocumentPromiseCache.set(pdfUrl, window.pdfjsLib.getDocument(pdfUrl).promise);
+    }
+
+    const task = (async () => {
+        const pdfDocument = await pdfDocumentPromiseCache.get(pdfUrl);
+        if (pageNum < 1 || pageNum > pdfDocument.numPages) {
+            return { normalizedText: '', items: [], clusters: [] };
+        }
+
+        const page = await pdfDocument.getPage(pageNum);
+        const textContent = await page.getTextContent();
+        const rawItems = (textContent.items || []).map((item) => {
+            const text = String(item?.str || '').trim();
+            const tx = item?.transform || [];
+            return {
+                text,
+                normalized: normalizePdfToken(text),
+                left: Number(tx?.[4] || 0),
+                top: Number(tx?.[5] || 0),
+                width: Number(item?.width || 0)
+            };
+        }).filter((item) => item.normalized);
+
+        const lines = [];
+        rawItems.forEach((item) => {
+            const line = lines.find((candidate) => Math.abs(candidate.top - item.top) <= PDF_LINE_Y_TOLERANCE);
+            if (line) {
+                line.items.push(item);
+                line.top = (line.top + item.top) / 2;
+            } else {
+                lines.push({ top: item.top, items: [item] });
+            }
+        });
+
+        lines.sort((a, b) => b.top - a.top);
+        lines.forEach((line, index) => {
+            line.lineIndex = index;
+            line.items.forEach((item) => {
+                item.lineIndex = index;
+            });
+        });
+
+        const clusters = [];
+        lines.forEach((line) => {
+            const sorted = [...line.items].sort((a, b) => a.left - b.left);
+            let currentCluster = null;
+
+            sorted.forEach((item) => {
+                if (!currentCluster) {
+                    currentCluster = {
+                        right: item.left + item.width,
+                        parts: [item.text],
+                        normalizedParts: [item.normalized]
+                    };
+                    return;
+                }
+
+                const gap = item.left - currentCluster.right;
+                if (gap <= PDF_CLUSTER_GAP_MAX) {
+                    currentCluster.parts.push(item.text);
+                    currentCluster.normalizedParts.push(item.normalized);
+                    currentCluster.right = Math.max(currentCluster.right, item.left + item.width);
+                    return;
+                }
+
+                clusters.push({
+                    text: currentCluster.parts.join(' ').replace(/\s+/g, ' ').trim(),
+                    normalized: currentCluster.normalizedParts.join(' ').replace(/\s+/g, ' ').trim(),
+                    lineIndex: line.lineIndex
+                });
+
+                currentCluster = {
+                    right: item.left + item.width,
+                    parts: [item.text],
+                    normalizedParts: [item.normalized]
+                };
+            });
+
+            if (currentCluster) {
+                clusters.push({
+                    text: currentCluster.parts.join(' ').replace(/\s+/g, ' ').trim(),
+                    normalized: currentCluster.normalizedParts.join(' ').replace(/\s+/g, ' ').trim(),
+                    lineIndex: line.lineIndex
+                });
+            }
+        });
+
+        const joined = rawItems.map((item) => item.text).join(' ');
+        return {
+            normalizedText: normalizePdfToken(joined),
+            items: rawItems,
+            clusters
+        };
+    })().catch((error) => {
+        console.warn('No se pudo leer texto PDF para la comparativa:', error);
+        return { normalizedText: '', items: [], clusters: [] };
+    });
+
+    pdfPageTextCache.set(pageCacheKey, task);
+    return task;
+}
+
+function getPageSortValue(value) {
+    const digits = String(value ?? '').replace(/[^0-9]/g, '');
+    const parsed = Number(digits);
+    return Number.isFinite(parsed) ? parsed : Number.MAX_SAFE_INTEGER;
+}
+
+function getPosSortValue(value) {
+    const digits = String(value ?? '').replace(/[^0-9]/g, '');
+    const parsed = Number(digits);
+    return Number.isFinite(parsed) ? parsed : Number.MAX_SAFE_INTEGER;
+}
+
+function sortRowsByBookPagePos(rows) {
+    return [...rows].sort((a, b) => {
+        const bookA = String(a?.engine_model ?? '').trim();
+        const bookB = String(b?.engine_model ?? '').trim();
+        const byBook = bookA.localeCompare(bookB, 'es', { numeric: true, sensitivity: 'base' });
+        if (byBook !== 0) return byBook;
+
+        const byPage = getPageSortValue(a?.['Source Page']) - getPageSortValue(b?.['Source Page']);
+        if (byPage !== 0) return byPage;
+
+        const byPos = getPosSortValue(a?.POS) - getPosSortValue(b?.POS);
+        if (byPos !== 0) return byPos;
+
+        return String(a?.ID ?? '').localeCompare(String(b?.ID ?? ''), 'es', { numeric: true, sensitivity: 'base' });
+    });
+}
+
+function getQueueRows() {
+    const engineFilter = String($('engineFilterSelect')?.value ?? '').trim();
+    if (!engineFilter) return sortRowsByBookPagePos(state.allData || []);
+    return sortRowsByBookPagePos((state.allData || []).filter(row => String(row?.engine_model ?? '').trim() === engineFilter));
+}
+
+function getRevisionKey(row) {
+    return String(row?.__qa_revision_key ?? '').trim();
+}
+
+function getDisplayPn(row) {
+    const pnFinal = String(row?.pn_final ?? '').trim();
+    if (pnFinal) return pnFinal;
+    const partNo = String(row?.['PART NO.'] ?? '').trim();
+    if (partNo) return partNo;
+    return '-';
+}
+
+function getRowCodes(row) {
+    const qa = row?.qa_errors_active && Array.isArray(row.qa_errors_active.codes)
+        ? row.qa_errors_active
+        : row?.qa_errors;
+    if (!qa || !Array.isArray(qa.codes)) return [];
+    return qa.codes.map((code) => String(code ?? '').trim()).filter(Boolean);
+}
+
+function getConsistencyWarnings(row) {
+    const warnings = [];
+    const designationRaw = normalizeString(row?.DESIGNATION);
+    const designationFinal = normalizeString(row?.designation_final);
+
+    if (designationRaw && designationFinal && designationRaw.toLowerCase() !== designationFinal.toLowerCase()) {
+        warnings.push('Designation raw y designation_final no coinciden exactamente.');
+    }
+
+    return warnings;
+}
+
+function buildPipeline(row) {
+    const codes = new Set(getRowCodes(row));
+    const warnings = getConsistencyWarnings(row);
+
+    return [
+        {
+            id: 'identity',
+            title: 'Identidad minima (ID + POS)',
+            pass: txt(row?.ID, '') !== '' && txt(row?.POS, '') !== '',
+            detail: 'Permite trazar el registro en origen y en resultados.'
+        },
+        {
+            id: 'part_no',
+            title: 'PART NO. informado en raw',
+            pass: !codes.has('missing_part_no'),
+            detail: !codes.has('missing_part_no') ? 'PART NO. presente.' : 'Falta PART NO. en el registro raw.'
+        },
+        {
+            id: 'pn_final_presence',
+            title: 'pn_final presente',
+            pass: !codes.has('missing_pn_final'),
+            detail: !codes.has('missing_pn_final') ? 'pn_final informado.' : 'Falta pn_final en el registro final.'
+        },
+        {
+            id: 'pn_final_pdf',
+            title: 'pn_final localizado en PDF',
+            pass: !codes.has('pn_final_not_in_pdf'),
+            detail: !codes.has('pn_final_not_in_pdf') ? 'Match de pn_final detectado en PDF.' : 'No hay match de pn_final en PDF.'
+        },
+        {
+            id: 'designation_final_presence',
+            title: 'designation_final presente',
+            pass: !codes.has('missing_designation_final'),
+            detail: !codes.has('missing_designation_final') ? 'designation_final informado.' : 'Falta designation_final.'
+        },
+        {
+            id: 'designation_final_pdf',
+            title: 'designation_final localizada en PDF',
+            pass: !codes.has('designation_final_not_in_pdf'),
+            detail: !codes.has('designation_final_not_in_pdf') ? 'Match de designation_final detectado en PDF.' : 'No hay match de designation_final en PDF.'
+        },
+        {
+            id: 'cross_consistency',
+            title: 'Consistencia entre fuentes',
+            pass: warnings.length === 0,
+            detail: warnings.length ? warnings[0] : 'No se detectan incoherencias basicas entre raw y final.'
+        }
+    ];
+}
+
+function computePipelineState(row) {
+    const steps = buildPipeline(row);
+    const executed = Math.max(0, Math.min(currentProcessIndex, steps.length));
+    const executedSteps = steps.slice(0, executed);
+    const failedExecuted = executedSteps.filter(step => !step.pass);
+
+    if (executed < steps.length) {
+        return {
+            status: 'raw',
+            title: 'Estado: REGISTRO_RAW',
+            message: `Proceso en curso (${executed}/${steps.length}).`,
+            steps,
+            executed,
+            failedExecuted
+        };
+    }
+
+    if (failedExecuted.length > 0) {
+        return {
+            status: 'ko',
+            title: 'Estado: REGISTRO_KO',
+            message: `Pipeline completo con ${failedExecuted.length} procesos fallidos.`,
+            steps,
+            executed,
+            failedExecuted
+        };
+    }
+
+    return {
+        status: 'ok',
+        title: 'Estado: REGISTRO_OK',
+        message: 'Pipeline completo sin fallos. Registro listo para OK.',
+        steps,
+        executed,
+        failedExecuted
+    };
+}
+
+function setBackendBadge(status, text) {
+    const badge = $('backendBadge');
+    if (!badge) return;
+    badge.classList.remove('checking', 'online', 'offline');
+    badge.classList.add(status);
+    badge.textContent = text;
+}
+
+function initHorizontalSplitter() {
+    const layout = document.querySelector('.a2-layout');
+    const splitter = $('a2Splitter');
+    if (!(layout instanceof HTMLElement) || !(splitter instanceof HTMLElement)) return;
+
+    const clampAndApplyWidth = (desiredWidth) => {
+        const layoutWidth = Math.max(1, layout.getBoundingClientRect().width);
+        const minWidth = 320;
+        const maxWidth = Math.max(380, Math.floor(layoutWidth * 0.62));
+        const clamped = Math.max(minWidth, Math.min(maxWidth, Math.round(desiredWidth)));
+        layout.style.setProperty('--a2-right-width', `${clamped}px`);
+        return clamped;
+    };
+
+    const savedWidth = Number(localStorage.getItem(RIGHT_PANEL_WIDTH_KEY));
+    if (Number.isFinite(savedWidth) && savedWidth > 0) {
+        clampAndApplyWidth(savedWidth);
+    }
+
+    let dragging = false;
+
+    const onPointerMove = (event) => {
+        if (!dragging) return;
+        const rect = layout.getBoundingClientRect();
+        const desiredWidth = rect.right - event.clientX;
+        const applied = clampAndApplyWidth(desiredWidth);
+        localStorage.setItem(RIGHT_PANEL_WIDTH_KEY, String(applied));
+        event.preventDefault();
+    };
+
+    const stopDragging = () => {
+        if (!dragging) return;
+        dragging = false;
+        document.body.classList.remove('a2-resizing');
+        window.removeEventListener('pointermove', onPointerMove);
+        window.removeEventListener('pointerup', stopDragging);
+    };
+
+    splitter.addEventListener('pointerdown', (event) => {
+        if (window.matchMedia('(max-width: 1200px)').matches) return;
+        dragging = true;
+        document.body.classList.add('a2-resizing');
+        window.addEventListener('pointermove', onPointerMove);
+        window.addEventListener('pointerup', stopDragging);
+        event.preventDefault();
+    });
+
+    splitter.addEventListener('keydown', (event) => {
+        if (window.matchMedia('(max-width: 1200px)').matches) return;
+        if (event.key !== 'ArrowLeft' && event.key !== 'ArrowRight') return;
+
+        const current = Number.parseInt(getComputedStyle(layout).getPropertyValue('--a2-right-width'), 10) || 420;
+        const delta = event.key === 'ArrowLeft' ? 24 : -24;
+        const applied = clampAndApplyWidth(current + delta);
+        localStorage.setItem(RIGHT_PANEL_WIDTH_KEY, String(applied));
+        event.preventDefault();
+    });
+}
+
+async function refreshBackendBadge() {
+    setBackendBadge('checking', 'Backend: comprobando...');
+    const result = await checkSaveBackendConnection();
+    if (result.ok) {
+        setBackendBadge('online', 'Backend: online');
+        return;
+    }
+    setBackendBadge('offline', 'Backend: offline');
+}
+
+function buildEngineOptions() {
+    const select = $('engineFilterSelect');
+    if (!(select instanceof HTMLSelectElement)) return;
+
+    const options = [...new Set((state.allData || [])
+        .map(row => String(row?.engine_model ?? '').trim())
+        .filter(Boolean)
+    )].sort((a, b) => a.localeCompare(b, 'es', { numeric: true, sensitivity: 'base' }));
+
+    select.innerHTML = options.map((value) => `<option value="${value}">${value}</option>`).join('');
+}
+
+function resolveEngineFile(row) {
+    const sourceFile = String(row?.source_file ?? '').trim();
+    if (sourceFile) {
+        const base = sourceFile
+            .replace(/^engine_/i, '')
+            .replace(/\.xlsx$/i, '')
+            .replace(/\.json$/i, '')
+            .trim();
+        if (base) return `engine_${base}.json`;
+    }
+
+    const engineModel = String(row?.engine_model ?? '').trim();
+    if (!engineModel) return '';
+    if (/^engine_/i.test(engineModel)) return `${engineModel}.json`;
+    return `engine_${engineModel}.json`;
+}
+
+function fillEditFields(row) {
+    $('editPnFinal').value = txt(row?.pn_final, '');
+    $('editDesignationFinal').value = txt(row?.designation_final, '');
+    $('editMeasurementFinal').value = txt(row?.measurement_final, '');
+    $('editWeightFinal').value = txt(row?.weight_final, '');
+    $('editRevisionEstado').value = txt(row?.qa_revision_estado, '');
+    $('editRevisionAccion').value = txt(row?.qa_revision_accion, '');
+}
+
+function renderRecordPosition(row) {
+    const target = $('recordPositionText');
+    if (!(target instanceof HTMLElement)) return;
+
+    const queue = getQueueRows();
+    if (!row || !queue.length) {
+        target.textContent = 'Registro 0 de 0';
+        return;
+    }
+
+    const idx = queue.findIndex(item => getRevisionKey(item) === getRevisionKey(row));
+    target.textContent = `Registro ${idx >= 0 ? idx + 1 : 0} de ${queue.length}`;
+}
+
+function renderMeta(row) {
+    const target = $('recordMeta');
+    if (!(target instanceof HTMLElement)) return;
+
+    if (!row) {
+        target.textContent = 'Sin registro cargado.';
+        return;
+    }
+
+    target.textContent = `PN/PART NO=${getDisplayPn(row)} | POS=${txt(row?.POS)} | Libro=${txt(row?.engine_model)} | Pagina=${txt(row?.['Source Page'])}`;
+}
+
+function getGesaPn(row) {
+    const isGesaSi = String(row?.gesa ?? '').trim().toUpperCase() === 'SI';
+    if (!isGesaSi) return null;
+    return String(row?.pn_final ?? '').trim() || null;
+}
+
+function getGesaWeightWithUnits(row) {
+    const weight = String(row?.weight_gesa ?? '').trim();
+    const units = String(row?.units ?? '').trim();
+    if (weight && units) return `${weight} ${units}`;
+    if (weight) return weight;
+    return null;
+}
+
+function buildComparisonRows(row) {
+    return [
+        { field: 'POS', raw: row?.POS, gesa: null, final: row?.POS },
+        { field: 'PART NO.', raw: row?.['PART NO.'], gesa: getGesaPn(row), final: row?.pn_final },
+        { field: 'DESIGNATION', raw: row?.DESIGNATION, gesa: row?.designation_gesa, final: row?.designation_final },
+        { field: 'MODEL/TYPE', raw: row?.['MODEL/TYPE'], gesa: null, final: null },
+        { field: 'QTY', raw: row?.QTY, gesa: null, final: row?.QTY },
+        { field: 'UNITS', raw: row?.UNITS, gesa: null, final: row?.UNITS },
+        { field: 'WEIGHT', raw: row?.WEIGHT, gesa: getGesaWeightWithUnits(row), final: row?.weight_final },
+        { field: 'FN', raw: row?.FN, gesa: null, final: null },
+        { field: 'MEASUREMENT / STANDARD', raw: row?.['MEASUREMENT / STANDARD'], gesa: row?.dimensions_gesa, final: row?.measurement_final },
+        { field: 'FG/FGS', raw: row?.['FG/FGS'], gesa: null, final: null },
+        { field: 'BOM-No.', raw: row?.['BOM-No.'], gesa: null, final: null },
+        { field: 'gesa', raw: null, gesa: row?.gesa, final: null },
+        { field: 'nsn', raw: null, gesa: row?.nsn, final: null },
+        { field: 'norma', raw: null, gesa: row?.norma, final: row?.norma },
+        { field: 'normalizado', raw: null, gesa: row?.normalizado, final: null }
+    ];
+}
+
+function isBomField(fieldName) {
+    return String(fieldName ?? '').trim().toLowerCase().includes('bom');
+}
+
+function findPdfPnAnchor(row, pageText) {
+    if (!pageText || !pageText.normalizedText) return null;
+
+    const pnCandidates = [row?.pn_final, row?.['PART NO.']]
+        .map(value => String(value ?? '').trim())
+        .filter(Boolean);
+
+    for (const candidate of pnCandidates) {
+        const normalized = normalizePdfToken(candidate);
+        const clusterMatch = pageText.clusters.find((cluster) => tokenMatchesPdf(cluster.normalized, normalized));
+        if (clusterMatch) return { lineIndex: clusterMatch.lineIndex, token: normalized };
+
+        const itemMatch = pageText.items.find((item) => tokenMatchesPdf(item.normalized, normalized));
+        if (itemMatch) return { lineIndex: itemMatch.lineIndex, token: normalized };
+    }
+
+    return null;
+}
+
+function getPdfValueForRow(row, entry, pageText, pnAnchor) {
+    if (!pageText || !pageText.normalizedText) return { value: '-', token: '' };
+    if (!pnAnchor) return { value: '-', token: '' };
+
+    const searchClusters = isBomField(entry.field)
+        ? pageText.clusters
+        : pageText.clusters.filter((cluster) => cluster.lineIndex === pnAnchor.lineIndex);
+    const searchItems = isBomField(entry.field)
+        ? pageText.items
+        : pageText.items.filter((item) => item.lineIndex === pnAnchor.lineIndex);
+
+    const candidates = [entry.final, entry.gesa, entry.raw]
+        .map(value => String(value ?? '').trim())
+        .filter(value => value && value !== '-');
+
+    const seen = new Set();
+    for (const candidate of candidates) {
+        const key = candidate.toLowerCase();
+        if (seen.has(key)) continue;
+        seen.add(key);
+
+        const normalized = normalizePdfToken(candidate);
+        const clusterMatch = searchClusters.find((cluster) => tokenMatchesPdf(cluster.normalized, normalized));
+        if (clusterMatch) {
+            const exactMatch = extractExactPdfSubstring(clusterMatch.text, candidate);
+            if (exactMatch) {
+                return { value: exactMatch, token: normalizePdfToken(exactMatch) };
+            }
+        }
+
+        const itemMatch = searchItems.find((item) => tokenMatchesPdf(item.normalized, normalized));
+        if (itemMatch) {
+            const exactMatch = extractExactPdfSubstring(itemMatch.text, candidate) || itemMatch.text;
+            if (exactMatch) {
+                return { value: exactMatch, token: normalizePdfToken(exactMatch) };
+            }
+        }
+
+        if (tokenMatchesPdf(pageText.normalizedText, normalized)) continue;
+    }
+
+    return { value: '-', token: '' };
+}
+
+async function renderComparisonTable(row) {
+    const body = $('comparisonBody');
+    if (!(body instanceof HTMLElement)) return;
+
+    const rows = buildComparisonRows(row);
+    setPdfReadTokens([]);
+
+    body.innerHTML = rows.map((entry) => {
+        const loadingClass = 'pdf-loading';
+        return `<tr>
+            <td class="field">${escapeHtml(entry.field)}</td>
+            <td>${escapeHtml(txt(entry.raw))}</td>
+            <td>${escapeHtml(txt(entry.gesa))}</td>
+            <td>${escapeHtml(txt(entry.final))}</td>
+            <td class="${loadingClass}">${escapeHtml('...')}</td>
+        </tr>`;
+    }).join('');
+
+    const renderToken = ++comparisonRenderToken;
+    const pageText = await getPdfPageNormalizedText(row?.engine_model, row?.['Source Page']);
+    if (renderToken !== comparisonRenderToken) return;
+    const pnAnchor = findPdfPnAnchor(row, pageText);
+
+    const readTokens = [];
+
+    body.innerHTML = rows.map((entry) => {
+        const pdfRead = getPdfValueForRow(row, entry, pageText, pnAnchor);
+        if (pdfRead.token) {
+            readTokens.push({ field: entry.field, token: pdfRead.token });
+        }
+        const cellClasses = getComparisonCellClasses(entry, pdfRead.value);
+        return `<tr>
+            <td class="field">${escapeHtml(entry.field)}</td>
+            <td>${escapeHtml(txt(entry.raw))}</td>
+            <td class="${cellClasses.gesaClass}">${escapeHtml(txt(entry.gesa))}</td>
+            <td class="${cellClasses.finalClass}">${escapeHtml(txt(entry.final))}</td>
+            <td class="${cellClasses.pdfClass}">${escapeHtml(txt(pdfRead.value))}</td>
+        </tr>`;
+    }).join('');
+
+    const dedupedReadTokens = [];
+    const seenReadTokens = new Set();
+    readTokens.forEach((entry) => {
+        const key = `${String(entry.field || '').toLowerCase()}|${entry.token}`;
+        if (seenReadTokens.has(key)) return;
+        seenReadTokens.add(key);
+        dedupedReadTokens.push(entry);
+    });
+    setPdfReadTokens(dedupedReadTokens);
+}
+
+function renderPipeline(row, pipelineState) {
+    const list = $('pipelineList');
+    const summary = $('pipelineSummary');
+    if (!(list instanceof HTMLElement) || !(summary instanceof HTMLElement)) return;
+
+    const steps = pipelineState.steps;
+    summary.textContent = `${pipelineState.executed}/${steps.length} procesos ejecutados`;
+
+    list.innerHTML = steps.map((step, index) => {
+        let cssClass = 'pending';
+        let stateLabel = 'PENDIENTE';
+
+        if (index < pipelineState.executed) {
+            if (step.pass) {
+                cssClass = 'pass';
+                stateLabel = 'PASS';
+            } else {
+                cssClass = 'fail';
+                stateLabel = 'FAIL';
+            }
+        }
+
+        return `<li class="${cssClass}">
+            <div class="head">
+                <span class="title">${index + 1}. ${step.title}</span>
+                <span class="state">${stateLabel}</span>
+            </div>
+            <p>${step.detail}</p>
+        </li>`;
+    }).join('');
+}
+
+function renderEvidence(row, pipelineState) {
+    const statusText = $('statusText');
+    const evidence = $('evidenceList');
+    if (!(statusText instanceof HTMLElement) || !(evidence instanceof HTMLElement)) return;
+
+    statusText.textContent = pipelineState.message;
+
+    const lines = [];
+    lines.push(`<li>Registro: PN/PART NO ${getDisplayPn(row)} | ${txt(row?.engine_model)} / ${txt(row?.['Source Page'])} / POS ${txt(row?.POS)}</li>`);
+    lines.push(`<li class="${pipelineState.status === 'ok' ? 'ok' : pipelineState.status === 'ko' ? 'ko' : ''}">Veredicto actual: ${pipelineState.title}</li>`);
+
+    const codes = getRowCodes(row);
+    if (codes.length) {
+        codes.forEach((code) => {
+            lines.push(`<li class="ko">Check activo: ${QA_LABELS[code] || code}</li>`);
+        });
+    } else {
+        lines.push('<li class="ok">Sin checks QA activos para este registro.</li>');
+    }
+
+    evidence.innerHTML = lines.join('');
+}
+
+function renderVerdict(pipelineState) {
+    const verdict = $('globalVerdict');
+    if (!(verdict instanceof HTMLElement)) return;
+
+    verdict.classList.remove('raw', 'ok', 'ko');
+    verdict.classList.add(pipelineState.status);
+    verdict.textContent = pipelineState.title;
+}
+
+function syncPdfWithCurrentRow(row) {
+    if (!row) {
+        setPdfSelection(null);
+        loadPdfClear();
+        return;
+    }
+
+    setPdfSelection(row);
+
+    const book = String(row?.engine_model ?? '').trim();
+    const page = String(row?.['Source Page'] ?? '').trim();
+    if (!book || !page) {
+        loadPdfClear();
+        return;
+    }
+
+    loadPdfWithPage(book, page).catch((error) => {
+        console.error('No se pudo cargar PDF del registro:', error);
+    });
+}
+
+function renderRecord(row) {
+    if (!row) return;
+
+    renderRecordPosition(row);
+    renderMeta(row);
+    renderComparisonTable(row).catch((error) => {
+        console.warn('No se pudo renderizar la comparativa con PDF:', error);
+    });
+    fillEditFields(row);
+
+    const pipelineState = computePipelineState(row);
+    renderPipeline(row, pipelineState);
+    renderEvidence(row, pipelineState);
+    renderVerdict(pipelineState);
+    syncPdfWithCurrentRow(row);
+}
+
+function syncCurrentRowReference() {
+    if (!currentRow) return;
+    const key = getRevisionKey(currentRow);
+    if (!key) return;
+
+    const updated = (state.allData || []).find(row => getRevisionKey(row) === key);
+    if (updated) currentRow = updated;
+}
+
+function getActiveCodes() {
+    return (state.qaErrorCheckDefinitions || [])
+        .map(def => String(def?.code ?? '').trim())
+        .filter(Boolean);
+}
+
+async function revalidateCurrentRow() {
+    if (!currentRow) {
+        alert('Primero debes cargar un registro.');
+        return;
+    }
+
+    const revisionKey = getRevisionKey(currentRow);
+    if (!revisionKey) {
+        alert('No se pudo resolver la clave de revision del registro.');
+        return;
+    }
+
+    const response = await fetch('/apply-qa-checks-filter', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+            activeCodes: getActiveCodes(),
+            scope: 'visible',
+            revisionKeys: [revisionKey]
+        })
+    });
+
+    if (!response.ok) {
+        const data = await response.json().catch(() => ({}));
+        throw new Error(data.error || `HTTP ${response.status}`);
+    }
+
+    const data = await response.json();
+    const updated = Array.isArray(data.rows)
+        ? data.rows.find(entry => entry.revisionKey === revisionKey)
+        : null;
+
+    if (updated) {
+        currentRow.qa_errors = updated.qa_errors || currentRow.qa_errors;
+        currentRow.qa_errors_active = updated.qa_errors_active || currentRow.qa_errors_active;
+    }
+
+    syncCurrentRowReference();
+    renderRecord(currentRow);
+}
+
+async function saveCurrentFieldChanges() {
+    if (!currentRow) {
+        alert('Primero debes cargar un registro.');
+        return;
+    }
+
+    const engineFile = resolveEngineFile(currentRow);
+    const id = txt(currentRow?.ID, '');
+    if (!engineFile || !id) {
+        alert('No se pudo resolver archivo engine o ID para guardar.');
+        return;
+    }
+
+    const changes = [
+        ['pn_final', $('editPnFinal').value],
+        ['designation_final', $('editDesignationFinal').value],
+        ['measurement_final', $('editMeasurementFinal').value],
+        ['weight_final', $('editWeightFinal').value],
+        ['qa_revision_estado', $('editRevisionEstado').value],
+        ['qa_revision_accion', $('editRevisionAccion').value]
+    ];
+
+    for (const [field, value] of changes) {
+        if (String(currentRow?.[field] ?? '') === String(value ?? '')) continue;
+        await saveCellToServer(engineFile, id, field, value);
+        currentRow[field] = value;
+    }
+
+    await revalidateCurrentRow();
+}
+
+async function setOutcome(kind) {
+    $('editRevisionEstado').value = kind === 'ok' ? 'revisado' : 'descartado';
+    $('editRevisionAccion').value = kind === 'ok' ? 'mantener' : 'revisar';
+    currentProcessIndex = buildPipeline(currentRow).length;
+    await saveCurrentFieldChanges();
+}
+
+function findRecordByPrimaryKey(recordKey, engineFilter) {
+    const key = String(recordKey ?? '').trim().toLowerCase();
+    if (!key) return null;
+
+    const source = engineFilter
+        ? (state.allData || []).filter((row) => String(row?.engine_model ?? '').trim() === engineFilter)
+        : (state.allData || []);
+
+    return source.find((row) => {
+        const pnFinal = String(row?.pn_final ?? '').trim().toLowerCase();
+        const partNo = String(row?.['PART NO.'] ?? '').trim().toLowerCase();
+        const id = String(row?.ID ?? '').trim().toLowerCase();
+        return pnFinal === key || partNo === key || id === key;
+    }) || null;
+}
+
+async function loadRecordFromControls() {
+    const recordKey = $('recordIdInput').value;
+    const engineFilter = $('engineFilterSelect').value;
+    const found = findRecordByPrimaryKey(recordKey, engineFilter);
+
+    if (!found) {
+        alert('No se encontro ningun registro con ese PN/PART NO para el filtro seleccionado.');
+        return;
+    }
+
+    currentRow = found;
+    currentProcessIndex = 0;
+    await revalidateCurrentRow();
+}
+
+async function loadRelativeRecord(direction) {
+    const queue = getQueueRows();
+    if (!queue.length) return;
+
+    const currentIndex = currentRow
+        ? queue.findIndex(row => getRevisionKey(row) === getRevisionKey(currentRow))
+        : -1;
+
+    const targetIndex = currentIndex < 0
+        ? 0
+        : Math.max(0, Math.min(queue.length - 1, currentIndex + direction));
+
+    if (targetIndex === currentIndex) {
+        alert(direction > 0 ? 'Ya estas en el ultimo registro.' : 'Ya estas en el primer registro.');
+        return;
+    }
+
+    currentRow = queue[targetIndex];
+    $('recordIdInput').value = getDisplayPn(currentRow);
+    currentProcessIndex = 0;
+    await revalidateCurrentRow();
+}
+
+async function runNextProcess() {
+    if (!currentRow) {
+        alert('Primero debes cargar un registro.');
+        return;
+    }
+
+    await revalidateCurrentRow();
+
+    const total = buildPipeline(currentRow).length;
+    if (currentProcessIndex >= total) {
+        alert('Todos los procesos ya fueron ejecutados para este registro.');
+        return;
+    }
+
+    currentProcessIndex += 1;
+    renderRecord(currentRow);
+}
+
+async function runAllProcesses() {
+    if (!currentRow) {
+        alert('Primero debes cargar un registro.');
+        return;
+    }
+
+    await revalidateCurrentRow();
+    currentProcessIndex = buildPipeline(currentRow).length;
+    renderRecord(currentRow);
+}
+
+async function initialize() {
+    try {
+        state.rightPanelTab = 'pdf';
+        initHorizontalSplitter();
+        initPdfZoomControls();
+        loadPdfClear();
+
+        setBackendBadge('checking', 'Backend: comprobando...');
+        const loadedRows = await loadPartitionedEngineData();
+        state.allData = sortRowsByBookPagePos(loadedRows);
+
+        assignRevisionKeys(state.allData);
+        applyRevisionDataToRows(state.allData);
+        buildEngineOptions();
+
+        const firstRow = state.allData[0] || null;
+        if (firstRow) {
+            currentRow = firstRow;
+            $('recordIdInput').value = getDisplayPn(firstRow);
+            renderRecord(firstRow);
+            await revalidateCurrentRow();
+        } else {
+            renderRecordPosition(null);
+        }
+
+        await refreshBackendBadge();
+    } catch (error) {
+        setBackendBadge('offline', 'Backend: error');
+        const statusText = $('statusText');
+        if (statusText) statusText.textContent = `Error iniciando Analista 02: ${error.message}`;
+        console.error(error);
+    }
+}
+
+$('loadRecordBtn').addEventListener('click', () => {
+    loadRecordFromControls().catch((error) => alert(`No se pudo cargar el registro: ${error.message}`));
+});
+
+$('prevRecordBtn').addEventListener('click', () => {
+    loadRelativeRecord(-1).catch((error) => alert(`No se pudo cargar registro anterior: ${error.message}`));
+});
+
+$('nextRecordBtn').addEventListener('click', () => {
+    loadRelativeRecord(1).catch((error) => alert(`No se pudo cargar siguiente registro: ${error.message}`));
+});
+
+$('revalidateBtn').addEventListener('click', () => {
+    revalidateCurrentRow().catch((error) => alert(`No se pudo revalidar: ${error.message}`));
+});
+
+$('runNextProcessBtn').addEventListener('click', () => {
+    runNextProcess().catch((error) => alert(`No se pudo ejecutar proceso: ${error.message}`));
+});
+
+$('runAllProcessBtn').addEventListener('click', () => {
+    runAllProcesses().catch((error) => alert(`No se pudo ejecutar pipeline completo: ${error.message}`));
+});
+
+$('saveFieldsBtn').addEventListener('click', () => {
+    saveCurrentFieldChanges().catch((error) => alert(`No se pudieron guardar cambios: ${error.message}`));
+});
+
+$('markOkBtn').addEventListener('click', () => {
+    setOutcome('ok').catch((error) => alert(`No se pudo marcar registro_ok: ${error.message}`));
+});
+
+$('markKoBtn').addEventListener('click', () => {
+    setOutcome('ko').catch((error) => alert(`No se pudo marcar registro_ko: ${error.message}`));
+});
+
+$('recordIdInput').addEventListener('keydown', (event) => {
+    if (event.key !== 'Enter') return;
+    event.preventDefault();
+    loadRecordFromControls().catch((error) => alert(`No se pudo cargar el registro: ${error.message}`));
+});
+
+$('engineFilterSelect').addEventListener('change', () => {
+    const queue = getQueueRows();
+    const next = queue[0] || null;
+    if (!next) return;
+
+    currentRow = next;
+    $('recordIdInput').value = getDisplayPn(next);
+    currentProcessIndex = 0;
+    revalidateCurrentRow().catch((error) => alert(`No se pudo cargar el registro del filtro: ${error.message}`));
+});
+
+initialize();
