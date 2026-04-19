@@ -205,6 +205,21 @@ export function getCurrentFilteredSortedRows() {
     return sortData(applyFilters(state.allData), state.sortKey, state.sortAsc);
 }
 
+function getQaDisplayRows(sortedRows) {
+    if (!state.leftTableReviewedOnly) return sortedRows;
+    const rowsByKey = new Map(sortedRows.map(row => [getRevisionKey(row), row]));
+    return (state.recentRevisionKeys || [])
+        .map(key => rowsByKey.get(key))
+        .filter(Boolean);
+}
+
+function getPaginationTotalRows() {
+    if (state.tableMode === 'qa' && state.leftTableReviewedOnly) {
+        return Math.max(0, Number(state.displayRowCount) || 0);
+    }
+    return Math.max(0, Number(state.filteredData.length) || 0);
+}
+
 export function getRowsForBulkScope(scope) {
     const sortedRows = getCurrentFilteredSortedRows();
     if (scope === 'visible') {
@@ -335,6 +350,23 @@ export function selectVisibleRowByIndex(index) {
 }
 
 export function moveSelectionBy(delta) {
+    if (state.tableMode === 'qa' && state.leftTableReviewedOnly) {
+        const rows = getCurrentFilteredSortedRows();
+        if (!rows.length) return;
+        let currentIndex = rows.findIndex(row => getRevisionKey(row) === state.selectedRevisionRowKey);
+        if (currentIndex === -1) currentIndex = 0;
+        const boundedIndex = Math.min(Math.max(0, currentIndex + delta), rows.length - 1);
+        const targetRow = rows[boundedIndex];
+        if (!targetRow) return;
+        const targetKey = getRevisionKey(targetRow);
+        state.selectedRevisionRowKey = targetKey;
+        refreshSelectedRowVisual();
+        renderSelectedRowPosPanel(targetRow);
+        renderSelectedRowPosTop(targetRow);
+        dispatchSelectionChanged(targetKey);
+        return;
+    }
+
     const rows = getVisibleTableRows();
     if (!rows.length) return;
     let currentIndex = rows.findIndex(tr => (tr.getAttribute('data-revision-key') || '') === state.selectedRevisionRowKey);
@@ -718,7 +750,7 @@ export function refreshVisibleRowByRevisionKey(revisionKey) {
 }
 
 export function renderPagination() {
-    const totalPages = getEffectiveTotalPages(state.filteredData.length);
+    const totalPages = getEffectiveTotalPages(getPaginationTotalRows());
     const pagination = document.getElementById('pagination');
     const pageInfo = document.getElementById('pageInfo');
     const firstBtn = document.getElementById('firstBtn');
@@ -743,7 +775,7 @@ export function renderPagination() {
 }
 
 export function jumpToPage(pageNumber) {
-    const totalPages = getEffectiveTotalPages(state.filteredData.length);
+    const totalPages = getEffectiveTotalPages(getPaginationTotalRows());
     const requestedPage = Number(pageNumber);
     if (!Number.isFinite(requestedPage)) return;
 
@@ -778,8 +810,6 @@ export function renderTable() {
         ? baseFiltered.filter(row => getRowErrors(row, { activeCodes: state.activeQaErrorChecks }).length > 0)
         : baseFiltered;
     const total = state.filteredData.length;
-    const effectivePageSize = getEffectivePageSize(total);
-    const totalPages = Math.max(1, Math.ceil(total / effectivePageSize));
     if (state.currentPage < 1) state.currentPage = 1;
     if (state.currentPage > totalPages) state.currentPage = totalPages;
 
@@ -796,13 +826,19 @@ export function renderTable() {
     }
 
     const sortedData = sortData(state.filteredData, state.sortKey, state.sortAsc);
+    const displayRows = errorsMode ? sortedData : getQaDisplayRows(sortedData);
+    state.displayRowCount = displayRows.length;
+    const effectivePageSize = getEffectivePageSize(displayRows.length);
+    const totalPages = Math.max(1, Math.ceil(displayRows.length / effectivePageSize));
+    if (state.currentPage < 1) state.currentPage = 1;
+    if (state.currentPage > totalPages) state.currentPage = totalPages;
     const start = (state.currentPage - 1) * effectivePageSize;
-    const pageData = sortedData.slice(start, start + effectivePageSize);
+    const pageData = displayRows.slice(start, start + effectivePageSize);
 
-    if (pageData.length > 0) {
+    if (sortedData.length > 0) {
         const hasSelectedInFiltered = state.filteredData.some(item => getRevisionKey(item) === state.selectedRevisionRowKey);
         if (!hasSelectedInFiltered) {
-            state.selectedRevisionRowKey = getRevisionKey(pageData[0]);
+            state.selectedRevisionRowKey = getRevisionKey(sortedData[0]);
         }
     }
 
@@ -824,6 +860,7 @@ export function renderTable() {
 
         stats.innerHTML = `
                     <span class="stat"><b>${total}</b> total</span>
+                    <span class="stat ok"><b>${state.displayRowCount}</b> revisados en la izquierda</span>
                     <span class="stat ok"><b>${distinctPnFiltered}</b> PN distintos (filtrado)</span>
                     <span class="stat warn"><b>${repeatedPnGroups}</b> PN repetidos (filtrado)</span>
                     <span class="stat"><b>${distinctPnTotal}</b> PN distintos totales</span>
@@ -833,7 +870,9 @@ export function renderTable() {
                     <span class="stat" style="margin-left:auto; color:#64748b; font-size:11px;" title="JSON base de esta vista">📄 ${escapeHtml(state.mainDataSourceLabel)}</span>
                 `;
 
-        tbody.innerHTML = pageData.map(renderRow).join('');
+        tbody.innerHTML = pageData.length
+            ? pageData.map(renderRow).join('')
+            : `<tr><td colspan="${getCurrentColumnCount()}" class="error">Aun no hay registros revisados en esta sesion.</td></tr>`;
         errorViewTbody.innerHTML = '';
     }
 
@@ -855,7 +894,7 @@ export function renderTable() {
 }
 
 export function changePage(direction) {
-    const totalPages = getEffectiveTotalPages(state.filteredData.length);
+    const totalPages = getEffectiveTotalPages(getPaginationTotalRows());
     state.currentPage += direction;
     if (state.currentPage < 1) state.currentPage = 1;
     if (state.currentPage > totalPages) state.currentPage = totalPages;

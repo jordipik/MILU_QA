@@ -105,7 +105,7 @@
           "message": "PN vacio"
         }
       ],
-      "updated_at": "2026-04-19T00:07:55.634Z"
+      "updated_at": "2026-04-19T00:25:08.885Z"
     },
     "qa_errors_active": {
       "version": 1,
@@ -137,7 +137,7 @@
         }
       ],
       "signature": "designation_final_not_in_pdf|missing_designation_final|missing_part_no|missing_pn_final|missing_pos|pn_final_not_in_pdf",
-      "updated_at": "2026-04-19T00:07:55.634Z"
+      "updated_at": "2026-04-19T00:25:08.885Z"
     }
   },
   {
@@ -231,7 +231,7 @@
       "codes": [],
       "fields": {},
       "issues": [],
-      "signature": "designation_final_not_in_pdf|missing_designation_final|missing_part_no|missing_pn_final|missing_pos|pn_final_not_in_pdf",
+      "signature": "designation_final_not_in_pdf|missing_designation_final|missing_part_no|missing_pos",
       "updated_at": "2026-04-18T22:58:19.569Z"
     }
   },
@@ -421,7 +421,7 @@
       "codes": [],
       "fields": {},
       "issues": [],
-      "signature": "designation_final_not_in_pdf|missing_designation_final|missing_part_no|missing_pn_final|missing_pos|pn_final_not_in_pdf",
+      "signature": "designation_final_not_in_pdf|missing_designation_final|missing_part_no|missing_pos",
       "updated_at": "2026-04-18T22:58:15.758Z"
     }
   },
@@ -1106,7 +1106,7 @@
       "codes": [],
       "fields": {},
       "issues": [],
-      "signature": "designation_final_not_in_pdf|missing_designation_final|missing_part_no|missing_pn_final|missing_pos|pn_final_not_in_pdf",
+      "signature": "designation_final_not_in_pdf|missing_designation_final|missing_part_no|missing_pos",
       "updated_at": "2026-04-18T22:58:06.497Z"
     }
   },

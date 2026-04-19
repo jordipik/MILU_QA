@@ -33,6 +33,7 @@ import { getEngineJsonForRow } from './helpers.js';
 import {
     changePage,
     focusRevisionRowInMainTable,
+    getCurrentFilteredSortedRows,
     getRowsForBulkScope,
     jumpToPage,
     moveSelectionBy,
@@ -243,6 +244,21 @@ function syncRecordModalBookFilter(row, matches, selectId = 'qaModalMatchesBookF
 }
 function getRowByRevisionKey(revisionKey) {
     return state.allData.find(item => getRevisionKey(item) === revisionKey);
+}
+
+function selectRevisionRowByKey(revisionKey) {
+    const key = String(revisionKey || '').trim();
+    if (!key) return false;
+    const row = getRowByRevisionKey(key);
+    if (!row) return false;
+    state.selectedRevisionRowKey = key;
+    refreshSelectedRowVisual();
+    renderSelectedRowPosPanel(row);
+    renderSelectedRowPosTop(row);
+    document.dispatchEvent(new CustomEvent('qa:selected-row-changed', {
+        detail: { revisionKey: key }
+    }));
+    return true;
 }
 
 function normModalMatch(value) {
@@ -2037,6 +2053,8 @@ async function loadData() {
         state.tableMode = 'qa';
         state.filters = {};
         state.qaChecksScopedRows = null;
+        state.recentRevisionKeys = [];
+        state.displayRowCount = 0;
 
         const columnViewSelect = $('columnViewSelect');
         if (columnViewSelect instanceof HTMLSelectElement) {
@@ -2382,6 +2400,10 @@ function attachGlobalEvents() {
             const revisionKey = quickBtn.dataset.revisionKey;
             const quickMode = quickBtn.dataset.quickMode;
             if (!revisionKey) return;
+            const sortedRowsBefore = getCurrentFilteredSortedRows();
+            const currentIndexBefore = sortedRowsBefore.findIndex(item => getRevisionKey(item) === revisionKey);
+            const nextRow = currentIndexBefore >= 0 ? sortedRowsBefore[currentIndexBefore + 1] : null;
+            const nextRevisionKey = nextRow ? getRevisionKey(nextRow) : '';
             const row = state.allData.find(item => getRevisionKey(item) === revisionKey);
             if (!row) return;
             const quickMap = {
@@ -2396,12 +2418,22 @@ function attachGlobalEvents() {
             const nextEstado = targetValues.estado === null ? String(row.qa_revision_estado || '') : targetValues.estado;
             const nextAccion = targetValues.accion === null ? String(row.qa_revision_accion || '') : targetValues.accion;
             setRowRevision(row, nextEstado, nextAccion);
+            state.recentRevisionKeys = [
+                revisionKey,
+                ...state.recentRevisionKeys.filter(key => key !== revisionKey)
+            ];
             const tr = quickBtn.closest('tr');
             const estadoSelect = tr?.querySelector('select[data-revision-field="estado"]');
             const accionSelect = tr?.querySelector('select[data-revision-field="accion"]');
             if (estadoSelect instanceof HTMLSelectElement) { estadoSelect.value = nextEstado; updateRevisionSelectVisual(estadoSelect); }
             if (accionSelect instanceof HTMLSelectElement) { accionSelect.value = nextAccion; updateRevisionSelectVisual(accionSelect); }
-            syncSideRecordFormWithSelection();
+            renderTable();
+            renderPagination();
+            if (nextRevisionKey) {
+                selectRevisionRowByKey(nextRevisionKey);
+            } else {
+                syncSideRecordFormWithSelection();
+            }
             return;
         }
 
