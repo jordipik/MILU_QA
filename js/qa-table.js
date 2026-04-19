@@ -69,6 +69,64 @@ function getRowErrorMeta(row) {
     return value;
 }
 
+function hasComparableValue(value) {
+    return String(value ?? '').trim() !== '';
+}
+
+function normalizeComparableValue(value) {
+    return String(value ?? '')
+        .trim()
+        .replace(/\s+/g, ' ')
+        .toLowerCase()
+        .normalize('NFD')
+        .replace(/[\u0300-\u036f]/g, '');
+}
+
+function valuesMatch(left, right) {
+    const normalizedLeft = normalizeComparableValue(left);
+    const normalizedRight = normalizeComparableValue(right);
+    return normalizedLeft !== '' && normalizedRight !== '' && normalizedLeft === normalizedRight;
+}
+
+function getRowComparisonMeta(row) {
+    const pdfPos = row?.POS;
+    const pdfPn = row?.['PART NO.'];
+    const finalPn = row?.pn_final;
+    const gesaPn = row?.pn_raw;
+    const pdfDesignation = row?.DESIGNATION;
+    const finalDesignation = row?.designation_final;
+    const gesaDesignation = row?.designation_gesa;
+    const pdfMeasurement = row?.['MEASUREMENT / STANDARD'];
+    const finalMeasurement = row?.measurement_final;
+    const gesaMeasurement = row?.dimensions_gesa;
+
+    return {
+        pos: {
+            missing: !hasComparableValue(pdfPos)
+        },
+        pn: {
+            missing: !hasComparableValue(pdfPn),
+            pdfMatch: valuesMatch(pdfPn, finalPn),
+            gesaMatch: valuesMatch(gesaPn, finalPn)
+        },
+        designation: {
+            missing: !hasComparableValue(pdfDesignation),
+            pdfMatch: valuesMatch(pdfDesignation, finalDesignation),
+            gesaMatch: valuesMatch(gesaDesignation, finalDesignation)
+        },
+        measurement: {
+            pdfMatch: valuesMatch(pdfMeasurement, finalMeasurement),
+            gesaMatch: valuesMatch(gesaMeasurement, finalMeasurement)
+        }
+    };
+}
+
+function getComparisonClasses({ missing = false, pdfMatch = false, gesaMatch = false } = {}) {
+    if (missing) return ['cell-missing-source'];
+    if (pdfMatch || gesaMatch) return ['cell-match-final'];
+    return [];
+}
+
 function dispatchSelectionChanged(rowKey) {
     document.dispatchEvent(new CustomEvent('qa:selected-row-changed', {
         detail: { revisionKey: String(rowKey || '') }
@@ -471,10 +529,12 @@ function renderRow(row) {
     const revisionAccion = String(row.qa_revision_accion || '').trim();
     const revisionKey = getRevisionKey(row);
     const errorFields = errorMeta.errorFields;
+    const comparisonMeta = getRowComparisonMeta(row);
 
-    const withErrorClass = (baseClass, fieldKey) => {
+    const withCellClasses = (baseClass, fieldKey, extraClasses = []) => {
         const classes = [];
         if (baseClass) classes.push(baseClass);
+        if (Array.isArray(extraClasses) && extraClasses.length > 0) classes.push(...extraClasses.filter(Boolean));
         if (errorFields.has(fieldKey)) classes.push('cell-error-field');
         return classes.join(' ');
     };
@@ -497,17 +557,17 @@ function renderRow(row) {
     const rowSelectedClass = state.selectedRevisionRowKey && state.selectedRevisionRowKey === revisionKey ? 'row-selected' : '';
 
     return `<tr class="${rowSelectedClass}" data-revision-key="${escapeHtml(revisionKey)}">
-    <td class="${withErrorClass('separator-before separator-after', 'ID')}" title="${escapeHtml(id)}">${escapeHtml(id)}</td>
+        <td class="${withCellClasses('separator-before separator-after', 'ID')}" title="${escapeHtml(id)}">${escapeHtml(id)}</td>
       <td class="status-col" title="GESA: ${isGesa ? 'SI' : 'NO'}">${gesaIcon}</td>
       <td class="status-col" title="Normalizado: ${isNormalizado ? 'SI' : 'NO'}">${normalizadoIcon}</td>
       <td class="status-col" title="sust_hierarchie: ${escapeHtml(sustHierarchyLabel)}">${hierarchyIcon}</td>
       <td class="status-col" title="Foto: ${hasImg ? 'SI' : 'NO'}">${fotoIcon}</td>
       <td class="status-col" title="Error: ${errorType ? 'SI' : 'NO'}">${errorIcon}</td>
       <td class="status-col" title="En Web">${enWeb}</td>
-      <td class="${withErrorClass(`revision-cell ${getRevisionEstadoClass(revisionEstado)}`, 'qa_revision_estado')}" title="Estado de revisión">
+            <td class="${withCellClasses(`revision-cell ${getRevisionEstadoClass(revisionEstado)}`, 'qa_revision_estado')}" title="Estado de revisión">
           <select class="revision-select" data-revision-field="estado" data-revision-key="${escapeHtml(revisionKey)}">${revisionEstadoOptions}</select>
       </td>
-      <td class="${withErrorClass(`revision-cell ${getRevisionAccionClass(revisionAccion)}`, 'qa_revision_accion')}" title="Acción a realizar">
+            <td class="${withCellClasses(`revision-cell ${getRevisionAccionClass(revisionAccion)}`, 'qa_revision_accion')}" title="Acción a realizar">
           <select class="revision-select" data-revision-field="accion" data-revision-key="${escapeHtml(revisionKey)}">${revisionAccionOptions}</select>
       </td>
       <td class="quick-col" title="Acciones rápidas de revisión">
@@ -520,25 +580,25 @@ function renderRow(row) {
               <button type="button" class="quick-action-btn edit" data-open-record-modal="true" data-revision-key="${escapeHtml(revisionKey)}" title="Editar registro en formulario">ED</button>
           </div>
       </td>
-    <td class="${withErrorClass('', 'PART NO.')}" title="${escapeHtml(val(row, 'PART NO.'))}">${escapeHtml(val(row, 'PART NO.'))}</td>
-        <td class="${withErrorClass('', 'POS')}" title="${escapeHtml(val(row, 'POS'))}">${escapeHtml(val(row, 'POS'))}</td>
-    <td${editableAttr('pn_final')} title="${escapeHtml(val(row, 'pn_final'))}" class="${withErrorClass('cell-inline-editable', 'pn_final')}">${escapeHtml(val(row, 'pn_final'))}</td>
-    <td class="${withErrorClass('', 'designation_final')}" title="${escapeHtml(getRowValueForColumn(row, 'designation_final'))}">${escapeHtml(getRowValueForColumn(row, 'designation_final'))}</td>
-            <td title="${escapeHtml(val(row, 'pn_raw'))}">${escapeHtml(val(row, 'pn_raw'))}</td>
+    <td class="${withCellClasses('', 'PART NO.', getComparisonClasses({ pdfMatch: comparisonMeta.pn.pdfMatch }))}" title="${escapeHtml(val(row, 'PART NO.'))}">${escapeHtml(val(row, 'PART NO.'))}</td>
+        <td class="${withCellClasses('', 'POS', getComparisonClasses({ missing: comparisonMeta.pos.missing }))}" title="${escapeHtml(val(row, 'POS'))}">${escapeHtml(val(row, 'POS'))}</td>
+    <td${editableAttr('pn_final')} title="${escapeHtml(val(row, 'pn_final'))}" class="${withCellClasses('cell-inline-editable', 'pn_final', getComparisonClasses(comparisonMeta.pn))}">${escapeHtml(val(row, 'pn_final'))}</td>
+    <td class="${withCellClasses('', 'designation_final', getComparisonClasses(comparisonMeta.designation))}" title="${escapeHtml(getRowValueForColumn(row, 'designation_final'))}">${escapeHtml(getRowValueForColumn(row, 'designation_final'))}</td>
+            <td class="${withCellClasses('', 'pn_raw', getComparisonClasses({ gesaMatch: comparisonMeta.pn.gesaMatch }))}" title="${escapeHtml(val(row, 'pn_raw'))}">${escapeHtml(val(row, 'pn_raw'))}</td>
         <td title="${escapeHtml(val(row, 'criterio_pn'))}">${escapeHtml(val(row, 'criterio_pn'))}</td>
-    <td title="${escapeHtml(val(row, 'designation_gesa'))}" class="${withErrorClass(classGesa, 'designation_gesa')}">${escapeHtml(val(row, 'designation_gesa'))}</td>
+    <td title="${escapeHtml(val(row, 'designation_gesa'))}" class="${withCellClasses(classGesa, 'designation_gesa', getComparisonClasses({ gesaMatch: comparisonMeta.designation.gesaMatch }))}">${escapeHtml(val(row, 'designation_gesa'))}</td>
       <td class="separator-after" title="${escapeHtml(val(row, 'MODEL/TYPE'))}">${escapeHtml(val(row, 'MODEL/TYPE'))}</td>
       <td title="${escapeHtml(val(row, 'QTY'))}">${escapeHtml(val(row, 'QTY'))}</td>
-        <td class="${withErrorClass(classGesa, 'weight_final')}" title="${escapeHtml(getRowValueForColumn(row, 'weight_final'))}">${escapeHtml(getRowValueForColumn(row, 'weight_final'))}</td>
-            <td class="${withErrorClass('', 'UNITS')}" title="${escapeHtml(val(row, 'UNITS'))}">${escapeHtml(val(row, 'UNITS'))}</td>
-            <td class="${withErrorClass(classGesa, 'weight_gesa')}" title="${escapeHtml(val(row, 'weight_gesa'))}">${escapeHtml(val(row, 'weight_gesa'))}</td>
-            <td class="${withErrorClass(`separator-after ${classGesa}`, 'units')}" title="${escapeHtml(val(row, 'units'))}">${escapeHtml(val(row, 'units'))}</td>
+        <td class="${withCellClasses(classGesa, 'weight_final')}" title="${escapeHtml(getRowValueForColumn(row, 'weight_final'))}">${escapeHtml(getRowValueForColumn(row, 'weight_final'))}</td>
+            <td class="${withCellClasses('', 'UNITS')}" title="${escapeHtml(val(row, 'UNITS'))}">${escapeHtml(val(row, 'UNITS'))}</td>
+            <td class="${withCellClasses(classGesa, 'weight_gesa')}" title="${escapeHtml(val(row, 'weight_gesa'))}">${escapeHtml(val(row, 'weight_gesa'))}</td>
+            <td class="${withCellClasses(`separator-after ${classGesa}`, 'units')}" title="${escapeHtml(val(row, 'units'))}">${escapeHtml(val(row, 'units'))}</td>
       <td title="${escapeHtml(val(row, 'FG/FGS'))}">${escapeHtml(val(row, 'FG/FGS'))}</td>
-        <td class="${withErrorClass(classGesa, 'measurement_final')}" title="${escapeHtml(getRowValueForColumn(row, 'measurement_final'))}">${escapeHtml(getRowValueForColumn(row, 'measurement_final'))}</td>
-            <td class="${withErrorClass(classGesa, 'dimensions_gesa')}" title="${escapeHtml(val(row, 'dimensions_gesa'))}">${escapeHtml(val(row, 'dimensions_gesa'))}</td>
+        <td class="${withCellClasses(classGesa, 'measurement_final', getComparisonClasses(comparisonMeta.measurement))}" title="${escapeHtml(getRowValueForColumn(row, 'measurement_final'))}">${escapeHtml(getRowValueForColumn(row, 'measurement_final'))}</td>
+            <td class="${withCellClasses(classGesa, 'dimensions_gesa', getComparisonClasses({ gesaMatch: comparisonMeta.measurement.gesaMatch }))}" title="${escapeHtml(val(row, 'dimensions_gesa'))}">${escapeHtml(val(row, 'dimensions_gesa'))}</td>
       <td title="${escapeHtml(val(row, 'BOM-No.'))}">${escapeHtml(val(row, 'BOM-No.'))}</td>
       <td title="${escapeHtml(val(row, 'model'))}">${escapeHtml(val(row, 'model'))}</td>
-    <td class="${withErrorClass('', 'Source Page')}" title="${escapeHtml(val(row, 'Source Page'))}">${escapeHtml(val(row, 'Source Page'))}</td>
+    <td class="${withCellClasses('', 'Source Page')}" title="${escapeHtml(val(row, 'Source Page'))}">${escapeHtml(val(row, 'Source Page'))}</td>
       <td title="${escapeHtml(val(row, 'fgs_code_description'))}">${escapeHtml(val(row, 'fgs_code_description'))}</td>
       <td title="${escapeHtml(val(row, 'filename_foto'))}">${escapeHtml(val(row, 'filename_foto'))}</td>
       <td title="${escapeHtml(val(row, 'nsn'))}">${escapeHtml(val(row, 'nsn'))}</td>
@@ -552,7 +612,7 @@ function renderRow(row) {
       <td title="${escapeHtml(val(row, 'categoria'))}">${escapeHtml(val(row, 'categoria'))}</td>
       <td title="${escapeHtml(val(row, 'precio'))}">${escapeHtml(val(row, 'precio'))}</td>
       <td title="${escapeHtml(val(row, 'FN'))}">${escapeHtml(val(row, 'FN'))}</td>
-    <td class="${withErrorClass('', 'source_file')}" title="${escapeHtml(val(row, 'source_file'))}">${escapeHtml(val(row, 'source_file'))}</td>
+        <td class="${withCellClasses('', 'source_file')}" title="${escapeHtml(val(row, 'source_file'))}">${escapeHtml(val(row, 'source_file'))}</td>
       <td title="${escapeHtml(val(row, 'source_sheet'))}">${escapeHtml(val(row, 'source_sheet'))}</td>
       <td title="${escapeHtml(val(row, 'engine'))}">${escapeHtml(val(row, 'engine'))}</td>
       <td title="${escapeHtml(val(row, 'fg_fgs_raw'))}">${escapeHtml(val(row, 'fg_fgs_raw'))}</td>
@@ -562,7 +622,7 @@ function renderRow(row) {
       <td title="${escapeHtml(val(row, 'ruta_foto'))}">${escapeHtml(val(row, 'ruta_foto'))}</td>
       <td title="${escapeHtml(val(row, 'esquemas_circulos'))}">${escapeHtml(val(row, 'esquemas_circulos'))}</td>
       <td title="${escapeHtml(val(row, 'ruta_esquemas_pos'))}">${escapeHtml(val(row, 'ruta_esquemas_pos'))}</td>
-    <td${editableAttr('designation_final')} class="${classGesa} cell-inline-editable" title="${escapeHtml(getRowValueForColumn(row, 'designation_final'))}">${escapeHtml(getRowValueForColumn(row, 'designation_final'))}</td>
+        <td${editableAttr('designation_final')} class="${withCellClasses(`${classGesa} cell-inline-editable`.trim(), 'designation_final', getComparisonClasses(comparisonMeta.designation))}" title="${escapeHtml(getRowValueForColumn(row, 'designation_final'))}">${escapeHtml(getRowValueForColumn(row, 'designation_final'))}</td>
     </tr>`;
 }
 

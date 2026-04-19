@@ -33,6 +33,7 @@ export const state = {
     currentPdfRequestToken: 0,
     currentPdfSelection: null,
     currentPdfSelectionRects: [],
+    currentPdfReadTokens: [],
     currentPdfZoom: 'fit',
     rightPanelTab: 'pdf',
     qaErrorCheckDefinitions: [
