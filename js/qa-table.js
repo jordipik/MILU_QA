@@ -264,7 +264,8 @@ export function getCurrentFilteredSortedRows() {
 }
 
 function getQaDisplayRows(sortedRows) {
-    if (!state.leftTableReviewedOnly) return sortedRows;
+    // En vista PDF, siempre mostrar todos los registros sin filtro de revisión
+    if (!state.leftTableReviewedOnly || state.columnView === 'pdf') return sortedRows;
     const rowsByKey = new Map(sortedRows.map(row => [getRevisionKey(row), row]));
     return (state.recentRevisionKeys || [])
         .map(key => rowsByKey.get(key))
@@ -870,8 +871,6 @@ export function renderTable() {
         ? baseFiltered.filter(row => getRowErrors(row, { activeCodes: state.activeQaErrorChecks }).length > 0)
         : baseFiltered;
     const total = state.filteredData.length;
-    if (state.currentPage < 1) state.currentPage = 1;
-    if (state.currentPage > totalPages) state.currentPage = totalPages;
 
     if (!state.filteredData.length) {
         const noDataMessage = errorsMode

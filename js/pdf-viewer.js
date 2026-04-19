@@ -8,6 +8,7 @@ const PDF_FIT_WIDTH_MARGIN = 8;
 const PDF_SELECTION_MAX_HIGHLIGHTS = 8;
 const PDF_ZOOM_PERCENTAGES = new Set([75, 100, 125, 150, 200]);
 const PDF_ZOOM_STEPS = ['fit', 75, 100, 125, 150, 200];
+let pdfRelayoutRafId = 0;
 
 if (window.pdfjsLib) {
     window.pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
@@ -117,19 +118,30 @@ function clearPdfSelectionLayer() {
     delete layer.dataset.selectionLabel;
 }
 
-function syncPdfSelectionLayerBounds(viewportWidth, viewportHeight) {
+function syncPdfSelectionLayerBounds(viewportWidth, viewportHeight, canvas) {
     const layer = getPdfSelectionLayer();
     const viewerInner = document.querySelector('.pdfviewer-inner');
     if (!layer || !(viewerInner instanceof HTMLElement)) return;
 
-    const width = Math.max(1, Math.floor(viewportWidth));
-    const height = Math.max(1, Math.floor(viewportHeight));
-    const left = Math.floor((viewerInner.clientWidth - width) / 2);
+    const hasCanvasBox = canvas instanceof HTMLCanvasElement
+        && canvas.clientWidth > 0
+        && canvas.clientHeight > 0;
+
+    const width = hasCanvasBox
+        ? Math.max(1, Math.round(canvas.clientWidth))
+        : Math.max(1, Math.floor(viewportWidth));
+    const height = hasCanvasBox
+        ? Math.max(1, Math.round(canvas.clientHeight))
+        : Math.max(1, Math.floor(viewportHeight));
+    const left = hasCanvasBox
+        ? Math.round(canvas.offsetLeft)
+        : Math.floor((viewerInner.clientWidth - width) / 2);
+    const top = hasCanvasBox ? Math.round(canvas.offsetTop) : 0;
 
     // La capa de marcas debe compartir sistema de coordenadas con el canvas.
     layer.style.inset = 'auto';
     layer.style.left = `${left}px`;
-    layer.style.top = '0px';
+    layer.style.top = `${top}px`;
     layer.style.width = `${width}px`;
     layer.style.height = `${height}px`;
 }
@@ -449,14 +461,20 @@ function renderPdfSelectionHighlights(highlights, viewport) {
     layer.querySelectorAll('.pdf-selection-highlight').forEach(node => node.remove());
     state.currentPdfSelectionRects = highlights;
 
+    const canvas = document.getElementById('pdfCanvas');
+    const canvasWidth = canvas instanceof HTMLCanvasElement ? canvas.clientWidth : 0;
+    const canvasHeight = canvas instanceof HTMLCanvasElement ? canvas.clientHeight : 0;
+    const scaleX = viewport?.width > 0 && canvasWidth > 0 ? (canvasWidth / viewport.width) : 1;
+    const scaleY = viewport?.height > 0 && canvasHeight > 0 ? (canvasHeight / viewport.height) : 1;
+
     let focusHighlight = null;
     highlights.forEach((rect) => {
         const box = document.createElement('div');
         box.className = 'pdf-selection-highlight';
-        box.style.left = `${Math.max(0, rect.left)}px`;
-        box.style.top = `${Math.max(0, rect.top)}px`;
-        box.style.width = `${Math.max(20, rect.width)}px`;
-        box.style.height = `${Math.max(14, rect.height)}px`;
+        box.style.left = `${Math.max(0, rect.left * scaleX)}px`;
+        box.style.top = `${Math.max(0, rect.top * scaleY)}px`;
+        box.style.width = `${Math.max(20, rect.width * scaleX)}px`;
+        box.style.height = `${Math.max(14, rect.height * scaleY)}px`;
         box.title = `Coincidencia: ${rect.text}`;
         layer.appendChild(box);
         if (!focusHighlight) focusHighlight = box;
@@ -589,7 +607,7 @@ export async function renderPdfPage(pdfUrl, pageNum) {
     canvas.height = Math.max(1, Math.floor(viewport.height * outputScale));
     canvas.style.width = `${Math.floor(viewport.width)}px`;
     canvas.style.height = `${Math.floor(viewport.height)}px`;
-    syncPdfSelectionLayerBounds(viewport.width, viewport.height);
+    syncPdfSelectionLayerBounds(viewport.width, viewport.height, canvas);
     context.setTransform(outputScale, 0, 0, outputScale, 0, 0);
     context.clearRect(0, 0, viewport.width, viewport.height);
 
@@ -680,4 +698,24 @@ export function loadPdfClear() {
     }
 
     setPdfStatus('Selecciona libro y página para ver el PDF', true);
+}
+
+export function setPdfReadTokens(tokens) {
+    state.currentPdfReadTokens = tokens;
+}
+
+export function requestPdfRelayout() {
+    if (pdfRelayoutRafId) {
+        cancelAnimationFrame(pdfRelayoutRafId);
+        pdfRelayoutRafId = 0;
+    }
+
+    pdfRelayoutRafId = requestAnimationFrame(() => {
+        pdfRelayoutRafId = 0;
+        if (state.rightPanelTab !== 'pdf') return;
+        if (!state.currentPdfSource || state.currentPdfPageNumber <= 0) return;
+
+        renderPdfPage(state.currentPdfSource, state.currentPdfPageNumber)
+            .catch(error => console.error('Error recalculando layout del PDF:', error));
+    });
 }

@@ -363,17 +363,150 @@
             margin: 0 0 2px 0;
             line-height: 1.3;
         }
+
+        .a2-topbar {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            gap: 16px;
+            padding: 12px 16px;
+            border-bottom: 1px solid #dbe2ef;
+            background: linear-gradient(90deg, #ffffff, #f2f8ff 56%, #edf4fc);
+        }
+
+        .a2-brand {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+
+        .a2-chip {
+            display: inline-flex;
+            justify-content: center;
+            align-items: center;
+            width: 52px;
+            height: 52px;
+            border-radius: 14px;
+            background: linear-gradient(145deg, #2563eb, #3b82f6);
+            color: #ffffff;
+            font-weight: 800;
+            letter-spacing: 0.04em;
+            box-shadow: 0 8px 18px rgba(37, 99, 235, 0.2);
+            font-size: 14px;
+        }
+
+        .a2-title {
+            margin: 0;
+            font-size: 19px;
+            font-weight: 800;
+            color: var(--txt);
+        }
+
+        .a2-sub {
+            margin: 2px 0 0;
+            font-size: 12px;
+            color: var(--mut);
+        }
+
+        .a2-nav {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            flex-wrap: wrap;
+        }
+
+        .a2-nav a,
+        .a2-nav span {
+            text-decoration: none;
+            border: 1px solid var(--line);
+            background: #ffffff;
+            color: var(--txt);
+            border-radius: 999px;
+            padding: 7px 12px;
+            font-size: 12px;
+            font-weight: 700;
+        }
+
+        .a2-nav .active {
+            border-color: #2563eb;
+            background: #2563eb;
+            color: #ffffff;
+        }
+
+        .backend-status {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            border-radius: 999px;
+            padding: 6px 10px;
+            border: 1px solid var(--line);
+            background: #ffffff;
+            color: var(--mut);
+            font-size: 11px;
+            font-weight: 700;
+            white-space: nowrap;
+        }
+
+        .backend-status-dot {
+            width: 6px;
+            height: 6px;
+            border-radius: 999px;
+            background: var(--mut);
+        }
+
+        .backend-status.checking {
+            background: #fff7ed;
+            border-color: #fdba74;
+            color: #9a3412;
+        }
+
+        .backend-status.checking .backend-status-dot {
+            background: #f97316;
+        }
+
+        .backend-status.online {
+            background: #ecfdf5;
+            border-color: #86efac;
+            color: #14532d;
+        }
+
+        .backend-status.online .backend-status-dot {
+            background: #16a34a;
+        }
+
+        .backend-status.offline {
+            background: #fef2f2;
+            border-color: #fca5a5;
+            color: #7f1d1d;
+        }
+
+        .backend-status.offline .backend-status-dot {
+            background: #dc2626;
+        }
+
+        #backendStatusRetryBtn {
+            padding: 0;
+            border: none;
+            background: none;
+            color: inherit;
+            cursor: pointer;
+            font-size: 11px;
+            font-weight: 700;
+        }
+
+        #backendStatusRetryBtn:hover {
+            text-decoration: underline;
+        }
     </style>
     <script src="https://cdn.jsdelivr.net/npm/pako@2.1.0/dist/pako.min.js"></script>
 </head>
 
 <body>
-    <div class="topbar">
-        <div class="nav">
-            <a class="pill" href="qa_milu.html">qa_milu</a>
-            <span class="pill active">Agrupada</span>
-        </div>
-    </div>
+    <!-- Topbar generado dinámicamente por js/topbar.js -->
+    <script type="module">
+        import { initTopbar } from './js/topbar.js';
+        initTopbar('export');
+    </script>
 
     <div class="content">
         <div class="card">
@@ -383,6 +516,10 @@
 
             <div class="clear-filters">
                 <div style="display:flex; gap:8px; flex-wrap:wrap; align-items:center;">
+                    <select id="engineFilterSelect"
+                        style="padding: 8px 12px; border: 1px solid var(--line); border-radius: 6px; background: var(--card); color: var(--txt); cursor: pointer; font-size: 13px;">
+                        <option value="">Todos los libros</option>
+                    </select>
                     <button id="clearFiltersBtn">Limpiar filtros</button>
                 </div>
             </div>
@@ -675,39 +812,6 @@
             });
         }
 
-        function applyFilters(data) {
-            return data.filter(group => {
-                for (const [key, filterValue] of Object.entries(filters)) {
-                    if (!filterValue) continue;
-
-                    let groupValue;
-
-                    switch (key) {
-                        case 'pn':
-                            if (!group.pn.toLowerCase().includes(filterValue.toLowerCase())) return false;
-                            continue;
-                        case 'gesa':
-                            groupValue = group.gesaStatus;
-                            break;
-                        case 'normalizado':
-                            groupValue = group.normalizadoStatus;
-                            break;
-                        case 'sust_hierarchie':
-                            groupValue = group.sustHierarchieStatus;
-                            break;
-                        case 'has_img':
-                            groupValue = group.hasImgStatus;
-                            break;
-                        default:
-                            continue;
-                    }
-
-                    if (groupValue !== filterValue) return false;
-                }
-                return true;
-            });
-        }
-
         function renderTable(data, page = 1) {
             const tbody = $("tbody");
 
@@ -917,11 +1021,87 @@
             document.querySelectorAll('.filter-select').forEach(select => {
                 select.value = '';
             });
+            const engineFilter = $("engineFilterSelect");
+            if (engineFilter) engineFilter.value = '';
 
             filters = {};
             currentPage = 1;
             renderTable(groupedData, currentPage);
             renderPagination();
+        }
+
+        function buildEngineOptions() {
+            const select = $("engineFilterSelect");
+            if (!select) return;
+
+            // Extraer los engines únicos de allData
+            const engines = [...new Set(
+                allData
+                    .map(row => String(row?.engine_model ?? '').trim())
+                    .filter(Boolean)
+            )].sort((a, b) => a.localeCompare(b, 'es', { numeric: true, sensitivity: 'base' }));
+
+            select.innerHTML = '<option value="">Todos los libros</option>'
+                + engines.map(engine => `<option value="${escapeHtml(engine)}">${escapeHtml(engine)}</option>`).join('');
+
+            // Seleccionar el primer engine por defecto
+            if (engines.length > 0) {
+                select.value = engines[0];
+                filters.engine_model = engines[0];
+            }
+        }
+
+        function handleEngineFilterChange(event) {
+            const engineValue = event.target.value.trim();
+            if (engineValue === "") {
+                delete filters.engine_model;
+            } else {
+                filters.engine_model = engineValue;
+            }
+            currentPage = 1;
+            renderTable(groupedData, currentPage);
+            renderPagination();
+        }
+
+        function applyFilters(data) {
+            return data.filter(group => {
+                // Filtro por engine_model primero
+                if (filters.engine_model) {
+                    const groupEngines = group.rows.map(r => String(r?.engine_model ?? '').trim());
+                    if (!groupEngines.some(e => e === filters.engine_model)) {
+                        return false;
+                    }
+                }
+
+                for (const [key, filterValue] of Object.entries(filters)) {
+                    if (!filterValue || key === 'engine_model') continue;
+
+                    let groupValue;
+
+                    switch (key) {
+                        case 'pn':
+                            if (!group.pn.toLowerCase().includes(filterValue.toLowerCase())) return false;
+                            continue;
+                        case 'gesa':
+                            groupValue = group.gesaStatus;
+                            break;
+                        case 'normalizado':
+                            groupValue = group.normalizadoStatus;
+                            break;
+                        case 'sust_hierarchie':
+                            groupValue = group.sustHierarchieStatus;
+                            break;
+                        case 'has_img':
+                            groupValue = group.hasImgStatus;
+                            break;
+                        default:
+                            continue;
+                    }
+
+                    if (groupValue !== filterValue) return false;
+                }
+                return true;
+            });
         }
 
         function handleSort(event) {
@@ -945,10 +1125,12 @@
         const nextBtn = $("nextBtn");
         const thead = document.querySelector('thead');
         const clearFiltersBtn = $("clearFiltersBtn");
+        const engineFilterSelect = $("engineFilterSelect");
 
         if (prevBtn) prevBtn.addEventListener("click", () => changePage(-1));
         if (nextBtn) nextBtn.addEventListener("click", () => changePage(1));
         if (thead) thead.addEventListener("click", handleSort);
+        if (engineFilterSelect) engineFilterSelect.addEventListener('change', handleEngineFilterChange);
 
         document.querySelectorAll('.filter-input, .filter-select').forEach(elem => {
             elem.addEventListener('input', handleFilter);
@@ -956,7 +1138,12 @@
 
         if (clearFiltersBtn) clearFiltersBtn.addEventListener('click', clearFilters);
 
-        loadData();
+        async function initPage() {
+            await loadData();
+            buildEngineOptions();
+        }
+
+        initPage();
     </script>
 </body>
 

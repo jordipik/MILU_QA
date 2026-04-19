@@ -1,7 +1,7 @@
 import { state } from './state.js';
-import { checkSaveBackendConnection, loadPartitionedEngineData, saveCellToServer } from './data-loader.js';
+import { loadPartitionedEngineData, saveCellToServer } from './data-loader.js';
 import { assignRevisionKeys, applyRevisionDataToRows } from './revision.js';
-import { initPdfZoomControls, loadPdfClear, loadPdfWithPage, setPdfReadTokens, setPdfSelection } from './pdf-viewer.js';
+import { initPdfZoomControls, loadPdfClear, loadPdfWithPage, requestPdfRelayout, setPdfReadTokens, setPdfSelection } from './pdf-viewer.js';
 
 const $ = (id) => document.getElementById(id);
 
@@ -9,7 +9,7 @@ const QA_LABELS = {
     missing_part_no: 'PART NO. vacio',
     missing_pos: 'POS vacio',
     missing_pn_final: 'pn_final vacio',
-    pn_final_not_in_pdf: 'pn_final no localizado en PDF',
+    pn_final_not_equal_pn_pdf: 'pn_final no coincide con pn_pdf',
     missing_designation_final: 'designation_final vacio',
     designation_final_not_in_pdf: 'designation_final no localizada en PDF'
 };
@@ -341,10 +341,10 @@ function buildPipeline(row) {
             detail: !codes.has('missing_pn_final') ? 'pn_final informado.' : 'Falta pn_final en el registro final.'
         },
         {
-            id: 'pn_final_pdf',
-            title: 'pn_final localizado en PDF',
-            pass: !codes.has('pn_final_not_in_pdf'),
-            detail: !codes.has('pn_final_not_in_pdf') ? 'Match de pn_final detectado en PDF.' : 'No hay match de pn_final en PDF.'
+            id: 'pn_final_equals_pn_pdf',
+            title: 'pn_final igual a pn_pdf',
+            pass: !codes.has('pn_final_not_equal_pn_pdf'),
+            detail: !codes.has('pn_final_not_equal_pn_pdf') ? 'pn_final coincide con pn_pdf.' : 'pn_final no coincide con pn_pdf.'
         },
         {
             id: 'designation_final_presence',
@@ -405,14 +405,6 @@ function computePipelineState(row) {
     };
 }
 
-function setBackendBadge(status, text) {
-    const badge = $('backendBadge');
-    if (!badge) return;
-    badge.classList.remove('checking', 'online', 'offline');
-    badge.classList.add(status);
-    badge.textContent = text;
-}
-
 function initHorizontalSplitter() {
     const layout = document.querySelector('.a2-layout');
     const splitter = $('a2Splitter');
@@ -440,6 +432,7 @@ function initHorizontalSplitter() {
         const desiredWidth = rect.right - event.clientX;
         const applied = clampAndApplyWidth(desiredWidth);
         localStorage.setItem(RIGHT_PANEL_WIDTH_KEY, String(applied));
+        requestPdfRelayout();
         event.preventDefault();
     };
 
@@ -449,6 +442,7 @@ function initHorizontalSplitter() {
         document.body.classList.remove('a2-resizing');
         window.removeEventListener('pointermove', onPointerMove);
         window.removeEventListener('pointerup', stopDragging);
+        requestPdfRelayout();
     };
 
     splitter.addEventListener('pointerdown', (event) => {
@@ -468,18 +462,9 @@ function initHorizontalSplitter() {
         const delta = event.key === 'ArrowLeft' ? 24 : -24;
         const applied = clampAndApplyWidth(current + delta);
         localStorage.setItem(RIGHT_PANEL_WIDTH_KEY, String(applied));
+        requestPdfRelayout();
         event.preventDefault();
     });
-}
-
-async function refreshBackendBadge() {
-    setBackendBadge('checking', 'Backend: comprobando...');
-    const result = await checkSaveBackendConnection();
-    if (result.ok) {
-        setBackendBadge('online', 'Backend: online');
-        return;
-    }
-    setBackendBadge('offline', 'Backend: offline');
 }
 
 function buildEngineOptions() {
@@ -562,21 +547,26 @@ function getGesaWeightWithUnits(row) {
 
 function buildComparisonRows(row) {
     return [
-        { field: 'POS', raw: row?.POS, gesa: null, final: row?.POS },
-        { field: 'PART NO.', raw: row?.['PART NO.'], gesa: getGesaPn(row), final: row?.pn_final },
-        { field: 'DESIGNATION', raw: row?.DESIGNATION, gesa: row?.designation_gesa, final: row?.designation_final },
-        { field: 'MODEL/TYPE', raw: row?.['MODEL/TYPE'], gesa: null, final: null },
-        { field: 'QTY', raw: row?.QTY, gesa: null, final: row?.QTY },
-        { field: 'UNITS', raw: row?.UNITS, gesa: null, final: row?.UNITS },
-        { field: 'WEIGHT', raw: row?.WEIGHT, gesa: getGesaWeightWithUnits(row), final: row?.weight_final },
-        { field: 'FN', raw: row?.FN, gesa: null, final: null },
-        { field: 'MEASUREMENT / STANDARD', raw: row?.['MEASUREMENT / STANDARD'], gesa: row?.dimensions_gesa, final: row?.measurement_final },
-        { field: 'FG/FGS', raw: row?.['FG/FGS'], gesa: null, final: null },
-        { field: 'BOM-No.', raw: row?.['BOM-No.'], gesa: null, final: null },
-        { field: 'gesa', raw: null, gesa: row?.gesa, final: null },
-        { field: 'nsn', raw: null, gesa: row?.nsn, final: null },
-        { field: 'norma', raw: null, gesa: row?.norma, final: row?.norma },
-        { field: 'normalizado', raw: null, gesa: row?.normalizado, final: null }
+        { field: 'POS', raw: row?.POS, gesa: null, sust: null, final: row?.POS },
+        { field: 'PART NO.', raw: row?.['PART NO.'], gesa: getGesaPn(row), sust: null, final: row?.pn_final },
+        { field: 'DESIGNATION', raw: row?.DESIGNATION, gesa: row?.designation_gesa, sust: null, final: row?.designation_final },
+        { field: 'MODEL/TYPE', raw: row?.['MODEL/TYPE'], gesa: null, sust: null, final: null },
+        { field: 'QTY', raw: row?.QTY, gesa: null, sust: null, final: row?.QTY },
+        { field: 'UNITS', raw: row?.UNITS, gesa: null, sust: null, final: row?.UNITS },
+        { field: 'WEIGHT', raw: row?.WEIGHT, gesa: getGesaWeightWithUnits(row), sust: null, final: row?.weight_final },
+        { field: 'FN', raw: row?.FN, gesa: null, sust: null, final: null },
+        { field: 'MEASUREMENT / STANDARD', raw: row?.['MEASUREMENT / STANDARD'], gesa: row?.dimensions_gesa, sust: null, final: row?.measurement_final },
+        { field: 'FG/FGS', raw: row?.['FG/FGS'], gesa: null, sust: null, final: null },
+        { field: 'BOM-No.', raw: row?.['BOM-No.'], gesa: null, sust: null, final: null },
+        { field: 'GESA', raw: null, gesa: row?.gesa, sust: null, final: null, separatorTop: true },
+        { field: 'NSN', raw: null, gesa: row?.nsn, sust: null, final: null },
+        { field: 'NORMALIZADO', raw: null, gesa: row?.normalizado, sust: null, final: null },
+        { field: 'NORMA', raw: null, gesa: row?.norma, sust: null, final: row?.norma },
+        { field: 'SUST_STATUS', raw: null, gesa: null, sust: row?.sust_status, final: null, separatorTop: true },
+        { field: 'SUST', raw: null, gesa: null, sust: row?.sust, final: null },
+        { field: 'HIERARCHI', raw: null, gesa: null, sust: row?.hierarchi ?? row?.sust_hierarchie, final: null },
+        { field: 'SUST_NEW_PART_NUMBER', raw: null, gesa: null, sust: row?.sust_new_part_number, final: null },
+        { field: 'SUST_SUPERSEDED_LIST', raw: null, gesa: null, sust: row?.sust_superseded_list, final: null }
     ];
 }
 
@@ -656,10 +646,12 @@ async function renderComparisonTable(row) {
 
     body.innerHTML = rows.map((entry) => {
         const loadingClass = 'pdf-loading';
-        return `<tr>
+        const rowClass = entry.separatorTop ? 'separator-top' : '';
+        return `<tr class="${rowClass}">
             <td class="field">${escapeHtml(entry.field)}</td>
             <td>${escapeHtml(txt(entry.raw))}</td>
             <td>${escapeHtml(txt(entry.gesa))}</td>
+            <td>${escapeHtml(txt(entry.sust))}</td>
             <td>${escapeHtml(txt(entry.final))}</td>
             <td class="${loadingClass}">${escapeHtml('...')}</td>
         </tr>`;
@@ -678,10 +670,12 @@ async function renderComparisonTable(row) {
             readTokens.push({ field: entry.field, token: pdfRead.token });
         }
         const cellClasses = getComparisonCellClasses(entry, pdfRead.value);
-        return `<tr>
+        const rowClass = entry.separatorTop ? 'separator-top' : '';
+        return `<tr class="${rowClass}">
             <td class="field">${escapeHtml(entry.field)}</td>
             <td>${escapeHtml(txt(entry.raw))}</td>
             <td class="${cellClasses.gesaClass}">${escapeHtml(txt(entry.gesa))}</td>
+            <td>${escapeHtml(txt(entry.sust))}</td>
             <td class="${cellClasses.finalClass}">${escapeHtml(txt(entry.final))}</td>
             <td class="${cellClasses.pdfClass}">${escapeHtml(txt(pdfRead.value))}</td>
         </tr>`;
@@ -984,7 +978,6 @@ async function initialize() {
         initPdfZoomControls();
         loadPdfClear();
 
-        setBackendBadge('checking', 'Backend: comprobando...');
         const loadedRows = await loadPartitionedEngineData();
         state.allData = sortRowsByBookPagePos(loadedRows);
 
@@ -1001,10 +994,7 @@ async function initialize() {
         } else {
             renderRecordPosition(null);
         }
-
-        await refreshBackendBadge();
     } catch (error) {
-        setBackendBadge('offline', 'Backend: error');
         const statusText = $('statusText');
         if (statusText) statusText.textContent = `Error iniciando Analista 02: ${error.message}`;
         console.error(error);

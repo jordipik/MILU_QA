@@ -9,7 +9,7 @@ const QA_LABELS = {
     missing_part_no: 'PN vacio',
     missing_pos: 'POS vacio',
     missing_pn_final: 'PN Final vacio',
-    pn_final_not_in_pdf: 'PN Final no esta en PDF',
+    pn_final_not_equal_pn_pdf: 'PN Final no coincide con PN PDF',
     missing_designation_final: 'Designation Final vacio',
     designation_final_not_in_pdf: 'Designation Final no esta en PDF'
 };
@@ -18,7 +18,7 @@ const CRITICAL_CODES = new Set([
     'missing_part_no',
     'missing_pos',
     'missing_pn_final',
-    'pn_final_not_in_pdf'
+    'pn_final_not_equal_pn_pdf'
 ]);
 
 let currentRow = null;
@@ -494,10 +494,10 @@ function renderPipeline(row, verdict) {
             detail: codeSet.has('missing_pn_final') ? 'pn_final vacio.' : 'pn_final informado.'
         },
         {
-            id: 'pn_final_pdf',
-            title: 'PN Final localizado en PDF',
-            pass: !codeSet.has('pn_final_not_in_pdf'),
-            detail: codeSet.has('pn_final_not_in_pdf') ? 'No hay match en PDF para pn_final.' : 'Match de pn_final detectado en PDF.'
+            id: 'pn_final_equals_pn_pdf',
+            title: 'PN Final igual a PN PDF',
+            pass: !codeSet.has('pn_final_not_equal_pn_pdf'),
+            detail: codeSet.has('pn_final_not_equal_pn_pdf') ? 'pn_final no coincide con pn_pdf.' : 'pn_final coincide con pn_pdf.'
         },
         {
             id: 'designation_presence',

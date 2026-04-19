@@ -9,34 +9,20 @@
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@500;600;700;800&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="styles/qa_milu.css" />
+    <link rel="stylesheet" href="styles/analista_02.css" />
+    <style>
+        /* Personalización de colores para qa_milu */
+        .a2-chip {
+            background: linear-gradient(145deg, #0ea5e9, #0284c7) !important;
+            box-shadow: 0 8px 18px rgba(14, 165, 233, 0.2) !important;
+        }
+    </style>
     <script src="https://cdn.jsdelivr.net/npm/pako@2.1.0/dist/pako.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
 </head>
 
 <body>
-    <div class="topbar topbar-modern">
-        <div>
-            <span class="brand-chip">MILU QA</span>
-            <p class="brand-title">Panel de revisión visual</p>
-            <p class="brand-sub">Flujo rápido para filtrar, validar y revisar artículos con contexto de esquemas y
-                posición, todo en la misma vista.</p>
-        </div>
-        <div class="nav nav-modern">
-            <span class="pill active">QA detalle</span>
-            <a class="pill" href="qa_lista_agrupada.html">Vista agrupada</a>
-            <a class="pill" href="qa_analista_registro.html">Analista registro</a>
-            <button id="openQaChecksModalBtn" type="button" class="qa-checks-topbar-btn">
-                <span>⚙️ QA</span>
-                <span id="qaChecksSummaryBadge" class="qa-checks-badge">4/4</span>
-            </button>
-            <div id="backendStatus" class="backend-status checking" aria-live="polite"
-                title="Estado del backend de guardado">
-                <span class="backend-status-dot" aria-hidden="true"></span>
-                <span id="backendStatusText">Backend: comprobando...</span>
-                <button id="backendStatusRetryBtn" type="button">Reintentar</button>
-            </div>
-        </div>
-    </div>
+    <!-- Topbar generado dinámicamente por js/topbar.js -->
 
     <div class="content">
         <div class="main">
@@ -1076,6 +1062,10 @@
         </div>
     </div>
 
+    <script type="module">
+        import { initTopbar } from './js/topbar.js';
+        initTopbar('pdf');
+    </script>
     <script type="module" src="js/qa-milu.js?v=20260418a"></script>
 </body>
 

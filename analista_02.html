@@ -15,20 +15,11 @@
 </head>
 
 <body>
-    <header class="a2-topbar">
-        <div class="a2-brand">
-            <span class="a2-chip">MILU</span>
-            <div>
-                <p class="a2-title">Analista de registro 02</p>
-                <p class="a2-sub">De registro_raw a registro_ok o registro_ko, proceso por proceso.</p>
-            </div>
-        </div>
-        <nav class="a2-nav" aria-label="Navegacion">
-            <a href="qa_milu.html">QA detalle</a>
-            <a href="qa_analista_registro.html">Analista 01</a>
-            <span class="active">Analista 02</span>
-        </nav>
-    </header>
+    <!-- Topbar generado dinámicamente por js/topbar.js -->
+    <script type="module">
+        import { initTopbar } from './js/topbar.js';
+        initTopbar('analisis');
+    </script>
 
     <main class="a2-layout">
         <section class="a2-main">
@@ -44,25 +35,25 @@
 
             <div class="a2-status-row">
                 <p id="recordPositionText">Registro 0 de 0</p>
-                <span id="backendBadge" class="backend-badge checking">Backend: comprobando...</span>
             </div>
 
             <div id="recordMeta" class="a2-meta">Sin registro cargado.</div>
 
-            <section class="a2-compare-table-card" aria-label="Comparativa RAW, GESA y FINAL">
+            <section class="a2-compare-table-card" aria-label="Comparativa RAW, GESA, SUST y FINAL">
                 <table class="a2-compare-table">
                     <thead>
                         <tr>
                             <th>Campo</th>
                             <th>RAW</th>
                             <th>GESA</th>
+                            <th>SUST</th>
                             <th>FINAL</th>
                             <th>PDF</th>
                         </tr>
                     </thead>
                     <tbody id="comparisonBody">
                         <tr>
-                            <td colspan="5">Selecciona un registro para ver la comparativa.</td>
+                            <td colspan="6">Selecciona un registro para ver la comparativa.</td>
                         </tr>
                     </tbody>
                 </table>

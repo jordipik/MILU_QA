@@ -35,8 +35,41 @@ body {
     font-size: 12px;
 }
 
+.app-topbar-left {
+    display: flex;
+    align-items: center;
+    gap: 20px;
+}
+
 .app-topbar-title {
     font-weight: 600;
+    white-space: nowrap;
+}
+
+.app-topbar-nav {
+    display: flex;
+    gap: 12px;
+    align-items: center;
+}
+
+.app-topbar-nav a,
+.app-topbar-nav span {
+    padding: 4px 12px;
+    border-radius: 12px;
+    font-size: 12px;
+    font-weight: 500;
+    text-decoration: none;
+    color: var(--text);
+    cursor: pointer;
+}
+
+.app-topbar-nav a:hover {
+    background: rgba(100, 116, 139, 0.1);
+}
+
+.app-topbar-nav span.active {
+    background: #2563eb;
+    color: white;
 }
 
 .app-topbar-user {

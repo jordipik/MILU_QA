@@ -14,7 +14,7 @@ const DEFAULT_ACTIVE_QA_CODES = [
     'missing_part_no',
     'missing_pos',
     'missing_pn_final',
-    'pn_final_not_in_pdf',
+    'pn_final_not_equal_pn_pdf',
     'missing_designation_final',
     'designation_final_not_in_pdf'
 ];
@@ -413,6 +413,7 @@ async function validateRow(row) {
 
     const pn = getPartNumber(row);
     const pnFinal = text(row?.pn_final);
+    const pnPdf = text(row?.pn_pdf);
     const pos = text(row?.POS);
     const designation = getFinalDesignation(row);
 
@@ -427,16 +428,13 @@ async function validateRow(row) {
     if (!pnFinal) {
         addIssue(result, 'missing_pn_final', 'critical', ['pn_final'], 'PN Final vacio');
     } else {
-        const pnPdfLookup = await findPnFinalInAssignedPdf(row, pnFinal);
-        if (pnPdfLookup.checked && !pnPdfLookup.found) {
-            const pageSuffix = pnPdfLookup.pageNumber ? ` en pagina ${pnPdfLookup.pageNumber}` : '';
-            const pdfSuffix = pnPdfLookup.pdfFileName ? ` (${pnPdfLookup.pdfFileName})` : '';
+        if (!pnPdf || pnFinal !== pnPdf) {
             addIssue(
                 result,
-                'pn_final_not_in_pdf',
+                'pn_final_not_equal_pn_pdf',
                 'critical',
-                ['pn_final', 'PART NO.', 'Source Page', 'source_file', 'engine_model'],
-                `PN Final no se encuentra en el PDF asignado${pageSuffix}${pdfSuffix}`
+                ['pn_final', 'pn_pdf'],
+                'PN Final debe ser igual a PN PDF'
             );
         }
     }

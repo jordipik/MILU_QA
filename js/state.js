@@ -40,7 +40,7 @@ export const state = {
         { code: 'missing_part_no', label: 'PN vacio' },
         { code: 'missing_pos', label: 'POS vacio' },
         { code: 'missing_pn_final', label: 'PN Final vacio' },
-        { code: 'pn_final_not_in_pdf', label: 'PN Final no se encuentra en el PDF asignado' },
+        { code: 'pn_final_not_equal_pn_pdf', label: 'PN Final no coincide con PN PDF' },
         { code: 'missing_designation_final', label: 'Designation Final vacio' },
         { code: 'designation_final_not_in_pdf', label: 'Designation Final no se encuentra en el PDF asignado' }
     ],
