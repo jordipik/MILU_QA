@@ -50,6 +50,9 @@
 - `schemas.js`: schema/position image resolution and rendering
 - `pos-preload.js`: lazy preload queue for position images
 
+## Analysis View Mapping Docs
+- `07_analista_02_column_mapping.md`: canonical mapping of RAW/GESA/SUST/FINAL/PDF for `analista_02.html` (`js/analista-02.js`)
+
 ## Backend and Node Script Map
 - `server.js`: API layer + static serving
 - `generate_synthetic_exports.js`: produces synthetic New/Superseded outputs

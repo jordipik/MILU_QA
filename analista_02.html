@@ -49,11 +49,12 @@
                             <th>SUST</th>
                             <th>FINAL</th>
                             <th>PDF</th>
+                            <th id="errColHeader" class="err-col-header" title="Ver listado de checks">ERR</th>
                         </tr>
                     </thead>
                     <tbody id="comparisonBody">
                         <tr>
-                            <td colspan="6">Selecciona un registro para ver la comparativa.</td>
+                            <td colspan="7">Selecciona un registro para ver la comparativa.</td>
                         </tr>
                     </tbody>
                 </table>
@@ -94,6 +95,19 @@
             <span id="pdfLabel" hidden>-</span>
         </aside>
     </main>
+
+    <div id="checksModal" class="checks-modal" hidden aria-modal="true" role="dialog"
+        aria-labelledby="checksModalTitle">
+        <div class="checks-modal-backdrop"></div>
+        <div class="checks-modal-panel">
+            <header class="checks-modal-header">
+                <h2 id="checksModalTitle">Checks de la columna ERR</h2>
+                <button id="checksModalClose" class="checks-modal-close" type="button"
+                    aria-label="Cerrar">&times;</button>
+            </header>
+            <div id="checksModalBody" class="checks-modal-body"></div>
+        </div>
+    </div>
 
     <script type="module" src="js/analista-02.js"></script>
 </body>

@@ -1,5 +1,5 @@
 import { state } from './state.js';
-import { getEngineJsonFiles, loadFirstEngineData, saveCellToServer } from './data-loader.js';
+import { getEngineJsonFiles, loadEngineDataByFileName, saveCellToServer } from './data-loader.js';
 import { assignRevisionKeys, applyRevisionDataToRows } from './revision.js';
 import { initPdfZoomControls, loadPdfClear, loadPdfWithPage, requestPdfRelayout, setPdfReadTokens, setPdfSelection } from './pdf-viewer.js';
 
@@ -14,6 +14,90 @@ const QA_LABELS = {
     designation_final_not_in_pdf: 'designation_final no localizada en PDF'
 };
 
+// Checks oficiales por campo para la columna ERR.
+// Cada entrada: { code, label, needsPdf, check(row, entry, context) => boolean (true = pasa, false = falla) }
+const FIELD_CUSTOM_CHECKS = {
+    'POS': [
+        { code: 'pos_required', label: 'POS: final lleno', needsPdf: false, check: (row, entry) => normalizeCompareValue(entry?.final) !== '' },
+        { code: 'pos_final_pdf_match', label: 'POS: final coincide con PDF', needsPdf: true, check: (row, entry, context) => isCompareMatch(entry?.final, context?.pdfValue) }
+    ],
+    'PART NO.': [
+        { code: 'pn_required', label: 'PN: final lleno', needsPdf: false, check: (row, entry) => normalizeCompareValue(entry?.final) !== '' },
+        { code: 'pn_final_pdf_match', label: 'PN: final coincide con PDF', needsPdf: true, check: (row, entry, context) => isCompareMatch(entry?.final, context?.pdfValue) }
+    ],
+    'DESIGNATION': [
+        { code: 'designation_required', label: 'DESIGNATION: final lleno', needsPdf: false, check: (row, entry) => normalizeCompareValue(entry?.final) !== '' },
+        {
+            code: 'designation_final_pdf_or_gesa_match',
+            label: 'DESIGNATION: final coincide con PDF o GESA',
+            needsPdf: true,
+            check: (row, entry, context) => isCompareMatch(entry?.final, context?.pdfValue) || isCompareMatch(entry?.final, entry?.gesa)
+        }
+    ],
+    'WEIGHT': [
+        {
+            code: 'weight_final_pdf_or_gesa_match',
+            label: 'WEIGHT: final coincide con PDF o GESA',
+            needsPdf: true,
+            check: (row, entry, context) => isCompareMatch(entry?.final, context?.pdfValue) || isCompareMatch(entry?.final, entry?.gesa)
+        }
+    ],
+    'MEASUREMENT / STANDARD': [
+        {
+            code: 'measurement_final_pdf_or_gesa_match',
+            label: 'MEASUREMENT: final coincide con PDF o GESA',
+            needsPdf: true,
+            check: (row, entry, context) => {
+                const finalValue = normalizeCompareValue(entry?.final);
+                const pdfValue = normalizeCompareValue(context?.pdfValue);
+                const gesaValue = normalizeCompareValue(entry?.gesa);
+                if (!finalValue && !pdfValue && !gesaValue) return true;
+                return isCompareMatch(entry?.final, context?.pdfValue) || isCompareMatch(entry?.final, entry?.gesa);
+            }
+        }
+    ],
+    'NORMA': [
+        {
+            code: 'norma_final_pdf_or_gesa_match',
+            label: 'NORMA: final coincide con PDF o GESA (o todos vacios)',
+            needsPdf: true,
+            check: (row, entry, context) => {
+                const finalValue = normalizeCompareValue(entry?.final);
+                const pdfValue = normalizeCompareValue(context?.pdfValue);
+                const gesaValue = normalizeCompareValue(entry?.gesa);
+                if (!finalValue && !pdfValue && !gesaValue) return true;
+                return isCompareMatch(entry?.final, context?.pdfValue) || isCompareMatch(entry?.final, entry?.gesa);
+            }
+        }
+    ],
+    'BOM-No.': [
+        {
+            code: 'bom_final_pdf_match',
+            label: 'BOM: final coincide con PDF',
+            needsPdf: true,
+            check: (row, entry, context) => isCompareMatch(entry?.final, context?.pdfValue)
+        }
+    ]
+};
+
+function getFieldChecks(row, entry, context = {}) {
+    const issues = [];
+    const customChecks = FIELD_CUSTOM_CHECKS[entry?.field] ?? [];
+    for (const check of customChecks) {
+        if (check.needsPdf && !context.pdfReady) continue;
+        if (!check.check(row, entry, context)) {
+            issues.push({ code: check.code, label: check.label });
+        }
+    }
+
+    const seen = new Set();
+    return issues.filter(issue => {
+        if (seen.has(issue.code)) return false;
+        seen.add(issue.code);
+        return true;
+    });
+}
+
 let currentRow = null;
 let currentProcessIndex = 0;
 let comparisonRenderToken = 0;
@@ -24,6 +108,16 @@ const PDF_LINE_Y_TOLERANCE = 2;
 const RIGHT_PANEL_WIDTH_KEY = 'analista02:right-panel-width';
 const COMPARISON_WIDTHS_KEY = 'analista02:comparison-column-widths';
 const COMPARISON_MIN_COL_WIDTH = 30;
+const ENGINE_BOOK_FILES = getEngineJsonFiles();
+
+function inferEngineModelFromFileName(fileName) {
+    return String(fileName || '')
+        .replace(/^engine_/i, '')
+        .replace(/\.json$/i, '')
+        .trim();
+}
+
+const ENGINE_BOOK_MODELS = ENGINE_BOOK_FILES.map(inferEngineModelFromFileName).filter(Boolean);
 
 function txt(value, fallback = '-') {
     const normalized = String(value ?? '').trim();
@@ -64,14 +158,19 @@ function isRequiredComparisonField(fieldName) {
 }
 
 function getComparisonCellClasses(entry, pdfValue) {
+    const rawValue = txt(entry?.raw);
+    const sustValue = txt(entry?.sust);
     const finalValue = txt(entry?.final);
     const gesaValue = txt(entry?.gesa);
     const pdfResolvedValue = txt(pdfValue);
     const finalMissing = isRequiredComparisonField(entry?.field) && normalizeCompareValue(finalValue) === '';
+    const rawMatchesSust = isCompareMatch(rawValue, sustValue);
     const gesaMatchesFinal = isCompareMatch(gesaValue, finalValue);
     const pdfMatchesFinal = isCompareMatch(pdfResolvedValue, finalValue);
 
     return {
+        rawClass: rawMatchesSust ? 'compare-match' : '',
+        sustClass: rawMatchesSust ? 'compare-match' : '',
         finalClass: finalMissing ? 'compare-missing' : (gesaMatchesFinal || pdfMatchesFinal ? 'compare-match' : ''),
         gesaClass: gesaMatchesFinal ? 'compare-match' : '',
         pdfClass: pdfMatchesFinal ? 'compare-match' : ''
@@ -532,16 +631,105 @@ function initComparisonColumnResize() {
     table.dataset.columnsResizable = '1';
 }
 
-function buildEngineOptions() {
+function renderChecksModalBody() {
+    const body = $('checksModalBody');
+    if (!(body instanceof HTMLElement)) return;
+
+    const checkEntries = [];
+    for (const [field, checks] of Object.entries(FIELD_CUSTOM_CHECKS)) {
+        for (const check of checks) {
+            checkEntries.push({ field, code: check.code, label: check.label });
+        }
+    }
+
+    let html = '';
+
+    html += `<p class="checks-group-title">Listado activo para ERR (${checkEntries.length})</p>`;
+    if (checkEntries.length === 0) {
+        html += `<p style="font-size:12px;color:#6b7280;margin:0">No hay checks configurados.</p>`;
+    } else {
+        html += `<ul class="checks-list">`;
+        for (const entry of checkEntries) {
+            html += `<li class="check-custom"><span class="check-code">${escapeHtml(entry.code)}</span><span class="check-label">${escapeHtml(entry.label)} <em style="color:#6b7280">(campo: ${escapeHtml(entry.field)})</em></span></li>`;
+        }
+        html += `</ul>`;
+    }
+
+    body.innerHTML = html;
+}
+
+function initChecksModal() {
+    const header = $('errColHeader');
+    const modal = $('checksModal');
+    const closeBtn = $('checksModalClose');
+    const backdrop = modal?.querySelector('.checks-modal-backdrop');
+
+    if (!(header instanceof HTMLElement) || !(modal instanceof HTMLElement)) return;
+
+    header.addEventListener('click', () => {
+        renderChecksModalBody();
+        modal.hidden = false;
+    });
+
+    closeBtn?.addEventListener('click', () => { modal.hidden = true; });
+    backdrop?.addEventListener('click', () => { modal.hidden = true; });
+
+    document.addEventListener('keydown', (event) => {
+        if (!modal.hidden && event.key === 'Escape') modal.hidden = true;
+    });
+}
+
+function buildEngineOptions(selectedModel = '') {
     const select = $('engineFilterSelect');
     if (!(select instanceof HTMLSelectElement)) return;
 
-    const options = [...new Set((state.allData || [])
-        .map(row => String(row?.engine_model ?? '').trim())
-        .filter(Boolean)
-    )].sort((a, b) => a.localeCompare(b, 'es', { numeric: true, sensitivity: 'base' }));
+    select.innerHTML = ENGINE_BOOK_MODELS.map((value) => `<option value="${value}">${value}</option>`).join('');
+    const defaultModel = ENGINE_BOOK_MODELS[0] || '';
+    select.value = selectedModel && ENGINE_BOOK_MODELS.includes(selectedModel) ? selectedModel : defaultModel;
+}
 
-    select.innerHTML = options.map((value) => `<option value="${value}">${value}</option>`).join('');
+function resolveEngineFileFromFilter(engineFilter) {
+    const model = String(engineFilter || '').trim();
+    if (!model) return ENGINE_BOOK_FILES[0] || '';
+
+    const directMatch = ENGINE_BOOK_FILES.find((file) => inferEngineModelFromFileName(file) === model);
+    return directMatch || '';
+}
+
+async function loadEngineForFilter(engineFilter) {
+    const engineFile = resolveEngineFileFromFilter(engineFilter);
+    if (!engineFile) {
+        throw new Error('No se pudo resolver el archivo engine para el filtro seleccionado.');
+    }
+
+    const loadedRows = await loadEngineDataByFileName(engineFile);
+    state.allData = sortRowsByBookPagePos(loadedRows);
+
+    assignRevisionKeys(state.allData);
+    applyRevisionDataToRows(state.allData);
+
+    const selectedModel = inferEngineModelFromFileName(engineFile);
+    const engineSelect = $('engineFilterSelect');
+    if (engineSelect instanceof HTMLSelectElement) {
+        engineSelect.value = selectedModel;
+    }
+
+    const firstRow = state.allData[0] || null;
+    if (firstRow) {
+        currentRow = firstRow;
+        $('recordIdInput').value = getDisplayPn(firstRow);
+        currentProcessIndex = 0;
+        renderRecord(firstRow);
+        await revalidateCurrentRow();
+        return;
+    }
+
+    currentRow = null;
+    currentProcessIndex = 0;
+    $('recordIdInput').value = '';
+    renderRecordPosition(null);
+    renderMeta(null);
+    syncPdfWithCurrentRow(null);
 }
 
 function resolveEngineFile(row) {
@@ -608,6 +796,12 @@ function getGesaPn(row) {
     return String(row?.pn_final ?? '').trim() || null;
 }
 
+function getSustPn(row) {
+    const isGesaSi = String(row?.gesa ?? '').trim().toUpperCase() === 'SI';
+    if (!isGesaSi) return null;
+    return String(row?.pn_final ?? '').trim() || null;
+}
+
 function getGesaWeightWithUnits(row) {
     const weight = String(row?.weight_gesa ?? '').trim();
     const units = String(row?.units ?? '').trim();
@@ -618,26 +812,26 @@ function getGesaWeightWithUnits(row) {
 
 function buildComparisonRows(row) {
     return [
-        { field: 'POS', raw: row?.POS, gesa: null, sust: null, final: row?.POS },
-        { field: 'PART NO.', raw: row?.['PART NO.'], gesa: getGesaPn(row), sust: null, final: row?.pn_final },
-        { field: 'DESIGNATION', raw: row?.DESIGNATION, gesa: row?.designation_gesa, sust: null, final: row?.designation_final },
-        { field: 'MODEL/TYPE', raw: row?.['MODEL/TYPE'], gesa: null, sust: null, final: null },
-        { field: 'QTY', raw: row?.QTY, gesa: null, sust: null, final: row?.QTY },
-        { field: 'UNITS', raw: row?.UNITS, gesa: null, sust: null, final: row?.UNITS },
-        { field: 'WEIGHT', raw: row?.WEIGHT, gesa: getGesaWeightWithUnits(row), sust: null, final: row?.weight_final },
-        { field: 'FN', raw: row?.FN, gesa: null, sust: null, final: null },
-        { field: 'MEASUREMENT / STANDARD', raw: row?.['MEASUREMENT / STANDARD'], gesa: row?.dimensions_gesa, sust: null, final: row?.measurement_final },
-        { field: 'FG/FGS', raw: row?.['FG/FGS'], gesa: null, sust: null, final: null },
-        { field: 'BOM-No.', raw: row?.['BOM-No.'], gesa: null, sust: null, final: null },
-        { field: 'GESA', raw: null, gesa: row?.gesa, sust: null, final: null, separatorTop: true },
-        { field: 'NSN', raw: null, gesa: row?.nsn, sust: null, final: null },
-        { field: 'NORMALIZADO', raw: null, gesa: row?.normalizado, sust: null, final: null },
-        { field: 'NORMA', raw: null, gesa: row?.norma, sust: null, final: row?.norma },
-        { field: 'SUST_STATUS', raw: null, gesa: null, sust: row?.sust_status, final: null, separatorTop: true },
-        { field: 'SUST', raw: null, gesa: null, sust: row?.sust, final: null },
-        { field: 'HIERARCHI', raw: null, gesa: null, sust: row?.hierarchi ?? row?.sust_hierarchie, final: null },
-        { field: 'SUST_NEW_PART_NUMBER', raw: null, gesa: null, sust: row?.sust_new_part_number, final: null },
-        { field: 'SUST_SUPERSEDED_LIST', raw: null, gesa: null, sust: row?.sust_superseded_list, final: null }
+        { field: 'POS', raw: row?.POS, gesa: null, sust: null, final: row?.pos_final, errFields: ['POS'] },
+        { field: 'PART NO.', raw: row?.['PART NO.'], gesa: getGesaPn(row), sust: getSustPn(row), final: row?.pn_final, errFields: ['PART NO.', 'pn_final'] },
+        { field: 'DESIGNATION', raw: row?.DESIGNATION, gesa: row?.designation_gesa, sust: null, final: row?.designation_final, errFields: ['designation_final'] },
+        { field: 'MODEL/TYPE', raw: row?.['MODEL/TYPE'], gesa: null, sust: null, final: row?.['MODEL/TYPE'], errFields: [] },
+        { field: 'QTY', raw: row?.QTY, gesa: null, sust: null, final: row?.qty_final, errFields: [] },
+        { field: 'UNITS', raw: row?.UNITS, gesa: null, sust: null, final: row?.UNITS, errFields: [] },
+        { field: 'WEIGHT', raw: row?.WEIGHT, gesa: getGesaWeightWithUnits(row), sust: null, final: row?.weight_final, errFields: [] },
+        { field: 'FN', raw: row?.FN, gesa: null, sust: null, final: row?.FN, errFields: [] },
+        { field: 'MEASUREMENT / STANDARD', raw: row?.['MEASUREMENT / STANDARD'], gesa: row?.dimensions_gesa, sust: null, final: row?.measure_final, errFields: [] },
+        { field: 'FG/FGS', raw: row?.['FG/FGS'], gesa: null, sust: null, final: row?.['FG/FGS'], errFields: [] },
+        { field: 'BOM-No.', raw: row?.['BOM-No.'], gesa: null, sust: null, final: row?.['BOM-No.'], errFields: [] },
+        { field: 'GESA', raw: null, gesa: row?.gesa, sust: null, final: row?.gesa, separatorTop: true, errFields: [] },
+        { field: 'NSN', raw: null, gesa: row?.nsn, sust: null, final: row?.nsn, errFields: [] },
+        { field: 'NORMALIZADO', raw: null, gesa: row?.normalizado, sust: null, final: row?.normalizado, errFields: [] },
+        { field: 'NORMA', raw: null, gesa: row?.norma, sust: null, final: row?.norma, errFields: [] },
+        { field: 'SUST_STATUS', raw: null, gesa: null, sust: row?.sust_status, final: row?.sust_status, separatorTop: true, errFields: [] },
+        { field: 'SUST', raw: null, gesa: null, sust: row?.sust, final: row?.sust, errFields: [] },
+        { field: 'HIERARCHI', raw: null, gesa: null, sust: row?.hierarchi ?? row?.sust_hierarchie, final: row?.hierarchi ?? row?.sust_hierarchie, errFields: [] },
+        { field: 'SUST_NEW_PART_NUMBER', raw: null, gesa: null, sust: row?.sust_new_part_number, final: row?.sust_new_part_number, errFields: [] },
+        { field: 'SUST_SUPERSEDED_LIST', raw: null, gesa: null, sust: row?.sust_superseded_list, final: row?.sust_superseded_list, errFields: [] }
     ];
 }
 
@@ -718,6 +912,10 @@ async function renderComparisonTable(row) {
     body.innerHTML = rows.map((entry) => {
         const loadingClass = 'pdf-loading';
         const rowClass = entry.separatorTop ? 'separator-top' : '';
+        const fieldIssues = getFieldChecks(row, entry, { pdfReady: false, pdfValue: '' });
+        const errCount = fieldIssues.length;
+        const errCellClass = errCount > 0 ? 'field-err has-errors' : 'field-err';
+        const errTitle = errCount > 0 ? ` title="${fieldIssues.map(i => escapeHtml(i.label)).join('&#10;')}"` : '';
         return `<tr class="${rowClass}">
             <td class="field">${escapeHtml(entry.field)}</td>
             <td>${escapeHtml(txt(entry.raw))}</td>
@@ -725,6 +923,7 @@ async function renderComparisonTable(row) {
             <td>${escapeHtml(txt(entry.sust))}</td>
             <td>${escapeHtml(txt(entry.final))}</td>
             <td class="${loadingClass}">${escapeHtml('...')}</td>
+            <td class="${errCellClass}"${errTitle}>${errCount > 0 ? errCount : ''}</td>
         </tr>`;
     }).join('');
 
@@ -742,13 +941,20 @@ async function renderComparisonTable(row) {
         }
         const cellClasses = getComparisonCellClasses(entry, pdfRead.value);
         const rowClass = entry.separatorTop ? 'separator-top' : '';
+        const fieldIssues = getFieldChecks(row, entry, { pdfReady: true, pdfValue: pdfRead.value });
+        const errCount = fieldIssues.length;
+        const errCellClass = errCount > 0 ? 'field-err has-errors' : 'field-err';
+        const errTitle = errCount > 0 ? ` title="${fieldIssues.map(i => escapeHtml(i.label)).join('&#10;')}"` : '';
+        const finalErrClass = errCount > 0 ? 'compare-final-error' : 'compare-final-ok';
+        const finalFullClass = [cellClasses.finalClass, finalErrClass].filter(Boolean).join(' ');
         return `<tr class="${rowClass}">
             <td class="field">${escapeHtml(entry.field)}</td>
-            <td>${escapeHtml(txt(entry.raw))}</td>
+            <td class="${cellClasses.rawClass}">${escapeHtml(txt(entry.raw))}</td>
             <td class="${cellClasses.gesaClass}">${escapeHtml(txt(entry.gesa))}</td>
-            <td>${escapeHtml(txt(entry.sust))}</td>
-            <td class="${cellClasses.finalClass}">${escapeHtml(txt(entry.final))}</td>
+            <td class="${cellClasses.sustClass}">${escapeHtml(txt(entry.sust))}</td>
+            <td class="${finalFullClass}">${escapeHtml(txt(entry.final))}</td>
             <td class="${cellClasses.pdfClass}">${escapeHtml(txt(pdfRead.value))}</td>
+            <td class="${errCellClass}"${errTitle}>${errCount > 0 ? errCount : ''}</td>
         </tr>`;
     }).join('');
 
@@ -1045,35 +1251,16 @@ async function runAllProcesses() {
 async function initialize() {
     try {
         state.rightPanelTab = 'pdf';
+        initChecksModal();
         initHorizontalSplitter();
         initComparisonColumnResize();
         loadComparisonColumnWidths();
         initPdfZoomControls();
         loadPdfClear();
 
-        const initialEngineFile = getEngineJsonFiles()[0];
-        const loadedRows = await loadFirstEngineData();
-        state.allData = sortRowsByBookPagePos(loadedRows);
-
-        assignRevisionKeys(state.allData);
-        applyRevisionDataToRows(state.allData);
         buildEngineOptions();
-
-        const engineSelect = $('engineFilterSelect');
-        if (engineSelect instanceof HTMLSelectElement && initialEngineFile) {
-            engineSelect.disabled = true;
-            engineSelect.title = `Carga limitada a ${initialEngineFile}`;
-        }
-
-        const firstRow = state.allData[0] || null;
-        if (firstRow) {
-            currentRow = firstRow;
-            $('recordIdInput').value = getDisplayPn(firstRow);
-            renderRecord(firstRow);
-            await revalidateCurrentRow();
-        } else {
-            renderRecordPosition(null);
-        }
+        const initialModel = String($('engineFilterSelect')?.value || '').trim() || ENGINE_BOOK_MODELS[0] || '';
+        await loadEngineForFilter(initialModel);
     } catch (error) {
         const statusText = $('statusText');
         if (statusText) statusText.textContent = `Error iniciando Analista 02: ${error.message}`;
@@ -1105,14 +1292,10 @@ $('recordIdInput').addEventListener('keydown', (event) => {
 });
 
 $('engineFilterSelect').addEventListener('change', () => {
-    const queue = getQueueRows();
-    const next = queue[0] || null;
-    if (!next) return;
-
-    currentRow = next;
-    $('recordIdInput').value = getDisplayPn(next);
-    currentProcessIndex = 0;
-    revalidateCurrentRow().catch((error) => alert(`No se pudo cargar el registro del filtro: ${error.message}`));
+    const selectedModel = String($('engineFilterSelect')?.value || '').trim();
+    loadEngineForFilter(selectedModel).catch((error) => {
+        alert(`No se pudo cargar el libro seleccionado: ${error.message}`);
+    });
 });
 
 initialize();
