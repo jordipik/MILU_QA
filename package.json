@@ -10,7 +10,8 @@
     "pages:publish:stage-only": "powershell -ExecutionPolicy Bypass -File ./scripts/publish-pages.ps1 -NoCommit -NoPush",
     "pages:publish:full": "powershell -ExecutionPolicy Bypass -File ./scripts/publish-pages.ps1 -FullPrepare",
     "pages:publish:full:nopush": "powershell -ExecutionPolicy Bypass -File ./scripts/publish-pages.ps1 -FullPrepare -NoPush",
-    "pages:publish:safe": "powershell -ExecutionPolicy Bypass -File ./scripts/publish-safe.ps1"
+    "pages:publish:safe": "powershell -ExecutionPolicy Bypass -File ./scripts/publish-safe.ps1",
+    "git:backup": "powershell -ExecutionPolicy Bypass -File ./scripts/git-backup.ps1"
   },
   "dependencies": {
     "body-parser": "^2.2.2",
