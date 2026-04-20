@@ -59,6 +59,23 @@ function buildLegacyRevisionKey(row) {
     return [id, pn, page, pos, source].join('||');
 }
 
+function stripLegacyQaFields(value) {
+    if (Array.isArray(value)) {
+        value.forEach(stripLegacyQaFields);
+        return value;
+    }
+
+    if (!value || typeof value !== 'object') {
+        return value;
+    }
+
+    delete value.qa_errors;
+    delete value.qa_errors_active;
+
+    Object.values(value).forEach(stripLegacyQaFields);
+    return value;
+}
+
 async function applyRevisionPayload(parsed, options = {}) {
     const repoRoot = options.repoRoot || process.cwd();
     const sourceName = options.sourceName || 'inline_payload';
@@ -105,6 +122,7 @@ async function applyRevisionPayload(parsed, options = {}) {
         });
 
         if (changedInFile > 0) {
+            stripLegacyQaFields(rows);
             fs.writeFileSync(filePath, `${JSON.stringify(rows, null, 2)}\n`, 'utf8');
         }
 

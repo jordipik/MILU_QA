@@ -73,6 +73,23 @@ if (recordsWithOk.length === 0) {
 let totalUpdated = 0;
 const updatesByPn = new Map();
 
+function stripLegacyQaFields(value) {
+    if (Array.isArray(value)) {
+        value.forEach(stripLegacyQaFields);
+        return value;
+    }
+
+    if (!value || typeof value !== 'object') {
+        return value;
+    }
+
+    delete value.qa_errors;
+    delete value.qa_errors_active;
+
+    Object.values(value).forEach(stripLegacyQaFields);
+    return value;
+}
+
 // Set de PN que tienen al menos un registro en estado "revisado"
 const pnWithOk = new Set();
 recordsWithOk.forEach((record, idx) => {
@@ -133,6 +150,7 @@ if (totalUpdated > 0) {
         fs.copyFileSync(filePath, backupPath);
         console.log(`💾 Copia de seguridad creada: ${path.basename(backupPath)}`);
 
+        stripLegacyQaFields(data);
         fs.writeFileSync(filePath, JSON.stringify(data, null, 2), 'utf-8');
         console.log(`✅ Archivo actualizado y guardado: ${engineFile}`);
         console.log(`   ${totalUpdated} registros fueron actualizados a estado "Copia".`);

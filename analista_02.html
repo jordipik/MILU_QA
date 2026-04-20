@@ -26,18 +26,34 @@
             <div class="a2-toolbar">
                 <select id="engineFilterSelect" aria-label="Filtro de libro">
                 </select>
-                <input id="recordIdInput" type="text" placeholder="PN o PART NO." autocomplete="off">
-                <button id="loadRecordBtn" type="button">Cargar PN</button>
-                <button id="prevRecordBtn" type="button">Anterior</button>
-                <button id="nextRecordBtn" type="button">Siguiente</button>
-                <button id="revalidateBtn" type="button">Revalidar</button>
+                <input id="recordIdInput" list="recordSearchList" type="search"
+                    placeholder="Buscar por PN, PART NO, ID o DESIGNATION" autocomplete="off">
+                <datalist id="recordSearchList"></datalist>
+                <button id="loadRecordBtn" type="button">Buscar</button>
+                <button id="prevRecordBtn" class="a2-btn-nav" type="button" title="Registro anterior"
+                    aria-label="Registro anterior">&#9664;</button>
+                <button id="nextRecordBtn" class="a2-btn-nav" type="button" title="Registro siguiente"
+                    aria-label="Registro siguiente">&#9654;</button>
+                <button id="prevErrorBtn" class="a2-btn-nav a2-btn-nav-err" type="button" title="Error anterior"
+                    aria-label="Error anterior">ERR &#9664;</button>
+                <button id="nextErrorBtn" class="a2-btn-nav a2-btn-nav-err" type="button" title="Siguiente error"
+                    aria-label="Siguiente error">ERR &#9654;</button>
+                <button id="saveErrorsBtn" type="button">Guardar ERR</button>
             </div>
 
             <div class="a2-status-row">
                 <p id="recordPositionText">Registro 0 de 0</p>
+                <p id="selectedBookText" class="a2-selected-book">Libro: -</p>
             </div>
 
             <div id="recordMeta" class="a2-meta">Sin registro cargado.</div>
+
+            <div class="a2-review-actions" aria-label="Estado de revision">
+                <button id="statusOkBtn" class="a2-review-btn is-ok" type="button" aria-pressed="false">OK</button>
+                <button id="statusReviewBtn" class="a2-review-btn is-review" type="button"
+                    aria-pressed="false">REVISAR</button>
+                <button id="statusKoBtn" class="a2-review-btn is-ko" type="button" aria-pressed="false">KO</button>
+            </div>
 
             <section class="a2-compare-table-card" aria-label="Comparativa RAW, GESA, SUST y FINAL">
                 <table class="a2-compare-table">

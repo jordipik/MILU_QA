@@ -39,6 +39,9 @@ function getEngineFiles() {
 function applyCanonicalFields(row) {
   const next = { ...row };
 
+  delete next.qa_errors;
+  delete next.qa_errors_active;
+
   const canonical = {
     pos_raw: firstMeaningful(row.POS),
     pos_pdf: firstMeaningful(row.POS),
@@ -114,9 +117,7 @@ function reorderKeys(row) {
   const qaOrder = [
     'qa_revision_estado',
     'qa_revision_accion',
-    'qa_revision_updated_at',
-    'qa_errors',
-    'qa_errors_active'
+    'qa_revision_updated_at'
   ];
 
   const ordered = {};

@@ -236,8 +236,9 @@ body.a2-resizing * {
 
 .a2-toolbar {
     display: grid;
-    grid-template-columns: 1.2fr 120px repeat(4, minmax(95px, 1fr));
+    grid-template-columns: minmax(180px, 220px) minmax(240px, 1fr) minmax(88px, 104px) repeat(4, 42px) minmax(92px, 116px);
     gap: 8px;
+    align-items: center;
 }
 
 .a2-toolbar input,
@@ -249,7 +250,7 @@ body.a2-resizing * {
 .a2-outcome-row button {
     border: 1px solid var(--line-strong);
     border-radius: 10px;
-    height: 34px;
+    height: 32px;
     font-family: inherit;
     font-size: 12px;
 }
@@ -263,13 +264,41 @@ body.a2-resizing * {
     color: var(--text);
 }
 
+#recordIdInput {
+    font-family: 'IBM Plex Mono', Consolas, monospace;
+}
+
 .a2-toolbar button,
 .a2-process-actions button,
 .a2-outcome-row button {
     cursor: pointer;
-    background: #f3f8fd;
+    background: #edf4fb;
     color: #0e4f8d;
     font-weight: 700;
+}
+
+.a2-toolbar #loadRecordBtn,
+.a2-toolbar #saveErrorsBtn {
+    font-size: 11px;
+    letter-spacing: 0.01em;
+}
+
+.a2-btn-nav {
+    width: 42px;
+    min-width: 42px;
+    padding: 0;
+    font-size: 12px;
+    font-weight: 800;
+    line-height: 1;
+}
+
+.a2-btn-nav-err {
+    width: 56px;
+    min-width: 56px;
+    font-size: 10px;
+    color: #8f3d12;
+    background: #fff1e8;
+    border-color: #efc8b2;
 }
 
 .a2-toolbar button:hover,
@@ -281,15 +310,27 @@ body.a2-resizing * {
 .a2-status-row {
     display: flex;
     align-items: center;
-    gap: 10px;
+    gap: 12px;
     min-height: 22px;
 }
 
 #recordPositionText {
     margin: 0;
     color: var(--muted);
-    font-size: 12px;
+    font-size: 11px;
     font-weight: 600;
+}
+
+.a2-selected-book {
+    margin: 0;
+    border: 1px solid #b9d4ef;
+    background: linear-gradient(135deg, #ebf4ff, #dcecff);
+    color: #0f4e8b;
+    border-radius: 999px;
+    padding: 5px 10px;
+    font-size: 11px;
+    font-weight: 800;
+    letter-spacing: 0.03em;
 }
 
 .backend-badge {
@@ -322,13 +363,79 @@ body.a2-resizing * {
 }
 
 .a2-meta {
-    border: 1px dashed var(--line-strong);
-    background: #fbfdff;
+    border: 1px solid #d7e2ef;
+    background: linear-gradient(180deg, #fcfdff, #f4f9ff);
     border-radius: 12px;
-    padding: 10px;
-    font-size: 12px;
+    padding: 8px;
+    font-size: 11px;
     color: #2c445e;
     font-family: 'IBM Plex Mono', Consolas, monospace;
+    display: flex;
+    gap: 8px;
+    flex-wrap: wrap;
+}
+
+.a2-meta-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    border-radius: 999px;
+    border: 1px solid #ccdbee;
+    background: #ffffff;
+    padding: 5px 10px;
+    white-space: nowrap;
+}
+
+.a2-meta-badge strong {
+    color: #557190;
+    font-size: 10px;
+    letter-spacing: 0.04em;
+}
+
+.a2-review-actions {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.a2-review-btn {
+    border: 1px solid transparent;
+    border-radius: 999px;
+    min-width: 90px;
+    height: 30px;
+    font-size: 11px;
+    font-weight: 800;
+    letter-spacing: 0.04em;
+    opacity: 0.75;
+    transition: transform 120ms ease, box-shadow 120ms ease, opacity 120ms ease;
+}
+
+.a2-review-btn:hover {
+    opacity: 0.92;
+}
+
+.a2-review-btn.is-active {
+    opacity: 1;
+    transform: translateY(-1px);
+    box-shadow: 0 4px 12px rgba(17, 41, 69, 0.18);
+}
+
+.a2-review-btn.is-ok {
+    background: #e9f8ef;
+    border-color: #9cdbb6;
+    color: #13663f;
+}
+
+.a2-review-btn.is-review {
+    background: #fff5e5;
+    border-color: #f2cc8e;
+    color: #955b06;
+}
+
+.a2-review-btn.is-ko {
+    background: #ffe9e6;
+    border-color: #efb2ab;
+    color: #9b2f23;
 }
 
 .a2-compare-table-card {
@@ -922,6 +1029,16 @@ body.a2-resizing * {
 
     .a2-toolbar {
         grid-template-columns: 1fr 1fr;
+    }
+
+    .a2-toolbar #recordIdInput,
+    .a2-toolbar #loadRecordBtn,
+    .a2-toolbar #saveErrorsBtn {
+        grid-column: span 2;
+    }
+
+    .a2-review-actions {
+        flex-wrap: wrap;
     }
 
     .a2-edit-grid {

@@ -9,6 +9,23 @@ const { ENGINE_JSON_FILES } = require('./engine_files');
 const app = express();
 const PORT = 3000;
 
+function stripLegacyQaFields(value) {
+    if (Array.isArray(value)) {
+        value.forEach(stripLegacyQaFields);
+        return value;
+    }
+
+    if (!value || typeof value !== 'object') {
+        return value;
+    }
+
+    delete value.qa_errors;
+    delete value.qa_errors_active;
+
+    Object.values(value).forEach(stripLegacyQaFields);
+    return value;
+}
+
 function legacyQaPipelineDisabled(res) {
     return res.status(410).json({
         ok: false,
@@ -58,6 +75,7 @@ app.post('/save-json', async (req, res) => {
             return res.status(404).json({ error: 'Registro no encontrado' });
         }
         row[col] = value;
+        stripLegacyQaFields(json);
         await fs.promises.writeFile(filePath, `${JSON.stringify(json, null, 2)}\n`, 'utf8');
         return res.json({ ok: true });
     } catch (_error) {
