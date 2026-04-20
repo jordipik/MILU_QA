@@ -2,24 +2,11 @@ import { state } from './state.js';
 import { checkSaveBackendConnection, loadPartitionedEngineData, saveCellToServer } from './data-loader.js';
 import { assignRevisionKeys, applyRevisionDataToRows } from './revision.js';
 import { initPdfZoomControls, loadPdfClear, loadPdfWithPage, setPdfSelection } from './pdf-viewer.js';
+import { evaluateRowQaChecks, getAllQaCheckCodes, getQaCheckLabel } from './qa-checks.js';
 
 const $ = (id) => document.getElementById(id);
 
-const QA_LABELS = {
-    missing_part_no: 'PN vacio',
-    missing_pos: 'POS vacio',
-    missing_pn_final: 'PN Final vacio',
-    pn_final_not_equal_pn_pdf: 'PN Final no coincide con PN PDF',
-    missing_designation_final: 'Designation Final vacio',
-    designation_final_not_in_pdf: 'Designation Final no esta en PDF'
-};
-
-const CRITICAL_CODES = new Set([
-    'missing_part_no',
-    'missing_pos',
-    'missing_pn_final',
-    'pn_final_not_equal_pn_pdf'
-]);
+const CRITICAL_CODES = new Set(getAllQaCheckCodes());
 
 let currentRow = null;
 let reviewedHistory = [];
@@ -404,11 +391,7 @@ function findRecordById(recordId, engineFilter) {
 }
 
 function getRowCodes(row) {
-    const qa = row?.qa_errors_active && Array.isArray(row.qa_errors_active.codes)
-        ? row.qa_errors_active
-        : row?.qa_errors;
-    if (!qa || !Array.isArray(qa.codes)) return [];
-    return qa.codes.map((code) => String(code ?? '').trim()).filter(Boolean);
+    return evaluateRowQaChecks(row, getAllQaCheckCodes()).codes;
 }
 
 function splitCodes(codes) {
@@ -549,10 +532,10 @@ function renderEvidence(row, verdict) {
     const allCodes = [...verdict.critical, ...verdict.major];
     if (allCodes.length > 0) {
         allCodes.forEach((code) => {
-            pieces.push(`<li class="ko">Check fallido: ${QA_LABELS[code] || code}</li>`);
+            pieces.push(`<li class="ko">Check fallido: ${getQaCheckLabel(code) || code}</li>`);
         });
     } else {
-        pieces.push('<li class="ok">No hay errores activos en qa_errors para este registro.</li>');
+        pieces.push('<li class="ok">No hay checks ERR fallidos para este registro.</li>');
     }
 
     verdict.warnings.forEach((warning) => {
@@ -628,36 +611,6 @@ async function revalidateCurrentRow() {
     if (!currentRow) {
         alert('Primero debes cargar un registro.');
         return;
-    }
-
-    const revisionKey = getRevisionKey(currentRow);
-    if (!revisionKey) {
-        alert('No se pudo obtener la clave de revision del registro.');
-        return;
-    }
-
-    const payload = {
-        activeCodes: getActiveCodes(),
-        scope: 'visible',
-        revisionKeys: [revisionKey]
-    };
-
-    const response = await fetch('/apply-qa-checks-filter', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(payload)
-    });
-
-    if (!response.ok) {
-        const data = await response.json().catch(() => ({}));
-        throw new Error(data.error || `HTTP ${response.status}`);
-    }
-
-    const data = await response.json();
-    const update = Array.isArray(data.rows) ? data.rows.find((row) => row.revisionKey === revisionKey) : null;
-    if (update) {
-        if (update.qa_errors) currentRow.qa_errors = update.qa_errors;
-        if (update.qa_errors_active) currentRow.qa_errors_active = update.qa_errors_active;
     }
 
     syncCurrentRowReference();

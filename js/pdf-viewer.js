@@ -3,6 +3,7 @@
  */
 
 import { state } from './state.js';
+import { evaluateRowQaChecks } from './qa-checks.js';
 
 const PDF_FIT_WIDTH_MARGIN = 8;
 const PDF_SELECTION_MAX_HIGHLIGHTS = 14;
@@ -626,7 +627,7 @@ export function setPdfSelection(row) {
         return;
     }
 
-    const qaFields = row?.qa_errors?.fields ?? {};
+    const qaFields = evaluateRowQaChecks(row, [...(state.activeQaErrorChecks || [])]).fields || {};
     const fieldHasError = (...keys) => keys.some(k => (qaFields[k]?.length ?? 0) > 0);
 
     state.currentPdfSelection = {

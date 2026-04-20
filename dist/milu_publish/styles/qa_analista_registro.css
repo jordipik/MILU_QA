@@ -35,8 +35,41 @@ body {
     font-size: 12px;
 }
 
+.app-topbar-left {
+    display: flex;
+    align-items: center;
+    gap: 20px;
+}
+
 .app-topbar-title {
     font-weight: 600;
+    white-space: nowrap;
+}
+
+.app-topbar-nav {
+    display: flex;
+    gap: 12px;
+    align-items: center;
+}
+
+.app-topbar-nav a,
+.app-topbar-nav span {
+    padding: 4px 12px;
+    border-radius: 12px;
+    font-size: 12px;
+    font-weight: 500;
+    text-decoration: none;
+    color: var(--text);
+    cursor: pointer;
+}
+
+.app-topbar-nav a:hover {
+    background: rgba(100, 116, 139, 0.1);
+}
+
+.app-topbar-nav span.active {
+    background: #2563eb;
+    color: white;
 }
 
 .app-topbar-user {
@@ -360,16 +393,6 @@ body {
     background: #fee2e2;
 }
 
-.matrix-table td.compare-match {
-    background: rgba(16, 185, 129, 0.14);
-    box-shadow: inset 0 -2px 0 rgba(5, 150, 105, 0.75);
-}
-
-.matrix-table td.compare-missing {
-    background: rgba(239, 68, 68, 0.14);
-    box-shadow: inset 0 -2px 0 rgba(220, 38, 38, 0.8);
-}
-
 .checks-card,
 .obs-card {
     padding: 10px;
@@ -396,20 +419,20 @@ body {
     font-size: 11px;
 }
 
-.pipeline-item {
+.process-item {
     font-size: 11px;
 }
 
-.pipeline-item .pipeline-marker {
+.process-item .process-marker {
     display: none;
 }
 
-.pipeline-title {
+.process-title {
     margin: 0;
     font-weight: 600;
 }
 
-.pipeline-detail {
+.process-detail {
     margin: 2px 0 0;
     font-size: 11px;
     color: var(--muted);

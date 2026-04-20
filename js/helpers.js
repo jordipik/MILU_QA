@@ -3,6 +3,7 @@
  */
 
 import { state } from './state.js';
+import { evaluateRowQaChecks, getAllQaCheckCodes, getQaActiveSignature } from './qa-checks.js';
 
 export function escapeHtml(s) {
     return String(s ?? '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#039;');
@@ -89,80 +90,38 @@ export function normalizeEngineModel(row, fallbackEngineModel) {
     return { ...row, engine_model: existing || fallbackEngineModel };
 }
 
-function normalizePersistedQaErrors(row) {
-    const raw = row?.qa_errors;
-    if (!raw || typeof raw !== 'object') return null;
-    return raw;
-}
-
-function getActiveCodesSignature(activeCodes) {
-    const resolved = activeCodes instanceof Set
-        ? [...activeCodes]
-        : Array.isArray(activeCodes)
-            ? activeCodes
-            : [...resolveActiveErrorCodes(activeCodes)];
-
-    return [...new Set(resolved.map(code => String(code ?? '').trim()).filter(Boolean))]
-        .sort((a, b) => a.localeCompare(b))
-        .join('|');
-}
-
-function normalizePersistedActiveQaErrors(row, activeCodes) {
-    const raw = row?.qa_errors_active;
-    if (!raw || typeof raw !== 'object') return null;
-    const expectedSignature = getActiveCodesSignature(activeCodes);
-    if (String(raw.signature || '') !== expectedSignature) return null;
-    return raw;
-}
-
-function resolveScopedActiveQaErrors(row, activeCodes) {
-    const scopedRows = state.qaChecksScopedRows;
-    if (scopedRows instanceof Set && scopedRows.size > 0 && !scopedRows.has(row)) {
-        const raw = row?.qa_errors_active;
-        if (raw && typeof raw === 'object') return raw;
-    }
-    return normalizePersistedActiveQaErrors(row, activeCodes);
-}
-
 function resolveActiveErrorCodes(activeCodes) {
     if (activeCodes instanceof Set) return activeCodes;
     if (Array.isArray(activeCodes)) return new Set(activeCodes.map(code => String(code ?? '').trim()).filter(Boolean));
     if (state.activeQaErrorChecks instanceof Set && state.activeQaErrorChecks.size > 0) return state.activeQaErrorChecks;
-    return new Set((state.qaErrorCheckDefinitions || []).map(def => String(def?.code ?? '').trim()).filter(Boolean));
+    return new Set(getAllQaCheckCodes());
 }
 
-function filterByActiveCodes(codes, activeCodes) {
-    const active = resolveActiveErrorCodes(activeCodes);
-    return [...new Set((codes || [])
-        .map(code => String(code ?? '').trim())
-        .filter(code => code && active.has(code)))];
-}
+function getResolvedQaResult(row, activeCodes) {
+    const active = [...resolveActiveErrorCodes(activeCodes)];
+    const scopedRows = state.qaChecksScopedRows;
+    if (scopedRows instanceof Set && scopedRows.size > 0 && !scopedRows.has(row)) {
+        return null;
+    }
 
-function getPersistedErrorCodes(row, activeCodes) {
-    const activePersisted = normalizePersistedActiveQaErrors(row, activeCodes);
-    if (activePersisted && Array.isArray(activePersisted.codes)) return activePersisted.codes;
+    const cached = row?.__qaChecksActive;
+    const expectedSignature = getQaActiveSignature(active);
+    if (cached && typeof cached === 'object' && String(cached.signature || '') === expectedSignature) {
+        return cached;
+    }
 
-    const persisted = normalizePersistedQaErrors(row);
-    if (!persisted || !Array.isArray(persisted.codes)) return [];
-    return filterByActiveCodes(persisted.codes, activeCodes);
+    return evaluateRowQaChecks(row, active);
 }
 
 export function getRowErrorFields(row, options = {}) {
-    const activePersisted = resolveScopedActiveQaErrors(row, options.activeCodes);
-    if (activePersisted && typeof activePersisted.fields === 'object' && activePersisted.fields) {
-        return new Set(Object.keys(activePersisted.fields).map(field => String(field ?? '').trim()).filter(Boolean));
-    }
-
-    const active = resolveActiveErrorCodes(options.activeCodes);
-    const persisted = normalizePersistedQaErrors(row);
-    if (!persisted || typeof persisted.fields !== 'object' || !persisted.fields) {
+    const resolved = getResolvedQaResult(row, options.activeCodes);
+    if (!resolved || typeof resolved.fields !== 'object' || !resolved.fields) {
         return new Set();
     }
 
-    const fieldNames = Object.keys(persisted.fields).filter(field => {
-        const codes = Array.isArray(persisted.fields[field]) ? persisted.fields[field] : [];
-        return codes.some(code => active.has(String(code ?? '').trim()));
-    }).map(field => String(field ?? '').trim()).filter(Boolean);
+    const fieldNames = Object.keys(resolved.fields)
+        .map(field => String(field ?? '').trim())
+        .filter(Boolean);
 
     return new Set(fieldNames);
 }
@@ -179,22 +138,13 @@ export function hasRowError(row) {
  * 'critical' = rojo, 'warning' = naranja, null = sin error
  */
 export function getRowErrorType(row, options = {}) {
-    const activePersisted = resolveScopedActiveQaErrors(row, options.activeCodes);
-    if (activePersisted) {
-        if (!Array.isArray(activePersisted.codes) || activePersisted.codes.length === 0) return null;
-        return 'critical';
-    }
-
-    const errors = getRowErrors(row, options);
-    if (!errors.length) return null;
-    return 'critical';
+    const resolved = getResolvedQaResult(row, options.activeCodes);
+    return Array.isArray(resolved?.codes) && resolved.codes.length > 0 ? 'critical' : null;
 }
 
 export function getRowErrors(row, options = {}) {
-    const activePersisted = resolveScopedActiveQaErrors(row, options.activeCodes);
-    if (activePersisted && Array.isArray(activePersisted.codes)) {
-        return [...new Set(activePersisted.codes.map(code => String(code ?? '').trim()).filter(Boolean))];
-    }
-
-    return getPersistedErrorCodes(row, options.activeCodes);
+    const resolved = getResolvedQaResult(row, options.activeCodes);
+    return Array.isArray(resolved?.codes)
+        ? [...new Set(resolved.codes.map(code => String(code ?? '').trim()).filter(Boolean))]
+        : [];
 }

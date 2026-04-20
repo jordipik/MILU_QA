@@ -1,5 +1,6 @@
 const fs = require('fs');
 const path = require('path');
+const { ENGINE_JSON_FILES } = require('../engine_files');
 
 const rootDir = path.resolve(__dirname, '..');
 const outDir = path.join(rootDir, 'dist', 'milu_publish');
@@ -163,14 +164,12 @@ function pruneOutputFolder(managedFiles) {
 }
 
 function listEngineJsonFiles() {
-    const allRootEntries = fs.readdirSync(rootDir, { withFileTypes: true });
-    const engineFiles = allRootEntries
-        .filter((entry) => entry.isFile() && /^engine_.*\.json$/i.test(entry.name))
-        .map((entry) => entry.name)
+    const engineFiles = ENGINE_JSON_FILES
+        .filter((fileName) => fs.existsSync(path.join(rootDir, fileName)))
         .sort((a, b) => a.localeCompare(b));
 
     if (engineFiles.length === 0) {
-        throw new Error('No engine_*.json files found in repository root.');
+        throw new Error('No official engine JSON files found in repository root.');
     }
 
     return engineFiles;

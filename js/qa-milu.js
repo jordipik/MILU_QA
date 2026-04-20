@@ -4,6 +4,7 @@
 
 import { state } from './state.js';
 import { escapeHtml, getRowErrors, getRowErrorType, getRowValueForColumn, val } from './helpers.js';
+import { evaluateRowQaChecks, getQaActiveSignature } from './qa-checks.js';
 import { checkSaveBackendConnection, fetchJsonSafe, loadPartitionedEngineData, saveCellToServer } from './data-loader.js';
 import {
     applyRevisionDataToRows,
@@ -748,83 +749,19 @@ function getQaErrorDefinitionMap() {
         .filter(([code]) => code));
 }
 
-function getQaActiveSignature(activeCodes) {
-    return [...new Set((activeCodes || []).map(code => String(code || '').trim()).filter(Boolean))]
-        .sort((a, b) => a.localeCompare(b))
-        .join('|');
-}
-
 function buildRowActiveQaErrors(row, activeCodes) {
-    const activeSet = new Set((activeCodes || []).map(code => String(code || '').trim()).filter(Boolean));
-    const source = row?.qa_errors;
-    if (!source || typeof source !== 'object') {
-        return {
-            version: 1,
-            severity: 'none',
-            codes: [],
-            fields: {},
-            issues: [],
-            signature: getQaActiveSignature(activeCodes),
-            updated_at: new Date().toISOString()
-        };
-    }
-
-    const codes = Array.isArray(source.codes) ? source.codes.filter(code => activeSet.has(String(code || '').trim())) : [];
-    const issues = Array.isArray(source.issues)
-        ? source.issues.filter(issue => activeSet.has(String(issue?.code || '').trim()))
-        : [];
-    const fields = {};
-    issues.forEach(issue => {
-        (Array.isArray(issue?.fields) ? issue.fields : []).forEach(field => {
-            const normalizedField = String(field || '').trim();
-            const normalizedCode = String(issue?.code || '').trim();
-            if (!normalizedField || !normalizedCode) return;
-            if (!fields[normalizedField]) fields[normalizedField] = [];
-            if (!fields[normalizedField].includes(normalizedCode)) fields[normalizedField].push(normalizedCode);
-        });
-    });
-
-    const severity = issues.length > 0 ? 'critical' : 'none';
-
-    return {
-        version: Number(source.version || 1),
-        severity,
-        codes,
-        fields,
-        issues,
-        signature: getQaActiveSignature(activeCodes),
-        updated_at: String(source.updated_at || new Date().toISOString())
-    };
+    return evaluateRowQaChecks(row, activeCodes);
 }
 
 function applyActiveQaErrorsToClientRows(activeCodes) {
     state.allData.forEach(row => {
-        row.qa_errors_active = buildRowActiveQaErrors(row, activeCodes);
+        row.__qaChecksActive = buildRowActiveQaErrors(row, activeCodes);
     });
 }
 
 function applyActiveQaErrorsToSubset(activeCodes, rows) {
     (rows || []).forEach(row => {
-        row.qa_errors_active = buildRowActiveQaErrors(row, activeCodes);
-    });
-}
-
-function applyQaRowsFromServer(updates) {
-    if (!Array.isArray(updates) || updates.length === 0) return;
-
-    const byRevisionKey = new Map(state.allData.map(row => [String(getRevisionKey(row) || ''), row]));
-    updates.forEach((entry) => {
-        const key = String(entry?.revisionKey || '').trim();
-        if (!key) return;
-        const row = byRevisionKey.get(key);
-        if (!row) return;
-
-        if (entry?.qa_errors && typeof entry.qa_errors === 'object') {
-            row.qa_errors = entry.qa_errors;
-        }
-        if (entry?.qa_errors_active && typeof entry.qa_errors_active === 'object') {
-            row.qa_errors_active = entry.qa_errors_active;
-        }
+        row.__qaChecksActive = buildRowActiveQaErrors(row, activeCodes);
     });
 }
 
@@ -868,9 +805,9 @@ function renderRecordQaErrors(row, options = {}) {
     const activeCodes = state.activeQaErrorChecks instanceof Set ? state.activeQaErrorChecks : new Set();
     const type = getRowErrorType(row, { activeCodes }) || 'none';
     const definitionMap = getQaErrorDefinitionMap();
-    const sourceErrors = row?.qa_errors_active && row.qa_errors_active.signature === getQaActiveSignature([...activeCodes])
-        ? row.qa_errors_active
-        : row?.qa_errors;
+    const sourceErrors = row?.__qaChecksActive && row.__qaChecksActive.signature === getQaActiveSignature([...activeCodes])
+        ? row.__qaChecksActive
+        : buildRowActiveQaErrors(row, [...activeCodes]);
     const rawIssues = Array.isArray(sourceErrors?.issues) ? sourceErrors.issues : [];
     const filteredIssues = rawIssues.filter(issue => {
         const code = String(issue?.code || '').trim();
@@ -1780,39 +1717,11 @@ async function applyQaChecksFilter(scope = 'all') {
                 alert('No se pudo determinar la clave de revisión para guardar los visibles.');
                 return;
             }
-
-            const response = await fetch('http://localhost:3000/apply-qa-checks-filter', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                    activeCodes,
-                    scope: 'visible',
-                    revisionKeys
-                })
-            });
-            if (!response.ok) {
-                throw new Error(`Error HTTP ${response.status}`);
-            }
-
-            const result = await response.json();
-            const backendVisibleScope = String(result?.scope || '').trim().toLowerCase() === 'visible';
-
-            if (!backendVisibleScope) {
-                console.warn('El backend activo no devolvió scope=visible. Es probable que el servidor no se haya reiniciado tras cambios recientes.');
-                alert('El backend activo no soporta todavía "Aplicar solo visibles". Reinicia node server.js o Ejecutar localhost.bat para persistir este modo.');
-            }
-
-            if (backendVisibleScope && Array.isArray(result?.rows) && result.rows.length > 0) {
-                applyQaRowsFromServer(result.rows);
-            } else {
-                applyActiveQaErrorsToSubset(activeCodes, targetRows);
-            }
+            applyActiveQaErrorsToSubset(activeCodes, targetRows);
             state.qaChecksScopedRows = new Set(targetRows);
             persistActiveQaChecks();
 
-            const visibleStats = backendVisibleScope
-                ? (result?.stats || buildQaStatsFromRows(targetRows, activeCodes))
-                : buildQaStatsFromRows(targetRows, activeCodes);
+            const visibleStats = buildQaStatsFromRows(targetRows, activeCodes);
             showQaChecksStats({ stats: visibleStats }, 'Solo visibles en pantalla');
 
             const foundRows = buildFoundErrorRows(targetRows, activeCodes, 300);
@@ -1824,26 +1733,16 @@ async function applyQaChecksFilter(scope = 'all') {
             return;
         }
 
-        const response = await fetch('http://localhost:3000/apply-qa-checks-filter', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ activeCodes })
-        });
-
-        if (!response.ok) {
-            throw new Error(`Error HTTP ${response.status}`);
-        }
-
-        const result = await response.json();
+        applyActiveQaErrorsToClientRows(activeCodes);
+        const globalStats = buildQaStatsFromRows(state.allData, activeCodes);
 
         hideQaChecksProgress();
-        showQaChecksStats(result, 'Todos los articulos');
+        showQaChecksStats({ stats: globalStats }, 'Todos los articulos');
         persistActiveQaChecks();
-        applyActiveQaErrorsToClientRows(activeCodes);
         state.qaChecksScopedRows = null;
 
         const foundRows = buildFoundErrorRows(state.allData, activeCodes, 500);
-        renderQaChecksFoundRows(foundRows, result?.stats?.rowsWithErrors || foundRows.length);
+        renderQaChecksFoundRows(foundRows, globalStats.rowsWithErrors || foundRows.length);
 
         // Actualizar tabla después del éxito
         state.currentPage = 1;

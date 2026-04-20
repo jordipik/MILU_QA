@@ -88,90 +88,7 @@
     "units": null,
     "UNITS": "PC",
     "Valid From Date": null,
-    "WEIGHT": "1.707 TO",
-    "qa_errors": {
-      "version": 1,
-      "severity": "critical",
-      "codes": [
-        "missing_part_no",
-        "missing_pn_final"
-      ],
-      "fields": {
-        "PART NO.": [
-          "missing_part_no"
-        ],
-        "pn_final": [
-          "missing_part_no",
-          "missing_pn_final"
-        ],
-        "pn": [
-          "missing_part_no"
-        ]
-      },
-      "issues": [
-        {
-          "code": "missing_part_no",
-          "severity": "critical",
-          "fields": [
-            "PART NO.",
-            "pn_final",
-            "pn"
-          ],
-          "message": "PN vacio"
-        },
-        {
-          "code": "missing_pn_final",
-          "severity": "critical",
-          "fields": [
-            "pn_final"
-          ],
-          "message": "PN Final vacio"
-        }
-      ],
-      "updated_at": "2026-04-19T23:56:16.487Z"
-    },
-    "qa_errors_active": {
-      "version": 1,
-      "severity": "critical",
-      "codes": [
-        "missing_part_no",
-        "missing_pn_final"
-      ],
-      "fields": {
-        "PART NO.": [
-          "missing_part_no"
-        ],
-        "pn_final": [
-          "missing_part_no",
-          "missing_pn_final"
-        ],
-        "pn": [
-          "missing_part_no"
-        ]
-      },
-      "issues": [
-        {
-          "code": "missing_part_no",
-          "severity": "critical",
-          "fields": [
-            "PART NO.",
-            "pn_final",
-            "pn"
-          ],
-          "message": "PN vacio"
-        },
-        {
-          "code": "missing_pn_final",
-          "severity": "critical",
-          "fields": [
-            "pn_final"
-          ],
-          "message": "PN Final vacio"
-        }
-      ],
-      "signature": "designation_final_not_in_pdf|missing_designation_final|missing_part_no|missing_pn_final|missing_pos|pn_final_not_equal_pn_pdf",
-      "updated_at": "2026-04-19T23:56:16.487Z"
-    }
+    "WEIGHT": "1.707 TO"
   },
   {
     "ID": "1100400",
@@ -264,24 +181,7 @@
     "units": "KGM",
     "UNITS": "PC",
     "Valid From Date": "1996-04-01",
-    "WEIGHT": null,
-    "qa_errors": {
-      "version": 1,
-      "severity": "none",
-      "codes": [],
-      "fields": {},
-      "issues": [],
-      "updated_at": "2026-04-19T23:56:20.992Z"
-    },
-    "qa_errors_active": {
-      "version": 1,
-      "severity": "none",
-      "codes": [],
-      "fields": {},
-      "issues": [],
-      "signature": "designation_final_not_in_pdf|missing_designation_final|missing_part_no|missing_pn_final|missing_pos|pn_final_not_equal_pn_pdf",
-      "updated_at": "2026-04-19T23:56:20.992Z"
-    }
+    "WEIGHT": null
   },
   {
     "ID": "1100501",
@@ -380,24 +280,7 @@
     "units": "KGM",
     "UNITS": "PC",
     "Valid From Date": "1994-03-01",
-    "WEIGHT": "3,100 G",
-    "qa_errors": {
-      "version": 1,
-      "severity": "none",
-      "codes": [],
-      "fields": {},
-      "issues": [],
-      "updated_at": "2026-04-19T23:56:23.114Z"
-    },
-    "qa_errors_active": {
-      "version": 1,
-      "severity": "none",
-      "codes": [],
-      "fields": {},
-      "issues": [],
-      "signature": "designation_final_not_in_pdf|missing_designation_final|missing_part_no|missing_pn_final|missing_pos|pn_final_not_equal_pn_pdf",
-      "updated_at": "2026-04-19T23:56:23.114Z"
-    }
+    "WEIGHT": "3,100 G"
   },
   {
     "ID": "1100646",
@@ -497,22 +380,14 @@
     "UNITS": "PC",
     "Valid From Date": "1997-10-01",
     "WEIGHT": "12 G",
-    "qa_errors": {
-      "version": 1,
-      "severity": "none",
-      "codes": [],
-      "fields": {},
+    
       "issues": [],
-      "updated_at": "2026-04-19T23:56:24.987Z"
+      "updated_at": "2026-04-20T00:14:53.124Z"
     },
-    "qa_errors_active": {
-      "version": 1,
-      "severity": "none",
-      "codes": [],
-      "fields": {},
+    
       "issues": [],
       "signature": "designation_final_not_in_pdf|missing_designation_final|missing_part_no|missing_pn_final|missing_pos|pn_final_not_equal_pn_pdf",
-      "updated_at": "2026-04-19T23:56:24.987Z"
+      "updated_at": "2026-04-20T00:14:53.124Z"
     }
   },
   {
@@ -613,32 +488,7 @@
     "UNITS": "PC",
     "Valid From Date": "1997-01-01",
     "WEIGHT": "64 G",
-    "qa_errors": {
-      "version": 1,
-      "severity": "critical",
-      "codes": [
-        "designation_final_not_in_pdf"
-      ],
-      "fields": {
-        "designation_final": [
-          "designation_final_not_in_pdf"
-        ],
-        "designation_gesa": [
-          "designation_final_not_in_pdf"
-        ],
-        "DESIGNATION": [
-          "designation_final_not_in_pdf"
-        ],
-        "Source Page": [
-          "designation_final_not_in_pdf"
-        ],
-        "source_file": [
-          "designation_final_not_in_pdf"
-        ],
-        "engine_model": [
-          "designation_final_not_in_pdf"
-        ]
-      },
+    
       "issues": [
         {
           "code": "designation_final_not_in_pdf",
@@ -654,34 +504,9 @@
           "message": "Designation Final no se encuentra en el PDF asignado en pagina 13 (12V4000M40A.pdf)"
         }
       ],
-      "updated_at": "2026-04-19T23:56:31.541Z"
+      "updated_at": "2026-04-20T00:14:59.535Z"
     },
-    "qa_errors_active": {
-      "version": 1,
-      "severity": "critical",
-      "codes": [
-        "designation_final_not_in_pdf"
-      ],
-      "fields": {
-        "designation_final": [
-          "designation_final_not_in_pdf"
-        ],
-        "designation_gesa": [
-          "designation_final_not_in_pdf"
-        ],
-        "DESIGNATION": [
-          "designation_final_not_in_pdf"
-        ],
-        "Source Page": [
-          "designation_final_not_in_pdf"
-        ],
-        "source_file": [
-          "designation_final_not_in_pdf"
-        ],
-        "engine_model": [
-          "designation_final_not_in_pdf"
-        ]
-      },
+    
       "issues": [
         {
           "code": "designation_final_not_in_pdf",
@@ -698,7 +523,7 @@
         }
       ],
       "signature": "designation_final_not_in_pdf|missing_designation_final|missing_part_no|missing_pn_final|missing_pos|pn_final_not_equal_pn_pdf",
-      "updated_at": "2026-04-19T23:56:31.541Z"
+      "updated_at": "2026-04-20T00:14:59.535Z"
     }
   },
   {
@@ -799,32 +624,7 @@
     "UNITS": "PC",
     "Valid From Date": "1992-05-01",
     "WEIGHT": "21 G",
-    "qa_errors": {
-      "version": 1,
-      "severity": "critical",
-      "codes": [
-        "designation_final_not_in_pdf"
-      ],
-      "fields": {
-        "designation_final": [
-          "designation_final_not_in_pdf"
-        ],
-        "designation_gesa": [
-          "designation_final_not_in_pdf"
-        ],
-        "DESIGNATION": [
-          "designation_final_not_in_pdf"
-        ],
-        "Source Page": [
-          "designation_final_not_in_pdf"
-        ],
-        "source_file": [
-          "designation_final_not_in_pdf"
-        ],
-        "engine_model": [
-          "designation_final_not_in_pdf"
-        ]
-      },
+    
       "issues": [
         {
           "code": "designation_final_not_in_pdf",
@@ -840,34 +640,9 @@
           "message": "Designation Final no se encuentra en el PDF asignado en pagina 13 (12V4000M40A.pdf)"
         }
       ],
-      "updated_at": "2026-04-19T23:56:28.669Z"
+      "updated_at": "2026-04-20T00:15:02.827Z"
     },
-    "qa_errors_active": {
-      "version": 1,
-      "severity": "critical",
-      "codes": [
-        "designation_final_not_in_pdf"
-      ],
-      "fields": {
-        "designation_final": [
-          "designation_final_not_in_pdf"
-        ],
-        "designation_gesa": [
-          "designation_final_not_in_pdf"
-        ],
-        "DESIGNATION": [
-          "designation_final_not_in_pdf"
-        ],
-        "Source Page": [
-          "designation_final_not_in_pdf"
-        ],
-        "source_file": [
-          "designation_final_not_in_pdf"
-        ],
-        "engine_model": [
-          "designation_final_not_in_pdf"
-        ]
-      },
+    
       "issues": [
         {
           "code": "designation_final_not_in_pdf",
@@ -884,7 +659,7 @@
         }
       ],
       "signature": "designation_final_not_in_pdf|missing_designation_final|missing_part_no|missing_pn_final|missing_pos|pn_final_not_equal_pn_pdf",
-      "updated_at": "2026-04-19T23:56:28.669Z"
+      "updated_at": "2026-04-20T00:15:02.827Z"
     }
   },
   {
@@ -985,32 +760,7 @@
     "UNITS": "PC",
     "Valid From Date": "1995-07-01",
     "WEIGHT": "28,600 G",
-    "qa_errors": {
-      "version": 1,
-      "severity": "critical",
-      "codes": [
-        "designation_final_not_in_pdf"
-      ],
-      "fields": {
-        "designation_final": [
-          "designation_final_not_in_pdf"
-        ],
-        "designation_gesa": [
-          "designation_final_not_in_pdf"
-        ],
-        "DESIGNATION": [
-          "designation_final_not_in_pdf"
-        ],
-        "Source Page": [
-          "designation_final_not_in_pdf"
-        ],
-        "source_file": [
-          "designation_final_not_in_pdf"
-        ],
-        "engine_model": [
-          "designation_final_not_in_pdf"
-        ]
-      },
+    
       "issues": [
         {
           "code": "designation_final_not_in_pdf",
@@ -1026,34 +776,9 @@
           "message": "Designation Final no se encuentra en el PDF asignado en pagina 13 (12V4000M40A.pdf)"
         }
       ],
-      "updated_at": "2026-04-19T23:53:55.743Z"
+      "updated_at": "2026-04-20T00:15:07.591Z"
     },
-    "qa_errors_active": {
-      "version": 1,
-      "severity": "critical",
-      "codes": [
-        "designation_final_not_in_pdf"
-      ],
-      "fields": {
-        "designation_final": [
-          "designation_final_not_in_pdf"
-        ],
-        "designation_gesa": [
-          "designation_final_not_in_pdf"
-        ],
-        "DESIGNATION": [
-          "designation_final_not_in_pdf"
-        ],
-        "Source Page": [
-          "designation_final_not_in_pdf"
-        ],
-        "source_file": [
-          "designation_final_not_in_pdf"
-        ],
-        "engine_model": [
-          "designation_final_not_in_pdf"
-        ]
-      },
+    
       "issues": [
         {
           "code": "designation_final_not_in_pdf",
@@ -1070,7 +795,7 @@
         }
       ],
       "signature": "designation_final_not_in_pdf|missing_designation_final|missing_part_no|missing_pn_final|missing_pos|pn_final_not_equal_pn_pdf",
-      "updated_at": "2026-04-19T23:53:55.743Z"
+      "updated_at": "2026-04-20T00:15:07.591Z"
     }
   },
   {
@@ -1165,22 +890,14 @@
     "UNITS": "PC",
     "Valid From Date": null,
     "WEIGHT": "216 G",
-    "qa_errors": {
-      "version": 1,
-      "severity": "none",
-      "codes": [],
-      "fields": {},
+    
       "issues": [],
-      "updated_at": "2026-04-19T23:41:53.421Z"
+      "updated_at": "2026-04-20T00:15:55.803Z"
     },
-    "qa_errors_active": {
-      "version": 1,
-      "severity": "none",
-      "codes": [],
-      "fields": {},
+    
       "issues": [],
       "signature": "designation_final_not_in_pdf|missing_designation_final|missing_part_no|missing_pn_final|missing_pos|pn_final_not_equal_pn_pdf",
-      "updated_at": "2026-04-19T23:41:53.421Z"
+      "updated_at": "2026-04-20T00:15:55.803Z"
     }
   },
   {
@@ -1275,20 +992,7 @@
     "UNITS": "PC",
     "Valid From Date": "1998-03-01",
     "WEIGHT": "2,900 KG",
-    "qa_errors": {
-      "version": 1,
-      "severity": "critical",
-      "codes": [
-        "pn_final_not_equal_pn_pdf"
-      ],
-      "fields": {
-        "pn_final": [
-          "pn_final_not_equal_pn_pdf"
-        ],
-        "pn_pdf": [
-          "pn_final_not_equal_pn_pdf"
-        ]
-      },
+    
       "issues": [
         {
           "code": "pn_final_not_equal_pn_pdf",
@@ -1300,22 +1004,9 @@
           "message": "PN Final debe ser igual a PN PDF"
         }
       ],
-      "updated_at": "2026-04-19T23:41:56.812Z"
+      "updated_at": "2026-04-20T00:16:12.266Z"
     },
-    "qa_errors_active": {
-      "version": 1,
-      "severity": "critical",
-      "codes": [
-        "pn_final_not_equal_pn_pdf"
-      ],
-      "fields": {
-        "pn_final": [
-          "pn_final_not_equal_pn_pdf"
-        ],
-        "pn_pdf": [
-          "pn_final_not_equal_pn_pdf"
-        ]
-      },
+    
       "issues": [
         {
           "code": "pn_final_not_equal_pn_pdf",
@@ -1328,7 +1019,7 @@
         }
       ],
       "signature": "designation_final_not_in_pdf|missing_designation_final|missing_part_no|missing_pn_final|missing_pos|pn_final_not_equal_pn_pdf",
-      "updated_at": "2026-04-19T23:41:56.812Z"
+      "updated_at": "2026-04-20T00:16:12.266Z"
     }
   },
   {
@@ -1421,22 +1112,14 @@
     "UNITS": "PC",
     "Valid From Date": null,
     "WEIGHT": null,
-    "qa_errors": {
-      "version": 1,
-      "severity": "none",
-      "codes": [],
-      "fields": {},
+    
       "issues": [],
-      "updated_at": "2026-04-19T23:41:59.404Z"
+      "updated_at": "2026-04-20T00:16:32.963Z"
     },
-    "qa_errors_active": {
-      "version": 1,
-      "severity": "none",
-      "codes": [],
-      "fields": {},
+    
       "issues": [],
       "signature": "designation_final_not_in_pdf|missing_designation_final|missing_part_no|missing_pn_final|missing_pos|pn_final_not_equal_pn_pdf",
-      "updated_at": "2026-04-19T23:41:59.404Z"
+      "updated_at": "2026-04-20T00:16:32.963Z"
     }
   },
   {
@@ -1529,22 +1212,14 @@
     "UNITS": "PC",
     "Valid From Date": null,
     "WEIGHT": null,
-    "qa_errors": {
-      "version": 1,
-      "severity": "none",
-      "codes": [],
-      "fields": {},
+    
       "issues": [],
-      "updated_at": "2026-04-19T23:43:00.315Z"
+      "updated_at": "2026-04-20T00:16:41.122Z"
     },
-    "qa_errors_active": {
-      "version": 1,
-      "severity": "none",
-      "codes": [],
-      "fields": {},
+    
       "issues": [],
       "signature": "designation_final_not_in_pdf|missing_designation_final|missing_part_no|missing_pn_final|missing_pos|pn_final_not_equal_pn_pdf",
-      "updated_at": "2026-04-19T23:43:00.315Z"
+      "updated_at": "2026-04-20T00:16:41.122Z"
     }
   },
   {
@@ -1639,22 +1314,14 @@
     "UNITS": "PC",
     "Valid From Date": null,
     "WEIGHT": "0,166 G",
-    "qa_errors": {
-      "version": 1,
-      "severity": "none",
-      "codes": [],
-      "fields": {},
+    
       "issues": [],
-      "updated_at": "2026-04-19T23:43:10.542Z"
+      "updated_at": "2026-04-20T00:16:43.949Z"
     },
-    "qa_errors_active": {
-      "version": 1,
-      "severity": "none",
-      "codes": [],
-      "fields": {},
+    
       "issues": [],
       "signature": "designation_final_not_in_pdf|missing_designation_final|missing_part_no|missing_pn_final|missing_pos|pn_final_not_equal_pn_pdf",
-      "updated_at": "2026-04-19T23:43:10.542Z"
+      "updated_at": "2026-04-20T00:16:43.949Z"
     }
   },
   {
@@ -1755,22 +1422,14 @@
     "UNITS": "PC",
     "Valid From Date": "1988-12-01",
     "WEIGHT": "1,900 G",
-    "qa_errors": {
-      "version": 1,
-      "severity": "none",
-      "codes": [],
-      "fields": {},
+    
       "issues": [],
-      "updated_at": "2026-04-19T23:43:13.761Z"
+      "updated_at": "2026-04-20T00:17:02.168Z"
     },
-    "qa_errors_active": {
-      "version": 1,
-      "severity": "none",
-      "codes": [],
-      "fields": {},
+    
       "issues": [],
       "signature": "designation_final_not_in_pdf|missing_designation_final|missing_part_no|missing_pn_final|missing_pos|pn_final_not_equal_pn_pdf",
-      "updated_at": "2026-04-19T23:43:13.761Z"
+      "updated_at": "2026-04-20T00:17:02.168Z"
     }
   },
   {
@@ -1871,22 +1530,14 @@
     "UNITS": "PC",
     "Valid From Date": "1985-03-01",
     "WEIGHT": "6,400 G",
-    "qa_errors": {
-      "version": 1,
-      "severity": "none",
-      "codes": [],
-      "fields": {},
+    
       "issues": [],
-      "updated_at": "2026-04-19T23:43:16.327Z"
+      "updated_at": "2026-04-20T00:21:57.363Z"
     },
-    "qa_errors_active": {
-      "version": 1,
-      "severity": "none",
-      "codes": [],
-      "fields": {},
+    
       "issues": [],
       "signature": "designation_final_not_in_pdf|missing_designation_final|missing_part_no|missing_pn_final|missing_pos|pn_final_not_equal_pn_pdf",
-      "updated_at": "2026-04-19T23:43:16.327Z"
+      "updated_at": "2026-04-20T00:21:57.363Z"
     }
   },
   {
@@ -1987,22 +1638,14 @@
     "UNITS": "PC",
     "Valid From Date": "1994-06-01",
     "WEIGHT": "8,110 G",
-    "qa_errors": {
-      "version": 1,
-      "severity": "none",
-      "codes": [],
-      "fields": {},
+    
       "issues": [],
-      "updated_at": "2026-04-19T23:43:18.635Z"
+      "updated_at": "2026-04-20T00:22:00.178Z"
     },
-    "qa_errors_active": {
-      "version": 1,
-      "severity": "none",
-      "codes": [],
-      "fields": {},
+    
       "issues": [],
       "signature": "designation_final_not_in_pdf|missing_designation_final|missing_part_no|missing_pn_final|missing_pos|pn_final_not_equal_pn_pdf",
-      "updated_at": "2026-04-19T23:43:18.635Z"
+      "updated_at": "2026-04-20T00:22:00.178Z"
     }
   },
   {
@@ -2103,22 +1746,14 @@
     "UNITS": "PC",
     "Valid From Date": "2004-03-01",
     "WEIGHT": "103,600 G",
-    "qa_errors": {
-      "version": 1,
-      "severity": "none",
-      "codes": [],
-      "fields": {},
+    
       "issues": [],
-      "updated_at": "2026-04-19T23:43:59.175Z"
+      "updated_at": "2026-04-20T00:22:02.408Z"
     },
-    "qa_errors_active": {
-      "version": 1,
-      "severity": "none",
-      "codes": [],
-      "fields": {},
+    
       "issues": [],
       "signature": "designation_final_not_in_pdf|missing_designation_final|missing_part_no|missing_pn_final|missing_pos|pn_final_not_equal_pn_pdf",
-      "updated_at": "2026-04-19T23:43:59.175Z"
+      "updated_at": "2026-04-20T00:22:02.408Z"
     }
   },
   {
@@ -2215,20 +1850,7 @@
     "UNITS": "PC",
     "Valid From Date": "2009-03-01",
     "WEIGHT": "1.721,591",
-    "qa_errors": {
-      "version": 1,
-      "severity": "critical",
-      "codes": [
-        "pn_final_not_equal_pn_pdf"
-      ],
-      "fields": {
-        "pn_final": [
-          "pn_final_not_equal_pn_pdf"
-        ],
-        "pn_pdf": [
-          "pn_final_not_equal_pn_pdf"
-        ]
-      },
+    
       "issues": [
         {
           "code": "pn_final_not_equal_pn_pdf",
@@ -2240,22 +1862,9 @@
           "message": "PN Final debe ser igual a PN PDF"
         }
       ],
-      "updated_at": "2026-04-19T23:44:07.376Z"
+      "updated_at": "2026-04-20T00:22:04.614Z"
     },
-    "qa_errors_active": {
-      "version": 1,
-      "severity": "critical",
-      "codes": [
-        "pn_final_not_equal_pn_pdf"
-      ],
-      "fields": {
-        "pn_final": [
-          "pn_final_not_equal_pn_pdf"
-        ],
-        "pn_pdf": [
-          "pn_final_not_equal_pn_pdf"
-        ]
-      },
+    
       "issues": [
         {
           "code": "pn_final_not_equal_pn_pdf",
@@ -2268,7 +1877,7 @@
         }
       ],
       "signature": "designation_final_not_in_pdf|missing_designation_final|missing_part_no|missing_pn_final|missing_pos|pn_final_not_equal_pn_pdf",
-      "updated_at": "2026-04-19T23:44:07.376Z"
+      "updated_at": "2026-04-20T00:22:04.614Z"
     }
   },
   {
@@ -2365,22 +1974,14 @@
     "UNITS": "PC",
     "Valid From Date": "2014-09-18",
     "WEIGHT": null,
-    "qa_errors": {
-      "version": 1,
-      "severity": "none",
-      "codes": [],
-      "fields": {},
+    
       "issues": [],
-      "updated_at": "2026-04-19T23:44:09.429Z"
+      "updated_at": "2026-04-20T00:22:10.323Z"
     },
-    "qa_errors_active": {
-      "version": 1,
-      "severity": "none",
-      "codes": [],
-      "fields": {},
+    
       "issues": [],
       "signature": "designation_final_not_in_pdf|missing_designation_final|missing_part_no|missing_pn_final|missing_pos|pn_final_not_equal_pn_pdf",
-      "updated_at": "2026-04-19T23:44:09.429Z"
+      "updated_at": "2026-04-20T00:22:10.323Z"
     }
   },
   {
@@ -2478,22 +2079,14 @@
     "UNITS": "PC",
     "Valid From Date": null,
     "WEIGHT": "401 G",
-    "qa_errors": {
-      "version": 1,
-      "severity": "none",
-      "codes": [],
-      "fields": {},
+    
       "issues": [],
-      "updated_at": "2026-04-19T23:43:27.894Z"
+      "updated_at": "2026-04-20T00:22:12.946Z"
     },
-    "qa_errors_active": {
-      "version": 1,
-      "severity": "none",
-      "codes": [],
-      "fields": {},
+    
       "issues": [],
       "signature": "designation_final_not_in_pdf|missing_designation_final|missing_part_no|missing_pn_final|missing_pos|pn_final_not_equal_pn_pdf",
-      "updated_at": "2026-04-19T23:43:27.894Z"
+      "updated_at": "2026-04-20T00:22:12.946Z"
     }
   },
   {
@@ -2588,7 +2181,16 @@
     "units": "KGM",
     "UNITS": "PC",
     "Valid From Date": "2011-07-01",
-    "WEIGHT": "12,500 KG"
+    "WEIGHT": "12,500 KG",
+    
+      "issues": [],
+      "updated_at": "2026-04-20T00:22:25.651Z"
+    },
+    
+      "issues": [],
+      "signature": "designation_final_not_in_pdf|missing_designation_final|missing_part_no|missing_pn_final|missing_pos|pn_final_not_equal_pn_pdf",
+      "updated_at": "2026-04-20T00:22:25.651Z"
+    }
   },
   {
     "ID": "1100969",
@@ -2678,7 +2280,16 @@
     "units": "KGM",
     "UNITS": "PC",
     "Valid From Date": null,
-    "WEIGHT": null
+    "WEIGHT": null,
+    
+      "issues": [],
+      "updated_at": "2026-04-20T00:22:27.955Z"
+    },
+    
+      "issues": [],
+      "signature": "designation_final_not_in_pdf|missing_designation_final|missing_part_no|missing_pn_final|missing_pos|pn_final_not_equal_pn_pdf",
+      "updated_at": "2026-04-20T00:22:27.955Z"
+    }
   },
   {
     "ID": "1100971",
@@ -2769,7 +2380,16 @@
     "units": "KGM",
     "UNITS": "PC",
     "Valid From Date": null,
-    "WEIGHT": "13,500 KG"
+    "WEIGHT": "13,500 KG",
+    
+      "issues": [],
+      "updated_at": "2026-04-20T00:22:30.247Z"
+    },
+    
+      "issues": [],
+      "signature": "designation_final_not_in_pdf|missing_designation_final|missing_part_no|missing_pn_final|missing_pos|pn_final_not_equal_pn_pdf",
+      "updated_at": "2026-04-20T00:22:30.247Z"
+    }
   },
   {
     "ID": "1100972",
@@ -2863,7 +2483,16 @@
     "units": "KGM",
     "UNITS": "PC",
     "Valid From Date": "2000-01-01",
-    "WEIGHT": "1,090 KG"
+    "WEIGHT": "1,090 KG",
+    
+      "issues": [],
+      "updated_at": "2026-04-20T00:22:32.167Z"
+    },
+    
+      "issues": [],
+      "signature": "designation_final_not_in_pdf|missing_designation_final|missing_part_no|missing_pn_final|missing_pos|pn_final_not_equal_pn_pdf",
+      "updated_at": "2026-04-20T00:22:32.167Z"
+    }
   },
   {
     "ID": "1100979",
@@ -2959,7 +2588,16 @@
     "units": "KGM",
     "UNITS": "PC",
     "Valid From Date": "2009-09-09",
-    "WEIGHT": "17,500 KG"
+    "WEIGHT": "17,500 KG",
+    
+      "issues": [],
+      "updated_at": "2026-04-20T00:22:34.229Z"
+    },
+    
+      "issues": [],
+      "signature": "designation_final_not_in_pdf|missing_designation_final|missing_part_no|missing_pn_final|missing_pos|pn_final_not_equal_pn_pdf",
+      "updated_at": "2026-04-20T00:22:34.229Z"
+    }
   },
   {
     "ID": "1100980",
@@ -3054,7 +2692,36 @@
     "units": null,
     "UNITS": "PC",
     "Valid From Date": "2003-01-01",
-    "WEIGHT": "16,900 KG"
+    "WEIGHT": "16,900 KG",
+    
+      "issues": [
+        {
+          "code": "pn_final_not_equal_pn_pdf",
+          "severity": "critical",
+          "fields": [
+            "pn_final",
+            "pn_pdf"
+          ],
+          "message": "PN Final debe ser igual a PN PDF"
+        }
+      ],
+      "updated_at": "2026-04-20T00:22:38.091Z"
+    },
+    
+      "issues": [
+        {
+          "code": "pn_final_not_equal_pn_pdf",
+          "severity": "critical",
+          "fields": [
+            "pn_final",
+            "pn_pdf"
+          ],
+          "message": "PN Final debe ser igual a PN PDF"
+        }
+      ],
+      "signature": "designation_final_not_in_pdf|missing_designation_final|missing_part_no|missing_pn_final|missing_pos|pn_final_not_equal_pn_pdf",
+      "updated_at": "2026-04-20T00:22:38.091Z"
+    }
   },
   {
     "ID": "1100981",
@@ -3149,7 +2816,36 @@
     "units": null,
     "UNITS": "PC",
     "Valid From Date": null,
-    "WEIGHT": "16,980 KG"
+    "WEIGHT": "16,980 KG",
+    
+      "issues": [
+        {
+          "code": "pn_final_not_equal_pn_pdf",
+          "severity": "critical",
+          "fields": [
+            "pn_final",
+            "pn_pdf"
+          ],
+          "message": "PN Final debe ser igual a PN PDF"
+        }
+      ],
+      "updated_at": "2026-04-20T00:23:38.188Z"
+    },
+    
+      "issues": [
+        {
+          "code": "pn_final_not_equal_pn_pdf",
+          "severity": "critical",
+          "fields": [
+            "pn_final",
+            "pn_pdf"
+          ],
+          "message": "PN Final debe ser igual a PN PDF"
+        }
+      ],
+      "signature": "designation_final_not_in_pdf|missing_designation_final|missing_part_no|missing_pn_final|missing_pos|pn_final_not_equal_pn_pdf",
+      "updated_at": "2026-04-20T00:23:38.188Z"
+    }
   },
   {
     "ID": "1101078",
@@ -3240,7 +2936,16 @@
     "units": "KGM",
     "UNITS": "PC",
     "Valid From Date": null,
-    "WEIGHT": "137 G"
+    "WEIGHT": "137 G",
+    
+      "issues": [],
+      "updated_at": "2026-04-20T00:23:56.576Z"
+    },
+    
+      "issues": [],
+      "signature": "designation_final_not_in_pdf|missing_designation_final|missing_part_no|missing_pn_final|missing_pos|pn_final_not_equal_pn_pdf",
+      "updated_at": "2026-04-20T00:23:56.576Z"
+    }
   },
   {
     "ID": "1101079",
@@ -3333,7 +3038,16 @@
     "units": "KGM",
     "UNITS": "PC",
     "Valid From Date": null,
-    "WEIGHT": "150 G"
+    "WEIGHT": "150 G",
+    
+      "issues": [],
+      "updated_at": "2026-04-20T00:23:59.644Z"
+    },
+    
+      "issues": [],
+      "signature": "designation_final_not_in_pdf|missing_designation_final|missing_part_no|missing_pn_final|missing_pos|pn_final_not_equal_pn_pdf",
+      "updated_at": "2026-04-20T00:23:59.644Z"
+    }
   },
   {
     "ID": "1101319",
@@ -261828,3 +261542,5 @@
     "WEIGHT": null
   }
 ]
+
+

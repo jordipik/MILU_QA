@@ -1,7 +1,6 @@
 const fs = require('fs');
 const path = require('path');
 const { ENGINE_JSON_FILES } = require('./engine_files');
-const { DEFAULT_ACTIVE_QA_CODES, applyQaErrorsToRows, applyActiveQaErrorsToRows } = require('./qa_errors');
 
 function normalizeRevisionRecord(record) {
     return {
@@ -105,16 +104,12 @@ async function applyRevisionPayload(parsed, options = {}) {
             changedInFile += 1;
         });
 
-        let qaErrorsSummary = null;
         if (changedInFile > 0) {
-            qaErrorsSummary = await applyQaErrorsToRows(rows);
-            applyActiveQaErrorsToRows(rows, DEFAULT_ACTIVE_QA_CODES);
             fs.writeFileSync(filePath, `${JSON.stringify(rows, null, 2)}\n`, 'utf8');
         }
 
         appliedByFile[fileName] = {
-            revisionChanges: changedInFile,
-            qaErrors: qaErrorsSummary
+            revisionChanges: changedInFile
         };
         totalApplied += changedInFile;
     }

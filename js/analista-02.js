@@ -2,17 +2,11 @@ import { state } from './state.js';
 import { getEngineJsonFiles, loadEngineDataByFileName, saveCellToServer } from './data-loader.js';
 import { assignRevisionKeys, applyRevisionDataToRows } from './revision.js';
 import { initPdfZoomControls, loadPdfClear, loadPdfWithPage, requestPdfRelayout, setPdfReadTokens, setPdfSelection } from './pdf-viewer.js';
+import { evaluateRowQaChecks, getAllQaCheckCodes, getQaCheckLabel } from './qa-checks.js';
 
 const $ = (id) => document.getElementById(id);
 
-const QA_LABELS = {
-    missing_part_no: 'PART NO. vacio',
-    missing_pos: 'POS vacio',
-    missing_pn_final: 'pn_final vacio',
-    pn_final_not_equal_pn_pdf: 'pn_final no coincide con pn_pdf',
-    missing_designation_final: 'designation_final vacio',
-    designation_final_not_in_pdf: 'designation_final no localizada en PDF'
-};
+const QA_LABELS = Object.fromEntries(getAllQaCheckCodes().map((code) => [code, getQaCheckLabel(code)]));
 
 // Checks oficiales por campo para la columna ERR.
 // Cada entrada: { code, label, needsPdf, check(row, entry, context) => boolean (true = pasa, false = falla) }
@@ -399,11 +393,7 @@ function getDisplayPn(row) {
 }
 
 function getRowCodes(row) {
-    const qa = row?.qa_errors_active && Array.isArray(row.qa_errors_active.codes)
-        ? row.qa_errors_active
-        : row?.qa_errors;
-    if (!qa || !Array.isArray(qa.codes)) return [];
-    return qa.codes.map((code) => String(code ?? '').trim()).filter(Boolean);
+    return evaluateRowQaChecks(row, getAllQaCheckCodes()).codes;
 }
 
 function getConsistencyWarnings(row) {
@@ -1090,37 +1080,6 @@ async function revalidateCurrentRow() {
     if (!currentRow) {
         alert('Primero debes cargar un registro.');
         return;
-    }
-
-    const revisionKey = getRevisionKey(currentRow);
-    if (!revisionKey) {
-        alert('No se pudo resolver la clave de revision del registro.');
-        return;
-    }
-
-    const response = await fetch('/apply-qa-checks-filter', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-            activeCodes: getActiveCodes(),
-            scope: 'visible',
-            revisionKeys: [revisionKey]
-        })
-    });
-
-    if (!response.ok) {
-        const data = await response.json().catch(() => ({}));
-        throw new Error(data.error || `HTTP ${response.status}`);
-    }
-
-    const data = await response.json();
-    const updated = Array.isArray(data.rows)
-        ? data.rows.find(entry => entry.revisionKey === revisionKey)
-        : null;
-
-    if (updated) {
-        currentRow.qa_errors = updated.qa_errors || currentRow.qa_errors;
-        currentRow.qa_errors_active = updated.qa_errors_active || currentRow.qa_errors_active;
     }
 
     syncCurrentRowReference();

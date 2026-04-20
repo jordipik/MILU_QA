@@ -34,7 +34,7 @@ function getActiveErrorSignature() {
 }
 
 function getRowErrorCacheMarker(row) {
-    const qaErrors = row?.qa_errors_active || row?.qa_errors;
+    const qaErrors = row?.__qaChecksActive;
     const updatedAt = String(qaErrors?.updated_at || '');
     const severity = String(qaErrors?.severity || '');
     const signature = String(qaErrors?.signature || '');
