@@ -2,11 +2,19 @@ import { state } from './state.js';
 import { getEngineJsonFiles, loadEngineDataByFileName, saveCellToServer } from './data-loader.js';
 import { assignRevisionKeys, applyRevisionDataToRows } from './revision.js';
 import { initPdfZoomControls, loadPdfClear, loadPdfWithPage, requestPdfRelayout, setPdfReadTokens, setPdfSelection } from './pdf-viewer.js';
-import { evaluateRowQaChecks, getAllQaCheckCodes, getQaCheckLabel } from './qa-checks.js';
+import { evaluateQaChecksForField, evaluateRowQaChecks, getAllQaCheckCodes, getQaCheckLabel } from './qa-checks.js';
 
 const $ = (id) => document.getElementById(id);
 
-const QA_LABELS = Object.fromEntries(getAllQaCheckCodes().map((code) => [code, getQaCheckLabel(code)]));
+const FIELD_TO_ERROR_KEY = {
+    'POS': 'pos_error',
+    'PART NO.': 'pn_error',
+    'DESIGNATION': 'designation_error',
+    'WEIGHT': 'weight_error',
+    'MEASUREMENT / STANDARD': 'measurement_error',
+    'NORMA': 'norma_error',
+    'BOM-No.': 'bom_error'
+};
 
 const FIELD_TO_PDF_AUTO_KEY = {
     'POS': 'pos_pdf',
@@ -30,88 +38,29 @@ const FIELD_TO_PDF_AUTO_KEY = {
     'BOM-No.': 'bom_pdf'
 };
 
-// Checks oficiales por campo para la columna ERR.
-// Cada entrada: { code, label, needsPdf, check(row, entry, context) => boolean (true = pasa, false = falla) }
-const FIELD_CUSTOM_CHECKS = {
-    'POS': [
-        { code: 'pos_required', label: 'POS: final lleno', needsPdf: false, check: (row, entry) => normalizeCompareValue(entry?.final) !== '' },
-        { code: 'pos_final_pdf_match', label: 'POS: final coincide con PDF', needsPdf: true, check: (row, entry, context) => isCompareMatch(entry?.final, context?.pdfValue) }
-    ],
-    'PART NO.': [
-        { code: 'pn_required', label: 'PN: final lleno', needsPdf: false, check: (row, entry) => normalizeCompareValue(entry?.final) !== '' },
-        { code: 'pn_final_pdf_match', label: 'PN: final coincide con PDF', needsPdf: true, check: (row, entry, context) => isCompareMatch(entry?.final, context?.pdfValue) }
-    ],
-    'DESIGNATION': [
-        { code: 'designation_required', label: 'DESIGNATION: final lleno', needsPdf: false, check: (row, entry) => normalizeCompareValue(entry?.final) !== '' },
-        {
-            code: 'designation_final_pdf_or_gesa_match',
-            label: 'DESIGNATION: final coincide con PDF o GESA',
-            needsPdf: true,
-            check: (row, entry, context) => isCompareMatch(entry?.final, context?.pdfValue) || isCompareMatch(entry?.final, entry?.gesa)
-        }
-    ],
-    'WEIGHT': [
-        {
-            code: 'weight_final_pdf_or_gesa_match',
-            label: 'WEIGHT: final coincide con PDF o GESA',
-            needsPdf: true,
-            check: (row, entry, context) => isCompareMatch(entry?.final, context?.pdfValue) || isCompareMatch(entry?.final, entry?.gesa)
-        }
-    ],
-    'MEASUREMENT / STANDARD': [
-        {
-            code: 'measurement_final_pdf_or_gesa_match',
-            label: 'MEASUREMENT: final coincide con PDF o GESA',
-            needsPdf: true,
-            check: (row, entry, context) => {
-                const finalValue = normalizeCompareValue(entry?.final);
-                const pdfValue = normalizeCompareValue(context?.pdfValue);
-                const gesaValue = normalizeCompareValue(entry?.gesa);
-                if (!finalValue && !pdfValue && !gesaValue) return true;
-                return isCompareMatch(entry?.final, context?.pdfValue) || isCompareMatch(entry?.final, entry?.gesa);
-            }
-        }
-    ],
-    'NORMA': [
-        {
-            code: 'norma_final_pdf_or_gesa_match',
-            label: 'NORMA: final coincide con PDF o GESA (o todos vacios)',
-            needsPdf: true,
-            check: (row, entry, context) => {
-                const finalValue = normalizeCompareValue(entry?.final);
-                const pdfValue = normalizeCompareValue(context?.pdfValue);
-                const gesaValue = normalizeCompareValue(entry?.gesa);
-                if (!finalValue && !pdfValue && !gesaValue) return true;
-                return isCompareMatch(entry?.final, context?.pdfValue) || isCompareMatch(entry?.final, entry?.gesa);
-            }
-        }
-    ],
-    'BOM-No.': [
-        {
-            code: 'bom_final_pdf_match',
-            label: 'BOM: final coincide con PDF',
-            needsPdf: true,
-            check: (row, entry, context) => isCompareMatch(entry?.final, context?.pdfValue)
-        }
-    ]
-};
+const QA_LABELS = Object.fromEntries(getAllQaCheckCodes().map((code) => [code, getQaCheckLabel(code)]));
 
 function getFieldChecks(row, entry, context = {}) {
-    const issues = [];
-    const customChecks = FIELD_CUSTOM_CHECKS[entry?.field] ?? [];
-    for (const check of customChecks) {
-        if (check.needsPdf && !context.pdfReady) continue;
-        if (!check.check(row, entry, context)) {
-            issues.push({ code: check.code, label: check.label });
-        }
-    }
+    return evaluateQaChecksForField(row, entry?.field, context);
+}
 
-    const seen = new Set();
-    return issues.filter(issue => {
-        if (seen.has(issue.code)) return false;
-        seen.add(issue.code);
-        return true;
-    });
+function getStoredFieldErrorCount(row, fieldName) {
+    const errorKey = FIELD_TO_ERROR_KEY[String(fieldName ?? '').trim()];
+    if (!errorKey) return 0;
+    const value = Number(row?.[errorKey]);
+    return Number.isFinite(value) ? value : 0;
+}
+
+function getStoredFieldErrorMap(row) {
+    return Object.fromEntries(
+        Object.keys(FIELD_TO_ERROR_KEY).map((fieldName) => [fieldName, getStoredFieldErrorCount(row, fieldName)])
+    );
+}
+
+function getStoredErrorSummary(row) {
+    return Object.keys(FIELD_TO_ERROR_KEY)
+        .map((fieldName) => ({ field: fieldName, count: getStoredFieldErrorCount(row, fieldName) }))
+        .filter((entry) => entry.count > 0);
 }
 
 function getStoredPdfAutoValue(row, fieldName) {
@@ -123,6 +72,7 @@ function getStoredPdfAutoValue(row, fieldName) {
 let currentRow = null;
 let currentProcessIndex = 0;
 let comparisonRenderToken = 0;
+let lastComputedErrors = null;
 const pdfDocumentPromiseCache = new Map();
 const pdfPageTextCache = new Map();
 const PDF_CLUSTER_GAP_MAX = 24;
@@ -131,6 +81,13 @@ const RIGHT_PANEL_WIDTH_KEY = 'analista02:right-panel-width';
 const COMPARISON_WIDTHS_KEY = 'analista02:comparison-column-widths';
 const COMPARISON_MIN_COL_WIDTH = 30;
 const ENGINE_BOOK_FILES = getEngineJsonFiles();
+
+function getStartupSelectionFromUrl() {
+    const params = new URLSearchParams(window.location.search || '');
+    const engine = String(params.get('engine') || '').trim();
+    const record = String(params.get('record') || '').trim();
+    return { engine, record };
+}
 
 function inferEngineModelFromFileName(fileName) {
     return String(fileName || '')
@@ -186,19 +143,28 @@ function getComparisonCellClasses(entry, pdfValue, pdfAutoValue = '') {
     const gesaValue = txt(entry?.gesa);
     const pdfResolvedValue = txt(pdfValue);
     const pdfAutoResolvedValue = txt(pdfAutoValue);
+
+    const getMismatchClassAgainstFinal = (value) => {
+        const normalizedValue = normalizeCompareValue(value);
+        const normalizedFinal = normalizeCompareValue(finalValue);
+        if (!normalizedValue || !normalizedFinal) return '';
+        return normalizedValue === normalizedFinal ? 'compare-match' : 'compare-mismatch-soft';
+    };
+
     const finalMissing = isRequiredComparisonField(entry?.field) && normalizeCompareValue(finalValue) === '';
     const rawMatchesSust = isCompareMatch(rawValue, sustValue);
     const gesaMatchesFinal = isCompareMatch(gesaValue, finalValue);
     const pdfMatchesFinal = isCompareMatch(pdfResolvedValue, finalValue);
     const pdfAutoMatchesFinal = isCompareMatch(pdfAutoResolvedValue, finalValue);
+    const rawSustMatchClass = rawMatchesSust ? 'compare-raw-sust-match' : '';
 
     return {
-        rawClass: rawMatchesSust ? 'compare-match' : '',
-        sustClass: rawMatchesSust ? 'compare-match' : '',
+        rawClass: [getMismatchClassAgainstFinal(rawValue), rawSustMatchClass].filter(Boolean).join(' '),
+        sustClass: rawMatchesSust ? `compare-match ${rawSustMatchClass}` : '',
         finalClass: finalMissing ? 'compare-missing' : (gesaMatchesFinal || pdfMatchesFinal || pdfAutoMatchesFinal ? 'compare-match' : ''),
-        gesaClass: gesaMatchesFinal ? 'compare-match' : '',
-        pdfClass: pdfMatchesFinal ? 'compare-match' : '',
-        pdfAutoClass: pdfAutoMatchesFinal ? 'compare-match' : ''
+        gesaClass: getMismatchClassAgainstFinal(gesaValue),
+        pdfClass: getMismatchClassAgainstFinal(pdfResolvedValue),
+        pdfAutoClass: getMismatchClassAgainstFinal(pdfAutoResolvedValue)
     };
 }
 
@@ -463,10 +429,10 @@ function buildProcessSteps(row) {
             detail: !codes.has('missing_pn_final') ? 'pn_final informado.' : 'Falta pn_final en el registro final.'
         },
         {
-            id: 'pn_final_equals_pn_pdf',
-            title: 'pn_final igual a pn_pdf',
-            pass: !codes.has('pn_final_not_equal_pn_pdf'),
-            detail: !codes.has('pn_final_not_equal_pn_pdf') ? 'pn_final coincide con pn_pdf.' : 'pn_final no coincide con pn_pdf.'
+            id: 'pn_final_equals_part_no',
+            title: 'pn_final igual a PART NO.',
+            pass: isCompareMatch(row?.pn_final, row?.['PART NO.']),
+            detail: isCompareMatch(row?.pn_final, row?.['PART NO.']) ? 'pn_final coincide con PART NO.' : 'pn_final no coincide con PART NO.'
         },
         {
             id: 'designation_final_presence',
@@ -656,12 +622,13 @@ function renderChecksModalBody() {
     const body = $('checksModalBody');
     if (!(body instanceof HTMLElement)) return;
 
-    const checkEntries = [];
-    for (const [field, checks] of Object.entries(FIELD_CUSTOM_CHECKS)) {
-        for (const check of checks) {
-            checkEntries.push({ field, code: check.code, label: check.label });
-        }
-    }
+    const checkEntries = (state.qaErrorCheckDefinitions || [])
+        .map((definition) => ({
+            field: String(definition?.field || '').trim() || '-',
+            code: String(definition?.code || '').trim(),
+            label: String(definition?.label || definition?.code || '').trim()
+        }))
+        .filter((definition) => definition.code);
 
     let html = '';
 
@@ -700,6 +667,36 @@ function initChecksModal() {
     });
 }
 
+function initRecomputeModal() {
+    const openBtn = $('openRecomputeModalBtn');
+    const modal = $('recomputeModal');
+    const closeBtn = $('recomputeModalClose');
+    const backdrop = modal?.querySelector('.recompute-modal-backdrop');
+
+    if (!(openBtn instanceof HTMLElement) || !(modal instanceof HTMLElement)) return;
+
+    const closeModal = () => {
+        modal.hidden = true;
+    };
+
+    openBtn.addEventListener('click', () => {
+        syncRecomputeEngineSelect();
+        setRecomputeStatus('Listo para ejecutar.', '');
+        modal.hidden = false;
+        const recomputeIdInput = $('recomputeIdInput');
+        if (recomputeIdInput instanceof HTMLInputElement) {
+            recomputeIdInput.focus();
+        }
+    });
+
+    closeBtn?.addEventListener('click', closeModal);
+    backdrop?.addEventListener('click', closeModal);
+
+    document.addEventListener('keydown', (event) => {
+        if (!modal.hidden && event.key === 'Escape') closeModal();
+    });
+}
+
 function buildEngineOptions(selectedModel = '') {
     const select = $('engineFilterSelect');
     if (!(select instanceof HTMLSelectElement)) return;
@@ -715,6 +712,292 @@ function resolveEngineFileFromFilter(engineFilter) {
 
     const directMatch = ENGINE_BOOK_FILES.find((file) => inferEngineModelFromFileName(file) === model);
     return directMatch || '';
+}
+
+function getBackendCandidateUrls(endpointPath) {
+    const currentOrigin = window.location.origin && window.location.origin !== 'null'
+        ? window.location.origin
+        : '';
+    const currentHostname = String(window.location.hostname || '').trim();
+    const cleanEndpoint = String(endpointPath || '').trim().replace(/^\/+/, '');
+    const sameDirectoryCandidate = new URL(cleanEndpoint, new URL('.', window.location.href)).href;
+    const localPortCandidate = currentHostname ? `http://${currentHostname}:3000/${cleanEndpoint}` : '';
+    const sameOriginCandidate = currentOrigin ? `${currentOrigin}/${cleanEndpoint}` : `/${cleanEndpoint}`;
+
+    return [
+        localPortCandidate,
+        `http://localhost:3000/${cleanEndpoint}`,
+        sameDirectoryCandidate,
+        sameOriginCandidate
+    ].filter((url, index, arr) => url && arr.indexOf(url) === index);
+}
+
+function setRecomputeStatus(message, status = '') {
+    const statusEl = $('recomputeStatusText');
+    if (!(statusEl instanceof HTMLElement)) return;
+    statusEl.classList.remove('is-ok', 'is-error');
+    if (status === 'ok') statusEl.classList.add('is-ok');
+    if (status === 'error') statusEl.classList.add('is-error');
+    statusEl.textContent = message;
+}
+
+function syncRecomputeEngineSelect() {
+    const source = $('engineFilterSelect');
+    const target = $('recomputeEngineSelect');
+    if (!(source instanceof HTMLSelectElement) || !(target instanceof HTMLSelectElement)) return;
+
+    target.innerHTML = ENGINE_BOOK_MODELS
+        .map((model) => `<option value="${escapeHtml(model)}">${escapeHtml(model)}</option>`)
+        .join('');
+    target.value = source.value;
+}
+
+async function runBackendRecompute() {
+    const recomputeEngineSelect = $('recomputeEngineSelect');
+    const recomputeIdInput = $('recomputeIdInput');
+    const recomputeDryRunInput = $('recomputeDryRunInput');
+    const recomputeRunBtn = $('recomputeRunBtn');
+    const engineFilterSelect = $('engineFilterSelect');
+
+    if (!(recomputeEngineSelect instanceof HTMLSelectElement)
+        || !(recomputeIdInput instanceof HTMLInputElement)
+        || !(recomputeDryRunInput instanceof HTMLInputElement)
+        || !(recomputeRunBtn instanceof HTMLButtonElement)
+        || !(engineFilterSelect instanceof HTMLSelectElement)) {
+        return;
+    }
+
+    const selectedModel = String(recomputeEngineSelect.value || '').trim();
+    const file = resolveEngineFileFromFilter(selectedModel);
+    const id = String(recomputeIdInput.value || '').trim();
+    const dryRun = recomputeDryRunInput.checked;
+
+    if (!file) {
+        alert('No se pudo resolver el archivo engine para el recálculo.');
+        return;
+    }
+
+    const payload = {
+        file,
+        dryRun,
+        updateRevision: true,
+        backup: true
+    };
+    if (id) payload.id = id;
+
+    recomputeRunBtn.disabled = true;
+    if (recomputePdfRunBtn instanceof HTMLButtonElement) recomputePdfRunBtn.disabled = true;
+    setRecomputeStatus('Ejecutando recálculo en backend...', '');
+
+    const recomputePdfRunBtn = $('recomputePdfRunBtn');
+    const urls = getBackendCandidateUrls('recompute-qa-errors');
+    let lastError = '';
+    let result = null;
+
+    for (const url of urls) {
+        try {
+            const response = await fetch(url, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(payload)
+            });
+            const rawBody = await response.text();
+            let data = null;
+            try {
+                data = rawBody ? JSON.parse(rawBody) : null;
+            } catch (_parseError) {
+                data = null;
+            }
+
+            if (!response.ok) {
+                lastError = String(data?.error || `HTTP ${response.status}`).trim();
+                continue;
+            }
+
+            const legacyTotals = data?.totals;
+            const hasLegacyPayload = data?.ok === true && legacyTotals && typeof legacyTotals === 'object';
+
+            if (!data || data.ok !== true || (!data.result && !hasLegacyPayload)) {
+                const snippet = rawBody
+                    ? rawBody.replace(/\s+/g, ' ').trim().slice(0, 140)
+                    : '';
+                lastError = snippet
+                    ? `Respuesta invalida desde ${url}: ${snippet}`
+                    : `Respuesta invalida desde ${url} (esperado JSON con { ok: true, result }).`;
+                continue;
+            }
+
+            if (data.result && typeof data.result === 'object') {
+                result = data.result;
+            } else {
+                result = {
+                    file,
+                    mode: id ? 'single-id' : 'full-book',
+                    id: id || null,
+                    dryRun,
+                    updateRevision: true,
+                    scanned: Number(legacyTotals.totalRows) || 0,
+                    changedRows: Number(legacyTotals.changedRows) || 0,
+                    okRows: Math.max((Number(legacyTotals.totalRows) || 0) - (Number(legacyTotals.rowsWithErrors) || 0), 0),
+                    koRows: Number(legacyTotals.rowsWithErrors) || 0,
+                    wroteFile: !dryRun && (Number(legacyTotals.changedRows) || 0) > 0
+                };
+            }
+            break;
+        } catch (error) {
+            lastError = String(error?.message || error || 'Error de red');
+        }
+    }
+
+    recomputeRunBtn.disabled = false;
+    if (recomputePdfRunBtn instanceof HTMLButtonElement) recomputePdfRunBtn.disabled = false;
+
+    if (!result) {
+        setRecomputeStatus(
+            `Error: ${lastError || 'No se pudo ejecutar el recálculo. Comprueba que server.js este activo en http://localhost:3000 y responde en /health.'}`,
+            'error'
+        );
+        return;
+    }
+
+    const modeLabel = result.mode === 'single-id' ? `ID ${result.id}` : 'libro completo';
+    setRecomputeStatus(
+        `OK ${modeLabel} | scanned=${result.scanned} changed=${result.changedRows} ok=${result.okRows} ko=${result.koRows} dryRun=${result.dryRun ? 'si' : 'no'}`,
+        'ok'
+    );
+
+    if (!result.dryRun && result.wroteFile) {
+        const selectedMainModel = String(engineFilterSelect.value || '').trim();
+        if (selectedMainModel === selectedModel) {
+            const keepRecord = currentRow ? txt(currentRow?.ID, '') : '';
+            await loadEngineForFilter(selectedMainModel);
+            if (keepRecord) {
+                const reloaded = findRecordByPrimaryKey(keepRecord, selectedMainModel);
+                if (reloaded) {
+                    currentRow = reloaded;
+                    $('recordIdInput').value = getDisplayPn(reloaded);
+                    currentProcessIndex = 0;
+                    await revalidateCurrentRow();
+                }
+            }
+            updateRecordSearchSuggestions();
+        }
+    }
+}
+
+async function runBackendRecomputePdfAuto() {
+    const recomputeEngineSelect = $('recomputeEngineSelect');
+    const recomputeIdInput = $('recomputeIdInput');
+    const recomputeDryRunInput = $('recomputeDryRunInput');
+    const recomputeRunBtn = $('recomputeRunBtn');
+    const recomputePdfRunBtn = $('recomputePdfRunBtn');
+    const engineFilterSelect = $('engineFilterSelect');
+
+    if (!(recomputeEngineSelect instanceof HTMLSelectElement)
+        || !(recomputeIdInput instanceof HTMLInputElement)
+        || !(recomputeDryRunInput instanceof HTMLInputElement)
+        || !(recomputeRunBtn instanceof HTMLButtonElement)
+        || !(recomputePdfRunBtn instanceof HTMLButtonElement)
+        || !(engineFilterSelect instanceof HTMLSelectElement)) {
+        return;
+    }
+
+    const selectedModel = String(recomputeEngineSelect.value || '').trim();
+    const file = resolveEngineFileFromFilter(selectedModel);
+    const id = String(recomputeIdInput.value || '').trim();
+    const dryRun = recomputeDryRunInput.checked;
+
+    if (!file) {
+        alert('No se pudo resolver el archivo engine para recalcular PDF_AUTO.');
+        return;
+    }
+
+    const payload = {
+        file,
+        dryRun,
+        backup: true
+    };
+    if (id) payload.id = id;
+
+    recomputeRunBtn.disabled = true;
+    recomputePdfRunBtn.disabled = true;
+    setRecomputeStatus('Ejecutando recalculo PDF_AUTO en backend...', '');
+
+    const urls = getBackendCandidateUrls('recompute-pdf-auto');
+    let lastError = '';
+    let result = null;
+
+    for (const url of urls) {
+        try {
+            const response = await fetch(url, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(payload)
+            });
+            const rawBody = await response.text();
+            let data = null;
+            try {
+                data = rawBody ? JSON.parse(rawBody) : null;
+            } catch (_parseError) {
+                data = null;
+            }
+
+            if (!response.ok) {
+                lastError = String(data?.error || `HTTP ${response.status}`).trim();
+                continue;
+            }
+
+            if (!data || data.ok !== true || !data.result || typeof data.result !== 'object') {
+                const snippet = rawBody
+                    ? rawBody.replace(/\s+/g, ' ').trim().slice(0, 140)
+                    : '';
+                lastError = snippet
+                    ? `Respuesta invalida desde ${url}: ${snippet}`
+                    : `Respuesta invalida desde ${url} (esperado JSON con { ok: true, result }).`;
+                continue;
+            }
+
+            result = data.result;
+            break;
+        } catch (error) {
+            lastError = String(error?.message || error || 'Error de red');
+        }
+    }
+
+    recomputeRunBtn.disabled = false;
+    recomputePdfRunBtn.disabled = false;
+
+    if (!result) {
+        setRecomputeStatus(
+            `Error: ${lastError || 'No se pudo ejecutar el recalculo PDF_AUTO. Comprueba que server.js este activo en http://localhost:3000 y responde en /health.'}`,
+            'error'
+        );
+        return;
+    }
+
+    const modeLabel = result.mode === 'single-id' ? `ID ${result.id}` : 'libro completo';
+    setRecomputeStatus(
+        `OK PDF_AUTO ${modeLabel} | scanned=${result.scanned} changed=${result.changedRows} missingPages=${result.missingPages || 0} dryRun=${result.dryRun ? 'si' : 'no'}`,
+        'ok'
+    );
+
+    if (!result.dryRun && result.wroteFile) {
+        const selectedMainModel = String(engineFilterSelect.value || '').trim();
+        if (selectedMainModel === selectedModel) {
+            const keepRecord = currentRow ? txt(currentRow?.ID, '') : '';
+            await loadEngineForFilter(selectedMainModel);
+            if (keepRecord) {
+                const reloaded = findRecordByPrimaryKey(keepRecord, selectedMainModel);
+                if (reloaded) {
+                    currentRow = reloaded;
+                    $('recordIdInput').value = getDisplayPn(reloaded);
+                    currentProcessIndex = 0;
+                    await revalidateCurrentRow();
+                }
+            }
+            updateRecordSearchSuggestions();
+        }
+    }
 }
 
 async function loadEngineForFilter(engineFilter) {
@@ -749,7 +1032,9 @@ async function loadEngineForFilter(engineFilter) {
     currentProcessIndex = 0;
     $('recordIdInput').value = '';
     renderRecordPosition(null);
+    renderSelectedBook({ engine_model: selectedModel || engineFilter || '-' });
     renderMeta(null);
+    renderReviewStateButtons(null);
     syncPdfWithCurrentRow(null);
 }
 
@@ -799,6 +1084,95 @@ function renderRecordPosition(row) {
     target.textContent = `Registro ${idx >= 0 ? idx + 1 : 0} de ${queue.length}`;
 }
 
+function renderSelectedBook(row) {
+    const target = $('selectedBookText');
+    if (!(target instanceof HTMLElement)) return;
+    target.textContent = `Libro: ${txt(row?.engine_model)}`;
+}
+
+function getRowErrorCount(row) {
+    const total = Number(row?.total_error);
+    if (Number.isFinite(total)) return total;
+
+    const fallback = [
+        'pos_error',
+        'pn_error',
+        'designation_error',
+        'weight_error',
+        'measurement_error',
+        'norma_error',
+        'bom_error'
+    ].reduce((sum, key) => {
+        const value = Number(row?.[key]);
+        return sum + (Number.isFinite(value) ? value : 0);
+    }, 0);
+
+    if (fallback > 0) return fallback;
+    return row?.has_error ? 1 : 0;
+}
+
+function renderReviewStateButtons(row) {
+    const okBtn = $('statusOkBtn');
+    const reviewBtn = $('statusReviewBtn');
+    const koBtn = $('statusKoBtn');
+    if (!(okBtn instanceof HTMLButtonElement) || !(reviewBtn instanceof HTMLButtonElement) || !(koBtn instanceof HTMLButtonElement)) return;
+
+    const errorCount = getRowErrorCount(row);
+    const isReview = String(row?.qa_revision_accion ?? '').trim().toLowerCase() === 'revisar' && errorCount === 0;
+    const active = !row
+        ? ''
+        : isReview
+            ? 'review'
+            : (errorCount > 0 ? 'ko' : 'ok');
+
+    [okBtn, reviewBtn, koBtn].forEach((button) => {
+        button.classList.remove('is-active');
+        button.setAttribute('aria-pressed', 'false');
+    });
+
+    if (active === 'ok') {
+        okBtn.classList.add('is-active');
+        okBtn.setAttribute('aria-pressed', 'true');
+    }
+    if (active === 'review') {
+        reviewBtn.classList.add('is-active');
+        reviewBtn.setAttribute('aria-pressed', 'true');
+    }
+    if (active === 'ko') {
+        koBtn.classList.add('is-active');
+        koBtn.setAttribute('aria-pressed', 'true');
+    }
+}
+
+function updateRecordSearchSuggestions() {
+    const list = $('recordSearchList');
+    if (!(list instanceof HTMLDataListElement)) return;
+
+    const model = String($('engineFilterSelect')?.value || '').trim();
+    const scopedRows = model
+        ? (state.allData || []).filter((row) => String(row?.engine_model ?? '').trim() === model)
+        : (state.allData || []);
+
+    const seen = new Set();
+    const options = [];
+    scopedRows.forEach((row) => {
+        const pn = getDisplayPn(row);
+        const designation = txt(row?.designation_final || row?.DESIGNATION, '-');
+        const id = txt(row?.ID, '-');
+        const value = pn && pn !== '-' ? pn : id;
+        if (!value || value === '-') return;
+        const key = String(value).toLowerCase();
+        if (seen.has(key)) return;
+        seen.add(key);
+        options.push({ value, label: `${designation} | ID ${id}` });
+    });
+
+    list.innerHTML = options
+        .slice(0, 300)
+        .map((option) => `<option value="${escapeHtml(option.value)}" label="${escapeHtml(option.label)}"></option>`)
+        .join('');
+}
+
 function renderMeta(row) {
     const target = $('recordMeta');
     if (!(target instanceof HTMLElement)) return;
@@ -808,7 +1182,11 @@ function renderMeta(row) {
         return;
     }
 
-    target.textContent = `PN/PART NO=${getDisplayPn(row)} | POS=${txt(row?.POS)} | Libro=${txt(row?.engine_model)} | Pagina=${txt(row?.['Source Page'])}`;
+    target.innerHTML = `<span class="a2-meta-badge"><strong>PN</strong> ${escapeHtml(getDisplayPn(row))}</span>
+<span class="a2-meta-badge"><strong>DESIGNATION</strong> ${escapeHtml(txt(row?.designation_final || row?.DESIGNATION))}</span>
+<span class="a2-meta-badge"><strong>LIBRO</strong> ${escapeHtml(txt(row?.engine_model))}</span>
+<span class="a2-meta-badge"><strong>PAG</strong> ${escapeHtml(txt(row?.['Source Page']))}</span>
+<span class="a2-meta-badge"><strong>POS</strong> ${escapeHtml(txt(row?.POS))}</span>`;
 }
 
 function getGesaPn(row) {
@@ -936,16 +1314,16 @@ async function renderComparisonTable(row) {
     if (!(body instanceof HTMLElement)) return;
 
     const rows = buildComparisonRows(row);
+    lastComputedErrors = getStoredFieldErrorMap(row);
     setPdfReadTokens([]);
 
     body.innerHTML = rows.map((entry) => {
         const loadingClass = 'pdf-loading';
         const rowClass = entry.separatorTop ? 'separator-top' : '';
         const pdfAutoValue = getStoredPdfAutoValue(row, entry.field);
-        const fieldIssues = getFieldChecks(row, entry, { pdfReady: false, pdfValue: '' });
-        const errCount = fieldIssues.length;
+        const errCount = getStoredFieldErrorCount(row, entry.field);
         const errCellClass = errCount > 0 ? 'field-err has-errors' : 'field-err';
-        const errTitle = errCount > 0 ? ` title="${fieldIssues.map(i => escapeHtml(i.label)).join('&#10;')}"` : '';
+        const errTitle = errCount > 0 ? ` title="${escapeHtml(`Errores persistidos en JSON: ${errCount}`)}"` : '';
         return `<tr class="${rowClass}">
             <td class="field">${escapeHtml(entry.field)}</td>
             <td>${escapeHtml(txt(entry.raw))}</td>
@@ -964,6 +1342,7 @@ async function renderComparisonTable(row) {
     const pnAnchor = findPdfPnAnchor(row, pageText);
 
     const readTokens = [];
+    const fieldErrorAccum = {};
 
     body.innerHTML = rows.map((entry) => {
         const pdfRead = getPdfValueForRow(row, entry, pageText, pnAnchor);
@@ -973,10 +1352,10 @@ async function renderComparisonTable(row) {
         const pdfAutoValue = getStoredPdfAutoValue(row, entry.field);
         const cellClasses = getComparisonCellClasses(entry, pdfRead.value, pdfAutoValue);
         const rowClass = entry.separatorTop ? 'separator-top' : '';
-        const fieldIssues = getFieldChecks(row, entry, { pdfReady: true, pdfValue: pdfRead.value });
-        const errCount = fieldIssues.length;
+        const errCount = getStoredFieldErrorCount(row, entry.field);
+        fieldErrorAccum[entry.field] = errCount;
         const errCellClass = errCount > 0 ? 'field-err has-errors' : 'field-err';
-        const errTitle = errCount > 0 ? ` title="${fieldIssues.map(i => escapeHtml(i.label)).join('&#10;')}"` : '';
+        const errTitle = errCount > 0 ? ` title="${escapeHtml(`Errores persistidos en JSON: ${errCount}`)}"` : '';
         const finalErrClass = errCount > 0 ? 'compare-final-error' : 'compare-final-ok';
         const finalFullClass = [cellClasses.finalClass, finalErrClass].filter(Boolean).join(' ');
         return `<tr class="${rowClass}">
@@ -990,6 +1369,7 @@ async function renderComparisonTable(row) {
             <td class="${errCellClass}"${errTitle}>${errCount > 0 ? errCount : ''}</td>
         </tr>`;
     }).join('');
+    lastComputedErrors = fieldErrorAccum;
 
     const dedupedReadTokens = [];
     const seenReadTokens = new Set();
@@ -1088,9 +1468,13 @@ function syncPdfWithCurrentRow(row) {
 }
 
 function renderRecord(row) {
-    if (!row) return;
+    if (!row) {
+        renderReviewStateButtons(null);
+        return;
+    }
 
     renderRecordPosition(row);
+    renderSelectedBook(row);
     renderMeta(row);
     renderComparisonTable(row).catch((error) => {
         console.warn('No se pudo renderizar la comparativa con PDF:', error);
@@ -1101,6 +1485,7 @@ function renderRecord(row) {
     renderProcessList(row, processState);
     renderEvidence(row, processState);
     renderVerdict(processState);
+    renderReviewStateButtons(row);
     syncPdfWithCurrentRow(row);
 }
 
@@ -1160,6 +1545,34 @@ async function saveCurrentFieldChanges() {
     await revalidateCurrentRow();
 }
 
+async function saveErrorFields() {
+    if (!currentRow) {
+        alert('Primero debes cargar un registro.');
+        return;
+    }
+    if (!lastComputedErrors) {
+        alert('Aun no hay datos de error calculados. Espera a que cargue el PDF.');
+        return;
+    }
+
+    const engineFile = resolveEngineFile(currentRow);
+    const id = txt(currentRow?.ID, '');
+    if (!engineFile || !id) {
+        alert('No se pudo resolver archivo engine o ID para guardar.');
+        return;
+    }
+
+    let total = 0;
+    for (const [field, errorKey] of Object.entries(FIELD_TO_ERROR_KEY)) {
+        const val = lastComputedErrors[field] ?? 0;
+        total += val;
+        await saveCellToServer(engineFile, id, errorKey, val);
+        currentRow[errorKey] = val;
+    }
+    await saveCellToServer(engineFile, id, 'total_error', total);
+    currentRow['total_error'] = total;
+}
+
 async function setOutcome(kind) {
     $('editRevisionEstado').value = kind === 'ok' ? 'revisado' : 'descartado';
     $('editRevisionAccion').value = kind === 'ok' ? 'mantener' : 'revisar';
@@ -1175,11 +1588,23 @@ function findRecordByPrimaryKey(recordKey, engineFilter) {
         ? (state.allData || []).filter((row) => String(row?.engine_model ?? '').trim() === engineFilter)
         : (state.allData || []);
 
-    return source.find((row) => {
+    const exact = source.find((row) => {
         const pnFinal = String(row?.pn_final ?? '').trim().toLowerCase();
         const partNo = String(row?.['PART NO.'] ?? '').trim().toLowerCase();
         const id = String(row?.ID ?? '').trim().toLowerCase();
         return pnFinal === key || partNo === key || id === key;
+    });
+    if (exact) return exact;
+
+    return source.find((row) => {
+        const searchHaystack = [
+            row?.pn_final,
+            row?.['PART NO.'],
+            row?.ID,
+            row?.designation_final,
+            row?.DESIGNATION
+        ].map(value => String(value ?? '').toLowerCase());
+        return searchHaystack.some(value => value.includes(key));
     }) || null;
 }
 
@@ -1221,6 +1646,62 @@ async function loadRelativeRecord(direction) {
     await revalidateCurrentRow();
 }
 
+function rowHasErrors(row) {
+    return getRowErrorCount(row) > 0;
+}
+
+async function loadRelativeError(direction) {
+    const queue = getQueueRows();
+    if (!queue.length) return;
+
+    const startIndex = currentRow
+        ? queue.findIndex(row => getRevisionKey(row) === getRevisionKey(currentRow))
+        : -1;
+
+    let idx = startIndex;
+    while (true) {
+        idx += direction;
+        if (idx < 0 || idx >= queue.length) {
+            alert(direction > 0 ? 'No hay mas registros con error.' : 'No hay errores anteriores.');
+            return;
+        }
+        if (rowHasErrors(queue[idx])) break;
+    }
+
+    currentRow = queue[idx];
+    $('recordIdInput').value = getDisplayPn(currentRow);
+    currentProcessIndex = 0;
+    await revalidateCurrentRow();
+}
+
+async function setReviewStatus(kind) {
+    if (!currentRow) {
+        alert('Primero debes cargar un registro.');
+        return;
+    }
+
+    const engineFile = resolveEngineFile(currentRow);
+    const id = txt(currentRow?.ID, '');
+    if (!engineFile || !id) {
+        alert('No se pudo resolver archivo engine o ID para guardar estado.');
+        return;
+    }
+
+    const mapping = {
+        ok: { qa_revision_estado: 'revisado', qa_revision_accion: 'mantener' },
+        review: { qa_revision_estado: 'revisado', qa_revision_accion: 'revisar' },
+        ko: { qa_revision_estado: 'revisado', qa_revision_accion: 'descartar' }
+    };
+    const values = mapping[kind] || mapping.review;
+
+    await saveCellToServer(engineFile, id, 'qa_revision_estado', values.qa_revision_estado);
+    await saveCellToServer(engineFile, id, 'qa_revision_accion', values.qa_revision_accion);
+
+    currentRow.qa_revision_estado = values.qa_revision_estado;
+    currentRow.qa_revision_accion = values.qa_revision_accion;
+    renderReviewStateButtons(currentRow);
+}
+
 async function runNextProcess() {
     if (!currentRow) {
         alert('Primero debes cargar un registro.');
@@ -1254,15 +1735,28 @@ async function initialize() {
     try {
         state.rightPanelTab = 'pdf';
         initChecksModal();
+        initRecomputeModal();
         initHorizontalSplitter();
         initComparisonColumnResize();
         loadComparisonColumnWidths();
         initPdfZoomControls();
         loadPdfClear();
 
-        buildEngineOptions();
+        const startup = getStartupSelectionFromUrl();
+        const requestedModel = startup.engine && ENGINE_BOOK_MODELS.includes(startup.engine)
+            ? startup.engine
+            : '';
+
+        buildEngineOptions(requestedModel);
         const initialModel = String($('engineFilterSelect')?.value || '').trim() || ENGINE_BOOK_MODELS[0] || '';
         await loadEngineForFilter(initialModel);
+        syncRecomputeEngineSelect();
+        updateRecordSearchSuggestions();
+
+        if (startup.record) {
+            $('recordIdInput').value = startup.record;
+            await loadRecordFromControls();
+        }
     } catch (error) {
         const statusText = $('statusText');
         if (statusText) statusText.textContent = `Error iniciando Analista 02: ${error.message}`;
@@ -1270,34 +1764,87 @@ async function initialize() {
     }
 }
 
-$('loadRecordBtn').addEventListener('click', () => {
+function bindClick(id, callback) {
+    const element = $(id);
+    if (!(element instanceof HTMLElement)) return;
+    element.addEventListener('click', callback);
+}
+
+bindClick('loadRecordBtn', () => {
     loadRecordFromControls().catch((error) => alert(`No se pudo cargar el registro: ${error.message}`));
 });
 
-$('prevRecordBtn').addEventListener('click', () => {
+bindClick('prevRecordBtn', () => {
     loadRelativeRecord(-1).catch((error) => alert(`No se pudo cargar registro anterior: ${error.message}`));
 });
 
-$('nextRecordBtn').addEventListener('click', () => {
+bindClick('nextRecordBtn', () => {
     loadRelativeRecord(1).catch((error) => alert(`No se pudo cargar siguiente registro: ${error.message}`));
 });
 
-$('revalidateBtn').addEventListener('click', () => {
-    revalidateCurrentRow().catch((error) => alert(`No se pudo revalidar: ${error.message}`));
+bindClick('prevErrorBtn', () => {
+    loadRelativeError(-1).catch((error) => alert(`No se pudo cargar error anterior: ${error.message}`));
 });
 
-
-$('recordIdInput').addEventListener('keydown', (event) => {
-    if (event.key !== 'Enter') return;
-    event.preventDefault();
-    loadRecordFromControls().catch((error) => alert(`No se pudo cargar el registro: ${error.message}`));
+bindClick('nextErrorBtn', () => {
+    loadRelativeError(1).catch((error) => alert(`No se pudo cargar siguiente error: ${error.message}`));
 });
 
-$('engineFilterSelect').addEventListener('change', () => {
-    const selectedModel = String($('engineFilterSelect')?.value || '').trim();
-    loadEngineForFilter(selectedModel).catch((error) => {
-        alert(`No se pudo cargar el libro seleccionado: ${error.message}`);
+bindClick('saveErrorsBtn', () => {
+    saveErrorFields().catch((error) => alert(`No se pudieron guardar errores: ${error.message}`));
+});
+
+bindClick('recomputeRunBtn', () => {
+    runBackendRecompute().catch((error) => {
+        setRecomputeStatus(`Error: ${String(error?.message || error)}`, 'error');
     });
 });
+
+bindClick('recomputePdfRunBtn', () => {
+    runBackendRecomputePdfAuto().catch((error) => {
+        setRecomputeStatus(`Error: ${String(error?.message || error)}`, 'error');
+    });
+});
+
+bindClick('statusOkBtn', () => {
+    setReviewStatus('ok').catch((error) => alert(`No se pudo guardar estado OK: ${error.message}`));
+});
+
+bindClick('statusReviewBtn', () => {
+    setReviewStatus('review').catch((error) => alert(`No se pudo guardar estado revisar: ${error.message}`));
+});
+
+bindClick('statusKoBtn', () => {
+    setReviewStatus('ko').catch((error) => alert(`No se pudo guardar estado KO: ${error.message}`));
+});
+
+const recordIdInput = $('recordIdInput');
+if (recordIdInput instanceof HTMLInputElement) {
+    recordIdInput.addEventListener('input', () => {
+        updateRecordSearchSuggestions();
+    });
+
+    recordIdInput.addEventListener('keydown', (event) => {
+        if (event.key !== 'Enter') return;
+        event.preventDefault();
+        loadRecordFromControls().catch((error) => alert(`No se pudo cargar el registro: ${error.message}`));
+    });
+}
+
+const engineFilterSelect = $('engineFilterSelect');
+if (engineFilterSelect instanceof HTMLSelectElement) {
+    engineFilterSelect.addEventListener('change', () => {
+        const selectedModel = String(engineFilterSelect.value || '').trim();
+        const recomputeEngineSelect = $('recomputeEngineSelect');
+        if (recomputeEngineSelect instanceof HTMLSelectElement) {
+            recomputeEngineSelect.value = selectedModel;
+        }
+        loadEngineForFilter(selectedModel).then(() => {
+            updateRecordSearchSuggestions();
+        }).catch((error) => {
+            alert(`No se pudo cargar el libro seleccionado: ${error.message}`);
+        });
+    });
+}
 
 initialize();

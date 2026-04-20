@@ -24,12 +24,12 @@ function pickFirstValue(row, keys, defaultVal = '—') {
 
 const COLUMN_FALLBACKS = {
     POS: ['pos_final', 'pos_pdf', 'pos_raw', 'POS'],
-    'PART NO.': ['pn_final', 'pn_pdf', 'pn_sust', 'pn_gesa', 'pn_raw', 'PART NO.'],
+    'PART NO.': ['pn_final', 'pn_raw', 'PART NO.'],
     pn_raw: ['pn_raw', 'PART NO.'],
-    pn_final: ['pn_final', 'pn_pdf', 'pn_raw', 'PART NO.'],
+    pn_final: ['pn_final', 'pn_raw', 'PART NO.'],
     DESIGNATION: ['designation_raw', 'DESIGNATION'],
     designation_gesa: ['designation_gesa', 'designation_raw', 'DESIGNATION'],
-    designation_final: ['designation_final', 'designation_pdf', 'designation_sust', 'designation_gesa', 'designation_raw', 'DESIGNATION'],
+    designation_final: ['designation_final', 'designation_pdf', 'designation_gesa', 'designation_raw', 'DESIGNATION'],
     'MODEL/TYPE': ['model_raw', 'model_final', 'model_pdf', 'MODEL/TYPE', 'model'],
     model: ['model_final', 'model_pdf', 'model', 'MODEL/TYPE'],
     QTY: ['qty_final', 'qty_raw', 'QTY'],
@@ -66,7 +66,7 @@ export function normalizeText(text) {
 }
 
 export function getPnKey(row) {
-    return String(pickFirstValue(row, ['pn_final', 'pn_pdf', 'pn_raw', 'PART NO.', 'pn'], '')).trim();
+    return String(pickFirstValue(row, ['pn_final', 'pn_raw', 'PART NO.', 'pn'], '')).trim();
 }
 
 /**
