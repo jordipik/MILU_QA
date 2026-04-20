@@ -314,6 +314,90 @@ body.a2-resizing * {
     min-height: 22px;
 }
 
+.a2-auto-recompute {
+    border: 1px solid #d5e3f2;
+    background: linear-gradient(135deg, #f4f9ff, #eef6ff 52%, #e8f2ff);
+    border-radius: 12px;
+    padding: 10px;
+    display: grid;
+    gap: 8px;
+}
+
+.a2-auto-recompute h3 {
+    margin: 0;
+    font-size: 12px;
+    color: #194a79;
+    letter-spacing: 0.03em;
+}
+
+.a2-auto-recompute-controls {
+    display: grid;
+    grid-template-columns: minmax(170px, 230px) minmax(220px, 1fr) auto minmax(140px, 180px);
+    gap: 8px;
+    align-items: center;
+}
+
+.a2-auto-recompute-controls select,
+.a2-auto-recompute-controls input,
+.a2-auto-recompute-controls button {
+    border: 1px solid var(--line-strong);
+    border-radius: 10px;
+    height: 32px;
+    font-family: inherit;
+    font-size: 12px;
+}
+
+.a2-auto-recompute-controls select,
+.a2-auto-recompute-controls input {
+    padding: 0 10px;
+    background: #ffffff;
+    color: var(--text);
+}
+
+.a2-auto-recompute-controls button {
+    cursor: pointer;
+    background: linear-gradient(135deg, #0a4f8f, #156fc0);
+    border-color: #0b5ea8;
+    color: #ffffff;
+    font-weight: 700;
+}
+
+.a2-auto-recompute-controls button[disabled] {
+    opacity: 0.7;
+    cursor: progress;
+}
+
+.a2-auto-recompute-check {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 11px;
+    color: #34536f;
+    font-weight: 700;
+    white-space: nowrap;
+}
+
+.a2-auto-recompute-check input {
+    width: 14px;
+    height: 14px;
+    margin: 0;
+}
+
+.a2-auto-recompute-status {
+    margin: 0;
+    font-size: 11px;
+    color: #36536d;
+    font-family: 'IBM Plex Mono', Consolas, monospace;
+}
+
+.a2-auto-recompute-status.is-ok {
+    color: #16613f;
+}
+
+.a2-auto-recompute-status.is-error {
+    color: #9f2f23;
+}
+
 #recordPositionText {
     margin: 0;
     color: var(--muted);
@@ -1039,6 +1123,10 @@ body.a2-resizing * {
 
     .a2-review-actions {
         flex-wrap: wrap;
+    }
+
+    .a2-auto-recompute-controls {
+        grid-template-columns: 1fr;
     }
 
     .a2-edit-grid {

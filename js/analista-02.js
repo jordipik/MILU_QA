@@ -624,6 +624,134 @@ function resolveEngineFileFromFilter(engineFilter) {
     return directMatch || '';
 }
 
+function getRecomputeCandidateUrls() {
+    const currentOrigin = window.location.origin && window.location.origin !== 'null'
+        ? window.location.origin
+        : '';
+    const currentHostname = String(window.location.hostname || '').trim();
+    const sameDirectoryCandidate = new URL('recompute-qa-errors', new URL('.', window.location.href)).href;
+    const localPortCandidate = currentHostname ? `http://${currentHostname}:3000/recompute-qa-errors` : '';
+    const sameOriginCandidate = currentOrigin ? `${currentOrigin}/recompute-qa-errors` : '/recompute-qa-errors';
+
+    return [
+        localPortCandidate,
+        'http://localhost:3000/recompute-qa-errors',
+        sameDirectoryCandidate,
+        sameOriginCandidate
+    ].filter((url, index, arr) => url && arr.indexOf(url) === index);
+}
+
+function setRecomputeStatus(message, status = '') {
+    const statusEl = $('recomputeStatusText');
+    if (!(statusEl instanceof HTMLElement)) return;
+    statusEl.classList.remove('is-ok', 'is-error');
+    if (status === 'ok') statusEl.classList.add('is-ok');
+    if (status === 'error') statusEl.classList.add('is-error');
+    statusEl.textContent = message;
+}
+
+function syncRecomputeEngineSelect() {
+    const source = $('engineFilterSelect');
+    const target = $('recomputeEngineSelect');
+    if (!(source instanceof HTMLSelectElement) || !(target instanceof HTMLSelectElement)) return;
+
+    target.innerHTML = ENGINE_BOOK_MODELS
+        .map((model) => `<option value="${escapeHtml(model)}">${escapeHtml(model)}</option>`)
+        .join('');
+    target.value = source.value;
+}
+
+async function runBackendRecompute() {
+    const recomputeEngineSelect = $('recomputeEngineSelect');
+    const recomputeIdInput = $('recomputeIdInput');
+    const recomputeDryRunInput = $('recomputeDryRunInput');
+    const recomputeRunBtn = $('recomputeRunBtn');
+    const engineFilterSelect = $('engineFilterSelect');
+
+    if (!(recomputeEngineSelect instanceof HTMLSelectElement)
+        || !(recomputeIdInput instanceof HTMLInputElement)
+        || !(recomputeDryRunInput instanceof HTMLInputElement)
+        || !(recomputeRunBtn instanceof HTMLButtonElement)
+        || !(engineFilterSelect instanceof HTMLSelectElement)) {
+        return;
+    }
+
+    const selectedModel = String(recomputeEngineSelect.value || '').trim();
+    const file = resolveEngineFileFromFilter(selectedModel);
+    const id = String(recomputeIdInput.value || '').trim();
+    const dryRun = recomputeDryRunInput.checked;
+
+    if (!file) {
+        alert('No se pudo resolver el archivo engine para el recálculo.');
+        return;
+    }
+
+    const payload = {
+        file,
+        dryRun,
+        updateRevision: true,
+        backup: true
+    };
+    if (id) payload.id = id;
+
+    recomputeRunBtn.disabled = true;
+    setRecomputeStatus('Ejecutando recálculo en backend...', '');
+
+    const urls = getRecomputeCandidateUrls();
+    let lastError = '';
+    let result = null;
+
+    for (const url of urls) {
+        try {
+            const response = await fetch(url, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(payload)
+            });
+            const data = await response.json().catch(() => ({}));
+            if (!response.ok) {
+                lastError = String(data?.error || `HTTP ${response.status}`).trim();
+                continue;
+            }
+            result = data?.result || null;
+            break;
+        } catch (error) {
+            lastError = String(error?.message || error || 'Error de red');
+        }
+    }
+
+    recomputeRunBtn.disabled = false;
+
+    if (!result) {
+        setRecomputeStatus(`Error: ${lastError || 'no se pudo ejecutar el recálculo.'}`, 'error');
+        return;
+    }
+
+    const modeLabel = result.mode === 'single-id' ? `ID ${result.id}` : 'libro completo';
+    setRecomputeStatus(
+        `OK ${modeLabel} | scanned=${result.scanned} changed=${result.changedRows} ok=${result.okRows} ko=${result.koRows} dryRun=${result.dryRun ? 'si' : 'no'}`,
+        'ok'
+    );
+
+    if (!result.dryRun && result.wroteFile) {
+        const selectedMainModel = String(engineFilterSelect.value || '').trim();
+        if (selectedMainModel === selectedModel) {
+            const keepRecord = currentRow ? txt(currentRow?.ID, '') : '';
+            await loadEngineForFilter(selectedMainModel);
+            if (keepRecord) {
+                const reloaded = findRecordByPrimaryKey(keepRecord, selectedMainModel);
+                if (reloaded) {
+                    currentRow = reloaded;
+                    $('recordIdInput').value = getDisplayPn(reloaded);
+                    currentProcessIndex = 0;
+                    await revalidateCurrentRow();
+                }
+            }
+            updateRecordSearchSuggestions();
+        }
+    }
+}
+
 async function loadEngineForFilter(engineFilter) {
     const engineFile = resolveEngineFileFromFilter(engineFilter);
     if (!engineFile) {
@@ -1371,6 +1499,7 @@ async function initialize() {
         buildEngineOptions(requestedModel);
         const initialModel = String($('engineFilterSelect')?.value || '').trim() || ENGINE_BOOK_MODELS[0] || '';
         await loadEngineForFilter(initialModel);
+        syncRecomputeEngineSelect();
         updateRecordSearchSuggestions();
 
         if (startup.record) {
@@ -1414,6 +1543,12 @@ bindClick('saveErrorsBtn', () => {
     saveErrorFields().catch((error) => alert(`No se pudieron guardar errores: ${error.message}`));
 });
 
+bindClick('recomputeRunBtn', () => {
+    runBackendRecompute().catch((error) => {
+        setRecomputeStatus(`Error: ${String(error?.message || error)}`, 'error');
+    });
+});
+
 bindClick('statusOkBtn', () => {
     setReviewStatus('ok').catch((error) => alert(`No se pudo guardar estado OK: ${error.message}`));
 });
@@ -1443,6 +1578,10 @@ const engineFilterSelect = $('engineFilterSelect');
 if (engineFilterSelect instanceof HTMLSelectElement) {
     engineFilterSelect.addEventListener('change', () => {
         const selectedModel = String(engineFilterSelect.value || '').trim();
+        const recomputeEngineSelect = $('recomputeEngineSelect');
+        if (recomputeEngineSelect instanceof HTMLSelectElement) {
+            recomputeEngineSelect.value = selectedModel;
+        }
         loadEngineForFilter(selectedModel).then(() => {
             updateRecordSearchSuggestions();
         }).catch((error) => {

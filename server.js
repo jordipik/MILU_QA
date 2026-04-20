@@ -5,6 +5,7 @@ const path = require('path');
 const bodyParser = require('body-parser');
 const cors = require('cors');
 const { ENGINE_JSON_FILES } = require('./engine_files');
+const { recomputeEngineErrors } = require('./recompute_engine_errors');
 
 const app = express();
 const PORT = 3000;
@@ -36,8 +37,40 @@ function legacyQaPipelineDisabled(res) {
 app.use(cors());
 app.use(bodyParser.json({ limit: '10mb' }));
 
-app.post('/recompute-qa-errors', async (_req, res) => {
-    return legacyQaPipelineDisabled(res);
+app.post('/recompute-qa-errors', async (req, res) => {
+    const file = String(req.body?.file ?? '').trim();
+    const id = String(req.body?.id ?? '').trim();
+    const dryRun = Boolean(req.body?.dryRun);
+    const updateRevision = req.body?.updateRevision !== false;
+    const backup = req.body?.backup !== false;
+
+    if (!file) {
+        return res.status(400).json({ ok: false, error: 'Falta parametro requerido: file' });
+    }
+
+    if (!ENGINE_JSON_FILES.includes(file)) {
+        return res.status(400).json({
+            ok: false,
+            error: 'Archivo no permitido',
+            allowedFiles: ENGINE_JSON_FILES
+        });
+    }
+
+    try {
+        const result = recomputeEngineErrors({
+            file,
+            id,
+            dryRun,
+            updateRevision,
+            backup,
+            rootDir: __dirname
+        });
+        return res.json({ ok: true, result });
+    } catch (error) {
+        const message = String(error?.message || error || 'Error desconocido');
+        const isNotFound = /no se encontro ningun registro con id=/i.test(message);
+        return res.status(isNotFound ? 404 : 500).json({ ok: false, error: message });
+    }
 });
 
 app.use(express.static(__dirname));

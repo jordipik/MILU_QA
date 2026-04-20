@@ -41,6 +41,21 @@
                 <button id="saveErrorsBtn" type="button">Guardar ERR</button>
             </div>
 
+            <section class="a2-auto-recompute" aria-label="Recalculo automatico de errores QA">
+                <h3>Recalculo QA (backend)</h3>
+                <div class="a2-auto-recompute-controls">
+                    <select id="recomputeEngineSelect" aria-label="Libro para recalculo"></select>
+                    <input id="recomputeIdInput" type="search" placeholder="ID opcional (vacio = todo el libro)"
+                        autocomplete="off">
+                    <label class="a2-auto-recompute-check" for="recomputeDryRunInput">
+                        <input id="recomputeDryRunInput" type="checkbox" checked>
+                        Simulacion (dry-run)
+                    </label>
+                    <button id="recomputeRunBtn" type="button">Ejecutar recálculo</button>
+                </div>
+                <p id="recomputeStatusText" class="a2-auto-recompute-status">Listo para ejecutar.</p>
+            </section>
+
             <div class="a2-status-row">
                 <p id="recordPositionText">Registro 0 de 0</p>
                 <p id="selectedBookText" class="a2-selected-book">Libro: -</p>
