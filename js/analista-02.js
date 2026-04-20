@@ -6,10 +6,67 @@ import { evaluateQaChecksForField, evaluateRowQaChecks, getAllQaCheckCodes, getQ
 
 const $ = (id) => document.getElementById(id);
 
+const FIELD_TO_ERROR_KEY = {
+    'POS': 'pos_error',
+    'PART NO.': 'pn_error',
+    'DESIGNATION': 'designation_error',
+    'WEIGHT': 'weight_error',
+    'MEASUREMENT / STANDARD': 'measurement_error',
+    'NORMA': 'norma_error',
+    'BOM-No.': 'bom_error'
+};
+
+const FIELD_TO_PDF_AUTO_KEY = {
+    'POS': 'pos_pdf',
+    'PART NO.': 'pn_pdf',
+    'DESIGNATION': 'designation_pdf',
+    'MODEL/TYPE': 'model_type_pdf',
+    'QTY': 'qty_pdf',
+    'UNITS': 'units_pdf',
+    'WEIGHT': 'weight_pdf',
+    'FN': 'fn_pdf',
+    'MEASUREMENT / STANDARD': 'measure_pdf',
+    'FG/FGS': 'fg_fgs_pdf',
+    'GESA': 'gesa_pdf',
+    'NSN': 'nsn_pdf',
+    'NORMALIZADO': 'normalizado_pdf',
+    'NORMA': 'norma_pdf',
+    'SUST_STATUS': 'sust_status_pdf',
+    'HIERARCHI': 'hierarchi_pdf',
+    'SUST_NEW_PART_NUMBER': 'sust_new_part_number_pdf',
+    'SUST_SUPERSEDED_LIST': 'sust_superseded_list_pdf',
+    'BOM-No.': 'bom_pdf'
+};
+
 const QA_LABELS = Object.fromEntries(getAllQaCheckCodes().map((code) => [code, getQaCheckLabel(code)]));
 
 function getFieldChecks(row, entry, context = {}) {
     return evaluateQaChecksForField(row, entry?.field, context);
+}
+
+function getStoredFieldErrorCount(row, fieldName) {
+    const errorKey = FIELD_TO_ERROR_KEY[String(fieldName ?? '').trim()];
+    if (!errorKey) return 0;
+    const value = Number(row?.[errorKey]);
+    return Number.isFinite(value) ? value : 0;
+}
+
+function getStoredFieldErrorMap(row) {
+    return Object.fromEntries(
+        Object.keys(FIELD_TO_ERROR_KEY).map((fieldName) => [fieldName, getStoredFieldErrorCount(row, fieldName)])
+    );
+}
+
+function getStoredErrorSummary(row) {
+    return Object.keys(FIELD_TO_ERROR_KEY)
+        .map((fieldName) => ({ field: fieldName, count: getStoredFieldErrorCount(row, fieldName) }))
+        .filter((entry) => entry.count > 0);
+}
+
+function getStoredPdfAutoValue(row, fieldName) {
+    const pdfKey = FIELD_TO_PDF_AUTO_KEY[String(fieldName ?? '').trim()];
+    if (!pdfKey) return '';
+    return String(row?.[pdfKey] ?? '').trim();
 }
 
 let currentRow = null;
@@ -79,12 +136,13 @@ function isRequiredComparisonField(fieldName) {
     return normalized === 'POS' || normalized === 'PART NO.' || normalized === 'DESIGNATION';
 }
 
-function getComparisonCellClasses(entry, pdfValue) {
+function getComparisonCellClasses(entry, pdfValue, pdfAutoValue = '') {
     const rawValue = txt(entry?.raw);
     const sustValue = txt(entry?.sust);
     const finalValue = txt(entry?.final);
     const gesaValue = txt(entry?.gesa);
     const pdfResolvedValue = txt(pdfValue);
+    const pdfAutoResolvedValue = txt(pdfAutoValue);
 
     const getMismatchClassAgainstFinal = (value) => {
         const normalizedValue = normalizeCompareValue(value);
@@ -97,14 +155,16 @@ function getComparisonCellClasses(entry, pdfValue) {
     const rawMatchesSust = isCompareMatch(rawValue, sustValue);
     const gesaMatchesFinal = isCompareMatch(gesaValue, finalValue);
     const pdfMatchesFinal = isCompareMatch(pdfResolvedValue, finalValue);
+    const pdfAutoMatchesFinal = isCompareMatch(pdfAutoResolvedValue, finalValue);
     const rawSustMatchClass = rawMatchesSust ? 'compare-raw-sust-match' : '';
 
     return {
         rawClass: [getMismatchClassAgainstFinal(rawValue), rawSustMatchClass].filter(Boolean).join(' '),
         sustClass: rawMatchesSust ? `compare-match ${rawSustMatchClass}` : '',
-        finalClass: finalMissing ? 'compare-missing' : (gesaMatchesFinal || pdfMatchesFinal ? 'compare-match' : ''),
+        finalClass: finalMissing ? 'compare-missing' : (gesaMatchesFinal || pdfMatchesFinal || pdfAutoMatchesFinal ? 'compare-match' : ''),
         gesaClass: getMismatchClassAgainstFinal(gesaValue),
-        pdfClass: getMismatchClassAgainstFinal(pdfResolvedValue)
+        pdfClass: getMismatchClassAgainstFinal(pdfResolvedValue),
+        pdfAutoClass: getMismatchClassAgainstFinal(pdfAutoResolvedValue)
     };
 }
 
@@ -654,18 +714,19 @@ function resolveEngineFileFromFilter(engineFilter) {
     return directMatch || '';
 }
 
-function getRecomputeCandidateUrls() {
+function getBackendCandidateUrls(endpointPath) {
     const currentOrigin = window.location.origin && window.location.origin !== 'null'
         ? window.location.origin
         : '';
     const currentHostname = String(window.location.hostname || '').trim();
-    const sameDirectoryCandidate = new URL('recompute-qa-errors', new URL('.', window.location.href)).href;
-    const localPortCandidate = currentHostname ? `http://${currentHostname}:3000/recompute-qa-errors` : '';
-    const sameOriginCandidate = currentOrigin ? `${currentOrigin}/recompute-qa-errors` : '/recompute-qa-errors';
+    const cleanEndpoint = String(endpointPath || '').trim().replace(/^\/+/, '');
+    const sameDirectoryCandidate = new URL(cleanEndpoint, new URL('.', window.location.href)).href;
+    const localPortCandidate = currentHostname ? `http://${currentHostname}:3000/${cleanEndpoint}` : '';
+    const sameOriginCandidate = currentOrigin ? `${currentOrigin}/${cleanEndpoint}` : `/${cleanEndpoint}`;
 
     return [
         localPortCandidate,
-        'http://localhost:3000/recompute-qa-errors',
+        `http://localhost:3000/${cleanEndpoint}`,
         sameDirectoryCandidate,
         sameOriginCandidate
     ].filter((url, index, arr) => url && arr.indexOf(url) === index);
@@ -725,9 +786,11 @@ async function runBackendRecompute() {
     if (id) payload.id = id;
 
     recomputeRunBtn.disabled = true;
+    if (recomputePdfRunBtn instanceof HTMLButtonElement) recomputePdfRunBtn.disabled = true;
     setRecomputeStatus('Ejecutando recálculo en backend...', '');
 
-    const urls = getRecomputeCandidateUrls();
+    const recomputePdfRunBtn = $('recomputePdfRunBtn');
+    const urls = getBackendCandidateUrls('recompute-qa-errors');
     let lastError = '';
     let result = null;
 
@@ -787,6 +850,7 @@ async function runBackendRecompute() {
     }
 
     recomputeRunBtn.disabled = false;
+    if (recomputePdfRunBtn instanceof HTMLButtonElement) recomputePdfRunBtn.disabled = false;
 
     if (!result) {
         setRecomputeStatus(
@@ -799,6 +863,121 @@ async function runBackendRecompute() {
     const modeLabel = result.mode === 'single-id' ? `ID ${result.id}` : 'libro completo';
     setRecomputeStatus(
         `OK ${modeLabel} | scanned=${result.scanned} changed=${result.changedRows} ok=${result.okRows} ko=${result.koRows} dryRun=${result.dryRun ? 'si' : 'no'}`,
+        'ok'
+    );
+
+    if (!result.dryRun && result.wroteFile) {
+        const selectedMainModel = String(engineFilterSelect.value || '').trim();
+        if (selectedMainModel === selectedModel) {
+            const keepRecord = currentRow ? txt(currentRow?.ID, '') : '';
+            await loadEngineForFilter(selectedMainModel);
+            if (keepRecord) {
+                const reloaded = findRecordByPrimaryKey(keepRecord, selectedMainModel);
+                if (reloaded) {
+                    currentRow = reloaded;
+                    $('recordIdInput').value = getDisplayPn(reloaded);
+                    currentProcessIndex = 0;
+                    await revalidateCurrentRow();
+                }
+            }
+            updateRecordSearchSuggestions();
+        }
+    }
+}
+
+async function runBackendRecomputePdfAuto() {
+    const recomputeEngineSelect = $('recomputeEngineSelect');
+    const recomputeIdInput = $('recomputeIdInput');
+    const recomputeDryRunInput = $('recomputeDryRunInput');
+    const recomputeRunBtn = $('recomputeRunBtn');
+    const recomputePdfRunBtn = $('recomputePdfRunBtn');
+    const engineFilterSelect = $('engineFilterSelect');
+
+    if (!(recomputeEngineSelect instanceof HTMLSelectElement)
+        || !(recomputeIdInput instanceof HTMLInputElement)
+        || !(recomputeDryRunInput instanceof HTMLInputElement)
+        || !(recomputeRunBtn instanceof HTMLButtonElement)
+        || !(recomputePdfRunBtn instanceof HTMLButtonElement)
+        || !(engineFilterSelect instanceof HTMLSelectElement)) {
+        return;
+    }
+
+    const selectedModel = String(recomputeEngineSelect.value || '').trim();
+    const file = resolveEngineFileFromFilter(selectedModel);
+    const id = String(recomputeIdInput.value || '').trim();
+    const dryRun = recomputeDryRunInput.checked;
+
+    if (!file) {
+        alert('No se pudo resolver el archivo engine para recalcular PDF_AUTO.');
+        return;
+    }
+
+    const payload = {
+        file,
+        dryRun,
+        backup: true
+    };
+    if (id) payload.id = id;
+
+    recomputeRunBtn.disabled = true;
+    recomputePdfRunBtn.disabled = true;
+    setRecomputeStatus('Ejecutando recalculo PDF_AUTO en backend...', '');
+
+    const urls = getBackendCandidateUrls('recompute-pdf-auto');
+    let lastError = '';
+    let result = null;
+
+    for (const url of urls) {
+        try {
+            const response = await fetch(url, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(payload)
+            });
+            const rawBody = await response.text();
+            let data = null;
+            try {
+                data = rawBody ? JSON.parse(rawBody) : null;
+            } catch (_parseError) {
+                data = null;
+            }
+
+            if (!response.ok) {
+                lastError = String(data?.error || `HTTP ${response.status}`).trim();
+                continue;
+            }
+
+            if (!data || data.ok !== true || !data.result || typeof data.result !== 'object') {
+                const snippet = rawBody
+                    ? rawBody.replace(/\s+/g, ' ').trim().slice(0, 140)
+                    : '';
+                lastError = snippet
+                    ? `Respuesta invalida desde ${url}: ${snippet}`
+                    : `Respuesta invalida desde ${url} (esperado JSON con { ok: true, result }).`;
+                continue;
+            }
+
+            result = data.result;
+            break;
+        } catch (error) {
+            lastError = String(error?.message || error || 'Error de red');
+        }
+    }
+
+    recomputeRunBtn.disabled = false;
+    recomputePdfRunBtn.disabled = false;
+
+    if (!result) {
+        setRecomputeStatus(
+            `Error: ${lastError || 'No se pudo ejecutar el recalculo PDF_AUTO. Comprueba que server.js este activo en http://localhost:3000 y responde en /health.'}`,
+            'error'
+        );
+        return;
+    }
+
+    const modeLabel = result.mode === 'single-id' ? `ID ${result.id}` : 'libro completo';
+    setRecomputeStatus(
+        `OK PDF_AUTO ${modeLabel} | scanned=${result.scanned} changed=${result.changedRows} missingPages=${result.missingPages || 0} dryRun=${result.dryRun ? 'si' : 'no'}`,
         'ok'
     );
 
@@ -1081,12 +1260,17 @@ function getPdfValueForRow(row, entry, pageText, pnAnchor) {
     if (!pageText || !pageText.normalizedText) return { value: '-', token: '' };
     if (!pnAnchor) return { value: '-', token: '' };
 
-    const searchClusters = isBomField(entry.field)
+    const searchClustersLine = isBomField(entry.field)
         ? pageText.clusters
         : pageText.clusters.filter((cluster) => cluster.lineIndex === pnAnchor.lineIndex);
-    const searchItems = isBomField(entry.field)
+    const searchItemsLine = isBomField(entry.field)
         ? pageText.items
         : pageText.items.filter((item) => item.lineIndex === pnAnchor.lineIndex);
+
+    const searchScopes = [
+        { clusters: searchClustersLine, items: searchItemsLine },
+        { clusters: pageText.clusters, items: pageText.items }
+    ];
 
     const candidates = [entry.final, entry.gesa, entry.raw]
         .map(value => String(value ?? '').trim())
@@ -1099,23 +1283,27 @@ function getPdfValueForRow(row, entry, pageText, pnAnchor) {
         seen.add(key);
 
         const normalized = normalizePdfToken(candidate);
-        const clusterMatch = searchClusters.find((cluster) => tokenMatchesPdf(cluster.normalized, normalized));
-        if (clusterMatch) {
-            const exactMatch = extractExactPdfSubstring(clusterMatch.text, candidate);
-            if (exactMatch) {
-                return { value: exactMatch, token: normalizePdfToken(exactMatch) };
+        for (const scope of searchScopes) {
+            const clusterMatch = scope.clusters.find((cluster) => tokenMatchesPdf(cluster.normalized, normalized));
+            if (clusterMatch) {
+                const exactMatch = extractExactPdfSubstring(clusterMatch.text, candidate);
+                if (exactMatch) {
+                    return { value: exactMatch, token: normalizePdfToken(exactMatch) };
+                }
+            }
+
+            const itemMatch = scope.items.find((item) => tokenMatchesPdf(item.normalized, normalized));
+            if (itemMatch) {
+                const exactMatch = extractExactPdfSubstring(itemMatch.text, candidate) || itemMatch.text;
+                if (exactMatch) {
+                    return { value: exactMatch, token: normalizePdfToken(exactMatch) };
+                }
             }
         }
 
-        const itemMatch = searchItems.find((item) => tokenMatchesPdf(item.normalized, normalized));
-        if (itemMatch) {
-            const exactMatch = extractExactPdfSubstring(itemMatch.text, candidate) || itemMatch.text;
-            if (exactMatch) {
-                return { value: exactMatch, token: normalizePdfToken(exactMatch) };
-            }
+        if (tokenMatchesPdf(pageText.normalizedText, normalized)) {
+            return { value: candidate, token: normalized };
         }
-
-        if (tokenMatchesPdf(pageText.normalizedText, normalized)) continue;
     }
 
     return { value: '-', token: '' };
@@ -1126,15 +1314,16 @@ async function renderComparisonTable(row) {
     if (!(body instanceof HTMLElement)) return;
 
     const rows = buildComparisonRows(row);
+    lastComputedErrors = getStoredFieldErrorMap(row);
     setPdfReadTokens([]);
 
     body.innerHTML = rows.map((entry) => {
         const loadingClass = 'pdf-loading';
         const rowClass = entry.separatorTop ? 'separator-top' : '';
-        const fieldIssues = getFieldChecks(row, entry, { pdfReady: false, pdfValue: '' });
-        const errCount = fieldIssues.length;
+        const pdfAutoValue = getStoredPdfAutoValue(row, entry.field);
+        const errCount = getStoredFieldErrorCount(row, entry.field);
         const errCellClass = errCount > 0 ? 'field-err has-errors' : 'field-err';
-        const errTitle = errCount > 0 ? ` title="${fieldIssues.map(i => escapeHtml(i.label)).join('&#10;')}"` : '';
+        const errTitle = errCount > 0 ? ` title="${escapeHtml(`Errores persistidos en JSON: ${errCount}`)}"` : '';
         return `<tr class="${rowClass}">
             <td class="field">${escapeHtml(entry.field)}</td>
             <td>${escapeHtml(txt(entry.raw))}</td>
@@ -1142,6 +1331,7 @@ async function renderComparisonTable(row) {
             <td>${escapeHtml(txt(entry.sust))}</td>
             <td>${escapeHtml(txt(entry.final))}</td>
             <td class="${loadingClass}">${escapeHtml('...')}</td>
+            <td>${escapeHtml(txt(pdfAutoValue))}</td>
             <td class="${errCellClass}"${errTitle}>${errCount > 0 ? errCount : ''}</td>
         </tr>`;
     }).join('');
@@ -1159,13 +1349,13 @@ async function renderComparisonTable(row) {
         if (pdfRead.token) {
             readTokens.push({ field: entry.field, token: pdfRead.token });
         }
-        const cellClasses = getComparisonCellClasses(entry, pdfRead.value);
+        const pdfAutoValue = getStoredPdfAutoValue(row, entry.field);
+        const cellClasses = getComparisonCellClasses(entry, pdfRead.value, pdfAutoValue);
         const rowClass = entry.separatorTop ? 'separator-top' : '';
-        const fieldIssues = getFieldChecks(row, entry, { pdfReady: true, pdfValue: pdfRead.value });
-        const errCount = fieldIssues.length;
+        const errCount = getStoredFieldErrorCount(row, entry.field);
         fieldErrorAccum[entry.field] = errCount;
         const errCellClass = errCount > 0 ? 'field-err has-errors' : 'field-err';
-        const errTitle = errCount > 0 ? ` title="${fieldIssues.map(i => escapeHtml(i.label)).join('&#10;')}"` : '';
+        const errTitle = errCount > 0 ? ` title="${escapeHtml(`Errores persistidos en JSON: ${errCount}`)}"` : '';
         const finalErrClass = errCount > 0 ? 'compare-final-error' : 'compare-final-ok';
         const finalFullClass = [cellClasses.finalClass, finalErrClass].filter(Boolean).join(' ');
         return `<tr class="${rowClass}">
@@ -1175,6 +1365,7 @@ async function renderComparisonTable(row) {
             <td class="${cellClasses.sustClass}">${escapeHtml(txt(entry.sust))}</td>
             <td class="${finalFullClass}">${escapeHtml(txt(entry.final))}</td>
             <td class="${cellClasses.pdfClass}">${escapeHtml(txt(pdfRead.value))}</td>
+            <td class="${cellClasses.pdfAutoClass}">${escapeHtml(txt(pdfAutoValue))}</td>
             <td class="${errCellClass}"${errTitle}>${errCount > 0 ? errCount : ''}</td>
         </tr>`;
     }).join('');
@@ -1234,13 +1425,13 @@ function renderEvidence(row, processState) {
     lines.push(`<li>Registro: PN/PART NO ${getDisplayPn(row)} | ${txt(row?.engine_model)} / ${txt(row?.['Source Page'])} / POS ${txt(row?.POS)}</li>`);
     lines.push(`<li class="${processState.status === 'ok' ? 'ok' : processState.status === 'ko' ? 'ko' : ''}">Veredicto actual: ${processState.title}</li>`);
 
-    const codes = getRowCodes(row);
-    if (codes.length) {
-        codes.forEach((code) => {
-            lines.push(`<li class="ko">Check activo: ${QA_LABELS[code] || code}</li>`);
+    const storedErrors = getStoredErrorSummary(row);
+    if (storedErrors.length) {
+        storedErrors.forEach((entry) => {
+            lines.push(`<li class="ko">Error persistido: ${escapeHtml(entry.field)} = ${entry.count}</li>`);
         });
     } else {
-        lines.push('<li class="ok">Sin checks QA activos para este registro.</li>');
+        lines.push('<li class="ok">Sin errores persistidos en el JSON para este registro.</li>');
     }
 
     evidence.innerHTML = lines.join('');
@@ -1353,16 +1544,6 @@ async function saveCurrentFieldChanges() {
 
     await revalidateCurrentRow();
 }
-
-const FIELD_TO_ERROR_KEY = {
-    'POS': 'pos_error',
-    'PART NO.': 'pn_error',
-    'DESIGNATION': 'designation_error',
-    'WEIGHT': 'weight_error',
-    'MEASUREMENT / STANDARD': 'measurement_error',
-    'NORMA': 'norma_error',
-    'BOM-No.': 'bom_error'
-};
 
 async function saveErrorFields() {
     if (!currentRow) {
@@ -1615,6 +1796,12 @@ bindClick('saveErrorsBtn', () => {
 
 bindClick('recomputeRunBtn', () => {
     runBackendRecompute().catch((error) => {
+        setRecomputeStatus(`Error: ${String(error?.message || error)}`, 'error');
+    });
+});
+
+bindClick('recomputePdfRunBtn', () => {
+    runBackendRecomputePdfAuto().catch((error) => {
         setRecomputeStatus(`Error: ${String(error?.message || error)}`, 'error');
     });
 });

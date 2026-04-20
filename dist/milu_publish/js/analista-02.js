@@ -8,6 +8,28 @@ const $ = (id) => document.getElementById(id);
 
 const QA_LABELS = Object.fromEntries(getAllQaCheckCodes().map((code) => [code, getQaCheckLabel(code)]));
 
+const FIELD_TO_PDF_AUTO_KEY = {
+    'POS': 'pos_pdf',
+    'PART NO.': 'pn_pdf',
+    'DESIGNATION': 'designation_pdf',
+    'MODEL/TYPE': 'model_type_pdf',
+    'QTY': 'qty_pdf',
+    'UNITS': 'units_pdf',
+    'WEIGHT': 'weight_pdf',
+    'FN': 'fn_pdf',
+    'MEASUREMENT / STANDARD': 'measure_pdf',
+    'FG/FGS': 'fg_fgs_pdf',
+    'GESA': 'gesa_pdf',
+    'NSN': 'nsn_pdf',
+    'NORMALIZADO': 'normalizado_pdf',
+    'NORMA': 'norma_pdf',
+    'SUST_STATUS': 'sust_status_pdf',
+    'HIERARCHI': 'hierarchi_pdf',
+    'SUST_NEW_PART_NUMBER': 'sust_new_part_number_pdf',
+    'SUST_SUPERSEDED_LIST': 'sust_superseded_list_pdf',
+    'BOM-No.': 'bom_pdf'
+};
+
 // Checks oficiales por campo para la columna ERR.
 // Cada entrada: { code, label, needsPdf, check(row, entry, context) => boolean (true = pasa, false = falla) }
 const FIELD_CUSTOM_CHECKS = {
@@ -92,6 +114,12 @@ function getFieldChecks(row, entry, context = {}) {
     });
 }
 
+function getStoredPdfAutoValue(row, fieldName) {
+    const pdfKey = FIELD_TO_PDF_AUTO_KEY[String(fieldName ?? '').trim()];
+    if (!pdfKey) return '';
+    return String(row?.[pdfKey] ?? '').trim();
+}
+
 let currentRow = null;
 let currentProcessIndex = 0;
 let comparisonRenderToken = 0;
@@ -151,23 +179,26 @@ function isRequiredComparisonField(fieldName) {
     return normalized === 'POS' || normalized === 'PART NO.' || normalized === 'DESIGNATION';
 }
 
-function getComparisonCellClasses(entry, pdfValue) {
+function getComparisonCellClasses(entry, pdfValue, pdfAutoValue = '') {
     const rawValue = txt(entry?.raw);
     const sustValue = txt(entry?.sust);
     const finalValue = txt(entry?.final);
     const gesaValue = txt(entry?.gesa);
     const pdfResolvedValue = txt(pdfValue);
+    const pdfAutoResolvedValue = txt(pdfAutoValue);
     const finalMissing = isRequiredComparisonField(entry?.field) && normalizeCompareValue(finalValue) === '';
     const rawMatchesSust = isCompareMatch(rawValue, sustValue);
     const gesaMatchesFinal = isCompareMatch(gesaValue, finalValue);
     const pdfMatchesFinal = isCompareMatch(pdfResolvedValue, finalValue);
+    const pdfAutoMatchesFinal = isCompareMatch(pdfAutoResolvedValue, finalValue);
 
     return {
         rawClass: rawMatchesSust ? 'compare-match' : '',
         sustClass: rawMatchesSust ? 'compare-match' : '',
-        finalClass: finalMissing ? 'compare-missing' : (gesaMatchesFinal || pdfMatchesFinal ? 'compare-match' : ''),
+        finalClass: finalMissing ? 'compare-missing' : (gesaMatchesFinal || pdfMatchesFinal || pdfAutoMatchesFinal ? 'compare-match' : ''),
         gesaClass: gesaMatchesFinal ? 'compare-match' : '',
-        pdfClass: pdfMatchesFinal ? 'compare-match' : ''
+        pdfClass: pdfMatchesFinal ? 'compare-match' : '',
+        pdfAutoClass: pdfAutoMatchesFinal ? 'compare-match' : ''
     };
 }
 
@@ -787,8 +818,8 @@ function getGesaPn(row) {
 }
 
 function getSustPn(row) {
-    const isGesaSi = String(row?.gesa ?? '').trim().toUpperCase() === 'SI';
-    if (!isGesaSi) return null;
+    const isSustSi = String(row?.sust_status ?? '').trim().toUpperCase() === 'SI';
+    if (!isSustSi) return null;
     return String(row?.pn_final ?? '').trim() || null;
 }
 
@@ -818,7 +849,6 @@ function buildComparisonRows(row) {
         { field: 'NORMALIZADO', raw: null, gesa: row?.normalizado, sust: null, final: row?.normalizado, errFields: [] },
         { field: 'NORMA', raw: null, gesa: row?.norma, sust: null, final: row?.norma, errFields: [] },
         { field: 'SUST_STATUS', raw: null, gesa: null, sust: row?.sust_status, final: row?.sust_status, separatorTop: true, errFields: [] },
-        { field: 'SUST', raw: null, gesa: null, sust: row?.sust, final: row?.sust, errFields: [] },
         { field: 'HIERARCHI', raw: null, gesa: null, sust: row?.hierarchi ?? row?.sust_hierarchie, final: row?.hierarchi ?? row?.sust_hierarchie, errFields: [] },
         { field: 'SUST_NEW_PART_NUMBER', raw: null, gesa: null, sust: row?.sust_new_part_number, final: row?.sust_new_part_number, errFields: [] },
         { field: 'SUST_SUPERSEDED_LIST', raw: null, gesa: null, sust: row?.sust_superseded_list, final: row?.sust_superseded_list, errFields: [] }
@@ -852,12 +882,17 @@ function getPdfValueForRow(row, entry, pageText, pnAnchor) {
     if (!pageText || !pageText.normalizedText) return { value: '-', token: '' };
     if (!pnAnchor) return { value: '-', token: '' };
 
-    const searchClusters = isBomField(entry.field)
+    const searchClustersLine = isBomField(entry.field)
         ? pageText.clusters
         : pageText.clusters.filter((cluster) => cluster.lineIndex === pnAnchor.lineIndex);
-    const searchItems = isBomField(entry.field)
+    const searchItemsLine = isBomField(entry.field)
         ? pageText.items
         : pageText.items.filter((item) => item.lineIndex === pnAnchor.lineIndex);
+
+    const searchScopes = [
+        { clusters: searchClustersLine, items: searchItemsLine },
+        { clusters: pageText.clusters, items: pageText.items }
+    ];
 
     const candidates = [entry.final, entry.gesa, entry.raw]
         .map(value => String(value ?? '').trim())
@@ -870,23 +905,27 @@ function getPdfValueForRow(row, entry, pageText, pnAnchor) {
         seen.add(key);
 
         const normalized = normalizePdfToken(candidate);
-        const clusterMatch = searchClusters.find((cluster) => tokenMatchesPdf(cluster.normalized, normalized));
-        if (clusterMatch) {
-            const exactMatch = extractExactPdfSubstring(clusterMatch.text, candidate);
-            if (exactMatch) {
-                return { value: exactMatch, token: normalizePdfToken(exactMatch) };
+        for (const scope of searchScopes) {
+            const clusterMatch = scope.clusters.find((cluster) => tokenMatchesPdf(cluster.normalized, normalized));
+            if (clusterMatch) {
+                const exactMatch = extractExactPdfSubstring(clusterMatch.text, candidate);
+                if (exactMatch) {
+                    return { value: exactMatch, token: normalizePdfToken(exactMatch) };
+                }
+            }
+
+            const itemMatch = scope.items.find((item) => tokenMatchesPdf(item.normalized, normalized));
+            if (itemMatch) {
+                const exactMatch = extractExactPdfSubstring(itemMatch.text, candidate) || itemMatch.text;
+                if (exactMatch) {
+                    return { value: exactMatch, token: normalizePdfToken(exactMatch) };
+                }
             }
         }
 
-        const itemMatch = searchItems.find((item) => tokenMatchesPdf(item.normalized, normalized));
-        if (itemMatch) {
-            const exactMatch = extractExactPdfSubstring(itemMatch.text, candidate) || itemMatch.text;
-            if (exactMatch) {
-                return { value: exactMatch, token: normalizePdfToken(exactMatch) };
-            }
+        if (tokenMatchesPdf(pageText.normalizedText, normalized)) {
+            return { value: candidate, token: normalized };
         }
-
-        if (tokenMatchesPdf(pageText.normalizedText, normalized)) continue;
     }
 
     return { value: '-', token: '' };
@@ -902,6 +941,7 @@ async function renderComparisonTable(row) {
     body.innerHTML = rows.map((entry) => {
         const loadingClass = 'pdf-loading';
         const rowClass = entry.separatorTop ? 'separator-top' : '';
+        const pdfAutoValue = getStoredPdfAutoValue(row, entry.field);
         const fieldIssues = getFieldChecks(row, entry, { pdfReady: false, pdfValue: '' });
         const errCount = fieldIssues.length;
         const errCellClass = errCount > 0 ? 'field-err has-errors' : 'field-err';
@@ -913,6 +953,7 @@ async function renderComparisonTable(row) {
             <td>${escapeHtml(txt(entry.sust))}</td>
             <td>${escapeHtml(txt(entry.final))}</td>
             <td class="${loadingClass}">${escapeHtml('...')}</td>
+            <td>${escapeHtml(txt(pdfAutoValue))}</td>
             <td class="${errCellClass}"${errTitle}>${errCount > 0 ? errCount : ''}</td>
         </tr>`;
     }).join('');
@@ -929,7 +970,8 @@ async function renderComparisonTable(row) {
         if (pdfRead.token) {
             readTokens.push({ field: entry.field, token: pdfRead.token });
         }
-        const cellClasses = getComparisonCellClasses(entry, pdfRead.value);
+        const pdfAutoValue = getStoredPdfAutoValue(row, entry.field);
+        const cellClasses = getComparisonCellClasses(entry, pdfRead.value, pdfAutoValue);
         const rowClass = entry.separatorTop ? 'separator-top' : '';
         const fieldIssues = getFieldChecks(row, entry, { pdfReady: true, pdfValue: pdfRead.value });
         const errCount = fieldIssues.length;
@@ -944,6 +986,7 @@ async function renderComparisonTable(row) {
             <td class="${cellClasses.sustClass}">${escapeHtml(txt(entry.sust))}</td>
             <td class="${finalFullClass}">${escapeHtml(txt(entry.final))}</td>
             <td class="${cellClasses.pdfClass}">${escapeHtml(txt(pdfRead.value))}</td>
+            <td class="${cellClasses.pdfAutoClass}">${escapeHtml(txt(pdfAutoValue))}</td>
             <td class="${errCellClass}"${errTitle}>${errCount > 0 ? errCount : ''}</td>
         </tr>`;
     }).join('');
@@ -1002,13 +1045,13 @@ function renderEvidence(row, processState) {
     lines.push(`<li>Registro: PN/PART NO ${getDisplayPn(row)} | ${txt(row?.engine_model)} / ${txt(row?.['Source Page'])} / POS ${txt(row?.POS)}</li>`);
     lines.push(`<li class="${processState.status === 'ok' ? 'ok' : processState.status === 'ko' ? 'ko' : ''}">Veredicto actual: ${processState.title}</li>`);
 
-    const codes = getRowCodes(row);
-    if (codes.length) {
-        codes.forEach((code) => {
-            lines.push(`<li class="ko">Check activo: ${QA_LABELS[code] || code}</li>`);
+    const storedErrors = getStoredErrorSummary(row);
+    if (storedErrors.length) {
+        storedErrors.forEach((entry) => {
+            lines.push(`<li class="ko">Error persistido: ${escapeHtml(entry.field)} = ${entry.count}</li>`);
         });
     } else {
-        lines.push('<li class="ok">Sin checks QA activos para este registro.</li>');
+        lines.push('<li class="ok">Sin errores persistidos en el JSON para este registro.</li>');
     }
 
     evidence.innerHTML = lines.join('');
