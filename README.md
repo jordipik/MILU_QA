@@ -113,6 +113,11 @@ c:/Users/jordi/source/repos/milu/.venv/Scripts/python.exe add_final_fields.py
    - Corrige typo legado `wheight_final` -> `weight_final`.
    - Si no hay `weight_final`, intenta reutilizar el legado, luego `WEIGHT`, y por ultimo `weight_gesa + units`.
 
+5. Errores QA persistidos por registro
+   - Se generan flags numericos por campo: `pos_error`, `pn_error`, `designation_error`, `weight_error`, `measurement_error`, `norma_error`, `bom_error`.
+   - Se calcula `total_error` como suma de esos flags.
+   - Se actualiza `has_error` como booleano derivado (`total_error > 0`).
+
 ## Notas de mantenimiento
 
 - Evitar editar carpetas de salida salvo que la tarea lo requiera: `dist/`, `esquemas/`, `esquemas_pos_circulos/`, `json_originales/`, `zz_old/`, `fotos_articulos/`, `fotos_motores/`.

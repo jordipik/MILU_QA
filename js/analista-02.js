@@ -2,94 +2,14 @@ import { state } from './state.js';
 import { getEngineJsonFiles, loadEngineDataByFileName, saveCellToServer } from './data-loader.js';
 import { assignRevisionKeys, applyRevisionDataToRows } from './revision.js';
 import { initPdfZoomControls, loadPdfClear, loadPdfWithPage, requestPdfRelayout, setPdfReadTokens, setPdfSelection } from './pdf-viewer.js';
-import { evaluateRowQaChecks, getAllQaCheckCodes, getQaCheckLabel } from './qa-checks.js';
+import { evaluateQaChecksForField, evaluateRowQaChecks, getAllQaCheckCodes, getQaCheckLabel } from './qa-checks.js';
 
 const $ = (id) => document.getElementById(id);
 
 const QA_LABELS = Object.fromEntries(getAllQaCheckCodes().map((code) => [code, getQaCheckLabel(code)]));
 
-// Checks oficiales por campo para la columna ERR.
-// Cada entrada: { code, label, needsPdf, check(row, entry, context) => boolean (true = pasa, false = falla) }
-const FIELD_CUSTOM_CHECKS = {
-    'POS': [
-        { code: 'pos_required', label: 'POS: final lleno', needsPdf: false, check: (row, entry) => normalizeCompareValue(entry?.final) !== '' },
-        { code: 'pos_final_pdf_match', label: 'POS: final coincide con PDF', needsPdf: true, check: (row, entry, context) => isCompareMatch(entry?.final, context?.pdfValue) }
-    ],
-    'PART NO.': [
-        { code: 'pn_required', label: 'PN: final lleno', needsPdf: false, check: (row, entry) => normalizeCompareValue(entry?.final) !== '' },
-        { code: 'pn_final_pdf_match', label: 'PN: final coincide con PDF', needsPdf: true, check: (row, entry, context) => isCompareMatch(entry?.final, context?.pdfValue) }
-    ],
-    'DESIGNATION': [
-        { code: 'designation_required', label: 'DESIGNATION: final lleno', needsPdf: false, check: (row, entry) => normalizeCompareValue(entry?.final) !== '' },
-        {
-            code: 'designation_final_pdf_or_gesa_match',
-            label: 'DESIGNATION: final coincide con PDF o GESA',
-            needsPdf: true,
-            check: (row, entry, context) => isCompareMatch(entry?.final, context?.pdfValue) || isCompareMatch(entry?.final, entry?.gesa)
-        }
-    ],
-    'WEIGHT': [
-        {
-            code: 'weight_final_pdf_or_gesa_match',
-            label: 'WEIGHT: final coincide con PDF o GESA',
-            needsPdf: true,
-            check: (row, entry, context) => isCompareMatch(entry?.final, context?.pdfValue) || isCompareMatch(entry?.final, entry?.gesa)
-        }
-    ],
-    'MEASUREMENT / STANDARD': [
-        {
-            code: 'measurement_final_pdf_or_gesa_match',
-            label: 'MEASUREMENT: final coincide con PDF o GESA',
-            needsPdf: true,
-            check: (row, entry, context) => {
-                const finalValue = normalizeCompareValue(entry?.final);
-                const pdfValue = normalizeCompareValue(context?.pdfValue);
-                const gesaValue = normalizeCompareValue(entry?.gesa);
-                if (!finalValue && !pdfValue && !gesaValue) return true;
-                return isCompareMatch(entry?.final, context?.pdfValue) || isCompareMatch(entry?.final, entry?.gesa);
-            }
-        }
-    ],
-    'NORMA': [
-        {
-            code: 'norma_final_pdf_or_gesa_match',
-            label: 'NORMA: final coincide con PDF o GESA (o todos vacios)',
-            needsPdf: true,
-            check: (row, entry, context) => {
-                const finalValue = normalizeCompareValue(entry?.final);
-                const pdfValue = normalizeCompareValue(context?.pdfValue);
-                const gesaValue = normalizeCompareValue(entry?.gesa);
-                if (!finalValue && !pdfValue && !gesaValue) return true;
-                return isCompareMatch(entry?.final, context?.pdfValue) || isCompareMatch(entry?.final, entry?.gesa);
-            }
-        }
-    ],
-    'BOM-No.': [
-        {
-            code: 'bom_final_pdf_match',
-            label: 'BOM: final coincide con PDF',
-            needsPdf: true,
-            check: (row, entry, context) => isCompareMatch(entry?.final, context?.pdfValue)
-        }
-    ]
-};
-
 function getFieldChecks(row, entry, context = {}) {
-    const issues = [];
-    const customChecks = FIELD_CUSTOM_CHECKS[entry?.field] ?? [];
-    for (const check of customChecks) {
-        if (check.needsPdf && !context.pdfReady) continue;
-        if (!check.check(row, entry, context)) {
-            issues.push({ code: check.code, label: check.label });
-        }
-    }
-
-    const seen = new Set();
-    return issues.filter(issue => {
-        if (seen.has(issue.code)) return false;
-        seen.add(issue.code);
-        return true;
-    });
+    return evaluateQaChecksForField(row, entry?.field, context);
 }
 
 let currentRow = null;
@@ -103,6 +23,13 @@ const RIGHT_PANEL_WIDTH_KEY = 'analista02:right-panel-width';
 const COMPARISON_WIDTHS_KEY = 'analista02:comparison-column-widths';
 const COMPARISON_MIN_COL_WIDTH = 30;
 const ENGINE_BOOK_FILES = getEngineJsonFiles();
+
+function getStartupSelectionFromUrl() {
+    const params = new URLSearchParams(window.location.search || '');
+    const engine = String(params.get('engine') || '').trim();
+    const record = String(params.get('record') || '').trim();
+    return { engine, record };
+}
 
 function inferEngineModelFromFileName(fileName) {
     return String(fileName || '')
@@ -157,17 +84,26 @@ function getComparisonCellClasses(entry, pdfValue) {
     const finalValue = txt(entry?.final);
     const gesaValue = txt(entry?.gesa);
     const pdfResolvedValue = txt(pdfValue);
+
+    const getMismatchClassAgainstFinal = (value) => {
+        const normalizedValue = normalizeCompareValue(value);
+        const normalizedFinal = normalizeCompareValue(finalValue);
+        if (!normalizedValue || !normalizedFinal) return '';
+        return normalizedValue === normalizedFinal ? 'compare-match' : 'compare-mismatch-soft';
+    };
+
     const finalMissing = isRequiredComparisonField(entry?.field) && normalizeCompareValue(finalValue) === '';
     const rawMatchesSust = isCompareMatch(rawValue, sustValue);
     const gesaMatchesFinal = isCompareMatch(gesaValue, finalValue);
     const pdfMatchesFinal = isCompareMatch(pdfResolvedValue, finalValue);
+    const rawSustMatchClass = rawMatchesSust ? 'compare-raw-sust-match' : '';
 
     return {
-        rawClass: rawMatchesSust ? 'compare-match' : '',
-        sustClass: rawMatchesSust ? 'compare-match' : '',
+        rawClass: [getMismatchClassAgainstFinal(rawValue), rawSustMatchClass].filter(Boolean).join(' '),
+        sustClass: rawMatchesSust ? `compare-match ${rawSustMatchClass}` : '',
         finalClass: finalMissing ? 'compare-missing' : (gesaMatchesFinal || pdfMatchesFinal ? 'compare-match' : ''),
-        gesaClass: gesaMatchesFinal ? 'compare-match' : '',
-        pdfClass: pdfMatchesFinal ? 'compare-match' : ''
+        gesaClass: getMismatchClassAgainstFinal(gesaValue),
+        pdfClass: getMismatchClassAgainstFinal(pdfResolvedValue)
     };
 }
 
@@ -432,10 +368,10 @@ function buildProcessSteps(row) {
             detail: !codes.has('missing_pn_final') ? 'pn_final informado.' : 'Falta pn_final en el registro final.'
         },
         {
-            id: 'pn_final_equals_pn_pdf',
-            title: 'pn_final igual a pn_pdf',
-            pass: !codes.has('pn_final_not_equal_pn_pdf'),
-            detail: !codes.has('pn_final_not_equal_pn_pdf') ? 'pn_final coincide con pn_pdf.' : 'pn_final no coincide con pn_pdf.'
+            id: 'pn_final_equals_part_no',
+            title: 'pn_final igual a PART NO.',
+            pass: isCompareMatch(row?.pn_final, row?.['PART NO.']),
+            detail: isCompareMatch(row?.pn_final, row?.['PART NO.']) ? 'pn_final coincide con PART NO.' : 'pn_final no coincide con PART NO.'
         },
         {
             id: 'designation_final_presence',
@@ -625,12 +561,13 @@ function renderChecksModalBody() {
     const body = $('checksModalBody');
     if (!(body instanceof HTMLElement)) return;
 
-    const checkEntries = [];
-    for (const [field, checks] of Object.entries(FIELD_CUSTOM_CHECKS)) {
-        for (const check of checks) {
-            checkEntries.push({ field, code: check.code, label: check.label });
-        }
-    }
+    const checkEntries = (state.qaErrorCheckDefinitions || [])
+        .map((definition) => ({
+            field: String(definition?.field || '').trim() || '-',
+            code: String(definition?.code || '').trim(),
+            label: String(definition?.label || definition?.code || '').trim()
+        }))
+        .filter((definition) => definition.code);
 
     let html = '';
 
@@ -787,8 +724,8 @@ function getGesaPn(row) {
 }
 
 function getSustPn(row) {
-    const isGesaSi = String(row?.gesa ?? '').trim().toUpperCase() === 'SI';
-    if (!isGesaSi) return null;
+    const isSustSi = String(row?.sust_status ?? '').trim().toUpperCase() === 'SI';
+    if (!isSustSi) return null;
     return String(row?.pn_final ?? '').trim() || null;
 }
 
@@ -818,7 +755,6 @@ function buildComparisonRows(row) {
         { field: 'NORMALIZADO', raw: null, gesa: row?.normalizado, sust: null, final: row?.normalizado, errFields: [] },
         { field: 'NORMA', raw: null, gesa: row?.norma, sust: null, final: row?.norma, errFields: [] },
         { field: 'SUST_STATUS', raw: null, gesa: null, sust: row?.sust_status, final: row?.sust_status, separatorTop: true, errFields: [] },
-        { field: 'SUST', raw: null, gesa: null, sust: row?.sust, final: row?.sust, errFields: [] },
         { field: 'HIERARCHI', raw: null, gesa: null, sust: row?.hierarchi ?? row?.sust_hierarchie, final: row?.hierarchi ?? row?.sust_hierarchie, errFields: [] },
         { field: 'SUST_NEW_PART_NUMBER', raw: null, gesa: null, sust: row?.sust_new_part_number, final: row?.sust_new_part_number, errFields: [] },
         { field: 'SUST_SUPERSEDED_LIST', raw: null, gesa: null, sust: row?.sust_superseded_list, final: row?.sust_superseded_list, errFields: [] }
@@ -1217,9 +1153,19 @@ async function initialize() {
         initPdfZoomControls();
         loadPdfClear();
 
-        buildEngineOptions();
+        const startup = getStartupSelectionFromUrl();
+        const requestedModel = startup.engine && ENGINE_BOOK_MODELS.includes(startup.engine)
+            ? startup.engine
+            : '';
+
+        buildEngineOptions(requestedModel);
         const initialModel = String($('engineFilterSelect')?.value || '').trim() || ENGINE_BOOK_MODELS[0] || '';
         await loadEngineForFilter(initialModel);
+
+        if (startup.record) {
+            $('recordIdInput').value = startup.record;
+            await loadRecordFromControls();
+        }
     } catch (error) {
         const statusText = $('statusText');
         if (statusText) statusText.textContent = `Error iniciando Analista 02: ${error.message}`;

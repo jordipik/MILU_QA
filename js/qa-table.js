@@ -146,6 +146,14 @@ function getCurrentColumnCount() {
 export function sortData(data, key, asc) {
     if (!key) return data;
 
+    if (key === 'has_error') {
+        return [...data].sort((a, b) => {
+            const safeA = getRowErrors(a, { activeCodes: state.activeQaErrorChecks }).length;
+            const safeB = getRowErrors(b, { activeCodes: state.activeQaErrorChecks }).length;
+            return asc ? safeA - safeB : safeB - safeA;
+        });
+    }
+
     if (key === 'book_page_pos') {
         const direction = asc ? 1 : -1;
         return [...data].sort((a, b) => {
@@ -525,7 +533,7 @@ function renderRow(row) {
     const isHierarchySuperseded = sustHierarchyRaw.toUpperCase().includes('SUPERSEDED');
     const hasImg = (row.filename_foto || row.ruta_foto || '').toString().trim() !== '';
     const errorMeta = getRowErrorMeta(row);
-    const errorType = errorMeta.errorType;
+    const totalError = getRowErrors(row, { activeCodes: state.activeQaErrorChecks }).length;
     const revisionEstado = String(row.qa_revision_estado || '').trim();
     const revisionAccion = String(row.qa_revision_accion || '').trim();
     const revisionKey = getRevisionKey(row);
@@ -547,9 +555,9 @@ function renderRow(row) {
     else if (isHierarchySuperseded) hierarchyIcon = '<span class="status-icon sup" aria-label="sust_hierarchie Superseded">S</span>';
     else if (sustHierarchyRaw) hierarchyIcon = '<span class="status-icon other" aria-label="sust_hierarchie Other">O</span>';
     const fotoIcon = hasImg ? '<span class="status-icon yes" aria-label="Con Foto">F</span>' : '<span class="status-icon no" aria-label="Sin Foto">-</span>';
-    const errorIcon = errorType === 'critical' ? '<span class="status-icon error" aria-label="Error crítico">✕</span>'
-        : errorType === 'warning' ? '<span class="status-icon warning" aria-label="Advertencia">⚠</span>'
-            : '';
+    const errorIcon = totalError > 0
+        ? `<span class="status-icon error-count" data-open-analysis="true" aria-label="Abrir analisis (${totalError} errores)">${totalError}</span>`
+        : '<span class="status-icon no" aria-label="Sin errores">-</span>';
 
     const revisionEstadoOptions = getRevisionEstadoOptionsHtml(revisionEstado);
     const revisionAccionOptions = getRevisionAccionOptionsHtml(revisionAccion);
@@ -563,7 +571,7 @@ function renderRow(row) {
       <td class="status-col" title="Normalizado: ${isNormalizado ? 'SI' : 'NO'}">${normalizadoIcon}</td>
       <td class="status-col" title="sust_hierarchie: ${escapeHtml(sustHierarchyLabel)}">${hierarchyIcon}</td>
       <td class="status-col" title="Foto: ${hasImg ? 'SI' : 'NO'}">${fotoIcon}</td>
-      <td class="status-col" title="Error: ${errorType ? 'SI' : 'NO'}">${errorIcon}</td>
+    <td class="status-col" title="Errores: ${totalError}">${errorIcon}</td>
       <td class="status-col" title="En Web">${enWeb}</td>
             <td class="${withCellClasses(`revision-cell ${getRevisionEstadoClass(revisionEstado)}`, 'qa_revision_estado')}" title="Estado de revisión">
           <select class="revision-select" data-revision-field="estado" data-revision-key="${escapeHtml(revisionKey)}">${revisionEstadoOptions}</select>

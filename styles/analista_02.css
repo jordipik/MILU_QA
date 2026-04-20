@@ -407,6 +407,15 @@ body.a2-resizing * {
     background: rgba(41, 145, 96, 0.09);
 }
 
+.a2-compare-table td.compare-mismatch-soft {
+    background: rgba(220, 38, 38, 0.12);
+    color: #8b1e1e;
+}
+
+.a2-compare-table td.compare-raw-sust-match {
+    box-shadow: inset 0 0 0 2px rgba(22, 163, 74, 0.45);
+}
+
 .a2-compare-table td.compare-missing {
     background: rgba(198, 60, 44, 0.12);
 }

@@ -2,15 +2,16 @@ import { state } from './state.js';
 import { checkSaveBackendConnection, loadPartitionedEngineData, saveCellToServer } from './data-loader.js';
 import { assignRevisionKeys, applyRevisionDataToRows } from './revision.js';
 import { initPdfZoomControls, loadPdfClear, loadPdfWithPage, setPdfSelection } from './pdf-viewer.js';
-import { evaluateRowQaChecks, getAllQaCheckCodes, getQaCheckLabel } from './qa-checks.js';
+import { evaluateRowQaChecks, getAllQaCheckCodes, getQaCheckDefinitions, getQaCheckLabel } from './qa-checks.js';
 
 const $ = (id) => document.getElementById(id);
 
 const CRITICAL_CODES = new Set(getAllQaCheckCodes());
+const QA_PROCESS_DEFINITIONS = getQaCheckDefinitions();
 
 let currentRow = null;
 let reviewedHistory = [];
-const TOTAL_PROCESS_CHECKS = 7;
+const TOTAL_PROCESS_CHECKS = QA_PROCESS_DEFINITIONS.length;
 
 function txt(value, fallback = '-') {
     const normalized = String(value ?? '').trim();
@@ -457,53 +458,18 @@ function renderProcessChecks(row, verdict) {
     const codes = getRowCodes(row);
     const codeSet = new Set(codes);
 
-    const checks = [
-        {
-            id: 'id_and_pos',
-            title: 'Identidad minima (ID + POS)',
-            pass: txt(row?.ID, '') !== '' && txt(row?.POS, '') !== '',
-            detail: 'Verifica que el registro es trazable por ID y posicion.'
-        },
-        {
-            id: 'part_no',
-            title: 'Part Number de origen',
-            pass: !codeSet.has('missing_part_no'),
-            detail: codeSet.has('missing_part_no') ? 'El campo PART NO. esta vacio.' : 'PART NO. presente.'
-        },
-        {
-            id: 'pn_final_presence',
-            title: 'PN Final presente',
-            pass: !codeSet.has('missing_pn_final'),
-            detail: codeSet.has('missing_pn_final') ? 'pn_final vacio.' : 'pn_final informado.'
-        },
-        {
-            id: 'pn_final_equals_pn_pdf',
-            title: 'PN Final igual a PN PDF',
-            pass: !codeSet.has('pn_final_not_equal_pn_pdf'),
-            detail: codeSet.has('pn_final_not_equal_pn_pdf') ? 'pn_final no coincide con pn_pdf.' : 'pn_final coincide con pn_pdf.'
-        },
-        {
-            id: 'designation_presence',
-            title: 'Designation Final presente',
-            pass: !codeSet.has('missing_designation_final'),
-            detail: codeSet.has('missing_designation_final') ? 'designation_final vacio.' : 'designation_final informado.'
-        },
-        {
-            id: 'designation_pdf',
-            title: 'Designation Final localizada en PDF',
-            pass: !codeSet.has('designation_final_not_in_pdf'),
-            detail: codeSet.has('designation_final_not_in_pdf') ? 'No hay match en PDF para designation_final.' : 'Match de designation_final detectado en PDF.'
-        },
-        {
-            id: 'consistency',
-            title: 'Consistencia entre fuentes',
-            pass: verdict.warnings.length === 0,
-            warn: verdict.warnings.length > 0,
-            detail: verdict.warnings.length > 0
-                ? verdict.warnings[0]
-                : 'No se detectan incoherencias basicas entre raw/final/GESA.'
-        }
-    ];
+    const checks = QA_PROCESS_DEFINITIONS.map((definition) => {
+        const code = String(definition?.code || '').trim();
+        const label = String(definition?.label || code).trim() || code;
+        const pass = !codeSet.has(code);
+
+        return {
+            id: code,
+            title: label,
+            pass,
+            detail: pass ? `${label}: OK.` : `${label}: KO.`
+        };
+    });
 
     summary.textContent = `${checks.length} checks · ${checks.filter((c) => c.pass).length} pass · ${checks.filter((c) => !c.pass).length} fail`;
 

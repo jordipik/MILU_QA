@@ -193,6 +193,24 @@ function getBookEngineCode(row) {
         .trim();
 }
 
+function openAnalisisForRow(row) {
+    if (!row) return;
+
+    const book = String(row?.engine_model ?? '').trim();
+    const record = String(row?.pn_final ?? row?.['PART NO.'] ?? row?.pn ?? '').trim();
+    if (!record) {
+        alert('El registro no tiene PN/PART NO para abrir analisis.');
+        return;
+    }
+
+    const params = new URLSearchParams();
+    if (book) params.set('engine', book);
+    params.set('record', record);
+
+    const targetUrl = `analista_02.html?${params.toString()}`;
+    window.open(targetUrl, '_blank', 'noopener');
+}
+
 
 function getModalMatchesByPn(row) {
     const pn = normModalMatch(row?.['PART NO.'] ?? row?.pn ?? '');
@@ -753,6 +771,11 @@ function buildRowActiveQaErrors(row, activeCodes) {
     return evaluateRowQaChecks(row, activeCodes);
 }
 
+function invalidateRowActiveQaErrors(row) {
+    if (!row || typeof row !== 'object') return;
+    delete row.__qaChecksActive;
+}
+
 function applyActiveQaErrorsToClientRows(activeCodes) {
     state.allData.forEach(row => {
         row.__qaChecksActive = buildRowActiveQaErrors(row, activeCodes);
@@ -1225,6 +1248,7 @@ async function handleRecordModalSubmit(event) {
                 await saveCellToServer(engineFile, row.ID, fieldKey, nextValues[fieldKey]);
                 row[fieldKey] = nextValues[fieldKey];
             }
+            invalidateRowActiveQaErrors(row);
         }
 
         setRowRevision(row, nextEstado, nextAccion);
@@ -1275,6 +1299,7 @@ async function handleSideRecordSubmit(event) {
                 await saveCellToServer(engineFile, row.ID, fieldKey, nextValues[fieldKey]);
                 row[fieldKey] = nextValues[fieldKey];
             }
+            invalidateRowActiveQaErrors(row);
         }
 
         setRowRevision(row, nextEstado, nextAccion);
@@ -1810,12 +1835,37 @@ function clearFilters() {
     document.querySelectorAll('.filter-input[data-filter]').forEach(input => { input.value = ''; });
     document.querySelectorAll('.filter-select[data-filter]').forEach(select => { select.value = ''; });
     state.filters = {};
+    updateOnlyErrorsToggleLabel();
     populatePageFilterOptions('', '');
     state.currentPage = 1;
     renderTable();
     renderPagination();
     loadPdfClear();
     updateSchemasInline('', '');
+}
+
+function updateOnlyErrorsToggleLabel() {
+    const toggleBtn = $('toggleOnlyErrorsBtn');
+    if (!(toggleBtn instanceof HTMLButtonElement)) return;
+
+    const onlyErrorsActive = String(state.filters?.has_error || '') === 'true';
+    toggleBtn.classList.toggle('is-active', onlyErrorsActive);
+    toggleBtn.textContent = onlyErrorsActive ? 'Solo errores: ON' : 'Solo errores: OFF';
+}
+
+function setOnlyErrorsFilter(enabled) {
+    if (enabled) state.filters.has_error = 'true';
+    else delete state.filters.has_error;
+
+    const hasErrorSelect = document.querySelector('.filter-select[data-filter="has_error"]');
+    if (hasErrorSelect instanceof HTMLSelectElement) {
+        hasErrorSelect.value = enabled ? 'true' : '';
+    }
+
+    state.currentPage = 1;
+    updateOnlyErrorsToggleLabel();
+    renderTable();
+    renderPagination();
 }
 
 function handleFilter(event) {
@@ -1825,6 +1875,7 @@ function handleFilter(event) {
     const filterValue = input.value.trim();
     if (filterValue === '') delete state.filters[filterKey];
     else state.filters[filterKey] = filterValue;
+    updateOnlyErrorsToggleLabel();
 
     if (filterTimeout) clearTimeout(filterTimeout);
     filterTimeout = setTimeout(() => {
@@ -1956,6 +2007,7 @@ async function loadData() {
         state.paginationEnabled = true;
         state.tableMode = 'qa';
         state.filters = {};
+        updateOnlyErrorsToggleLabel();
         state.qaChecksScopedRows = null;
         state.recentRevisionKeys = [];
         state.displayRowCount = 0;
@@ -1992,6 +2044,7 @@ async function loadData() {
         renderTable();
         renderPagination();
         updatePaginationToggleLabel();
+        updateOnlyErrorsToggleLabel();
         syncSideRecordFormWithSelection();
         queueColumnViewRefresh();
 
@@ -2029,6 +2082,10 @@ function attachGlobalEvents() {
     $('nextBookPageBtn')?.addEventListener('click', goToNextBookPage);
     $('prevBookPageBtn')?.addEventListener('click', goToPrevBookPage);
     $('clearFiltersBtn')?.addEventListener('click', clearFilters);
+    $('toggleOnlyErrorsBtn')?.addEventListener('click', () => {
+        const onlyErrorsActive = String(state.filters?.has_error || '') === 'true';
+        setOnlyErrorsFilter(!onlyErrorsActive);
+    });
     $('togglePaginationBtn')?.addEventListener('click', () => {
         state.paginationEnabled = !state.paginationEnabled;
         state.currentPage = 1;
@@ -2267,6 +2324,19 @@ function attachGlobalEvents() {
         const target = event.target;
         if (!(target instanceof HTMLElement)) return;
 
+        const openAnalysisBadge = target.closest('[data-open-analysis="true"]');
+        if (openAnalysisBadge) {
+            const tr = openAnalysisBadge.closest('tr[data-revision-key]');
+            const rowKey = tr?.getAttribute('data-revision-key') || '';
+            const row = state.allData.find(item => getRevisionKey(item) === rowKey);
+            if (row) {
+                event.preventDefault();
+                event.stopPropagation();
+                openAnalisisForRow(row);
+            }
+            return;
+        }
+
         const openModalBtn = target.closest('button[data-open-record-modal="true"]');
         if (openModalBtn) {
             const revisionKey = openModalBtn.dataset.revisionKey;
@@ -2364,6 +2434,20 @@ function attachGlobalEvents() {
     errorViewTbody?.addEventListener('click', (event) => {
         const target = event.target;
         if (!(target instanceof HTMLElement)) return;
+
+        const openAnalysisBadge = target.closest('[data-open-analysis="true"]');
+        if (openAnalysisBadge) {
+            const tr = openAnalysisBadge.closest('tr[data-revision-key]');
+            const rowKey = tr?.getAttribute('data-revision-key') || '';
+            const row = state.allData.find(item => getRevisionKey(item) === rowKey);
+            if (row) {
+                event.preventDefault();
+                event.stopPropagation();
+                openAnalisisForRow(row);
+            }
+            return;
+        }
+
         if (target.closest('a') || target.closest('button') || target.closest('input') || target.closest('select')) return;
 
         const tr = target.closest('tr[data-revision-key]');

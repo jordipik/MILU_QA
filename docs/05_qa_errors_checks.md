@@ -19,7 +19,7 @@ Ya no existen los campos persistidos qa_errors ni qa_errors_active en engine_*.j
 Los registros solo guardan datos fuente y finales. El estado ERR se deriva en runtime.
 
 ## Checks actuales
-Los checks vigentes para ERR se definen en js/analista-02.js y se evalúan en cliente.
+Los checks vigentes para ERR se definen en js/qa-checks.js y se evalúan en cliente.
 
 1. pos_required
 2. pos_final_pdf_match
@@ -33,8 +33,10 @@ Los checks vigentes para ERR se definen en js/analista-02.js y se evalúan en cl
 10. bom_final_pdf_match
 
 Implementacion principal:
-- js/analista-02.js: FIELD_CUSTOM_CHECKS
-- js/analista-02.js: getFieldChecks
+- js/qa-checks.js: QA_CHECK_DEFINITIONS
+- js/qa-checks.js: evaluateRowQaChecks
+- js/qa-checks.js: evaluateQaChecksForField
+- js/analista-02.js: consume la evaluacion central para la columna ERR
 
 ## Flujo actual de uso
 
@@ -84,7 +86,8 @@ Backend:
 - server.js: POST /apply-qa-checks-filter desactivado
 
 Frontend:
-- js/analista-02.js: definicion y evaluacion de checks ERR
+- js/qa-checks.js: definicion central de checks ERR
+- js/analista-02.js: consumo visual de checks ERR
 
 ## Nota operativa
 Si se modifica server.js:

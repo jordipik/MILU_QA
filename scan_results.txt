@@ -1,0 +1,35 @@
+﻿FILE: engine_12V4000M40A - c‗pia.json
+ID: 1100970 | Model: 12V4000M40A | Page: 13 | POS: 60
+total_error: None | has_error: None
+Errors: {'pos_error': None, 'pn_error': None, 'designation_error': None, 'weight_error': None, 'measurement_error': None, 'norma_error': None, 'bom_error': None}
+Calculated Total: 0
+Values: {'pos_final': None, 'pos_pdf': None, 'POS': '60', 'pn_final': '5240110440', 'pn_pdf': None, 'PART NO.': '5240110440', 'designation_final': 'FILLER PIECE STRIP', 'designation_pdf': None, 'DESIGNATION': 'FILLER PIECE STRIP', 'designation_gesa': None, 'weight_final': '2,900 KG', 'weight_pdf': None, 'WEIGHT': '2,900 KG', 'weight_gesa': None, 'weight_units': None, 'measurement_final': None, 'MEASUREMENT / STANDARD': None, 'dimensions_gesa': None, 'norma_final': None, 'norma': None, 'norma_pdf': None, 'norma_raw': None, 'norma_gesa': None, 'BOM-No.': '010.00475', 'bom_pdf': None}
+----------------------------------------
+FILE: engine_12V4000M40A.json
+ID: 1100970 | Model: 12V4000M40A | Page: 13 | POS: 60
+total_error: 1 | has_error: True
+Errors: {'pos_error': 0, 'pn_error': 1, 'designation_error': 0, 'weight_error': 0, 'measurement_error': 0, 'norma_error': 0, 'bom_error': 0}
+Calculated Total: 1
+Values: {'pos_final': '60', 'pos_pdf': '60', 'POS': '60', 'pn_final': '5240110440', 'pn_pdf': 'X52401100023', 'PART NO.': '5240110440', 'designation_final': 'FILLER PIECE STRIP', 'designation_pdf': None, 'DESIGNATION': 'FILLER PIECE STRIP', 'designation_gesa': None, 'weight_final': '2,900 KG', 'weight_pdf': None, 'WEIGHT': '2,900 KG', 'weight_gesa': None, 'weight_units': None, 'measurement_final': None, 'MEASUREMENT / STANDARD': None, 'dimensions_gesa': None, 'norma_final': None, 'norma': None, 'norma_pdf': None, 'norma_raw': None, 'norma_gesa': None, 'BOM-No.': '010.00475', 'bom_pdf': None}
+----------------------------------------
+FILE: engine_16V4000M61.json
+ID: 1300018 | Model: 16V4000M61 | Page: 12 | POS: 65
+total_error: 1 | has_error: True
+Errors: {'pos_error': 0, 'pn_error': 1, 'designation_error': 0, 'weight_error': 0, 'measurement_error': 0, 'norma_error': 0, 'bom_error': 0}
+Calculated Total: 1
+Values: {'pos_final': '65', 'pos_pdf': '65', 'POS': '65', 'pn_final': '5240110440', 'pn_pdf': 'X52401100023', 'PART NO.': '5240110440', 'designation_final': 'FILLER PIECE STRIP', 'designation_pdf': None, 'DESIGNATION': 'FILLER PIECE STRIP', 'designation_gesa': None, 'weight_final': '2,900 KG', 'weight_pdf': None, 'WEIGHT': '2,900 KG', 'weight_gesa': None, 'weight_units': None, 'measurement_final': None, 'MEASUREMENT / STANDARD': None, 'dimensions_gesa': None, 'norma_final': None, 'norma': None, 'norma_pdf': None, 'norma_raw': None, 'norma_gesa': None, 'BOM-No.': '010.00476', 'bom_pdf': None}
+----------------------------------------
+FILE: engine_16V4000M61.json
+ID: 1302940 | Model: 16V4000M61 | Page: 519 | POS: 65
+total_error: 1 | has_error: True
+Errors: {'pos_error': 0, 'pn_error': 1, 'designation_error': 0, 'weight_error': 0, 'measurement_error': 0, 'norma_error': 0, 'bom_error': 0}
+Calculated Total: 1
+Values: {'pos_final': '65', 'pos_pdf': '65', 'POS': '65', 'pn_final': '5240110440', 'pn_pdf': 'X52401100023', 'PART NO.': '5240110440', 'designation_final': 'FILLER PIECE STRIP', 'designation_pdf': None, 'DESIGNATION': 'FILLER PIECE STRIP', 'designation_gesa': None, 'weight_final': '2,900 KG', 'weight_pdf': None, 'WEIGHT': '2,900 KG', 'weight_gesa': None, 'weight_units': None, 'measurement_final': None, 'MEASUREMENT / STANDARD': None, 'dimensions_gesa': None, 'norma_final': None, 'norma': None, 'norma_pdf': None, 'norma_raw': None, 'norma_gesa': None, 'BOM-No.': '010.00476', 'bom_pdf': None}
+----------------------------------------
+FILE: engine_16V4000M90.json
+ID: 1600018 | Model: 16V4000M90 | Page: 17 | POS: 65
+total_error: 1 | has_error: True
+Errors: {'pos_error': 0, 'pn_error': 1, 'designation_error': 0, 'weight_error': 0, 'measurement_error': 0, 'norma_error': 0, 'bom_error': 0}
+Calculated Total: 1
+Values: {'pos_final': '65', 'pos_pdf': '65', 'POS': '65', 'pn_final': '5240110440', 'pn_pdf': 'X52401100023', 'PART NO.': '5240110440', 'designation_final': 'FILLER PIECE STRIP', 'designation_pdf': None, 'DESIGNATION': 'FILLER PIECE STRIP', 'designation_gesa': None, 'weight_final': '2.900 kg', 'weight_pdf': None, 'WEIGHT': '2.900 kg', 'weight_gesa': None, 'weight_units': None, 'measurement_final': None, 'MEASUREMENT / STANDARD': None, 'dimensions_gesa': None, 'norma_final': None, 'norma': None, 'norma_pdf': None, 'norma_raw': None, 'norma_gesa': None, 'BOM-No.': '010.00476', 'bom_pdf': None}
+----------------------------------------

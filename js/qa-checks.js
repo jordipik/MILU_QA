@@ -2,7 +2,7 @@ const QA_CHECK_DEFINITIONS = [
     { code: 'pos_required', label: 'POS: final lleno', field: 'POS' },
     { code: 'pos_final_pdf_match', label: 'POS: final coincide con PDF', field: 'POS' },
     { code: 'pn_required', label: 'PN: final lleno', field: 'PART NO.' },
-    { code: 'pn_final_pdf_match', label: 'PN: final coincide con PDF', field: 'PART NO.' },
+    { code: 'pn_final_pdf_match', label: 'PN: final coincide con PART NO.', field: 'PART NO.' },
     { code: 'designation_required', label: 'DESIGNATION: final lleno', field: 'DESIGNATION' },
     { code: 'designation_final_pdf_or_gesa_match', label: 'DESIGNATION: final coincide con PDF o GESA', field: 'DESIGNATION' },
     { code: 'weight_final_pdf_or_gesa_match', label: 'WEIGHT: final coincide con PDF o GESA', field: 'WEIGHT' },
@@ -12,6 +12,82 @@ const QA_CHECK_DEFINITIONS = [
 ];
 
 const QA_CHECK_LABELS = Object.fromEntries(QA_CHECK_DEFINITIONS.map((item) => [item.code, item.label]));
+
+const QA_FIELD_CHECKS = {
+    'POS': [
+        {
+            code: 'pos_required',
+            check: (row, entry) => normalizeCompareValue(entry?.final) !== ''
+        },
+        {
+            code: 'pos_final_pdf_match',
+            needsPdf: true,
+            check: (row, entry, context) => isCompareMatch(entry?.final, context?.pdfValue)
+        }
+    ],
+    'PART NO.': [
+        {
+            code: 'pn_required',
+            check: (row, entry) => normalizeCompareValue(entry?.final) !== ''
+        },
+        {
+            code: 'pn_final_pdf_match',
+            needsPdf: true,
+            check: (row, entry, context) => isCompareMatch(entry?.final, context?.pdfValue)
+        }
+    ],
+    'DESIGNATION': [
+        {
+            code: 'designation_required',
+            check: (row, entry) => normalizeCompareValue(entry?.final) !== ''
+        },
+        {
+            code: 'designation_final_pdf_or_gesa_match',
+            needsPdf: true,
+            check: (row, entry, context) => isCompareMatch(entry?.final, context?.pdfValue) || isCompareMatch(entry?.final, entry?.gesa)
+        }
+    ],
+    'WEIGHT': [
+        {
+            code: 'weight_final_pdf_or_gesa_match',
+            needsPdf: true,
+            check: (row, entry, context) => isCompareMatch(entry?.final, context?.pdfValue) || isCompareMatch(entry?.final, entry?.gesa)
+        }
+    ],
+    'MEASUREMENT / STANDARD': [
+        {
+            code: 'measurement_final_pdf_or_gesa_match',
+            needsPdf: true,
+            check: (row, entry, context) => {
+                const finalValue = normalizeCompareValue(entry?.final);
+                const pdfValue = normalizeCompareValue(context?.pdfValue);
+                const gesaValue = normalizeCompareValue(entry?.gesa);
+                if (!finalValue && !pdfValue && !gesaValue) return true;
+                return isCompareMatch(entry?.final, context?.pdfValue) || isCompareMatch(entry?.final, entry?.gesa);
+            }
+        }
+    ],
+    'NORMA': [
+        {
+            code: 'norma_final_pdf_or_gesa_match',
+            needsPdf: true,
+            check: (row, entry, context) => {
+                const finalValue = normalizeCompareValue(entry?.final);
+                const pdfValue = normalizeCompareValue(context?.pdfValue);
+                const gesaValue = normalizeCompareValue(entry?.gesa);
+                if (!finalValue && !pdfValue && !gesaValue) return true;
+                return isCompareMatch(entry?.final, context?.pdfValue) || isCompareMatch(entry?.final, entry?.gesa);
+            }
+        }
+    ],
+    'BOM-No.': [
+        {
+            code: 'bom_final_pdf_match',
+            needsPdf: true,
+            check: (row, entry, context) => normalizeCompareValue(context?.pdfValue) === '' || isCompareMatch(entry?.final, context?.pdfValue)
+        }
+    ]
+};
 
 function text(value) {
     return String(value ?? '').trim();
@@ -78,9 +154,9 @@ function getEntryMap(row) {
         },
         'PART NO.': {
             final: row?.pn_final,
-            pdf: row?.pn_pdf ?? row?.['PART NO.'],
+            pdf: row?.['PART NO.'],
             gesa: getGesaPn(row),
-            fields: ['PART NO.', 'pn_final', 'pn_pdf']
+            fields: ['PART NO.', 'pn_final']
         },
         'DESIGNATION': {
             final: row?.designation_final,
@@ -134,9 +210,50 @@ function addIssue(result, code, fields) {
     result.severity = 'critical';
 }
 
+function getFieldIssueDefinitions(row, fieldName, activeSet, context = {}) {
+    const normalizedField = text(fieldName);
+    const entry = getEntryMap(row)[normalizedField];
+    if (!entry) return [];
+
+    const checks = QA_FIELD_CHECKS[normalizedField] || [];
+    const issues = [];
+
+    for (const check of checks) {
+        if (!activeSet.has(check.code)) continue;
+        if (check.needsPdf && context.pdfReady !== true) continue;
+
+        const evaluationContext = {
+            ...context,
+            pdfValue: context.pdfReady === true ? context.pdfValue : entry.pdf
+        };
+
+        if (!check.check(row, entry, evaluationContext)) {
+            issues.push({
+                code: check.code,
+                label: getQaCheckLabel(check.code),
+                fields: [...entry.fields]
+            });
+        }
+    }
+
+    const seen = new Set();
+    return issues.filter((issue) => {
+        if (seen.has(issue.code)) return false;
+        seen.add(issue.code);
+        return true;
+    });
+}
+
+export function evaluateQaChecksForField(row, fieldName, options = {}) {
+    const activeSet = getActiveCodeSet(options.activeCodes);
+    return getFieldIssueDefinitions(row, fieldName, activeSet, options).map((issue) => ({
+        code: issue.code,
+        label: issue.label
+    }));
+}
+
 export function evaluateRowQaChecks(row, activeCodes) {
     const activeSet = getActiveCodeSet(activeCodes);
-    const entries = getEntryMap(row);
     const result = {
         version: 1,
         severity: 'none',
@@ -147,61 +264,13 @@ export function evaluateRowQaChecks(row, activeCodes) {
         updated_at: ''
     };
 
-    const pos = entries['POS'];
-    if (activeSet.has('pos_required') && normalizeCompareValue(pos.final) === '') {
-        addIssue(result, 'pos_required', pos.fields);
-    }
-    if (activeSet.has('pos_final_pdf_match') && !isCompareMatch(pos.final, pos.pdf)) {
-        addIssue(result, 'pos_final_pdf_match', pos.fields);
-    }
-
-    const pn = entries['PART NO.'];
-    if (activeSet.has('pn_required') && normalizeCompareValue(pn.final) === '') {
-        addIssue(result, 'pn_required', pn.fields);
-    }
-    if (activeSet.has('pn_final_pdf_match') && !isCompareMatch(pn.final, pn.pdf)) {
-        addIssue(result, 'pn_final_pdf_match', pn.fields);
-    }
-
-    const designation = entries['DESIGNATION'];
-    if (activeSet.has('designation_required') && normalizeCompareValue(designation.final) === '') {
-        addIssue(result, 'designation_required', designation.fields);
-    }
-    if (activeSet.has('designation_final_pdf_or_gesa_match')
-        && !isCompareMatch(designation.final, designation.pdf)
-        && !isCompareMatch(designation.final, designation.gesa)) {
-        addIssue(result, 'designation_final_pdf_or_gesa_match', designation.fields);
-    }
-
-    const weight = entries['WEIGHT'];
-    if (activeSet.has('weight_final_pdf_or_gesa_match')
-        && !isCompareMatch(weight.final, weight.pdf)
-        && !isCompareMatch(weight.final, weight.gesa)) {
-        addIssue(result, 'weight_final_pdf_or_gesa_match', weight.fields);
-    }
-
-    const measurement = entries['MEASUREMENT / STANDARD'];
-    const measurementAllEmpty = [measurement.final, measurement.pdf, measurement.gesa].every((value) => normalizeCompareValue(value) === '');
-    if (activeSet.has('measurement_final_pdf_or_gesa_match')
-        && !measurementAllEmpty
-        && !isCompareMatch(measurement.final, measurement.pdf)
-        && !isCompareMatch(measurement.final, measurement.gesa)) {
-        addIssue(result, 'measurement_final_pdf_or_gesa_match', measurement.fields);
-    }
-
-    const norma = entries['NORMA'];
-    const normaAllEmpty = [norma.final, norma.pdf, norma.gesa].every((value) => normalizeCompareValue(value) === '');
-    if (activeSet.has('norma_final_pdf_or_gesa_match')
-        && !normaAllEmpty
-        && !isCompareMatch(norma.final, norma.pdf)
-        && !isCompareMatch(norma.final, norma.gesa)) {
-        addIssue(result, 'norma_final_pdf_or_gesa_match', norma.fields);
-    }
-
-    const bom = entries['BOM-No.'];
-    if (activeSet.has('bom_final_pdf_match') && normalizeCompareValue(bom.pdf) !== '' && !isCompareMatch(bom.final, bom.pdf)) {
-        addIssue(result, 'bom_final_pdf_match', bom.fields);
-    }
+    Object.keys(QA_FIELD_CHECKS).forEach((fieldName) => {
+        const fieldIssues = getFieldIssueDefinitions(row, fieldName, activeSet, {
+            pdfReady: true,
+            pdfValue: getEntryMap(row)[fieldName]?.pdf
+        });
+        fieldIssues.forEach((issue) => addIssue(result, issue.code, issue.fields));
+    });
 
     result.codes.sort((a, b) => a.localeCompare(b));
     Object.keys(result.fields).forEach((field) => {

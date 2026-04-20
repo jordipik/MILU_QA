@@ -6,7 +6,7 @@ import { state } from './state.js';
 import { evaluateRowQaChecks } from './qa-checks.js';
 
 const PDF_FIT_WIDTH_MARGIN = 8;
-const PDF_SELECTION_MAX_HIGHLIGHTS = 14;
+const PDF_SELECTION_MAX_HIGHLIGHTS = 40;
 const PDF_ZOOM_PERCENTAGES = new Set([75, 100, 125, 150, 200]);
 const PDF_ZOOM_STEPS = ['fit', 75, 100, 125, 150, 200];
 let pdfRelayoutRafId = 0;
@@ -210,6 +210,80 @@ function getPnLineRects(rects, pnRects) {
     return rects.filter(r => Math.abs(r.centerY - pnCenterY) <= threshold);
 }
 
+function isBomFieldName(fieldName) {
+    return String(fieldName ?? '').trim().toLowerCase().includes('bom');
+}
+
+function normalizeReadTokenEntries(entries) {
+    if (!Array.isArray(entries)) return [];
+    const normalized = [];
+    const seen = new Set();
+
+    entries.forEach((entry) => {
+        const field = String(entry?.field ?? '').trim();
+        const token = normalizePdfToken(entry?.token);
+        if (!token) return;
+        const key = `${field.toLowerCase()}|${token}`;
+        if (seen.has(key)) return;
+        seen.add(key);
+        normalized.push({ field, token });
+    });
+
+    return normalized;
+}
+
+function buildReadTokenHighlights(rects, tokenEntries, pnRects = []) {
+    if (!Array.isArray(rects) || rects.length === 0) return [];
+    if (!Array.isArray(tokenEntries) || tokenEntries.length === 0) return [];
+
+    const pnLineRects = getPnLineRects(rects, pnRects);
+    const highlights = [];
+    const seenBoxes = new Set();
+
+    const pushHighlight = (box, field, text) => {
+        const boxKey = `${Math.round(box.left)}|${Math.round(box.top)}|${Math.round(box.width)}|${Math.round(box.height)}|${field.toLowerCase()}`;
+        if (seenBoxes.has(boxKey)) return;
+        seenBoxes.add(boxKey);
+        highlights.push({
+            left: Math.max(0, box.left - 4),
+            top: Math.max(0, box.top - box.height - 3),
+            width: Math.max(24, box.width + 8),
+            height: Math.max(16, box.height + 6),
+            text,
+            priority: 12,
+            type: 'read-token',
+            hasError: false
+        });
+    };
+
+    tokenEntries.forEach((entry) => {
+        const searchRects = isBomFieldName(entry.field)
+            ? rects
+            : pnLineRects;
+        if (!searchRects.length) return;
+
+        const directMatches = searchRects.filter((rect) => tokenMatches(rect.normalizedText, entry.token, false));
+        if (directMatches.length > 0) {
+            directMatches.forEach((rect) => {
+                const matchRect = getTokenHighlightRect(rect, entry.token) || rect;
+                pushHighlight(matchRect, entry.field, `${entry.field}: ${matchRect.text}`);
+            });
+            return;
+        }
+
+        const lines = buildLineGroups(searchRects);
+        lines.forEach((line) => {
+            const clusters = buildTextClusters(line.rects);
+            clusters.forEach((cluster) => {
+                if (!tokenMatches(cluster.normalizedText, entry.token, true)) return;
+                pushHighlight(cluster, entry.field, `${entry.field}: ${cluster.text}`);
+            });
+        });
+    });
+
+    return highlights;
+}
+
 function tokenMatches(itemText, tokenValue, allowContains) {
     if (!itemText || !tokenValue) return false;
     if (itemText === tokenValue) return true;
@@ -405,6 +479,13 @@ function buildPdfTextHighlights(textItems, viewport, selection) {
     const posRects = tokens.pos
         ? rects.filter(rect => tokenMatches(rect.normalizedText, tokens.pos, tokens.allowPosContains))
         : [];
+
+    const readTokenHighlights = buildReadTokenHighlights(
+        rects,
+        normalizeReadTokenEntries(state.currentPdfReadTokens),
+        pnRects
+    );
+    highlights.push(...readTokenHighlights);
 
     pnRects.forEach(rect => {
         const matchRect = getTokenHighlightRect(rect, tokens.pn) || rect;
@@ -636,7 +717,7 @@ export function setPdfSelection(row) {
         pn: String(row?.pn_final ?? row?.['PART NO.'] ?? row?.pn ?? '').trim(),
         designationFinal: String(row?.designation_final ?? row?.DESIGNATION ?? '').trim(),
         qty: String(row?.qty_final ?? row?.QTY ?? '').trim(),
-        measurement: String(row?.measurement_final ?? row?.['MEASUREMENT / STANDARD'] ?? '').trim(),
+        measurement: String(row?.measure_final ?? row?.measurement_final ?? row?.['MEASUREMENT / STANDARD'] ?? '').trim(),
         weight: String(row?.weight_final ?? row?.WEIGHT ?? '').trim(),
         model: String(row?.model_final ?? row?.['MODEL/TYPE'] ?? '').trim(),
         fieldErrors: {

@@ -1886,6 +1886,19 @@
             opacity: 1;
         }
 
+        .status-icon.error-count {
+            color: #ffffff;
+            background: #dc2626;
+            border-color: #b91c1c;
+            min-width: 18px;
+            width: auto;
+            padding: 0 5px;
+            font-size: 10px;
+            font-weight: 800;
+            box-shadow: 0 1px 0 rgba(255, 255, 255, 0.28) inset;
+            cursor: pointer;
+        }
+
         .revision-select {
             width: 100%;
             min-width: 0;
@@ -2359,6 +2372,20 @@
             color: #9f1239;
             border-color: #fecdd3;
             font-weight: 800;
+        }
+
+        #toggleOnlyErrorsBtn {
+            background: linear-gradient(135deg, #e2e8f0 0%, #f8fafc 100%);
+            color: #1e293b;
+            border-color: #cbd5e1;
+            font-weight: 800;
+        }
+
+        #toggleOnlyErrorsBtn.is-active {
+            background: linear-gradient(135deg, #fee2e2 0%, #fef2f2 100%);
+            color: #b91c1c;
+            border-color: #fca5a5;
+            box-shadow: inset 0 0 0 1px rgba(248, 113, 113, 0.45);
         }
 
         .pos-top-meta {
