@@ -44,10 +44,38 @@
                 <button id="openRecomputeModalBtn" type="button">RECALCULAR</button>
             </div>
 
-            <div class="a2-status-row">
-                <p id="recordPositionText">Registro 0 de 0</p>
-                <p id="selectedBookText" class="a2-selected-book">Libro: -</p>
-            </div>
+            <section class="a2-stats-row" aria-label="Estadisticas de revision">
+                <article class="a2-stat-card">
+                    <span class="a2-stat-label">Total analizados</span>
+                    <div class="a2-stat-inline-total" aria-live="polite">
+                        <span id="statsCurrentIndex" class="a2-stat-inline-number">0</span>
+                        <span class="a2-stat-inline-separator">de</span>
+                        <span id="statsTotalAnalysed" class="a2-stat-inline-number">0</span>
+                        <span id="statsUniqueTotalAnalysed" class="a2-stat-inline-unique">0</span>
+                    </div>
+                </article>
+                <article class="a2-stat-card is-ok">
+                    <span class="a2-stat-label">Total OK</span>
+                    <div class="a2-stat-total-row">
+                        <strong id="statsTotalOk">0</strong>
+                        <span id="statsUniqueTotalOk" class="a2-stat-inline-unique">0</span>
+                    </div>
+                </article>
+                <article class="a2-stat-card is-review">
+                    <span class="a2-stat-label">Total revision</span>
+                    <div class="a2-stat-total-row">
+                        <strong id="statsTotalReview">0</strong>
+                        <span id="statsUniqueTotalReview" class="a2-stat-inline-unique">0</span>
+                    </div>
+                </article>
+                <article class="a2-stat-card is-ko">
+                    <span class="a2-stat-label">Total KO</span>
+                    <div class="a2-stat-total-row">
+                        <strong id="statsTotalKo">0</strong>
+                        <span id="statsUniqueTotalKo" class="a2-stat-inline-unique">0</span>
+                    </div>
+                </article>
+            </section>
 
             <div id="recordMeta" class="a2-meta">Sin registro cargado.</div>
 
@@ -151,6 +179,79 @@
                     <button id="recomputePdfRunBtn" type="button">Recalcular PDF_AUTO</button>
                 </div>
                 <p id="recomputeStatusText" class="a2-auto-recompute-status">Listo para ejecutar.</p>
+            </div>
+        </div>
+    </div>
+
+    <div id="editRecordModal" class="edit-record-modal" hidden aria-modal="true" role="dialog"
+        aria-labelledby="editRecordModalTitle">
+        <div class="edit-record-modal-backdrop"></div>
+        <div class="edit-record-modal-panel">
+            <header class="edit-record-modal-header">
+                <h2 id="editRecordModalTitle">Editar Registro</h2>
+                <button id="editRecordModalClose" class="edit-record-modal-close" type="button"
+                    aria-label="Cerrar">&times;</button>
+            </header>
+            <div class="edit-record-modal-body">
+                <form id="editRecordForm">
+                    <input id="editRecordId" type="hidden">
+
+                    <div class="edit-record-row">
+                        <label>
+                            <span>ID del Registro</span>
+                            <input id="editRecordIdDisplay" type="text" readonly
+                                style="background: #f0f0f0; cursor: default;">
+                        </label>
+                    </div>
+
+                    <div class="edit-record-row">
+                        <label>
+                            <span>PN FINAL</span>
+                            <input id="editRecordPnFinal" type="text" name="pn_final">
+                        </label>
+                        <label>
+                            <span>DESIGNATION FINAL</span>
+                            <input id="editRecordDesignationFinal" type="text" name="designation_final">
+                        </label>
+                    </div>
+
+                    <div class="edit-record-row">
+                        <label>
+                            <span>WEIGHT FINAL</span>
+                            <input id="editRecordWeightFinal" type="text" name="weight_final">
+                        </label>
+                        <label>
+                            <span>MEASUREMENT FINAL</span>
+                            <input id="editRecordMeasurementFinal" type="text" name="measurement_final">
+                        </label>
+                    </div>
+
+                    <div class="edit-record-row">
+                        <label>
+                            <span>NORMA</span>
+                            <input id="editRecordNorma" type="text" name="norma">
+                        </label>
+                    </div>
+
+                    <div class="edit-record-row">
+                        <label>
+                            <span>Estado</span>
+                            <select id="editRecordStatus" name="qa_revision_estado">
+                                <option value="">-</option>
+                                <option value="ok">OK</option>
+                                <option value="en revision">REVISAR</option>
+                                <option value="ko">KO</option>
+                            </select>
+                        </label>
+                    </div>
+
+                    <p id="editRecordStatusMessage" class="edit-record-status" aria-live="polite"></p>
+
+                    <div class="edit-record-footer">
+                        <button id="editRecordResetBtn" type="button">Recargar</button>
+                        <button id="editRecordSaveBtn" type="submit">Guardar</button>
+                    </div>
+                </form>
             </div>
         </div>
     </div>

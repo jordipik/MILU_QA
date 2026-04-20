@@ -382,6 +382,16 @@ function getDisplayPn(row) {
     return '-';
 }
 
+function getDistinctRowKey(row) {
+    const pnFinal = String(row?.pn_final ?? '').trim();
+    if (pnFinal) return pnFinal.toLowerCase();
+
+    const id = String(row?.ID ?? '').trim();
+    if (id) return `id:${id.toLowerCase()}`;
+
+    return `rev:${getRevisionKey(row).toLowerCase()}`;
+}
+
 function getRowCodes(row) {
     return evaluateRowQaChecks(row, getAllQaCheckCodes()).codes;
 }
@@ -688,6 +698,128 @@ function initRecomputeModal() {
     document.addEventListener('keydown', (event) => {
         if (!modal.hidden && event.key === 'Escape') closeModal();
     });
+}
+
+function initEditRecordModal() {
+    const modal = $('editRecordModal');
+    const closeBtn = $('editRecordModalClose');
+    const backdrop = modal?.querySelector('.edit-record-modal-backdrop');
+    const form = $('editRecordForm');
+    const resetBtn = $('editRecordResetBtn');
+
+    if (!(modal instanceof HTMLElement)) return;
+
+    const closeModal = () => {
+        modal.hidden = true;
+    };
+
+    closeBtn?.addEventListener('click', closeModal);
+    backdrop?.addEventListener('click', closeModal);
+
+    document.addEventListener('keydown', (event) => {
+        if (!modal.hidden && event.key === 'Escape') closeModal();
+    });
+
+    resetBtn?.addEventListener('click', (event) => {
+        event.preventDefault();
+        if (currentRow) populateEditRecordForm(currentRow);
+    });
+
+    form?.addEventListener('submit', async (event) => {
+        event.preventDefault();
+        await saveEditRecordForm();
+    });
+}
+
+function populateEditRecordForm(row) {
+    if (!row || typeof row !== 'object') return;
+
+    const id = String(row?.ID ?? row?.id ?? '').trim();
+    if (id) {
+        $('editRecordId').value = id;
+        const displayInput = $('editRecordIdDisplay');
+        if (displayInput instanceof HTMLInputElement) {
+            displayInput.value = id;
+        }
+    }
+    if (row?.pn_final) $('editRecordPnFinal').value = String(row.pn_final);
+    if (row?.designation_final) $('editRecordDesignationFinal').value = String(row.designation_final);
+    if (row?.weight_final) $('editRecordWeightFinal').value = String(row.weight_final);
+    if (row?.measurement_final) $('editRecordMeasurementFinal').value = String(row.measurement_final);
+    if (row?.norma) $('editRecordNorma').value = String(row.norma);
+    if (row?.qa_revision_estado) $('editRecordStatus').value = String(row.qa_revision_estado);
+}
+
+async function saveEditRecordForm() {
+    try {
+        const id = String($('editRecordId')?.value || '').trim();
+        if (!id) {
+            setEditRecordStatus('ID no válido.', 'error');
+            return;
+        }
+
+        if (!currentRow) {
+            setEditRecordStatus('No hay registro cargado.', 'error');
+            return;
+        }
+
+        const engineFile = resolveEngineFile(currentRow);
+        if (!engineFile) {
+            setEditRecordStatus('No se pudo resolver archivo engine.', 'error');
+            return;
+        }
+
+        const updates = {
+            pn_final: String($('editRecordPnFinal')?.value || '').trim(),
+            designation_final: String($('editRecordDesignationFinal')?.value || '').trim(),
+            weight_final: String($('editRecordWeightFinal')?.value || '').trim(),
+            measurement_final: String($('editRecordMeasurementFinal')?.value || '').trim(),
+            norma: String($('editRecordNorma')?.value || '').trim(),
+            qa_revision_estado: String($('editRecordStatus')?.value || '').trim()
+        };
+
+        let saved = false;
+
+        // Guardar cada campo que cambió (incluso si es vacío)
+        for (const [key, value] of Object.entries(updates)) {
+            if (currentRow[key] !== value) {
+                await saveCellToServer(engineFile, id, key, value);
+                currentRow[key] = value;
+                saved = true;
+            }
+        }
+
+        if (saved) {
+            setEditRecordStatus('Registro guardado correctamente.', 'ok');
+
+            // Cerrar modal después de 800ms
+            setTimeout(() => {
+                const modal = $('editRecordModal');
+                if (modal instanceof HTMLElement) modal.hidden = true;
+
+                // Recargar UI completa
+                renderComparison();
+                renderRecordMeta();
+                renderReviewStateButtons(currentRow);
+                renderReviewStats();
+            }, 800);
+        } else {
+            setEditRecordStatus('Sin cambios para guardar.', '');
+        }
+
+    } catch (error) {
+        setEditRecordStatus(`Error: ${error.message}`, 'error');
+        console.error(error);
+    }
+}
+
+function setEditRecordStatus(message, type = '') {
+    const statusEl = $('editRecordStatusMessage');
+    if (!(statusEl instanceof HTMLElement)) return;
+
+    statusEl.textContent = message;
+    statusEl.className = 'edit-record-status';
+    if (type) statusEl.classList.add(`is-${type}`);
 }
 
 function buildEngineOptions(selectedModel = '') {
@@ -1004,6 +1136,7 @@ async function loadEngineForFilter(engineFilter) {
 
     assignRevisionKeys(state.allData);
     applyRevisionDataToRows(state.allData);
+    renderReviewStats();
 
     const selectedModel = inferEngineModelFromFileName(engineFile);
     const engineSelect = $('engineFilterSelect');
@@ -1024,10 +1157,9 @@ async function loadEngineForFilter(engineFilter) {
     currentRow = null;
     currentProcessIndex = 0;
     $('recordIdInput').value = '';
-    renderRecordPosition(null);
-    renderSelectedBook({ engine_model: selectedModel || engineFilter || '-' });
     renderMeta(null);
     renderReviewStateButtons(null);
+    renderReviewStats([]);
     syncPdfWithCurrentRow(null);
 }
 
@@ -1063,26 +1195,6 @@ function fillEditFields(row) {
     if (revAccion) revAccion.value = txt(row?.qa_revision_accion, '');
 }
 
-function renderRecordPosition(row) {
-    const target = $('recordPositionText');
-    if (!(target instanceof HTMLElement)) return;
-
-    const queue = getQueueRows();
-    if (!row || !queue.length) {
-        target.textContent = 'Registro 0 de 0';
-        return;
-    }
-
-    const idx = queue.findIndex(item => getRevisionKey(item) === getRevisionKey(row));
-    target.textContent = `Registro ${idx >= 0 ? idx + 1 : 0} de ${queue.length}`;
-}
-
-function renderSelectedBook(row) {
-    const target = $('selectedBookText');
-    if (!(target instanceof HTMLElement)) return;
-    target.textContent = `Libro: ${txt(row?.engine_model)}`;
-}
-
 function getRowErrorCount(row) {
     const total = Number(row?.total_error);
     if (Number.isFinite(total)) return total;
@@ -1104,19 +1216,84 @@ function getRowErrorCount(row) {
     return row?.has_error ? 1 : 0;
 }
 
+function getRowReviewBucket(row) {
+    if (!row) return '';
+
+    const estado = String(row?.qa_revision_estado ?? '').trim().toLowerCase();
+    const action = String(row?.qa_revision_accion ?? '').trim().toLowerCase();
+
+    // Si fue revisado manualmente (qa_revision_estado === 'revisado'), 
+    // mantener el valor asignado sin recalcular
+    if (estado === 'revisado') {
+        if (action === 'mantener') return 'ok';
+        if (action === 'revisar') return 'review';
+        if (action === 'descartar') return 'ko';
+    }
+
+    // Si no fue revisado manualmente, recalcular basándose en errores
+    const errorCount = getRowErrorCount(row);
+    if (action === 'revisar' && errorCount === 0) return 'review';
+    return errorCount > 0 ? 'ko' : 'ok';
+}
+
+function renderReviewStats(rows = getQueueRows(), row = currentRow) {
+    const stats = {
+        total: 0,
+        ok: 0,
+        review: 0,
+        ko: 0
+    };
+    const uniqueStats = {
+        total: new Set(),
+        ok: new Set(),
+        review: new Set(),
+        ko: new Set()
+    };
+
+    (Array.isArray(rows) ? rows : []).forEach((row) => {
+        const bucket = getRowReviewBucket(row);
+        if (!bucket) return;
+        const distinctKey = getDistinctRowKey(row);
+        stats.total += 1;
+        stats[bucket] += 1;
+        uniqueStats.total.add(distinctKey);
+        uniqueStats[bucket].add(distinctKey);
+    });
+
+    const totalEl = $('statsTotalAnalysed');
+    const currentEl = $('statsCurrentIndex');
+    const totalUniqueEl = $('statsUniqueTotalAnalysed');
+    const okEl = $('statsTotalOk');
+    const okUniqueEl = $('statsUniqueTotalOk');
+    const reviewEl = $('statsTotalReview');
+    const reviewUniqueEl = $('statsUniqueTotalReview');
+    const koEl = $('statsTotalKo');
+    const koUniqueEl = $('statsUniqueTotalKo');
+
+    let currentIndex = 0;
+    if (row && stats.total > 0) {
+        const idx = rows.findIndex(item => getRevisionKey(item) === getRevisionKey(row));
+        currentIndex = idx >= 0 ? idx + 1 : 0;
+    }
+
+    if (totalEl instanceof HTMLElement) totalEl.textContent = String(stats.total);
+    if (currentEl instanceof HTMLElement) currentEl.textContent = String(currentIndex);
+    if (totalUniqueEl instanceof HTMLElement) totalUniqueEl.textContent = `· ${uniqueStats.total.size} únicos`;
+    if (okEl instanceof HTMLElement) okEl.textContent = String(stats.ok);
+    if (okUniqueEl instanceof HTMLElement) okUniqueEl.textContent = `· ${uniqueStats.ok.size} únicos`;
+    if (reviewEl instanceof HTMLElement) reviewEl.textContent = String(stats.review);
+    if (reviewUniqueEl instanceof HTMLElement) reviewUniqueEl.textContent = `· ${uniqueStats.review.size} únicos`;
+    if (koEl instanceof HTMLElement) koEl.textContent = String(stats.ko);
+    if (koUniqueEl instanceof HTMLElement) koUniqueEl.textContent = `· ${uniqueStats.ko.size} únicos`;
+}
+
 function renderReviewStateButtons(row) {
     const okBtn = $('statusOkBtn');
     const reviewBtn = $('statusReviewBtn');
     const koBtn = $('statusKoBtn');
     if (!(okBtn instanceof HTMLButtonElement) || !(reviewBtn instanceof HTMLButtonElement) || !(koBtn instanceof HTMLButtonElement)) return;
 
-    const errorCount = getRowErrorCount(row);
-    const isReview = String(row?.qa_revision_accion ?? '').trim().toLowerCase() === 'revisar' && errorCount === 0;
-    const active = !row
-        ? ''
-        : isReview
-            ? 'review'
-            : (errorCount > 0 ? 'ko' : 'ok');
+    const active = getRowReviewBucket(row);
 
     [okBtn, reviewBtn, koBtn].forEach((button) => {
         button.classList.remove('is-active');
@@ -1175,11 +1352,38 @@ function renderMeta(row) {
         return;
     }
 
-    target.innerHTML = `<span class="a2-meta-badge"><strong>PN</strong> ${escapeHtml(getDisplayPn(row))}</span>
-<span class="a2-meta-badge"><strong>DESIGNATION</strong> ${escapeHtml(txt(row?.designation_final || row?.DESIGNATION))}</span>
-<span class="a2-meta-badge"><strong>LIBRO</strong> ${escapeHtml(txt(row?.engine_model))}</span>
-<span class="a2-meta-badge"><strong>PAG</strong> ${escapeHtml(txt(row?.['Source Page']))}</span>
-<span class="a2-meta-badge"><strong>POS</strong> ${escapeHtml(txt(row?.POS))}</span>`;
+    target.innerHTML = `<section class="a2-meta-block a2-meta-block-book">
+<span class="a2-meta-label">Libro + Pag</span>
+<strong class="a2-meta-value">${escapeHtml(txt(row?.engine_model))} Pag: ${escapeHtml(txt(row?.['Source Page']))}</strong>
+</section>
+<section class="a2-meta-block a2-meta-block-pos">
+<span class="a2-meta-label">POS</span>
+<strong class="a2-meta-value">${escapeHtml(txt(row?.POS))}</strong>
+</section>
+<section class="a2-meta-block a2-meta-block-pn">
+<span class="a2-meta-label">PN</span>
+<strong class="a2-meta-value">${escapeHtml(getDisplayPn(row))}</strong>
+</section>
+<section class="a2-meta-block a2-meta-block-designation">
+<div class="a2-meta-designation-inner">
+<span class="a2-meta-label">DESIGNATION</span>
+<strong class="a2-meta-value">${escapeHtml(txt(row?.designation_final || row?.DESIGNATION))}</strong>
+</div>
+<button id="openEditRecordBtn" type="button" class="a2-meta-edit-btn">Editar</button>
+</section>`;
+
+    const editBtn = $('openEditRecordBtn');
+    if (editBtn instanceof HTMLButtonElement) {
+        editBtn.addEventListener('click', () => {
+            if (currentRow) {
+                populateEditRecordForm(currentRow);
+                const modal = $('editRecordModal');
+                if (modal instanceof HTMLElement) {
+                    modal.hidden = false;
+                }
+            }
+        });
+    }
 }
 
 function getGesaPn(row) {
@@ -1195,6 +1399,7 @@ function getSustPn(row) {
 }
 
 function getGesaWeightWithUnits(row) {
+    renderReviewStats();
     const weight = String(row?.weight_gesa ?? '').trim();
     const units = String(row?.units ?? '').trim();
     if (weight && units) return `${weight} ${units}`;
@@ -1460,11 +1665,11 @@ function syncPdfWithCurrentRow(row) {
 function renderRecord(row) {
     if (!row) {
         renderReviewStateButtons(null);
+        renderReviewStats([], null);
         return;
     }
 
-    renderRecordPosition(row);
-    renderSelectedBook(row);
+    renderReviewStats(getQueueRows(), row);
     renderMeta(row);
     renderComparisonTable(row).catch((error) => {
         console.warn('No se pudo renderizar la comparativa con PDF:', error);
@@ -1532,6 +1737,7 @@ async function saveCurrentFieldChanges() {
         currentRow[field] = value;
     }
 
+    renderReviewStats();
     await revalidateCurrentRow();
 }
 
@@ -1662,6 +1868,7 @@ async function setReviewStatus(kind) {
     currentRow.qa_revision_estado = values.qa_revision_estado;
     currentRow.qa_revision_accion = values.qa_revision_accion;
     renderReviewStateButtons(currentRow);
+    renderReviewStats();
 }
 
 async function runNextProcess() {
@@ -1698,6 +1905,7 @@ async function initialize() {
         state.rightPanelTab = 'pdf';
         initChecksModal();
         initRecomputeModal();
+        initEditRecordModal();
         initHorizontalSplitter();
         initComparisonColumnResize();
         loadComparisonColumnWidths();
