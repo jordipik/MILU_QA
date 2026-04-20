@@ -607,6 +607,36 @@ function initChecksModal() {
     });
 }
 
+function initRecomputeModal() {
+    const openBtn = $('openRecomputeModalBtn');
+    const modal = $('recomputeModal');
+    const closeBtn = $('recomputeModalClose');
+    const backdrop = modal?.querySelector('.recompute-modal-backdrop');
+
+    if (!(openBtn instanceof HTMLElement) || !(modal instanceof HTMLElement)) return;
+
+    const closeModal = () => {
+        modal.hidden = true;
+    };
+
+    openBtn.addEventListener('click', () => {
+        syncRecomputeEngineSelect();
+        setRecomputeStatus('Listo para ejecutar.', '');
+        modal.hidden = false;
+        const recomputeIdInput = $('recomputeIdInput');
+        if (recomputeIdInput instanceof HTMLInputElement) {
+            recomputeIdInput.focus();
+        }
+    });
+
+    closeBtn?.addEventListener('click', closeModal);
+    backdrop?.addEventListener('click', closeModal);
+
+    document.addEventListener('keydown', (event) => {
+        if (!modal.hidden && event.key === 'Escape') closeModal();
+    });
+}
+
 function buildEngineOptions(selectedModel = '') {
     const select = $('engineFilterSelect');
     if (!(select instanceof HTMLSelectElement)) return;
@@ -708,12 +738,48 @@ async function runBackendRecompute() {
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify(payload)
             });
-            const data = await response.json().catch(() => ({}));
+            const rawBody = await response.text();
+            let data = null;
+            try {
+                data = rawBody ? JSON.parse(rawBody) : null;
+            } catch (_parseError) {
+                data = null;
+            }
+
             if (!response.ok) {
                 lastError = String(data?.error || `HTTP ${response.status}`).trim();
                 continue;
             }
-            result = data?.result || null;
+
+            const legacyTotals = data?.totals;
+            const hasLegacyPayload = data?.ok === true && legacyTotals && typeof legacyTotals === 'object';
+
+            if (!data || data.ok !== true || (!data.result && !hasLegacyPayload)) {
+                const snippet = rawBody
+                    ? rawBody.replace(/\s+/g, ' ').trim().slice(0, 140)
+                    : '';
+                lastError = snippet
+                    ? `Respuesta invalida desde ${url}: ${snippet}`
+                    : `Respuesta invalida desde ${url} (esperado JSON con { ok: true, result }).`;
+                continue;
+            }
+
+            if (data.result && typeof data.result === 'object') {
+                result = data.result;
+            } else {
+                result = {
+                    file,
+                    mode: id ? 'single-id' : 'full-book',
+                    id: id || null,
+                    dryRun,
+                    updateRevision: true,
+                    scanned: Number(legacyTotals.totalRows) || 0,
+                    changedRows: Number(legacyTotals.changedRows) || 0,
+                    okRows: Math.max((Number(legacyTotals.totalRows) || 0) - (Number(legacyTotals.rowsWithErrors) || 0), 0),
+                    koRows: Number(legacyTotals.rowsWithErrors) || 0,
+                    wroteFile: !dryRun && (Number(legacyTotals.changedRows) || 0) > 0
+                };
+            }
             break;
         } catch (error) {
             lastError = String(error?.message || error || 'Error de red');
@@ -723,7 +789,10 @@ async function runBackendRecompute() {
     recomputeRunBtn.disabled = false;
 
     if (!result) {
-        setRecomputeStatus(`Error: ${lastError || 'no se pudo ejecutar el recálculo.'}`, 'error');
+        setRecomputeStatus(
+            `Error: ${lastError || 'No se pudo ejecutar el recálculo. Comprueba que server.js este activo en http://localhost:3000 y responde en /health.'}`,
+            'error'
+        );
         return;
     }
 
@@ -1485,6 +1554,7 @@ async function initialize() {
     try {
         state.rightPanelTab = 'pdf';
         initChecksModal();
+        initRecomputeModal();
         initHorizontalSplitter();
         initComparisonColumnResize();
         loadComparisonColumnWidths();

@@ -236,7 +236,7 @@ body.a2-resizing * {
 
 .a2-toolbar {
     display: grid;
-    grid-template-columns: minmax(180px, 220px) minmax(240px, 1fr) minmax(88px, 104px) repeat(4, 42px) minmax(92px, 116px);
+    grid-template-columns: minmax(180px, 220px) minmax(240px, 1fr) minmax(88px, 104px) repeat(4, 42px) minmax(96px, 120px) minmax(92px, 116px);
     gap: 8px;
     align-items: center;
 }
@@ -278,6 +278,7 @@ body.a2-resizing * {
 }
 
 .a2-toolbar #loadRecordBtn,
+.a2-toolbar #openRecomputeModalBtn,
 .a2-toolbar #saveErrorsBtn {
     font-size: 11px;
     letter-spacing: 0.01em;
@@ -312,22 +313,6 @@ body.a2-resizing * {
     align-items: center;
     gap: 12px;
     min-height: 22px;
-}
-
-.a2-auto-recompute {
-    border: 1px solid #d5e3f2;
-    background: linear-gradient(135deg, #f4f9ff, #eef6ff 52%, #e8f2ff);
-    border-radius: 12px;
-    padding: 10px;
-    display: grid;
-    gap: 8px;
-}
-
-.a2-auto-recompute h3 {
-    margin: 0;
-    font-size: 12px;
-    color: #194a79;
-    letter-spacing: 0.03em;
 }
 
 .a2-auto-recompute-controls {
@@ -396,6 +381,73 @@ body.a2-resizing * {
 
 .a2-auto-recompute-status.is-error {
     color: #9f2f23;
+}
+
+.recompute-modal {
+    position: fixed;
+    inset: 0;
+    z-index: 1000;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.recompute-modal[hidden] {
+    display: none;
+}
+
+.recompute-modal-backdrop {
+    position: absolute;
+    inset: 0;
+    background: rgba(0, 0, 0, 0.35);
+}
+
+.recompute-modal-panel {
+    position: relative;
+    background: #fff;
+    border-radius: 14px;
+    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.18);
+    width: min(760px, 94vw);
+    max-height: 80vh;
+    overflow: auto;
+    display: flex;
+    flex-direction: column;
+}
+
+.recompute-modal-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 14px 18px 10px;
+    border-bottom: 1px solid var(--line);
+}
+
+.recompute-modal-header h2 {
+    margin: 0;
+    font-size: 15px;
+    color: #1a2d42;
+}
+
+.recompute-modal-close {
+    background: none;
+    border: none;
+    font-size: 20px;
+    cursor: pointer;
+    color: #6b7280;
+    line-height: 1;
+    padding: 2px 6px;
+    border-radius: 6px;
+}
+
+.recompute-modal-close:hover {
+    background: #f3f7fc;
+    color: #1a2d42;
+}
+
+.recompute-modal-body {
+    padding: 14px 18px 18px;
+    display: grid;
+    gap: 8px;
 }
 
 #recordPositionText {
@@ -1117,6 +1169,7 @@ body.a2-resizing * {
 
     .a2-toolbar #recordIdInput,
     .a2-toolbar #loadRecordBtn,
+    .a2-toolbar #openRecomputeModalBtn,
     .a2-toolbar #saveErrorsBtn {
         grid-column: span 2;
     }

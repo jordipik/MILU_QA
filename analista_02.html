@@ -38,23 +38,9 @@
                     aria-label="Error anterior">ERR &#9664;</button>
                 <button id="nextErrorBtn" class="a2-btn-nav a2-btn-nav-err" type="button" title="Siguiente error"
                     aria-label="Siguiente error">ERR &#9654;</button>
+                <button id="openRecomputeModalBtn" type="button">Recalculo QA</button>
                 <button id="saveErrorsBtn" type="button">Guardar ERR</button>
             </div>
-
-            <section class="a2-auto-recompute" aria-label="Recalculo automatico de errores QA">
-                <h3>Recalculo QA (backend)</h3>
-                <div class="a2-auto-recompute-controls">
-                    <select id="recomputeEngineSelect" aria-label="Libro para recalculo"></select>
-                    <input id="recomputeIdInput" type="search" placeholder="ID opcional (vacio = todo el libro)"
-                        autocomplete="off">
-                    <label class="a2-auto-recompute-check" for="recomputeDryRunInput">
-                        <input id="recomputeDryRunInput" type="checkbox" checked>
-                        Simulacion (dry-run)
-                    </label>
-                    <button id="recomputeRunBtn" type="button">Ejecutar recálculo</button>
-                </div>
-                <p id="recomputeStatusText" class="a2-auto-recompute-status">Listo para ejecutar.</p>
-            </section>
 
             <div class="a2-status-row">
                 <p id="recordPositionText">Registro 0 de 0</p>
@@ -137,6 +123,31 @@
                     aria-label="Cerrar">&times;</button>
             </header>
             <div id="checksModalBody" class="checks-modal-body"></div>
+        </div>
+    </div>
+
+    <div id="recomputeModal" class="recompute-modal" hidden aria-modal="true" role="dialog"
+        aria-labelledby="recomputeModalTitle">
+        <div class="recompute-modal-backdrop"></div>
+        <div class="recompute-modal-panel">
+            <header class="recompute-modal-header">
+                <h2 id="recomputeModalTitle">Recalculo QA (backend)</h2>
+                <button id="recomputeModalClose" class="recompute-modal-close" type="button"
+                    aria-label="Cerrar">&times;</button>
+            </header>
+            <div class="recompute-modal-body">
+                <div class="a2-auto-recompute-controls">
+                    <select id="recomputeEngineSelect" aria-label="Libro para recalculo"></select>
+                    <input id="recomputeIdInput" type="search" placeholder="ID opcional (vacio = todo el libro)"
+                        autocomplete="off">
+                    <label class="a2-auto-recompute-check" for="recomputeDryRunInput">
+                        <input id="recomputeDryRunInput" type="checkbox" checked>
+                        Simulacion (dry-run)
+                    </label>
+                    <button id="recomputeRunBtn" type="button">Ejecutar recálculo</button>
+                </div>
+                <p id="recomputeStatusText" class="a2-auto-recompute-status">Listo para ejecutar.</p>
+            </div>
         </div>
     </div>
 
