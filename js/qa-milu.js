@@ -4,18 +4,13 @@
 
 import { state } from './state.js';
 import { escapeHtml, getRowErrors, getRowErrorType, getRowValueForColumn, val } from './helpers.js';
+import { evaluateRowQaChecks, getQaActiveSignature } from './qa-checks.js';
 import { checkSaveBackendConnection, fetchJsonSafe, loadPartitionedEngineData, saveCellToServer } from './data-loader.js';
 import {
-    applyImportedRevisionToEngineJson,
     applyRevisionDataToRows,
     assignRevisionKeys,
-    createRevisionExportPayload,
     getRevisionKey,
-    handleExportRevision,
-    handleImportRevisionFile,
-    loadRevisionData,
     setRowRevision,
-    setRowRevisionNoSave,
     updateRevisionSelectVisual
 } from './revision.js';
 import {
@@ -196,6 +191,24 @@ function getBookEngineCode(row) {
         .replace(/^engine_/i, '')
         .replace(/\.json$/i, '')
         .trim();
+}
+
+function openAnalisisForRow(row) {
+    if (!row) return;
+
+    const book = String(row?.engine_model ?? '').trim();
+    const record = String(row?.pn_final ?? row?.['PART NO.'] ?? row?.pn ?? '').trim();
+    if (!record) {
+        alert('El registro no tiene PN/PART NO para abrir analisis.');
+        return;
+    }
+
+    const params = new URLSearchParams();
+    if (book) params.set('engine', book);
+    params.set('record', record);
+
+    const targetUrl = `analista_02.html?${params.toString()}`;
+    window.open(targetUrl, '_blank', 'noopener');
 }
 
 
@@ -754,83 +767,24 @@ function getQaErrorDefinitionMap() {
         .filter(([code]) => code));
 }
 
-function getQaActiveSignature(activeCodes) {
-    return [...new Set((activeCodes || []).map(code => String(code || '').trim()).filter(Boolean))]
-        .sort((a, b) => a.localeCompare(b))
-        .join('|');
+function buildRowActiveQaErrors(row, activeCodes) {
+    return evaluateRowQaChecks(row, activeCodes);
 }
 
-function buildRowActiveQaErrors(row, activeCodes) {
-    const activeSet = new Set((activeCodes || []).map(code => String(code || '').trim()).filter(Boolean));
-    const source = row?.qa_errors;
-    if (!source || typeof source !== 'object') {
-        return {
-            version: 1,
-            severity: 'none',
-            codes: [],
-            fields: {},
-            issues: [],
-            signature: getQaActiveSignature(activeCodes),
-            updated_at: new Date().toISOString()
-        };
-    }
-
-    const codes = Array.isArray(source.codes) ? source.codes.filter(code => activeSet.has(String(code || '').trim())) : [];
-    const issues = Array.isArray(source.issues)
-        ? source.issues.filter(issue => activeSet.has(String(issue?.code || '').trim()))
-        : [];
-    const fields = {};
-    issues.forEach(issue => {
-        (Array.isArray(issue?.fields) ? issue.fields : []).forEach(field => {
-            const normalizedField = String(field || '').trim();
-            const normalizedCode = String(issue?.code || '').trim();
-            if (!normalizedField || !normalizedCode) return;
-            if (!fields[normalizedField]) fields[normalizedField] = [];
-            if (!fields[normalizedField].includes(normalizedCode)) fields[normalizedField].push(normalizedCode);
-        });
-    });
-
-    const severity = issues.length > 0 ? 'critical' : 'none';
-
-    return {
-        version: Number(source.version || 1),
-        severity,
-        codes,
-        fields,
-        issues,
-        signature: getQaActiveSignature(activeCodes),
-        updated_at: String(source.updated_at || new Date().toISOString())
-    };
+function invalidateRowActiveQaErrors(row) {
+    if (!row || typeof row !== 'object') return;
+    delete row.__qaChecksActive;
 }
 
 function applyActiveQaErrorsToClientRows(activeCodes) {
     state.allData.forEach(row => {
-        row.qa_errors_active = buildRowActiveQaErrors(row, activeCodes);
+        row.__qaChecksActive = buildRowActiveQaErrors(row, activeCodes);
     });
 }
 
 function applyActiveQaErrorsToSubset(activeCodes, rows) {
     (rows || []).forEach(row => {
-        row.qa_errors_active = buildRowActiveQaErrors(row, activeCodes);
-    });
-}
-
-function applyQaRowsFromServer(updates) {
-    if (!Array.isArray(updates) || updates.length === 0) return;
-
-    const byRevisionKey = new Map(state.allData.map(row => [String(getRevisionKey(row) || ''), row]));
-    updates.forEach((entry) => {
-        const key = String(entry?.revisionKey || '').trim();
-        if (!key) return;
-        const row = byRevisionKey.get(key);
-        if (!row) return;
-
-        if (entry?.qa_errors && typeof entry.qa_errors === 'object') {
-            row.qa_errors = entry.qa_errors;
-        }
-        if (entry?.qa_errors_active && typeof entry.qa_errors_active === 'object') {
-            row.qa_errors_active = entry.qa_errors_active;
-        }
+        row.__qaChecksActive = buildRowActiveQaErrors(row, activeCodes);
     });
 }
 
@@ -874,9 +828,9 @@ function renderRecordQaErrors(row, options = {}) {
     const activeCodes = state.activeQaErrorChecks instanceof Set ? state.activeQaErrorChecks : new Set();
     const type = getRowErrorType(row, { activeCodes }) || 'none';
     const definitionMap = getQaErrorDefinitionMap();
-    const sourceErrors = row?.qa_errors_active && row.qa_errors_active.signature === getQaActiveSignature([...activeCodes])
-        ? row.qa_errors_active
-        : row?.qa_errors;
+    const sourceErrors = row?.__qaChecksActive && row.__qaChecksActive.signature === getQaActiveSignature([...activeCodes])
+        ? row.__qaChecksActive
+        : buildRowActiveQaErrors(row, [...activeCodes]);
     const rawIssues = Array.isArray(sourceErrors?.issues) ? sourceErrors.issues : [];
     const filteredIssues = rawIssues.filter(issue => {
         const code = String(issue?.code || '').trim();
@@ -1294,6 +1248,7 @@ async function handleRecordModalSubmit(event) {
                 await saveCellToServer(engineFile, row.ID, fieldKey, nextValues[fieldKey]);
                 row[fieldKey] = nextValues[fieldKey];
             }
+            invalidateRowActiveQaErrors(row);
         }
 
         setRowRevision(row, nextEstado, nextAccion);
@@ -1344,6 +1299,7 @@ async function handleSideRecordSubmit(event) {
                 await saveCellToServer(engineFile, row.ID, fieldKey, nextValues[fieldKey]);
                 row[fieldKey] = nextValues[fieldKey];
             }
+            invalidateRowActiveQaErrors(row);
         }
 
         setRowRevision(row, nextEstado, nextAccion);
@@ -1786,39 +1742,11 @@ async function applyQaChecksFilter(scope = 'all') {
                 alert('No se pudo determinar la clave de revisión para guardar los visibles.');
                 return;
             }
-
-            const response = await fetch('http://localhost:3000/apply-qa-checks-filter', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                    activeCodes,
-                    scope: 'visible',
-                    revisionKeys
-                })
-            });
-            if (!response.ok) {
-                throw new Error(`Error HTTP ${response.status}`);
-            }
-
-            const result = await response.json();
-            const backendVisibleScope = String(result?.scope || '').trim().toLowerCase() === 'visible';
-
-            if (!backendVisibleScope) {
-                console.warn('El backend activo no devolvió scope=visible. Es probable que el servidor no se haya reiniciado tras cambios recientes.');
-                alert('El backend activo no soporta todavía "Aplicar solo visibles". Reinicia node server.js o Ejecutar localhost.bat para persistir este modo.');
-            }
-
-            if (backendVisibleScope && Array.isArray(result?.rows) && result.rows.length > 0) {
-                applyQaRowsFromServer(result.rows);
-            } else {
-                applyActiveQaErrorsToSubset(activeCodes, targetRows);
-            }
+            applyActiveQaErrorsToSubset(activeCodes, targetRows);
             state.qaChecksScopedRows = new Set(targetRows);
             persistActiveQaChecks();
 
-            const visibleStats = backendVisibleScope
-                ? (result?.stats || buildQaStatsFromRows(targetRows, activeCodes))
-                : buildQaStatsFromRows(targetRows, activeCodes);
+            const visibleStats = buildQaStatsFromRows(targetRows, activeCodes);
             showQaChecksStats({ stats: visibleStats }, 'Solo visibles en pantalla');
 
             const foundRows = buildFoundErrorRows(targetRows, activeCodes, 300);
@@ -1830,26 +1758,16 @@ async function applyQaChecksFilter(scope = 'all') {
             return;
         }
 
-        const response = await fetch('http://localhost:3000/apply-qa-checks-filter', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ activeCodes })
-        });
-
-        if (!response.ok) {
-            throw new Error(`Error HTTP ${response.status}`);
-        }
-
-        const result = await response.json();
+        applyActiveQaErrorsToClientRows(activeCodes);
+        const globalStats = buildQaStatsFromRows(state.allData, activeCodes);
 
         hideQaChecksProgress();
-        showQaChecksStats(result, 'Todos los articulos');
+        showQaChecksStats({ stats: globalStats }, 'Todos los articulos');
         persistActiveQaChecks();
-        applyActiveQaErrorsToClientRows(activeCodes);
         state.qaChecksScopedRows = null;
 
         const foundRows = buildFoundErrorRows(state.allData, activeCodes, 500);
-        renderQaChecksFoundRows(foundRows, result?.stats?.rowsWithErrors || foundRows.length);
+        renderQaChecksFoundRows(foundRows, globalStats.rowsWithErrors || foundRows.length);
 
         // Actualizar tabla después del éxito
         state.currentPage = 1;
@@ -1917,12 +1835,37 @@ function clearFilters() {
     document.querySelectorAll('.filter-input[data-filter]').forEach(input => { input.value = ''; });
     document.querySelectorAll('.filter-select[data-filter]').forEach(select => { select.value = ''; });
     state.filters = {};
+    updateOnlyErrorsToggleLabel();
     populatePageFilterOptions('', '');
     state.currentPage = 1;
     renderTable();
     renderPagination();
     loadPdfClear();
     updateSchemasInline('', '');
+}
+
+function updateOnlyErrorsToggleLabel() {
+    const toggleBtn = $('toggleOnlyErrorsBtn');
+    if (!(toggleBtn instanceof HTMLButtonElement)) return;
+
+    const onlyErrorsActive = String(state.filters?.has_error || '') === 'true';
+    toggleBtn.classList.toggle('is-active', onlyErrorsActive);
+    toggleBtn.textContent = onlyErrorsActive ? 'Solo errores: ON' : 'Solo errores: OFF';
+}
+
+function setOnlyErrorsFilter(enabled) {
+    if (enabled) state.filters.has_error = 'true';
+    else delete state.filters.has_error;
+
+    const hasErrorSelect = document.querySelector('.filter-select[data-filter="has_error"]');
+    if (hasErrorSelect instanceof HTMLSelectElement) {
+        hasErrorSelect.value = enabled ? 'true' : '';
+    }
+
+    state.currentPage = 1;
+    updateOnlyErrorsToggleLabel();
+    renderTable();
+    renderPagination();
 }
 
 function handleFilter(event) {
@@ -1932,6 +1875,7 @@ function handleFilter(event) {
     const filterValue = input.value.trim();
     if (filterValue === '') delete state.filters[filterKey];
     else state.filters[filterKey] = filterValue;
+    updateOnlyErrorsToggleLabel();
 
     if (filterTimeout) clearTimeout(filterTimeout);
     filterTimeout = setTimeout(() => {
@@ -1994,16 +1938,27 @@ async function applyBulkQuickMode(quickMode) {
     const confirmed = window.confirm(`Se aplicará ${targetValues.label} masiva a ${targetRows.length} ${scopeText}. ¿Continuar?`);
     if (!confirmed) return;
 
-    targetRows.forEach(row => {
+    const failedRows = [];
+    for (const row of targetRows) {
         const nextEstado = targetValues.estado === null ? String(row.qa_revision_estado || '') : targetValues.estado;
         const nextAccion = targetValues.accion === null ? String(row.qa_revision_accion || '') : targetValues.accion;
-        setRowRevisionNoSave(row, nextEstado, nextAccion);
-    });
+        const engineFile = getEngineJsonForRow(row);
 
-    try {
-        await applyImportedRevisionToEngineJson(createRevisionExportPayload());
-    } catch (error) {
-        alert(`No se pudo persistir el cambio masivo en los JSON: ${error.message}`);
+        try {
+            if (!engineFile) throw new Error('No se pudo resolver engine JSON');
+            await saveCellToServer(engineFile, row.ID, 'qa_revision_estado', nextEstado);
+            await saveCellToServer(engineFile, row.ID, 'qa_revision_accion', nextAccion);
+            row.qa_revision_estado = nextEstado;
+            row.qa_revision_accion = nextAccion;
+            row.qa_revision_updated_at = new Date().toISOString();
+        } catch (error) {
+            failedRows.push(String(row?.ID || ''));
+            console.warn('No se pudo aplicar cambio masivo de revision:', error);
+        }
+    }
+
+    if (failedRows.length > 0) {
+        alert(`No se pudieron guardar ${failedRows.length} registros en el cambio masivo.`);
     }
 
     renderTable();
@@ -2052,6 +2007,7 @@ async function loadData() {
         state.paginationEnabled = true;
         state.tableMode = 'qa';
         state.filters = {};
+        updateOnlyErrorsToggleLabel();
         state.qaChecksScopedRows = null;
         state.recentRevisionKeys = [];
         state.displayRowCount = 0;
@@ -2062,7 +2018,6 @@ async function loadData() {
         }
 
         assignRevisionKeys(state.allData);
-        await loadRevisionData();
         applyRevisionDataToRows(state.allData);
         loadColumnWidths();
 
@@ -2089,6 +2044,7 @@ async function loadData() {
         renderTable();
         renderPagination();
         updatePaginationToggleLabel();
+        updateOnlyErrorsToggleLabel();
         syncSideRecordFormWithSelection();
         queueColumnViewRefresh();
 
@@ -2126,6 +2082,10 @@ function attachGlobalEvents() {
     $('nextBookPageBtn')?.addEventListener('click', goToNextBookPage);
     $('prevBookPageBtn')?.addEventListener('click', goToPrevBookPage);
     $('clearFiltersBtn')?.addEventListener('click', clearFilters);
+    $('toggleOnlyErrorsBtn')?.addEventListener('click', () => {
+        const onlyErrorsActive = String(state.filters?.has_error || '') === 'true';
+        setOnlyErrorsFilter(!onlyErrorsActive);
+    });
     $('togglePaginationBtn')?.addEventListener('click', () => {
         state.paginationEnabled = !state.paginationEnabled;
         state.currentPage = 1;
@@ -2217,29 +2177,6 @@ function attachGlobalEvents() {
 
     $('pageFilterSelect')?.addEventListener('change', () => {
         setPageFilterValue($('pageFilterSelect')?.value || '');
-    });
-
-    $('exportRevisionBtn')?.addEventListener('click', handleExportRevision);
-
-    const revisionFileInput = $('revisionFileInput');
-    $('importRevisionBtn')?.addEventListener('click', () => revisionFileInput?.click());
-    revisionFileInput?.addEventListener('change', async (event) => {
-        const file = event.target.files?.[0];
-        if (!file) return;
-        try {
-            const importedPayload = await handleImportRevisionFile(file);
-            const backendApply = await applyImportedRevisionToEngineJson(importedPayload);
-            applyRevisionDataToRows(state.allData);
-            state.currentPage = 1;
-            renderTable();
-            renderPagination();
-            const appliedCount = Number(backendApply?.totalApplied || 0);
-            alert(`Revision importada y aplicada a JSON de libros. Filas actualizadas: ${appliedCount}.`);
-        } catch (error) {
-            alert(`Error importando revisión: ${error.message}`);
-        } finally {
-            revisionFileInput.value = '';
-        }
     });
 
     $('bulkRevOkBtn')?.addEventListener('click', () => applyBulkQuickMode('revok'));
@@ -2387,6 +2324,19 @@ function attachGlobalEvents() {
         const target = event.target;
         if (!(target instanceof HTMLElement)) return;
 
+        const openAnalysisBadge = target.closest('[data-open-analysis="true"]');
+        if (openAnalysisBadge) {
+            const tr = openAnalysisBadge.closest('tr[data-revision-key]');
+            const rowKey = tr?.getAttribute('data-revision-key') || '';
+            const row = state.allData.find(item => getRevisionKey(item) === rowKey);
+            if (row) {
+                event.preventDefault();
+                event.stopPropagation();
+                openAnalisisForRow(row);
+            }
+            return;
+        }
+
         const openModalBtn = target.closest('button[data-open-record-modal="true"]');
         if (openModalBtn) {
             const revisionKey = openModalBtn.dataset.revisionKey;
@@ -2484,6 +2434,20 @@ function attachGlobalEvents() {
     errorViewTbody?.addEventListener('click', (event) => {
         const target = event.target;
         if (!(target instanceof HTMLElement)) return;
+
+        const openAnalysisBadge = target.closest('[data-open-analysis="true"]');
+        if (openAnalysisBadge) {
+            const tr = openAnalysisBadge.closest('tr[data-revision-key]');
+            const rowKey = tr?.getAttribute('data-revision-key') || '';
+            const row = state.allData.find(item => getRevisionKey(item) === rowKey);
+            if (row) {
+                event.preventDefault();
+                event.stopPropagation();
+                openAnalisisForRow(row);
+            }
+            return;
+        }
+
         if (target.closest('a') || target.closest('button') || target.closest('input') || target.closest('select')) return;
 
         const tr = target.closest('tr[data-revision-key]');

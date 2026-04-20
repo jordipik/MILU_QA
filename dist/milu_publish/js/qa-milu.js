@@ -3,19 +3,14 @@
  */
 
 import { state } from './state.js';
-import { escapeHtml, getRowValueForColumn, val } from './helpers.js';
+import { escapeHtml, getRowErrors, getRowErrorType, getRowValueForColumn, val } from './helpers.js';
+import { evaluateRowQaChecks, getQaActiveSignature } from './qa-checks.js';
 import { checkSaveBackendConnection, fetchJsonSafe, loadPartitionedEngineData, saveCellToServer } from './data-loader.js';
 import {
-    applyImportedRevisionToEngineJson,
     applyRevisionDataToRows,
     assignRevisionKeys,
-    createRevisionExportPayload,
     getRevisionKey,
-    handleExportRevision,
-    handleImportRevisionFile,
-    loadRevisionData,
     setRowRevision,
-    setRowRevisionNoSave,
     updateRevisionSelectVisual
 } from './revision.js';
 import {
@@ -26,12 +21,14 @@ import {
     saveColumnViewPreference
 } from './column-view.js';
 import { isInlineEditableTarget, cancelInlineEdit } from './cell-editor.js';
-import { loadPdfClear, loadPdfWithPage, renderPdfPage, setPdfSelection } from './pdf-viewer.js';
+import { initPdfZoomControls, loadPdfClear, loadPdfWithPage, renderPdfPage, setPdfSelection } from './pdf-viewer.js';
 import { updateSchemasInline, renderSelectedRowPosPanel, renderSelectedRowPosTop } from './schemas.js';
+import './bulk-revision-helper.js';
 import { getEngineJsonForRow } from './helpers.js';
 import {
     changePage,
     focusRevisionRowInMainTable,
+    getCurrentFilteredSortedRows,
     getRowsForBulkScope,
     jumpToPage,
     moveSelectionBy,
@@ -54,7 +51,9 @@ function queueColumnViewRefresh() {
     });
 }
 
+const QA_CHECKS_STORAGE_KEY = 'milu:qa-active-error-checks:v2';
 const MODAL_FIELD_KEYS = [
+    'POS',
     'pn_final',
     'designation_final',
     'weight_final',
@@ -114,6 +113,7 @@ const modalUiState = {
     windowScrollX: 0,
     windowScrollY: 0
 };
+let activeMatchesModalRevisionKey = '';
 
 function setRightPanelTab(tabName) {
     const resolvedTab = tabName === 'record' ? 'record' : 'pdf';
@@ -175,6 +175,11 @@ function isRecordModalOpen() {
     return !!modal && !modal.hasAttribute('hidden');
 }
 
+function isMatchesModalOpen() {
+    const modal = $('qaMatchesModal');
+    return !!modal && !modal.hasAttribute('hidden');
+}
+
 function getBookEngineCode(row) {
     const sourceFile = String(row?.source_file ?? '').trim();
     if (sourceFile) return sourceFile.replace(/\.xlsx$/i, '');
@@ -199,7 +204,12 @@ function getModalMatchesByPn(row) {
             page: String(item?.['Source Page'] ?? ''),
             pos: String(item?.POS ?? ''),
             id: String(item?.ID ?? ''),
+            partNumber: String(item?.['PART NO.'] ?? item?.pn ?? ''),
             estado: String(item?.qa_revision_estado ?? ''),
+            designationFinal: String(item?.designation_final ?? item?.DESIGNATION ?? ''),
+            weightFinal: String(item?.weight_final ?? ''),
+            measurementFinal: String(item?.measurement_final ?? ''),
+            fgsCodeDescription: String(item?.fgs_code_description ?? ''),
             accion: String(item?.qa_revision_accion ?? ''),
             book: getBookEngineCode(item)
         }));
@@ -229,6 +239,21 @@ function syncRecordModalBookFilter(row, matches, selectId = 'qaModalMatchesBookF
 }
 function getRowByRevisionKey(revisionKey) {
     return state.allData.find(item => getRevisionKey(item) === revisionKey);
+}
+
+function selectRevisionRowByKey(revisionKey) {
+    const key = String(revisionKey || '').trim();
+    if (!key) return false;
+    const row = getRowByRevisionKey(key);
+    if (!row) return false;
+    state.selectedRevisionRowKey = key;
+    refreshSelectedRowVisual();
+    renderSelectedRowPosPanel(row);
+    renderSelectedRowPosTop(row);
+    document.dispatchEvent(new CustomEvent('qa:selected-row-changed', {
+        detail: { revisionKey: key }
+    }));
+    return true;
 }
 
 function normModalMatch(value) {
@@ -650,7 +675,8 @@ function renderRecordModalMatches(row, currentRevisionKey, options = {}) {
     const {
         bodyId = 'qaModalMatchesBody',
         countId = 'qaModalMatchesCount',
-        bookFilterId = 'qaModalMatchesBookFilter'
+        bookFilterId = 'qaModalMatchesBookFilter',
+        showAction = true
     } = options;
     const body = $(bodyId);
     const count = $(countId);
@@ -659,8 +685,10 @@ function renderRecordModalMatches(row, currentRevisionKey, options = {}) {
     const matchesByPn = getModalMatchesByPn(row);
     const currentBook = normModalMatch(getBookEngineCode(row));
 
+    const emptyColspan = 5;
+
     if (!matchesByPn.length) {
-        body.innerHTML = '<tr><td colspan="5">No se pudo determinar PN/libro del registro.</td></tr>';
+        body.innerHTML = `<tr><td colspan="${emptyColspan}">No se pudo determinar PN/libro del registro.</td></tr>`;
         if (count) count.textContent = '0 coincidencias';
         setModalSectionVisibility(body, false);
         return;
@@ -688,7 +716,7 @@ function renderRecordModalMatches(row, currentRevisionKey, options = {}) {
         });
 
     if (!matches.length) {
-        body.innerHTML = '<tr><td colspan="5">Sin coincidencias para el filtro seleccionado.</td></tr>';
+        body.innerHTML = `<tr><td colspan="${emptyColspan}">Sin coincidencias para el filtro seleccionado.</td></tr>`;
         if (count) count.textContent = '0 coincidencias';
         setModalSectionVisibility(body, false);
         return;
@@ -697,17 +725,131 @@ function renderRecordModalMatches(row, currentRevisionKey, options = {}) {
     body.innerHTML = matches.map(item => {
         const isCurrent = item.revisionKey === currentRevisionKey;
         const revisionKeyAttr = escapeHtml(String(item.revisionKey || ''));
+        const normalizedEstado = normModalMatch(item.estado);
+        const isOkStatus = normalizedEstado === 'revisado' || normalizedEstado === 'ok';
+        const sideStatusClass = isOkStatus ? 'ok' : 'ko';
+        const sideStatusLabel = isOkStatus ? 'OK' : 'KO';
         return `<tr class="${isCurrent ? 'qa-modal-related-current' : ''}" data-revision-key="${revisionKeyAttr}" title="Doble click para ir al registro en tabla principal">`
             + `<td>${escapeHtml(item.book || '-')}</td>`
             + `<td>${escapeHtml(item.page || '-')}</td>`
             + `<td>${escapeHtml(item.pos || '-')}</td>`
-            + `<td>${escapeHtml(item.estado || '-')}</td>`
-            + `<td>${escapeHtml(item.accion || '-')}</td>`
+            + (showAction
+                ? `<td>${escapeHtml(item.designationFinal || '-')}</td><td>${escapeHtml(item.accion || '-')}</td>`
+                : `<td class="qa-side-match-part-number">${escapeHtml(item.partNumber || '-')}</td><td><span class="qa-side-match-st ${sideStatusClass}">${sideStatusLabel}</span></td>`)
             + '</tr>';
     }).join('');
 
     if (count) count.textContent = `${matches.length} coincidencias`;
     setModalSectionVisibility(body, true);
+}
+
+function getQaErrorDefinitionMap() {
+    return new Map((state.qaErrorCheckDefinitions || [])
+        .map(def => [String(def?.code || '').trim(), String(def?.label || def?.code || '').trim()])
+        .filter(([code]) => code));
+}
+
+function buildRowActiveQaErrors(row, activeCodes) {
+    return evaluateRowQaChecks(row, activeCodes);
+}
+
+function applyActiveQaErrorsToClientRows(activeCodes) {
+    state.allData.forEach(row => {
+        row.__qaChecksActive = buildRowActiveQaErrors(row, activeCodes);
+    });
+}
+
+function applyActiveQaErrorsToSubset(activeCodes, rows) {
+    (rows || []).forEach(row => {
+        row.__qaChecksActive = buildRowActiveQaErrors(row, activeCodes);
+    });
+}
+
+function buildQaStatsFromRows(rows, activeCodes) {
+    const activeSet = new Set((activeCodes || []).map(code => String(code || '').trim()).filter(Boolean));
+    const totals = {
+        totalRows: 0,
+        rowsWithErrors: 0,
+        rowsOk: 0,
+        severityCount: { critical: 0, warning: 0, none: 0 },
+        codeCount: {}
+    };
+
+    (rows || []).forEach(row => {
+        totals.totalRows += 1;
+        const activeErrors = buildRowActiveQaErrors(row, activeSet);
+        const hasErrors = Array.isArray(activeErrors?.codes) && activeErrors.codes.length > 0;
+        if (hasErrors) totals.rowsWithErrors += 1;
+        else totals.rowsOk += 1;
+
+        if (hasErrors) totals.severityCount.critical += 1;
+        else totals.severityCount.none += 1;
+
+        (activeErrors.codes || []).forEach(code => {
+            const normalizedCode = String(code || '').trim();
+            if (!normalizedCode) return;
+            totals.codeCount[normalizedCode] = Number(totals.codeCount[normalizedCode] || 0) + 1;
+        });
+    });
+
+    return totals;
+}
+
+function renderRecordQaErrors(row, options = {}) {
+    const summaryId = options.summaryId || 'qaModalErrorsSummary';
+    const listId = options.listId || 'qaModalErrorsList';
+    const summary = $(summaryId);
+    const list = $(listId);
+    if (!(summary instanceof HTMLElement) || !(list instanceof HTMLElement)) return;
+
+    const activeCodes = state.activeQaErrorChecks instanceof Set ? state.activeQaErrorChecks : new Set();
+    const type = getRowErrorType(row, { activeCodes }) || 'none';
+    const definitionMap = getQaErrorDefinitionMap();
+    const sourceErrors = row?.__qaChecksActive && row.__qaChecksActive.signature === getQaActiveSignature([...activeCodes])
+        ? row.__qaChecksActive
+        : buildRowActiveQaErrors(row, [...activeCodes]);
+    const rawIssues = Array.isArray(sourceErrors?.issues) ? sourceErrors.issues : [];
+    const filteredIssues = rawIssues.filter(issue => {
+        const code = String(issue?.code || '').trim();
+        return code && activeCodes.has(code);
+    });
+
+    const fallbackCodes = getRowErrors(row, { activeCodes });
+    const issueItems = filteredIssues.length > 0
+        ? filteredIssues.map(issue => {
+            const code = String(issue?.code || '').trim();
+            const fields = Array.isArray(issue?.fields) ? issue.fields.filter(Boolean).join(', ') : '';
+            const label = definitionMap.get(code) || code;
+            const message = String(issue?.message || '').trim() || label;
+            const severity = type === 'critical' ? 'critical' : String(issue?.severity || type || 'warning').trim();
+            const fieldHtml = fields ? `<span class="qa-record-errors-fields">${escapeHtml(fields)}</span>` : '';
+            return `<li class="qa-record-errors-item is-${escapeHtml(severity)}">
+                <div class="qa-record-errors-item-main">
+                    <span class="qa-record-errors-code">${escapeHtml(label)}</span>
+                    ${fieldHtml}
+                </div>
+                <span class="qa-record-errors-message">${escapeHtml(message)}</span>
+            </li>`;
+        })
+        : fallbackCodes.map(code => {
+            const label = definitionMap.get(code) || code;
+            return `<li class="qa-record-errors-item is-${escapeHtml(type === 'critical' ? 'critical' : 'warning')}">
+                <div class="qa-record-errors-item-main">
+                    <span class="qa-record-errors-code">${escapeHtml(label)}</span>
+                </div>
+                <span class="qa-record-errors-message">Error activo en este registro.</span>
+            </li>`;
+        });
+
+    if (issueItems.length === 0) {
+        summary.innerHTML = '<span class="qa-record-errors-pill is-ok">Sin errores activos</span>';
+        list.innerHTML = '<li class="qa-record-errors-empty">Este registro no tiene errores para las comprobaciones activas.</li>';
+        return;
+    }
+
+    const severityLabel = type === 'critical' ? 'Criticos' : 'Avisos';
+    summary.innerHTML = `<span class="qa-record-errors-pill is-${escapeHtml(type)}">${issueItems.length} ${escapeHtml(severityLabel)}</span>`;
+    list.innerHTML = issueItems.join('');
 }
 
 function fillRecordModal(row, revisionKey) {
@@ -738,6 +880,7 @@ function fillRecordModal(row, revisionKey) {
     $('qaModalMeasurementFinal').value = String(row?.measurement_final ?? '');
     $('qaModalNorma').value = String(row?.norma ?? '');
 
+    renderRecordQaErrors(row);
     renderRecordModalMatches(row, revisionKey);
     renderRecordModalExport(row);
     renderRecordModalSuperseded(row);
@@ -779,10 +922,15 @@ function fillSideRecordForm(row, revisionKey) {
         sideLabel.textContent = `${String(row?.engine_model ?? '-')} • pág ${String(row?.['Source Page'] ?? '-')} • ID ${String(row?.ID ?? '-')}`;
     }
 
+    renderRecordQaErrors(row, {
+        summaryId: 'qaSideErrorsSummary',
+        listId: 'qaSideErrorsList'
+    });
     renderRecordModalMatches(row, revisionKey, {
         bodyId: 'qaSideMatchesBody',
         countId: 'qaSideMatchesCount',
-        bookFilterId: 'qaSideMatchesBookFilter'
+        bookFilterId: 'qaSideMatchesBookFilter',
+        showAction: false
     });
     renderRecordModalExport(row, {
         headRowId: 'qaSideExportHeadRow',
@@ -802,6 +950,7 @@ function fillSideRecordForm(row, revisionKey) {
 function getRecordFormValues(scope) {
     const prefix = scope === 'side' ? 'qaSide' : 'qaModal';
     return {
+        POS: String($(`${prefix}Pos`)?.value || ''),
         pn_final: String($(`${prefix}PnFinal`)?.value || ''),
         designation_final: String($(`${prefix}DesignationFinal`)?.value || ''),
         weight_final: String($(`${prefix}WeightFinal`)?.value || ''),
@@ -840,8 +989,11 @@ function clearSideRecordForm() {
     $('qaSideExportBody').innerHTML = '<tr><td>Sin seleccion.</td></tr>';
     $('qaSideSupersededHeadRow').innerHTML = '<th>Sin datos</th>';
     $('qaSideSupersededBody').innerHTML = '<tr><td>Sin seleccion.</td></tr>';
+    $('qaSideErrorsSummary').innerHTML = '<span class="qa-record-errors-pill is-empty">Sin seleccion</span>';
+    $('qaSideErrorsList').innerHTML = '<li class="qa-record-errors-empty">Selecciona una fila para ver sus errores.</li>';
     const status = $('qaSideStatus');
     if (status) status.textContent = 'Selecciona una fila para editarla aqui.';
+    if (isMatchesModalOpen()) closeMatchesModal();
 }
 
 function syncSideRecordFormWithSelection() {
@@ -852,6 +1004,10 @@ function syncSideRecordFormWithSelection() {
         return;
     }
     fillSideRecordForm(row, revisionKey);
+    if (isMatchesModalOpen()) {
+        activeMatchesModalRevisionKey = revisionKey;
+        renderMatchesLargeModal(revisionKey);
+    }
 }
 
 function captureModalUiState() {
@@ -901,6 +1057,140 @@ function closeRecordModal() {
     modal.setAttribute('hidden', '');
     const status = $('qaRecordModalStatus');
     if (status) status.textContent = '';
+}
+
+function renderMatchesLargeModal(revisionKey = activeMatchesModalRevisionKey) {
+    const body = $('qaMatchesModalBody');
+    const count = $('qaMatchesModalCount');
+    const pnLabel = $('qaMatchesModalPn');
+    const currentLabel = $('qaMatchesModalCurrent');
+    const row = getRowByRevisionKey(revisionKey);
+
+    if (!(body instanceof HTMLElement) || !row || !revisionKey) {
+        if (body instanceof HTMLElement) {
+            body.innerHTML = '<tr><td colspan="8">Selecciona un registro en la ficha para ver apariciones.</td></tr>';
+        }
+        if (count) count.textContent = '0';
+        if (pnLabel) pnLabel.textContent = '-';
+        if (currentLabel) currentLabel.textContent = '-';
+        return;
+    }
+
+    const currentBook = normModalMatch(getBookEngineCode(row));
+    const matchesByPn = getModalMatchesByPn(row);
+    const pn = String(row?.['PART NO.'] ?? row?.pn ?? '').trim() || '-';
+    if (pnLabel) pnLabel.textContent = pn;
+    if (currentLabel) {
+        currentLabel.textContent = `${String(row?.engine_model || '-')} · pag ${String(row?.['Source Page'] || '-')} · pos ${String(row?.POS || '-')}`;
+    }
+
+    if (!matchesByPn.length) {
+        body.innerHTML = '<tr><td colspan="8">No se pudo determinar PN/libro del registro.</td></tr>';
+        if (count) count.textContent = '0';
+        return;
+    }
+
+    syncRecordModalBookFilter(row, matchesByPn, 'qaMatchesModalBookFilter');
+
+    const selectedBookFilter = String($('qaMatchesModalBookFilter')?.value || '__current__');
+    const pageFilter = normModalMatch($('qaMatchesModalPageFilter')?.value || '');
+    const posFilter = normModalMatch($('qaMatchesModalPosFilter')?.value || '');
+    const idFilter = normModalMatch($('qaMatchesModalIdFilter')?.value || '');
+    const textFilter = normModalMatch($('qaMatchesModalTextFilter')?.value || '');
+
+    const filteredMatches = matchesByPn.filter(item => {
+        const itemBook = normModalMatch(item.book);
+        if (selectedBookFilter === '__all__') {
+            // No aplicar filtro de libro.
+        } else if (selectedBookFilter === '__current__') {
+            if (!currentBook || itemBook !== currentBook) return false;
+        } else if (itemBook !== normModalMatch(selectedBookFilter)) {
+            return false;
+        }
+
+        if (pageFilter && !normModalMatch(item.page).includes(pageFilter)) return false;
+        if (posFilter && !normModalMatch(item.pos).includes(posFilter)) return false;
+        if (idFilter && !normModalMatch(item.id).includes(idFilter)) return false;
+
+        if (textFilter) {
+            const haystack = [
+                item.id,
+                item.designationFinal,
+                item.weightFinal,
+                item.measurementFinal,
+                item.fgsCodeDescription,
+                item.book,
+                item.page,
+                item.pos
+            ].map(value => normModalMatch(value)).join(' ');
+            if (!haystack.includes(textFilter)) return false;
+        }
+
+        return true;
+    });
+
+    const matches = filteredMatches
+        .sort((a, b) => {
+            const byBook = String(a.book || '').localeCompare(String(b.book || ''), 'es', { numeric: true, sensitivity: 'base' });
+            if (byBook !== 0) return byBook;
+            const byPage = pageSortValue(a.page) - pageSortValue(b.page);
+            if (byPage !== 0) return byPage;
+            const byPos = a.pos.localeCompare(b.pos, 'es', { numeric: true, sensitivity: 'base' });
+            if (byPos !== 0) return byPos;
+            return a.id.localeCompare(b.id, 'es', { numeric: true, sensitivity: 'base' });
+        });
+
+    if (!matches.length) {
+        body.innerHTML = '<tr><td colspan="8">Sin coincidencias para los filtros seleccionados.</td></tr>';
+        if (count) count.textContent = `0 / ${matchesByPn.length}`;
+        return;
+    }
+
+    body.innerHTML = matches.map(item => {
+        const isCurrent = item.revisionKey === revisionKey;
+        const revisionKeyAttr = escapeHtml(String(item.revisionKey || ''));
+        return `<tr class="${isCurrent ? 'qa-modal-related-current' : ''}" data-revision-key="${revisionKeyAttr}" title="Doble click para ir al registro en tabla principal">`
+            + `<td>${escapeHtml(item.book || '-')}</td>`
+            + `<td>${escapeHtml(item.page || '-')}</td>`
+            + `<td>${escapeHtml(item.pos || '-')}</td>`
+            + `<td>${escapeHtml(item.id || '-')}</td>`
+            + `<td>${escapeHtml(item.designationFinal || '-')}</td>`
+            + `<td>${escapeHtml(item.weightFinal || '-')}</td>`
+            + `<td>${escapeHtml(item.measurementFinal || '-')}</td>`
+            + `<td>${escapeHtml(item.fgsCodeDescription || '-')}</td>`
+            + '</tr>';
+    }).join('');
+
+    if (count) count.textContent = `${matches.length} / ${matchesByPn.length}`;
+}
+
+function openMatchesModal(revisionKey) {
+    const modal = $('qaMatchesModal');
+    const row = getRowByRevisionKey(revisionKey);
+    if (!modal || !row) return;
+
+    if (activeMatchesModalRevisionKey !== revisionKey) {
+        const pageFilter = $('qaMatchesModalPageFilter');
+        const posFilter = $('qaMatchesModalPosFilter');
+        const idFilter = $('qaMatchesModalIdFilter');
+        const textFilter = $('qaMatchesModalTextFilter');
+        if (pageFilter instanceof HTMLInputElement) pageFilter.value = '';
+        if (posFilter instanceof HTMLInputElement) posFilter.value = '';
+        if (idFilter instanceof HTMLInputElement) idFilter.value = '';
+        if (textFilter instanceof HTMLInputElement) textFilter.value = '';
+    }
+
+    activeMatchesModalRevisionKey = revisionKey;
+    modal.removeAttribute('hidden');
+    renderMatchesLargeModal(revisionKey);
+}
+
+function closeMatchesModal() {
+    const modal = $('qaMatchesModal');
+    if (!modal) return;
+
+    modal.setAttribute('hidden', '');
+    activeMatchesModalRevisionKey = '';
 }
 
 async function handleRecordModalSubmit(event) {
@@ -1031,6 +1321,24 @@ function getBookPages(book) {
         .filter(n => n != null))].sort((a, b) => a - b);
 }
 
+function populatePageFilterOptions(bookValue, selectedPage = '') {
+    const pageSelect = $('pageFilterSelect');
+    if (!(pageSelect instanceof HTMLSelectElement)) return '';
+
+    const normalizedBook = String(bookValue || '').trim();
+    const pages = normalizedBook ? getBookPages(normalizedBook) : [];
+    const normalizedSelectedPage = normalizePageNumber(selectedPage);
+    const selectedPageNumber = Number(normalizedSelectedPage);
+    const hasSelectedPage = normalizedSelectedPage !== '' && pages.includes(selectedPageNumber);
+    const resolvedPage = hasSelectedPage ? normalizedSelectedPage : '';
+
+    pageSelect.innerHTML = '<option value="">Todas las páginas</option>'
+        + pages.map(page => `<option value="${page}">${page}</option>`).join('');
+    pageSelect.value = resolvedPage;
+
+    return resolvedPage;
+}
+
 function applyBookSelection(bookValue, options = {}) {
     const {
         pageValue = null,
@@ -1041,7 +1349,6 @@ function applyBookSelection(bookValue, options = {}) {
 
     const normalizedBook = String(bookValue || '').trim();
     const bookFilterSelect = $('bookFilterSelect');
-    const pageInput = $('pageFilterInput');
 
     if (bookFilterSelect) bookFilterSelect.value = normalizedBook;
     if (normalizedBook) state.filters.book = normalizedBook;
@@ -1055,8 +1362,9 @@ function applyBookSelection(bookValue, options = {}) {
         ? String(requestedPageNumber)
         : (fallbackToFirstAvailablePage && pages.length > 0 ? String(pages[0]) : '');
 
-    if (pageInput) pageInput.value = resolvedPage;
-    if (resolvedPage) state.filters.page = resolvedPage;
+    const selectedPage = populatePageFilterOptions(normalizedBook, resolvedPage);
+
+    if (selectedPage) state.filters.page = selectedPage;
     else delete state.filters.page;
 
     if (render) {
@@ -1066,29 +1374,28 @@ function applyBookSelection(bookValue, options = {}) {
     }
 
     if (updatePdf) {
-        if (normalizedBook && resolvedPage) loadPdfWithPage(normalizedBook, resolvedPage);
+        if (normalizedBook && selectedPage) loadPdfWithPage(normalizedBook, selectedPage);
         else loadPdfClear();
     }
 
-    updateSchemasInline(normalizedBook, resolvedPage);
+    updateSchemasInline(normalizedBook, selectedPage);
 }
 
 function setPageFilterValue(pageValue) {
-    const pageInput = $('pageFilterInput');
     const selectedBook = $('bookFilterSelect')?.value || '';
-    const normalizedPage = pageValue ? String(pageValue) : '';
-    if (pageInput) pageInput.value = normalizedPage;
-    if (!normalizedPage) delete state.filters.page;
-    else state.filters.page = normalizedPage;
+    const normalizedPage = normalizePageNumber(pageValue);
+    const selectedPage = populatePageFilterOptions(selectedBook, normalizedPage);
+    if (!selectedPage) delete state.filters.page;
+    else state.filters.page = selectedPage;
 
     state.currentPage = 1;
     renderTable();
     renderPagination();
 
-    if (selectedBook && normalizedPage) loadPdfWithPage(selectedBook, normalizedPage);
-    else if (!normalizedPage) loadPdfClear();
+    if (selectedBook && selectedPage) loadPdfWithPage(selectedBook, selectedPage);
+    else loadPdfClear();
 
-    updateSchemasInline(selectedBook, normalizedPage);
+    updateSchemasInline(selectedBook, selectedPage);
 }
 
 function syncPdfWithSelectedRow(revisionKey) {
@@ -1172,89 +1479,43 @@ function findRowByArticleToken(rows, token) {
 
 function runSideQuickSearch() {
     const rawArticle = String($('qaSideSearchArticle')?.value || '').trim();
-    const rawBook = String($('qaSideSearchBook')?.value || '').trim();
-    const rawPage = String($('qaSideSearchPage')?.value || '').trim();
 
-    if (!rawArticle && !rawBook && !rawPage) {
-        setSideSearchStatus('Escribe articulo, libro o pagina para buscar.', 'error');
+    if (!rawArticle) {
+        setSideSearchStatus('Escribe un articulo o part number para buscar.', 'error');
         return;
     }
 
-    const resolvedBook = resolveBookValue(rawBook);
-    const normalizedPage = normalizePageNumber(rawPage);
-
-    let candidateRows = [...state.allData];
-    if (resolvedBook) {
-        const normalizedBook = resolvedBook.toLowerCase();
-        candidateRows = candidateRows.filter(item => String(item?.engine_model ?? '').trim().toLowerCase() === normalizedBook);
-    }
-    if (normalizedPage) {
-        candidateRows = candidateRows.filter(item => normalizePageNumber(item?.['Source Page']) === normalizedPage);
-    }
-
-    if (!candidateRows.length) {
-        setSideSearchStatus('No hay registros para ese libro/pagina.', 'error');
+    const targetRow = findRowByArticleToken(state.allData, rawArticle);
+    if (!targetRow) {
+        setSideSearchStatus('No se encontro ese articulo.', 'error');
         return;
     }
 
-    if (rawArticle) {
-        const targetRow = findRowByArticleToken(candidateRows, rawArticle);
-        if (!targetRow) {
-            setSideSearchStatus('No se encontro ese articulo con los criterios indicados.', 'error');
-            return;
-        }
-
-        const targetBook = String(targetRow?.engine_model ?? '').trim();
-        const targetPage = normalizePageNumber(targetRow?.['Source Page']);
-        applyBookSelection(targetBook, {
-            pageValue: targetPage,
-            fallbackToFirstAvailablePage: true,
-            render: true,
-            updatePdf: true
-        });
-
-        const revisionKey = getRevisionKey(targetRow);
-        const moved = focusRevisionRowInMainTable(revisionKey);
-        if (!moved) {
-            setSideSearchStatus('Se encontro el articulo, pero no se pudo enfocar en la tabla principal.', 'error');
-            return;
-        }
-
-        setSideSearchStatus(`Articulo encontrado: ID ${String(targetRow?.ID ?? '-')}, libro ${targetBook || '-'}, pagina ${targetPage || '-'}.`, 'ok');
-        return;
-    }
-
-    if (resolvedBook) {
-        applyBookSelection(resolvedBook, {
-            pageValue: normalizedPage,
-            fallbackToFirstAvailablePage: true,
-            render: true,
-            updatePdf: true
-        });
-        setSideSearchStatus(`Navegando a libro ${resolvedBook}${normalizedPage ? `, pagina ${normalizedPage}` : ''}.`, 'ok');
-        return;
-    }
-
-    const currentBook = String($('bookFilterSelect')?.value || '').trim();
-    if (!currentBook) {
-        setSideSearchStatus('Para buscar solo por pagina, selecciona o escribe tambien un libro.', 'error');
-        return;
-    }
-
-    applyBookSelection(currentBook, {
-        pageValue: normalizedPage,
+    const targetBook = String(targetRow?.engine_model ?? '').trim();
+    const targetPage = normalizePageNumber(targetRow?.['Source Page']);
+    applyBookSelection(targetBook, {
+        pageValue: targetPage,
         fallbackToFirstAvailablePage: true,
         render: true,
         updatePdf: true
     });
-    setSideSearchStatus(`Navegando a pagina ${normalizedPage} del libro ${currentBook}.`, 'ok');
+
+    const revisionKey = getRevisionKey(targetRow);
+    const moved = focusRevisionRowInMainTable(revisionKey);
+    if (!moved) {
+        setSideSearchStatus('Se encontro el articulo, pero no se pudo enfocar en la tabla principal.', 'error');
+        return;
+    }
+
+    setSideSearchStatus(`Articulo encontrado: ID ${String(targetRow?.ID ?? '-')}, libro ${targetBook || '-'}, pagina ${targetPage || '-'}.`, 'ok');
 }
 
 function goToNextBookPage() {
     const book = $('bookFilterSelect')?.value || '';
+    if (!book) return;
     const pages = getBookPages(book);
     if (!pages.length) return;
-    const currentValue = Number($('pageFilterInput')?.value || 0);
+    const currentValue = Number($('pageFilterSelect')?.value || 0);
     const currentIndex = pages.indexOf(currentValue);
     const targetPage = (currentIndex === -1 || currentIndex === pages.length - 1) ? pages[0] : pages[currentIndex + 1];
     setPageFilterValue(targetPage);
@@ -1262,18 +1523,294 @@ function goToNextBookPage() {
 
 function goToPrevBookPage() {
     const book = $('bookFilterSelect')?.value || '';
+    if (!book) return;
     const pages = getBookPages(book);
     if (!pages.length) return;
-    const currentValue = Number($('pageFilterInput')?.value || 0);
+    const currentValue = Number($('pageFilterSelect')?.value || 0);
     const currentIndex = pages.indexOf(currentValue);
     const targetPage = currentIndex <= 0 ? pages[pages.length - 1] : pages[currentIndex - 1];
     setPageFilterValue(targetPage);
+}
+
+function getAllQaCheckCodes() {
+    return (state.qaErrorCheckDefinitions || [])
+        .map(def => String(def?.code || '').trim())
+        .filter(Boolean);
+}
+
+function persistActiveQaChecks() {
+    try {
+        const payload = JSON.stringify([...state.activeQaErrorChecks]);
+        localStorage.setItem(QA_CHECKS_STORAGE_KEY, payload);
+    } catch (_) {
+        // Ignore localStorage errors.
+    }
+}
+
+function ensureQaChecksState() {
+    const allCodes = getAllQaCheckCodes();
+    if (!allCodes.length) {
+        state.activeQaErrorChecks = new Set();
+        return;
+    }
+
+    let restored = [];
+    let hasStoredValue = false;
+    try {
+        const raw = localStorage.getItem(QA_CHECKS_STORAGE_KEY);
+        hasStoredValue = raw !== null;
+        const parsed = raw ? JSON.parse(raw) : null;
+        if (Array.isArray(parsed)) restored = parsed;
+    } catch (_) {
+        restored = [];
+        hasStoredValue = false;
+    }
+
+    const restoredSet = new Set(restored.map(code => String(code || '').trim()).filter(Boolean));
+    const active = hasStoredValue
+        ? allCodes.filter(code => restoredSet.has(code))
+        : allCodes;
+
+    state.activeQaErrorChecks = new Set(active);
+}
+
+function updateQaChecksSummary() {
+    const badge = $('qaChecksSummaryBadge');
+    if (!(badge instanceof HTMLElement)) return;
+    const total = getAllQaCheckCodes().length;
+    const active = state.activeQaErrorChecks.size;
+    badge.textContent = `${active}/${total}`;
+}
+
+function showQaChecksProgress() {
+    const area = $('qaChecksProgressArea');
+    if (!(area instanceof HTMLElement)) return;
+    area.style.display = 'flex';
+}
+
+function hideQaChecksProgress() {
+    const area = $('qaChecksProgressArea');
+    if (!(area instanceof HTMLElement)) return;
+    area.style.display = 'none';
+}
+
+function buildFoundErrorRows(rows, activeCodes, maxItems = 300) {
+    const definitionMap = getQaErrorDefinitionMap();
+    const output = [];
+
+    for (const row of (rows || [])) {
+        const activeErrors = buildRowActiveQaErrors(row, activeCodes);
+        if (!Array.isArray(activeErrors?.codes) || activeErrors.codes.length === 0) continue;
+
+        output.push({
+            id: String(row?.ID ?? '').trim(),
+            book: String(row?.engine_model ?? '').trim(),
+            page: String(row?.['Source Page'] ?? '').trim(),
+            pos: String(row?.POS ?? '').trim(),
+            pn: String(row?.['PART NO.'] ?? row?.pn ?? '').trim(),
+            errors: activeErrors.codes.map(code => definitionMap.get(code) || code)
+        });
+
+        if (output.length >= maxItems) break;
+    }
+
+    return output;
+}
+
+function renderQaChecksFoundRows(foundRows, totalFound) {
+    const body = $('qaChecksFoundRows');
+    const count = $('qaChecksFoundCount');
+
+    if (count instanceof HTMLElement) {
+        count.textContent = String(Number(totalFound || 0));
+    }
+
+    if (!(body instanceof HTMLElement)) return;
+
+    if (!Array.isArray(foundRows) || foundRows.length === 0) {
+        body.innerHTML = '<tr><td colspan="6" class="qa-checks-found-empty">No se han encontrado registros con error para las comprobaciones activas.</td></tr>';
+        return;
+    }
+
+    body.innerHTML = foundRows.map(item => `
+        <tr>
+            <td>${escapeHtml(item.id || '-')}</td>
+            <td>${escapeHtml(item.book || '-')}</td>
+            <td>${escapeHtml(item.page || '-')}</td>
+            <td>${escapeHtml(item.pos || '-')}</td>
+            <td>${escapeHtml(item.pn || '-')}</td>
+            <td>${escapeHtml((item.errors || []).join(' | ') || '-')}</td>
+        </tr>
+    `).join('');
+}
+
+function showQaChecksStats(stats, scopeLabel = '') {
+    const statsArea = $('qaChecksStatsArea');
+    if (!(statsArea instanceof HTMLElement)) return;
+
+    const globalStats = stats?.stats;
+    if (!globalStats) {
+        statsArea.style.display = 'none';
+        return;
+    }
+
+    const scopeElem = $('qaChecksStatsScope');
+    if (scopeElem instanceof HTMLElement) {
+        scopeElem.textContent = scopeLabel || 'Todos los articulos';
+    }
+
+    const totalElem = $('qaChecksStat_total');
+    if (totalElem) totalElem.textContent = String(globalStats.totalRows || 0);
+
+    const errorsElem = $('qaChecksStat_errors');
+    if (errorsElem) errorsElem.textContent = String(globalStats.rowsWithErrors || 0);
+
+    const okElem = $('qaChecksStat_ok');
+    if (okElem) okElem.textContent = String(globalStats.rowsOk || 0);
+
+    const criticalElem = $('qaChecksStat_critical');
+    if (criticalElem) criticalElem.textContent = String(globalStats.severityCount?.critical || 0);
+
+    const definitionMap = getQaErrorDefinitionMap();
+    const codesList = $('qaChecksStatCodes');
+    if (codesList instanceof HTMLElement) {
+        const entries = Object.entries(globalStats.codeCount || {})
+            .sort((a, b) => Number(b[1] || 0) - Number(a[1] || 0) || String(a[0]).localeCompare(String(b[0])));
+
+        if (!entries.length) {
+            codesList.innerHTML = '<li class="qa-checks-stat-codes-empty">No hay errores para las comprobaciones activas.</li>';
+        } else {
+            codesList.innerHTML = entries.map(([code, count]) => {
+                const label = definitionMap.get(code) || code;
+                return `<li class="qa-checks-stat-code-item">
+                    <span class="qa-checks-stat-code-label">${escapeHtml(label)}</span>
+                    <span class="qa-checks-stat-code-count">${escapeHtml(String(count))}</span>
+                </li>`;
+            }).join('');
+        }
+    }
+
+    statsArea.style.display = 'block';
+}
+
+async function applyQaChecksFilter(scope = 'all') {
+    const activeCodes = Array.from(state.activeQaErrorChecks);
+    const isVisibleScope = scope === 'visible';
+
+    showQaChecksProgress();
+    hideQaChecksStats();
+
+    try {
+        if (isVisibleScope) {
+            const targetRows = getRowsForBulkScope('visible');
+            if (!targetRows.length) {
+                hideQaChecksProgress();
+                alert('No hay articulos visibles para aplicar el filtro en esta pagina.');
+                return;
+            }
+
+            const revisionKeys = targetRows
+                .map(row => String(getRevisionKey(row) || '').trim())
+                .filter(key => /^idx=\d+$/.test(key));
+            if (!revisionKeys.length) {
+                hideQaChecksProgress();
+                alert('No se pudo determinar la clave de revisión para guardar los visibles.');
+                return;
+            }
+            applyActiveQaErrorsToSubset(activeCodes, targetRows);
+            state.qaChecksScopedRows = new Set(targetRows);
+            persistActiveQaChecks();
+
+            const visibleStats = buildQaStatsFromRows(targetRows, activeCodes);
+            showQaChecksStats({ stats: visibleStats }, 'Solo visibles en pantalla');
+
+            const foundRows = buildFoundErrorRows(targetRows, activeCodes, 300);
+            renderQaChecksFoundRows(foundRows, visibleStats.rowsWithErrors || foundRows.length);
+
+            renderTable();
+            renderPagination();
+            hideQaChecksProgress();
+            return;
+        }
+
+        applyActiveQaErrorsToClientRows(activeCodes);
+        const globalStats = buildQaStatsFromRows(state.allData, activeCodes);
+
+        hideQaChecksProgress();
+        showQaChecksStats({ stats: globalStats }, 'Todos los articulos');
+        persistActiveQaChecks();
+        state.qaChecksScopedRows = null;
+
+        const foundRows = buildFoundErrorRows(state.allData, activeCodes, 500);
+        renderQaChecksFoundRows(foundRows, globalStats.rowsWithErrors || foundRows.length);
+
+        // Actualizar tabla después del éxito
+        state.currentPage = 1;
+        renderTable();
+        renderPagination();
+
+    } catch (err) {
+        console.error('Error applying QA checks filter:', err);
+        hideQaChecksProgress();
+        alert('Error al procesar el filtro. Revisa la consola.');
+    }
+}
+
+function hideQaChecksStats() {
+    const statsArea = $('qaChecksStatsArea');
+    if (!(statsArea instanceof HTMLElement)) return;
+    statsArea.style.display = 'none';
+
+    const codesList = $('qaChecksStatCodes');
+    if (codesList instanceof HTMLElement) {
+        codesList.innerHTML = '<li class="qa-checks-stat-codes-empty">Aplica el cálculo para ver el detalle.</li>';
+    }
+
+    renderQaChecksFoundRows([], 0);
+}
+
+function openQaChecksModal() {
+    const overlay = $('qaChecksModalOverlay');
+    if (!(overlay instanceof HTMLElement)) return;
+    renderQaChecksPanel();
+    overlay.style.display = 'flex';
+    // Prevent body scroll
+    document.body.style.overflow = 'hidden';
+}
+
+function closeQaChecksModal() {
+    const overlay = $('qaChecksModalOverlay');
+    if (!(overlay instanceof HTMLElement)) return;
+    overlay.style.display = 'none';
+    // Restore body scroll
+    document.body.style.overflow = '';
+}
+
+function renderQaChecksPanel() {
+    ensureQaChecksState();
+
+    const container = $('qaChecksList');
+    if (!(container instanceof HTMLElement)) return;
+
+    const items = state.qaErrorCheckDefinitions || [];
+    container.innerHTML = items.map(def => {
+        const code = String(def?.code || '').trim();
+        const label = String(def?.label || code);
+        const checked = state.activeQaErrorChecks.has(code) ? 'checked' : '';
+        return `<label class="qa-check-item" title="${escapeHtml(code)}">
+            <input type="checkbox" data-qa-check-code="${escapeHtml(code)}" ${checked}>
+            <span>${escapeHtml(label)}</span>
+        </label>`;
+    }).join('');
+
+    updateQaChecksSummary();
 }
 
 function clearFilters() {
     document.querySelectorAll('.filter-input[data-filter]').forEach(input => { input.value = ''; });
     document.querySelectorAll('.filter-select[data-filter]').forEach(select => { select.value = ''; });
     state.filters = {};
+    populatePageFilterOptions('', '');
     state.currentPage = 1;
     renderTable();
     renderPagination();
@@ -1317,6 +1854,12 @@ function isTypingContext(target) {
     return tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT' || target.isContentEditable || Boolean(target.closest('[contenteditable="true"]'));
 }
 
+function updatePaginationToggleLabel() {
+    const btn = $('togglePaginationBtn');
+    if (!(btn instanceof HTMLButtonElement)) return;
+    btn.textContent = state.paginationEnabled ? 'Paginación: ON' : 'Paginación: OFF';
+}
+
 async function applyBulkQuickMode(quickMode) {
     const scopeSelect = $('bulkScopeSelect');
     if (!scopeSelect) return;
@@ -1344,16 +1887,27 @@ async function applyBulkQuickMode(quickMode) {
     const confirmed = window.confirm(`Se aplicará ${targetValues.label} masiva a ${targetRows.length} ${scopeText}. ¿Continuar?`);
     if (!confirmed) return;
 
-    targetRows.forEach(row => {
+    const failedRows = [];
+    for (const row of targetRows) {
         const nextEstado = targetValues.estado === null ? String(row.qa_revision_estado || '') : targetValues.estado;
         const nextAccion = targetValues.accion === null ? String(row.qa_revision_accion || '') : targetValues.accion;
-        setRowRevisionNoSave(row, nextEstado, nextAccion);
-    });
+        const engineFile = getEngineJsonForRow(row);
 
-    try {
-        await applyImportedRevisionToEngineJson(createRevisionExportPayload());
-    } catch (error) {
-        alert(`No se pudo persistir el cambio masivo en los JSON: ${error.message}`);
+        try {
+            if (!engineFile) throw new Error('No se pudo resolver engine JSON');
+            await saveCellToServer(engineFile, row.ID, 'qa_revision_estado', nextEstado);
+            await saveCellToServer(engineFile, row.ID, 'qa_revision_accion', nextAccion);
+            row.qa_revision_estado = nextEstado;
+            row.qa_revision_accion = nextAccion;
+            row.qa_revision_updated_at = new Date().toISOString();
+        } catch (error) {
+            failedRows.push(String(row?.ID || ''));
+            console.warn('No se pudo aplicar cambio masivo de revision:', error);
+        }
+    }
+
+    if (failedRows.length > 0) {
+        alert(`No se pudieron guardar ${failedRows.length} registros en el cambio masivo.`);
     }
 
     renderTable();
@@ -1399,10 +1953,19 @@ async function loadData() {
         state.currentPage = 1;
         state.sortKey = 'book_page_pos';
         state.sortAsc = true;
+        state.paginationEnabled = true;
+        state.tableMode = 'qa';
         state.filters = {};
+        state.qaChecksScopedRows = null;
+        state.recentRevisionKeys = [];
+        state.displayRowCount = 0;
+
+        const columnViewSelect = $('columnViewSelect');
+        if (columnViewSelect instanceof HTMLSelectElement) {
+            columnViewSelect.value = state.tableMode === 'errors' ? 'errors' : state.columnView;
+        }
 
         assignRevisionKeys(state.allData);
-        await loadRevisionData();
         applyRevisionDataToRows(state.allData);
         loadColumnWidths();
 
@@ -1428,6 +1991,7 @@ async function loadData() {
         state.filteredData = [...state.allData];
         renderTable();
         renderPagination();
+        updatePaginationToggleLabel();
         syncSideRecordFormWithSelection();
         queueColumnViewRefresh();
 
@@ -1457,6 +2021,7 @@ function attachGlobalEvents() {
     document.querySelector('thead')?.addEventListener('click', handleSort);
 
     document.querySelectorAll('.filter-input[data-filter], .filter-select[data-filter]').forEach(elem => {
+        if (elem.id === 'bookFilterSelect' || elem.id === 'pageFilterSelect') return;
         elem.addEventListener('input', handleFilter);
         elem.addEventListener('change', handleFilter);
     });
@@ -1464,6 +2029,58 @@ function attachGlobalEvents() {
     $('nextBookPageBtn')?.addEventListener('click', goToNextBookPage);
     $('prevBookPageBtn')?.addEventListener('click', goToPrevBookPage);
     $('clearFiltersBtn')?.addEventListener('click', clearFilters);
+    $('togglePaginationBtn')?.addEventListener('click', () => {
+        state.paginationEnabled = !state.paginationEnabled;
+        state.currentPage = 1;
+        renderTable();
+        renderPagination();
+        updatePaginationToggleLabel();
+    });
+
+    // QA Checks Modal
+    $('openQaChecksModalBtn')?.addEventListener('click', openQaChecksModal);
+    $('closeQaChecksModalBtn')?.addEventListener('click', closeQaChecksModal);
+    $('applyQaChecksAllBtn')?.addEventListener('click', async () => {
+        await applyQaChecksFilter('all');
+        // No cerrar modal aún, para que usuario vea estadísticas
+    });
+
+    $('applyQaChecksVisibleBtn')?.addEventListener('click', async () => {
+        await applyQaChecksFilter('visible');
+        // No cerrar modal aún, para que usuario vea estadísticas
+    });
+
+    // Close modal on overlay click
+    $('qaChecksModalOverlay')?.addEventListener('click', (event) => {
+        if (event.target.id === 'qaChecksModalOverlay') closeQaChecksModal();
+    });
+
+    // QA Checks list changes - use event delegation with 'input' (bubbles)
+    const qaChecksList = $('qaChecksList');
+    if (qaChecksList instanceof HTMLElement) {
+        qaChecksList.addEventListener('input', (event) => {
+            const target = event.target;
+            if (!(target instanceof HTMLInputElement) || target.type !== 'checkbox') return;
+            const code = String(target.dataset.qaCheckCode || '').trim();
+            if (!code) return;
+
+            if (target.checked) state.activeQaErrorChecks.add(code);
+            else state.activeQaErrorChecks.delete(code);
+
+            // Solo actualizar badge, NO renderizar tabla
+            updateQaChecksSummary();
+        });
+    }
+
+    $('qaChecksAllBtn')?.addEventListener('click', () => {
+        state.activeQaErrorChecks = new Set(getAllQaCheckCodes());
+        renderQaChecksPanel();
+    });
+
+    $('qaChecksNoneBtn')?.addEventListener('click', () => {
+        state.activeQaErrorChecks = new Set();
+        renderQaChecksPanel();
+    });
 
     $('sortBookPagePosBtn')?.addEventListener('click', () => {
         if (state.sortKey === 'book_page_pos') state.sortAsc = !state.sortAsc;
@@ -1474,8 +2091,20 @@ function attachGlobalEvents() {
     });
 
     $('columnViewSelect')?.addEventListener('change', (event) => {
-        state.columnView = ['qa', 'focus', 'pdf'].includes(event.target.value) ? event.target.value : 'qa';
-        saveColumnViewPreference();
+        const selectedView = String(event.target.value || 'qa');
+        if (selectedView === 'errors') {
+            state.tableMode = 'errors';
+        } else {
+            state.tableMode = 'qa';
+            state.columnView = ['qa', 'focus', 'pdf'].includes(selectedView) ? selectedView : 'qa';
+            saveColumnViewPreference();
+        }
+
+        if (event.target instanceof HTMLSelectElement) {
+            event.target.value = state.tableMode === 'errors' ? 'errors' : state.columnView;
+        }
+
+        state.currentPage = 1;
         renderTable();
         renderPagination();
         queueColumnViewRefresh();
@@ -1483,41 +2112,14 @@ function attachGlobalEvents() {
 
     $('bookFilterSelect')?.addEventListener('change', () => {
         applyBookSelection($('bookFilterSelect')?.value || '', {
-            fallbackToFirstAvailablePage: true,
+            fallbackToFirstAvailablePage: false,
             render: true,
             updatePdf: true
         });
     });
 
-    $('pageFilterInput')?.addEventListener('input', () => {
-        const selectedBook = $('bookFilterSelect')?.value || '';
-        const newPage = $('pageFilterInput')?.value || '';
-        if (selectedBook && newPage) loadPdfWithPage(selectedBook, newPage);
-        else loadPdfClear();
-        updateSchemasInline(selectedBook, newPage);
-    });
-
-    $('exportRevisionBtn')?.addEventListener('click', handleExportRevision);
-
-    const revisionFileInput = $('revisionFileInput');
-    $('importRevisionBtn')?.addEventListener('click', () => revisionFileInput?.click());
-    revisionFileInput?.addEventListener('change', async (event) => {
-        const file = event.target.files?.[0];
-        if (!file) return;
-        try {
-            const importedPayload = await handleImportRevisionFile(file);
-            const backendApply = await applyImportedRevisionToEngineJson(importedPayload);
-            applyRevisionDataToRows(state.allData);
-            state.currentPage = 1;
-            renderTable();
-            renderPagination();
-            const appliedCount = Number(backendApply?.totalApplied || 0);
-            alert(`Revision importada y aplicada a JSON de libros. Filas actualizadas: ${appliedCount}.`);
-        } catch (error) {
-            alert(`Error importando revisión: ${error.message}`);
-        } finally {
-            revisionFileInput.value = '';
-        }
+    $('pageFilterSelect')?.addEventListener('change', () => {
+        setPageFilterValue($('pageFilterSelect')?.value || '');
     });
 
     $('bulkRevOkBtn')?.addEventListener('click', () => applyBulkQuickMode('revok'));
@@ -1540,6 +2142,19 @@ function attachGlobalEvents() {
         openRecordModal(revisionKey);
     });
 
+    $('qaSideOpenMatchesModalBtn')?.addEventListener('click', () => {
+        const revisionKey = String($('qaSideRecordForm')?.dataset.revisionKey || '');
+        if (!revisionKey) {
+            alert('Selecciona un registro para abrir las apariciones en modal.');
+            return;
+        }
+        openMatchesModal(revisionKey);
+    });
+
+    $('qaSideApplyToMatches')?.addEventListener('click', () => {
+        window.qaRevisionBulk?.applySelectedToMatches();
+    });
+
     $('qaSideMatchesBookFilter')?.addEventListener('change', () => {
         const revisionKey = String($('qaSideRecordForm')?.dataset.revisionKey || '');
         const row = getRowByRevisionKey(revisionKey);
@@ -1547,7 +2162,8 @@ function attachGlobalEvents() {
         renderRecordModalMatches(row, revisionKey, {
             bodyId: 'qaSideMatchesBody',
             countId: 'qaSideMatchesCount',
-            bookFilterId: 'qaSideMatchesBookFilter'
+            bookFilterId: 'qaSideMatchesBookFilter',
+            showAction: false
         });
     });
 
@@ -1567,8 +2183,40 @@ function attachGlobalEvents() {
         }
     });
 
+    $('qaMatchesModalCloseBtn')?.addEventListener('click', closeMatchesModal);
+    $('qaMatchesModal')?.addEventListener('click', (event) => {
+        const target = event.target;
+        if (!(target instanceof HTMLElement)) return;
+        if (target.dataset.matchesModalClose === 'true') closeMatchesModal();
+    });
+
+    ['qaMatchesModalBookFilter'].forEach(id => {
+        $(id)?.addEventListener('change', () => renderMatchesLargeModal());
+    });
+    ['qaMatchesModalPageFilter', 'qaMatchesModalPosFilter', 'qaMatchesModalIdFilter', 'qaMatchesModalTextFilter'].forEach(id => {
+        $(id)?.addEventListener('input', () => renderMatchesLargeModal());
+    });
+
+    $('qaMatchesModalBody')?.addEventListener('dblclick', (event) => {
+        const target = event.target;
+        if (!(target instanceof HTMLElement)) return;
+        const tr = target.closest('tr[data-revision-key]');
+        const revisionKey = String(tr?.getAttribute('data-revision-key') || '').trim();
+        if (!revisionKey) return;
+
+        event.preventDefault();
+        event.stopPropagation();
+
+        const moved = focusRevisionRowInMainTable(revisionKey);
+        if (!moved) {
+            alert('No se pudo navegar al registro en la tabla principal. Puede estar fuera de los filtros activos.');
+            return;
+        }
+        closeMatchesModal();
+    });
+
     $('qaSideSearchBtn')?.addEventListener('click', runSideQuickSearch);
-    ['qaSideSearchArticle', 'qaSideSearchBook', 'qaSideSearchPage'].forEach(id => {
+    ['qaSideSearchArticle'].forEach(id => {
         $(id)?.addEventListener('keydown', (event) => {
             if (event.key !== 'Enter') return;
             event.preventDefault();
@@ -1580,6 +2228,14 @@ function attachGlobalEvents() {
     $('qaSideRecordForm')?.addEventListener('submit', handleSideRecordSubmit);
 
     document.addEventListener('keydown', (event) => {
+        if (isMatchesModalOpen()) {
+            if (event.key === 'Escape') {
+                event.preventDefault();
+                closeMatchesModal();
+            }
+            return;
+        }
+
         if (isRecordModalOpen()) {
             if (event.key === 'Escape') {
                 event.preventDefault();
@@ -1624,6 +2280,10 @@ function attachGlobalEvents() {
             const revisionKey = quickBtn.dataset.revisionKey;
             const quickMode = quickBtn.dataset.quickMode;
             if (!revisionKey) return;
+            const sortedRowsBefore = getCurrentFilteredSortedRows();
+            const currentIndexBefore = sortedRowsBefore.findIndex(item => getRevisionKey(item) === revisionKey);
+            const nextRow = currentIndexBefore >= 0 ? sortedRowsBefore[currentIndexBefore + 1] : null;
+            const nextRevisionKey = nextRow ? getRevisionKey(nextRow) : '';
             const row = state.allData.find(item => getRevisionKey(item) === revisionKey);
             if (!row) return;
             const quickMap = {
@@ -1638,12 +2298,22 @@ function attachGlobalEvents() {
             const nextEstado = targetValues.estado === null ? String(row.qa_revision_estado || '') : targetValues.estado;
             const nextAccion = targetValues.accion === null ? String(row.qa_revision_accion || '') : targetValues.accion;
             setRowRevision(row, nextEstado, nextAccion);
+            state.recentRevisionKeys = [
+                revisionKey,
+                ...state.recentRevisionKeys.filter(key => key !== revisionKey)
+            ];
             const tr = quickBtn.closest('tr');
             const estadoSelect = tr?.querySelector('select[data-revision-field="estado"]');
             const accionSelect = tr?.querySelector('select[data-revision-field="accion"]');
             if (estadoSelect instanceof HTMLSelectElement) { estadoSelect.value = nextEstado; updateRevisionSelectVisual(estadoSelect); }
             if (accionSelect instanceof HTMLSelectElement) { accionSelect.value = nextAccion; updateRevisionSelectVisual(accionSelect); }
-            syncSideRecordFormWithSelection();
+            renderTable();
+            renderPagination();
+            if (nextRevisionKey) {
+                selectRevisionRowByKey(nextRevisionKey);
+            } else {
+                syncSideRecordFormWithSelection();
+            }
             return;
         }
 
@@ -1676,6 +2346,56 @@ function attachGlobalEvents() {
     });
 
     tbody?.addEventListener('change', (event) => {
+        const target = event.target;
+        if (!(target instanceof HTMLSelectElement)) return;
+        const revisionField = target.dataset.revisionField;
+        const revisionKey = target.dataset.revisionKey;
+        if (!revisionField || !revisionKey) return;
+        const row = state.allData.find(item => getRevisionKey(item) === revisionKey);
+        if (!row) return;
+        const estado = revisionField === 'estado' ? target.value : String(row.qa_revision_estado || '');
+        const accion = revisionField === 'accion' ? target.value : String(row.qa_revision_accion || '');
+        setRowRevision(row, estado, accion);
+        updateRevisionSelectVisual(target);
+        syncSideRecordFormWithSelection();
+    });
+
+    const errorViewTbody = $('errorViewTbody');
+    errorViewTbody?.addEventListener('click', (event) => {
+        const target = event.target;
+        if (!(target instanceof HTMLElement)) return;
+        if (target.closest('a') || target.closest('button') || target.closest('input') || target.closest('select')) return;
+
+        const tr = target.closest('tr[data-revision-key]');
+        if (!tr) return;
+        const rowKey = tr.getAttribute('data-revision-key') || '';
+        const row = state.allData.find(item => getRevisionKey(item) === rowKey);
+        if (!row) return;
+
+        state.selectedRevisionRowKey = rowKey;
+        refreshSelectedRowVisual();
+        renderSelectedRowPosPanel(row);
+        renderSelectedRowPosTop(row);
+        document.dispatchEvent(new CustomEvent('qa:selected-row-changed', {
+            detail: { revisionKey: rowKey }
+        }));
+    });
+
+    errorViewTbody?.addEventListener('dblclick', (event) => {
+        const target = event.target;
+        if (!(target instanceof HTMLElement)) return;
+        if (target.closest('a') || target.closest('button') || target.closest('input') || target.closest('select') || target.closest('textarea')) return;
+
+        const tr = target.closest('tr[data-revision-key]');
+        const revisionKey = tr?.getAttribute('data-revision-key') || '';
+        if (!revisionKey) return;
+
+        event.preventDefault();
+        event.stopPropagation();
+        openRecordModal(revisionKey);
+    });
+
+    errorViewTbody?.addEventListener('change', (event) => {
         const target = event.target;
         if (!(target instanceof HTMLSelectElement)) return;
         const revisionField = target.dataset.revisionField;
@@ -1731,7 +2451,10 @@ function attachGlobalEvents() {
 function init() {
     initColumnResize();
     loadColumnViewPreference();
+    initPdfZoomControls();
     initBackendStatusMonitor();
+    ensureQaChecksState();
+    updateQaChecksSummary();
     attachGlobalEvents();
     setRightPanelTab(state.rightPanelTab);
     clearSideRecordForm();

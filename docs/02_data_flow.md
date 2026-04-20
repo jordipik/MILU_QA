@@ -35,28 +35,7 @@ Output:
 Output:
 - row revision fields persisted in engine JSON files.
 
-## 4. Batch Revision Import and Apply Flow
-
-1. User imports revision JSON from UI.
-2. `js/revision.js::handleImportRevisionFile()` parses and normalizes payload.
-3. Matching uses key aliases: stable `idx=N`, legacy key, and occurrence key.
-4. User triggers backend apply.
-5. `js/revision.js::applyImportedRevisionToEngineJson()` posts payload to `/apply-revision-to-engines`.
-6. `apply_revision_to_engines.js` iterates all 8 engine files and applies matching status/action updates.
-
-Output:
-- mass-applied revision updates with per-file counts.
-
-## 5. Revision Sync Payload Flow
-
-1. Frontend can call `/qa_revision_sync.php` for GET/POST sync payload operations.
-2. `server.js` sanitizes incoming `revisions` object.
-3. It writes `qa_revision_server_data.json` atomically (`.tmp` then rename).
-
-Output:
-- centralized revision payload snapshot for interchange/sync.
-
-## 6. Synthetic Export Flow (Offline)
+## 4. Synthetic Export Flow (Offline)
 
 1. `node generate_synthetic_exports.js` loads all engine rows.
 2. Groups by PN and selects representative rows.
@@ -68,7 +47,7 @@ Output:
 Output:
 - derived export JSONs comparable with MILU reference outputs.
 
-## 7. Final Fields Normalization Flow (Offline)
+## 5. Final Fields Normalization Flow (Offline)
 
 1. `python add_final_fields.py` iterates all 8 engine JSON files.
 2. For each record:
@@ -82,11 +61,10 @@ Output:
 Output:
 - canonicalized final fields used by runtime and exports.
 
-## 8. Health/Debug Flow for Persistence Issues
+## 6. Health/Debug Flow for Persistence Issues
 
 Recommended sequence:
 1. `GET /health`
-2. `GET/POST /qa_revision_sync.php`
-3. `/save-json` or `/apply-revision-to-engines` depending on user path
-4. verify write on disk (`qa_revision_server_data.json` or target `engine_*.json`)
-5. only then inspect UI behavior
+2. `POST /save-json` depending on user path
+3. verify write on disk in target `engine_*.json`
+4. only then inspect UI behavior

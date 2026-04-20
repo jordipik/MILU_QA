@@ -20,6 +20,7 @@
       z-index: 9999;
       display: flex;
       align-items: center;
+      justify-content: space-between;
       padding: 12px 18px;
       border-bottom: 1px solid #ddd;
       background: rgba(255, 255, 255, .95);
@@ -30,6 +31,33 @@
       font-size: 15px;
       font-weight: 700;
       letter-spacing: .3px;
+    }
+
+    .global-nav-links {
+      display: flex;
+      gap: 12px;
+      align-items: center;
+    }
+
+    .global-nav-links a,
+    .global-nav-links span {
+      padding: 6px 14px;
+      border-radius: 16px;
+      font-size: 13px;
+      font-weight: 600;
+      text-decoration: none;
+      color: #111;
+      cursor: pointer;
+      transition: background .1s ease;
+    }
+
+    .global-nav-links a:hover {
+      background: rgba(37, 99, 235, .1);
+    }
+
+    .global-nav-links span.active {
+      background: #2563eb;
+      color: white;
     }
 
     .wrap {
@@ -95,13 +123,18 @@
 <body>
   <nav class="global-nav">
     <b>MILU · Control de calidad</b>
+    <div class="global-nav-links">
+      <a href="milu_shell.html?view=pdf">PDF</a>
+      <a href="milu_shell.html?view=export">EXPORT</a>
+      <a href="milu_shell.html?view=analisis">ANALISIS</a>
+    </div>
   </nav>
 
   <div class="wrap">
     <h1>MILU · Visor QA</h1>
 
     <div class="grid">
-      <a class="card" href="./qa_milu.html">
+      <a class="card" href="./milu_shell.html?view=pdf">
         <div class="t">
           QA MILU
           <span class="badge">MILU</span>
@@ -112,7 +145,7 @@
         </div>
       </a>
 
-      <a class="card" href="./qa_lista_agrupada.html">
+      <a class="card" href="./milu_shell.html?view=export">
         <div class="t">
           Lista Agrupada por PN
           <span class="badge">GRUP</span>

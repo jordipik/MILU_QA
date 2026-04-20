@@ -14,7 +14,14 @@
 
 <body>
     <header class="app-topbar">
-        <div class="app-topbar-title">Analisis de Registro</div>
+        <div class="app-topbar-left">
+            <div class="app-topbar-title">Analisis de Registro</div>
+            <nav class="app-topbar-nav">
+                <a href="qa_milu.html">PDF</a>
+                <a href="qa_lista_agrupada.html">EXPORT</a>
+                <span class="active">ANALISIS</span>
+            </nav>
+        </div>
         <div class="app-topbar-user">Usuario: Ana Garcia <span class="user-dot" aria-hidden="true"></span></div>
     </header>
 
@@ -103,8 +110,8 @@
 
             <section class="checks-card">
                 <h3>Filtros / Comprobaciones</h3>
-                <p id="pipelineSummary" class="checks-summary">0 checks</p>
-                <ol id="pipelineList" class="checks-list"></ol>
+                <p id="processSummary" class="checks-summary">0 checks</p>
+                <ol id="processList" class="checks-list"></ol>
             </section>
 
             <section class="obs-card">

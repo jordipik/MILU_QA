@@ -49,7 +49,7 @@ Preparar `dist/milu_publish` en local (recomendado antes de push):
 El script copia a `dist/milu_publish/`:
 - HTML y estilos de entrada
 - carpetas `js/`, `styles/`, `esquemas/`, `esquemas_pos_circulos/`
-- `CNAME` y `qa_revision_sync.php`
+- `CNAME`
 - todos los `engine_*.json`
 
 Publicar con un comando (prepare + stage + commit + push):
@@ -73,12 +73,7 @@ Notas del script de publicacion:
 ## Endpoints clave
 
 - `GET /health`
-- `GET/POST /qa_revision_sync.php`
 - `POST /save-json` (edicion puntual de un campo en `engine_*.json`)
-- `POST /apply-revision-to-engines` (aplicacion masiva de revisiones)
-
-Archivo de persistencia de revisiones:
-- [qa_revision_server_data.json](qa_revision_server_data.json)
 
 ## Proceso oficial: pasar de JSON originales a JSON definitivos
 
@@ -117,6 +112,11 @@ c:/Users/jordi/source/repos/milu/.venv/Scripts/python.exe add_final_fields.py
 4. `weight_final`
    - Corrige typo legado `wheight_final` -> `weight_final`.
    - Si no hay `weight_final`, intenta reutilizar el legado, luego `WEIGHT`, y por ultimo `weight_gesa + units`.
+
+5. Errores QA persistidos por registro
+   - Se generan flags numericos por campo: `pos_error`, `pn_error`, `designation_error`, `weight_error`, `measurement_error`, `norma_error`, `bom_error`.
+   - Se calcula `total_error` como suma de esos flags.
+   - Se actualiza `has_error` como booleano derivado (`total_error > 0`).
 
 ## Notas de mantenimiento
 

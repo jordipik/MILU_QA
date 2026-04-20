@@ -13,7 +13,7 @@ Main goals:
 Runtime system:
 - frontend: `qa_milu.html` + ES modules in `js/`
 - backend: `server.js` (Express, local HTTP API)
-- persistence: `engine_*.json` + `qa_revision_server_data.json`
+- persistence: `engine_*.json`
 
 Offline support system:
 - Python/Node scripts in repo root for conversion, normalization, synthetic export generation, and reporting
@@ -31,19 +31,12 @@ Offline support system:
 ### Backend
 `server.js` exposes:
 - `GET /health`
-- `GET/POST /qa_revision_sync.php`
 - `POST /save-json`
-- `POST /apply-revision-to-engines`
-
-Important routing rule:
-- `/qa_revision_sync.php` must be declared before static middleware so Express returns JSON and not the source PHP file.
 
 ### Persistence Model
 - no SQL database
 - `engine_*.json` are the source of truth for row-level runtime data
-- `qa_revision_server_data.json` stores centralized revision payload snapshots
 - `/save-json` updates one field by row ID in one engine file
-- `/apply-revision-to-engines` applies revision payloads across all engine files
 
 ## Technologies
 - Node.js + Express (CommonJS backend)
@@ -53,7 +46,6 @@ Important routing rule:
 
 ## Main Data Domains
 - engine row records: part identity, designation, dimensions, substitution flags, image refs, QA fields
-- revision payloads: status/action keyed by stable index and legacy aliases
 - export references: `MILU_New_v506.json`, `MILU_Superseded_v506.json`, product export JSON
 
 ## High-Level Data Flows
@@ -67,12 +59,7 @@ Important routing rule:
 - user updates revision status/action
 - frontend persists to backend (`/save-json`) and updates in-memory state
 
-3. Batch revision flow:
-- import revision JSON
-- frontend sends payload to `/apply-revision-to-engines`
-- backend updates all engine files where matches exist
-
-4. Export/support flow:
+3. Export/support flow:
 - synthetic export scripts produce `qa_synthetic_new.json` and `qa_synthetic_superseded.json`
 - statistics/report scripts generate diagnostics for consistency checks
 

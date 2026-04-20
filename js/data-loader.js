@@ -16,6 +16,10 @@ const ENGINE_JSON_FILES = [
     'engine_20V4000M93L.json'
 ];
 
+export function getEngineJsonFiles() {
+    return [...ENGINE_JSON_FILES];
+}
+
 export function getResourceUrl(resourceName) {
     return new URL(resourceName, new URL('.', window.location.href)).href;
 }
@@ -59,6 +63,31 @@ export async function loadPartitionedEngineData() {
     }
     state.mainDataSourceLabel = `engine_*.json (${loadedFileCount}/${ENGINE_JSON_FILES.length})`;
     return merged;
+}
+
+export async function loadEngineDataByFileName(fileName) {
+    const targetFile = String(fileName ?? '').trim();
+    if (!targetFile) {
+        throw new Error('No se indico ningun archivo engine_*.json para cargar.');
+    }
+
+    if (!ENGINE_JSON_FILES.includes(targetFile)) {
+        throw new Error(`Archivo engine no soportado: ${targetFile}`);
+    }
+
+    const data = await fetchJsonSafe(targetFile);
+    if (!Array.isArray(data)) {
+        throw new Error(`Se ignora ${targetFile}: no contiene un array`);
+    }
+
+    const fallbackEngineModel = inferEngineModelFromFileName(targetFile);
+    const normalizedRows = data.map(row => normalizeEngineModel(row, fallbackEngineModel));
+    state.mainDataSourceLabel = targetFile;
+    return normalizedRows;
+}
+
+export async function loadFirstEngineData() {
+    return loadEngineDataByFileName(ENGINE_JSON_FILES[0]);
 }
 
 /**

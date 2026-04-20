@@ -1,7 +1,6 @@
 const fs = require('fs');
 const path = require('path');
 const { ENGINE_JSON_FILES } = require('./engine_files');
-const { DEFAULT_ACTIVE_QA_CODES, applyQaErrorsToRows, applyActiveQaErrorsToRows } = require('./qa_errors');
 
 function normalizeRevisionRecord(record) {
     return {
@@ -60,6 +59,23 @@ function buildLegacyRevisionKey(row) {
     return [id, pn, page, pos, source].join('||');
 }
 
+function stripLegacyQaFields(value) {
+    if (Array.isArray(value)) {
+        value.forEach(stripLegacyQaFields);
+        return value;
+    }
+
+    if (!value || typeof value !== 'object') {
+        return value;
+    }
+
+    delete value.qa_errors;
+    delete value.qa_errors_active;
+
+    Object.values(value).forEach(stripLegacyQaFields);
+    return value;
+}
+
 async function applyRevisionPayload(parsed, options = {}) {
     const repoRoot = options.repoRoot || process.cwd();
     const sourceName = options.sourceName || 'inline_payload';
@@ -105,16 +121,13 @@ async function applyRevisionPayload(parsed, options = {}) {
             changedInFile += 1;
         });
 
-        let qaErrorsSummary = null;
         if (changedInFile > 0) {
-            qaErrorsSummary = await applyQaErrorsToRows(rows);
-            applyActiveQaErrorsToRows(rows, DEFAULT_ACTIVE_QA_CODES);
+            stripLegacyQaFields(rows);
             fs.writeFileSync(filePath, `${JSON.stringify(rows, null, 2)}\n`, 'utf8');
         }
 
         appliedByFile[fileName] = {
-            revisionChanges: changedInFile,
-            qaErrors: qaErrorsSummary
+            revisionChanges: changedInFile
         };
         totalApplied += changedInFile;
     }

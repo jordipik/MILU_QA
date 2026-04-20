@@ -2,28 +2,16 @@ import { state } from './state.js';
 import { checkSaveBackendConnection, loadPartitionedEngineData, saveCellToServer } from './data-loader.js';
 import { assignRevisionKeys, applyRevisionDataToRows } from './revision.js';
 import { initPdfZoomControls, loadPdfClear, loadPdfWithPage, setPdfSelection } from './pdf-viewer.js';
+import { evaluateRowQaChecks, getAllQaCheckCodes, getQaCheckDefinitions, getQaCheckLabel } from './qa-checks.js';
 
 const $ = (id) => document.getElementById(id);
 
-const QA_LABELS = {
-    missing_part_no: 'PN vacio',
-    missing_pos: 'POS vacio',
-    missing_pn_final: 'PN Final vacio',
-    pn_final_not_in_pdf: 'PN Final no esta en PDF',
-    missing_designation_final: 'Designation Final vacio',
-    designation_final_not_in_pdf: 'Designation Final no esta en PDF'
-};
-
-const CRITICAL_CODES = new Set([
-    'missing_part_no',
-    'missing_pos',
-    'missing_pn_final',
-    'pn_final_not_in_pdf'
-]);
+const CRITICAL_CODES = new Set(getAllQaCheckCodes());
+const QA_PROCESS_DEFINITIONS = getQaCheckDefinitions();
 
 let currentRow = null;
 let reviewedHistory = [];
-const PIPELINE_TOTAL_CHECKS = 7;
+const TOTAL_PROCESS_CHECKS = QA_PROCESS_DEFINITIONS.length;
 
 function txt(value, fallback = '-') {
     const normalized = String(value ?? '').trim();
@@ -192,7 +180,7 @@ function buildHistoryEntry(row) {
         pos: txt(row?.POS, ''),
         pn: txt(row?.pn_final, txt(row?.['PART NO.'], '')),
         failedChecks,
-        passedChecks: Math.max(PIPELINE_TOTAL_CHECKS - failedChecks, 0),
+        passedChecks: Math.max(TOTAL_PROCESS_CHECKS - failedChecks, 0),
         outcome: getRowQuickOutcome(row)
     };
 }
@@ -404,11 +392,7 @@ function findRecordById(recordId, engineFilter) {
 }
 
 function getRowCodes(row) {
-    const qa = row?.qa_errors_active && Array.isArray(row.qa_errors_active.codes)
-        ? row.qa_errors_active
-        : row?.qa_errors;
-    if (!qa || !Array.isArray(qa.codes)) return [];
-    return qa.codes.map((code) => String(code ?? '').trim()).filter(Boolean);
+    return evaluateRowQaChecks(row, getAllQaCheckCodes()).codes;
 }
 
 function splitCodes(codes) {
@@ -447,7 +431,7 @@ function computeVerdict(row) {
         return {
             status: 'ko',
             title: 'Estado: REGISTRO_KO',
-            message: `Falla ${critical.length + major.length} checks del pipeline (${critical.length} criticos).`,
+            message: `Falla ${critical.length + major.length} checks del proceso (${critical.length} criticos).`,
             critical,
             major,
             warnings
@@ -466,72 +450,37 @@ function computeVerdict(row) {
     };
 }
 
-function renderPipeline(row, verdict) {
-    const list = $('pipelineList');
-    const summary = $('pipelineSummary');
+function renderProcessChecks(row, verdict) {
+    const list = $('processList');
+    const summary = $('processSummary');
     if (!(list instanceof HTMLElement) || !(summary instanceof HTMLElement)) return;
 
     const codes = getRowCodes(row);
     const codeSet = new Set(codes);
 
-    const checks = [
-        {
-            id: 'id_and_pos',
-            title: 'Identidad minima (ID + POS)',
-            pass: txt(row?.ID, '') !== '' && txt(row?.POS, '') !== '',
-            detail: 'Verifica que el registro es trazable por ID y posicion.'
-        },
-        {
-            id: 'part_no',
-            title: 'Part Number de origen',
-            pass: !codeSet.has('missing_part_no'),
-            detail: codeSet.has('missing_part_no') ? 'El campo PART NO. esta vacio.' : 'PART NO. presente.'
-        },
-        {
-            id: 'pn_final_presence',
-            title: 'PN Final presente',
-            pass: !codeSet.has('missing_pn_final'),
-            detail: codeSet.has('missing_pn_final') ? 'pn_final vacio.' : 'pn_final informado.'
-        },
-        {
-            id: 'pn_final_pdf',
-            title: 'PN Final localizado en PDF',
-            pass: !codeSet.has('pn_final_not_in_pdf'),
-            detail: codeSet.has('pn_final_not_in_pdf') ? 'No hay match en PDF para pn_final.' : 'Match de pn_final detectado en PDF.'
-        },
-        {
-            id: 'designation_presence',
-            title: 'Designation Final presente',
-            pass: !codeSet.has('missing_designation_final'),
-            detail: codeSet.has('missing_designation_final') ? 'designation_final vacio.' : 'designation_final informado.'
-        },
-        {
-            id: 'designation_pdf',
-            title: 'Designation Final localizada en PDF',
-            pass: !codeSet.has('designation_final_not_in_pdf'),
-            detail: codeSet.has('designation_final_not_in_pdf') ? 'No hay match en PDF para designation_final.' : 'Match de designation_final detectado en PDF.'
-        },
-        {
-            id: 'consistency',
-            title: 'Consistencia entre fuentes',
-            pass: verdict.warnings.length === 0,
-            warn: verdict.warnings.length > 0,
-            detail: verdict.warnings.length > 0
-                ? verdict.warnings[0]
-                : 'No se detectan incoherencias basicas entre raw/final/GESA.'
-        }
-    ];
+    const checks = QA_PROCESS_DEFINITIONS.map((definition) => {
+        const code = String(definition?.code || '').trim();
+        const label = String(definition?.label || code).trim() || code;
+        const pass = !codeSet.has(code);
+
+        return {
+            id: code,
+            title: label,
+            pass,
+            detail: pass ? `${label}: OK.` : `${label}: KO.`
+        };
+    });
 
     summary.textContent = `${checks.length} checks · ${checks.filter((c) => c.pass).length} pass · ${checks.filter((c) => !c.pass).length} fail`;
 
     list.innerHTML = checks.map((check) => {
         const cssState = check.pass ? 'pass' : (check.warn ? 'warn' : 'fail');
         const marker = check.pass ? 'OK' : (check.warn ? '!' : 'X');
-        return `<li class="pipeline-item ${cssState}">
-            <span class="pipeline-marker">${marker}</span>
+        return `<li class="process-item ${cssState}">
+            <span class="process-marker">${marker}</span>
             <div>
-                <p class="pipeline-title">${check.title}</p>
-                <p class="pipeline-detail">${check.detail}</p>
+                <p class="process-title">${check.title}</p>
+                <p class="process-detail">${check.detail}</p>
             </div>
         </li>`;
     }).join('');
@@ -549,10 +498,10 @@ function renderEvidence(row, verdict) {
     const allCodes = [...verdict.critical, ...verdict.major];
     if (allCodes.length > 0) {
         allCodes.forEach((code) => {
-            pieces.push(`<li class="ko">Check fallido: ${QA_LABELS[code] || code}</li>`);
+            pieces.push(`<li class="ko">Check fallido: ${getQaCheckLabel(code) || code}</li>`);
         });
     } else {
-        pieces.push('<li class="ok">No hay errores activos en qa_errors para este registro.</li>');
+        pieces.push('<li class="ok">No hay checks ERR fallidos para este registro.</li>');
     }
 
     verdict.warnings.forEach((warning) => {
@@ -574,8 +523,8 @@ function renderHeader(row, verdict) {
     globalVerdict.classList.add(verdict.status === 'ok' ? 'status-ok' : 'status-ko');
     globalVerdict.textContent = verdict.title;
     const failedChecks = getRowCodes(row).length;
-    const passedChecks = Math.max(PIPELINE_TOTAL_CHECKS - failedChecks, 0);
-    statusText.textContent = `${verdict.message} Pipeline: ${passedChecks}/${PIPELINE_TOTAL_CHECKS} filtros correctos.`;
+    const passedChecks = Math.max(TOTAL_PROCESS_CHECKS - failedChecks, 0);
+    statusText.textContent = `${verdict.message} Proceso: ${passedChecks}/${TOTAL_PROCESS_CHECKS} filtros correctos.`;
 }
 
 function syncOutcomeButtons(row) {
@@ -607,7 +556,7 @@ function renderRecord(row) {
     renderHeaderStrip(row);
     renderSelectedContext(row);
     renderCorrelationMatrix(row);
-    renderPipeline(row, verdict);
+    renderProcessChecks(row, verdict);
     renderEvidence(row, verdict);
     fillEditForm(row);
     syncOutcomeButtons(row);
@@ -628,36 +577,6 @@ async function revalidateCurrentRow() {
     if (!currentRow) {
         alert('Primero debes cargar un registro.');
         return;
-    }
-
-    const revisionKey = getRevisionKey(currentRow);
-    if (!revisionKey) {
-        alert('No se pudo obtener la clave de revision del registro.');
-        return;
-    }
-
-    const payload = {
-        activeCodes: getActiveCodes(),
-        scope: 'visible',
-        revisionKeys: [revisionKey]
-    };
-
-    const response = await fetch('/apply-qa-checks-filter', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(payload)
-    });
-
-    if (!response.ok) {
-        const data = await response.json().catch(() => ({}));
-        throw new Error(data.error || `HTTP ${response.status}`);
-    }
-
-    const data = await response.json();
-    const update = Array.isArray(data.rows) ? data.rows.find((row) => row.revisionKey === revisionKey) : null;
-    if (update) {
-        if (update.qa_errors) currentRow.qa_errors = update.qa_errors;
-        if (update.qa_errors_active) currentRow.qa_errors_active = update.qa_errors_active;
     }
 
     syncCurrentRowReference();

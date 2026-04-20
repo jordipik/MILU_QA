@@ -3,6 +3,7 @@
  */
 
 import { state } from './state.js';
+import { evaluateRowQaChecks, getAllQaCheckCodes, getQaActiveSignature } from './qa-checks.js';
 
 export function escapeHtml(s) {
     return String(s ?? '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#039;');
@@ -13,48 +14,47 @@ export function val(row, key, defaultVal = '—') {
     return (v != null && String(v).trim() !== '') ? v : defaultVal;
 }
 
+function pickFirstValue(row, keys, defaultVal = '—') {
+    for (const key of keys) {
+        const value = row?.[key];
+        if (value != null && String(value).trim() !== '') return value;
+    }
+    return defaultVal;
+}
+
+const COLUMN_FALLBACKS = {
+    POS: ['pos_final', 'pos_pdf', 'pos_raw', 'POS'],
+    'PART NO.': ['pn_final', 'pn_pdf', 'pn_sust', 'pn_gesa', 'pn_raw', 'PART NO.'],
+    pn_raw: ['pn_raw', 'PART NO.'],
+    pn_final: ['pn_final', 'pn_pdf', 'pn_raw', 'PART NO.'],
+    DESIGNATION: ['designation_raw', 'DESIGNATION'],
+    designation_gesa: ['designation_gesa', 'designation_raw', 'DESIGNATION'],
+    designation_final: ['designation_final', 'designation_pdf', 'designation_sust', 'designation_gesa', 'designation_raw', 'DESIGNATION'],
+    'MODEL/TYPE': ['model_raw', 'model_final', 'model_pdf', 'MODEL/TYPE', 'model'],
+    model: ['model_final', 'model_pdf', 'model', 'MODEL/TYPE'],
+    QTY: ['qty_final', 'qty_raw', 'QTY'],
+    UNITS: ['qty_units_final', 'qty_units_raw', 'qty_units_gesa', 'UNITS', 'units'],
+    units: ['qty_units_gesa', 'qty_units_final', 'units', 'UNITS'],
+    WEIGHT: ['weight_raw', 'weight_final', 'WEIGHT'],
+    weight_final: ['weight_final', 'weight_raw', 'WEIGHT'],
+    weight_gesa: ['weight_gesa', 'weight_final', 'weight_raw', 'WEIGHT'],
+    FN: ['fn_final', 'fn_raw', 'FN'],
+    'MEASUREMENT / STANDARD': ['measure_raw', 'measure_final', 'measure_gesa', 'MEASUREMENT / STANDARD'],
+    measurement_final: ['measure_final', 'measure_gesa', 'measure_raw', 'measurement_final', 'MEASUREMENT / STANDARD'],
+    dimensions_gesa: ['measure_gesa', 'measure_final', 'measure_raw', 'dimensions_gesa', 'MEASUREMENT / STANDARD'],
+    norma: ['norma_final', 'norma_raw', 'norma']
+};
+
 export function isGesaRow(row) {
     return String(row?.gesa || '').trim().toUpperCase() === 'SI';
 }
 
 export function getRowValueForColumn(row, key, defaultVal = '—') {
-    const normalizeMeasurementText = (value) => {
-        const text = String(value ?? '').trim();
-        return text ? text.replace(/\s{2,}/g, ' ') : '';
-    };
-
-    switch (key) {
-        case 'designation_final': {
-            const explicitFinal = String(row?.designation_final ?? '').trim();
-            if (explicitFinal) return explicitFinal;
-            return isGesaRow(row)
-                ? val(row, 'designation_gesa', defaultVal)
-                : val(row, 'DESIGNATION', defaultVal);
-        }
-        case 'measurement_final': {
-            const gesaMeasurement = normalizeMeasurementText(row?.dimensions_gesa);
-            if (gesaMeasurement) return gesaMeasurement;
-
-            const rawMeasurement = normalizeMeasurementText(row?.['MEASUREMENT / STANDARD']);
-            if (rawMeasurement) return rawMeasurement;
-
-            const explicitFinal = normalizeMeasurementText(row?.measurement_final);
-            if (explicitFinal) return explicitFinal;
-
-            return defaultVal;
-        }
-        case 'weight_final': {
-            const explicitFinal = String(row?.weight_final ?? '').trim();
-            if (explicitFinal) return explicitFinal;
-            if (!isGesaRow(row)) return val(row, 'WEIGHT', defaultVal);
-            const weightValue = String(row?.weight_gesa ?? '').trim();
-            const unitsValue = String(row?.units ?? '').trim();
-            if (!weightValue) return defaultVal;
-            return unitsValue ? `${weightValue} ${unitsValue}` : weightValue;
-        }
-        default:
-            return val(row, key, defaultVal);
+    const fallbacks = COLUMN_FALLBACKS[key];
+    if (Array.isArray(fallbacks)) {
+        return pickFirstValue(row, fallbacks, defaultVal);
     }
+    return val(row, key, defaultVal);
 }
 
 export function normalizeText(text) {
@@ -66,7 +66,7 @@ export function normalizeText(text) {
 }
 
 export function getPnKey(row) {
-    return String(row['PART NO.'] ?? row.pn ?? '').trim();
+    return String(pickFirstValue(row, ['pn_final', 'pn_pdf', 'pn_raw', 'PART NO.', 'pn'], '')).trim();
 }
 
 /**
@@ -90,124 +90,40 @@ export function normalizeEngineModel(row, fallbackEngineModel) {
     return { ...row, engine_model: existing || fallbackEngineModel };
 }
 
-/**
- * Detecta errores en un registro (sin PN, inconsistencias Export, mismatches MILU_New, etc).
- * Devuelve array de strings con códigos/mensajes de error.
- * Vacío si no hay errores.
- */
-export function getRowErrors(row) {
-    const errors = [];
-
-    // Error: No tiene PN (PART NO. ni pn_final ni pn)
-    const pn = String(row['PART NO.'] ?? row.pn_final ?? row.pn ?? '').trim();
-    if (!pn) {
-        errors.push('no_pn');
-        return errors; // Sin PN, no hay sentido verificar más
-    }
-
-    // Error: PN está en ambos MILU_New Y MILU_Superseded (inconsistencia)
-    if (state && state.newPnSet && state.supersededPnSet) {
-        const isInNew = state.newPnSet.has(pn);
-        const isInSuperseded = state.supersededPnSet.has(pn);
-
-        if (isInNew && isInSuperseded) {
-            errors.push('export_inconsistency');
-        }
-    }
-
-    // Error Export_New: aplica a artículos no Superseded.
-    const isSuperseded = String(row?.sust_hierarchie ?? row?.Hierarchie ?? '')
-        .trim()
-        .toUpperCase()
-        .includes('SUPERSEDED');
-    if (!isSuperseded) {
-        const detalle = String(row?.detalle_cambio ?? '').trim();
-        if (detalle && !detalle.toLowerCase().startsWith('match:')) {
-            errors.push('export_mismatch_critical');
-        }
-
-        // Comparación de campos clave MILU_New vs vista sintética (misma intención que la ficha).
-        // Esto cubre casos reales de mismatch aunque detalle_cambio venga como "match:".
-        const miluNewRow = Array.isArray(state?.miluNewData)
-            ? state.miluNewData.find(item => String(item?.pn ?? '').trim().toLowerCase() === pn.toLowerCase())
-            : null;
-
-        if (miluNewRow) {
-            const relatedRows = Array.isArray(state?.allData)
-                ? state.allData.filter(item => String(item?.['PART NO.'] ?? item?.pn_final ?? item?.pn ?? '').trim().toLowerCase() === pn.toLowerCase())
-                : [row];
-
-            const modelTypes = uniqueSortedForComparison(relatedRows.map(item => {
-                const model = String(item?.model ?? '').trim();
-                if (model) return model;
-                return String(item?.engine_model ?? '').trim().replace('4000', '').trim();
-            }));
-
-            const categoryValues = uniqueSortedForComparison(relatedRows.map(item =>
-                String(item?.categoria ?? item?.atributo ?? item?.exp_categorias ?? '').trim()
-            ));
-
-            const syntheticLike = {
-                POS: String(row?.POS ?? '').trim(),
-                designation: String(getRowValueForColumn(row, 'designation_final', '')).trim(),
-                engine: String(row?.engine ?? '').trim() || '4000',
-                model_type: modelTypes.join(', '),
-                pn,
-                nsn: String(row?.nsn ?? '').trim(),
-                GESA_NORM: String(row?.norma ?? '').trim(),
-                GESA_NORMALIZADO: String(row?.normalizado ?? '').trim(),
-                fg_code: String(row?.fg_code ?? '').trim(),
-                fg_description: String(row?.fgs_description ?? '').trim(),
-                fg_code_description: String(row?.fgs_code_description ?? '').trim(),
-                exp_categorias: categoryValues.join(', '),
-                atributo: categoryValues.join(', ')
-            };
-
-            const warningFields = new Set(['exp_categorias', 'atributo']);
-            const comparedFields = [
-                'POS', 'designation', 'engine', 'model_type', 'pn', 'nsn',
-                'GESA_NORM', 'GESA_NORMALIZADO', 'fg_code', 'fg_description',
-                'fg_code_description', 'exp_categorias', 'atributo'
-            ];
-
-            let hasCriticalMismatch = false;
-            let hasWarningMismatch = false;
-
-            for (const field of comparedFields) {
-                const left = normalizeFieldForComparison(field, syntheticLike[field]);
-                const right = normalizeFieldForComparison(field, miluNewRow?.[field]);
-                if (left === right) continue;
-                if (warningFields.has(field)) hasWarningMismatch = true;
-                else hasCriticalMismatch = true;
-            }
-
-            if (hasCriticalMismatch) errors.push('export_mismatch_critical');
-            else if (hasWarningMismatch) errors.push('export_mismatch_warning');
-        }
-    }
-
-    return errors;
+function resolveActiveErrorCodes(activeCodes) {
+    if (activeCodes instanceof Set) return activeCodes;
+    if (Array.isArray(activeCodes)) return new Set(activeCodes.map(code => String(code ?? '').trim()).filter(Boolean));
+    if (state.activeQaErrorChecks instanceof Set && state.activeQaErrorChecks.size > 0) return state.activeQaErrorChecks;
+    return new Set(getAllQaCheckCodes());
 }
 
-function uniqueSortedForComparison(values) {
-    const unique = [...new Set(values.map(v => String(v ?? '').trim()).filter(Boolean))];
-    return unique.sort((a, b) => a.localeCompare(b, 'es', { numeric: true, sensitivity: 'base' }));
-}
-
-function normalizeCommaSeparatedList(value) {
-    const parts = String(value ?? '')
-        .split(',')
-        .map(part => part.replace(/\s+/g, ' ').trim())
-        .filter(Boolean)
-        .map(part => part.toLowerCase());
-    return [...new Set(parts)].sort((a, b) => a.localeCompare(b, 'es', { numeric: true, sensitivity: 'base' })).join('|');
-}
-
-function normalizeFieldForComparison(field, value) {
-    if (field === 'model_type' || field === 'exp_categorias' || field === 'atributo') {
-        return normalizeCommaSeparatedList(value);
+function getResolvedQaResult(row, activeCodes) {
+    const active = [...resolveActiveErrorCodes(activeCodes)];
+    const scopedRows = state.qaChecksScopedRows;
+    if (scopedRows instanceof Set && scopedRows.size > 0 && !scopedRows.has(row)) {
+        return null;
     }
-    return String(value ?? '').replace(/\s+/g, ' ').trim();
+
+    const cached = row?.__qaChecksActive;
+    const expectedSignature = getQaActiveSignature(active);
+    if (cached && typeof cached === 'object' && String(cached.signature || '') === expectedSignature) {
+        return cached;
+    }
+
+    return evaluateRowQaChecks(row, active);
+}
+
+export function getRowErrorFields(row, options = {}) {
+    const resolved = getResolvedQaResult(row, options.activeCodes);
+    if (!resolved || typeof resolved.fields !== 'object' || !resolved.fields) {
+        return new Set();
+    }
+
+    const fieldNames = Object.keys(resolved.fields)
+        .map(field => String(field ?? '').trim())
+        .filter(Boolean);
+
+    return new Set(fieldNames);
 }
 
 /**
@@ -221,13 +137,14 @@ export function hasRowError(row) {
  * Devuelve el tipo de error más grave (para mostrar ícono rojo o naranja).
  * 'critical' = rojo, 'warning' = naranja, null = sin error
  */
-export function getRowErrorType(row) {
-    const errors = getRowErrors(row);
-    if (errors.includes('no_pn') || errors.includes('export_inconsistency') || errors.includes('export_mismatch_critical')) {
-        return 'critical';
-    }
-    if (errors.includes('export_mismatch_warning')) {
-        return 'warning';
-    }
-    return null;
+export function getRowErrorType(row, options = {}) {
+    const resolved = getResolvedQaResult(row, options.activeCodes);
+    return Array.isArray(resolved?.codes) && resolved.codes.length > 0 ? 'critical' : null;
+}
+
+export function getRowErrors(row, options = {}) {
+    const resolved = getResolvedQaResult(row, options.activeCodes);
+    return Array.isArray(resolved?.codes)
+        ? [...new Set(resolved.codes.map(code => String(code ?? '').trim()).filter(Boolean))]
+        : [];
 }

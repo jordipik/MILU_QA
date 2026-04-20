@@ -1,155 +1,112 @@
 # QA Errors: Comprobaciones, Flujo y Estado Actual
 
-Fecha de actualizacion: 2026-04-17
-Origen de datos base: campo qa_errors persistido en los 8 archivos engine_*.json
-Origen de datos activo para UI: campo derivado qa_errors_active persistido tras aplicar checks desde el modal
+Fecha de actualizacion: 2026-04-20
+Origen de datos actual de la columna ERR: contadores persistidos en engine_*.json (`*_error`, `total_error`, `has_error`)
 
 ## Objetivo actual
-El sistema de errores QA ya no depende de recalculo intensivo durante el filtrado de tabla.
+Mantener dos planos diferenciados:
 
-Ahora hay dos capas diferenciadas:
-- qa_errors: conjunto completo de errores calculados para cada registro
-- qa_errors_active: subconjunto derivado segun las comprobaciones activas seleccionadas por el usuario
+- Persistencia operativa de errores por campo en los JSON de motor para pintar ERR de forma estable.
+- Evaluacion de checks QA en cliente para diagnostico/analisis y modal de comprobaciones.
 
-Esto permite:
-- recalcular el conjunto completo una sola vez en backend
-- aplicar un filtro de checks desde la UI sin recomputar por fila en cada render
-- mostrar estadisticas y ficha del registro usando el mismo subconjunto activo
-- acelerar el filtro Con error / Sin error de la tabla
+El pipeline legacy basado en `qa_errors` y `qa_errors_active` permanece desactivado.
 
 ## Modelo de datos por registro
 
-### 1. Campo persistido base: qa_errors
-Se guarda en cada registro y representa el conjunto completo de errores conocidos.
+### Campos legacy desactivados
+- `qa_errors`
+- `qa_errors_active`
 
-Estructura conceptual:
-- version
-- severity
-- codes
-- fields
-- issues
-- updated_at
+Estos campos se eliminan en backend si aparecen durante guardados (`stripLegacyQaFields`).
 
-### 2. Campo persistido derivado: qa_errors_active
-Se guarda en cada registro cuando el usuario aplica checks desde el modal Comprobaciones QA.
+### Campos QA persistidos activos
+- `pos_error`
+- `pn_error`
+- `designation_error`
+- `weight_error`
+- `measurement_error`
+- `norma_error`
+- `bom_error`
+- `total_error`
+- `has_error`
 
-Representa solo los errores activos para la seleccion actual de checks.
+## Checks actuales
+Los checks vigentes se definen en `js/qa-checks.js` (`QA_CHECK_DEFINITIONS`) y se usan para evaluacion runtime:
 
-Estructura conceptual:
-- version
-- severity
-- codes
-- fields
-- issues
-- signature
-- updated_at
+1. `pos_required`
+2. `pos_final_pdf_match`
+3. `pn_required`
+4. `pn_final_pdf_match`
+5. `designation_required`
+6. `designation_final_pdf_or_gesa_match`
+7. `weight_final_pdf_or_gesa_match`
+8. `measurement_final_pdf_or_gesa_match`
+9. `norma_final_pdf_or_gesa_match`
+10. `bom_final_pdf_match`
 
-El campo signature identifica exactamente el conjunto de checks activos usado para generar qa_errors_active.
-
-## Reglas persistidas en backend
-Estas reglas se calculan en qa_errors y se guardan en cada registro.
-
-1. missing_part_no
-2. missing_pos
-3. missing_pn_final
-4. pn_final_not_in_pdf
-5. missing_designation_final
-6. designation_final_not_in_pdf
-
-Implementacion principal:
-- qa_errors.js: validateRow
-- qa_errors.js: applyQaErrorsToRows
-- qa_errors.js: applyActiveQaErrorsToRows
-- qa_errors.js: recomputeQaErrorsInFile
-- qa_errors.js: getQaErrorsStats
-
-La comprobacion pn_final_not_in_pdf busca el valor de pn_final en el PDF asignado (pagina indicada en Source Page). Usa tokenMatches con allowContains: true si el PN tiene 6+ caracteres, de modo que un pn_final sin prefijo (ej. 912760297039) se considera presente si el PDF contiene la forma con prefijo (ej. 0023912760297039).
-
-La comprobacion designation_final_not_in_pdf usa el PDF asignado al registro segun source_file o engine_model y comprueba la pagina indicada en Source Page.
-
-Nota:
-- si existe qa_errors_active y su signature coincide con los checks activos, la UI prioriza ese campo derivado
-- si no coincide, helpers hace fallback a qa_errors + filtrado por codigos activos
+Reglas destacadas:
+- `WEIGHT`, `MEASUREMENT / STANDARD` y `NORMA`: si final/pdf/gesa estan los tres vacios, el check pasa (no error).
 
 ## Flujo actual de uso
 
-### A. Recalculo base completo
-Se produce en estos casos:
-- POST /save-json al guardar una celda editable
-- POST /recompute-qa-errors para recálculo masivo completo
-- apply_revision_to_engines.js al aplicar revisiones masivas
-- npm run errors:rebuild para rebuild offline de todos los engine_*.json
+### A. Guardado de celdas editables
+`POST /save-json` persiste solo el campo editado en el `engine_*.json` correspondiente.
 
 Resultado:
-- se actualiza qa_errors en disco
+- No recalcula automaticamente `*_error`, `total_error` ni `has_error`.
+- Limpia campos legacy `qa_errors` y `qa_errors_active` si existieran.
 
-### B. Aplicacion de checks activos desde la UI
-El usuario abre el modal Comprobaciones QA desde el menu superior.
-
-Al pulsar Aplicar filtro:
-- el frontend envia activeCodes al endpoint POST /apply-qa-checks-filter
-- el backend recalcula qa_errors completo por archivo
-- el backend genera qa_errors_active para cada registro con la firma de checks activa
-- el backend guarda los JSON en disco
-- el backend devuelve estadisticas agregadas del subconjunto activo
-- el frontend actualiza su estado en memoria y rerenderiza la tabla
+### B. Recalculo persistente de QA
+`POST /recompute-qa-errors` esta activo en backend y ejecuta `recompute_engine_errors.js`.
 
 Resultado:
-- la tabla, la ficha y las estadisticas trabajan sobre el mismo subconjunto activo
+- Recalcula y guarda `*_error` y `total_error`.
+- Sincroniza `has_error` a partir de `total_error > 0`.
+- Puede ejecutarse por libro completo o por ID.
 
-## Estadisticas del modal
-El modal Comprobaciones QA muestra:
-- total de registros
-- registros con errores activos
-- registros sin errores activos
-- registros con severidad critical activa
-- desglose por comprobacion activa (codeCount)
+### C. Visualizacion en Analista 02
+`js/analista-02.js` usa errores persistidos para la columna ERR:
 
-Importante:
-- estas estadisticas no son una foto historica fija del sistema
-- dependen de los checks activos aplicados en ese momento
-- por tanto cambian cuando cambia activeCodes
+- `FIELD_TO_ERROR_KEY`
+- `getStoredFieldErrorCount(...)`
+- `getStoredErrorSummary(...)`
 
-## Ficha del registro
-La ficha lateral y el modal de edicion del registro muestran:
-- resumen de severidad o estado sin errores activos
-- listado detallado de incidencias activas del registro
-- campos implicados cuando existen en issues.fields
+La tabla no recalcula ERR desde checks en vivo para pintar cada celda; muestra los contadores ya guardados en JSON.
 
-La ficha prioriza qa_errors_active si su signature coincide con la seleccion activa.
+## Modal y diagnostico runtime
+El modal de comprobaciones y otras vistas de diagnostico siguen usando evaluacion runtime desde `js/qa-checks.js`:
 
-## Tabla y rendimiento
-La columna Error y el filtro Con error / Sin error ya no deberian forzar recalculo completo de errores por fila.
+- `evaluateRowQaChecks(...)`
+- `evaluateQaChecksForField(...)`
 
-Estado actual:
-- la tabla prioriza qa_errors_active
-- si falta ese campo derivado, hace fallback a helpers
-- ademas hay cache de metadatos de error por fila en js/qa-table.js
-
-Objetivo de esta arquitectura:
-- mover el coste al momento explicito de aplicar checks
-- evitar recalculo costoso durante cada filtrado o render de tabla
+Esto sirve para inspeccion funcional, pero no sustituye el recalc persistente cuando se necesita actualizar `*_error`/`total_error` en disco.
 
 ## Endpoints y puntos de integracion
 
 Backend:
-- server.js: POST /save-json
-- server.js: POST /recompute-qa-errors
-- server.js: POST /apply-qa-checks-filter
+- `server.js`: `POST /save-json` (activo)
+- `server.js`: `POST /recompute-qa-errors` (activo)
+- `server.js`: `POST /apply-qa-checks-filter` (legacy desactivado, responde 410)
 
 Frontend:
-- js/qa-milu.js: modal Comprobaciones QA, aplicacion de checks, estadisticas y sincronizacion de qa_errors_active en memoria
-- js/qa-table.js: filtro has_error y render de iconos/celdas con prioridad a qa_errors_active
-- js/helpers.js: resolucion de errores y fallback entre qa_errors_active y qa_errors
+- `js/qa-checks.js`: definicion y evaluacion runtime de checks
+- `js/analista-02.js`: render de ERR desde contadores persistidos y vistas de diagnostico
 
 ## Nota operativa
-Si se modifica server.js o qa_errors.js:
-- reiniciar node server.js
+- Si se modifica `server.js`, reiniciar `node server.js`.
+- Si tras ediciones de datos finales la ERR no refleja el estado esperado, ejecutar recalc (`/recompute-qa-errors` o script CLI) para resincronizar contadores persistidos.
 
-Para refrescar el conjunto completo de errores fuera de la UI:
-- npm run errors:rebuild
+## Automatizacion por scripts (sin runtime de comparacion)
+Script nuevo:
+- `node scripts/qa_pdf_compare.js --file=engine_XXXX.json`
 
-Para actualizar el subconjunto activo usado por la tabla y la ficha:
-- abrir el modal Comprobaciones QA
-- seleccionar checks
-- pulsar Aplicar filtro
+Opciones principales:
+- `--id=<ID>`: procesa un solo registro.
+- `--write-pdf`: persiste campos `*_pdf` detectados desde el PDF.
+- `--recompute-errors`: tras persistir PDF, recalcula `*_error`, `total_error` y `has_error`.
+- `--no-backup`: evita crear backup `.backup` del engine.
+
+Flujo recomendado para pipeline batch:
+1. Ejecutar `qa:pdf-compare:write` por cada `engine_*.json`.
+2. Revisar `qa_pdf_compare_*.json` generado (auditoria RAW/GESA/FINAL/PDF por campo).
+3. Abrir Analista 02 solo para revision visual, no para calcular ni guardar errores.

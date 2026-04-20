@@ -7,6 +7,7 @@
 - Data models: [03_data_models.md](03_data_models.md)
 - AI critical context: [04_ai_context.md](04_ai_context.md)
 - QA errors checks and stats: [05_qa_errors_checks.md](05_qa_errors_checks.md)
+- Analista 02 column mapping: [07_analista_02_column_mapping.md](07_analista_02_column_mapping.md)
 - Quick AI context: [AI_QUICK_CONTEXT.md](AI_QUICK_CONTEXT.md)
 - Ultra-compact AI context: [AI_QUICK_CONTEXT_COMPACT.md](AI_QUICK_CONTEXT_COMPACT.md)
 
@@ -16,8 +17,7 @@
 1. [AI_QUICK_CONTEXT_COMPACT.md](AI_QUICK_CONTEXT_COMPACT.md)
 2. [04_ai_context.md](04_ai_context.md)
 3. [modules/server.md](modules/server.md)
-4. [modules/apply_revision_to_engines.md](modules/apply_revision_to_engines.md)
-5. [02_data_flow.md](02_data_flow.md)
+4. [02_data_flow.md](02_data_flow.md)
 
 ### B) Frontend table/filter/revision bug
 1. [AI_QUICK_CONTEXT_COMPACT.md](AI_QUICK_CONTEXT_COMPACT.md)
@@ -34,7 +34,7 @@
 3. [modules/js_schemas.md](modules/js_schemas.md)
 4. [modules/js_pos_preload.md](modules/js_pos_preload.md)
 
-### D) Data normalization/export pipeline
+### D) Data normalization/export flow
 1. [AI_QUICK_CONTEXT_COMPACT.md](AI_QUICK_CONTEXT_COMPACT.md)
 2. [modules/add_final_fields_py.md](modules/add_final_fields_py.md)
 3. [modules/generate_synthetic_exports.md](modules/generate_synthetic_exports.md)
@@ -45,7 +45,6 @@
 
 ### Backend and Node
 - [modules/server.md](modules/server.md)
-- [modules/apply_revision_to_engines.md](modules/apply_revision_to_engines.md)
 - [modules/generate_synthetic_exports.md](modules/generate_synthetic_exports.md)
 
 ### Frontend Core

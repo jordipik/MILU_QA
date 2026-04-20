@@ -19,20 +19,13 @@ MILU is a local QA web app for reviewing and correcting MTU engine parts dataset
 2. `js/state.js`
 3. `js/data-loader.js`
 4. `js/revision.js`
-5. `apply_revision_to_engines.js`
-6. `js/qa-table.js`
-7. `js/qa-milu.js`
-8. `js/helpers.js`
+5. `js/qa-table.js`
+6. `js/qa-milu.js`
+7. `js/helpers.js`
 
 ## Key Endpoints
 - `GET /health`
-- `GET /qa_revision_sync.php`
-- `POST /qa_revision_sync.php`
 - `POST /save-json`
-- `POST /apply-revision-to-engines`
-
-Critical route rule:
-- define `/qa_revision_sync.php` before static middleware.
 
 ## Main Data Structures
 ### Engine row (in `engine_*.json`)
@@ -50,11 +43,6 @@ Important fields:
 - `miluNewData`, `miluSupersededData`, PN sets/maps
 - PDF runtime state and selection overlays
 
-### Revision payload
-Used by sync/apply endpoints:
-- v2 shape: `{ revisions: { v: 2, r: [[idx, estado, accion]], k: { legacyKey: {estado, accion} } } }`
-- aliases used for matching: `idx`, legacy key, occurrence key
-
 ## Core Runtime Flows
 ### Load flow
 1. `qa-milu.js` boots
@@ -69,12 +57,6 @@ Used by sync/apply endpoints:
 3. persistence uses `saveCellToServer()` -> `POST /save-json`
 4. backend updates target engine JSON row by ID
 
-### Batch apply flow
-1. import revision payload in UI
-2. `POST /apply-revision-to-engines`
-3. `apply_revision_to_engines.js` iterates all 8 engine files
-4. applies status/action where key matches and writes changed files
-
 ## Offline Scripts (not runtime)
 - `add_final_fields.py`: recompute final fields and normalize measurements
 - `generate_synthetic_exports.js`: build synthetic New/Superseded exports
@@ -85,7 +67,7 @@ Used by sync/apply endpoints:
 ## High-Value Rules
 - No database: always verify disk writes in JSON files.
 - For persistence issues debug in order:
-  1) `/health` 2) `/qa_revision_sync.php` 3) `/save-json` or `/apply-revision-to-engines` 4) frontend payload 5) UI rendering.
+  1) `/health` 2) `/save-json` 3) frontend payload 4) verificar escritura en `engine_*.json` 5) UI rendering.
 - Prefer targeted UI updates over full table re-render when changing selection only.
 
 ## Usually Ignore In Normal Tasks
