@@ -295,11 +295,20 @@
 
         .pdf-selection-highlight {
             position: absolute;
-            border: 2px solid rgba(190, 24, 93, 0.92);
-            background: rgba(244, 114, 182, 0.25);
+            border: 2px solid transparent;
             border-radius: 2px;
             box-shadow: 0 0 0 2px rgba(255, 255, 255, 0.88);
             pointer-events: none;
+        }
+
+        .pdf-selection-highlight.is-ok {
+            border-color: rgba(22, 163, 74, 0.88);
+            background: rgba(134, 239, 172, 0.25);
+        }
+
+        .pdf-selection-highlight.is-error {
+            border-color: rgba(220, 38, 38, 0.88);
+            background: rgba(252, 165, 165, 0.28);
         }
 
         .pdfstatus {

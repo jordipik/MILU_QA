@@ -404,13 +404,165 @@ body.a2-resizing * {
 }
 
 .a2-compare-table td.compare-match {
-    background: rgba(30, 142, 90, 0.14);
-    box-shadow: inset 0 -2px 0 rgba(30, 142, 90, 0.75);
+    background: rgba(41, 145, 96, 0.09);
 }
 
 .a2-compare-table td.compare-missing {
     background: rgba(198, 60, 44, 0.12);
-    box-shadow: inset 0 -2px 0 rgba(198, 60, 44, 0.8);
+}
+
+.a2-compare-table td.compare-final-ok {
+    background: rgba(22, 163, 74, 0.34) !important;
+    color: #0f5132;
+    font-weight: 600;
+}
+
+.a2-compare-table td.compare-final-error {
+    background: rgba(220, 38, 38, 0.22) !important;
+    font-weight: 600;
+}
+
+.a2-compare-table td.field-err {
+    text-align: center;
+    font-size: 11px;
+    font-weight: 700;
+    width: 32px;
+    min-width: 32px;
+    color: #9ca3af;
+}
+
+.a2-compare-table td.field-err.has-errors {
+    color: var(--ko);
+    background: var(--ko-soft);
+    cursor: help;
+}
+
+.a2-compare-table th.err-col-header {
+    cursor: pointer;
+    text-decoration: underline dotted;
+}
+
+.a2-compare-table th.err-col-header:hover {
+    background: #dce8f5;
+}
+
+/* Modal de checks */
+.checks-modal {
+    position: fixed;
+    inset: 0;
+    z-index: 1000;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.checks-modal[hidden] {
+    display: none;
+}
+
+.checks-modal-backdrop {
+    position: absolute;
+    inset: 0;
+    background: rgba(0, 0, 0, 0.35);
+}
+
+.checks-modal-panel {
+    position: relative;
+    background: #fff;
+    border-radius: 14px;
+    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.18);
+    width: min(520px, 92vw);
+    max-height: 80vh;
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+}
+
+.checks-modal-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 16px 20px 12px;
+    border-bottom: 1px solid var(--line);
+}
+
+.checks-modal-header h2 {
+    margin: 0;
+    font-size: 15px;
+    color: #1a2d42;
+}
+
+.checks-modal-close {
+    background: none;
+    border: none;
+    font-size: 20px;
+    cursor: pointer;
+    color: #6b7280;
+    line-height: 1;
+    padding: 2px 6px;
+    border-radius: 6px;
+}
+
+.checks-modal-close:hover {
+    background: #f3f7fc;
+    color: #1a2d42;
+}
+
+.checks-modal-body {
+    overflow-y: auto;
+    padding: 16px 20px 20px;
+}
+
+.checks-group-title {
+    font-size: 10px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.07em;
+    color: #6b7280;
+    margin: 14px 0 6px;
+}
+
+.checks-group-title:first-child {
+    margin-top: 0;
+}
+
+.checks-list {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+}
+
+.checks-list li {
+    display: flex;
+    align-items: flex-start;
+    gap: 8px;
+    padding: 7px 10px;
+    border-radius: 8px;
+    background: #f3f7fc;
+    font-size: 12px;
+}
+
+.checks-list li .check-code {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 11px;
+    color: #3b526a;
+    white-space: nowrap;
+    flex-shrink: 0;
+}
+
+.checks-list li .check-label {
+    color: #1a2d42;
+}
+
+.checks-list li.check-custom {
+    background: #f0f7ff;
+}
+
+.checks-list li.check-custom .check-code {
+    color: #1d6fb5;
 }
 
 .a2-process-card,
@@ -705,11 +857,20 @@ body.a2-resizing * {
 
 .pdf-selection-highlight {
     position: absolute;
-    border: 2px solid rgba(190, 24, 93, 0.92);
-    background: rgba(244, 114, 182, 0.25);
+    border: 2px solid transparent;
     border-radius: 2px;
     box-shadow: 0 0 0 2px rgba(255, 255, 255, 0.88);
     pointer-events: none;
+}
+
+.pdf-selection-highlight.is-ok {
+    border-color: rgba(22, 163, 74, 0.88);
+    background: rgba(134, 239, 172, 0.25);
+}
+
+.pdf-selection-highlight.is-error {
+    border-color: rgba(220, 38, 38, 0.88);
+    background: rgba(252, 165, 165, 0.28);
 }
 
 .pdf-selection-highlight.is-read-field {

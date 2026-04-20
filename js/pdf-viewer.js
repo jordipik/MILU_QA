@@ -5,7 +5,7 @@
 import { state } from './state.js';
 
 const PDF_FIT_WIDTH_MARGIN = 8;
-const PDF_SELECTION_MAX_HIGHLIGHTS = 8;
+const PDF_SELECTION_MAX_HIGHLIGHTS = 14;
 const PDF_ZOOM_PERCENTAGES = new Set([75, 100, 125, 150, 200]);
 const PDF_ZOOM_STEPS = ['fit', 75, 100, 125, 150, 200];
 let pdfRelayoutRafId = 0;
@@ -177,14 +177,36 @@ function getSelectionSearchTokens(selection) {
     const designationFinal = normalizePdfToken(selection.designationFinal);
     if (!pn && !pos && !designationFinal) return null;
 
+    const qty = normalizePdfToken(selection.qty);
+    const measurement = normalizePdfToken(selection.measurement);
+    const weight = normalizePdfToken(selection.weight);
+    const model = normalizePdfToken(selection.model);
+
     return {
         pn,
         pos,
         designationFinal,
+        qty,
+        measurement,
+        weight,
+        model,
         allowPnContains: false,
         allowPosContains: false,
-        allowDesignationContains: designationFinal.length >= 8
+        allowDesignationContains: designationFinal.length >= 8,
+        allowMeasurementContains: measurement.length >= 6,
+        allowWeightContains: false,
+        allowModelContains: false,
+        allowQtyContains: false,
+        fieldErrors: selection.fieldErrors ?? {}
     };
+}
+
+function getPnLineRects(rects, pnRects) {
+    if (!pnRects.length) return [];
+    const pnCenterY = pnRects.reduce((sum, r) => sum + r.centerY, 0) / pnRects.length;
+    const lineHeight = Math.max(...pnRects.map(r => r.height || 12), 12);
+    const threshold = lineHeight * 0.9 + 4;
+    return rects.filter(r => Math.abs(r.centerY - pnCenterY) <= threshold);
 }
 
 function tokenMatches(itemText, tokenValue, allowContains) {
@@ -392,7 +414,8 @@ function buildPdfTextHighlights(textItems, viewport, selection) {
             height: Math.max(16, matchRect.height + 6),
             text: matchRect.text,
             priority: 6,
-            type: 'pn'
+            type: 'pn',
+            hasError: tokens.fieldErrors.pn ?? false
         });
     });
 
@@ -405,7 +428,8 @@ function buildPdfTextHighlights(textItems, viewport, selection) {
             height: Math.max(16, matchRect.height + 6),
             text: matchRect.text,
             priority: 5,
-            type: 'pos'
+            type: 'pos',
+            hasError: tokens.fieldErrors.pos ?? false
         });
     });
 
@@ -446,8 +470,68 @@ function buildPdfTextHighlights(textItems, viewport, selection) {
             height: Math.max(16, bestPair.designationRect.height + 6),
             text: bestPair.designationRect.text,
             priority: 9,
-            type: 'designation-near-pn'
+            type: 'designation-near-pn',
+            hasError: tokens.fieldErrors.designation ?? false
         });
+    }
+
+    // Same-line highlights for extra fields (qty, measurement, weight, model)
+    const extraFieldTokens = [
+        { key: 'qty', allowContainsKey: 'allowQtyContains', priority: 3, type: 'qty', hasError: tokens.fieldErrors.qty ?? false },
+        { key: 'measurement', allowContainsKey: 'allowMeasurementContains', priority: 4, type: 'measurement', hasError: tokens.fieldErrors.measurement ?? false },
+        { key: 'weight', allowContainsKey: 'allowWeightContains', priority: 3, type: 'weight', hasError: tokens.fieldErrors.weight ?? false },
+        { key: 'model', allowContainsKey: 'allowModelContains', priority: 3, type: 'model', hasError: tokens.fieldErrors.model ?? false },
+    ];
+
+    if (pnRects.length > 0) {
+        const pnLineRects = getPnLineRects(rects, pnRects);
+
+        for (const fieldDef of extraFieldTokens) {
+            const tokenValue = tokens[fieldDef.key];
+            if (!tokenValue) continue;
+
+            const allowContains = tokens[fieldDef.allowContainsKey] || false;
+
+            // Try direct rect match first
+            const directMatches = pnLineRects.filter(r => tokenMatches(r.normalizedText, tokenValue, false));
+            if (directMatches.length > 0) {
+                directMatches.forEach(rect => {
+                    highlights.push({
+                        left: Math.max(0, rect.left - 4),
+                        top: Math.max(0, rect.top - rect.height - 3),
+                        width: Math.max(20, rect.width + 8),
+                        height: Math.max(14, rect.height + 6),
+                        text: rect.text,
+                        priority: fieldDef.priority,
+                        type: fieldDef.type,
+                        hasError: fieldDef.hasError
+                    });
+                });
+                continue;
+            }
+
+            // Try cluster match for multi-word values
+            if (allowContains || tokenValue.length >= 4) {
+                const lines = buildLineGroups(pnLineRects);
+                for (const line of lines) {
+                    const clusters = buildTextClusters(line.rects);
+                    for (const cluster of clusters) {
+                        if (tokenMatches(cluster.normalizedText, tokenValue, allowContains)) {
+                            highlights.push({
+                                left: Math.max(0, cluster.left - 4),
+                                top: Math.max(0, cluster.top - cluster.height - 3),
+                                width: Math.max(24, cluster.width + 8),
+                                height: Math.max(16, cluster.height + 6),
+                                text: cluster.text,
+                                priority: fieldDef.priority,
+                                type: fieldDef.type,
+                                hasError: fieldDef.hasError
+                            });
+                        }
+                    }
+                }
+            }
+        }
     }
 
     highlights.sort((a, b) => b.priority - a.priority);
@@ -471,6 +555,7 @@ function renderPdfSelectionHighlights(highlights, viewport) {
     highlights.forEach((rect) => {
         const box = document.createElement('div');
         box.className = 'pdf-selection-highlight';
+        box.classList.add(rect.hasError ? 'is-error' : 'is-ok');
         box.style.left = `${Math.max(0, rect.left * scaleX)}px`;
         box.style.top = `${Math.max(0, rect.top * scaleY)}px`;
         box.style.width = `${Math.max(20, rect.width * scaleX)}px`;
@@ -541,11 +626,27 @@ export function setPdfSelection(row) {
         return;
     }
 
+    const qaFields = row?.qa_errors?.fields ?? {};
+    const fieldHasError = (...keys) => keys.some(k => (qaFields[k]?.length ?? 0) > 0);
+
     state.currentPdfSelection = {
         id: String(row?.ID ?? '').trim(),
         pos: String(row?.POS ?? '').trim(),
         pn: String(row?.pn_final ?? row?.['PART NO.'] ?? row?.pn ?? '').trim(),
         designationFinal: String(row?.designation_final ?? row?.DESIGNATION ?? '').trim(),
+        qty: String(row?.qty_final ?? row?.QTY ?? '').trim(),
+        measurement: String(row?.measurement_final ?? row?.['MEASUREMENT / STANDARD'] ?? '').trim(),
+        weight: String(row?.weight_final ?? row?.WEIGHT ?? '').trim(),
+        model: String(row?.model_final ?? row?.['MODEL/TYPE'] ?? '').trim(),
+        fieldErrors: {
+            pn: fieldHasError('pn_final', 'PART NO.', 'pn'),
+            pos: fieldHasError('pos_final', 'POS'),
+            designation: fieldHasError('designation_final', 'DESIGNATION'),
+            qty: fieldHasError('qty_final', 'QTY'),
+            measurement: fieldHasError('measurement_final', 'MEASUREMENT / STANDARD'),
+            weight: fieldHasError('weight_final', 'WEIGHT'),
+            model: fieldHasError('model_final', 'MODEL/TYPE')
+        },
         book: String(row?.engine_model ?? '').trim(),
         page: String(row?.['Source Page'] ?? '').trim(),
         renderBook: '',
