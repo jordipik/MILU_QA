@@ -24,7 +24,7 @@
     "measure_final": "70",
     "norma_raw": "MMN425",
     "norma_final": "MMN425",
-    "qa_revision_estado": "",
+    "qa_revision_estado": "revisado",
     "qa_revision_accion": "mantener",
     "atributo2": "Actualizados",
     "BOM-No.": "000.00899",
@@ -87,7 +87,15 @@
     "units": "KGM",
     "UNITS": null,
     "Valid From Date": null,
-    "WEIGHT": null
+    "WEIGHT": null,
+    "pos_error": 0,
+    "pn_error": 0,
+    "designation_error": 0,
+    "weight_error": 0,
+    "measurement_error": 0,
+    "norma_error": 0,
+    "bom_error": 0,
+    "total_error": 0
   },
   {
     "ID": "1200002",

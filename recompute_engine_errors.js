@@ -146,7 +146,13 @@ const QA_FIELD_CHECKS = {
         (entry) => isCompareMatch(entry?.final, entry?.pdf) || isCompareMatch(entry?.final, entry?.gesa)
     ],
     'WEIGHT': [
-        (entry) => isCompareMatch(entry?.final, entry?.pdf) || isCompareMatch(entry?.final, entry?.gesa)
+        (entry) => {
+            const finalValue = normalizeCompareValue(entry?.final);
+            const pdfValue = normalizeCompareValue(entry?.pdf);
+            const gesaValue = normalizeCompareValue(entry?.gesa);
+            if (!finalValue && !pdfValue && !gesaValue) return true;
+            return isCompareMatch(entry?.final, entry?.pdf) || isCompareMatch(entry?.final, entry?.gesa);
+        }
     ],
     'MEASUREMENT / STANDARD': [
         (entry) => {
@@ -216,12 +222,13 @@ function applyToRow(row, options) {
     let changed = false;
 
     const errorPayload = computeErrorPayload(row);
+    const hasErrors = Number(errorPayload.total_error) > 0;
     Object.entries(errorPayload).forEach(([key, value]) => {
         if (assignIfChanged(row, key, value)) changed = true;
     });
+    if (assignIfChanged(row, 'has_error', hasErrors)) changed = true;
 
     if (options.updateRevision) {
-        const hasErrors = Number(errorPayload.total_error) > 0;
         const nextEstado = 'revisado';
         const nextAccion = hasErrors ? 'descartar' : 'mantener';
         if (assignIfChanged(row, 'qa_revision_estado', nextEstado)) changed = true;
