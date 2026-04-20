@@ -51,12 +51,6 @@ function getStoredFieldErrorCount(row, fieldName) {
     return Number.isFinite(value) ? value : 0;
 }
 
-function getStoredFieldErrorMap(row) {
-    return Object.fromEntries(
-        Object.keys(FIELD_TO_ERROR_KEY).map((fieldName) => [fieldName, getStoredFieldErrorCount(row, fieldName)])
-    );
-}
-
 function getStoredErrorSummary(row) {
     return Object.keys(FIELD_TO_ERROR_KEY)
         .map((fieldName) => ({ field: fieldName, count: getStoredFieldErrorCount(row, fieldName) }))
@@ -72,7 +66,6 @@ function getStoredPdfAutoValue(row, fieldName) {
 let currentRow = null;
 let currentProcessIndex = 0;
 let comparisonRenderToken = 0;
-let lastComputedErrors = null;
 const pdfDocumentPromiseCache = new Map();
 const pdfPageTextCache = new Map();
 const PDF_CLUSTER_GAP_MAX = 24;
@@ -757,6 +750,7 @@ async function runBackendRecompute() {
     const recomputeIdInput = $('recomputeIdInput');
     const recomputeDryRunInput = $('recomputeDryRunInput');
     const recomputeRunBtn = $('recomputeRunBtn');
+    const recomputePdfRunBtn = $('recomputePdfRunBtn');
     const engineFilterSelect = $('engineFilterSelect');
 
     if (!(recomputeEngineSelect instanceof HTMLSelectElement)
@@ -789,7 +783,6 @@ async function runBackendRecompute() {
     if (recomputePdfRunBtn instanceof HTMLButtonElement) recomputePdfRunBtn.disabled = true;
     setRecomputeStatus('Ejecutando recálculo en backend...', '');
 
-    const recomputePdfRunBtn = $('recomputePdfRunBtn');
     const urls = getBackendCandidateUrls('recompute-qa-errors');
     let lastError = '';
     let result = null;
@@ -1314,7 +1307,6 @@ async function renderComparisonTable(row) {
     if (!(body instanceof HTMLElement)) return;
 
     const rows = buildComparisonRows(row);
-    lastComputedErrors = getStoredFieldErrorMap(row);
     setPdfReadTokens([]);
 
     body.innerHTML = rows.map((entry) => {
@@ -1369,8 +1361,6 @@ async function renderComparisonTable(row) {
             <td class="${errCellClass}"${errTitle}>${errCount > 0 ? errCount : ''}</td>
         </tr>`;
     }).join('');
-    lastComputedErrors = fieldErrorAccum;
-
     const dedupedReadTokens = [];
     const seenReadTokens = new Set();
     readTokens.forEach((entry) => {
@@ -1543,34 +1533,6 @@ async function saveCurrentFieldChanges() {
     }
 
     await revalidateCurrentRow();
-}
-
-async function saveErrorFields() {
-    if (!currentRow) {
-        alert('Primero debes cargar un registro.');
-        return;
-    }
-    if (!lastComputedErrors) {
-        alert('Aun no hay datos de error calculados. Espera a que cargue el PDF.');
-        return;
-    }
-
-    const engineFile = resolveEngineFile(currentRow);
-    const id = txt(currentRow?.ID, '');
-    if (!engineFile || !id) {
-        alert('No se pudo resolver archivo engine o ID para guardar.');
-        return;
-    }
-
-    let total = 0;
-    for (const [field, errorKey] of Object.entries(FIELD_TO_ERROR_KEY)) {
-        const val = lastComputedErrors[field] ?? 0;
-        total += val;
-        await saveCellToServer(engineFile, id, errorKey, val);
-        currentRow[errorKey] = val;
-    }
-    await saveCellToServer(engineFile, id, 'total_error', total);
-    currentRow['total_error'] = total;
 }
 
 async function setOutcome(kind) {
@@ -1788,10 +1750,6 @@ bindClick('prevErrorBtn', () => {
 
 bindClick('nextErrorBtn', () => {
     loadRelativeError(1).catch((error) => alert(`No se pudo cargar siguiente error: ${error.message}`));
-});
-
-bindClick('saveErrorsBtn', () => {
-    saveErrorFields().catch((error) => alert(`No se pudieron guardar errores: ${error.message}`));
 });
 
 bindClick('recomputeRunBtn', () => {

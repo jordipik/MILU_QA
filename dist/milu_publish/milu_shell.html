@@ -1,0 +1,178 @@
+<!doctype html>
+<html lang="es">
+
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>MILU • Workspace</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@500;600;700;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="styles/analista_02.css" />
+    <style>
+        html,
+        body {
+            margin: 0;
+            padding: 0;
+            width: 100%;
+            height: 100%;
+            overflow: hidden;
+            font-family: 'Manrope', sans-serif;
+            background: #f3f4f6;
+        }
+
+        body {
+            display: flex;
+            flex-direction: column;
+        }
+
+        .shell-main {
+            flex: 1;
+            min-height: 0;
+            width: 100%;
+            background: #f3f4f6;
+            position: relative;
+        }
+
+        .shell-frame {
+            width: 100%;
+            height: 100%;
+            border: 0;
+            display: none;
+            background: #f3f4f6;
+            position: absolute;
+            inset: 0;
+        }
+
+        .shell-frame.is-active {
+            display: block;
+        }
+    </style>
+</head>
+
+<body>
+    <main id="shellMain" class="shell-main">
+    </main>
+
+    <script type="module">
+        import { initTopbar } from './js/topbar.js';
+
+        const VIEW_TO_PAGE = {
+            pdf: 'qa_milu.html',
+            export: 'qa_lista_agrupada.html',
+            analisis: 'analista_02.html'
+        };
+
+        const TITLES = {
+            pdf: 'MILU • PDF',
+            export: 'MILU • EXPORT',
+            analisis: 'MILU • ANALISIS'
+        };
+        const frameByView = new Map();
+
+        function normalizeView(value) {
+            const raw = String(value || '').trim().toLowerCase();
+            if (raw === 'pdf' || raw === 'export' || raw === 'analisis') return raw;
+            return 'pdf';
+        }
+
+        function getViewFromUrl() {
+            const params = new URLSearchParams(window.location.search);
+            return normalizeView(params.get('view'));
+        }
+
+        function buildEmbeddedUrl(view) {
+            const pageFile = VIEW_TO_PAGE[view] || VIEW_TO_PAGE.pdf;
+            const target = new URL(pageFile, window.location.href);
+            target.searchParams.set('embedded', '1');
+            return target.toString();
+        }
+
+        function getFrameForView(view) {
+            const normalizedView = normalizeView(view);
+            const existing = frameByView.get(normalizedView);
+            if (existing instanceof HTMLIFrameElement) return existing;
+
+            const shellMain = document.getElementById('shellMain');
+            if (!(shellMain instanceof HTMLElement)) return null;
+
+            const frame = document.createElement('iframe');
+            frame.className = 'shell-frame';
+            frame.loading = 'eager';
+            frame.title = `MILU ${normalizedView}`;
+            frame.src = buildEmbeddedUrl(normalizedView);
+            frame.dataset.view = normalizedView;
+
+            shellMain.appendChild(frame);
+            frameByView.set(normalizedView, frame);
+
+            return frame;
+        }
+
+        function setActiveFrame(view) {
+            const normalizedView = normalizeView(view);
+            const targetFrame = getFrameForView(normalizedView);
+            if (!(targetFrame instanceof HTMLIFrameElement)) return;
+
+            frameByView.forEach(frame => frame.classList.remove('is-active'));
+            targetFrame.classList.add('is-active');
+        }
+
+        function prewarmOtherViews(currentView) {
+            Object.keys(VIEW_TO_PAGE)
+                .filter(view => view !== currentView)
+                .forEach(view => {
+                    getFrameForView(view);
+                });
+        }
+
+        function updateUrl(view, replace = false) {
+            const url = new URL(window.location.href);
+            url.searchParams.set('view', view);
+            if (replace) {
+                history.replaceState({ view }, '', url);
+                return;
+            }
+            history.pushState({ view }, '', url);
+        }
+
+        function wireTopbarNavigation() {
+            const links = Array.from(document.querySelectorAll('header.a2-topbar .a2-nav a[data-page]'));
+            links.forEach(link => {
+                if (!(link instanceof HTMLAnchorElement)) return;
+                const view = normalizeView(link.dataset.page || '');
+                link.addEventListener('click', (event) => {
+                    event.preventDefault();
+                    mountView(view, { updateHistory: true });
+                });
+            });
+        }
+
+        function mountView(view, options = {}) {
+            const { updateHistory = false, replaceHistory = false } = options;
+            const normalizedView = normalizeView(view);
+
+            initTopbar(normalizedView);
+            wireTopbarNavigation();
+            setActiveFrame(normalizedView);
+            prewarmOtherViews(normalizedView);
+
+            document.title = TITLES[normalizedView] || 'MILU • Workspace';
+
+            if (updateHistory) {
+                updateUrl(normalizedView, false);
+            } else if (replaceHistory) {
+                updateUrl(normalizedView, true);
+            }
+        }
+
+        window.addEventListener('popstate', () => {
+            mountView(getViewFromUrl(), { updateHistory: false });
+        });
+
+        const initialView = getViewFromUrl();
+        mountView(initialView, { replaceHistory: true });
+    </script>
+</body>
+
+</html>

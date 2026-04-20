@@ -51,7 +51,13 @@ const QA_FIELD_CHECKS = {
         {
             code: 'weight_final_pdf_or_gesa_match',
             needsPdf: true,
-            check: (row, entry, context) => isCompareMatch(entry?.final, context?.pdfValue) || isCompareMatch(entry?.final, entry?.gesa)
+            check: (row, entry, context) => {
+                const finalValue = normalizeCompareValue(entry?.final);
+                const pdfValue = normalizeCompareValue(context?.pdfValue);
+                const gesaValue = normalizeCompareValue(entry?.gesa);
+                if (!finalValue && !pdfValue && !gesaValue) return true;
+                return isCompareMatch(entry?.final, context?.pdfValue) || isCompareMatch(entry?.final, entry?.gesa);
+            }
         }
     ],
     'MEASUREMENT / STANDARD': [

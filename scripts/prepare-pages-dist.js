@@ -9,11 +9,15 @@ const args = new Set(process.argv.slice(2));
 const isDryRun = args.has('--dry-run');
 const isIncremental = args.has('--incremental');
 const shouldPrune = !args.has('--no-prune');
+const includeEngineJson = !args.has('--no-json');
 
 const requiredStaticEntries = [
     'index.html',
+    'milu_shell.html',
     'qa_milu.html',
     'qa_lista_agrupada.html',
+    'analista_02.html',
+    'qa_analista_registro.html',
     'styles.css',
     'qa_revision_sync.php',
     'CNAME',
@@ -193,8 +197,13 @@ function main() {
     if (isIncremental) {
         console.log('Incremental mode enabled: copying only changed files.');
     }
+    if (includeEngineJson) {
+        console.log('Engine JSON mode: enabled.');
+    } else {
+        console.log('Engine JSON mode: disabled (--no-json).');
+    }
 
-    const engineFiles = listEngineJsonFiles();
+    const engineFiles = includeEngineJson ? listEngineJsonFiles() : [];
     const managedEntries = [...requiredStaticEntries, ...engineFiles];
     const managedFiles = buildManagedFileList(managedEntries);
 

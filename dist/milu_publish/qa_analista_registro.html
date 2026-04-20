@@ -1,0 +1,183 @@
+﻿<!doctype html>
+<html lang="es">
+
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>MILU - Analisis de Registro</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="styles/qa_analista_registro.css" />
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
+</head>
+
+<body>
+    <header class="app-topbar">
+        <div class="app-topbar-left">
+            <div class="app-topbar-title">Analisis de Registro</div>
+            <nav class="app-topbar-nav">
+                <a href="qa_milu.html">PDF</a>
+                <a href="qa_lista_agrupada.html">EXPORT</a>
+                <span class="active">ANALISIS</span>
+            </nav>
+        </div>
+        <div class="app-topbar-user">Usuario: Ana Garcia <span class="user-dot" aria-hidden="true"></span></div>
+    </header>
+
+    <main class="app-shell">
+        <aside class="left-panel">
+            <label class="left-search-wrap" for="sidebarSearchInput">
+                <input id="sidebarSearchInput" type="text" placeholder="Buscar..." autocomplete="off">
+            </label>
+
+            <div class="left-table-wrap">
+                <table class="left-table" aria-label="Listado de registros">
+                    <thead>
+                        <tr>
+                            <th>LIBRO</th>
+                            <th>PAG</th>
+                            <th>POS</th>
+                            <th>PART NUMBER</th>
+                            <th>ST</th>
+                        </tr>
+                    </thead>
+                    <tbody id="reviewLogList">
+                        <tr class="left-empty-row">
+                            <td colspan="5">Sin datos.</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+            <p id="reviewLogSummary" class="left-summary">0 registros</p>
+        </aside>
+
+        <section class="center-panel">
+            <div class="toolbar-row">
+                <input id="recordIdInput" type="text" placeholder="ID" autocomplete="off">
+                <select id="engineFilterSelect" aria-label="Filtro de libro">
+                    <option value="">Todos los libros</option>
+                </select>
+                <button id="loadRecordBtn" type="button" class="btn-secondary">Cargar</button>
+                <button id="nextWithErrorsBtn" type="button" class="btn-secondary">Siguiente</button>
+                <button id="revalidateBtn" type="button" class="btn-secondary">Revalidar</button>
+            </div>
+
+            <div id="recordMeta" class="record-meta">Sin registro cargado.</div>
+
+            <div class="record-head-grid">
+                <div class="head-cell">
+                    <span class="head-label">Pos</span>
+                    <strong id="headPosValue">-</strong>
+                </div>
+                <div class="head-cell">
+                    <span class="head-label">PN</span>
+                    <strong id="headPnValue">-</strong>
+                </div>
+                <div class="head-cell head-cell-wide">
+                    <span class="head-label">Designation</span>
+                    <strong id="headDesignationValue">-</strong>
+                </div>
+                <button id="markOkBtn" type="button" class="btn-ok">OK</button>
+            </div>
+
+            <div class="record-actions-row">
+                <button id="saveFieldsBtn" type="button" class="btn-pill active">Guardar</button>
+                <button id="nextRecordBtn" type="button" class="btn-pill">Siguiente</button>
+                <button id="markKoBtn" type="button" class="btn-pill ghost">KO</button>
+                <span id="backendBadge" class="backend-badge checking">Backend: comprobando...</span>
+            </div>
+
+            <section class="matrix-card">
+                <table class="matrix-table" aria-label="Comparativa de campos">
+                    <thead>
+                        <tr>
+                            <th>CAMPO</th>
+                            <th>RAW</th>
+                            <th>GESA</th>
+                            <th>SUST</th>
+                            <th>FINAL</th>
+                            <th>PDF</th>
+                        </tr>
+                    </thead>
+                    <tbody id="correlationBody">
+                        <tr>
+                            <td colspan="6">Selecciona un registro para ver la correlacion.</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </section>
+
+            <section class="checks-card">
+                <h3>Filtros / Comprobaciones</h3>
+                <p id="processSummary" class="checks-summary">0 checks</p>
+                <ol id="processList" class="checks-list"></ol>
+            </section>
+
+            <section class="obs-card">
+                <h3>Observaciones</h3>
+                <p id="statusText" class="status-line">Carga un registro para iniciar el analisis.</p>
+                <ul id="evidenceList" class="obs-list"></ul>
+            </section>
+
+            <div id="selectedContext" class="selected-context" hidden></div>
+            <div id="globalVerdict" class="global-verdict status-raw" hidden>Estado: RAW</div>
+
+            <form id="editForm" class="hidden-edit-form" aria-hidden="true">
+                <input id="editPnFinal" type="text">
+                <input id="editDesignationFinal" type="text">
+                <input id="editWeightFinal" type="text">
+                <input id="editMeasurementFinal" type="text">
+                <select id="editRevisionEstado">
+                    <option value="">(vacio)</option>
+                    <option value="copia">copia</option>
+                    <option value="en revisi&oacute;n">en revision</option>
+                    <option value="revisado">revisado</option>
+                    <option value="descartado">descartado</option>
+                </select>
+                <select id="editRevisionAccion">
+                    <option value="">(vacio)</option>
+                    <option value="mantener">mantener</option>
+                    <option value="actualizar">actualizar</option>
+                    <option value="revisar">revisar</option>
+                    <option value="sustituir">sustituir</option>
+                    <option value="eliminar">eliminar</option>
+                </select>
+            </form>
+        </section>
+
+        <aside class="right-panel">
+            <div class="pdf-toolbar">
+                <label class="pdf-zoom-wrap" for="pdfZoomSelect">
+                    <button id="pdfZoomOutBtn" class="pdf-zoom-btn" type="button"
+                        aria-label="Reducir zoom PDF">-</button>
+                    <select id="pdfZoomSelect" class="pdf-zoom-select" aria-label="Zoom del visor PDF">
+                        <option value="fit">100%</option>
+                        <option value="75">75%</option>
+                        <option value="100">100%</option>
+                        <option value="125">125%</option>
+                        <option value="150">150%</option>
+                        <option value="200">200%</option>
+                    </select>
+                    <button id="pdfZoomInBtn" class="pdf-zoom-btn" type="button"
+                        aria-label="Aumentar zoom PDF">+</button>
+                </label>
+                <span class="pdf-page">1 / 12</span>
+            </div>
+
+            <div id="pdfViewer" class="pdfviewer">
+                <div class="pdfviewer-inner">
+                    <div id="pdfStatus" class="pdfstatus">Selecciona libro y pagina para ver el PDF</div>
+                    <canvas id="pdfCanvas" class="pdfcanvas"></canvas>
+                </div>
+            </div>
+
+            <div id="pdfMeta" class="pdf-meta-foot">Documento: Especificaciones_Tecnicas_v2.3.pdf</div>
+            <span id="pdfLabel" hidden>-</span>
+        </aside>
+    </main>
+
+    <script type="module" src="js/qa-analista-registro.js"></script>
+</body>
+
+</html>

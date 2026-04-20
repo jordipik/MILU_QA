@@ -236,7 +236,7 @@ body.a2-resizing * {
 
 .a2-toolbar {
     display: grid;
-    grid-template-columns: minmax(180px, 220px) minmax(240px, 1fr) minmax(88px, 104px) repeat(4, 42px) minmax(96px, 120px) minmax(92px, 116px);
+    grid-template-columns: minmax(180px, 220px) minmax(240px, 1fr) minmax(88px, 104px) 42px 42px minmax(164px, 196px) minmax(96px, 120px);
     gap: 8px;
     align-items: center;
 }
@@ -278,10 +278,27 @@ body.a2-resizing * {
 }
 
 .a2-toolbar #loadRecordBtn,
-.a2-toolbar #openRecomputeModalBtn,
-.a2-toolbar #saveErrorsBtn {
+.a2-toolbar #openRecomputeModalBtn {
     font-size: 11px;
     letter-spacing: 0.01em;
+}
+
+.a2-error-nav {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    height: 32px;
+    padding: 0 8px;
+    border: 1px solid #efb2ab;
+    border-radius: 10px;
+    background: #fff1f0;
+}
+
+.a2-error-nav-label {
+    font-size: 11px;
+    font-weight: 800;
+    color: #9f2f23;
+    white-space: nowrap;
 }
 
 .a2-btn-nav {
@@ -294,12 +311,23 @@ body.a2-resizing * {
 }
 
 .a2-btn-nav-err {
-    width: 56px;
-    min-width: 56px;
-    font-size: 10px;
-    color: #8f3d12;
-    background: #fff1e8;
-    border-color: #efc8b2;
+    width: 34px;
+    min-width: 34px;
+    font-size: 12px;
+    color: #9f2f23;
+    background: #ffe9e6;
+    border-color: #efb2ab;
+}
+
+.a2-btn-nav-err:hover {
+    background: #ffd8d3;
+    border-color: #e89187;
+    color: #8f2318;
+}
+
+.a2-btn-nav-err:focus-visible {
+    outline: 2px solid #d6453a;
+    outline-offset: 1px;
 }
 
 .a2-toolbar button:hover,
@@ -1169,8 +1197,8 @@ body.a2-resizing * {
 
     .a2-toolbar #recordIdInput,
     .a2-toolbar #loadRecordBtn,
-    .a2-toolbar #openRecomputeModalBtn,
-    .a2-toolbar #saveErrorsBtn {
+    .a2-toolbar .a2-error-nav,
+    .a2-toolbar #openRecomputeModalBtn {
         grid-column: span 2;
     }
 

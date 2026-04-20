@@ -68,6 +68,10 @@ def calc_record_errors(record):
     weight_gesa_with_units = None
     if weight_gesa is not None and str(weight_gesa).strip() != "":
         weight_gesa_with_units = f"{weight_gesa} {str(units or '').strip()}".strip()
+    weight_all_empty = all(
+        normalize_compare_value(value) == ""
+        for value in [weight_final, weight_pdf, weight_gesa_with_units]
+    )
 
     measurement_final = record.get("measure_final") or record.get("measurement_final")
     measurement_pdf = record.get("measure_pdf") or record.get("MEASUREMENT / STANDARD")
@@ -107,7 +111,8 @@ def calc_record_errors(record):
     )
 
     weight_error = int(
-        not is_compare_match(weight_final, weight_pdf)
+        (not weight_all_empty)
+        and not is_compare_match(weight_final, weight_pdf)
         and not is_compare_match(weight_final, weight_gesa_with_units)
     )
 

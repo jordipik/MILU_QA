@@ -1,0 +1,161 @@
+<!doctype html>
+<html lang="es">
+
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>MILU - Analista 02</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link
+        href="https://fonts.googleapis.com/css2?family=Manrope:wght@500;600;700;800&family=IBM+Plex+Mono:wght@400;500&display=swap"
+        rel="stylesheet">
+    <link rel="stylesheet" href="styles/analista_02.css" />
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
+</head>
+
+<body>
+    <!-- Topbar generado dinámicamente por js/topbar.js -->
+    <script type="module">
+        import { initTopbar } from './js/topbar.js';
+        initTopbar('analisis');
+    </script>
+
+    <main class="a2-layout">
+        <section class="a2-main">
+            <div class="a2-toolbar">
+                <select id="engineFilterSelect" aria-label="Filtro de libro">
+                </select>
+                <input id="recordIdInput" list="recordSearchList" type="search"
+                    placeholder="Buscar por PN, PART NO, ID o DESIGNATION" autocomplete="off">
+                <datalist id="recordSearchList"></datalist>
+                <button id="loadRecordBtn" type="button">Buscar</button>
+                <button id="prevRecordBtn" class="a2-btn-nav" type="button" title="Registro anterior"
+                    aria-label="Registro anterior">&#9664;</button>
+                <button id="nextRecordBtn" class="a2-btn-nav" type="button" title="Registro siguiente"
+                    aria-label="Registro siguiente">&#9654;</button>
+                <div class="a2-error-nav" aria-label="Busqueda de errores">
+                    <span class="a2-error-nav-label">Buscar ERROR:</span>
+                    <button id="prevErrorBtn" class="a2-btn-nav a2-btn-nav-err" type="button" title="Error anterior"
+                        aria-label="Error anterior">&#9664;</button>
+                    <button id="nextErrorBtn" class="a2-btn-nav a2-btn-nav-err" type="button" title="Siguiente error"
+                        aria-label="Siguiente error">&#9654;</button>
+                </div>
+                <button id="openRecomputeModalBtn" type="button">RECALCULAR</button>
+            </div>
+
+            <div class="a2-status-row">
+                <p id="recordPositionText">Registro 0 de 0</p>
+                <p id="selectedBookText" class="a2-selected-book">Libro: -</p>
+            </div>
+
+            <div id="recordMeta" class="a2-meta">Sin registro cargado.</div>
+
+            <div class="a2-review-actions" aria-label="Estado de revision">
+                <button id="statusOkBtn" class="a2-review-btn is-ok" type="button" aria-pressed="false">OK</button>
+                <button id="statusReviewBtn" class="a2-review-btn is-review" type="button"
+                    aria-pressed="false">REVISAR</button>
+                <button id="statusKoBtn" class="a2-review-btn is-ko" type="button" aria-pressed="false">KO</button>
+            </div>
+
+            <section class="a2-compare-table-card" aria-label="Comparativa RAW, GESA, SUST y FINAL">
+                <table class="a2-compare-table">
+                    <thead>
+                        <tr>
+                            <th>Campo</th>
+                            <th>RAW</th>
+                            <th>GESA</th>
+                            <th>SUST</th>
+                            <th>FINAL</th>
+                            <th>PDF</th>
+                            <th>PDF_AUTO</th>
+                            <th id="errColHeader" class="err-col-header" title="Ver listado de checks">ERR</th>
+                        </tr>
+                    </thead>
+                    <tbody id="comparisonBody">
+                        <tr>
+                            <td colspan="8">Selecciona un registro para ver la comparativa.</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </section>
+
+        </section>
+
+        <div id="a2Splitter" class="a2-splitter" role="separator" aria-orientation="vertical" tabindex="0"
+            aria-label="Ajustar ancho del panel PDF"></div>
+
+        <aside class="a2-right">
+            <div class="pdf-toolbar">
+                <label class="pdf-zoom-wrap" for="pdfZoomSelect">
+                    <button id="pdfZoomOutBtn" class="pdf-zoom-btn" type="button"
+                        aria-label="Reducir zoom PDF">-</button>
+                    <select id="pdfZoomSelect" class="pdf-zoom-select" aria-label="Zoom del visor PDF">
+                        <option value="fit">100%</option>
+                        <option value="75">75%</option>
+                        <option value="100">100%</option>
+                        <option value="125">125%</option>
+                        <option value="150">150%</option>
+                        <option value="200">200%</option>
+                    </select>
+                    <button id="pdfZoomInBtn" class="pdf-zoom-btn" type="button"
+                        aria-label="Aumentar zoom PDF">+</button>
+                </label>
+                <span class="pdf-page">1 / 12</span>
+            </div>
+
+            <div id="pdfViewer" class="pdfviewer">
+                <div class="pdfviewer-inner">
+                    <div id="pdfStatus" class="pdfstatus">Selecciona libro y pagina para ver el PDF</div>
+                    <canvas id="pdfCanvas" class="pdfcanvas"></canvas>
+                </div>
+            </div>
+
+            <div id="pdfMeta" class="pdf-meta-foot">Documento: -</div>
+            <span id="pdfLabel" hidden>-</span>
+        </aside>
+    </main>
+
+    <div id="checksModal" class="checks-modal" hidden aria-modal="true" role="dialog"
+        aria-labelledby="checksModalTitle">
+        <div class="checks-modal-backdrop"></div>
+        <div class="checks-modal-panel">
+            <header class="checks-modal-header">
+                <h2 id="checksModalTitle">Checks de la columna ERR</h2>
+                <button id="checksModalClose" class="checks-modal-close" type="button"
+                    aria-label="Cerrar">&times;</button>
+            </header>
+            <div id="checksModalBody" class="checks-modal-body"></div>
+        </div>
+    </div>
+
+    <div id="recomputeModal" class="recompute-modal" hidden aria-modal="true" role="dialog"
+        aria-labelledby="recomputeModalTitle">
+        <div class="recompute-modal-backdrop"></div>
+        <div class="recompute-modal-panel">
+            <header class="recompute-modal-header">
+                <h2 id="recomputeModalTitle">Recalculo QA (backend)</h2>
+                <button id="recomputeModalClose" class="recompute-modal-close" type="button"
+                    aria-label="Cerrar">&times;</button>
+            </header>
+            <div class="recompute-modal-body">
+                <div class="a2-auto-recompute-controls">
+                    <select id="recomputeEngineSelect" aria-label="Libro para recalculo"></select>
+                    <input id="recomputeIdInput" type="search" placeholder="ID opcional (vacio = todo el libro)"
+                        autocomplete="off">
+                    <label class="a2-auto-recompute-check" for="recomputeDryRunInput">
+                        <input id="recomputeDryRunInput" type="checkbox" checked>
+                        Simulacion (dry-run)
+                    </label>
+                    <button id="recomputeRunBtn" type="button">Ejecutar recálculo</button>
+                    <button id="recomputePdfRunBtn" type="button">Recalcular PDF_AUTO</button>
+                </div>
+                <p id="recomputeStatusText" class="a2-auto-recompute-status">Listo para ejecutar.</p>
+            </div>
+        </div>
+    </div>
+
+    <script type="module" src="js/analista-02.js"></script>
+</body>
+
+</html>
