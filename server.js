@@ -123,6 +123,104 @@ app.post('/recompute-pdf-auto', async (req, res) => {
     }
 });
 
+app.post('/recompute-pdf-auto', async (req, res) => {
+    const file = String(req.body?.file ?? '').trim();
+    const id = String(req.body?.id ?? '').trim();
+    const dryRun = Boolean(req.body?.dryRun);
+    const backup = req.body?.backup !== false;
+
+    if (!file) {
+        return res.status(400).json({ ok: false, error: 'Falta parametro requerido: file' });
+    }
+
+    if (!ENGINE_JSON_FILES.includes(file)) {
+        return res.status(400).json({
+            ok: false,
+            error: 'Archivo no permitido',
+            allowedFiles: ENGINE_JSON_FILES
+        });
+    }
+
+    try {
+        const comparisonResult = await runComparison({
+            file,
+            id,
+            writePdf: !dryRun,
+            recomputeErrors: false,
+            backup,
+            output: ''
+        });
+
+        const report = comparisonResult?.report || {};
+        const result = {
+            file,
+            mode: id ? 'single-id' : 'full-book',
+            id: id || null,
+            dryRun,
+            scanned: Number(report.scanned_rows) || 0,
+            changedRows: Number(report.changed_pdf_fields_rows) || 0,
+            missingPages: Array.isArray(report.missing_pages) ? report.missing_pages.length : 0,
+            wroteFile: Boolean(report.wrote_engine_file),
+            output: String(comparisonResult?.outputPath || '')
+        };
+
+        return res.json({ ok: true, result });
+    } catch (error) {
+        const message = String(error?.message || error || 'Error desconocido');
+        const isNotFound = /no se encontro ningun registro con id=/i.test(message);
+        return res.status(isNotFound ? 404 : 500).json({ ok: false, error: message });
+    }
+});
+
+app.post('/recompute-pdf-auto', async (req, res) => {
+    const file = String(req.body?.file ?? '').trim();
+    const id = String(req.body?.id ?? '').trim();
+    const dryRun = Boolean(req.body?.dryRun);
+    const backup = req.body?.backup !== false;
+
+    if (!file) {
+        return res.status(400).json({ ok: false, error: 'Falta parametro requerido: file' });
+    }
+
+    if (!ENGINE_JSON_FILES.includes(file)) {
+        return res.status(400).json({
+            ok: false,
+            error: 'Archivo no permitido',
+            allowedFiles: ENGINE_JSON_FILES
+        });
+    }
+
+    try {
+        const comparisonResult = await runComparison({
+            file,
+            id,
+            writePdf: !dryRun,
+            recomputeErrors: false,
+            backup,
+            output: ''
+        });
+
+        const report = comparisonResult?.report || {};
+        const result = {
+            file,
+            mode: id ? 'single-id' : 'full-book',
+            id: id || null,
+            dryRun,
+            scanned: Number(report.scanned_rows) || 0,
+            changedRows: Number(report.changed_pdf_fields_rows) || 0,
+            missingPages: Array.isArray(report.missing_pages) ? report.missing_pages.length : 0,
+            wroteFile: Boolean(report.wrote_engine_file),
+            output: String(comparisonResult?.outputPath || '')
+        };
+
+        return res.json({ ok: true, result });
+    } catch (error) {
+        const message = String(error?.message || error || 'Error desconocido');
+        const isNotFound = /no se encontro ningun registro con id=/i.test(message);
+        return res.status(isNotFound ? 404 : 500).json({ ok: false, error: message });
+    }
+});
+
 app.use(express.static(__dirname));
 
 app.get('/', (req, res) => {
@@ -137,14 +235,13 @@ app.get('/health', (req, res) => {
 app.post('/save-json', async (req, res) => {
     const { file, id, col, value } = req.body;
     if (!file || !id || !col) {
-        return res.status(400).json({ error: 'Faltan parametros requeridos' });
+        return res.status(400).json({ error: 'Faltan parámetros requeridos' });
     }
-
+    // Solo permitir archivos válidos
     const allowedFiles = ENGINE_JSON_FILES;
     if (!allowedFiles.includes(file)) {
         return res.status(400).json({ error: 'Archivo no permitido' });
     }
-
     const filePath = path.join(__dirname, file);
     try {
         const data = await fs.promises.readFile(filePath, 'utf8');
@@ -152,14 +249,12 @@ app.post('/save-json', async (req, res) => {
         try {
             json = JSON.parse(data);
         } catch (_parseError) {
-            return res.status(500).json({ error: 'JSON invalido' });
+            return res.status(500).json({ error: 'JSON inválido' });
         }
-
-        const row = json.find((r) => String(r.ID) === String(id));
+        const row = json.find(r => String(r.ID) === String(id));
         if (!row) {
             return res.status(404).json({ error: 'Registro no encontrado' });
         }
-
         row[col] = value;
         stripLegacyQaFields(json);
         await fs.promises.writeFile(filePath, `${JSON.stringify(json, null, 2)}\n`, 'utf8');

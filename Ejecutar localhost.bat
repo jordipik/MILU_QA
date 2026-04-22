@@ -11,8 +11,10 @@ if not exist server.js (
 for %%A in (server.js) do set SERVER_SIZE=%%~zA
 if %SERVER_SIZE% EQU 0 goto :SERVER_EMPTY
 
+start /b node server.js
+timeout /t 2 /nobreak >nul
 start http://localhost:3000/qa_milu.html
-node server.js
+wait
 goto :EOF
 
 :SERVER_EMPTY

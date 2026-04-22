@@ -74,6 +74,14 @@ const RIGHT_PANEL_WIDTH_KEY = 'analista02:right-panel-width';
 const COMPARISON_WIDTHS_KEY = 'analista02:comparison-column-widths';
 const COMPARISON_MIN_COL_WIDTH = 30;
 const ENGINE_BOOK_FILES = getEngineJsonFiles();
+const AUTO_RECOMPUTE_TRIGGER_FIELDS = new Set([
+    'pn_final',
+    'designation_final',
+    'weight_final',
+    'measurement_final',
+    'norma',
+    'measure_final'
+]);
 
 function getStartupSelectionFromUrl() {
     const params = new URLSearchParams(window.location.search || '');
@@ -779,6 +787,7 @@ async function saveEditRecordForm() {
         };
 
         let saved = false;
+        const changedFields = new Set();
 
         // Guardar cada campo que cambió (incluso si es vacío)
         for (const [key, value] of Object.entries(updates)) {
@@ -786,11 +795,20 @@ async function saveEditRecordForm() {
                 await saveCellToServer(engineFile, id, key, value);
                 currentRow[key] = value;
                 saved = true;
+                changedFields.add(key);
             }
         }
 
         if (saved) {
-            setEditRecordStatus('Registro guardado correctamente.', 'ok');
+            const mustAutoRecompute = [...changedFields].some((field) => AUTO_RECOMPUTE_TRIGGER_FIELDS.has(field));
+            if (mustAutoRecompute) {
+                setEditRecordStatus('Registro guardado. Recalculando errores y lectura PDF...', '');
+                await autoRecomputeEditedRecord(engineFile, id);
+                await reloadEditedRecord(engineFile, id);
+                setEditRecordStatus('Registro guardado y recalculado correctamente.', 'ok');
+            } else {
+                setEditRecordStatus('Registro guardado correctamente.', 'ok');
+            }
 
             // Cerrar modal después de 800ms
             setTimeout(() => {
@@ -855,6 +873,80 @@ function getBackendCandidateUrls(endpointPath) {
         sameDirectoryCandidate,
         sameOriginCandidate
     ].filter((url, index, arr) => url && arr.indexOf(url) === index);
+}
+
+async function postJsonToBackendCandidates(endpointPath, payload) {
+    const urls = getBackendCandidateUrls(endpointPath);
+    let lastError = '';
+
+    for (const url of urls) {
+        try {
+            const response = await fetch(url, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(payload)
+            });
+            const rawBody = await response.text();
+            let data = null;
+            try {
+                data = rawBody ? JSON.parse(rawBody) : null;
+            } catch (_parseError) {
+                data = null;
+            }
+
+            if (!response.ok) {
+                lastError = String(data?.error || `HTTP ${response.status}`).trim();
+                continue;
+            }
+
+            if (!data || data.ok !== true || !data.result || typeof data.result !== 'object') {
+                const snippet = rawBody
+                    ? rawBody.replace(/\s+/g, ' ').trim().slice(0, 140)
+                    : '';
+                lastError = snippet
+                    ? `Respuesta invalida desde ${url}: ${snippet}`
+                    : `Respuesta invalida desde ${url} (esperado JSON con { ok: true, result }).`;
+                continue;
+            }
+
+            return data.result;
+        } catch (error) {
+            lastError = String(error?.message || error || 'Error de red');
+        }
+    }
+
+    throw new Error(lastError || `No se pudo ejecutar ${endpointPath} en backend.`);
+}
+
+async function autoRecomputeEditedRecord(engineFile, id) {
+    await postJsonToBackendCandidates('recompute-qa-errors', {
+        file: engineFile,
+        id,
+        dryRun: false,
+        updateRevision: true,
+        backup: true
+    });
+
+    await postJsonToBackendCandidates('recompute-pdf-auto', {
+        file: engineFile,
+        id,
+        dryRun: false,
+        backup: true
+    });
+}
+
+async function reloadEditedRecord(engineFile, id) {
+    const selectedModel = inferEngineModelFromFileName(engineFile);
+    await loadEngineForFilter(selectedModel);
+
+    const reloaded = findRecordByPrimaryKey(id, selectedModel);
+    if (reloaded) {
+        currentRow = reloaded;
+        $('recordIdInput').value = getDisplayPn(reloaded);
+        currentProcessIndex = 0;
+        await revalidateCurrentRow();
+    }
+    updateRecordSearchSuggestions();
 }
 
 function setRecomputeStatus(message, status = '') {
@@ -1731,10 +1823,20 @@ async function saveCurrentFieldChanges() {
         ['qa_revision_accion', $('editRevisionAccion')?.value ?? txt(currentRow?.qa_revision_accion, '')]
     ];
 
+    const changedFields = new Set();
+
     for (const [field, value] of changes) {
         if (String(currentRow?.[field] ?? '') === String(value ?? '')) continue;
         await saveCellToServer(engineFile, id, field, value);
         currentRow[field] = value;
+        changedFields.add(field);
+    }
+
+    const mustAutoRecompute = [...changedFields].some((field) => AUTO_RECOMPUTE_TRIGGER_FIELDS.has(field));
+    if (mustAutoRecompute) {
+        await autoRecomputeEditedRecord(engineFile, id);
+        await reloadEditedRecord(engineFile, id);
+        return;
     }
 
     renderReviewStats();
