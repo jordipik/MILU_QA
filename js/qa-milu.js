@@ -421,9 +421,17 @@ function getMiluNewRowForPn(row) {
     return state.miluNewData.find(item => normModalMatch(item?.pn ?? '') === normalizedPn) || null;
 }
 
+function getArticleHierarchyKind(row) {
+    const hierarchyRaw = String(row?.sust_hierarchie ?? '').trim().toUpperCase();
+    const hierarchy = hierarchyRaw.replace(/\s+/g, ' ').replace(/[._-]/g, ' ');
+    if (hierarchy === 'SUPERSEDED') return 'superseded';
+    if (hierarchy === 'NEW') return 'new';
+    // Default to New to ensure uncategorized rows are still shown.
+    return 'new';
+}
+
 function isSupersededArticle(row) {
-    const hierarchy = String(row?.sust_hierarchie ?? '').trim().toUpperCase();
-    return hierarchy.includes('SUPERSEDED');
+    return getArticleHierarchyKind(row) === 'superseded';
 }
 
 function uniqueSortedValues(values, compareAsNumeric = false) {
@@ -1054,6 +1062,10 @@ function fillSideRecordForm(row, revisionKey) {
         bodyId: 'qaSideSupersededBody',
         countId: 'qaSideSupersededCount'
     });
+
+    const superseded = isSupersededArticle(row);
+    $('qaSideNewSection')?.toggleAttribute('hidden', superseded);
+    $('qaSideSupersededSection')?.toggleAttribute('hidden', !superseded);
 
     const status = $('qaSideStatus');
     if (status) status.textContent = '';
