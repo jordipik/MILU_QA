@@ -181,6 +181,11 @@ function isMatchesModalOpen() {
     return !!modal && !modal.hasAttribute('hidden');
 }
 
+function isExportModalOpen() {
+    const modal = $('qaExportModal');
+    return !!modal && !modal.hasAttribute('hidden');
+}
+
 function getBookEngineCode(row) {
     const sourceFile = String(row?.source_file ?? '').trim();
     if (sourceFile) return sourceFile.replace(/\.xlsx$/i, '');
@@ -651,11 +656,14 @@ function renderRecordModalExport(row, options = {}) {
     const {
         headRowId = 'qaModalExportHeadRow',
         bodyId = 'qaModalExportBody',
-        countId = 'qaModalExportCount'
+        countId = 'qaModalExportCount',
+        onlyDiffToggleId = 'qaModalExportOnlyDiffToggle'
     } = options;
     const headRow = $(headRowId);
     const body = $(bodyId);
     const count = $(countId);
+    const onlyDiffToggle = $(onlyDiffToggleId);
+    const onlyMismatchFields = onlyDiffToggle instanceof HTMLInputElement && onlyDiffToggle.checked;
     if (!(headRow instanceof HTMLElement) || !(body instanceof HTMLElement)) return;
 
     const syntheticRow = buildSyntheticNewExportRow(row);
@@ -690,7 +698,21 @@ function renderRecordModalExport(row, options = {}) {
     }
     headRow.innerHTML = ['<th>Campo</th>', ...sourceLabels.map(label => `<th>${escapeHtml(label)}</th>`)].join('');
 
-    body.innerHTML = fields.map((field) => {
+    const visibleFields = onlyMismatchFields
+        ? fields.filter(field => diffColumns.has(field))
+        : fields;
+
+    if (!visibleFields.length) {
+        body.innerHTML = `<tr><td colspan="${sourceLabels.length + 1}">No hay campos no coincidentes para este registro.</td></tr>`;
+        if (count) {
+            const comparedLabel = miluNewRow ? '2 registros comparados (v506 + synthetic)' : '1 registro (solo synthetic; sin match en v506)';
+            count.textContent = `${comparedLabel} · ${sourceMatches.length} aparicion${sourceMatches.length === 1 ? '' : 'es'} · 0 campos no coincidentes`;
+        }
+        setModalSectionVisibility(body, true);
+        return;
+    }
+
+    body.innerHTML = visibleFields.map((field) => {
         const valueCells = matches.map((item, rowIndex) => {
             const rawValue = formatModalExportValue(item?.[field]);
             const displayValue = rawValue || '-';
@@ -709,9 +731,11 @@ function renderRecordModalExport(row, options = {}) {
     }).join('');
 
     if (count) {
-        const comparedRows = matches.length;
         const comparedLabel = miluNewRow ? '2 registros comparados (v506 + synthetic)' : '1 registro (solo synthetic; sin match en v506)';
-        count.textContent = `${comparedLabel} · ${sourceMatches.length} aparicion${sourceMatches.length === 1 ? '' : 'es'}`;
+        const fieldLabel = onlyMismatchFields
+            ? `${visibleFields.length} campo${visibleFields.length === 1 ? '' : 's'} no coincidente${visibleFields.length === 1 ? '' : 's'}`
+            : `${fields.length} campos`;
+        count.textContent = `${comparedLabel} · ${sourceMatches.length} aparicion${sourceMatches.length === 1 ? '' : 'es'} · ${fieldLabel}`;
     }
     setModalSectionVisibility(body, true);
 }
@@ -1022,7 +1046,8 @@ function fillSideRecordForm(row, revisionKey) {
     renderRecordModalExport(row, {
         headRowId: 'qaSideExportHeadRow',
         bodyId: 'qaSideExportBody',
-        countId: 'qaSideExportCount'
+        countId: 'qaSideExportCount',
+        onlyDiffToggleId: 'qaSideExportOnlyDiffToggle'
     });
     renderRecordModalSuperseded(row, {
         headRowId: 'qaSideSupersededHeadRow',
@@ -1074,6 +1099,8 @@ function clearSideRecordForm() {
     if (exportLabel) exportLabel.textContent = 'Sin selección';
 
     $('qaSideMatchesBody').innerHTML = '<tr><td colspan="5">Sin seleccion</td></tr>';
+    const sideOnlyDiffToggle = $('qaSideExportOnlyDiffToggle');
+    if (sideOnlyDiffToggle instanceof HTMLInputElement) sideOnlyDiffToggle.checked = false;
     $('qaSideExportHeadRow').innerHTML = '<th>Sin datos</th>';
     $('qaSideExportBody').innerHTML = '<tr><td>Sin seleccion.</td></tr>';
     $('qaSideSupersededHeadRow').innerHTML = '<th>Sin datos</th>';
@@ -1159,6 +1186,7 @@ function openExportModal(revisionKey) {
     renderRecordModalExport(row);
     renderRecordModalSuperseded(row);
     updateExportModalHeader(row);
+    modal.dataset.revisionKey = String(revisionKey || '');
     modal.removeAttribute('hidden');
 }
 
@@ -1166,6 +1194,7 @@ function closeExportModal() {
     const modal = $('qaExportModal');
     if (!modal) return;
     modal.setAttribute('hidden', '');
+    modal.dataset.revisionKey = '';
 }
 
 function closeRecordModal() {
@@ -2330,6 +2359,31 @@ function attachGlobalEvents() {
             countId: 'qaSideMatchesCount',
             bookFilterId: 'qaSideMatchesBookFilter',
             showAction: false
+        });
+    });
+
+    $('qaSideExportOnlyDiffToggle')?.addEventListener('change', () => {
+        const revisionKey = String($('qaSideRecordForm')?.dataset.revisionKey || '');
+        const row = getRowByRevisionKey(revisionKey);
+        if (!row) return;
+        renderRecordModalExport(row, {
+            headRowId: 'qaSideExportHeadRow',
+            bodyId: 'qaSideExportBody',
+            countId: 'qaSideExportCount',
+            onlyDiffToggleId: 'qaSideExportOnlyDiffToggle'
+        });
+    });
+
+    $('qaModalExportOnlyDiffToggle')?.addEventListener('change', () => {
+        if (!isExportModalOpen()) return;
+        const revisionKey = String($('qaExportModal')?.dataset.revisionKey || '');
+        const row = getRowByRevisionKey(revisionKey);
+        if (!row) return;
+        renderRecordModalExport(row, {
+            headRowId: 'qaModalExportHeadRow',
+            bodyId: 'qaModalExportBody',
+            countId: 'qaModalExportCount',
+            onlyDiffToggleId: 'qaModalExportOnlyDiffToggle'
         });
     });
 

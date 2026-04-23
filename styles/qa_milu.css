@@ -3189,6 +3189,25 @@
             align-items: center;
         }
 
+        .qa-export-diff-toggle {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            font-size: 11px;
+            font-weight: 700;
+            color: #334155;
+            user-select: none;
+            cursor: pointer;
+            white-space: nowrap;
+        }
+
+        .qa-export-diff-toggle input {
+            margin: 0;
+            width: 14px;
+            height: 14px;
+            accent-color: #2563eb;
+        }
+
         .qa-record-errors-panel {
             display: flex;
             flex-direction: column;

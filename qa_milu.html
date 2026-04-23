@@ -624,7 +624,13 @@
                         <section class="qa-modal-related qa-modal-export">
                             <div class="qa-modal-related-head">
                                 <h3>Exportacion MILU_New para este codigo</h3>
-                                <span id="qaSideExportCount" class="qa-modal-related-count"></span>
+                                <div class="qa-modal-related-controls">
+                                    <label class="qa-export-diff-toggle" for="qaSideExportOnlyDiffToggle">
+                                        <input id="qaSideExportOnlyDiffToggle" type="checkbox">
+                                        <span>Solo no coincidentes</span>
+                                    </label>
+                                    <span id="qaSideExportCount" class="qa-modal-related-count"></span>
+                                </div>
                             </div>
                             <div class="qa-modal-export-table-wrap">
                                 <table class="qa-modal-related-table qa-modal-export-table qa-modal-export-table-new"
@@ -959,7 +965,13 @@
             <section class="qa-modal-related qa-modal-export">
                 <div class="qa-modal-related-head">
                     <h3>Exportacion MILU_New para este codigo</h3>
-                    <span id="qaModalExportCount" class="qa-modal-related-count"></span>
+                    <div class="qa-modal-related-controls">
+                        <label class="qa-export-diff-toggle" for="qaModalExportOnlyDiffToggle">
+                            <input id="qaModalExportOnlyDiffToggle" type="checkbox">
+                            <span>Solo no coincidentes</span>
+                        </label>
+                        <span id="qaModalExportCount" class="qa-modal-related-count"></span>
+                    </div>
                 </div>
                 <div class="qa-modal-export-table-wrap">
                     <table class="qa-modal-related-table qa-modal-export-table qa-modal-export-table-new"
