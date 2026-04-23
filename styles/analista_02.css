@@ -844,6 +844,67 @@ body.a2-resizing * {
     gap: 12px;
 }
 
+.a2-review-select-wrap {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 11px;
+    font-weight: 800;
+    letter-spacing: 0.03em;
+    text-transform: uppercase;
+    color: #56708c;
+}
+
+.a2-review-select-wrap select {
+    min-width: 150px;
+    height: 42px;
+    border-radius: 10px;
+    border: 1px solid #c9d6e3;
+    background: #f7fbff;
+    color: #122235;
+    font-size: 13px;
+    font-weight: 800;
+    padding: 0 10px;
+}
+
+.a2-review-select-wrap select:focus {
+    outline: 2px solid #2680d8;
+    outline-offset: 1px;
+}
+
+.a2-review-state-inline {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    margin-left: 4px;
+}
+
+.a2-review-pill {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    min-height: 38px;
+    padding: 6px 10px;
+    border-radius: 999px;
+    border: 1px solid #c9d6e3;
+    background: linear-gradient(135deg, #f7fbff, #edf4fc);
+}
+
+.a2-review-pill-label {
+    font-size: 11px;
+    font-weight: 800;
+    letter-spacing: 0.03em;
+    text-transform: uppercase;
+    color: #56708c;
+}
+
+.a2-review-pill-value {
+    font-size: 12px;
+    font-weight: 900;
+    letter-spacing: 0.01em;
+    color: #122235;
+}
+
 .a2-review-btn {
     border: 2px solid transparent;
     border-radius: 12px;

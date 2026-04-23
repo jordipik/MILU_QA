@@ -16,7 +16,7 @@ const FIELD_TO_ERROR_KEY = {
 
 function printUsage() {
     console.log('Uso:');
-    console.log('  node recompute_engine_errors.js --file=<engine_file.json> [--id=<ID>] [--dry-run] [--no-revision] [--no-backup]');
+    console.log('  node recompute_engine_errors.js --file=<engine_file.json> [--id=<ID>] [--dry-run] [--update-revision] [--no-backup]');
     console.log('');
     console.log('Ejemplos:');
     console.log('  node recompute_engine_errors.js --file=engine_12V4000M40A.json --id=12345');
@@ -30,7 +30,7 @@ function parseArgs(argv) {
         file: '',
         id: '',
         dryRun: false,
-        updateRevision: true,
+        updateRevision: false,
         backup: true
     };
 
@@ -41,6 +41,10 @@ function parseArgs(argv) {
         }
         if (arg === '--no-revision') {
             out.updateRevision = false;
+            continue;
+        }
+        if (arg === '--update-revision') {
+            out.updateRevision = true;
             continue;
         }
         if (arg === '--no-backup') {
@@ -229,10 +233,13 @@ function applyToRow(row, options) {
     if (assignIfChanged(row, 'has_error', hasErrors)) changed = true;
 
     if (options.updateRevision) {
-        const nextEstado = 'revisado';
-        const nextAccion = hasErrors ? 'descartar' : 'mantener';
-        if (assignIfChanged(row, 'qa_revision_estado', nextEstado)) changed = true;
-        if (assignIfChanged(row, 'qa_revision_accion', nextAccion)) changed = true;
+        if (hasErrors) {
+            if (assignIfChanged(row, 'qa_revision_estado', 'pendiente')) changed = true;
+            if (assignIfChanged(row, 'qa_revision_accion', 'revisar')) changed = true;
+        } else {
+            if (assignIfChanged(row, 'qa_revision_estado', 'ok')) changed = true;
+            if (assignIfChanged(row, 'qa_revision_accion', 'importar')) changed = true;
+        }
     }
 
     return {
@@ -246,7 +253,7 @@ function recomputeEngineErrors(optionsInput = {}) {
         file: String(optionsInput.file ?? '').trim(),
         id: String(optionsInput.id ?? '').trim(),
         dryRun: Boolean(optionsInput.dryRun),
-        updateRevision: optionsInput.updateRevision !== false,
+        updateRevision: optionsInput.updateRevision === true,
         backup: optionsInput.backup !== false,
         rootDir: String(optionsInput.rootDir ?? __dirname).trim() || __dirname
     };

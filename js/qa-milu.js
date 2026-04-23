@@ -347,6 +347,73 @@ function openRecordModalFromShell(request = {}) {
 
 window.miluOpenPdfRecordModal = (request = {}) => openRecordModalFromShell(request);
 
+async function refreshDataFromShellUpdate(request = {}) {
+    if (!Array.isArray(state.allData) || state.allData.length === 0) return false;
+
+    const selectedRevisionKeyBefore = String(state.selectedRevisionRowKey || '').trim();
+    const currentPageBefore = Number(state.currentPage || 1);
+    const recordModal = $('qaRecordModalForm');
+    const openModalRevisionKey = recordModal instanceof HTMLFormElement
+        ? String(recordModal.dataset.revisionKey || '').trim()
+        : '';
+
+    const requestedId = String(request?.id || '').trim().toLowerCase();
+    const requestedBook = String(request?.engine || request?.book || '').trim().toLowerCase();
+
+    const freshData = await loadPartitionedEngineData();
+    if (!Array.isArray(freshData)) return false;
+
+    state.allData = freshData;
+    assignRevisionKeys(state.allData);
+    applyRevisionDataToRows(state.allData);
+
+    state.currentPage = currentPageBefore;
+    renderTable();
+    renderPagination();
+
+    let targetRevisionKey = '';
+    if (requestedId) {
+        const requestedRow = state.allData.find((row) => {
+            const rowId = String(row?.ID ?? '').trim().toLowerCase();
+            const rowBook = String(row?.engine_model ?? '').trim().toLowerCase();
+            if (requestedBook && rowBook !== requestedBook) return false;
+            return rowId === requestedId;
+        });
+        targetRevisionKey = requestedRow ? getRevisionKey(requestedRow) : '';
+    }
+
+    if (!targetRevisionKey && selectedRevisionKeyBefore) {
+        const selectedRow = getRowByRevisionKey(selectedRevisionKeyBefore);
+        if (selectedRow) targetRevisionKey = selectedRevisionKeyBefore;
+    }
+
+    if (targetRevisionKey) {
+        state.selectedRevisionRowKey = targetRevisionKey;
+        refreshSelectedRowVisual();
+        document.dispatchEvent(new CustomEvent('qa:selected-row-changed', {
+            detail: { revisionKey: targetRevisionKey }
+        }));
+    } else {
+        syncSideRecordFormWithSelection();
+    }
+
+    if (openModalRevisionKey) {
+        const modalRow = getRowByRevisionKey(openModalRevisionKey);
+        if (modalRow) fillRecordModal(modalRow, openModalRevisionKey);
+    }
+
+    return true;
+}
+
+window.miluRefreshPdfData = async (request = {}) => {
+    try {
+        return await refreshDataFromShellUpdate(request);
+    } catch (error) {
+        console.warn('No se pudo refrescar QA PDF tras actualización externa:', error);
+        return false;
+    }
+};
+
 function normModalMatch(value) {
     return String(value ?? '').trim().toLowerCase();
 }
@@ -837,7 +904,7 @@ function renderRecordModalMatches(row, currentRevisionKey, options = {}) {
         const isCurrent = item.revisionKey === currentRevisionKey;
         const revisionKeyAttr = escapeHtml(String(item.revisionKey || ''));
         const normalizedEstado = normModalMatch(item.estado);
-        const isOkStatus = normalizedEstado === 'revisado' || normalizedEstado === 'ok';
+        const isOkStatus = normalizedEstado === 'ok';
         const sideStatusClass = isOkStatus ? 'ok' : 'ko';
         const sideStatusLabel = isOkStatus ? 'OK' : 'KO';
         return `<tr class="${isCurrent ? 'qa-modal-related-current' : ''}" data-revision-key="${revisionKeyAttr}" title="Doble click para ir al registro en tabla principal">`
@@ -2051,9 +2118,9 @@ async function applyBulkQuickMode(quickMode) {
     if (!scopeSelect) return;
 
     const quickMap = {
-        revok: { estado: 'revisado', accion: null, label: 'revisión OK' },
-        revempty: { estado: '', accion: null, label: 'revisión vacía' },
-        validate: { estado: null, accion: 'mantener', label: 'acción Import' },
+        revok: { estado: 'ok', accion: null, label: 'revisión OK' },
+        revempty: { estado: 'pendiente', accion: null, label: 'revisión Pendiente' },
+        validate: { estado: null, accion: 'importar', label: 'acción Importar' },
         review: { estado: null, accion: 'revisar', label: 'acción Revisar' },
         discard: { estado: null, accion: 'eliminar', label: 'acción Eliminar' },
         clear: { estado: '', accion: '', label: 'vaciado' }
@@ -2538,9 +2605,9 @@ function attachGlobalEvents() {
             const row = state.allData.find(item => getRevisionKey(item) === revisionKey);
             if (!row) return;
             const quickMap = {
-                revok: { estado: 'revisado', accion: null },
-                revempty: { estado: '', accion: null },
-                validate: { estado: null, accion: 'mantener' },
+                revok: { estado: 'ok', accion: null },
+                revempty: { estado: 'pendiente', accion: null },
+                validate: { estado: null, accion: 'importar' },
                 review: { estado: null, accion: 'revisar' },
                 discard: { estado: null, accion: 'eliminar' }
             };

@@ -81,18 +81,23 @@
 
             <div class="a2-review-actions" aria-label="Estado y acciones de revisión">
                 <div class="a2-review-status-group" aria-label="Estado de revisión manual">
-                    <button id="statusPendingBtn" class="a2-review-btn is-pending" type="button"
-                        aria-pressed="false">PENDIENTE</button>
-                    <button id="statusReviewedBtn" class="a2-review-btn is-reviewed" type="button"
-                        aria-pressed="false">REVISADO</button>
+                    <label class="a2-review-select-wrap" for="statusEstadoSelect">
+                        <span>Estado</span>
+                        <select id="statusEstadoSelect" name="qa_revision_estado">
+                            <option value="pendiente">Pendiente</option>
+                            <option value="ok">OK</option>
+                        </select>
+                    </label>
                 </div>
                 <div class="a2-review-action-group" aria-label="Acciones de revisión">
-                    <button id="statusOkBtn" class="a2-review-btn is-ok" type="button"
-                        aria-pressed="false">IMPORTAR</button>
-                    <button id="statusReviewBtn" class="a2-review-btn is-review" type="button"
-                        aria-pressed="false">REVISAR</button>
-                    <button id="statusKoBtn" class="a2-review-btn is-ko" type="button"
-                        aria-pressed="false">ELIMINAR</button>
+                    <label class="a2-review-select-wrap" for="statusAccionSelect">
+                        <span>Accion</span>
+                        <select id="statusAccionSelect" name="qa_revision_accion">
+                            <option value="importar">Importar</option>
+                            <option value="revisar">Revisar</option>
+                            <option value="eliminar">Eliminar</option>
+                        </select>
+                    </label>
                 </div>
             </div>
 
@@ -255,7 +260,7 @@
                             <span>Estado</span>
                             <select id="editRecordStatus" name="qa_revision_estado">
                                 <option value="pendiente">Pendiente</option>
-                                <option value="revisado">Revisado</option>
+                                <option value="ok">OK</option>
                             </select>
                         </label>
                     </div>

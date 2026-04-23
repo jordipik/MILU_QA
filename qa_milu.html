@@ -67,7 +67,7 @@
                                         <div class="bulk-quick-actions">
                                             <button id="bulkRevOkBtn" type="button"
                                                 class="quick-action-btn bulk-quick-btn validate"
-                                                title="OK masivo: solo cambia Revisión a OK">V</button>
+                                                title="OK masivo: solo cambia Estado a OK">V</button>
                                             <button id="bulkRevEmptyBtn" type="button"
                                                 class="quick-action-btn bulk-quick-btn white"
                                                 title="Poner vacío masivo: solo cambia Revisión a vacío">P</button>
@@ -220,8 +220,8 @@
                                     </select></th>
                                 <th><select class="filter-select" data-filter="qa_revision_estado">
                                         <option value="">Todos</option>
-                                        <option value="revisado">Ok</option>
-                                        <option value="empty">- (Vacío)</option>
+                                        <option value="ok">OK</option>
+                                        <option value="pendiente">Pendiente</option>
                                     </select></th>
                                 <th><select class="filter-select" data-filter="qa_revision_accion">
                                         <option value="">Todos</option>
@@ -484,11 +484,8 @@
                                         <label>
                                             <span>Revision</span>
                                             <select id="qaSideRevisionEstado" name="qa_revision_estado">
-                                                <option value="">-</option>
-                                                <option value="copia">Copia</option>
-                                                <option value="en revisión">Revisar</option>
-                                                <option value="revisado">Ok</option>
-                                                <option value="descartado">Eliminar</option>
+                                                <option value="pendiente">Pendiente</option>
+                                                <option value="ok">OK</option>
                                             </select>
                                         </label>
                                         <label>
@@ -506,7 +503,7 @@
 
                                     <div class="qa-modal-row" style="margin-top: 8px;">
                                         <button id="qaSideApplyToMatches" class="qa-button-apply-matches"
-                                            title="Aplica el estado Ok a todos los registros con el mismo Part Number que estén en estado Copia"
+                                            title="Aplica Estado OK a todos los registros con el mismo Part Number que estén en estado Pendiente"
                                             style="width: 100%; padding: 8px; background: #10b981; color: white; border: none; border-radius: 4px; cursor: pointer; font-weight: bold;">
                                             Aplicar a Iguales
                                         </button>
@@ -821,11 +818,8 @@
                             <label>
                                 <span>Revision</span>
                                 <select id="qaModalRevisionEstado" name="qa_revision_estado">
-                                    <option value="">-</option>
-                                    <option value="copia">Copia</option>
-                                    <option value="en revisión">Revisar</option>
-                                    <option value="revisado">Ok</option>
-                                    <option value="descartado">Eliminar</option>
+                                    <option value="pendiente">Pendiente</option>
+                                    <option value="ok">OK</option>
                                 </select>
                             </label>
                             <label>

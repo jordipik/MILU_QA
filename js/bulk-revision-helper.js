@@ -8,7 +8,7 @@ import { applyRevisionToMatchingPartNumbers } from './revision.js';
 
 export const qaRevisionBulk = {
     /**
-     * Aplica el estado "revisado" del registro seleccionado a todos sus
+     * Aplica el estado "ok" del registro seleccionado a todos sus
      * hermanos (mismo part number) que estén en estado "copia".
      * Se invoca desde botón o consola.
      */
@@ -59,7 +59,7 @@ export const qaRevisionBulk = {
      * Aplica a un registro específico sin requerir selección en tabla.
      * Útil para llamadas programáticas.
      */
-    async applyByPartNumber(partNumber, targetEstado = 'revisado', targetAccion = '') {
+    async applyByPartNumber(partNumber, targetEstado = 'ok', targetAccion = '') {
         try {
             const targetRows = state.allData.filter(row => {
                 const pn = String(row?.['PART NO.'] ?? row?.pn ?? '').trim();

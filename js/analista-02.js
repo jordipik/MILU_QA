@@ -786,6 +786,19 @@ function openExportRecordModalForRow(row = currentRow) {
     openEditRecordModalForRow(row);
 }
 
+function notifyPdfDataChangedFromAnalista(row = currentRow) {
+    const shellBridge = window.parent && window.parent !== window
+        ? window.parent.miluShellNotifyPdfDataChanged
+        : null;
+    if (typeof shellBridge !== 'function') return;
+
+    shellBridge({
+        engine: String(row?.engine_model ?? '').trim(),
+        id: String(row?.ID ?? '').trim(),
+        record: String(row?.pn_final ?? row?.['PART NO.'] ?? '').trim()
+    });
+}
+
 function populateEditRecordForm(row) {
     if (!row || typeof row !== 'object') return;
 
@@ -859,6 +872,8 @@ async function saveEditRecordForm() {
             } else {
                 setEditRecordStatus('Registro guardado correctamente.', 'ok');
             }
+
+            notifyPdfDataChangedFromAnalista(currentRow);
 
             // Cerrar modal después de 800ms
             setTimeout(() => {
@@ -998,7 +1013,7 @@ async function autoRecomputeEditedRecord(engineFile, id) {
         file: engineFile,
         id,
         dryRun: false,
-        updateRevision: true,
+        updateRevision: false,
         backup: true
     });
 
@@ -1185,6 +1200,7 @@ async function runBackendRecompute() {
     const file = resolveEngineFileFromFilter(selectedModel);
     const id = String(recomputeIdInput.value || '').trim();
     const dryRun = recomputeDryRunInput.checked;
+    const updateRevision = window.confirm('Quieres actualizar estado y accion de revision segun errores? (sin errores: ok/importar, con errores: pendiente/revisar)');
 
     if (!file) {
         alert('No se pudo resolver el archivo engine para el recálculo.');
@@ -1194,7 +1210,7 @@ async function runBackendRecompute() {
     const payload = {
         file,
         dryRun,
-        updateRevision: true,
+        updateRevision,
         backup: true
     };
     if (id) payload.id = id;
@@ -1248,7 +1264,7 @@ async function runBackendRecompute() {
                     mode: id ? 'single-id' : 'full-book',
                     id: id || null,
                     dryRun,
-                    updateRevision: true,
+                    updateRevision,
                     scanned: Number(legacyTotals.totalRows) || 0,
                     changedRows: Number(legacyTotals.changedRows) || 0,
                     okRows: Math.max((Number(legacyTotals.totalRows) || 0) - (Number(legacyTotals.rowsWithErrors) || 0), 0),
@@ -1530,15 +1546,15 @@ function getRowReviewBucket(row) {
     const estado = String(row?.qa_revision_estado ?? '').trim().toLowerCase();
     const action = String(row?.qa_revision_accion ?? '').trim().toLowerCase();
 
-    // Si fue revisado manualmente (qa_revision_estado === 'revisado'), 
+    // Si fue marcado manualmente como OK (qa_revision_estado === 'ok'), 
     // mantener el valor asignado sin recalcular
-    if (estado === 'revisado') {
-        if (action === 'mantener') return 'ok';
+    if (estado === 'ok') {
+        if (action === 'importar') return 'ok';
         if (action === 'revisar') return 'review';
         if (action === 'descartar') return 'ko';
     }
 
-    // Si no fue revisado manualmente, recalcular basándose en errores
+    // Si no fue marcado manualmente como OK, recalcular basándose en errores
     const errorCount = getRowErrorCount(row);
     if (action === 'revisar' && errorCount === 0) return 'review';
     return errorCount > 0 ? 'ko' : 'ok';
@@ -1596,47 +1612,19 @@ function renderReviewStats(rows = getQueueRows(), row = currentRow) {
 }
 
 function renderReviewStateButtons(row) {
-    const pendingBtn = $('statusPendingBtn');
-    const reviewedBtn = $('statusReviewedBtn');
-    const okBtn = $('statusOkBtn');
-    const reviewBtn = $('statusReviewBtn');
-    const koBtn = $('statusKoBtn');
-    if (!(pendingBtn instanceof HTMLButtonElement)
-        || !(reviewedBtn instanceof HTMLButtonElement)
-        || !(okBtn instanceof HTMLButtonElement)
-        || !(reviewBtn instanceof HTMLButtonElement)
-        || !(koBtn instanceof HTMLButtonElement)) {
+    const estadoSelect = $('statusEstadoSelect');
+    const accionSelect = $('statusAccionSelect');
+    if (!(estadoSelect instanceof HTMLSelectElement) || !(accionSelect instanceof HTMLSelectElement)) {
         return;
     }
 
-    const active = getRowReviewBucket(row);
     const estado = normalizeEstadoToNew(row?.qa_revision_estado);
+    const accion = normalizeAccionToNew(row?.qa_revision_accion);
 
-    [pendingBtn, reviewedBtn, okBtn, reviewBtn, koBtn].forEach((button) => {
-        button.classList.remove('is-active');
-        button.setAttribute('aria-pressed', 'false');
-    });
-
-    if (estado === 'revisado') {
-        reviewedBtn.classList.add('is-active');
-        reviewedBtn.setAttribute('aria-pressed', 'true');
-    } else {
-        pendingBtn.classList.add('is-active');
-        pendingBtn.setAttribute('aria-pressed', 'true');
-    }
-
-    if (active === 'ok') {
-        okBtn.classList.add('is-active');
-        okBtn.setAttribute('aria-pressed', 'true');
-    }
-    if (active === 'review') {
-        reviewBtn.classList.add('is-active');
-        reviewBtn.setAttribute('aria-pressed', 'true');
-    }
-    if (active === 'ko') {
-        koBtn.classList.add('is-active');
-        koBtn.setAttribute('aria-pressed', 'true');
-    }
+    estadoSelect.value = estado === 'ok' ? 'ok' : 'pendiente';
+    if (accion === 'revisar') accionSelect.value = 'revisar';
+    else if (accion === 'eliminar') accionSelect.value = 'eliminar';
+    else accionSelect.value = 'importar';
 }
 
 function updateRecordSearchSuggestions() {
@@ -2079,16 +2067,18 @@ async function saveCurrentFieldChanges() {
     if (mustAutoRecompute) {
         await autoRecomputeEditedRecord(engineFile, id);
         await reloadEditedRecord(engineFile, id);
+        notifyPdfDataChangedFromAnalista(currentRow);
         return;
     }
 
     renderReviewStats();
     await revalidateCurrentRow();
+    notifyPdfDataChangedFromAnalista(currentRow);
 }
 
 async function setOutcome(kind) {
-    $('editRevisionEstado').value = kind === 'ok' ? 'revisado' : 'descartado';
-    $('editRevisionAccion').value = kind === 'ok' ? 'mantener' : 'revisar';
+    $('editRevisionEstado').value = kind === 'ok' ? 'ok' : 'pendiente';
+    $('editRevisionAccion').value = kind === 'ok' ? 'importar' : 'revisar';
     currentProcessIndex = buildProcessSteps(currentRow).length;
     await saveCurrentFieldChanges();
 }
@@ -2212,6 +2202,7 @@ async function setReviewStatus(kind) {
     currentRow.qa_revision_accion = values.qa_revision_accion;
     renderReviewStateButtons(currentRow);
     renderReviewStats();
+    notifyPdfDataChangedFromAnalista(currentRow);
 }
 
 async function setManualRevisionEstado(nextEstado) {
@@ -2238,6 +2229,7 @@ async function setManualRevisionEstado(nextEstado) {
     currentRow.qa_revision_estado = normalizedEstado;
     renderReviewStateButtons(currentRow);
     renderReviewStats();
+    notifyPdfDataChangedFromAnalista(currentRow);
 }
 
 async function runNextProcess() {
@@ -2351,7 +2343,7 @@ bindClick('statusPendingBtn', () => {
 });
 
 bindClick('statusReviewedBtn', () => {
-    setManualRevisionEstado('revisado').catch((error) => alert(`No se pudo guardar estado revisado: ${error.message}`));
+    setManualRevisionEstado('ok').catch((error) => alert(`No se pudo guardar estado OK: ${error.message}`));
 });
 
 bindClick('statusReviewBtn', () => {
@@ -2361,6 +2353,29 @@ bindClick('statusReviewBtn', () => {
 bindClick('statusKoBtn', () => {
     setReviewStatus('ko').catch((error) => alert(`No se pudo guardar estado KO: ${error.message}`));
 });
+
+const statusEstadoSelect = $('statusEstadoSelect');
+if (statusEstadoSelect instanceof HTMLSelectElement) {
+    statusEstadoSelect.addEventListener('change', () => {
+        const nextEstado = String(statusEstadoSelect.value || '').trim().toLowerCase() === 'ok' ? 'ok' : 'pendiente';
+        setManualRevisionEstado(nextEstado).catch((error) => {
+            alert(`No se pudo guardar estado: ${error.message}`);
+            renderReviewStateButtons(currentRow);
+        });
+    });
+}
+
+const statusAccionSelect = $('statusAccionSelect');
+if (statusAccionSelect instanceof HTMLSelectElement) {
+    statusAccionSelect.addEventListener('change', () => {
+        const nextAccion = String(statusAccionSelect.value || '').trim().toLowerCase();
+        const kind = nextAccion === 'eliminar' ? 'ko' : (nextAccion === 'revisar' ? 'review' : 'ok');
+        setReviewStatus(kind).catch((error) => {
+            alert(`No se pudo guardar acción: ${error.message}`);
+            renderReviewStateButtons(currentRow);
+        });
+    });
+}
 
 const recordIdInput = $('recordIdInput');
 if (recordIdInput instanceof HTMLInputElement) {

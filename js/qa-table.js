@@ -503,11 +503,8 @@ function editableAttr(columnKey) {
 
 function getRevisionEstadoOptionsHtml(revisionEstado) {
     return [
-        { value: '', label: '—' },
-        { value: 'copia', label: 'Copia' },
-        { value: 'en revisión', label: 'Revisar' },
-        { value: 'revisado', label: 'Ok' },
-        { value: 'descartado', label: 'Eliminar' }
+        { value: 'pendiente', label: 'Pendiente' },
+        { value: 'ok', label: 'OK' }
     ].map(opt => `<option value="${escapeHtml(opt.value)}" ${revisionEstado === opt.value ? 'selected' : ''}>${escapeHtml(opt.label)}</option>`).join('');
 }
 
@@ -581,11 +578,11 @@ function renderRow(row) {
       </td>
       <td class="quick-col" title="Acciones rápidas de revisión">
           <div class="quick-actions">
-              <button type="button" class="quick-action-btn validate" data-quick-mode="revok" data-revision-key="${escapeHtml(revisionKey)}" title="OK: solo cambia Revisión a OK">V</button>
-              <button type="button" class="quick-action-btn white" data-quick-mode="revempty" data-revision-key="${escapeHtml(revisionKey)}" title="Poner vacío: solo cambia Revisión a vacío">P</button>
-              <button type="button" class="quick-action-btn import" data-quick-mode="validate" data-revision-key="${escapeHtml(revisionKey)}" title="Importar: solo cambia Acción a Import">I</button>
-              <button type="button" class="quick-action-btn review" data-quick-mode="review" data-revision-key="${escapeHtml(revisionKey)}" title="Revisar: solo cambia Acción a Revisar">R</button>
-              <button type="button" class="quick-action-btn discard" data-quick-mode="discard" data-revision-key="${escapeHtml(revisionKey)}" title="Eliminar: solo cambia Acción a Eliminar">X</button>
+              <button type="button" class="quick-action-btn validate" data-quick-mode="revok" data-revision-key="${escapeHtml(revisionKey)}" title="Revisión: marcar como OK">V</button>
+              <button type="button" class="quick-action-btn white" data-quick-mode="revempty" data-revision-key="${escapeHtml(revisionKey)}" title="Revisión: marcar como Pendiente">P</button>
+              <button type="button" class="quick-action-btn import" data-quick-mode="validate" data-revision-key="${escapeHtml(revisionKey)}" title="Acción: Importar">I</button>
+              <button type="button" class="quick-action-btn review" data-quick-mode="review" data-revision-key="${escapeHtml(revisionKey)}" title="Acción: Revisar">R</button>
+              <button type="button" class="quick-action-btn discard" data-quick-mode="discard" data-revision-key="${escapeHtml(revisionKey)}" title="Acción: Eliminar">X</button>
               <button type="button" class="quick-action-btn edit" data-open-record-modal="true" data-revision-key="${escapeHtml(revisionKey)}" title="Editar registro en formulario">ED</button>
           </div>
       </td>
@@ -927,7 +924,7 @@ export function renderTable() {
 
         stats.innerHTML = `
                     <span class="stat"><b>${total}</b> total</span>
-                    <span class="stat ok"><b>${state.displayRowCount}</b> revisados en la izquierda</span>
+                    <span class="stat ok"><b>${state.displayRowCount}</b> marcados OK en la izquierda</span>
                     <span class="stat ok"><b>${distinctPnFiltered}</b> PN distintos (filtrado)</span>
                     <span class="stat warn"><b>${repeatedPnGroups}</b> PN repetidos (filtrado)</span>
                     <span class="stat"><b>${distinctPnTotal}</b> PN distintos totales</span>
@@ -939,7 +936,7 @@ export function renderTable() {
 
         tbody.innerHTML = pageData.length
             ? pageData.map(renderRow).join('')
-            : `<tr><td colspan="${getCurrentColumnCount()}" class="error">Aun no hay registros revisados en esta sesion.</td></tr>`;
+            : `<tr><td colspan="${getCurrentColumnCount()}" class="error">Aun no hay registros en estado OK en esta sesion.</td></tr>`;
         errorViewTbody.innerHTML = '';
     }
 

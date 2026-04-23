@@ -2,7 +2,7 @@
 
 /**
  * Script para normalizar revisiones en bulk a un archivo engine.
- * Regla: si un Part Number tiene al menos un registro en estado "revisado",
+ * Regla: si un Part Number tiene al menos un registro en estado "ok",
  * entonces TODOS los registros de ese mismo Part Number, tengan el estado
  * que tengan, pasan a estado "copia".
  *
@@ -58,12 +58,13 @@ function getPartNumber(record) {
 
 // Función para obtener el estado de revisión
 function getRevisionEstado(record) {
-    return String(record?.qa_revision_estado || '').trim().toLowerCase();
+    const raw = String(record?.qa_revision_estado || '').trim().toLowerCase();
+    return raw === 'revisado' ? 'ok' : raw;
 }
 
-// Buscar todos los registros con estado "revisado"
-const recordsWithOk = data.filter(record => getRevisionEstado(record) === 'revisado');
-console.log(`🔍 Encontrados ${recordsWithOk.length} registros con estado "Ok" (revisado)\n`);
+// Buscar todos los registros con estado "ok"
+const recordsWithOk = data.filter(record => getRevisionEstado(record) === 'ok');
+console.log(`🔍 Encontrados ${recordsWithOk.length} registros con estado "OK"\n`);
 
 if (recordsWithOk.length === 0) {
     console.log('⚠️  No hay registros con estado "Ok". Nada que hacer.');
@@ -90,7 +91,7 @@ function stripLegacyQaFields(value) {
     return value;
 }
 
-// Set de PN que tienen al menos un registro en estado "revisado"
+// Set de PN que tienen al menos un registro en estado "ok"
 const pnWithOk = new Set();
 recordsWithOk.forEach((record, idx) => {
     const pn = getPartNumber(record);

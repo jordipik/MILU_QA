@@ -42,7 +42,7 @@ app.post('/recompute-qa-errors', async (req, res) => {
     const file = String(req.body?.file ?? '').trim();
     const id = String(req.body?.id ?? '').trim();
     const dryRun = Boolean(req.body?.dryRun);
-    const updateRevision = req.body?.updateRevision !== false;
+    const updateRevision = req.body?.updateRevision === true;
     const backup = req.body?.backup !== false;
 
     if (!file) {
