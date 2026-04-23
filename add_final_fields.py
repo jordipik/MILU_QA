@@ -1,5 +1,6 @@
 import json
 import os
+import re
 import unicodedata
 from pathlib import Path
 
@@ -26,6 +27,11 @@ FIELDS_TO_SYNC_FROM_QA = [
 ]
 
 DEFAULT_EXP_IMAGENES = "https://milu-naval.mystagingwebsite.com/wp-content/uploads/2026/01/sin_imagen.jpeg"
+
+STANDARD_TOKEN_RE = re.compile(
+    r"\b(?:DIN|ISO|EN|UNE|SAE|ASTM|ANSI|BS|JIS|VSM|NF|NFE|NEN|UNI|SMS|GOST|MTN|MMN)\s*[-/]?\s*[A-Z0-9.:-]{0,20}\b",
+    re.IGNORECASE,
+)
 
 
 def normalize_compare_value(value):
@@ -168,6 +174,39 @@ def collapse_spaces_in_structure(value):
         return {k: collapse_spaces_in_structure(v) for k, v in value.items()}
     return value
 
+
+def split_measurement_and_standard(raw_value):
+    """
+    Separa un texto mezclado de medida/norma en dos valores:
+    - medida (ej: "M 10 X 25")
+    - norma (ej: "DIN933")
+    """
+    text = " ".join(str(raw_value or "").strip().split())
+    if not text:
+        return None, None
+
+    matches = list(STANDARD_TOKEN_RE.finditer(text))
+    if not matches:
+        return text, None
+
+    standards = []
+    for match in matches:
+        token = " ".join(match.group(0).strip().split())
+        if not token:
+            continue
+        token_upper = token.upper()
+        if token_upper not in standards:
+            standards.append(token_upper)
+
+    # Elimina los fragmentos de norma detectados para dejar solo la medida.
+    measurement_text = STANDARD_TOKEN_RE.sub(" ", text)
+    measurement_text = re.sub(r"\s*[,;/]\s*", " ", measurement_text)
+    measurement_text = " ".join(measurement_text.split())
+
+    measurement = measurement_text or None
+    standard = " ".join(standards) if standards else None
+    return measurement, standard
+
 def add_final_fields(record):
     """
     Agrega los campos finales a cada registro con criterio específico.
@@ -187,15 +226,22 @@ def add_final_fields(record):
     cleaned_dimensions = normalize_spaces(record.get("dimensions_gesa"))
     record["dimensions_gesa"] = cleaned_dimensions
 
-    # Limpia también MEASUREMENT / STANDARD para evitar dobles espacios en fallback.
+    # Limpia también MEASUREMENT / STANDARD y separa medida y norma cuando vengan mezcladas.
     cleaned_measurement_standard = normalize_spaces(record.get("MEASUREMENT / STANDARD"))
-    record["MEASUREMENT / STANDARD"] = cleaned_measurement_standard
+    cleaned_measure_pdf, extracted_norma_raw = split_measurement_and_standard(cleaned_measurement_standard)
+
+    record["MEASUREMENT / STANDARD"] = cleaned_measure_pdf
+    record["measure_pdf"] = cleaned_measure_pdf
+    record["norma_raw"] = extracted_norma_raw
+
+    if not normalize_spaces(record.get("norma")) and extracted_norma_raw:
+        record["norma"] = extracted_norma_raw
 
     # designation_final: siempre prioriza designation_gesa; si no hay, usa DESIGNATION.
     record["designation_final"] = record.get("designation_gesa") or record.get("DESIGNATION", None)
     
-    # measurement_final: siempre prioriza dimensions_gesa, si no usa MEASUREMENT / STANDARD.
-    record["measurement_final"] = cleaned_dimensions or cleaned_measurement_standard
+    # measurement_final: siempre prioriza dimensions_gesa, si no usa la medida ya separada de raw.
+    record["measurement_final"] = cleaned_dimensions or cleaned_measure_pdf
 
     # weight_final: siempre prioriza weight_gesa + units; si no, WEIGHT; si no, valor legado.
     legacy_weight_final = normalize_spaces(record.get("wheight_final"))
@@ -249,7 +295,7 @@ def build_qa_lookup_for_engine_file(engine_file_path):
         return {}
 
     try:
-        with open(qa_file_path, 'r', encoding='utf-8') as f:
+        with open(qa_file_path, 'r', encoding='utf-8-sig') as f:
             qa_data = json.load(f)
     except Exception:
         return {}
@@ -293,7 +339,7 @@ def process_file(file_path):
     
     try:
         # Leer el archivo
-        with open(file_path, 'r', encoding='utf-8') as f:
+        with open(file_path, 'r', encoding='utf-8-sig') as f:
             data = json.load(f)
         
         qa_lookup = build_qa_lookup_for_engine_file(file_path)
