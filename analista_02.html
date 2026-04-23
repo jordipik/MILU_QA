@@ -79,11 +79,21 @@
 
             <div id="recordMeta" class="a2-meta">Sin registro cargado.</div>
 
-            <div class="a2-review-actions" aria-label="Estado de revision">
-                <button id="statusOkBtn" class="a2-review-btn is-ok" type="button" aria-pressed="false">OK</button>
-                <button id="statusReviewBtn" class="a2-review-btn is-review" type="button"
-                    aria-pressed="false">REVISAR</button>
-                <button id="statusKoBtn" class="a2-review-btn is-ko" type="button" aria-pressed="false">KO</button>
+            <div class="a2-review-actions" aria-label="Estado y acciones de revisión">
+                <div class="a2-review-status-group" aria-label="Estado de revisión manual">
+                    <button id="statusPendingBtn" class="a2-review-btn is-pending" type="button"
+                        aria-pressed="false">PENDIENTE</button>
+                    <button id="statusReviewedBtn" class="a2-review-btn is-reviewed" type="button"
+                        aria-pressed="false">REVISADO</button>
+                </div>
+                <div class="a2-review-action-group" aria-label="Acciones de revisión">
+                    <button id="statusOkBtn" class="a2-review-btn is-ok" type="button"
+                        aria-pressed="false">IMPORTAR</button>
+                    <button id="statusReviewBtn" class="a2-review-btn is-review" type="button"
+                        aria-pressed="false">REVISAR</button>
+                    <button id="statusKoBtn" class="a2-review-btn is-ko" type="button"
+                        aria-pressed="false">ELIMINAR</button>
+                </div>
             </div>
 
             <section class="a2-compare-table-card" aria-label="Comparativa RAW, GESA, SUST y FINAL">
@@ -244,10 +254,8 @@
                         <label>
                             <span>Estado</span>
                             <select id="editRecordStatus" name="qa_revision_estado">
-                                <option value="">-</option>
-                                <option value="ok">OK</option>
-                                <option value="en revision">REVISAR</option>
-                                <option value="ko">KO</option>
+                                <option value="pendiente">Pendiente</option>
+                                <option value="revisado">Revisado</option>
                             </select>
                         </label>
                     </div>

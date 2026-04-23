@@ -2075,14 +2075,20 @@ async function applyBulkQuickMode(quickMode) {
 
     const failedRows = [];
     for (const row of targetRows) {
-        const nextEstado = targetValues.estado === null ? String(row.qa_revision_estado || '') : targetValues.estado;
-        const nextAccion = targetValues.accion === null ? String(row.qa_revision_accion || '') : targetValues.accion;
+        const currentEstado = normalizeEstadoToNew(row.qa_revision_estado);
+        const currentAccion = normalizeAccionToNew(row.qa_revision_accion);
+        const nextEstado = targetValues.estado === null ? currentEstado : targetValues.estado;
+        const nextAccion = targetValues.accion === null ? currentAccion : targetValues.accion;
         const engineFile = getEngineJsonForRow(row);
 
         try {
             if (!engineFile) throw new Error('No se pudo resolver engine JSON');
-            await saveCellToServer(engineFile, row.ID, 'qa_revision_estado', nextEstado);
-            await saveCellToServer(engineFile, row.ID, 'qa_revision_accion', nextAccion);
+            if (nextEstado !== currentEstado) {
+                await saveCellToServer(engineFile, row.ID, 'qa_revision_estado', denormalizeEstadoFromNew(nextEstado));
+            }
+            if (nextAccion !== currentAccion) {
+                await saveCellToServer(engineFile, row.ID, 'qa_revision_accion', denormalizeAccionFromNew(nextAccion));
+            }
             row.qa_revision_estado = nextEstado;
             row.qa_revision_accion = nextAccion;
             row.qa_revision_updated_at = new Date().toISOString();

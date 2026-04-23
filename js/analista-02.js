@@ -802,7 +802,10 @@ function populateEditRecordForm(row) {
     if (row?.weight_final) $('editRecordWeightFinal').value = String(row.weight_final);
     if (row?.measurement_final) $('editRecordMeasurementFinal').value = String(row.measurement_final);
     if (row?.norma) $('editRecordNorma').value = String(row.norma);
-    if (row?.qa_revision_estado) $('editRecordStatus').value = String(row.qa_revision_estado);
+    const statusSelect = $('editRecordStatus');
+    if (statusSelect instanceof HTMLSelectElement) {
+        statusSelect.value = normalizeEstadoToNew(row?.qa_revision_estado);
+    }
 }
 
 async function saveEditRecordForm() {
@@ -830,7 +833,7 @@ async function saveEditRecordForm() {
             weight_final: String($('editRecordWeightFinal')?.value || '').trim(),
             measurement_final: String($('editRecordMeasurementFinal')?.value || '').trim(),
             norma: String($('editRecordNorma')?.value || '').trim(),
-            qa_revision_estado: String($('editRecordStatus')?.value || '').trim()
+            qa_revision_estado: normalizeEstadoToNew($('editRecordStatus')?.value || 'pendiente')
         };
 
         let saved = false;
@@ -1593,17 +1596,34 @@ function renderReviewStats(rows = getQueueRows(), row = currentRow) {
 }
 
 function renderReviewStateButtons(row) {
+    const pendingBtn = $('statusPendingBtn');
+    const reviewedBtn = $('statusReviewedBtn');
     const okBtn = $('statusOkBtn');
     const reviewBtn = $('statusReviewBtn');
     const koBtn = $('statusKoBtn');
-    if (!(okBtn instanceof HTMLButtonElement) || !(reviewBtn instanceof HTMLButtonElement) || !(koBtn instanceof HTMLButtonElement)) return;
+    if (!(pendingBtn instanceof HTMLButtonElement)
+        || !(reviewedBtn instanceof HTMLButtonElement)
+        || !(okBtn instanceof HTMLButtonElement)
+        || !(reviewBtn instanceof HTMLButtonElement)
+        || !(koBtn instanceof HTMLButtonElement)) {
+        return;
+    }
 
     const active = getRowReviewBucket(row);
+    const estado = normalizeEstadoToNew(row?.qa_revision_estado);
 
-    [okBtn, reviewBtn, koBtn].forEach((button) => {
+    [pendingBtn, reviewedBtn, okBtn, reviewBtn, koBtn].forEach((button) => {
         button.classList.remove('is-active');
         button.setAttribute('aria-pressed', 'false');
     });
+
+    if (estado === 'revisado') {
+        reviewedBtn.classList.add('is-active');
+        reviewedBtn.setAttribute('aria-pressed', 'true');
+    } else {
+        pendingBtn.classList.add('is-active');
+        pendingBtn.setAttribute('aria-pressed', 'true');
+    }
 
     if (active === 'ok') {
         okBtn.classList.add('is-active');
@@ -2181,17 +2201,41 @@ async function setReviewStatus(kind) {
     }
 
     const mapping = {
-        ok: { qa_revision_estado: 'revisado', qa_revision_accion: 'mantener' },
-        review: { qa_revision_estado: 'revisado', qa_revision_accion: 'revisar' },
-        ko: { qa_revision_estado: 'revisado', qa_revision_accion: 'descartar' }
+        ok: { qa_revision_accion: 'importar' },
+        review: { qa_revision_accion: 'revisar' },
+        ko: { qa_revision_accion: 'eliminar' }
     };
     const values = mapping[kind] || mapping.review;
 
-    await saveCellToServer(engineFile, id, 'qa_revision_estado', values.qa_revision_estado);
-    await saveCellToServer(engineFile, id, 'qa_revision_accion', values.qa_revision_accion);
+    await saveCellToServer(engineFile, id, 'qa_revision_accion', denormalizeAccionFromNew(values.qa_revision_accion));
 
-    currentRow.qa_revision_estado = values.qa_revision_estado;
     currentRow.qa_revision_accion = values.qa_revision_accion;
+    renderReviewStateButtons(currentRow);
+    renderReviewStats();
+}
+
+async function setManualRevisionEstado(nextEstado) {
+    if (!currentRow) {
+        alert('Primero debes cargar un registro.');
+        return;
+    }
+
+    const normalizedEstado = normalizeEstadoToNew(nextEstado);
+    const currentEstado = normalizeEstadoToNew(currentRow?.qa_revision_estado);
+    if (normalizedEstado === currentEstado) {
+        renderReviewStateButtons(currentRow);
+        return;
+    }
+
+    const engineFile = resolveEngineFile(currentRow);
+    const id = txt(currentRow?.ID, '');
+    if (!engineFile || !id) {
+        alert('No se pudo resolver archivo engine o ID para guardar estado.');
+        return;
+    }
+
+    await saveCellToServer(engineFile, id, 'qa_revision_estado', denormalizeEstadoFromNew(normalizedEstado));
+    currentRow.qa_revision_estado = normalizedEstado;
     renderReviewStateButtons(currentRow);
     renderReviewStats();
 }
@@ -2300,6 +2344,14 @@ bindClick('recomputePdfRunBtn', () => {
 
 bindClick('statusOkBtn', () => {
     setReviewStatus('ok').catch((error) => alert(`No se pudo guardar estado OK: ${error.message}`));
+});
+
+bindClick('statusPendingBtn', () => {
+    setManualRevisionEstado('pendiente').catch((error) => alert(`No se pudo guardar estado pendiente: ${error.message}`));
+});
+
+bindClick('statusReviewedBtn', () => {
+    setManualRevisionEstado('revisado').catch((error) => alert(`No se pudo guardar estado revisado: ${error.message}`));
 });
 
 bindClick('statusReviewBtn', () => {

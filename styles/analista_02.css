@@ -828,7 +828,19 @@ body.a2-resizing * {
 .a2-review-actions {
     display: flex;
     align-items: center;
-    justify-content: flex-end;
+    justify-content: space-between;
+    gap: 12px;
+}
+
+.a2-review-status-group {
+    display: inline-flex;
+    align-items: center;
+    gap: 12px;
+}
+
+.a2-review-action-group {
+    display: inline-flex;
+    align-items: center;
     gap: 12px;
 }
 
@@ -892,6 +904,32 @@ body.a2-resizing * {
     border-color: #c63c2c;
     color: #5f1a12;
     box-shadow: 0 6px 16px rgba(198, 60, 44, 0.3);
+}
+
+.a2-review-btn.is-pending {
+    background: #ffe9e6;
+    border-color: #e08078;
+    color: #832017;
+}
+
+.a2-review-btn.is-pending.is-active {
+    background: #ffd4cc;
+    border-color: #c63c2c;
+    color: #5f1a12;
+    box-shadow: 0 6px 16px rgba(198, 60, 44, 0.28);
+}
+
+.a2-review-btn.is-reviewed {
+    background: #ecf8f1;
+    border-color: #6fae8f;
+    color: #1b5a38;
+}
+
+.a2-review-btn.is-reviewed.is-active {
+    background: #daf0e3;
+    border-color: #328355;
+    color: #0e4428;
+    box-shadow: 0 6px 16px rgba(50, 131, 85, 0.28);
 }
 
 .a2-compare-table-card {

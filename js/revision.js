@@ -105,25 +105,38 @@ function getEngineFileForRow(row) {
     return `engine_${engineModel}.json`;
 }
 
-async function persistRevisionRowToServer(row) {
+async function persistRevisionRowToServer(row, changedFields = ['qa_revision_estado', 'qa_revision_accion']) {
     const engineFile = getEngineFileForRow(row);
     const id = String(row?.ID ?? '').trim();
     if (!engineFile || !id) {
         throw new Error('No se pudo determinar archivo/ID para guardar revisión.');
     }
 
-    await saveCellToServer(engineFile, id, 'qa_revision_estado', String(row.qa_revision_estado || ''));
-    await saveCellToServer(engineFile, id, 'qa_revision_accion', String(row.qa_revision_accion || ''));
+    if (changedFields.includes('qa_revision_estado')) {
+        await saveCellToServer(engineFile, id, 'qa_revision_estado', denormalizeEstadoFromNew(row.qa_revision_estado));
+    }
+    if (changedFields.includes('qa_revision_accion')) {
+        await saveCellToServer(engineFile, id, 'qa_revision_accion', denormalizeAccionFromNew(row.qa_revision_accion));
+    }
 }
 
 export function setRowRevision(row, estado, accion) {
-    const normalizedEstado = String(estado || '').trim();
-    const normalizedAccion = String(accion || '').trim();
+    const prevEstado = normalizeEstadoToNew(row?.qa_revision_estado);
+    const prevAccion = normalizeAccionToNew(row?.qa_revision_accion);
+    const normalizedEstado = normalizeEstadoToNew(estado);
+    const normalizedAccion = normalizeAccionToNew(accion);
+
+    const changedFields = [];
+    if (normalizedEstado !== prevEstado) changedFields.push('qa_revision_estado');
+    if (normalizedAccion !== prevAccion) changedFields.push('qa_revision_accion');
+
     row.qa_revision_estado = normalizedEstado;
     row.qa_revision_accion = normalizedAccion;
+    if (changedFields.length === 0) return;
+
     row.qa_revision_updated_at = new Date().toISOString();
 
-    persistRevisionRowToServer(row).catch(error => {
+    persistRevisionRowToServer(row, changedFields).catch(error => {
         console.warn('No se pudo guardar revisión en engine JSON:', error);
         alert(`No se pudo guardar la revisión en servidor: ${error.message}`);
     });
