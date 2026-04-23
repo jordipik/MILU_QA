@@ -81,18 +81,18 @@ Este proceso recalcula campos finales y normaliza formato sobre los 8 archivos `
 
 ### Script
 
-- [add_final_fields.py](add_final_fields.py)
+- [depuracion_json.py](depuracion_json.py)
 
 ### Ejecucion
 
 ```bash
-python add_final_fields.py
+python depuracion_json.py
 ```
 
 En este repo, si usas el venv local en Windows:
 
 ```powershell
-c:/Users/jordi/source/repos/milu/.venv/Scripts/python.exe add_final_fields.py
+c:/Users/jordi/source/repos/milu/.venv/Scripts/python.exe depuracion_json.py
 ```
 
 ### Reglas aplicadas

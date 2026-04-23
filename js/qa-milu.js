@@ -114,9 +114,10 @@ const modalUiState = {
     windowScrollY: 0
 };
 let activeMatchesModalRevisionKey = '';
+let pendingShellRecordModalRequest = null;
 
 function setRightPanelTab(tabName) {
-    const resolvedTab = tabName === 'record' ? 'record' : 'pdf';
+    const resolvedTab = (tabName === 'record' || tabName === 'export') ? tabName : 'pdf';
     state.rightPanelTab = resolvedTab;
 
     document.querySelectorAll('[data-pdf-tab]').forEach(btn => {
@@ -273,6 +274,73 @@ function selectRevisionRowByKey(revisionKey) {
     }));
     return true;
 }
+
+function resolveRowForShellRecordModal(request = {}) {
+    const requestedRevisionKey = String(request?.revisionKey || '').trim();
+    if (requestedRevisionKey) {
+        const byRevisionKey = getRowByRevisionKey(requestedRevisionKey);
+        if (byRevisionKey) return byRevisionKey;
+    }
+
+    const requestedId = String(request?.id || '').trim().toLowerCase();
+    const requestedRecord = String(request?.record || '').trim().toLowerCase();
+    const requestedBook = resolveBookValue(request?.engine || request?.book || '').trim().toLowerCase();
+
+    return state.allData.find(item => {
+        const itemBook = String(item?.engine_model ?? '').trim().toLowerCase();
+        if (requestedBook && itemBook !== requestedBook) return false;
+
+        const itemId = String(item?.ID ?? '').trim().toLowerCase();
+        const itemPnFinal = String(item?.pn_final ?? '').trim().toLowerCase();
+        const itemPartNo = String(item?.['PART NO.'] ?? item?.pn ?? '').trim().toLowerCase();
+
+        if (requestedId && itemId === requestedId) return true;
+        if (requestedRecord && (itemPnFinal === requestedRecord || itemPartNo === requestedRecord)) return true;
+        return false;
+    }) || null;
+}
+
+function openRecordModalFromShell(request = {}) {
+    if (!Array.isArray(state.allData) || state.allData.length === 0) {
+        pendingShellRecordModalRequest = { ...request };
+        return false;
+    }
+
+    const row = resolveRowForShellRecordModal(request);
+    if (!row) return false;
+
+    const revisionKey = getRevisionKey(row);
+    if (!revisionKey) return false;
+
+    const targetBook = String(row?.engine_model ?? '').trim();
+    const targetPage = normalizePageNumber(row?.['Source Page']);
+
+    if (targetBook) {
+        applyBookSelection(targetBook, {
+            pageValue: targetPage,
+            fallbackToFirstAvailablePage: true,
+            render: true,
+            updatePdf: true
+        });
+    }
+
+    const moved = focusRevisionRowInMainTable(revisionKey);
+    if (!moved) {
+        selectRevisionRowByKey(revisionKey);
+    }
+
+    setRightPanelTab('pdf');
+    const requestedMode = String(request?.mode || '').trim().toLowerCase();
+    if (requestedMode === 'export') {
+        openExportModal(revisionKey);
+    } else {
+        openRecordModal(revisionKey);
+    }
+    pendingShellRecordModalRequest = null;
+    return true;
+}
+
+window.miluOpenPdfRecordModal = (request = {}) => openRecordModalFromShell(request);
 
 function normModalMatch(value) {
     return String(value ?? '').trim().toLowerCase();
@@ -605,44 +673,40 @@ function renderRecordModalExport(row, options = {}) {
         ...(miluNewRow ? [{ origen: 'MILU_New_v506', ...miluNewRow }] : []),
         { origen: 'Synthetic', ...syntheticRow }
     ];
-    const columns = ['origen', ...SYNTHETIC_NEW_EXPORT_COLUMNS];
+    const sourceLabels = matches.map(item => String(item?.origen || '-'));
+    const fields = [...SYNTHETIC_NEW_EXPORT_COLUMNS];
     const diffColumns = new Set();
     const volatileComparisonColumns = new Set(['Id', 'fecha_version']);
     const warningComparisonColumns = new Set(['exp_categorias', 'atributo']);
     if (matches.length >= 2) {
         const firstRow = matches[0];
         const lastRow = matches[matches.length - 1];
-        columns.forEach(col => {
-            if (col === 'origen') return;
+        fields.forEach(col => {
             if (volatileComparisonColumns.has(col)) return;
             const firstValue = normalizeComparisonValue(firstRow?.[col]);
             const lastValue = normalizeComparisonValue(lastRow?.[col]);
             if (firstValue !== lastValue) diffColumns.add(col);
         });
     }
-    const hasWarningMismatch = [...diffColumns].some(col => warningComparisonColumns.has(col));
-    const hasCriticalMismatch = [...diffColumns].some(col => !warningComparisonColumns.has(col));
-    headRow.innerHTML = columns.map(col => `<th>${escapeHtml(col)}</th>`).join('');
+    headRow.innerHTML = ['<th>Campo</th>', ...sourceLabels.map(label => `<th>${escapeHtml(label)}</th>`)].join('');
 
-    body.innerHTML = matches.map((item, rowIndex) => '<tr>'
-        + columns.map(col => {
-            const rawValue = formatModalExportValue(item?.[col]);
+    body.innerHTML = fields.map((field) => {
+        const valueCells = matches.map((item, rowIndex) => {
+            const rawValue = formatModalExportValue(item?.[field]);
             const displayValue = rawValue || '-';
             const isComparedEdgeRow = rowIndex === 0 || rowIndex === matches.length - 1;
-            const isFieldMismatch = isComparedEdgeRow && diffColumns.has(col);
-            const isWarningFieldMismatch = isFieldMismatch && warningComparisonColumns.has(col);
-            const isCriticalFieldMismatch = isFieldMismatch && !warningComparisonColumns.has(col);
-            const isOriginCriticalFlag = isComparedEdgeRow && col === 'origen' && hasCriticalMismatch;
-            const isOriginWarningFlag = isComparedEdgeRow && col === 'origen' && !hasCriticalMismatch && hasWarningMismatch;
+            const isFieldMismatch = isComparedEdgeRow && diffColumns.has(field);
+            const isWarningFieldMismatch = isFieldMismatch && warningComparisonColumns.has(field);
+            const isCriticalFieldMismatch = isFieldMismatch && !warningComparisonColumns.has(field);
             const tdClasses = [
                 isCriticalFieldMismatch ? 'qa-modal-cell-diff' : '',
-                isWarningFieldMismatch ? 'qa-modal-cell-diff-warn' : '',
-                isOriginCriticalFlag ? 'qa-modal-cell-diff-origin' : '',
-                isOriginWarningFlag ? 'qa-modal-cell-diff-origin-warn' : ''
+                isWarningFieldMismatch ? 'qa-modal-cell-diff-warn' : ''
             ].filter(Boolean).join(' ');
             return `<td class="${tdClasses}" title="${escapeHtml(rawValue)}">${escapeHtml(displayValue)}</td>`;
-        }).join('')
-        + '</tr>').join('');
+        }).join('');
+
+        return `<tr><td>${escapeHtml(field)}</td>${valueCells}</tr>`;
+    }).join('');
 
     if (count) {
         const comparedRows = matches.length;
@@ -673,17 +737,14 @@ function renderRecordModalSuperseded(row, options = {}) {
     }
 
     const sourceMatches = getPreferredRowsForPn(row);
-    const matches = [syntheticRow];
     const columns = SYNTHETIC_SUPERSEDED_EXPORT_COLUMNS.filter(col => Object.prototype.hasOwnProperty.call(syntheticRow, col));
-    headRow.innerHTML = columns.map(col => `<th>${escapeHtml(col)}</th>`).join('');
+    headRow.innerHTML = '<th>Campo</th><th>Synthetic</th>';
 
-    body.innerHTML = matches.map(item => '<tr>'
-        + columns.map(col => {
-            const rawValue = formatModalExportValue(item?.[col]);
-            const displayValue = rawValue || '-';
-            return `<td title="${escapeHtml(rawValue)}">${escapeHtml(displayValue)}</td>`;
-        }).join('')
-        + '</tr>').join('');
+    body.innerHTML = columns.map(col => {
+        const rawValue = formatModalExportValue(syntheticRow?.[col]);
+        const displayValue = rawValue || '-';
+        return `<tr><td>${escapeHtml(col)}</td><td title="${escapeHtml(rawValue)}">${escapeHtml(displayValue)}</td></tr>`;
+    }).join('');
 
     if (count) count.textContent = `1 registro reconstruido · ${sourceMatches.length} aparicion${sourceMatches.length === 1 ? '' : 'es'}`;
     setModalSectionVisibility(body, true);
@@ -905,8 +966,7 @@ function fillRecordModal(row, revisionKey) {
 
     renderRecordQaErrors(row);
     renderRecordModalMatches(row, revisionKey);
-    renderRecordModalExport(row);
-    renderRecordModalSuperseded(row);
+    updateExportModalHeader(row);
 
     const status = $('qaRecordModalStatus');
     if (status) status.textContent = '';
@@ -943,6 +1003,10 @@ function fillSideRecordForm(row, revisionKey) {
     const sideLabel = $('qaSideLabel');
     if (sideLabel) {
         sideLabel.textContent = `${String(row?.engine_model ?? '-')} • pág ${String(row?.['Source Page'] ?? '-')} • ID ${String(row?.ID ?? '-')}`;
+    }
+    const exportLabel = $('qaSideExportLabel');
+    if (exportLabel) {
+        exportLabel.textContent = `${String(row?.engine_model ?? '-')} • pág ${String(row?.['Source Page'] ?? '-')} • ID ${String(row?.ID ?? '-')}`;
     }
 
     renderRecordQaErrors(row, {
@@ -1006,6 +1070,8 @@ function clearSideRecordForm() {
 
     const sideLabel = $('qaSideLabel');
     if (sideLabel) sideLabel.textContent = 'Selecciona una fila para cargar la ficha';
+    const exportLabel = $('qaSideExportLabel');
+    if (exportLabel) exportLabel.textContent = 'Sin selección';
 
     $('qaSideMatchesBody').innerHTML = '<tr><td colspan="5">Sin seleccion</td></tr>';
     $('qaSideExportHeadRow').innerHTML = '<th>Sin datos</th>';
@@ -1072,6 +1138,34 @@ function openRecordModal(revisionKey) {
     modal.removeAttribute('hidden');
     const firstInput = $('qaModalRevisionEstado');
     if (firstInput instanceof HTMLElement) firstInput.focus();
+}
+
+function updateExportModalHeader(row) {
+    const pnLabel = $('qaExportModalPn');
+    const currentLabel = $('qaExportModalCurrent');
+    if (pnLabel) pnLabel.textContent = String(row?.['PART NO.'] ?? row?.pn ?? '-').trim() || '-';
+    if (currentLabel) {
+        currentLabel.textContent = `${String(row?.engine_model || '-')} · pag ${String(row?.['Source Page'] || '-')} · pos ${String(row?.POS || '-')}`;
+    }
+}
+
+function openExportModal(revisionKey) {
+    const row = getRowByRevisionKey(revisionKey);
+    const modal = $('qaExportModal');
+    if (!row || !modal) return;
+
+    if (isRecordModalOpen()) closeRecordModal();
+
+    renderRecordModalExport(row);
+    renderRecordModalSuperseded(row);
+    updateExportModalHeader(row);
+    modal.removeAttribute('hidden');
+}
+
+function closeExportModal() {
+    const modal = $('qaExportModal');
+    if (!modal) return;
+    modal.setAttribute('hidden', '');
 }
 
 function closeRecordModal() {
@@ -2048,6 +2142,12 @@ async function loadData() {
         syncSideRecordFormWithSelection();
         queueColumnViewRefresh();
 
+        if (pendingShellRecordModalRequest) {
+            const pendingRequest = pendingShellRecordModalRequest;
+            pendingShellRecordModalRequest = null;
+            openRecordModalFromShell(pendingRequest);
+        }
+
         if (syncAutoPageSize()) {
             state.currentPage = 1;
             renderTable();
@@ -2197,6 +2297,15 @@ function attachGlobalEvents() {
             return;
         }
         openRecordModal(revisionKey);
+    });
+
+    $('qaRecordModalOpenExportBtn')?.addEventListener('click', () => {
+        const revisionKey = String($('qaRecordModalForm')?.dataset.revisionKey || '');
+        if (!revisionKey) {
+            alert('Selecciona un registro para abrir la exportación.');
+            return;
+        }
+        openExportModal(revisionKey);
     });
 
     $('qaSideOpenMatchesModalBtn')?.addEventListener('click', () => {
@@ -2524,6 +2633,13 @@ function attachGlobalEvents() {
         const row = getRowByRevisionKey(revisionKey);
         if (!row) return;
         renderRecordModalMatches(row, revisionKey);
+    });
+
+    $('qaExportModalCloseBtn')?.addEventListener('click', closeExportModal);
+    $('qaExportModal')?.addEventListener('click', (event) => {
+        const target = event.target;
+        if (!(target instanceof HTMLElement)) return;
+        if (target.dataset.exportModalClose === 'true') closeExportModal();
     });
 
     $('qaRecordModalForm')?.addEventListener('submit', handleRecordModalSubmit);

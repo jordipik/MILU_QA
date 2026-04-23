@@ -58,7 +58,7 @@ Important fields:
 4. backend updates target engine JSON row by ID
 
 ## Offline Scripts (not runtime)
-- `add_final_fields.py`: recompute final fields and normalize measurements
+- `depuracion_json.py`: recompute final fields and normalize measurements
 - `generate_synthetic_exports.js`: build synthetic New/Superseded exports
 - `marcar_articulos_en_web.py`: set `EN_WEB` from product export
 - `estadisticas_articulos.py`, `informe_estadisticas.py`: stats/report

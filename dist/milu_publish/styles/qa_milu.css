@@ -2916,6 +2916,14 @@
             gap: 10px;
         }
 
+        .qa-export-modal-dialog {
+            width: min(1620px, 98vw);
+            max-height: 94vh;
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+        }
+
         .qa-matches-modal-header {
             margin-bottom: 0;
         }
@@ -3304,11 +3312,20 @@
         }
 
         .qa-modal-export-table-wrap {
-            max-height: 220px;
-            overflow: auto;
+            max-height: min(48vh, 640px);
+            overflow-x: auto;
+            overflow-y: auto;
             border: 1px solid #d3deeb;
             border-radius: 8px;
             background: #ffffff;
+        }
+
+        #pdfTabPanelExport .qa-modal-export-table-wrap {
+            max-height: min(52vh, 720px);
+        }
+
+        .qa-export-modal-dialog .qa-modal-export-table-wrap {
+            max-height: min(68vh, 980px);
         }
 
         .qa-modal-export-table {
@@ -3319,8 +3336,35 @@
 
         .qa-modal-export-table th,
         .qa-modal-export-table td {
-            min-width: 110px;
-            max-width: 260px;
+            min-width: 320px;
+            white-space: normal;
+            overflow: visible;
+            text-overflow: clip;
+            word-break: break-word;
+            overflow-wrap: anywhere;
+            max-width: none;
+            vertical-align: top;
+        }
+
+        .qa-modal-export-table th:first-child,
+        .qa-modal-export-table td:first-child {
+            min-width: 260px;
+            width: 260px;
+            position: sticky;
+            left: 0;
+            z-index: 2;
+            background: #f8fbff;
+        }
+
+        .qa-modal-export-table th:not(:first-child),
+        .qa-modal-export-table td:not(:first-child) {
+            width: 360px;
+        }
+
+        .qa-modal-export-table tbody td:first-child {
+            font-weight: 700;
+            color: #334155;
+            background: #f8fbff;
         }
 
         .qa-modal-export-table-new th,
@@ -3355,6 +3399,7 @@
             gap: 8px;
         }
 
+        #qaRecordModalOpenExportBtn,
         #qaRecordModalCancelBtn,
         #qaRecordModalSaveBtn,
         #qaSideResetBtn,

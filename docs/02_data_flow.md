@@ -49,7 +49,7 @@ Output:
 
 ## 5. Final Fields Normalization Flow (Offline)
 
-1. `python add_final_fields.py` iterates all 8 engine JSON files.
+1. `python depuracion_json.py` iterates all 8 engine JSON files.
 2. For each record:
 - normalize spaces in `dimensions_gesa` and `MEASUREMENT / STANDARD`
 - compute `designation_final`

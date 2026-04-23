@@ -33,6 +33,16 @@ STANDARD_TOKEN_RE = re.compile(
     re.IGNORECASE,
 )
 
+# Fragmentos basura detectados en PDF/headers que deben excluirse del dataset final.
+BLOCKED_ARTICLE_FRAGMENTS = [
+    "gmbh",
+    "mtu f",
+    "mbh",
+    "tu frie",
+    "edrichsh",
+    "edrichshafen gm",
+]
+
 
 def normalize_compare_value(value):
     """
@@ -207,6 +217,27 @@ def split_measurement_and_standard(raw_value):
     standard = " ".join(standards) if standards else None
     return measurement, standard
 
+
+def should_drop_record(record):
+    """
+    Excluye registros cuyo POS o DESIGNATION contienen fragmentos no validos.
+    """
+    if not isinstance(record, dict):
+        return False
+
+    candidate_values = [
+        " ".join(str(record.get("POS") or "").strip().split()).lower(),
+        " ".join(str(record.get("DESIGNATION") or "").strip().split()).lower(),
+    ]
+
+    for text_value in candidate_values:
+        if not text_value:
+            continue
+        if any(fragment in text_value for fragment in BLOCKED_ARTICLE_FRAGMENTS):
+            return True
+
+    return False
+
 def add_final_fields(record):
     """
     Agrega los campos finales a cada registro con criterio específico.
@@ -344,17 +375,32 @@ def process_file(file_path):
         
         qa_lookup = build_qa_lookup_for_engine_file(file_path)
 
-        # Procesar cada registro
+        # Eliminar registros contaminados por fragmentos de cabecera/pie del PDF.
         if isinstance(data, list):
-            data = [add_final_fields(sync_fields_from_qa(record, qa_lookup)) for record in data]
+            original_count = len(data)
+            filtered_data = [record for record in data if not should_drop_record(record)]
+            removed_count = original_count - len(filtered_data)
+            if removed_count:
+                print(f"  - Registros eliminados por filtro POS/DESIGNATION: {removed_count}")
+
+            data = [add_final_fields(sync_fields_from_qa(record, qa_lookup)) for record in filtered_data]
         elif isinstance(data, dict):
-            data = add_final_fields(sync_fields_from_qa(data, qa_lookup))
+            if should_drop_record(data):
+                print("  - Registro unico eliminado por filtro POS/DESIGNATION")
+                data = []
+            else:
+                data = add_final_fields(sync_fields_from_qa(data, qa_lookup))
         
+        if isinstance(data, list):
+            updated_count = len(data)
+        else:
+            updated_count = 1
+
         # Guardar el archivo modificado
         with open(file_path, 'w', encoding='utf-8') as f:
             json.dump(data, f, ensure_ascii=False, indent=2)
         
-        print(f"  ✓ Completado: {len(data) if isinstance(data, list) else 1} registros actualizados")
+        print(f"  ✓ Completado: {updated_count} registros actualizados")
         return True
     
     except Exception as e:

@@ -12,7 +12,7 @@ Proyecto MILU: contexto persistente para trabajar con seguridad y sin redescubri
 - [js/state.js](js/state.js) es estado global compartido; al modificar UI, evitar re-renderizados completos innecesarios cuando solo hace falta actualizar selección/estado visual.
 - Tratar como datos generados o de salida y no editar salvo que la tarea lo requiera: `dist/`, `esquemas/`, `esquemas_pos_circulos/`, `json_originales/`, `zz_old/`, `fotos_articulos/`, `fotos_motores/`.
 - Los scripts Python del root son utilidades offline de transformación/análisis; no forman parte del runtime web salvo que la tarea pida tocarlos explícitamente.
-- Proceso oficial de paso a JSON definitivos: ejecutar [add_final_fields.py](add_final_fields.py) sobre los 8 `engine_*.json` para recalcular campos finales y dejar consistencia de formato.
+- Proceso oficial de paso a JSON definitivos: ejecutar [depuracion_json.py](depuracion_json.py) sobre los 8 `engine_*.json` para recalcular campos finales y dejar consistencia de formato.
 - Regla de `measurement_final` en ese proceso: priorizar `dimensions_gesa` si existe; si no existe, usar `MEASUREMENT / STANDARD`.
 - En el mismo proceso se normaliza texto de medidas (`dimensions_gesa` y fallback de `MEASUREMENT / STANDARD`) colapsando espacios múltiples a uno solo (ejemplo: `A  55   X  5` -> `A 55 X 5`).
 - Antes de diagnosticar “la base de datos”, comprobar primero si el fallo real es del backend Express o de la escritura/lectura de JSON en disco.

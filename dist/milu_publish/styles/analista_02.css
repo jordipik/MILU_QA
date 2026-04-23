@@ -634,6 +634,12 @@ body.a2-resizing * {
     min-width: 0;
 }
 
+.a2-meta-actions {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+}
+
 .a2-meta-block-pos {
     text-align: center;
 }

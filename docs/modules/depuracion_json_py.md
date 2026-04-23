@@ -1,4 +1,4 @@
-# Module: add_final_fields.py
+# Module: depuracion_json.py
 
 ## Purpose
 Offline normalization pass over all engine JSON files to recompute canonical final fields.

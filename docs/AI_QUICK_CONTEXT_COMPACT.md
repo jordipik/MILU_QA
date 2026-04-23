@@ -46,7 +46,7 @@
 - heavy asset folders unless issue is asset-path related
 
 ## Offline Utilities (Not Runtime)
-- `add_final_fields.py`: recompute canonical final fields
+- `depuracion_json.py`: recompute canonical final fields
 - `generate_synthetic_exports.js`: build synthetic New/Superseded datasets
 - `marcar_articulos_en_web.py`: set `EN_WEB` from product export
 

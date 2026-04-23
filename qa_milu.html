@@ -382,6 +382,8 @@
                         aria-controls="pdfTabPanelPdf" data-pdf-tab="pdf">PDF</button>
                     <button id="pdfTabRecord" class="pdf-tab-btn" type="button" role="tab" aria-selected="false"
                         aria-controls="pdfTabPanelRecord" data-pdf-tab="record">Ficha QA</button>
+                    <button id="pdfTabExport" class="pdf-tab-btn" type="button" role="tab" aria-selected="false"
+                        aria-controls="pdfTabPanelExport" data-pdf-tab="export">Exportación</button>
                 </div>
 
                 <div id="pdfTabPanelPdf" class="pdf-tab-panel is-active" role="tabpanel" aria-labelledby="pdfTabPdf"
@@ -601,51 +603,6 @@
                                 </section>
                             </div>
 
-                            <section class="qa-modal-related qa-modal-export">
-                                <div class="qa-modal-related-head">
-                                    <h3>Exportacion MILU_New para este codigo</h3>
-                                    <span id="qaSideExportCount" class="qa-modal-related-count"></span>
-                                </div>
-                                <div class="qa-modal-export-table-wrap">
-                                    <table
-                                        class="qa-modal-related-table qa-modal-export-table qa-modal-export-table-new"
-                                        aria-label="Campos de exportacion MILU_New del codigo actual">
-                                        <thead>
-                                            <tr id="qaSideExportHeadRow">
-                                                <th>Sin datos</th>
-                                            </tr>
-                                        </thead>
-                                        <tbody id="qaSideExportBody">
-                                            <tr>
-                                                <td>No hay datos de exportacion.</td>
-                                            </tr>
-                                        </tbody>
-                                    </table>
-                                </div>
-                            </section>
-
-                            <section class="qa-modal-related qa-modal-export">
-                                <div class="qa-modal-related-head">
-                                    <h3>Exportacion MILU_Superseded para este codigo</h3>
-                                    <span id="qaSideSupersededCount" class="qa-modal-related-count"></span>
-                                </div>
-                                <div class="qa-modal-export-table-wrap">
-                                    <table class="qa-modal-related-table qa-modal-export-table"
-                                        aria-label="Campos de exportacion MILU_Superseded del codigo actual">
-                                        <thead>
-                                            <tr id="qaSideSupersededHeadRow">
-                                                <th>Sin datos</th>
-                                            </tr>
-                                        </thead>
-                                        <tbody id="qaSideSupersededBody">
-                                            <tr>
-                                                <td>No hay datos de exportacion.</td>
-                                            </tr>
-                                        </tbody>
-                                    </table>
-                                </div>
-                            </section>
-
                             <div class="qa-modal-footer">
                                 <span id="qaSideStatus" class="qa-modal-status" aria-live="polite"></span>
                                 <div class="qa-modal-actions">
@@ -654,6 +611,59 @@
                                 </div>
                             </div>
                         </form>
+                    </div>
+                </div>
+
+                <div id="pdfTabPanelExport" class="pdf-tab-panel" role="tabpanel" aria-labelledby="pdfTabExport"
+                    data-pdf-panel="export" hidden>
+                    <div class="pdfbar qa-side-header">
+                        <span class="pdfmeta"><b>Exportación</b> <span id="qaSideExportLabel">Sin
+                                selección</span></span>
+                    </div>
+                    <div class="qa-side-body">
+                        <section class="qa-modal-related qa-modal-export">
+                            <div class="qa-modal-related-head">
+                                <h3>Exportacion MILU_New para este codigo</h3>
+                                <span id="qaSideExportCount" class="qa-modal-related-count"></span>
+                            </div>
+                            <div class="qa-modal-export-table-wrap">
+                                <table class="qa-modal-related-table qa-modal-export-table qa-modal-export-table-new"
+                                    aria-label="Campos de exportacion MILU_New del codigo actual">
+                                    <thead>
+                                        <tr id="qaSideExportHeadRow">
+                                            <th>Sin datos</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody id="qaSideExportBody">
+                                        <tr>
+                                            <td>No hay datos de exportacion.</td>
+                                        </tr>
+                                    </tbody>
+                                </table>
+                            </div>
+                        </section>
+
+                        <section class="qa-modal-related qa-modal-export">
+                            <div class="qa-modal-related-head">
+                                <h3>Exportacion MILU_Superseded para este codigo</h3>
+                                <span id="qaSideSupersededCount" class="qa-modal-related-count"></span>
+                            </div>
+                            <div class="qa-modal-export-table-wrap">
+                                <table class="qa-modal-related-table qa-modal-export-table"
+                                    aria-label="Campos de exportacion MILU_Superseded del codigo actual">
+                                    <thead>
+                                        <tr id="qaSideSupersededHeadRow">
+                                            <th>Sin datos</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody id="qaSideSupersededBody">
+                                        <tr>
+                                            <td>No hay datos de exportacion.</td>
+                                        </tr>
+                                    </tbody>
+                                </table>
+                            </div>
+                        </section>
                     </div>
                 </div>
             </div>
@@ -910,58 +920,85 @@
                     </section>
                 </div>
 
-                <section class="qa-modal-related qa-modal-export">
-                    <div class="qa-modal-related-head">
-                        <h3>Exportacion MILU_New para este codigo</h3>
-                        <span id="qaModalExportCount" class="qa-modal-related-count"></span>
-                    </div>
-                    <div class="qa-modal-export-table-wrap">
-                        <table class="qa-modal-related-table qa-modal-export-table qa-modal-export-table-new"
-                            aria-label="Campos de exportacion MILU_New del codigo actual">
-                            <thead>
-                                <tr id="qaModalExportHeadRow">
-                                    <th>Sin datos</th>
-                                </tr>
-                            </thead>
-                            <tbody id="qaModalExportBody">
-                                <tr>
-                                    <td>No hay datos de exportacion.</td>
-                                </tr>
-                            </tbody>
-                        </table>
-                    </div>
-                </section>
-
-                <section class="qa-modal-related qa-modal-export">
-                    <div class="qa-modal-related-head">
-                        <h3>Exportacion MILU_Superseded para este codigo</h3>
-                        <span id="qaModalSupersededCount" class="qa-modal-related-count"></span>
-                    </div>
-                    <div class="qa-modal-export-table-wrap">
-                        <table class="qa-modal-related-table qa-modal-export-table"
-                            aria-label="Campos de exportacion MILU_Superseded del codigo actual">
-                            <thead>
-                                <tr id="qaModalSupersededHeadRow">
-                                    <th>Sin datos</th>
-                                </tr>
-                            </thead>
-                            <tbody id="qaModalSupersededBody">
-                                <tr>
-                                    <td>No hay datos de exportacion.</td>
-                                </tr>
-                            </tbody>
-                        </table>
-                    </div>
-                </section>
-
                 <div class="qa-modal-footer">
                     <span id="qaRecordModalStatus" class="qa-modal-status" aria-live="polite"></span>
                     <div class="qa-modal-actions">
+                        <button id="qaRecordModalOpenExportBtn" type="button">Exportar</button>
                         <button id="qaRecordModalCancelBtn" type="button">Cancelar</button>
                         <button id="qaRecordModalSaveBtn" type="submit">Guardar</button>
                     </div>
                 </div>
             </form>
+        </div>
+    </div>
+
+    <div id="qaExportModal" class="qa-modal" hidden>
+        <div class="qa-modal-backdrop" data-export-modal-close="true"></div>
+        <div class="qa-modal-dialog qa-export-modal-dialog" role="dialog" aria-modal="true"
+            aria-labelledby="qaExportModalTitle">
+            <div class="qa-modal-header">
+                <div>
+                    <p class="qa-modal-kicker">Exportación del registro</p>
+                    <h2 id="qaExportModalTitle">MILU New / Superseded</h2>
+                </div>
+                <button id="qaExportModalCloseBtn" class="qa-modal-close-btn" type="button"
+                    aria-label="Cerrar modal">Cerrar</button>
+            </div>
+
+            <section class="qa-matches-modal-summary" aria-label="Resumen del registro seleccionado">
+                <div class="qa-matches-modal-summary-item">
+                    <span class="qa-matches-modal-summary-label">PN</span>
+                    <strong id="qaExportModalPn" class="qa-matches-modal-summary-value">-</strong>
+                </div>
+                <div class="qa-matches-modal-summary-item">
+                    <span class="qa-matches-modal-summary-label">Registro actual</span>
+                    <strong id="qaExportModalCurrent" class="qa-matches-modal-summary-value">-</strong>
+                </div>
+            </section>
+
+            <section class="qa-modal-related qa-modal-export">
+                <div class="qa-modal-related-head">
+                    <h3>Exportacion MILU_New para este codigo</h3>
+                    <span id="qaModalExportCount" class="qa-modal-related-count"></span>
+                </div>
+                <div class="qa-modal-export-table-wrap">
+                    <table class="qa-modal-related-table qa-modal-export-table qa-modal-export-table-new"
+                        aria-label="Campos de exportacion MILU_New del codigo actual">
+                        <thead>
+                            <tr id="qaModalExportHeadRow">
+                                <th>Sin datos</th>
+                            </tr>
+                        </thead>
+                        <tbody id="qaModalExportBody">
+                            <tr>
+                                <td>No hay datos de exportacion.</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </section>
+
+            <section class="qa-modal-related qa-modal-export">
+                <div class="qa-modal-related-head">
+                    <h3>Exportacion MILU_Superseded para este codigo</h3>
+                    <span id="qaModalSupersededCount" class="qa-modal-related-count"></span>
+                </div>
+                <div class="qa-modal-export-table-wrap">
+                    <table class="qa-modal-related-table qa-modal-export-table"
+                        aria-label="Campos de exportacion MILU_Superseded del codigo actual">
+                        <thead>
+                            <tr id="qaModalSupersededHeadRow">
+                                <th>Sin datos</th>
+                            </tr>
+                        </thead>
+                        <tbody id="qaModalSupersededBody">
+                            <tr>
+                                <td>No hay datos de exportacion.</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </section>
         </div>
     </div>
 

@@ -22,7 +22,7 @@
 - `qa_synthetic_new.json`, `qa_synthetic_superseded.json`: generated synthetic exports
 
 ### Offline utilities (root scripts)
-- `add_final_fields.py`
+- `depuracion_json.py`
 - `convert_excel_to_json.py`
 - `generate_synthetic_exports.js`
 - `estadisticas_articulos.py`

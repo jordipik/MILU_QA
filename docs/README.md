@@ -36,7 +36,7 @@
 
 ### D) Data normalization/export flow
 1. [AI_QUICK_CONTEXT_COMPACT.md](AI_QUICK_CONTEXT_COMPACT.md)
-2. [modules/add_final_fields_py.md](modules/add_final_fields_py.md)
+2. [modules/depuracion_json_py.md](modules/depuracion_json_py.md)
 3. [modules/generate_synthetic_exports.md](modules/generate_synthetic_exports.md)
 4. [modules/marcar_articulos_en_web_py.md](modules/marcar_articulos_en_web_py.md)
 5. [03_data_models.md](03_data_models.md)
@@ -63,7 +63,7 @@
 - [modules/js_pos_preload.md](modules/js_pos_preload.md)
 
 ### Offline Python Utilities
-- [modules/add_final_fields_py.md](modules/add_final_fields_py.md)
+- [modules/depuracion_json_py.md](modules/depuracion_json_py.md)
 - [modules/convert_excel_to_json_py.md](modules/convert_excel_to_json_py.md)
 - [modules/estadisticas_articulos_py.md](modules/estadisticas_articulos_py.md)
 - [modules/informe_estadisticas_py.md](modules/informe_estadisticas_py.md)

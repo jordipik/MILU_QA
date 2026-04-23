@@ -166,6 +166,32 @@
             }
         }
 
+        function openPdfRecordModal(payload = {}) {
+            mountView('pdf', { updateHistory: true });
+
+            const targetFrame = getFrameForView('pdf');
+            if (!(targetFrame instanceof HTMLIFrameElement)) return false;
+
+            const invokeBridge = () => {
+                const bridge = targetFrame.contentWindow?.miluOpenPdfRecordModal;
+                if (typeof bridge !== 'function') return false;
+                return bridge(payload) !== false;
+            };
+
+            if (invokeBridge()) return true;
+
+            let attemptsLeft = 40;
+            const retry = () => {
+                if (invokeBridge() || attemptsLeft <= 0) return;
+                attemptsLeft -= 1;
+                window.setTimeout(retry, 100);
+            };
+            retry();
+            return true;
+        }
+
+        window.miluShellOpenPdfRecordModal = openPdfRecordModal;
+
         window.addEventListener('popstate', () => {
             mountView(getViewFromUrl(), { updateHistory: false });
         });

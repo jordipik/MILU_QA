@@ -731,6 +731,50 @@ function initEditRecordModal() {
     });
 }
 
+function openEditRecordModalForRow(row = currentRow) {
+    if (!row || typeof row !== 'object') return;
+
+    const shellBridge = window.parent && window.parent !== window
+        ? window.parent.miluShellOpenPdfRecordModal
+        : null;
+    if (typeof shellBridge === 'function') {
+        const openedInPdfView = shellBridge({
+            engine: String(row?.engine_model ?? '').trim(),
+            record: String(row?.pn_final ?? row?.['PART NO.'] ?? '').trim(),
+            id: String(row?.ID ?? '').trim()
+        });
+        if (openedInPdfView !== false) return;
+    }
+
+    populateEditRecordForm(row);
+    setEditRecordStatus('', '');
+
+    const modal = $('editRecordModal');
+    if (!(modal instanceof HTMLElement)) return;
+
+    modal.hidden = false;
+    $('editRecordPnFinal')?.focus();
+}
+
+function openExportRecordModalForRow(row = currentRow) {
+    if (!row || typeof row !== 'object') return;
+
+    const shellBridge = window.parent && window.parent !== window
+        ? window.parent.miluShellOpenPdfRecordModal
+        : null;
+    if (typeof shellBridge === 'function') {
+        const openedInPdfView = shellBridge({
+            mode: 'export',
+            engine: String(row?.engine_model ?? '').trim(),
+            record: String(row?.pn_final ?? row?.['PART NO.'] ?? '').trim(),
+            id: String(row?.ID ?? '').trim()
+        });
+        if (openedInPdfView !== false) return;
+    }
+
+    openEditRecordModalForRow(row);
+}
+
 function populateEditRecordForm(row) {
     if (!row || typeof row !== 'object') return;
 
@@ -820,6 +864,31 @@ function setEditRecordStatus(message, type = '') {
     statusEl.textContent = message;
     statusEl.className = 'edit-record-status';
     if (type) statusEl.classList.add(`is-${type}`);
+}
+
+function isEditableComparisonField(fieldName) {
+    const field = String(fieldName ?? '').trim().toUpperCase();
+    return field === 'PART NO.'
+        || field === 'DESIGNATION'
+        || field === 'WEIGHT'
+        || field === 'MEASUREMENT / STANDARD'
+        || field === 'NORMA';
+}
+
+function initComparisonEditTriggers() {
+    const body = $('comparisonBody');
+    if (!(body instanceof HTMLElement)) return;
+
+    body.addEventListener('dblclick', (event) => {
+        const target = event.target;
+        if (!(target instanceof HTMLElement)) return;
+
+        const editableCell = target.closest('td[data-open-edit-record-modal="true"]');
+        if (!editableCell || !currentRow) return;
+
+        event.preventDefault();
+        openEditRecordModalForRow(currentRow);
+    });
 }
 
 function buildEngineOptions(selectedModel = '') {
@@ -1369,19 +1438,23 @@ function renderMeta(row) {
 <span class="a2-meta-label">DESIGNATION</span>
 <strong class="a2-meta-value">${escapeHtml(txt(row?.designation_final || row?.DESIGNATION))}</strong>
 </div>
+<div class="a2-meta-actions">
 <button id="openEditRecordBtn" type="button" class="a2-meta-edit-btn">Editar</button>
+<button id="openExportRecordBtn" type="button" class="a2-meta-edit-btn">Exportar</button>
+</div>
 </section>`;
 
     const editBtn = $('openEditRecordBtn');
     if (editBtn instanceof HTMLButtonElement) {
         editBtn.addEventListener('click', () => {
-            if (currentRow) {
-                populateEditRecordForm(currentRow);
-                const modal = $('editRecordModal');
-                if (modal instanceof HTMLElement) {
-                    modal.hidden = false;
-                }
-            }
+            openEditRecordModalForRow();
+        });
+    }
+
+    const exportBtn = $('openExportRecordBtn');
+    if (exportBtn instanceof HTMLButtonElement) {
+        exportBtn.addEventListener('click', () => {
+            openExportRecordModalForRow();
         });
     }
 }
@@ -1521,12 +1594,15 @@ async function renderComparisonTable(row) {
         const errCount = getStoredFieldErrorCount(row, entry.field);
         const errCellClass = errCount > 0 ? 'field-err has-errors' : 'field-err';
         const errTitle = errCount > 0 ? ` title="${escapeHtml(`Errores persistidos en JSON: ${errCount}`)}"` : '';
+        const finalEditAttrs = isEditableComparisonField(entry.field)
+            ? ' data-open-edit-record-modal="true" title="Doble clic para editar en modal"'
+            : '';
         return `<tr class="${rowClass}">
             <td class="field">${escapeHtml(entry.field)}</td>
             <td>${escapeHtml(txt(entry.raw))}</td>
             <td>${escapeHtml(txt(entry.gesa))}</td>
             <td>${escapeHtml(txt(entry.sust))}</td>
-            <td>${escapeHtml(txt(entry.final))}</td>
+            <td${finalEditAttrs}>${escapeHtml(txt(entry.final))}</td>
             <td class="${loadingClass}">${escapeHtml('...')}</td>
             <td>${escapeHtml(txt(pdfAutoValue))}</td>
             <td class="${errCellClass}"${errTitle}>${errCount > 0 ? errCount : ''}</td>
@@ -1555,12 +1631,15 @@ async function renderComparisonTable(row) {
         const errTitle = errCount > 0 ? ` title="${escapeHtml(`Errores persistidos en JSON: ${errCount}`)}"` : '';
         const finalErrClass = errCount > 0 ? 'compare-final-error' : 'compare-final-ok';
         const finalFullClass = [cellClasses.finalClass, finalErrClass].filter(Boolean).join(' ');
+        const finalEditAttrs = isEditableComparisonField(entry.field)
+            ? ' data-open-edit-record-modal="true" title="Doble clic para editar en modal"'
+            : '';
         return `<tr class="${rowClass}">
             <td class="field">${escapeHtml(entry.field)}</td>
             <td class="${cellClasses.rawClass}">${escapeHtml(txt(entry.raw))}</td>
             <td class="${cellClasses.gesaClass}">${escapeHtml(txt(entry.gesa))}</td>
             <td class="${cellClasses.sustClass}">${escapeHtml(txt(entry.sust))}</td>
-            <td class="${finalFullClass}">${escapeHtml(txt(entry.final))}</td>
+            <td class="${finalFullClass}"${finalEditAttrs}>${escapeHtml(txt(entry.final))}</td>
             <td class="${cellClasses.pdfClass}">${escapeHtml(txt(pdfRead.value))}</td>
             <td class="${cellClasses.pdfAutoClass}">${escapeHtml(txt(pdfAutoValue))}</td>
             <td class="${errCellClass}"${errTitle}>${errCount > 0 ? errCount : ''}</td>
@@ -1906,6 +1985,7 @@ async function initialize() {
         initChecksModal();
         initRecomputeModal();
         initEditRecordModal();
+        initComparisonEditTriggers();
         initHorizontalSplitter();
         initComparisonColumnResize();
         loadComparisonColumnWidths();
