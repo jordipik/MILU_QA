@@ -1,5 +1,9 @@
 
 zz_copias/
+# Backups y copias locales fuera del árbol versionado.
+zz_copias/backups_repo_root/
+# Resultados generados de comparaciones QA PDF.
+qa_pdf_compare_engine_*.json
 zz_old/
 esquemas_pos_circulos/
 fotos_articulos/
