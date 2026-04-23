@@ -95,9 +95,29 @@ function normalizeCompareValue(value) {
         .replace(/[\u0300-\u036f]/g, '');
 }
 
+function normalizeDesignationCompareValue(value) {
+    let normalized = normalizeCompareValue(value);
+    if (!normalized) return '';
+
+    // OCR / carga GESA a veces separa una sola letra dentro de una palabra:
+    // "carbo n" -> "carbon".
+    let previous = '';
+    while (normalized !== previous) {
+        previous = normalized;
+        normalized = normalized.replace(/([a-z0-9]{2,})\s([a-z0-9])\b/g, '$1$2');
+    }
+    return normalized;
+}
+
 function isCompareMatch(left, right) {
     const normalizedLeft = normalizeCompareValue(left);
     const normalizedRight = normalizeCompareValue(right);
+    return normalizedLeft !== '' && normalizedRight !== '' && normalizedLeft === normalizedRight;
+}
+
+function isDesignationCompareMatch(left, right) {
+    const normalizedLeft = normalizeDesignationCompareValue(left);
+    const normalizedRight = normalizeDesignationCompareValue(right);
     return normalizedLeft !== '' && normalizedRight !== '' && normalizedLeft === normalizedRight;
 }
 
@@ -225,6 +245,60 @@ function findPdfPnAnchor(row, pageText) {
     return null;
 }
 
+function isLikelyDesignationText(value) {
+    const raw = text(value);
+    if (!raw) return false;
+    if (!/[\p{L}]/u.test(raw)) return false;
+    if (/^[0-9\s\-\.,/()]+$/.test(raw)) return false;
+    return true;
+}
+
+function extractDesignationFromPnRight(row, pageText, pnAnchor) {
+    if (!pageText || !Array.isArray(pageText.clusters)) return '';
+    if (!pnAnchor || !Number.isInteger(pnAnchor.lineIndex)) return '';
+
+    const rowId = text(row?.ID);
+
+    const pnCandidates = [row?.pn_final, row?.['PART NO.']]
+        .map((value) => normalizePdfToken(String(value ?? '').trim()))
+        .filter(Boolean);
+    if (pnCandidates.length === 0) return '';
+
+    const lineClusters = pageText.clusters
+        .filter((cluster) => cluster.lineIndex === pnAnchor.lineIndex)
+        .sort((a, b) => a.left - b.left);
+    if (lineClusters.length === 0) {
+        console.info(`[qa_pdf_compare] ID=${rowId} DESIGNATION fallback: sin clusters en linea PN=${pnAnchor.lineIndex}`);
+        return '';
+    }
+
+    const pnCluster = lineClusters.find((cluster) => pnCandidates.some((candidate) => tokenMatchesPdf(cluster.normalized, candidate)));
+    if (!pnCluster) {
+        console.info(`[qa_pdf_compare] ID=${rowId} DESIGNATION fallback: PN ancla no localizado dentro de clusters de linea ${pnAnchor.lineIndex}`);
+        return '';
+    }
+
+    const rightSide = lineClusters
+        .filter((cluster) => cluster.left >= pnCluster.right - 1)
+        .filter((cluster) => cluster !== pnCluster);
+
+    console.info(`[qa_pdf_compare] ID=${rowId} DESIGNATION fallback: PN='${pnCluster.text}' linea=${pnAnchor.lineIndex} candidatos_derecha=${rightSide.map((cluster) => `'${cluster.text}'`).join(', ') || '(ninguno)'}`);
+
+    for (const cluster of rightSide) {
+        const candidateText = text(cluster.text);
+        const candidateNormalized = normalizePdfToken(candidateText);
+        if (!candidateText) continue;
+        if (pnCandidates.includes(candidateNormalized)) continue;
+        if (!isLikelyDesignationText(candidateText)) continue;
+        console.info(`[qa_pdf_compare] ID=${rowId} DESIGNATION fallback: seleccionado='${candidateText}'`);
+        return candidateText;
+    }
+
+    console.info(`[qa_pdf_compare] ID=${rowId} DESIGNATION fallback: sin candidato valido a la derecha del PN`);
+
+    return '';
+}
+
 function getPdfValueForRow(row, entry, pageText, pnAnchor) {
     if (!pageText || !pageText.normalizedText) return { value: '-', token: '' };
     if (!pnAnchor) return { value: '-', token: '' };
@@ -272,6 +346,14 @@ function getPdfValueForRow(row, entry, pageText, pnAnchor) {
 
         if (tokenMatchesPdf(pageText.normalizedText, normalized)) {
             return { value: candidate, token: normalized };
+        }
+    }
+
+    if (entry.field === 'DESIGNATION') {
+        console.info(`[qa_pdf_compare] ID=${text(row?.ID)} DESIGNATION exact match no encontrado; intentando fallback por PN en PDF`);
+        const designationByLine = extractDesignationFromPnRight(row, pageText, pnAnchor);
+        if (designationByLine) {
+            return { value: designationByLine, token: normalizePdfToken(designationByLine) };
         }
     }
 
@@ -372,6 +454,7 @@ async function getPdfPageNormalizedText(pdfjsLib, caches, book, sourcePage) {
             sorted.forEach((item) => {
                 if (!currentCluster) {
                     currentCluster = {
+                        left: item.left,
                         right: item.left + item.width,
                         parts: [item.text],
                         normalizedParts: [item.normalized]
@@ -390,10 +473,13 @@ async function getPdfPageNormalizedText(pdfjsLib, caches, book, sourcePage) {
                 clusters.push({
                     text: currentCluster.parts.join(' ').replace(/\s+/g, ' ').trim(),
                     normalized: currentCluster.normalizedParts.join(' ').replace(/\s+/g, ' ').trim(),
-                    lineIndex: line.lineIndex
+                    lineIndex: line.lineIndex,
+                    left: currentCluster.left,
+                    right: currentCluster.right
                 });
 
                 currentCluster = {
+                    left: item.left,
                     right: item.left + item.width,
                     parts: [item.text],
                     normalizedParts: [item.normalized]
@@ -404,7 +490,9 @@ async function getPdfPageNormalizedText(pdfjsLib, caches, book, sourcePage) {
                 clusters.push({
                     text: currentCluster.parts.join(' ').replace(/\s+/g, ' ').trim(),
                     normalized: currentCluster.normalizedParts.join(' ').replace(/\s+/g, ' ').trim(),
-                    lineIndex: line.lineIndex
+                    lineIndex: line.lineIndex,
+                    left: currentCluster.left,
+                    right: currentCluster.right
                 });
             }
         });
@@ -508,8 +596,12 @@ async function runComparison(options) {
                 gesa: text(entry.gesa),
                 final: text(entry.final),
                 pdf: resolvedPdfValue,
-                finalVsPdfMatch: isCompareMatch(entry.final, resolvedPdfValue),
-                finalVsGesaMatch: isCompareMatch(entry.final, entry.gesa)
+                finalVsPdfMatch: entry.field === 'DESIGNATION'
+                    ? isDesignationCompareMatch(entry.final, resolvedPdfValue)
+                    : isCompareMatch(entry.final, resolvedPdfValue),
+                finalVsGesaMatch: entry.field === 'DESIGNATION'
+                    ? isDesignationCompareMatch(entry.final, entry.gesa)
+                    : isCompareMatch(entry.final, entry.gesa)
             };
         });
 

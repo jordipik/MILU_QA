@@ -693,10 +693,13 @@ function initRecomputeModal() {
     openBtn.addEventListener('click', () => {
         syncRecomputeEngineSelect();
         setRecomputeStatus('Listo para ejecutar.', '');
+        clearRecomputePdfDetail();
         modal.hidden = false;
         const recomputeIdInput = $('recomputeIdInput');
         if (recomputeIdInput instanceof HTMLInputElement) {
+            recomputeIdInput.value = String(currentRow?.ID ?? '').trim();
             recomputeIdInput.focus();
+            recomputeIdInput.select();
         }
     });
 
@@ -958,6 +961,127 @@ function setRecomputeStatus(message, status = '') {
     statusEl.textContent = message;
 }
 
+function clearRecomputePdfDetail() {
+    const panel = $('recomputePdfDetailPanel');
+    const title = $('recomputePdfDetailTitle');
+    const meta = $('recomputePdfDetailMeta');
+    const body = $('recomputePdfDetailBody');
+
+    if (panel instanceof HTMLElement) panel.hidden = true;
+    if (title instanceof HTMLElement) title.textContent = 'Detalle del registro';
+    if (meta instanceof HTMLElement) meta.textContent = '';
+    if (body instanceof HTMLElement) body.innerHTML = '';
+}
+
+function renderRecomputePdfDetail(detailRow, result, pdfAutoBefore = {}) {
+    const panel = $('recomputePdfDetailPanel');
+    const title = $('recomputePdfDetailTitle');
+    const meta = $('recomputePdfDetailMeta');
+    const body = $('recomputePdfDetailBody');
+
+    if (!(panel instanceof HTMLElement)
+        || !(title instanceof HTMLElement)
+        || !(meta instanceof HTMLElement)
+        || !(body instanceof HTMLElement)) {
+        return;
+    }
+
+    if (!detailRow || !Array.isArray(detailRow.comparisons)) {
+        clearRecomputePdfDetail();
+        return;
+    }
+
+    const foundEntries = detailRow.comparisons.filter((entry) => normalizeCompareValue(entry?.pdf) !== '');
+    title.textContent = `Detalle PDF_AUTO · ID ${txt(detailRow.ID, '')}`;
+    meta.textContent = `Libro=${txt(detailRow.engine_model, '')} | Page=${txt(detailRow.source_page, '')} | PN=${txt(detailRow.pn, '')} | Anchor=${txt(detailRow.pnAnchorLine, '')}`;
+
+    const summaryCards = [
+        { label: 'Campos encontrados', value: String(foundEntries.length) },
+        { label: 'Campos evaluados', value: String(detailRow.comparisons.length) },
+        { label: 'Registros cambiados', value: String(Number(result?.changedRows) || 0) },
+        { label: 'Modo', value: result?.dryRun ? 'Simulacion' : 'Escritura' }
+    ];
+
+    const summaryHtml = `
+        <div class="recompute-result-summary">
+            ${summaryCards.map((card) => `
+                <div class="recompute-result-kpi">
+                    <div class="recompute-result-kpi-label">${escapeHtml(card.label)}</div>
+                    <div class="recompute-result-kpi-value">${escapeHtml(card.value)}</div>
+                </div>
+            `).join('')}
+        </div>
+    `;
+
+    if (foundEntries.length === 0) {
+        body.innerHTML = `${summaryHtml}<p class="recompute-result-empty">No se encontró ningun valor PDF_AUTO util para este registro.</p>`;
+        panel.hidden = false;
+        return;
+    }
+
+    const rowsHtml = foundEntries.map((entry) => {
+        const field = String(entry?.field || '').trim();
+        const previousPdfAuto = String(pdfAutoBefore?.[field] ?? '').trim();
+        const nextPdfAuto = String(entry?.pdf ?? '').trim();
+        const changed = normalizeCompareValue(previousPdfAuto) !== normalizeCompareValue(nextPdfAuto);
+        const statusLabel = result?.dryRun
+            ? (changed ? 'cambiaria' : 'sin cambio')
+            : (changed ? 'actualizado' : 'sin cambio');
+        const statusClass = changed ? 'is-updated' : 'is-same';
+        const matchClass = entry?.finalVsPdfMatch ? 'recompute-result-match' : 'recompute-result-mismatch';
+        const matchLabel = entry?.finalVsPdfMatch ? 'match final' : 'no match';
+
+        return `
+            <tr>
+                <td>${escapeHtml(txt(field, ''))}</td>
+                <td>${escapeHtml(txt(entry?.raw, ''))}</td>
+                <td>${escapeHtml(txt(entry?.gesa, ''))}</td>
+                <td>${escapeHtml(txt(entry?.final, ''))}</td>
+                <td>${escapeHtml(txt(nextPdfAuto, ''))}</td>
+                <td><span class="recompute-result-status ${statusClass}">${escapeHtml(statusLabel)}</span></td>
+                <td><span class="${matchClass}">${escapeHtml(matchLabel)}</span></td>
+            </tr>
+        `;
+    }).join('');
+
+    body.innerHTML = `${summaryHtml}
+        <div class="recompute-result-table-wrap">
+            <table class="recompute-result-table">
+                <thead>
+                    <tr>
+                        <th>Campo</th>
+                        <th>Raw</th>
+                        <th>Gesa</th>
+                        <th>Final</th>
+                        <th>PDF encontrado</th>
+                        <th>Estado</th>
+                        <th>Comparacion</th>
+                    </tr>
+                </thead>
+                <tbody>${rowsHtml}</tbody>
+            </table>
+        </div>`;
+    panel.hidden = false;
+}
+
+async function fetchRecomputePdfDetailRow(outputPath, requestUrl) {
+    const fileName = String(outputPath || '').split(/[\\/]/).pop();
+    if (!fileName) return null;
+
+    const baseOrigin = requestUrl
+        ? new URL(requestUrl, window.location.href).origin
+        : window.location.origin;
+    const detailUrl = `${baseOrigin}/${encodeURIComponent(fileName)}`;
+    const response = await fetch(detailUrl, { cache: 'no-store' });
+    if (!response.ok) {
+        throw new Error(`No se pudo cargar detalle ${fileName} (HTTP ${response.status})`);
+    }
+
+    const report = await response.json();
+    const rows = Array.isArray(report?.rows) ? report.rows : [];
+    return rows[0] || null;
+}
+
 function syncRecomputeEngineSelect() {
     const source = $('engineFilterSelect');
     const target = $('recomputeEngineSelect');
@@ -1123,6 +1247,9 @@ async function runBackendRecomputePdfAuto() {
     const file = resolveEngineFileFromFilter(selectedModel);
     const id = String(recomputeIdInput.value || '').trim();
     const dryRun = recomputeDryRunInput.checked;
+    const pdfAutoBefore = Object.fromEntries(
+        Object.keys(FIELD_TO_PDF_AUTO_KEY).map((fieldName) => [fieldName, getStoredPdfAutoValue(currentRow, fieldName)])
+    );
 
     if (!file) {
         alert('No se pudo resolver el archivo engine para recalcular PDF_AUTO.');
@@ -1139,10 +1266,12 @@ async function runBackendRecomputePdfAuto() {
     recomputeRunBtn.disabled = true;
     recomputePdfRunBtn.disabled = true;
     setRecomputeStatus('Ejecutando recalculo PDF_AUTO en backend...', '');
+    clearRecomputePdfDetail();
 
     const urls = getBackendCandidateUrls('recompute-pdf-auto');
     let lastError = '';
     let result = null;
+    let resultUrl = '';
 
     for (const url of urls) {
         try {
@@ -1175,6 +1304,7 @@ async function runBackendRecomputePdfAuto() {
             }
 
             result = data.result;
+            resultUrl = url;
             break;
         } catch (error) {
             lastError = String(error?.message || error || 'Error de red');
@@ -1197,6 +1327,20 @@ async function runBackendRecomputePdfAuto() {
         `OK PDF_AUTO ${modeLabel} | scanned=${result.scanned} changed=${result.changedRows} missingPages=${result.missingPages || 0} dryRun=${result.dryRun ? 'si' : 'no'}`,
         'ok'
     );
+
+    if (result.mode === 'single-id' && result.output) {
+        try {
+            const detailRow = await fetchRecomputePdfDetailRow(result.output, resultUrl);
+            renderRecomputePdfDetail(detailRow, result, pdfAutoBefore);
+        } catch (error) {
+            setRecomputeStatus(
+                `OK PDF_AUTO ${modeLabel} | detalle no disponible: ${String(error?.message || error)}`,
+                'ok'
+            );
+        }
+    } else {
+        clearRecomputePdfDetail();
+    }
 
     if (!result.dryRun && result.wroteFile) {
         const selectedMainModel = String(engineFilterSelect.value || '').trim();
