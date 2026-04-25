@@ -159,8 +159,8 @@ export function createTopbar(page) {
         </div>
         <nav class="a2-nav" aria-label="Navegacion">
             <a href="${getNavTargetHref('pdf')}" data-page="pdf" class="${pageConfig.active === 'PDF' ? 'active' : ''}">PDF</a>
-            <a href="${getNavTargetHref('export')}" data-page="export" class="${pageConfig.active === 'EXPORT' ? 'active' : ''}">EXPORT</a>
             <a href="${getNavTargetHref('analisis')}" data-page="analisis" class="${pageConfig.active === 'ANALISIS' ? 'active' : ''}">ANALISIS</a>
+            <a href="${getNavTargetHref('export')}" data-page="export" class="${pageConfig.active === 'EXPORT' ? 'active' : ''}">EXPORT</a>
         </nav>
         <div id="backendStatus" class="backend-status checking" aria-live="polite" title="Estado del backend de guardado">
             <span class="backend-status-dot" aria-hidden="true"></span>

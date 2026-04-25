@@ -13,9 +13,9 @@
     <script>
         (function () {
             var saved = Number(localStorage.getItem('qamilu:right-panel-width'));
-            var w = (saved > 0) ? saved : Math.round(window.innerWidth * 0.35);
-            if (!(saved > 0)) localStorage.setItem('qamilu:right-panel-width', String(w));
-            document.documentElement.style.setProperty('--qa-right-width', w + 'px');
+            if (saved > 0) {
+                document.documentElement.style.setProperty('--qa-right-width', Math.round(saved) + 'px');
+            }
         })();
     </script>
     <style>

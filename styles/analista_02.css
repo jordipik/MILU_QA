@@ -87,7 +87,7 @@ body {
 .a2-nav {
     display: flex;
     align-items: center;
-    gap: 8px;
+    gap: 10px;
     flex-wrap: nowrap;
     justify-self: center;
 }
@@ -95,19 +95,31 @@ body {
 .a2-nav a,
 .a2-nav span {
     text-decoration: none;
-    border: 1px solid var(--line);
-    background: #ffffff;
+    border: 1px solid rgba(10, 79, 143, 0.14);
+    background: linear-gradient(180deg, #ffffff 0%, #f4f8fd 100%);
     color: var(--text);
     border-radius: 999px;
-    padding: 7px 12px;
-    font-size: 12px;
-    font-weight: 700;
+    padding: 11px 18px;
+    min-height: 44px;
+    font-size: 13px;
+    font-weight: 800;
+    letter-spacing: 0.03em;
+    box-shadow: 0 8px 18px rgba(10, 79, 143, 0.08);
+    transition: transform 0.18s ease, box-shadow 0.18s ease, border-color 0.18s ease, background 0.18s ease;
+}
+
+.a2-nav a:hover,
+.a2-nav span:hover {
+    transform: translateY(-1px);
+    border-color: rgba(10, 79, 143, 0.3);
+    box-shadow: 0 12px 22px rgba(10, 79, 143, 0.14);
 }
 
 .a2-nav .active {
     border-color: #0a4f8f;
-    background: #0a4f8f;
+    background: linear-gradient(135deg, #0a4f8f 0%, #1c78c8 100%);
     color: #ffffff;
+    box-shadow: 0 12px 24px rgba(10, 79, 143, 0.22);
 }
 
 .backend-status {

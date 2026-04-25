@@ -116,6 +116,27 @@
 
             frameByView.forEach(frame => frame.classList.remove('is-active'));
             targetFrame.classList.add('is-active');
+
+            const notifyActivated = () => {
+                const bridge = targetFrame.contentWindow?.miluOnShellActivated;
+                if (typeof bridge !== 'function') return false;
+                try {
+                    bridge();
+                    return true;
+                } catch (_) {
+                    return false;
+                }
+            };
+
+            if (!notifyActivated()) {
+                let attemptsLeft = 20;
+                const retry = () => {
+                    if (notifyActivated() || attemptsLeft <= 0) return;
+                    attemptsLeft -= 1;
+                    window.setTimeout(retry, 100);
+                };
+                window.requestAnimationFrame(retry);
+            }
         }
 
         function prewarmOtherViews(currentView) {

@@ -118,6 +118,7 @@ const modalUiState = {
 };
 let activeMatchesModalRevisionKey = '';
 let pendingShellRecordModalRequest = null;
+let syncQaSplitterLayout = () => { };
 
 const QA_ROW_PATCH_CHANGE_TYPE = 'qa-row-patch';
 const QA_BULK_ROW_PATCH_CHANGE_TYPE = 'qa-bulk-row-patch';
@@ -644,6 +645,19 @@ window.miluRefreshPdfData = async (request = {}) => {
         return await refreshDataFromShellUpdate(request);
     } catch (error) {
         console.warn('No se pudo refrescar QA PDF tras actualización externa:', error);
+        return false;
+    }
+};
+
+window.miluOnShellActivated = () => {
+    try {
+        syncQaSplitterLayout();
+        if (state.rightPanelTab === 'pdf') {
+            requestPdfRelayout();
+        }
+        return true;
+    } catch (error) {
+        console.warn('No se pudo resincronizar QA PDF tras activar la vista en shell:', error);
         return false;
     }
 };
@@ -3124,12 +3138,28 @@ function initQaSplitter() {
         return clamped;
     };
 
-    const savedWidth = Number(localStorage.getItem(QA_RIGHT_WIDTH_KEY));
-    if (Number.isFinite(savedWidth) && savedWidth > 0) {
-        clampAndApply(savedWidth);
-    } else {
-        clampAndApply(Math.round(main.getBoundingClientRect().width * 0.35));
-    }
+    const syncWidthFromLayout = ({ persist = false, relayout = false } = {}) => {
+        const savedWidth = Number(localStorage.getItem(QA_RIGHT_WIDTH_KEY));
+        const fallbackWidth = Math.round(main.getBoundingClientRect().width * 0.35);
+        const desiredWidth = Number.isFinite(savedWidth) && savedWidth > 0
+            ? savedWidth
+            : fallbackWidth;
+        const applied = clampAndApply(desiredWidth);
+        if (persist || !(Number.isFinite(savedWidth) && savedWidth > 0)) {
+            localStorage.setItem(QA_RIGHT_WIDTH_KEY, String(applied));
+        }
+        if (relayout) {
+            requestPdfRelayout();
+        }
+        return applied;
+    };
+
+    syncQaSplitterLayout = () => {
+        if (window.matchMedia('(max-width: 1200px)').matches) return;
+        syncWidthFromLayout({ persist: true, relayout: state.rightPanelTab === 'pdf' });
+    };
+
+    syncWidthFromLayout();
 
     let dragging = false;
 
@@ -3170,6 +3200,19 @@ function initQaSplitter() {
         localStorage.setItem(QA_RIGHT_WIDTH_KEY, String(applied));
         requestPdfRelayout();
         event.preventDefault();
+    });
+
+    requestAnimationFrame(() => {
+        syncQaSplitterLayout();
+    });
+
+    window.addEventListener('load', () => {
+        syncQaSplitterLayout();
+    }, { once: true });
+
+    window.addEventListener('resize', () => {
+        if (dragging || window.matchMedia('(max-width: 1200px)').matches) return;
+        syncQaSplitterLayout();
     });
 }
 
