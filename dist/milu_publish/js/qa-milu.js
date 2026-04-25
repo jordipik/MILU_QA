@@ -50,7 +50,6 @@ function queueColumnViewRefresh() {
     });
 }
 
-const QA_CHECKS_STORAGE_KEY = 'milu:qa-active-error-checks:v2';
 const MODAL_FIELD_KEYS = [
     'POS',
     'pn_final',
@@ -1652,12 +1651,7 @@ function getAllQaCheckCodes() {
 }
 
 function persistActiveQaChecks() {
-    try {
-        const payload = JSON.stringify([...state.activeQaErrorChecks]);
-        localStorage.setItem(QA_CHECKS_STORAGE_KEY, payload);
-    } catch (_) {
-        // Ignore localStorage errors.
-    }
+    // QA checks are session-only: do not persist error settings to localStorage.
 }
 
 function ensureQaChecksState() {
@@ -1667,21 +1661,11 @@ function ensureQaChecksState() {
         return;
     }
 
-    let restored = [];
-    let hasStoredValue = false;
-    try {
-        const raw = localStorage.getItem(QA_CHECKS_STORAGE_KEY);
-        hasStoredValue = raw !== null;
-        const parsed = raw ? JSON.parse(raw) : null;
-        if (Array.isArray(parsed)) restored = parsed;
-    } catch (_) {
-        restored = [];
-        hasStoredValue = false;
-    }
-
-    const restoredSet = new Set(restored.map(code => String(code || '').trim()).filter(Boolean));
-    const active = hasStoredValue
-        ? allCodes.filter(code => restoredSet.has(code))
+    const currentSet = state.activeQaErrorChecks instanceof Set
+        ? state.activeQaErrorChecks
+        : new Set();
+    const active = currentSet.size > 0
+        ? allCodes.filter(code => currentSet.has(code))
         : allCodes;
 
     state.activeQaErrorChecks = new Set(active);

@@ -20,6 +20,57 @@ const qaErrorMetaCache = {
     entries: new WeakMap()
 };
 
+function parseBooleanLike(value) {
+    if (typeof value === 'boolean') return value;
+    const normalized = String(value ?? '').trim().toLowerCase();
+    if (!normalized) return null;
+    if (['true', '1', 'si', 'yes'].includes(normalized)) return true;
+    if (['false', '0', 'no'].includes(normalized)) return false;
+    return null;
+}
+
+function toFiniteNumber(value) {
+    const n = Number(value);
+    return Number.isFinite(n) ? n : NaN;
+}
+
+function getPersistedErrorCount(row) {
+    const total = toFiniteNumber(row?.total_error);
+    if (!Number.isNaN(total)) return Math.max(0, Math.trunc(total));
+
+    const breakdownKeys = [
+        'pos_error',
+        'pn_error',
+        'designation_error',
+        'weight_error',
+        'measurement_error',
+        'norma_error',
+        'bom_error'
+    ];
+
+    let sum = 0;
+    let hasBreakdown = false;
+    breakdownKeys.forEach((key) => {
+        const value = toFiniteNumber(row?.[key]);
+        if (Number.isNaN(value)) return;
+        hasBreakdown = true;
+        sum += Math.max(0, Math.trunc(value));
+    });
+    if (hasBreakdown) return sum;
+
+    return getPersistedHasError(row) ? 1 : 0;
+}
+
+function getPersistedHasError(row) {
+    const boolFromFlag = parseBooleanLike(row?.has_error);
+    if (boolFromFlag !== null) return boolFromFlag;
+
+    const total = toFiniteNumber(row?.total_error);
+    if (!Number.isNaN(total)) return total > 0;
+
+    return false;
+}
+
 function queueColumnViewRefresh() {
     requestAnimationFrame(() => {
         applyColumnView();
@@ -276,8 +327,8 @@ export function sortData(data, key, asc) {
 
     if (key === 'has_error') {
         return [...data].sort((a, b) => {
-            const safeA = getRowErrors(a, { activeCodes: state.activeQaErrorChecks }).length;
-            const safeB = getRowErrors(b, { activeCodes: state.activeQaErrorChecks }).length;
+            const safeA = getPersistedErrorCount(a);
+            const safeB = getPersistedErrorCount(b);
             return asc ? safeA - safeB : safeB - safeA;
         });
     }
@@ -327,7 +378,7 @@ export function applyFilters(data) {
                     break;
                 }
                 case 'has_error': {
-                    rowValue = getRowErrorMeta(row).hasError ? 'true' : 'false';
+                    rowValue = getPersistedHasError(row) ? 'true' : 'false';
                     break;
                 }
                 case 'sust_hierarchie':
@@ -655,7 +706,7 @@ function renderRow(row) {
     const isHierarchySuperseded = sustHierarchyRaw.toUpperCase().includes('SUPERSEDED');
     const hasImg = (row.filename_foto || row.ruta_foto || '').toString().trim() !== '';
     const errorMeta = getRowErrorMeta(row);
-    const totalError = getRowErrors(row, { activeCodes: state.activeQaErrorChecks }).length;
+    const totalError = getPersistedErrorCount(row);
     const revisionEstado = normalizeEstadoToNew(row.qa_revision_estado);
     const revisionAccion = normalizeAccionToNew(row.qa_revision_accion);
     const revisionKey = getRevisionKey(row);
@@ -678,7 +729,7 @@ function renderRow(row) {
     else if (sustHierarchyRaw) hierarchyIcon = '<span class="status-icon other" aria-label="sust_hierarchie Other">O</span>';
     const fotoIcon = hasImg ? '<span class="status-icon yes" aria-label="Con Foto">F</span>' : '<span class="status-icon no" aria-label="Sin Foto">-</span>';
     const errorIcon = totalError > 0
-        ? `<span class="status-icon error-count" data-open-analysis="true" aria-label="Abrir analisis (${totalError} errores)">${totalError}</span>`
+        ? `<span class="status-icon error-count" data-open-analysis="true" aria-label="Errores persistidos en JSON (${totalError})">${totalError}</span>`
         : '<span class="status-icon no" aria-label="Sin errores">-</span>';
 
     const revisionEstadoOptions = getRevisionEstadoOptionsHtml(revisionEstado);
@@ -802,6 +853,8 @@ function renderErrorViewHeader(definitions) {
 function renderErrorViewRow(row, definitions) {
     const revisionKey = getRevisionKey(row);
     const errorCodes = getRowErrorSet(row);
+    const totalError = getPersistedErrorCount(row);
+    const hasPersistedError = getPersistedHasError(row);
     const selectedClass = state.selectedRevisionRowKey && state.selectedRevisionRowKey === revisionKey ? 'row-selected' : '';
     const rowSaveFailedClass = row?.__qa_revision_save_failed ? 'row-save-failed' : '';
 
@@ -817,7 +870,6 @@ function renderErrorViewRow(row, definitions) {
     const isHierarchyNew = sustHierarchyRaw === 'New';
     const isHierarchySuperseded = sustHierarchyRaw.toUpperCase().includes('SUPERSEDED');
     const hasImg = (row.filename_foto || row.ruta_foto || '').toString().trim() !== '';
-    const errorType = getRowErrorType(row, { activeCodes: state.activeQaErrorChecks });
     const revisionEstado = normalizeEstadoToNew(row.qa_revision_estado);
     const revisionAccion = normalizeAccionToNew(row.qa_revision_accion);
 
@@ -828,9 +880,7 @@ function renderErrorViewRow(row, definitions) {
     else if (isHierarchySuperseded) hierarchyIcon = '<span class="status-icon sup" aria-label="sust_hierarchie Superseded">S</span>';
     else if (sustHierarchyRaw) hierarchyIcon = '<span class="status-icon other" aria-label="sust_hierarchie Other">O</span>';
     const fotoIcon = hasImg ? '<span class="status-icon yes" aria-label="Con Foto">F</span>' : '<span class="status-icon no" aria-label="Sin Foto">-</span>';
-    const errorIcon = errorType === 'critical' ? '<span class="status-icon error" aria-label="Error crítico">✕</span>'
-        : errorType === 'warning' ? '<span class="status-icon warning" aria-label="Advertencia">⚠</span>'
-            : '';
+    const errorIcon = hasPersistedError ? `<span class="status-icon error-count" aria-label="Errores persistidos en JSON (${totalError})">${totalError}</span>` : '';
 
     const enWeb = row.EN_WEB === true || row.EN_WEB === 'true' ? '✔️' : '';
     const revisionEstadoOptions = getRevisionEstadoOptionsHtml(revisionEstado);
@@ -843,7 +893,7 @@ function renderErrorViewRow(row, definitions) {
         <td class="status-col" title="Normalizado: ${isNormalizado ? 'SI' : 'NO'}">${normalizadoIcon}</td>
         <td class="status-col" title="sust_hierarchie: ${escapeHtml(sustHierarchyLabel)}">${hierarchyIcon}</td>
         <td class="status-col" title="Foto: ${hasImg ? 'SI' : 'NO'}">${fotoIcon}</td>
-        <td class="status-col" title="Error: ${errorType ? 'SI' : 'NO'}">${errorIcon}</td>
+        <td class="status-col" title="Error persistido: ${hasPersistedError ? 'SI' : 'NO'}">${errorIcon}</td>
         <td class="status-col" title="En Web">${enWeb}</td>
         <td class="revision-cell ${estadoClass}" title="Estado de revisión">
             <select class="revision-select" data-revision-field="estado" data-revision-key="${escapeHtml(revisionKey)}">${revisionEstadoOptions}</select>
@@ -856,7 +906,7 @@ function renderErrorViewRow(row, definitions) {
         <td title="${escapeHtml(val(row, 'POS'))}">${escapeHtml(val(row, 'POS'))}</td>
         <td title="${escapeHtml(val(row, 'PART NO.'))}">${escapeHtml(val(row, 'PART NO.'))}</td>
         <td title="${escapeHtml(getRowValueForColumn(row, 'designation_final'))}">${escapeHtml(getRowValueForColumn(row, 'designation_final'))}</td>
-        <td class="error-total-cell" title="${errorCodes.size}">${errorCodes.size}</td>
+        <td class="error-total-cell" title="${totalError}">${totalError}</td>
         ${checkCells}
     </tr>`;
 }
@@ -991,7 +1041,7 @@ export function renderTable() {
     const baseFiltered = applyFilters(state.allData);
     const totalBookRowsNoFilters = getBookScopeRowsWithoutFilters();
     state.filteredData = errorsMode
-        ? baseFiltered.filter(row => getRowErrors(row, { activeCodes: state.activeQaErrorChecks }).length > 0)
+        ? baseFiltered.filter(row => getPersistedHasError(row))
         : baseFiltered;
     const total = state.filteredData.length;
 
