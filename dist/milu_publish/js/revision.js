@@ -74,6 +74,46 @@ export async function loadRevisionData() {
 
 // ─── Aplicar revisiones a las filas ──────────────────────────────────────────
 
+// ─── Mapeo de esquema antiguo al nuevo (Fase 1) ──────────────────────────────
+// ESTADO: ok/revisado/en revisión/copia/descartado/vacío -> ok/pendiente
+// ACCIÓN: mantener/revisar/actualizar/sustituir/eliminar/vacío → importar/revisar/eliminar
+
+export function normalizeEstadoToNew(oldEstado) {
+    const normalized = String(oldEstado || '').trim().toLowerCase();
+    if (normalized === 'ok' || normalized === 'revisado') return 'ok';
+    if (normalized === 'descartado') return 'ok';  // Histórico: mapeamos a ok
+    if (normalized === 'en revisión' || normalized === 'en revision') return 'pendiente';
+    if (normalized === 'copia') return 'pendiente';
+    return 'pendiente';  // default: vacío → pendiente
+}
+
+export function normalizeAccionToNew(oldAccion) {
+    const normalized = String(oldAccion || '').trim().toLowerCase();
+    if (normalized === 'importar') return 'importar';
+    if (normalized === 'mantener') return 'importar';
+    if (normalized === 'revisar') return 'revisar';
+    if (normalized === 'actualizar') return 'revisar';  // Campos pendientes → revisar
+    if (normalized === 'sustituir') return 'revisar';     // Validación incompleta → revisar
+    if (normalized === 'eliminar' || normalized === 'descartar') return 'eliminar';
+    return 'importar';  // default: vacío → importar (asumir válido)
+}
+
+export function denormalizeAccionFromNew(newAccion) {
+    // Persistimos valores canónicos nuevos; mantenemos compatibilidad de lectura en normalizeAccionToNew.
+    const normalized = String(newAccion || '').trim().toLowerCase();
+    if (normalized === 'importar' || normalized === 'mantener') return 'importar';
+    if (normalized === 'revisar') return 'revisar';
+    if (normalized === 'eliminar') return 'eliminar';
+    return 'importar';
+}
+
+export function denormalizeEstadoFromNew(newEstado) {
+    // Persistimos valores canónicos nuevos; mantenemos compatibilidad de lectura en normalizeEstadoToNew.
+    const normalized = String(newEstado || '').trim().toLowerCase();
+    if (normalized === 'ok' || normalized === 'revisado') return 'ok';
+    return 'pendiente';
+}
+
 export function applyRevisionDataToRows(rows) {
     rows.forEach(row => {
         const rev = normalizeRevisionRecord({
@@ -81,8 +121,8 @@ export function applyRevisionDataToRows(rows) {
             accion: row?.qa_revision_accion,
             updated_at: row?.qa_revision_updated_at
         });
-        row.qa_revision_estado = rev.estado || '';
-        row.qa_revision_accion = rev.accion || '';
+        row.qa_revision_estado = normalizeEstadoToNew(rev.estado);
+        row.qa_revision_accion = normalizeAccionToNew(rev.accion);
         row.qa_revision_updated_at = rev.updated_at || '';
     });
 }
@@ -105,26 +145,39 @@ function getEngineFileForRow(row) {
     return `engine_${engineModel}.json`;
 }
 
-async function persistRevisionRowToServer(row) {
+async function persistRevisionRowToServer(row, changedFields = ['qa_revision_estado', 'qa_revision_accion']) {
     const engineFile = getEngineFileForRow(row);
     const id = String(row?.ID ?? '').trim();
     if (!engineFile || !id) {
         throw new Error('No se pudo determinar archivo/ID para guardar revisión.');
     }
 
-    await saveCellToServer(engineFile, id, 'qa_revision_estado', String(row.qa_revision_estado || ''));
-    await saveCellToServer(engineFile, id, 'qa_revision_accion', String(row.qa_revision_accion || ''));
+    if (changedFields.includes('qa_revision_estado')) {
+        await saveCellToServer(engineFile, id, 'qa_revision_estado', denormalizeEstadoFromNew(row.qa_revision_estado));
+    }
+    if (changedFields.includes('qa_revision_accion')) {
+        await saveCellToServer(engineFile, id, 'qa_revision_accion', denormalizeAccionFromNew(row.qa_revision_accion));
+    }
 }
 
 export function setRowRevision(row, estado, accion) {
-    const normalizedEstado = String(estado || '').trim();
-    const normalizedAccion = String(accion || '').trim();
+    const prevEstado = normalizeEstadoToNew(row?.qa_revision_estado);
+    const prevAccion = normalizeAccionToNew(row?.qa_revision_accion);
+    const normalizedEstado = normalizeEstadoToNew(estado);
+    const normalizedAccion = normalizeAccionToNew(accion);
+
+    const changedFields = [];
+    if (normalizedEstado !== prevEstado) changedFields.push('qa_revision_estado');
+    if (normalizedAccion !== prevAccion) changedFields.push('qa_revision_accion');
+
     row.qa_revision_estado = normalizedEstado;
     row.qa_revision_accion = normalizedAccion;
+    if (changedFields.length === 0) return;
+
     row.qa_revision_updated_at = new Date().toISOString();
     row.__qa_revision_save_failed = false;
 
-    persistRevisionRowToServer(row).catch(error => {
+    persistRevisionRowToServer(row, changedFields).catch(error => {
         row.__qa_revision_save_failed = true;
         const revisionKey = getRevisionKey(row);
         if (typeof document !== 'undefined') {
@@ -145,9 +198,8 @@ export function setRowRevision(row, estado, accion) {
 export function getRevisionEstadoClass(value) {
     const v = String(value || '').trim().toLowerCase();
     if (!v) return 'rev-empty';
-    if (v === 'copia') return 'rev-estado-copia';
-    if (v === 'en revisión') return 'rev-estado-en-revision';
-    if (v === 'revisado') return 'rev-estado-revisado';
+    if (v === 'pendiente' || v === 'copia' || v === 'en revisión' || v === 'en revision') return 'rev-estado-en-revision';
+    if (v === 'ok' || v === 'revisado') return 'rev-estado-revisado';
     if (v === 'descartado') return 'rev-estado-descartado';
     return 'rev-empty';
 }
@@ -155,10 +207,8 @@ export function getRevisionEstadoClass(value) {
 export function getRevisionAccionClass(value) {
     const v = String(value || '').trim().toLowerCase();
     if (!v) return 'rev-empty';
-    if (v === 'mantener') return 'rev-accion-mantener';
-    if (v === 'actualizar') return 'rev-accion-actualizar';
-    if (v === 'revisar') return 'rev-accion-revisar';
-    if (v === 'sustituir') return 'rev-accion-sustituir';
+    if (v === 'importar' || v === 'mantener') return 'rev-accion-mantener';
+    if (v === 'revisar' || v === 'actualizar' || v === 'sustituir') return 'rev-accion-revisar';
     if (v === 'eliminar') return 'rev-accion-eliminar';
     return 'rev-empty';
 }
@@ -186,7 +236,7 @@ export function updateRevisionSelectVisual(selectEl) {
  * registros con el mismo part number que estén en estado "copia",
  * sin modificar el registro original.
  * 
- * @param {Object} selectedRow - La fila seleccionada (debe tener estado "revisado")
+ * @param {Object} selectedRow - La fila seleccionada (debe tener estado "OK")
  * @returns {Promise<Object>} Resumen de registros actualizados
  */
 export async function applyRevisionToMatchingPartNumbers(selectedRow) {
@@ -200,10 +250,10 @@ export async function applyRevisionToMatchingPartNumbers(selectedRow) {
         throw new Error('El registro seleccionado no tiene un Part Number.');
     }
 
-    // Verificar que el estado es "revisado"
-    const selectedEstado = String(selectedRow?.qa_revision_estado || '').trim().toLowerCase();
-    if (selectedEstado !== 'revisado') {
-        throw new Error('El registro seleccionado debe tener estado "Ok" (revisado) para aplicar esta operación.');
+    // Verificar que el estado es "ok"
+    const selectedEstado = normalizeEstadoToNew(selectedRow?.qa_revision_estado);
+    if (selectedEstado !== 'ok') {
+        throw new Error('El registro seleccionado debe tener estado "OK" para aplicar esta operación.');
     }
 
     // Obtener acción del registro seleccionado
@@ -230,7 +280,7 @@ export async function applyRevisionToMatchingPartNumbers(selectedRow) {
     const errors = [];
     for (const row of targetRows) {
         try {
-            setRowRevision(row, 'revisado', selectedAccion);
+            setRowRevision(row, 'ok', selectedAccion);
         } catch (error) {
             errors.push({
                 id: String(row?.ID || ''),
@@ -241,7 +291,7 @@ export async function applyRevisionToMatchingPartNumbers(selectedRow) {
 
     return {
         success: errors.length === 0,
-        message: `Se actualizaron ${targetRows.length} registros con Part Number "${selectedPn}" de "Copia" a "Ok".`,
+        message: `Se actualizaron ${targetRows.length} registros con Part Number "${selectedPn}" de "Pendiente" a "OK".`,
         updated: targetRows.length,
         targetPn: selectedPn,
         errors: errors.length > 0 ? errors : undefined

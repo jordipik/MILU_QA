@@ -1,6 +1,14 @@
 import { state } from './state.js';
 import { getEngineJsonFiles, loadEngineDataByFileName, saveCellToServer } from './data-loader.js';
-import { assignRevisionKeys, applyRevisionDataToRows } from './revision.js';
+import {
+    assignRevisionKeys,
+    applyRevisionDataToRows,
+    normalizeEstadoToNew,
+    normalizeAccionToNew,
+    denormalizeEstadoFromNew,
+    denormalizeAccionFromNew
+} from './revision.js';
+import { publishRevisionSync } from './revision-sync.js';
 import { initPdfZoomControls, loadPdfClear, loadPdfWithPage, requestPdfRelayout, setPdfReadTokens, setPdfSelection } from './pdf-viewer.js';
 import { evaluateQaChecksForField, evaluateRowQaChecks, getAllQaCheckCodes, getQaCheckLabel } from './qa-checks.js';
 
@@ -74,6 +82,14 @@ const RIGHT_PANEL_WIDTH_KEY = 'analista02:right-panel-width';
 const COMPARISON_WIDTHS_KEY = 'analista02:comparison-column-widths';
 const COMPARISON_MIN_COL_WIDTH = 30;
 const ENGINE_BOOK_FILES = getEngineJsonFiles();
+const AUTO_RECOMPUTE_TRIGGER_FIELDS = new Set([
+    'pn_final',
+    'designation_final',
+    'weight_final',
+    'measurement_final',
+    'norma',
+    'measure_final'
+]);
 
 function getStartupSelectionFromUrl() {
     const params = new URLSearchParams(window.location.search || '');
@@ -688,10 +704,13 @@ function initRecomputeModal() {
     openBtn.addEventListener('click', () => {
         syncRecomputeEngineSelect();
         setRecomputeStatus('Listo para ejecutar.', '');
+        clearRecomputePdfDetail();
         modal.hidden = false;
         const recomputeIdInput = $('recomputeIdInput');
         if (recomputeIdInput instanceof HTMLInputElement) {
+            recomputeIdInput.value = String(currentRow?.ID ?? '').trim();
             recomputeIdInput.focus();
+            recomputeIdInput.select();
         }
     });
 
@@ -778,6 +797,19 @@ function openExportRecordModalForRow(row = currentRow) {
     openEditRecordModalForRow(row);
 }
 
+function notifyPdfDataChangedFromAnalista(row = currentRow) {
+    const shellBridge = window.parent && window.parent !== window
+        ? window.parent.miluShellNotifyPdfDataChanged
+        : null;
+    if (typeof shellBridge !== 'function') return;
+
+    shellBridge({
+        engine: String(row?.engine_model ?? '').trim(),
+        id: String(row?.ID ?? '').trim(),
+        record: String(row?.pn_final ?? row?.['PART NO.'] ?? '').trim()
+    });
+}
+
 function populateEditRecordForm(row) {
     if (!row || typeof row !== 'object') return;
 
@@ -794,7 +826,10 @@ function populateEditRecordForm(row) {
     if (row?.weight_final) $('editRecordWeightFinal').value = String(row.weight_final);
     if (row?.measurement_final) $('editRecordMeasurementFinal').value = String(row.measurement_final);
     if (row?.norma) $('editRecordNorma').value = String(row.norma);
-    if (row?.qa_revision_estado) $('editRecordStatus').value = String(row.qa_revision_estado);
+    const statusSelect = $('editRecordStatus');
+    if (statusSelect instanceof HTMLSelectElement) {
+        statusSelect.value = normalizeEstadoToNew(row?.qa_revision_estado);
+    }
 }
 
 async function saveEditRecordForm() {
@@ -822,10 +857,11 @@ async function saveEditRecordForm() {
             weight_final: String($('editRecordWeightFinal')?.value || '').trim(),
             measurement_final: String($('editRecordMeasurementFinal')?.value || '').trim(),
             norma: String($('editRecordNorma')?.value || '').trim(),
-            qa_revision_estado: String($('editRecordStatus')?.value || '').trim()
+            qa_revision_estado: normalizeEstadoToNew($('editRecordStatus')?.value || 'pendiente')
         };
 
         let saved = false;
+        const changedFields = new Set();
 
         // Guardar cada campo que cambió (incluso si es vacío)
         for (const [key, value] of Object.entries(updates)) {
@@ -833,11 +869,32 @@ async function saveEditRecordForm() {
                 await saveCellToServer(engineFile, id, key, value);
                 currentRow[key] = value;
                 saved = true;
+                changedFields.add(key);
             }
         }
 
         if (saved) {
-            setEditRecordStatus('Registro guardado correctamente.', 'ok');
+            if (changedFields.has('qa_revision_estado')) {
+                publishRevisionSync({
+                    id,
+                    engineFile,
+                    estado: currentRow?.qa_revision_estado,
+                    accion: currentRow?.qa_revision_accion,
+                    source: 'analista-02'
+                });
+            }
+
+            const mustAutoRecompute = [...changedFields].some((field) => AUTO_RECOMPUTE_TRIGGER_FIELDS.has(field));
+            if (mustAutoRecompute) {
+                setEditRecordStatus('Registro guardado. Recalculando errores y lectura PDF...', '');
+                await autoRecomputeEditedRecord(engineFile, id);
+                await reloadEditedRecord(engineFile, id);
+                setEditRecordStatus('Registro guardado y recalculado correctamente.', 'ok');
+            } else {
+                setEditRecordStatus('Registro guardado correctamente.', 'ok');
+            }
+
+            notifyPdfDataChangedFromAnalista(currentRow);
 
             // Cerrar modal después de 800ms
             setTimeout(() => {
@@ -929,6 +986,80 @@ function getBackendCandidateUrls(endpointPath) {
     ].filter((url, index, arr) => url && arr.indexOf(url) === index);
 }
 
+async function postJsonToBackendCandidates(endpointPath, payload) {
+    const urls = getBackendCandidateUrls(endpointPath);
+    let lastError = '';
+
+    for (const url of urls) {
+        try {
+            const response = await fetch(url, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(payload)
+            });
+            const rawBody = await response.text();
+            let data = null;
+            try {
+                data = rawBody ? JSON.parse(rawBody) : null;
+            } catch (_parseError) {
+                data = null;
+            }
+
+            if (!response.ok) {
+                lastError = String(data?.error || `HTTP ${response.status}`).trim();
+                continue;
+            }
+
+            if (!data || data.ok !== true || !data.result || typeof data.result !== 'object') {
+                const snippet = rawBody
+                    ? rawBody.replace(/\s+/g, ' ').trim().slice(0, 140)
+                    : '';
+                lastError = snippet
+                    ? `Respuesta invalida desde ${url}: ${snippet}`
+                    : `Respuesta invalida desde ${url} (esperado JSON con { ok: true, result }).`;
+                continue;
+            }
+
+            return data.result;
+        } catch (error) {
+            lastError = String(error?.message || error || 'Error de red');
+        }
+    }
+
+    throw new Error(lastError || `No se pudo ejecutar ${endpointPath} en backend.`);
+}
+
+async function autoRecomputeEditedRecord(engineFile, id) {
+    await postJsonToBackendCandidates('recompute-qa-errors', {
+        file: engineFile,
+        id,
+        dryRun: false,
+        updateRevision: false,
+        backup: true
+    });
+
+    await postJsonToBackendCandidates('recompute-pdf-auto', {
+        file: engineFile,
+        id,
+        dryRun: false,
+        backup: true
+    });
+}
+
+async function reloadEditedRecord(engineFile, id) {
+    const selectedModel = inferEngineModelFromFileName(engineFile);
+    await loadEngineForFilter(selectedModel);
+
+    const reloaded = findRecordByPrimaryKey(id, selectedModel);
+    if (reloaded) {
+        currentRow = reloaded;
+        $('recordIdInput').value = getDisplayPn(reloaded);
+        currentProcessIndex = 0;
+        await revalidateCurrentRow();
+    }
+    updateRecordSearchSuggestions();
+}
+
 function setRecomputeStatus(message, status = '') {
     const statusEl = $('recomputeStatusText');
     if (!(statusEl instanceof HTMLElement)) return;
@@ -936,6 +1067,127 @@ function setRecomputeStatus(message, status = '') {
     if (status === 'ok') statusEl.classList.add('is-ok');
     if (status === 'error') statusEl.classList.add('is-error');
     statusEl.textContent = message;
+}
+
+function clearRecomputePdfDetail() {
+    const panel = $('recomputePdfDetailPanel');
+    const title = $('recomputePdfDetailTitle');
+    const meta = $('recomputePdfDetailMeta');
+    const body = $('recomputePdfDetailBody');
+
+    if (panel instanceof HTMLElement) panel.hidden = true;
+    if (title instanceof HTMLElement) title.textContent = 'Detalle del registro';
+    if (meta instanceof HTMLElement) meta.textContent = '';
+    if (body instanceof HTMLElement) body.innerHTML = '';
+}
+
+function renderRecomputePdfDetail(detailRow, result, pdfAutoBefore = {}) {
+    const panel = $('recomputePdfDetailPanel');
+    const title = $('recomputePdfDetailTitle');
+    const meta = $('recomputePdfDetailMeta');
+    const body = $('recomputePdfDetailBody');
+
+    if (!(panel instanceof HTMLElement)
+        || !(title instanceof HTMLElement)
+        || !(meta instanceof HTMLElement)
+        || !(body instanceof HTMLElement)) {
+        return;
+    }
+
+    if (!detailRow || !Array.isArray(detailRow.comparisons)) {
+        clearRecomputePdfDetail();
+        return;
+    }
+
+    const foundEntries = detailRow.comparisons.filter((entry) => normalizeCompareValue(entry?.pdf) !== '');
+    title.textContent = `Detalle PDF_AUTO · ID ${txt(detailRow.ID, '')}`;
+    meta.textContent = `Libro=${txt(detailRow.engine_model, '')} | Page=${txt(detailRow.source_page, '')} | PN=${txt(detailRow.pn, '')} | Anchor=${txt(detailRow.pnAnchorLine, '')}`;
+
+    const summaryCards = [
+        { label: 'Campos encontrados', value: String(foundEntries.length) },
+        { label: 'Campos evaluados', value: String(detailRow.comparisons.length) },
+        { label: 'Registros cambiados', value: String(Number(result?.changedRows) || 0) },
+        { label: 'Modo', value: result?.dryRun ? 'Simulacion' : 'Escritura' }
+    ];
+
+    const summaryHtml = `
+        <div class="recompute-result-summary">
+            ${summaryCards.map((card) => `
+                <div class="recompute-result-kpi">
+                    <div class="recompute-result-kpi-label">${escapeHtml(card.label)}</div>
+                    <div class="recompute-result-kpi-value">${escapeHtml(card.value)}</div>
+                </div>
+            `).join('')}
+        </div>
+    `;
+
+    if (foundEntries.length === 0) {
+        body.innerHTML = `${summaryHtml}<p class="recompute-result-empty">No se encontró ningun valor PDF_AUTO util para este registro.</p>`;
+        panel.hidden = false;
+        return;
+    }
+
+    const rowsHtml = foundEntries.map((entry) => {
+        const field = String(entry?.field || '').trim();
+        const previousPdfAuto = String(pdfAutoBefore?.[field] ?? '').trim();
+        const nextPdfAuto = String(entry?.pdf ?? '').trim();
+        const changed = normalizeCompareValue(previousPdfAuto) !== normalizeCompareValue(nextPdfAuto);
+        const statusLabel = result?.dryRun
+            ? (changed ? 'cambiaria' : 'sin cambio')
+            : (changed ? 'actualizado' : 'sin cambio');
+        const statusClass = changed ? 'is-updated' : 'is-same';
+        const matchClass = entry?.finalVsPdfMatch ? 'recompute-result-match' : 'recompute-result-mismatch';
+        const matchLabel = entry?.finalVsPdfMatch ? 'match final' : 'no match';
+
+        return `
+            <tr>
+                <td>${escapeHtml(txt(field, ''))}</td>
+                <td>${escapeHtml(txt(entry?.raw, ''))}</td>
+                <td>${escapeHtml(txt(entry?.gesa, ''))}</td>
+                <td>${escapeHtml(txt(entry?.final, ''))}</td>
+                <td>${escapeHtml(txt(nextPdfAuto, ''))}</td>
+                <td><span class="recompute-result-status ${statusClass}">${escapeHtml(statusLabel)}</span></td>
+                <td><span class="${matchClass}">${escapeHtml(matchLabel)}</span></td>
+            </tr>
+        `;
+    }).join('');
+
+    body.innerHTML = `${summaryHtml}
+        <div class="recompute-result-table-wrap">
+            <table class="recompute-result-table">
+                <thead>
+                    <tr>
+                        <th>Campo</th>
+                        <th>Raw</th>
+                        <th>Gesa</th>
+                        <th>Final</th>
+                        <th>PDF encontrado</th>
+                        <th>Estado</th>
+                        <th>Comparacion</th>
+                    </tr>
+                </thead>
+                <tbody>${rowsHtml}</tbody>
+            </table>
+        </div>`;
+    panel.hidden = false;
+}
+
+async function fetchRecomputePdfDetailRow(outputPath, requestUrl) {
+    const fileName = String(outputPath || '').split(/[\\/]/).pop();
+    if (!fileName) return null;
+
+    const baseOrigin = requestUrl
+        ? new URL(requestUrl, window.location.href).origin
+        : window.location.origin;
+    const detailUrl = `${baseOrigin}/${encodeURIComponent(fileName)}`;
+    const response = await fetch(detailUrl, { cache: 'no-store' });
+    if (!response.ok) {
+        throw new Error(`No se pudo cargar detalle ${fileName} (HTTP ${response.status})`);
+    }
+
+    const report = await response.json();
+    const rows = Array.isArray(report?.rows) ? report.rows : [];
+    return rows[0] || null;
 }
 
 function syncRecomputeEngineSelect() {
@@ -969,6 +1221,7 @@ async function runBackendRecompute() {
     const file = resolveEngineFileFromFilter(selectedModel);
     const id = String(recomputeIdInput.value || '').trim();
     const dryRun = recomputeDryRunInput.checked;
+    const updateRevision = window.confirm('Quieres actualizar estado y accion de revision segun errores? (sin errores: ok/importar, con errores: pendiente/revisar)');
 
     if (!file) {
         alert('No se pudo resolver el archivo engine para el recálculo.');
@@ -978,7 +1231,7 @@ async function runBackendRecompute() {
     const payload = {
         file,
         dryRun,
-        updateRevision: true,
+        updateRevision,
         backup: true
     };
     if (id) payload.id = id;
@@ -1032,7 +1285,7 @@ async function runBackendRecompute() {
                     mode: id ? 'single-id' : 'full-book',
                     id: id || null,
                     dryRun,
-                    updateRevision: true,
+                    updateRevision,
                     scanned: Number(legacyTotals.totalRows) || 0,
                     changedRows: Number(legacyTotals.changedRows) || 0,
                     okRows: Math.max((Number(legacyTotals.totalRows) || 0) - (Number(legacyTotals.rowsWithErrors) || 0), 0),
@@ -1103,6 +1356,9 @@ async function runBackendRecomputePdfAuto() {
     const file = resolveEngineFileFromFilter(selectedModel);
     const id = String(recomputeIdInput.value || '').trim();
     const dryRun = recomputeDryRunInput.checked;
+    const pdfAutoBefore = Object.fromEntries(
+        Object.keys(FIELD_TO_PDF_AUTO_KEY).map((fieldName) => [fieldName, getStoredPdfAutoValue(currentRow, fieldName)])
+    );
 
     if (!file) {
         alert('No se pudo resolver el archivo engine para recalcular PDF_AUTO.');
@@ -1119,10 +1375,12 @@ async function runBackendRecomputePdfAuto() {
     recomputeRunBtn.disabled = true;
     recomputePdfRunBtn.disabled = true;
     setRecomputeStatus('Ejecutando recalculo PDF_AUTO en backend...', '');
+    clearRecomputePdfDetail();
 
     const urls = getBackendCandidateUrls('recompute-pdf-auto');
     let lastError = '';
     let result = null;
+    let resultUrl = '';
 
     for (const url of urls) {
         try {
@@ -1155,6 +1413,7 @@ async function runBackendRecomputePdfAuto() {
             }
 
             result = data.result;
+            resultUrl = url;
             break;
         } catch (error) {
             lastError = String(error?.message || error || 'Error de red');
@@ -1177,6 +1436,20 @@ async function runBackendRecomputePdfAuto() {
         `OK PDF_AUTO ${modeLabel} | scanned=${result.scanned} changed=${result.changedRows} missingPages=${result.missingPages || 0} dryRun=${result.dryRun ? 'si' : 'no'}`,
         'ok'
     );
+
+    if (result.mode === 'single-id' && result.output) {
+        try {
+            const detailRow = await fetchRecomputePdfDetailRow(result.output, resultUrl);
+            renderRecomputePdfDetail(detailRow, result, pdfAutoBefore);
+        } catch (error) {
+            setRecomputeStatus(
+                `OK PDF_AUTO ${modeLabel} | detalle no disponible: ${String(error?.message || error)}`,
+                'ok'
+            );
+        }
+    } else {
+        clearRecomputePdfDetail();
+    }
 
     if (!result.dryRun && result.wroteFile) {
         const selectedMainModel = String(engineFilterSelect.value || '').trim();
@@ -1288,59 +1561,63 @@ function getRowErrorCount(row) {
     return row?.has_error ? 1 : 0;
 }
 
-function getRowReviewBucket(row) {
-    if (!row) return '';
-
-    const estado = String(row?.qa_revision_estado ?? '').trim().toLowerCase();
-    const action = String(row?.qa_revision_accion ?? '').trim().toLowerCase();
-
-    // Si fue revisado manualmente (qa_revision_estado === 'revisado'), 
-    // mantener el valor asignado sin recalcular
-    if (estado === 'revisado') {
-        if (action === 'mantener') return 'ok';
-        if (action === 'revisar') return 'review';
-        if (action === 'descartar') return 'ko';
-    }
-
-    // Si no fue revisado manualmente, recalcular basándose en errores
-    const errorCount = getRowErrorCount(row);
-    if (action === 'revisar' && errorCount === 0) return 'review';
-    return errorCount > 0 ? 'ko' : 'ok';
-}
-
 function renderReviewStats(rows = getQueueRows(), row = currentRow) {
     const stats = {
         total: 0,
-        ok: 0,
-        review: 0,
-        ko: 0
+        importOk: 0,
+        reviewOk: 0,
+        deleteOk: 0,
+        pending: 0
     };
     const uniqueStats = {
         total: new Set(),
-        ok: new Set(),
-        review: new Set(),
-        ko: new Set()
+        importOk: new Set(),
+        reviewOk: new Set(),
+        deleteOk: new Set(),
+        pending: new Set()
     };
 
-    (Array.isArray(rows) ? rows : []).forEach((row) => {
-        const bucket = getRowReviewBucket(row);
-        if (!bucket) return;
-        const distinctKey = getDistinctRowKey(row);
+    (Array.isArray(rows) ? rows : []).forEach((entry) => {
+        const distinctKey = getDistinctRowKey(entry);
+        const estado = normalizeEstadoToNew(entry?.qa_revision_estado);
+        const accion = normalizeAccionToNew(entry?.qa_revision_accion);
+
         stats.total += 1;
-        stats[bucket] += 1;
         uniqueStats.total.add(distinctKey);
-        uniqueStats[bucket].add(distinctKey);
+
+        if (estado !== 'ok') {
+            stats.pending += 1;
+            uniqueStats.pending.add(distinctKey);
+            return;
+        }
+
+        if (accion === 'revisar') {
+            stats.reviewOk += 1;
+            uniqueStats.reviewOk.add(distinctKey);
+            return;
+        }
+
+        if (accion === 'eliminar') {
+            stats.deleteOk += 1;
+            uniqueStats.deleteOk.add(distinctKey);
+            return;
+        }
+
+        stats.importOk += 1;
+        uniqueStats.importOk.add(distinctKey);
     });
 
     const totalEl = $('statsTotalAnalysed');
     const currentEl = $('statsCurrentIndex');
     const totalUniqueEl = $('statsUniqueTotalAnalysed');
-    const okEl = $('statsTotalOk');
-    const okUniqueEl = $('statsUniqueTotalOk');
-    const reviewEl = $('statsTotalReview');
-    const reviewUniqueEl = $('statsUniqueTotalReview');
-    const koEl = $('statsTotalKo');
-    const koUniqueEl = $('statsUniqueTotalKo');
+    const importOkEl = $('statsTotalImportOk');
+    const importOkUniqueEl = $('statsUniqueTotalImportOk');
+    const reviewOkEl = $('statsTotalReviewOk');
+    const reviewOkUniqueEl = $('statsUniqueTotalReviewOk');
+    const deleteOkEl = $('statsTotalDeleteOk');
+    const deleteOkUniqueEl = $('statsUniqueTotalDeleteOk');
+    const pendingEl = $('statsTotalPending');
+    const pendingUniqueEl = $('statsUniqueTotalPending');
 
     let currentIndex = 0;
     if (row && stats.total > 0) {
@@ -1351,39 +1628,30 @@ function renderReviewStats(rows = getQueueRows(), row = currentRow) {
     if (totalEl instanceof HTMLElement) totalEl.textContent = String(stats.total);
     if (currentEl instanceof HTMLElement) currentEl.textContent = String(currentIndex);
     if (totalUniqueEl instanceof HTMLElement) totalUniqueEl.textContent = `· ${uniqueStats.total.size} únicos`;
-    if (okEl instanceof HTMLElement) okEl.textContent = String(stats.ok);
-    if (okUniqueEl instanceof HTMLElement) okUniqueEl.textContent = `· ${uniqueStats.ok.size} únicos`;
-    if (reviewEl instanceof HTMLElement) reviewEl.textContent = String(stats.review);
-    if (reviewUniqueEl instanceof HTMLElement) reviewUniqueEl.textContent = `· ${uniqueStats.review.size} únicos`;
-    if (koEl instanceof HTMLElement) koEl.textContent = String(stats.ko);
-    if (koUniqueEl instanceof HTMLElement) koUniqueEl.textContent = `· ${uniqueStats.ko.size} únicos`;
+    if (importOkEl instanceof HTMLElement) importOkEl.textContent = String(stats.importOk);
+    if (importOkUniqueEl instanceof HTMLElement) importOkUniqueEl.textContent = `· ${uniqueStats.importOk.size} únicos`;
+    if (reviewOkEl instanceof HTMLElement) reviewOkEl.textContent = String(stats.reviewOk);
+    if (reviewOkUniqueEl instanceof HTMLElement) reviewOkUniqueEl.textContent = `· ${uniqueStats.reviewOk.size} únicos`;
+    if (deleteOkEl instanceof HTMLElement) deleteOkEl.textContent = String(stats.deleteOk);
+    if (deleteOkUniqueEl instanceof HTMLElement) deleteOkUniqueEl.textContent = `· ${uniqueStats.deleteOk.size} únicos`;
+    if (pendingEl instanceof HTMLElement) pendingEl.textContent = String(stats.pending);
+    if (pendingUniqueEl instanceof HTMLElement) pendingUniqueEl.textContent = `· ${uniqueStats.pending.size} únicos`;
 }
 
 function renderReviewStateButtons(row) {
-    const okBtn = $('statusOkBtn');
-    const reviewBtn = $('statusReviewBtn');
-    const koBtn = $('statusKoBtn');
-    if (!(okBtn instanceof HTMLButtonElement) || !(reviewBtn instanceof HTMLButtonElement) || !(koBtn instanceof HTMLButtonElement)) return;
-
-    const active = getRowReviewBucket(row);
-
-    [okBtn, reviewBtn, koBtn].forEach((button) => {
-        button.classList.remove('is-active');
-        button.setAttribute('aria-pressed', 'false');
-    });
-
-    if (active === 'ok') {
-        okBtn.classList.add('is-active');
-        okBtn.setAttribute('aria-pressed', 'true');
+    const estadoSelect = $('statusEstadoSelect');
+    const accionSelect = $('statusAccionSelect');
+    if (!(estadoSelect instanceof HTMLSelectElement) || !(accionSelect instanceof HTMLSelectElement)) {
+        return;
     }
-    if (active === 'review') {
-        reviewBtn.classList.add('is-active');
-        reviewBtn.setAttribute('aria-pressed', 'true');
-    }
-    if (active === 'ko') {
-        koBtn.classList.add('is-active');
-        koBtn.setAttribute('aria-pressed', 'true');
-    }
+
+    const estado = normalizeEstadoToNew(row?.qa_revision_estado);
+    const accion = normalizeAccionToNew(row?.qa_revision_accion);
+
+    estadoSelect.value = estado === 'ok' ? 'ok' : 'pendiente';
+    if (accion === 'revisar') accionSelect.value = 'revisar';
+    else if (accion === 'eliminar') accionSelect.value = 'eliminar';
+    else accionSelect.value = 'importar';
 }
 
 function updateRecordSearchSuggestions() {
@@ -1813,19 +2081,31 @@ async function saveCurrentFieldChanges() {
         ['qa_revision_accion', $('editRevisionAccion')?.value ?? txt(currentRow?.qa_revision_accion, '')]
     ];
 
+    const changedFields = new Set();
+
     for (const [field, value] of changes) {
         if (String(currentRow?.[field] ?? '') === String(value ?? '')) continue;
         await saveCellToServer(engineFile, id, field, value);
         currentRow[field] = value;
+        changedFields.add(field);
+    }
+
+    const mustAutoRecompute = [...changedFields].some((field) => AUTO_RECOMPUTE_TRIGGER_FIELDS.has(field));
+    if (mustAutoRecompute) {
+        await autoRecomputeEditedRecord(engineFile, id);
+        await reloadEditedRecord(engineFile, id);
+        notifyPdfDataChangedFromAnalista(currentRow);
+        return;
     }
 
     renderReviewStats();
     await revalidateCurrentRow();
+    notifyPdfDataChangedFromAnalista(currentRow);
 }
 
 async function setOutcome(kind) {
-    $('editRevisionEstado').value = kind === 'ok' ? 'revisado' : 'descartado';
-    $('editRevisionAccion').value = kind === 'ok' ? 'mantener' : 'revisar';
+    $('editRevisionEstado').value = kind === 'ok' ? 'ok' : 'pendiente';
+    $('editRevisionAccion').value = kind === 'ok' ? 'importar' : 'revisar';
     currentProcessIndex = buildProcessSteps(currentRow).length;
     await saveCurrentFieldChanges();
 }
@@ -1938,19 +2218,59 @@ async function setReviewStatus(kind) {
     }
 
     const mapping = {
-        ok: { qa_revision_estado: 'revisado', qa_revision_accion: 'mantener' },
-        review: { qa_revision_estado: 'revisado', qa_revision_accion: 'revisar' },
-        ko: { qa_revision_estado: 'revisado', qa_revision_accion: 'descartar' }
+        ok: { qa_revision_accion: 'importar' },
+        review: { qa_revision_accion: 'revisar' },
+        ko: { qa_revision_accion: 'eliminar' }
     };
     const values = mapping[kind] || mapping.review;
 
-    await saveCellToServer(engineFile, id, 'qa_revision_estado', values.qa_revision_estado);
-    await saveCellToServer(engineFile, id, 'qa_revision_accion', values.qa_revision_accion);
+    await saveCellToServer(engineFile, id, 'qa_revision_accion', denormalizeAccionFromNew(values.qa_revision_accion));
 
-    currentRow.qa_revision_estado = values.qa_revision_estado;
     currentRow.qa_revision_accion = values.qa_revision_accion;
+    publishRevisionSync({
+        id,
+        engineFile,
+        estado: currentRow?.qa_revision_estado,
+        accion: currentRow?.qa_revision_accion,
+        source: 'analista-02'
+    });
     renderReviewStateButtons(currentRow);
     renderReviewStats();
+    notifyPdfDataChangedFromAnalista(currentRow);
+}
+
+async function setManualRevisionEstado(nextEstado) {
+    if (!currentRow) {
+        alert('Primero debes cargar un registro.');
+        return;
+    }
+
+    const normalizedEstado = normalizeEstadoToNew(nextEstado);
+    const currentEstado = normalizeEstadoToNew(currentRow?.qa_revision_estado);
+    if (normalizedEstado === currentEstado) {
+        renderReviewStateButtons(currentRow);
+        return;
+    }
+
+    const engineFile = resolveEngineFile(currentRow);
+    const id = txt(currentRow?.ID, '');
+    if (!engineFile || !id) {
+        alert('No se pudo resolver archivo engine o ID para guardar estado.');
+        return;
+    }
+
+    await saveCellToServer(engineFile, id, 'qa_revision_estado', denormalizeEstadoFromNew(normalizedEstado));
+    currentRow.qa_revision_estado = normalizedEstado;
+    publishRevisionSync({
+        id,
+        engineFile,
+        estado: currentRow?.qa_revision_estado,
+        accion: currentRow?.qa_revision_accion,
+        source: 'analista-02'
+    });
+    renderReviewStateButtons(currentRow);
+    renderReviewStats();
+    notifyPdfDataChangedFromAnalista(currentRow);
 }
 
 async function runNextProcess() {
@@ -2059,6 +2379,14 @@ bindClick('statusOkBtn', () => {
     setReviewStatus('ok').catch((error) => alert(`No se pudo guardar estado OK: ${error.message}`));
 });
 
+bindClick('statusPendingBtn', () => {
+    setManualRevisionEstado('pendiente').catch((error) => alert(`No se pudo guardar estado pendiente: ${error.message}`));
+});
+
+bindClick('statusReviewedBtn', () => {
+    setManualRevisionEstado('ok').catch((error) => alert(`No se pudo guardar estado OK: ${error.message}`));
+});
+
 bindClick('statusReviewBtn', () => {
     setReviewStatus('review').catch((error) => alert(`No se pudo guardar estado revisar: ${error.message}`));
 });
@@ -2066,6 +2394,29 @@ bindClick('statusReviewBtn', () => {
 bindClick('statusKoBtn', () => {
     setReviewStatus('ko').catch((error) => alert(`No se pudo guardar estado KO: ${error.message}`));
 });
+
+const statusEstadoSelect = $('statusEstadoSelect');
+if (statusEstadoSelect instanceof HTMLSelectElement) {
+    statusEstadoSelect.addEventListener('change', () => {
+        const nextEstado = String(statusEstadoSelect.value || '').trim().toLowerCase() === 'ok' ? 'ok' : 'pendiente';
+        setManualRevisionEstado(nextEstado).catch((error) => {
+            alert(`No se pudo guardar estado: ${error.message}`);
+            renderReviewStateButtons(currentRow);
+        });
+    });
+}
+
+const statusAccionSelect = $('statusAccionSelect');
+if (statusAccionSelect instanceof HTMLSelectElement) {
+    statusAccionSelect.addEventListener('change', () => {
+        const nextAccion = String(statusAccionSelect.value || '').trim().toLowerCase();
+        const kind = nextAccion === 'eliminar' ? 'ko' : (nextAccion === 'revisar' ? 'review' : 'ok');
+        setReviewStatus(kind).catch((error) => {
+            alert(`No se pudo guardar acción: ${error.message}`);
+            renderReviewStateButtons(currentRow);
+        });
+    });
+}
 
 const recordIdInput = $('recordIdInput');
 if (recordIdInput instanceof HTMLInputElement) {

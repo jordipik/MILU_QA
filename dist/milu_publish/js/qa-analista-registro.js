@@ -1,6 +1,6 @@
 import { state } from './state.js';
 import { checkSaveBackendConnection, loadPartitionedEngineData, saveCellToServer } from './data-loader.js';
-import { assignRevisionKeys, applyRevisionDataToRows } from './revision.js';
+import { assignRevisionKeys, applyRevisionDataToRows, normalizeEstadoToNew } from './revision.js';
 import { initPdfZoomControls, loadPdfClear, loadPdfWithPage, setPdfSelection } from './pdf-viewer.js';
 import { evaluateRowQaChecks, getAllQaCheckCodes, getQaCheckDefinitions, getQaCheckLabel } from './qa-checks.js';
 
@@ -535,9 +535,9 @@ function syncOutcomeButtons(row) {
     okBtn.classList.remove('is-selected');
     koBtn.classList.remove('is-selected');
 
-    const estado = String(row?.qa_revision_estado ?? '').trim().toLowerCase();
-    if (estado === 'revisado') okBtn.classList.add('is-selected');
-    if (estado === 'descartado') koBtn.classList.add('is-selected');
+    const estado = normalizeEstadoToNew(row?.qa_revision_estado);
+    if (estado === 'ok') okBtn.classList.add('is-selected');
+    if (estado === 'pendiente') koBtn.classList.add('is-selected');
 }
 
 function fillEditForm(row) {
@@ -545,7 +545,7 @@ function fillEditForm(row) {
     $('editDesignationFinal').value = txt(row?.designation_final, '');
     $('editWeightFinal').value = txt(row?.weight_final, '');
     $('editMeasurementFinal').value = txt(row?.measurement_final, '');
-    $('editRevisionEstado').value = txt(row?.qa_revision_estado, '');
+    $('editRevisionEstado').value = normalizeEstadoToNew(row?.qa_revision_estado);
     $('editRevisionAccion').value = txt(row?.qa_revision_accion, '');
 }
 
@@ -637,7 +637,7 @@ async function setRevisionOutcome(kind) {
         return;
     }
 
-    $('editRevisionEstado').value = kind === 'ok' ? 'revisado' : 'descartado';
+    $('editRevisionEstado').value = kind === 'ok' ? 'ok' : 'pendiente';
     $('editRevisionAccion').value = kind === 'ok' ? 'mantener' : 'revisar';
     await saveCurrentFieldChanges();
     upsertReviewedHistory(currentRow);

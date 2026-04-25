@@ -34,16 +34,6 @@ function toFiniteNumber(value) {
     return Number.isFinite(n) ? n : NaN;
 }
 
-function getPersistedHasError(row) {
-    const boolFromFlag = parseBooleanLike(row?.has_error);
-    if (boolFromFlag !== null) return boolFromFlag;
-
-    const total = toFiniteNumber(row?.total_error);
-    if (!Number.isNaN(total)) return total > 0;
-
-    return false;
-}
-
 function getPersistedErrorCount(row) {
     const total = toFiniteNumber(row?.total_error);
     if (!Number.isNaN(total)) return Math.max(0, Math.trunc(total));
@@ -69,6 +59,16 @@ function getPersistedErrorCount(row) {
     if (hasBreakdown) return sum;
 
     return getPersistedHasError(row) ? 1 : 0;
+}
+
+function getPersistedHasError(row) {
+    const boolFromFlag = parseBooleanLike(row?.has_error);
+    if (boolFromFlag !== null) return boolFromFlag;
+
+    const total = toFiniteNumber(row?.total_error);
+    if (!Number.isNaN(total)) return total > 0;
+
+    return false;
 }
 
 function queueColumnViewRefresh() {
@@ -391,12 +391,12 @@ export function applyFilters(data) {
                 case 'qa_revision_estado':
                     rowValue = filterValue === 'empty'
                         ? (String(row.qa_revision_estado || '').trim() === '' ? 'empty' : 'nonempty')
-                        : String(row.qa_revision_estado || '').toLowerCase();
+                        : normalizeEstadoToNew(row.qa_revision_estado);
                     break;
                 case 'qa_revision_accion':
                     rowValue = filterValue === 'empty'
                         ? (String(row.qa_revision_accion || '').trim() === '' ? 'empty' : 'nonempty')
-                        : String(row.qa_revision_accion || '').toLowerCase();
+                        : normalizeAccionToNew(row.qa_revision_accion);
                     break;
                 case 'in_new':
                     rowValue = state.newPnSet.has(row['PART NO.'] || row.pn) ? 'true' : 'false';
@@ -682,21 +682,15 @@ function editableAttr(columnKey) {
 
 function getRevisionEstadoOptionsHtml(revisionEstado) {
     return [
-        { value: '', label: '—' },
-        { value: 'copia', label: 'Copia' },
-        { value: 'en revisión', label: 'Revisar' },
-        { value: 'revisado', label: 'Ok' },
-        { value: 'descartado', label: 'Eliminar' }
+        { value: 'pendiente', label: 'Pendiente' },
+        { value: 'ok', label: 'OK' }
     ].map(opt => `<option value="${escapeHtml(opt.value)}" ${revisionEstado === opt.value ? 'selected' : ''}>${escapeHtml(opt.label)}</option>`).join('');
 }
 
 function getRevisionAccionOptionsHtml(revisionAccion) {
     return [
-        { value: '', label: '—' },
-        { value: 'mantener', label: 'Import' },
-        { value: 'actualizar', label: 'Actualizar' },
+        { value: 'importar', label: 'Importar' },
         { value: 'revisar', label: 'Revisar' },
-        { value: 'sustituir', label: 'Sustituir' },
         { value: 'eliminar', label: 'Eliminar' }
     ].map(opt => `<option value="${escapeHtml(opt.value)}" ${revisionAccion === opt.value ? 'selected' : ''}>${escapeHtml(opt.label)}</option>`).join('');
 }
@@ -713,8 +707,8 @@ function renderRow(row) {
     const hasImg = (row.filename_foto || row.ruta_foto || '').toString().trim() !== '';
     const errorMeta = getRowErrorMeta(row);
     const totalError = getPersistedErrorCount(row);
-    const revisionEstado = String(row.qa_revision_estado || '').trim();
-    const revisionAccion = String(row.qa_revision_accion || '').trim();
+    const revisionEstado = normalizeEstadoToNew(row.qa_revision_estado);
+    const revisionAccion = normalizeAccionToNew(row.qa_revision_accion);
     const revisionKey = getRevisionKey(row);
     const errorFields = errorMeta.errorFields;
     const comparisonMeta = getRowComparisonMeta(row);
@@ -876,8 +870,8 @@ function renderErrorViewRow(row, definitions) {
     const isHierarchyNew = sustHierarchyRaw === 'New';
     const isHierarchySuperseded = sustHierarchyRaw.toUpperCase().includes('SUPERSEDED');
     const hasImg = (row.filename_foto || row.ruta_foto || '').toString().trim() !== '';
-    const revisionEstado = String(row.qa_revision_estado || '').trim();
-    const revisionAccion = String(row.qa_revision_accion || '').trim();
+    const revisionEstado = normalizeEstadoToNew(row.qa_revision_estado);
+    const revisionAccion = normalizeAccionToNew(row.qa_revision_accion);
 
     const gesaIcon = isGesa ? '<span class="status-icon yes" aria-label="GESA SI">G</span>' : '<span class="status-icon no" aria-label="GESA NO">-</span>';
     const normalizadoIcon = isNormalizado ? '<span class="status-icon yes" aria-label="Normalizado SI">N</span>' : '<span class="status-icon no" aria-label="Normalizado NO">-</span>';
@@ -1092,7 +1086,7 @@ export function renderTable() {
 
         tbody.innerHTML = pageData.length
             ? pageData.map(renderRow).join('')
-            : `<tr><td colspan="${getCurrentColumnCount()}" class="error">Aun no hay registros revisados en esta sesion.</td></tr>`;
+            : `<tr><td colspan="${getCurrentColumnCount()}" class="error">Aun no hay registros en estado OK en esta sesion.</td></tr>`;
         errorViewTbody.innerHTML = '';
     }
 

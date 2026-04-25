@@ -192,6 +192,23 @@
 
         window.miluShellOpenPdfRecordModal = openPdfRecordModal;
 
+        function notifyPdfDataChanged(payload = {}) {
+            const targetFrame = getFrameForView('pdf');
+            if (!(targetFrame instanceof HTMLIFrameElement)) return false;
+
+            const bridge = targetFrame.contentWindow?.miluRefreshPdfData;
+            if (typeof bridge !== 'function') return false;
+
+            try {
+                bridge(payload);
+                return true;
+            } catch (_) {
+                return false;
+            }
+        }
+
+        window.miluShellNotifyPdfDataChanged = notifyPdfDataChanged;
+
         window.addEventListener('popstate', () => {
             mountView(getViewFromUrl(), { updateHistory: false });
         });

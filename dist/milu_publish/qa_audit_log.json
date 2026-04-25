@@ -1,0 +1,92 @@
+[
+  {
+    "id": "1777080165306-7uoj7mq0",
+    "timestamp": "2026-04-25T01:22:45.306Z",
+    "kind": "",
+    "type": "",
+    "module": "",
+    "action": "test_audit",
+    "description": "",
+    "target": {},
+    "changeId": "",
+    "data": {}
+  },
+  {
+    "id": "1777080241233-nxljq7oy",
+    "timestamp": "2026-04-25T01:24:01.233Z",
+    "kind": "change-applied",
+    "type": "qa-row-patch",
+    "module": "qa_milu",
+    "action": "inline-estado",
+    "description": "Cambio rapido estado ID 1100001",
+    "target": {
+      "revisionKey": "idx=1"
+    },
+    "changeId": "1777080241001-u1nbskn5",
+    "data": {
+      "target": {
+        "revisionKey": "idx=1",
+        "engineFile": "engine_12V4000M40A.json",
+        "id": "1100001"
+      },
+      "changes": {
+        "qa_revision_estado": {
+          "before": "pendiente",
+          "after": "ok"
+        }
+      }
+    }
+  },
+  {
+    "id": "1777080273958-49id1q87",
+    "timestamp": "2026-04-25T01:24:33.958Z",
+    "kind": "undo",
+    "type": "qa-row-patch",
+    "module": "qa_milu",
+    "action": "inline-estado",
+    "description": "Cambio rapido estado ID 1100001",
+    "target": {
+      "revisionKey": "idx=1"
+    },
+    "changeId": "1777080241001-u1nbskn5",
+    "data": {
+      "target": {
+        "revisionKey": "idx=1",
+        "engineFile": "engine_12V4000M40A.json",
+        "id": "1100001"
+      },
+      "changes": {
+        "qa_revision_estado": {
+          "before": "pendiente",
+          "after": "ok"
+        }
+      }
+    }
+  },
+  {
+    "id": "1777084056638-d1j7u40b",
+    "timestamp": "2026-04-25T02:27:36.638Z",
+    "kind": "change-applied",
+    "type": "qa-row-patch",
+    "module": "qa_milu",
+    "action": "save-record-modal",
+    "description": "Guardar ficha modal ID 1100658",
+    "target": {
+      "revisionKey": "idx=37"
+    },
+    "changeId": "1777084056309-o9zb1ls0",
+    "data": {
+      "target": {
+        "revisionKey": "idx=37",
+        "engineFile": "engine_12V4000M40A.json",
+        "id": "1100658"
+      },
+      "changes": {
+        "POS": {
+          "before": "",
+          "after": "40"
+        }
+      }
+    }
+  }
+]

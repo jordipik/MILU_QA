@@ -9,10 +9,15 @@ import { checkSaveBackendConnection, fetchJsonSafe, loadPartitionedEngineData, s
 import {
     applyRevisionDataToRows,
     assignRevisionKeys,
+    denormalizeAccionFromNew,
+    denormalizeEstadoFromNew,
     getRevisionKey,
-    setRowRevision,
+    normalizeAccionToNew,
+    normalizeEstadoToNew,
     updateRevisionSelectVisual
 } from './revision.js';
+import { subscribeRevisionSync } from './revision-sync.js';
+import { createChangeControl } from './change-control.js';
 import {
     applyColumnView,
     initColumnResize,
@@ -114,6 +119,237 @@ const modalUiState = {
 let activeMatchesModalRevisionKey = '';
 let pendingShellRecordModalRequest = null;
 
+const QA_ROW_PATCH_CHANGE_TYPE = 'qa-row-patch';
+const QA_BULK_ROW_PATCH_CHANGE_TYPE = 'qa-bulk-row-patch';
+
+function getAuditBackendCandidateUrls() {
+    const currentOrigin = window.location.origin && window.location.origin !== 'null'
+        ? window.location.origin
+        : '';
+    const currentHostname = String(window.location.hostname || '').trim();
+    const sameDirectoryCandidate = new URL('audit-log', new URL('.', window.location.href)).href;
+    const localPortCandidate = currentHostname ? `http://${currentHostname}:3000/audit-log` : '';
+    const sameOriginCandidate = currentOrigin ? `${currentOrigin}/audit-log` : '/audit-log';
+    return [
+        localPortCandidate,
+        'http://localhost:3000/audit-log',
+        sameDirectoryCandidate,
+        sameOriginCandidate
+    ].filter((url, index, arr) => url && arr.indexOf(url) === index);
+}
+
+async function persistAuditEntryToServer(entry) {
+    const urls = getAuditBackendCandidateUrls();
+    for (const url of urls) {
+        try {
+            const response = await fetch(url, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(entry)
+            });
+            if (response.ok) return true;
+        } catch (_) {
+            // Continue with next candidate.
+        }
+    }
+    return false;
+}
+
+const changeControl = createChangeControl({
+    namespace: 'milu:qa',
+    eventPrefix: 'milu:change-control',
+    maxUndoEntries: 200,
+    maxAuditEntries: 2000,
+    onAuditEntry: persistAuditEntryToServer
+});
+
+function updateUndoButtonState() {
+    const undoBtn = $('qaUndoLastChangeBtn');
+    if (!(undoBtn instanceof HTMLButtonElement)) return;
+    const historyState = changeControl.getUndoState();
+    undoBtn.disabled = !historyState.canUndo;
+    undoBtn.textContent = historyState.undoCount > 0
+        ? `Deshacer (${historyState.undoCount})`
+        : 'Deshacer';
+}
+
+function getPersistedValueForField(fieldKey, value) {
+    if (fieldKey === 'qa_revision_estado') return denormalizeEstadoFromNew(value);
+    if (fieldKey === 'qa_revision_accion') return denormalizeAccionFromNew(value);
+    return value;
+}
+
+async function applySinglePatchTarget(target, changes, direction) {
+    const revisionKey = String(target?.revisionKey || '').trim();
+    const engineFile = String(target?.engineFile || '').trim();
+    const rowId = String(target?.id || '').trim();
+    if (!revisionKey || !engineFile || !rowId) {
+        throw new Error('Patch invalido: falta revisionKey/engineFile/id.');
+    }
+
+    const row = getRowByRevisionKey(revisionKey);
+    if (!row) {
+        throw new Error(`No se encontro la fila para revisionKey ${revisionKey}`);
+    }
+
+    const useBefore = direction === 'before';
+    const touchedFields = [];
+    for (const [fieldKey, change] of Object.entries(changes || {})) {
+        const nextValue = useBefore ? change?.before : change?.after;
+        const prevValue = String(row?.[fieldKey] ?? '');
+        const nextAsString = String(nextValue ?? '');
+        if (prevValue === nextAsString) continue;
+
+        await saveCellToServer(engineFile, rowId, fieldKey, getPersistedValueForField(fieldKey, nextValue));
+        row[fieldKey] = nextValue;
+        touchedFields.push(fieldKey);
+    }
+
+    if (!touchedFields.length) return;
+
+    if (touchedFields.includes('qa_revision_estado') || touchedFields.includes('qa_revision_accion')) {
+        row.qa_revision_updated_at = new Date().toISOString();
+    }
+
+    if (touchedFields.some((fieldKey) => MODAL_FIELD_KEYS.includes(fieldKey))) {
+        invalidateRowActiveQaErrors(row);
+    }
+
+    state.selectedRevisionRowKey = revisionKey;
+    const updatedVisibleRow = refreshVisibleRowByRevisionKey(revisionKey);
+    if (!updatedVisibleRow) renderTable();
+    renderPagination();
+
+    const modalForm = $('qaRecordModalForm');
+    if (modalForm instanceof HTMLFormElement && String(modalForm.dataset.revisionKey || '') === revisionKey) {
+        fillRecordModal(row, revisionKey);
+    }
+    fillSideRecordForm(row, revisionKey);
+}
+
+async function applyBulkPatchTargets(targets, direction) {
+    const appliedTargets = [];
+    try {
+        for (const targetPatch of targets) {
+            await applySinglePatchTarget(targetPatch.target, targetPatch.changes, direction);
+            appliedTargets.push(targetPatch);
+        }
+    } catch (error) {
+        const rollbackDirection = direction === 'before' ? 'after' : 'before';
+        for (let index = appliedTargets.length - 1; index >= 0; index -= 1) {
+            const targetPatch = appliedTargets[index];
+            try {
+                await applySinglePatchTarget(targetPatch.target, targetPatch.changes, rollbackDirection);
+            } catch (_) {
+                // Keep original error and stop best-effort rollback failures from hiding it.
+            }
+        }
+        throw error;
+    }
+}
+
+function registerChangeControlTypes() {
+    changeControl.registerType(QA_ROW_PATCH_CHANGE_TYPE, {
+        apply: async (entry) => {
+            const target = entry?.data?.target;
+            const changes = entry?.data?.changes || {};
+            await applySinglePatchTarget(target, changes, 'after');
+        },
+        revert: async (entry) => {
+            const target = entry?.data?.target;
+            const changes = entry?.data?.changes || {};
+            await applySinglePatchTarget(target, changes, 'before');
+        }
+    });
+
+    changeControl.registerType(QA_BULK_ROW_PATCH_CHANGE_TYPE, {
+        apply: async (entry) => {
+            const targets = Array.isArray(entry?.data?.targets) ? entry.data.targets : [];
+            await applyBulkPatchTargets(targets, 'after');
+        },
+        revert: async (entry) => {
+            const targets = Array.isArray(entry?.data?.targets) ? entry.data.targets : [];
+            await applyBulkPatchTargets(targets, 'before');
+        }
+    });
+}
+
+function buildPatchTargetForRow(row) {
+    const revisionKey = String(getRevisionKey(row) || '').trim();
+    const engineFile = String(getEngineJsonForRow(row) || '').trim();
+    const id = String(row?.ID ?? '').trim();
+    if (!revisionKey || !engineFile || !id) {
+        throw new Error('No se pudo construir patch target para la fila.');
+    }
+    return { revisionKey, engineFile, id };
+}
+
+function collectRowChanges(row, nextValues, nextEstado, nextAccion) {
+    const changes = {};
+
+    MODAL_FIELD_KEYS.forEach((fieldKey) => {
+        const beforeValue = String(row?.[fieldKey] ?? '');
+        const afterValue = String(nextValues?.[fieldKey] ?? '');
+        if (beforeValue === afterValue) return;
+        changes[fieldKey] = {
+            before: row?.[fieldKey] ?? '',
+            after: nextValues?.[fieldKey] ?? ''
+        };
+    });
+
+    const normalizedEstadoBefore = normalizeEstadoToNew(row?.qa_revision_estado);
+    const normalizedEstadoAfter = normalizeEstadoToNew(nextEstado);
+    if (normalizedEstadoBefore !== normalizedEstadoAfter) {
+        changes.qa_revision_estado = {
+            before: normalizedEstadoBefore,
+            after: normalizedEstadoAfter
+        };
+    }
+
+    const normalizedAccionBefore = normalizeAccionToNew(row?.qa_revision_accion);
+    const normalizedAccionAfter = normalizeAccionToNew(nextAccion);
+    if (normalizedAccionBefore !== normalizedAccionAfter) {
+        changes.qa_revision_accion = {
+            before: normalizedAccionBefore,
+            after: normalizedAccionAfter
+        };
+    }
+
+    return changes;
+}
+
+async function undoLastQaChange() {
+    try {
+        const entry = await changeControl.undoLast();
+        if (!entry) {
+            const status = $('qaSideStatus');
+            if (status) status.textContent = 'No hay cambios para deshacer.';
+            return;
+        }
+        const status = $('qaSideStatus');
+        if (status) status.textContent = `Deshecho: ${entry.description || entry.action || entry.type}`;
+    } catch (error) {
+        console.error('No se pudo deshacer el ultimo cambio:', error);
+        alert(`No se pudo deshacer el ultimo cambio: ${error.message}`);
+    } finally {
+        updateUndoButtonState();
+    }
+}
+
+async function redoLastQaChange() {
+    try {
+        const entry = await changeControl.redoLast();
+        if (!entry) return;
+        const status = $('qaSideStatus');
+        if (status) status.textContent = `Rehecho: ${entry.description || entry.action || entry.type}`;
+    } catch (error) {
+        console.error('No se pudo rehacer el ultimo cambio:', error);
+        alert(`No se pudo rehacer el ultimo cambio: ${error.message}`);
+    } finally {
+        updateUndoButtonState();
+    }
+}
+
 function setRightPanelTab(tabName) {
     const validTabs = new Set(['pdf', 'record', 'export', 'schemas']);
     const resolvedTab = validTabs.has(tabName) ? tabName : 'pdf';
@@ -176,6 +412,11 @@ function isRecordModalOpen() {
 
 function isMatchesModalOpen() {
     const modal = $('qaMatchesModal');
+    return !!modal && !modal.hasAttribute('hidden');
+}
+
+function isExportModalOpen() {
+    const modal = $('qaExportModal');
     return !!modal && !modal.hasAttribute('hidden');
 }
 
@@ -340,6 +581,73 @@ function openRecordModalFromShell(request = {}) {
 
 window.miluOpenPdfRecordModal = (request = {}) => openRecordModalFromShell(request);
 
+async function refreshDataFromShellUpdate(request = {}) {
+    if (!Array.isArray(state.allData) || state.allData.length === 0) return false;
+
+    const selectedRevisionKeyBefore = String(state.selectedRevisionRowKey || '').trim();
+    const currentPageBefore = Number(state.currentPage || 1);
+    const recordModal = $('qaRecordModalForm');
+    const openModalRevisionKey = recordModal instanceof HTMLFormElement
+        ? String(recordModal.dataset.revisionKey || '').trim()
+        : '';
+
+    const requestedId = String(request?.id || '').trim().toLowerCase();
+    const requestedBook = String(request?.engine || request?.book || '').trim().toLowerCase();
+
+    const freshData = await loadPartitionedEngineData();
+    if (!Array.isArray(freshData)) return false;
+
+    state.allData = freshData;
+    assignRevisionKeys(state.allData);
+    applyRevisionDataToRows(state.allData);
+
+    state.currentPage = currentPageBefore;
+    renderTable();
+    renderPagination();
+
+    let targetRevisionKey = '';
+    if (requestedId) {
+        const requestedRow = state.allData.find((row) => {
+            const rowId = String(row?.ID ?? '').trim().toLowerCase();
+            const rowBook = String(row?.engine_model ?? '').trim().toLowerCase();
+            if (requestedBook && rowBook !== requestedBook) return false;
+            return rowId === requestedId;
+        });
+        targetRevisionKey = requestedRow ? getRevisionKey(requestedRow) : '';
+    }
+
+    if (!targetRevisionKey && selectedRevisionKeyBefore) {
+        const selectedRow = getRowByRevisionKey(selectedRevisionKeyBefore);
+        if (selectedRow) targetRevisionKey = selectedRevisionKeyBefore;
+    }
+
+    if (targetRevisionKey) {
+        state.selectedRevisionRowKey = targetRevisionKey;
+        refreshSelectedRowVisual();
+        document.dispatchEvent(new CustomEvent('qa:selected-row-changed', {
+            detail: { revisionKey: targetRevisionKey }
+        }));
+    } else {
+        syncSideRecordFormWithSelection();
+    }
+
+    if (openModalRevisionKey) {
+        const modalRow = getRowByRevisionKey(openModalRevisionKey);
+        if (modalRow) fillRecordModal(modalRow, openModalRevisionKey);
+    }
+
+    return true;
+}
+
+window.miluRefreshPdfData = async (request = {}) => {
+    try {
+        return await refreshDataFromShellUpdate(request);
+    } catch (error) {
+        console.warn('No se pudo refrescar QA PDF tras actualización externa:', error);
+        return false;
+    }
+};
+
 function normModalMatch(value) {
     return String(value ?? '').trim().toLowerCase();
 }
@@ -414,9 +722,17 @@ function getMiluNewRowForPn(row) {
     return state.miluNewData.find(item => normModalMatch(item?.pn ?? '') === normalizedPn) || null;
 }
 
+function getArticleHierarchyKind(row) {
+    const hierarchyRaw = String(row?.sust_hierarchie ?? '').trim().toUpperCase();
+    const hierarchy = hierarchyRaw.replace(/\s+/g, ' ').replace(/[._-]/g, ' ');
+    if (hierarchy === 'SUPERSEDED') return 'superseded';
+    if (hierarchy === 'NEW') return 'new';
+    // Default to New to ensure uncategorized rows are still shown.
+    return 'new';
+}
+
 function isSupersededArticle(row) {
-    const hierarchy = String(row?.sust_hierarchie ?? '').trim().toUpperCase();
-    return hierarchy.includes('SUPERSEDED');
+    return getArticleHierarchyKind(row) === 'superseded';
 }
 
 function uniqueSortedValues(values, compareAsNumeric = false) {
@@ -649,11 +965,14 @@ function renderRecordModalExport(row, options = {}) {
     const {
         headRowId = 'qaModalExportHeadRow',
         bodyId = 'qaModalExportBody',
-        countId = 'qaModalExportCount'
+        countId = 'qaModalExportCount',
+        onlyDiffToggleId = 'qaModalExportOnlyDiffToggle'
     } = options;
     const headRow = $(headRowId);
     const body = $(bodyId);
     const count = $(countId);
+    const onlyDiffToggle = $(onlyDiffToggleId);
+    const onlyMismatchFields = onlyDiffToggle instanceof HTMLInputElement && onlyDiffToggle.checked;
     if (!(headRow instanceof HTMLElement) || !(body instanceof HTMLElement)) return;
 
     const syntheticRow = buildSyntheticNewExportRow(row);
@@ -688,7 +1007,21 @@ function renderRecordModalExport(row, options = {}) {
     }
     headRow.innerHTML = ['<th>Campo</th>', ...sourceLabels.map(label => `<th>${escapeHtml(label)}</th>`)].join('');
 
-    body.innerHTML = fields.map((field) => {
+    const visibleFields = onlyMismatchFields
+        ? fields.filter(field => diffColumns.has(field))
+        : fields;
+
+    if (!visibleFields.length) {
+        body.innerHTML = `<tr><td colspan="${sourceLabels.length + 1}">No hay campos no coincidentes para este registro.</td></tr>`;
+        if (count) {
+            const comparedLabel = miluNewRow ? '2 registros comparados (v506 + synthetic)' : '1 registro (solo synthetic; sin match en v506)';
+            count.textContent = `${comparedLabel} · ${sourceMatches.length} aparicion${sourceMatches.length === 1 ? '' : 'es'} · 0 campos no coincidentes`;
+        }
+        setModalSectionVisibility(body, true);
+        return;
+    }
+
+    body.innerHTML = visibleFields.map((field) => {
         const valueCells = matches.map((item, rowIndex) => {
             const rawValue = formatModalExportValue(item?.[field]);
             const displayValue = rawValue || '-';
@@ -707,9 +1040,11 @@ function renderRecordModalExport(row, options = {}) {
     }).join('');
 
     if (count) {
-        const comparedRows = matches.length;
         const comparedLabel = miluNewRow ? '2 registros comparados (v506 + synthetic)' : '1 registro (solo synthetic; sin match en v506)';
-        count.textContent = `${comparedLabel} · ${sourceMatches.length} aparicion${sourceMatches.length === 1 ? '' : 'es'}`;
+        const fieldLabel = onlyMismatchFields
+            ? `${visibleFields.length} campo${visibleFields.length === 1 ? '' : 's'} no coincidente${visibleFields.length === 1 ? '' : 's'}`
+            : `${fields.length} campos`;
+        count.textContent = `${comparedLabel} · ${sourceMatches.length} aparicion${sourceMatches.length === 1 ? '' : 'es'} · ${fieldLabel}`;
     }
     setModalSectionVisibility(body, true);
 }
@@ -803,7 +1138,7 @@ function renderRecordModalMatches(row, currentRevisionKey, options = {}) {
         const isCurrent = item.revisionKey === currentRevisionKey;
         const revisionKeyAttr = escapeHtml(String(item.revisionKey || ''));
         const normalizedEstado = normModalMatch(item.estado);
-        const isOkStatus = normalizedEstado === 'revisado' || normalizedEstado === 'ok';
+        const isOkStatus = normalizedEstado === 'ok';
         const sideStatusClass = isOkStatus ? 'ok' : 'ko';
         const sideStatusLabel = isOkStatus ? 'OK' : 'KO';
         return `<tr class="${isCurrent ? 'qa-modal-related-current' : ''}" data-revision-key="${revisionKeyAttr}" title="Doble click para ir al registro en tabla principal">`
@@ -950,8 +1285,8 @@ function fillRecordModal(row, revisionKey) {
     $('qaModalHasImg').value = String(row?.has_img ?? '');
     $('qaModalEnWeb').value = String(row?.EN_WEB ?? '');
 
-    $('qaModalRevisionEstado').value = String(row?.qa_revision_estado || '');
-    $('qaModalRevisionAccion').value = String(row?.qa_revision_accion || '');
+    $('qaModalRevisionEstado').value = normalizeEstadoToNew(row?.qa_revision_estado);
+    $('qaModalRevisionAccion').value = normalizeAccionToNew(row?.qa_revision_accion);
     $('qaModalPnFinal').value = String(row?.pn_final ?? '');
     $('qaModalDesignationFinal').value = String(row?.designation_final ?? '');
     $('qaModalModelType').value = String(row?.['MODEL/TYPE'] ?? '');
@@ -986,8 +1321,8 @@ function fillSideRecordForm(row, revisionKey) {
     $('qaSideHasImg').value = String(row?.has_img ?? '');
     $('qaSideEnWeb').value = String(row?.EN_WEB ?? '');
 
-    $('qaSideRevisionEstado').value = String(row?.qa_revision_estado || '');
-    $('qaSideRevisionAccion').value = String(row?.qa_revision_accion || '');
+    $('qaSideRevisionEstado').value = normalizeEstadoToNew(row?.qa_revision_estado);
+    $('qaSideRevisionAccion').value = normalizeAccionToNew(row?.qa_revision_accion);
     $('qaSidePnFinal').value = String(row?.pn_final ?? '');
     $('qaSideDesignationFinal').value = String(row?.designation_final ?? '');
     $('qaSideModelType').value = String(row?.['MODEL/TYPE'] ?? '');
@@ -1020,13 +1355,18 @@ function fillSideRecordForm(row, revisionKey) {
     renderRecordModalExport(row, {
         headRowId: 'qaSideExportHeadRow',
         bodyId: 'qaSideExportBody',
-        countId: 'qaSideExportCount'
+        countId: 'qaSideExportCount',
+        onlyDiffToggleId: 'qaSideExportOnlyDiffToggle'
     });
     renderRecordModalSuperseded(row, {
         headRowId: 'qaSideSupersededHeadRow',
         bodyId: 'qaSideSupersededBody',
         countId: 'qaSideSupersededCount'
     });
+
+    const superseded = isSupersededArticle(row);
+    $('qaSideNewSection')?.toggleAttribute('hidden', superseded);
+    $('qaSideSupersededSection')?.toggleAttribute('hidden', !superseded);
 
     const status = $('qaSideStatus');
     if (status) status.textContent = '';
@@ -1063,6 +1403,8 @@ function clearSideRecordForm() {
     form.querySelectorAll('input').forEach(input => { input.value = ''; });
     form.querySelectorAll('select').forEach(select => {
         if (select.id === 'qaSideMatchesBookFilter') select.value = '__current__';
+        else if (select.id === 'qaSideRevisionEstado') select.value = 'pendiente';
+        else if (select.id === 'qaSideRevisionAccion') select.value = 'importar';
         else select.value = '';
     });
 
@@ -1072,6 +1414,8 @@ function clearSideRecordForm() {
     if (exportLabel) exportLabel.textContent = 'Sin selección';
 
     $('qaSideMatchesBody').innerHTML = '<tr><td colspan="5">Sin seleccion</td></tr>';
+    const sideOnlyDiffToggle = $('qaSideExportOnlyDiffToggle');
+    if (sideOnlyDiffToggle instanceof HTMLInputElement) sideOnlyDiffToggle.checked = false;
     $('qaSideExportHeadRow').innerHTML = '<th>Sin datos</th>';
     $('qaSideExportBody').innerHTML = '<tr><td>Sin seleccion.</td></tr>';
     $('qaSideSupersededHeadRow').innerHTML = '<th>Sin datos</th>';
@@ -1094,6 +1438,63 @@ function syncSideRecordFormWithSelection() {
     if (isMatchesModalOpen()) {
         activeMatchesModalRevisionKey = revisionKey;
         renderMatchesLargeModal(revisionKey);
+    }
+}
+
+function applyIncomingRevisionSync(message) {
+    const id = String(message?.id || '').trim();
+    if (!id || !Array.isArray(state.allData) || state.allData.length === 0) return;
+
+    const engineFile = String(message?.engineFile || '').trim().toLowerCase();
+    const hasEstado = message?.estado !== undefined && message?.estado !== null;
+    const hasAccion = message?.accion !== undefined && message?.accion !== null;
+    if (!hasEstado && !hasAccion) return;
+
+    const nextEstado = hasEstado ? normalizeEstadoToNew(message.estado) : null;
+    const nextAccion = hasAccion ? normalizeAccionToNew(message.accion) : null;
+
+    let changed = false;
+    const touchedKeys = new Set();
+
+    state.allData.forEach((row) => {
+        const rowId = String(row?.ID || '').trim();
+        if (!rowId || rowId !== id) return;
+
+        if (engineFile) {
+            const rowEngineFile = String(getEngineJsonForRow(row) || '').trim().toLowerCase();
+            if (rowEngineFile !== engineFile) return;
+        }
+
+        let rowChanged = false;
+        if (nextEstado && normalizeEstadoToNew(row?.qa_revision_estado) !== nextEstado) {
+            row.qa_revision_estado = nextEstado;
+            rowChanged = true;
+        }
+        if (nextAccion && normalizeAccionToNew(row?.qa_revision_accion) !== nextAccion) {
+            row.qa_revision_accion = nextAccion;
+            rowChanged = true;
+        }
+
+        if (!rowChanged) return;
+        row.qa_revision_updated_at = new Date().toISOString();
+        touchedKeys.add(getRevisionKey(row));
+        changed = true;
+    });
+
+    if (!changed) return;
+
+    renderTable();
+    renderPagination();
+
+    const selectedKey = String(state.selectedRevisionRowKey || '').trim();
+    if (selectedKey && touchedKeys.has(selectedKey)) {
+        syncSideRecordFormWithSelection();
+
+        const modalForm = $('qaRecordModalForm');
+        if (modalForm instanceof HTMLFormElement && String(modalForm.dataset.revisionKey || '') === selectedKey) {
+            const selectedRow = getRowByRevisionKey(selectedKey);
+            if (selectedRow) fillRecordModal(selectedRow, selectedKey);
+        }
     }
 }
 
@@ -1152,6 +1553,7 @@ function openExportModal(revisionKey) {
     renderRecordModalExport(row);
     renderRecordModalSuperseded(row);
     updateExportModalHeader(row);
+    modal.dataset.revisionKey = String(revisionKey || '');
     modal.removeAttribute('hidden');
 }
 
@@ -1159,6 +1561,7 @@ function closeExportModal() {
     const modal = $('qaExportModal');
     if (!modal) return;
     modal.setAttribute('hidden', '');
+    modal.dataset.revisionKey = '';
 }
 
 function closeRecordModal() {
@@ -1327,25 +1730,29 @@ async function handleRecordModalSubmit(event) {
     const nextValues = getRecordFormValues('modal');
 
     try {
-        const changedFields = MODAL_FIELD_KEYS.filter(key => String(row?.[key] ?? '') !== String(nextValues[key] ?? ''));
-        if (changedFields.length > 0) {
-            const engineFile = getEngineJsonForRow(row);
-            if (!engineFile) throw new Error('No se pudo determinar el archivo engine_*.json del registro.');
-            for (const fieldKey of changedFields) {
-                await saveCellToServer(engineFile, row.ID, fieldKey, nextValues[fieldKey]);
-                row[fieldKey] = nextValues[fieldKey];
-            }
-            invalidateRowActiveQaErrors(row);
+        const changes = collectRowChanges(row, nextValues, nextEstado, nextAccion);
+        if (!Object.keys(changes).length) {
+            if (status) status.textContent = 'Sin cambios para guardar.';
+            closeRecordModal();
+            restoreModalUiState(revisionKey);
+            return;
         }
 
-        setRowRevision(row, nextEstado, nextAccion);
-        state.selectedRevisionRowKey = revisionKey;
-        const updatedVisibleRow = refreshVisibleRowByRevisionKey(revisionKey);
-        if (!updatedVisibleRow) renderTable();
-        renderPagination();
-        syncSideRecordFormWithSelection();
+        await changeControl.applyAndRecord({
+            type: QA_ROW_PATCH_CHANGE_TYPE,
+            module: 'qa_milu',
+            action: 'save-record-modal',
+            description: `Guardar ficha modal ID ${row.ID}`,
+            target: { revisionKey },
+            data: {
+                target: buildPatchTargetForRow(row),
+                changes
+            }
+        });
+
         closeRecordModal();
         restoreModalUiState(revisionKey);
+        updateUndoButtonState();
     } catch (error) {
         console.error('Error guardando formulario modal:', error);
         if (status) status.textContent = `No se pudo guardar: ${error.message}`;
@@ -1378,30 +1785,26 @@ async function handleSideRecordSubmit(event) {
     const nextValues = getRecordFormValues('side');
 
     try {
-        const changedFields = MODAL_FIELD_KEYS.filter(key => String(row?.[key] ?? '') !== String(nextValues[key] ?? ''));
-        if (changedFields.length > 0) {
-            const engineFile = getEngineJsonForRow(row);
-            if (!engineFile) throw new Error('No se pudo determinar el archivo engine_*.json del registro.');
-            for (const fieldKey of changedFields) {
-                await saveCellToServer(engineFile, row.ID, fieldKey, nextValues[fieldKey]);
-                row[fieldKey] = nextValues[fieldKey];
+        const changes = collectRowChanges(row, nextValues, nextEstado, nextAccion);
+        if (!Object.keys(changes).length) {
+            if (status) status.textContent = 'Sin cambios para guardar.';
+            return;
+        }
+
+        await changeControl.applyAndRecord({
+            type: QA_ROW_PATCH_CHANGE_TYPE,
+            module: 'qa_milu',
+            action: 'save-side-form',
+            description: `Guardar ficha lateral ID ${row.ID}`,
+            target: { revisionKey },
+            data: {
+                target: buildPatchTargetForRow(row),
+                changes
             }
-            invalidateRowActiveQaErrors(row);
-        }
+        });
 
-        setRowRevision(row, nextEstado, nextAccion);
-        state.selectedRevisionRowKey = revisionKey;
-        const updatedVisibleRow = refreshVisibleRowByRevisionKey(revisionKey);
-        if (!updatedVisibleRow) renderTable();
-        renderPagination();
-
-        const modalForm = $('qaRecordModalForm');
-        if (modalForm instanceof HTMLFormElement && String(modalForm.dataset.revisionKey || '') === revisionKey) {
-            fillRecordModal(row, revisionKey);
-        }
-
-        fillSideRecordForm(row, revisionKey);
         if (status) status.textContent = 'Cambios guardados.';
+        updateUndoButtonState();
     } catch (error) {
         console.error('Error guardando ficha lateral:', error);
         if (status) status.textContent = `No se pudo guardar: ${error.message}`;
@@ -1988,9 +2391,9 @@ async function applyBulkQuickMode(quickMode) {
     if (!scopeSelect) return;
 
     const quickMap = {
-        revok: { estado: 'revisado', accion: null, label: 'revisión OK' },
-        revempty: { estado: '', accion: null, label: 'revisión vacía' },
-        validate: { estado: null, accion: 'mantener', label: 'acción Import' },
+        revok: { estado: 'ok', accion: null, label: 'revisión OK' },
+        revempty: { estado: 'pendiente', accion: null, label: 'revisión Pendiente' },
+        validate: { estado: null, accion: 'importar', label: 'acción Importar' },
         review: { estado: null, accion: 'revisar', label: 'acción Revisar' },
         discard: { estado: null, accion: 'eliminar', label: 'acción Eliminar' }
     };
@@ -2009,31 +2412,45 @@ async function applyBulkQuickMode(quickMode) {
     const confirmed = window.confirm(`Se aplicará ${targetValues.label} masiva a ${targetRows.length} ${scopeText}. ¿Continuar?`);
     if (!confirmed) return;
 
-    const failedRows = [];
+    const targets = [];
     for (const row of targetRows) {
-        const nextEstado = targetValues.estado === null ? String(row.qa_revision_estado || '') : targetValues.estado;
-        const nextAccion = targetValues.accion === null ? String(row.qa_revision_accion || '') : targetValues.accion;
-        const engineFile = getEngineJsonForRow(row);
+        const currentEstado = normalizeEstadoToNew(row.qa_revision_estado);
+        const currentAccion = normalizeAccionToNew(row.qa_revision_accion);
+        const nextEstado = targetValues.estado === null ? currentEstado : targetValues.estado;
+        const nextAccion = targetValues.accion === null ? currentAccion : targetValues.accion;
 
-        try {
-            if (!engineFile) throw new Error('No se pudo resolver engine JSON');
-            await saveCellToServer(engineFile, row.ID, 'qa_revision_estado', nextEstado);
-            await saveCellToServer(engineFile, row.ID, 'qa_revision_accion', nextAccion);
-            row.qa_revision_estado = nextEstado;
-            row.qa_revision_accion = nextAccion;
-            row.qa_revision_updated_at = new Date().toISOString();
-        } catch (error) {
-            failedRows.push(String(row?.ID || ''));
-            console.warn('No se pudo aplicar cambio masivo de revision:', error);
+        if (nextEstado === currentEstado && nextAccion === currentAccion) {
+            continue;
         }
+
+        targets.push({
+            target: buildPatchTargetForRow(row),
+            changes: {
+                ...(nextEstado !== currentEstado
+                    ? { qa_revision_estado: { before: currentEstado, after: nextEstado } }
+                    : {}),
+                ...(nextAccion !== currentAccion
+                    ? { qa_revision_accion: { before: currentAccion, after: nextAccion } }
+                    : {})
+            }
+        });
     }
 
-    if (failedRows.length > 0) {
-        alert(`No se pudieron guardar ${failedRows.length} registros en el cambio masivo.`);
+    if (!targets.length) {
+        alert('No hay cambios efectivos para aplicar en el ambito seleccionado.');
+        return;
     }
 
-    renderTable();
-    renderPagination();
+    await changeControl.applyAndRecord({
+        type: QA_BULK_ROW_PATCH_CHANGE_TYPE,
+        module: 'qa_milu',
+        action: `bulk-${quickMode}`,
+        description: `Cambio masivo ${targetValues.label} (${targets.length} filas)`,
+        target: { scope, size: targets.length },
+        data: { targets }
+    });
+
+    updateUndoButtonState();
 }
 
 async function loadData() {
@@ -2274,6 +2691,14 @@ function attachGlobalEvents() {
     $('bulkValidateBtn')?.addEventListener('click', () => applyBulkQuickMode('validate'));
     $('bulkReviewBtn')?.addEventListener('click', () => applyBulkQuickMode('review'));
     $('bulkDiscardBtn')?.addEventListener('click', () => applyBulkQuickMode('discard'));
+    $('qaUndoLastChangeBtn')?.addEventListener('click', () => undoLastQaChange());
+    $('openAuditPageBtn')?.addEventListener('click', () => {
+        window.open('qa_auditoria.html', '_blank', 'noopener');
+    });
+
+    document.addEventListener('milu:change-control:history-updated', () => {
+        updateUndoButtonState();
+    });
 
     document.querySelectorAll('[data-pdf-tab]').forEach(tabBtn => {
         tabBtn.addEventListener('click', () => setRightPanelTab(tabBtn.dataset.pdfTab || 'pdf'));
@@ -2315,6 +2740,31 @@ function attachGlobalEvents() {
             countId: 'qaSideMatchesCount',
             bookFilterId: 'qaSideMatchesBookFilter',
             showAction: false
+        });
+    });
+
+    $('qaSideExportOnlyDiffToggle')?.addEventListener('change', () => {
+        const revisionKey = String($('qaSideRecordForm')?.dataset.revisionKey || '');
+        const row = getRowByRevisionKey(revisionKey);
+        if (!row) return;
+        renderRecordModalExport(row, {
+            headRowId: 'qaSideExportHeadRow',
+            bodyId: 'qaSideExportBody',
+            countId: 'qaSideExportCount',
+            onlyDiffToggleId: 'qaSideExportOnlyDiffToggle'
+        });
+    });
+
+    $('qaModalExportOnlyDiffToggle')?.addEventListener('change', () => {
+        if (!isExportModalOpen()) return;
+        const revisionKey = String($('qaExportModal')?.dataset.revisionKey || '');
+        const row = getRowByRevisionKey(revisionKey);
+        if (!row) return;
+        renderRecordModalExport(row, {
+            headRowId: 'qaModalExportHeadRow',
+            bodyId: 'qaModalExportBody',
+            countId: 'qaModalExportCount',
+            onlyDiffToggleId: 'qaModalExportOnlyDiffToggle'
         });
     });
 
@@ -2379,6 +2829,21 @@ function attachGlobalEvents() {
     $('qaSideRecordForm')?.addEventListener('submit', handleSideRecordSubmit);
 
     document.addEventListener('keydown', (event) => {
+        if ((event.ctrlKey || event.metaKey) && !event.altKey) {
+            const key = String(event.key || '').toLowerCase();
+            if (key === 'z') {
+                event.preventDefault();
+                if (event.shiftKey) redoLastQaChange();
+                else undoLastQaChange();
+                return;
+            }
+            if (key === 'y') {
+                event.preventDefault();
+                redoLastQaChange();
+                return;
+            }
+        }
+
         if (isMatchesModalOpen()) {
             if (event.key === 'Escape') {
                 event.preventDefault();
@@ -2467,11 +2932,41 @@ function attachGlobalEvents() {
         if (!revisionField || !revisionKey) return;
         const row = state.allData.find(item => getRevisionKey(item) === revisionKey);
         if (!row) return;
-        const estado = revisionField === 'estado' ? target.value : String(row.qa_revision_estado || '');
-        const accion = revisionField === 'accion' ? target.value : String(row.qa_revision_accion || '');
-        setRowRevision(row, estado, accion);
-        updateRevisionSelectVisual(target);
-        syncSideRecordFormWithSelection();
+        const currentEstado = normalizeEstadoToNew(row.qa_revision_estado);
+        const currentAccion = normalizeAccionToNew(row.qa_revision_accion);
+        const nextEstado = revisionField === 'estado' ? normalizeEstadoToNew(target.value) : currentEstado;
+        const nextAccion = revisionField === 'accion' ? normalizeAccionToNew(target.value) : currentAccion;
+        const changes = {};
+        if (nextEstado !== currentEstado) {
+            changes.qa_revision_estado = { before: currentEstado, after: nextEstado };
+        }
+        if (nextAccion !== currentAccion) {
+            changes.qa_revision_accion = { before: currentAccion, after: nextAccion };
+        }
+        if (!Object.keys(changes).length) {
+            updateRevisionSelectVisual(target);
+            return;
+        }
+
+        changeControl.applyAndRecord({
+            type: QA_ROW_PATCH_CHANGE_TYPE,
+            module: 'qa_milu',
+            action: `inline-${revisionField}`,
+            description: `Cambio rapido ${revisionField} ID ${row.ID}`,
+            target: { revisionKey },
+            data: {
+                target: buildPatchTargetForRow(row),
+                changes
+            }
+        }).catch((error) => {
+            console.error('No se pudo guardar cambio rapido:', error);
+            alert(`No se pudo guardar el cambio rapido: ${error.message}`);
+            refreshVisibleRowByRevisionKey(revisionKey);
+            syncSideRecordFormWithSelection();
+        }).finally(() => {
+            updateRevisionSelectVisual(target);
+            updateUndoButtonState();
+        });
     });
 
     const errorViewTbody = $('errorViewTbody');
@@ -2531,11 +3026,41 @@ function attachGlobalEvents() {
         if (!revisionField || !revisionKey) return;
         const row = state.allData.find(item => getRevisionKey(item) === revisionKey);
         if (!row) return;
-        const estado = revisionField === 'estado' ? target.value : String(row.qa_revision_estado || '');
-        const accion = revisionField === 'accion' ? target.value : String(row.qa_revision_accion || '');
-        setRowRevision(row, estado, accion);
-        updateRevisionSelectVisual(target);
-        syncSideRecordFormWithSelection();
+        const currentEstado = normalizeEstadoToNew(row.qa_revision_estado);
+        const currentAccion = normalizeAccionToNew(row.qa_revision_accion);
+        const nextEstado = revisionField === 'estado' ? normalizeEstadoToNew(target.value) : currentEstado;
+        const nextAccion = revisionField === 'accion' ? normalizeAccionToNew(target.value) : currentAccion;
+        const changes = {};
+        if (nextEstado !== currentEstado) {
+            changes.qa_revision_estado = { before: currentEstado, after: nextEstado };
+        }
+        if (nextAccion !== currentAccion) {
+            changes.qa_revision_accion = { before: currentAccion, after: nextAccion };
+        }
+        if (!Object.keys(changes).length) {
+            updateRevisionSelectVisual(target);
+            return;
+        }
+
+        changeControl.applyAndRecord({
+            type: QA_ROW_PATCH_CHANGE_TYPE,
+            module: 'qa_milu',
+            action: `inline-error-view-${revisionField}`,
+            description: `Cambio rapido vista errores ${revisionField} ID ${row.ID}`,
+            target: { revisionKey },
+            data: {
+                target: buildPatchTargetForRow(row),
+                changes
+            }
+        }).catch((error) => {
+            console.error('No se pudo guardar cambio rapido en vista errores:', error);
+            alert(`No se pudo guardar el cambio rapido: ${error.message}`);
+            refreshVisibleRowByRevisionKey(revisionKey);
+            syncSideRecordFormWithSelection();
+        }).finally(() => {
+            updateRevisionSelectVisual(target);
+            updateUndoButtonState();
+        });
     });
 
     window.addEventListener('resize', () => {
@@ -2649,6 +3174,7 @@ function initQaSplitter() {
 }
 
 function init() {
+    registerChangeControlTypes();
     initColumnResize();
     loadColumnViewPreference();
     initPdfZoomControls();
@@ -2656,6 +3182,10 @@ function init() {
     ensureQaChecksState();
     updateQaChecksSummary();
     attachGlobalEvents();
+    subscribeRevisionSync((message) => {
+        applyIncomingRevisionSync(message);
+    });
+    updateUndoButtonState();
     initQaSplitter();
     setRightPanelTab(state.rightPanelTab);
     clearSideRecordForm();

@@ -65,6 +65,10 @@
 
                                 <div class="book-pane-actions">
                                     <button id="clearFiltersBtn">Limpiar</button>
+                                    <button id="qaUndoLastChangeBtn" type="button"
+                                        title="Deshacer último cambio guardado (Ctrl+Z)">Deshacer</button>
+                                    <button id="openAuditPageBtn" type="button"
+                                        title="Abrir visor de auditoría">Auditoría</button>
                                     <button id="toggleOnlyErrorsBtn" type="button"
                                         title="Mostrar solo registros con errores">Solo errores: OFF</button>
                                     <div class="bulk-edit">
@@ -75,7 +79,7 @@
                                         <div class="bulk-quick-actions">
                                             <button id="bulkRevOkBtn" type="button"
                                                 class="quick-action-btn bulk-quick-btn validate"
-                                                title="OK masivo: solo cambia Revisión a OK">V</button>
+                                                title="OK masivo: solo cambia Estado a OK">V</button>
                                             <button id="bulkRevEmptyBtn" type="button"
                                                 class="quick-action-btn bulk-quick-btn white"
                                                 title="Poner vacío masivo: solo cambia Revisión a vacío">P</button>
@@ -209,17 +213,14 @@
                                     </select></th>
                                 <th><select class="filter-select" data-filter="qa_revision_estado">
                                         <option value="">Todos</option>
-                                        <option value="revisado">Ok</option>
-                                        <option value="empty">- (Vacío)</option>
+                                        <option value="ok">OK</option>
+                                        <option value="pendiente">Pendiente</option>
                                     </select></th>
                                 <th><select class="filter-select" data-filter="qa_revision_accion">
                                         <option value="">Todos</option>
-                                        <option value="mantener">Import</option>
-                                        <option value="actualizar">Actualizar</option>
+                                        <option value="importar">Importar</option>
                                         <option value="revisar">Revisar</option>
-                                        <option value="sustituir">Sustituir</option>
                                         <option value="eliminar">Eliminar</option>
-                                        <option value="empty">- (Vacío)</option>
                                     </select></th>
                                 <th><input class="filter-input" data-filter="PART NO." placeholder="filtrar"></th>
                                 <th><input class="filter-input" data-filter="POS" placeholder="filtrar"></th>
@@ -468,21 +469,15 @@
                                         <label>
                                             <span>Revision</span>
                                             <select id="qaSideRevisionEstado" name="qa_revision_estado">
-                                                <option value="">-</option>
-                                                <option value="copia">Copia</option>
-                                                <option value="en revisión">Revisar</option>
-                                                <option value="revisado">Ok</option>
-                                                <option value="descartado">Eliminar</option>
+                                                <option value="pendiente">Pendiente</option>
+                                                <option value="ok">OK</option>
                                             </select>
                                         </label>
                                         <label>
                                             <span>Accion</span>
                                             <select id="qaSideRevisionAccion" name="qa_revision_accion">
-                                                <option value="">-</option>
-                                                <option value="mantener">Import</option>
-                                                <option value="actualizar">Actualizar</option>
+                                                <option value="importar">Importar</option>
                                                 <option value="revisar">Revisar</option>
-                                                <option value="sustituir">Sustituir</option>
                                                 <option value="eliminar">Eliminar</option>
                                             </select>
                                         </label>
@@ -597,10 +592,16 @@
                                 selección</span></span>
                     </div>
                     <div class="qa-side-body">
-                        <section class="qa-modal-related qa-modal-export">
+                        <section id="qaSideNewSection" class="qa-modal-related qa-modal-export">
                             <div class="qa-modal-related-head">
                                 <h3>Exportacion MILU_New para este codigo</h3>
-                                <span id="qaSideExportCount" class="qa-modal-related-count"></span>
+                                <div class="qa-modal-related-controls">
+                                    <label class="qa-export-diff-toggle" for="qaSideExportOnlyDiffToggle">
+                                        <input id="qaSideExportOnlyDiffToggle" type="checkbox">
+                                        <span>Solo no coincidentes</span>
+                                    </label>
+                                    <span id="qaSideExportCount" class="qa-modal-related-count"></span>
+                                </div>
                             </div>
                             <div class="qa-modal-export-table-wrap">
                                 <table class="qa-modal-related-table qa-modal-export-table qa-modal-export-table-new"
@@ -619,7 +620,7 @@
                             </div>
                         </section>
 
-                        <section class="qa-modal-related qa-modal-export">
+                        <section id="qaSideSupersededSection" class="qa-modal-related qa-modal-export">
                             <div class="qa-modal-related-head">
                                 <h3>Exportacion MILU_Superseded para este codigo</h3>
                                 <span id="qaSideSupersededCount" class="qa-modal-related-count"></span>
@@ -821,21 +822,15 @@
                             <label>
                                 <span>Revision</span>
                                 <select id="qaModalRevisionEstado" name="qa_revision_estado">
-                                    <option value="">-</option>
-                                    <option value="copia">Copia</option>
-                                    <option value="en revisión">Revisar</option>
-                                    <option value="revisado">Ok</option>
-                                    <option value="descartado">Eliminar</option>
+                                    <option value="pendiente">Pendiente</option>
+                                    <option value="ok">OK</option>
                                 </select>
                             </label>
                             <label>
                                 <span>Accion</span>
                                 <select id="qaModalRevisionAccion" name="qa_revision_accion">
-                                    <option value="">-</option>
-                                    <option value="mantener">Import</option>
-                                    <option value="actualizar">Actualizar</option>
+                                    <option value="importar">Importar</option>
                                     <option value="revisar">Revisar</option>
-                                    <option value="sustituir">Sustituir</option>
                                     <option value="eliminar">Eliminar</option>
                                 </select>
                             </label>
@@ -965,7 +960,13 @@
             <section class="qa-modal-related qa-modal-export">
                 <div class="qa-modal-related-head">
                     <h3>Exportacion MILU_New para este codigo</h3>
-                    <span id="qaModalExportCount" class="qa-modal-related-count"></span>
+                    <div class="qa-modal-related-controls">
+                        <label class="qa-export-diff-toggle" for="qaModalExportOnlyDiffToggle">
+                            <input id="qaModalExportOnlyDiffToggle" type="checkbox">
+                            <span>Solo no coincidentes</span>
+                        </label>
+                        <span id="qaModalExportCount" class="qa-modal-related-count"></span>
+                    </div>
                 </div>
                 <div class="qa-modal-export-table-wrap">
                     <table class="qa-modal-related-table qa-modal-export-table qa-modal-export-table-new"
