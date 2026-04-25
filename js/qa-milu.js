@@ -449,6 +449,8 @@ function openAnalisisForRow(row) {
     if (book) params.set('engine', book);
     if (id) params.set('id', id);
     params.set('record', record);
+    const returnMode = String(localStorage.getItem('analista02:return-mode') || '').trim().toLowerCase();
+    params.set('returnMode', returnMode === 'navigate' ? 'navigate' : 'close');
     params.set('returnTo', window.location.href);
 
     const targetUrl = `analista_02.html?${params.toString()}`;

@@ -81,6 +81,7 @@ const PDF_LINE_Y_TOLERANCE = 2;
 const RIGHT_PANEL_WIDTH_KEY = 'analista02:right-panel-width';
 const COMPARISON_WIDTHS_KEY = 'analista02:comparison-column-widths';
 const COMPARISON_MIN_COL_WIDTH = 30;
+const RETURN_MODE_KEY = 'analista02:return-mode';
 const ENGINE_BOOK_FILES = getEngineJsonFiles();
 const AUTO_RECOMPUTE_TRIGGER_FIELDS = new Set([
     'pn_final',
@@ -96,6 +97,7 @@ function getStartupSelectionFromUrl() {
     const engine = String(params.get('engine') || '').trim();
     const id = String(params.get('id') || '').trim();
     const record = String(params.get('record') || '').trim();
+    const returnModeRaw = String(params.get('returnMode') || '').trim().toLowerCase();
     const returnToRaw = String(params.get('returnTo') || '').trim();
 
     let returnTo = '';
@@ -110,7 +112,9 @@ function getStartupSelectionFromUrl() {
         }
     }
 
-    return { engine, id, record, returnTo };
+    const returnMode = returnModeRaw === 'navigate' ? 'navigate' : '';
+
+    return { engine, id, record, returnTo, returnMode };
 }
 
 const startupSelection = getStartupSelectionFromUrl();
@@ -248,15 +252,44 @@ function resolvePdfPageNumber(value) {
     return Number.isInteger(parsed) && parsed > 0 ? parsed : null;
 }
 
+function getSavedReturnMode() {
+    const mode = String(localStorage.getItem(RETURN_MODE_KEY) || '').trim().toLowerCase();
+    return mode === 'navigate' ? 'navigate' : 'close';
+}
+
+function getSelectedReturnMode() {
+    const modeSelect = $('returnToQaModeSelect');
+    if (modeSelect instanceof HTMLSelectElement) {
+        return String(modeSelect.value || '').trim().toLowerCase() === 'navigate' ? 'navigate' : 'close';
+    }
+    return getSavedReturnMode();
+}
+
+function persistReturnMode(mode) {
+    const normalizedMode = mode === 'navigate' ? 'navigate' : 'close';
+    localStorage.setItem(RETURN_MODE_KEY, normalizedMode);
+}
+
+function syncReturnModeControl() {
+    const modeSelect = $('returnToQaModeSelect');
+    if (!(modeSelect instanceof HTMLSelectElement)) return;
+
+    const selectedMode = startupSelection.returnMode || getSavedReturnMode();
+    modeSelect.value = selectedMode;
+}
+
 function navigateBackToQa() {
+    const returnMode = getSelectedReturnMode();
     const payload = {
         id: txt(currentRow?.ID, ''),
         engine: txt(currentRow?.engine_model, ''),
         record: txt(currentRow?.pn_final ?? currentRow?.['PART NO.'] ?? '', '')
     };
 
+    persistReturnMode(returnMode);
+
     const openerWin = window.opener;
-    if (openerWin && !openerWin.closed) {
+    if (openerWin && !openerWin.closed && returnMode === 'close') {
         try {
             if (typeof openerWin.miluRefreshPdfData === 'function') {
                 const refreshResult = openerWin.miluRefreshPdfData(payload);
@@ -269,6 +302,19 @@ function navigateBackToQa() {
             return;
         } catch (_) {
             // Continue with location fallback.
+        }
+    }
+
+    if (openerWin && !openerWin.closed) {
+        try {
+            if (typeof openerWin.miluRefreshPdfData === 'function') {
+                const refreshResult = openerWin.miluRefreshPdfData(payload);
+                if (refreshResult && typeof refreshResult.catch === 'function') {
+                    refreshResult.catch(() => undefined);
+                }
+            }
+        } catch (_) {
+            // Ignore and continue with local navigation.
         }
     }
 
@@ -2356,6 +2402,7 @@ async function initialize() {
         initHorizontalSplitter();
         initComparisonColumnResize();
         loadComparisonColumnWidths();
+        syncReturnModeControl();
         initPdfZoomControls();
         loadPdfClear();
 
@@ -2463,6 +2510,13 @@ if (statusAccionSelect instanceof HTMLSelectElement) {
             alert(`No se pudo guardar acción: ${error.message}`);
             renderReviewStateButtons(currentRow);
         });
+    });
+}
+
+const returnToQaModeSelect = $('returnToQaModeSelect');
+if (returnToQaModeSelect instanceof HTMLSelectElement) {
+    returnToQaModeSelect.addEventListener('change', () => {
+        persistReturnMode(getSelectedReturnMode());
     });
 }
 
