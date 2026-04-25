@@ -777,12 +777,14 @@
         .toolbar-secondary {
             display: flex;
             gap: 6px;
-            flex-wrap: wrap;
+            flex-wrap: nowrap;
             align-items: center;
         }
 
         .toolbar-primary {
-            align-items: stretch;
+            align-items: center;
+            width: 100%;
+            gap: 12px;
         }
 
         .toolbar-pane {
@@ -797,33 +799,58 @@
         }
 
         .toolbar-pane-book {
-            flex: 3 1 520px;
-            display: grid;
-            grid-template-columns: 140px minmax(300px, 1fr);
-            gap: 8px;
-            align-items: stretch;
+            flex: 1 1 100%;
+            display: flex;
+            flex-direction: row;
+            gap: 12px;
+            align-items: center;
+            flex-wrap: nowrap;
+            width: 100%;
+            border: none;
+            padding: 0;
+            background: transparent;
+            min-height: auto;
+            overflow-x: auto;
+            overflow-y: hidden;
         }
 
         .book-pane-left,
         .book-pane-right {
             display: flex;
-            flex-direction: column;
-            gap: 6px;
-            min-width: 0;
+            flex-direction: row;
+            gap: 8px;
+            align-items: center;
+            flex-wrap: nowrap;
+            flex-shrink: 0;
+        }
+
+        .book-top-row {
+            display: flex;
+            gap: 8px;
+            align-items: center;
+            flex-wrap: nowrap;
+        }
+
+        .book-pane-actions {
+            display: flex;
+            gap: 8px;
+            align-items: center;
+            flex-wrap: nowrap;
+            margin-top: 0;
         }
 
         .book-pane-right-top {
-            display: grid;
-            grid-template-columns: 30px 180px 30px;
+            display: flex;
+            gap: 8px;
             align-items: center;
-            column-gap: 6px;
+            flex-shrink: 0;
         }
 
         .book-pane-right-bottom {
-            display: grid;
-            grid-template-columns: 30px 180px 30px;
+            display: flex;
+            gap: 8px;
             align-items: center;
-            column-gap: 6px;
+            flex-shrink: 0;
         }
 
         .book-main-select {
@@ -1624,6 +1651,59 @@
             color: var(--mut);
         }
 
+        .qa-schemas-panel {
+            gap: 12px;
+            overflow: auto;
+            padding: 10px;
+        }
+
+        .qa-schemas-section {
+            margin: 0;
+            padding: 10px;
+            border: 1px solid var(--line);
+            border-radius: 10px;
+            background: var(--card);
+        }
+
+        .qa-schemas-section .schemas-images-inline {
+            max-width: 100%;
+            width: 100%;
+            min-height: 132px;
+        }
+
+        .qa-schemas-section .schemas-images-strip {
+            width: 100%;
+            min-height: 240px;
+            align-items: stretch;
+        }
+
+        .qa-schemas-section .schema-thumb.large {
+            width: 240px;
+        }
+
+        .qa-schemas-section .schema-thumb.large img {
+            width: 240px;
+            height: 160px;
+        }
+
+        /* Make schema circle images much larger and full width */
+        .qa-schemas-section #selectedPosStrip {
+            min-height: 520px;
+            gap: 12px;
+            flex-wrap: wrap;
+        }
+
+        .qa-schemas-section #selectedPosStrip .schema-thumb {
+            flex: 1;
+            min-width: 300px;
+        }
+
+        .qa-schemas-section #selectedPosStrip .schema-thumb img {
+            width: 100%;
+            height: 460px;
+            object-fit: contain;
+        }
+
         .view-toggle-inline {
             display: inline-flex;
             align-items: center;
@@ -1639,11 +1719,7 @@
         }
 
         .bulk-edit {
-            display: flex;
-            gap: 8px;
-            flex-wrap: wrap;
-            align-items: center;
-            margin-top: 8px;
+            display: none !important;
         }
 
         .bulk-select {
@@ -2184,7 +2260,7 @@
 
         .clear-filters.modern-control-deck {
             margin: 0 14px 12px;
-            padding: 10px;
+            padding: 12px;
             border: 1px solid #d6e1ef;
             border-radius: 16px;
             background: linear-gradient(180deg, #f9fcff 0%, #f1f6fc 100%);
@@ -2192,12 +2268,7 @@
         }
 
         .deck-head {
-            display: flex;
-            justify-content: space-between;
-            align-items: baseline;
-            gap: 10px;
-            margin: 0 0 8px;
-            flex-wrap: wrap;
+            display: none;
         }
 
         .deck-title {
@@ -2215,9 +2286,10 @@
         }
 
         .toolbar-primary {
-            display: grid;
-            grid-template-columns: repeat(12, minmax(0, 1fr));
-            gap: 8px;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            width: 100%;
         }
 
         .toolbar-pane {
@@ -2231,9 +2303,17 @@
         }
 
         .toolbar-pane-book {
-            grid-column: span 3;
-            display: grid;
-            grid-template-columns: minmax(0, 1fr);
+            flex: 1 1 100%;
+            display: flex;
+            flex-direction: row;
+            align-items: center;
+            gap: 12px;
+            width: 100%;
+            padding: 0;
+            border: none;
+            background: transparent;
+            box-shadow: none;
+            animation: none;
         }
 
         .toolbar-pane-esq-images {
@@ -2267,12 +2347,7 @@
         }
 
         .pane-label {
-            font-size: 10px;
-            text-transform: uppercase;
-            letter-spacing: 0.08em;
-            font-weight: 800;
-            color: #64748b;
-            margin: 0 0 6px;
+            display: none;
         }
 
         .toolbar-pane-esq-images .pane-label,
@@ -2282,41 +2357,51 @@
 
         .book-pane-left {
             display: flex;
-            flex-direction: column;
-            gap: 6px;
+            flex-direction: row;
+            align-items: center;
+            gap: 8px;
+            flex-wrap: wrap;
+            flex: 1 1 auto;
+            min-width: 0;
         }
 
         .book-top-row {
-            display: grid;
-            grid-template-columns: 1fr 1fr;
-            gap: 6px;
+            display: flex;
+            gap: 8px;
             align-items: center;
+            flex-wrap: nowrap;
         }
 
         .book-top-row .view-toggle-inline {
-            width: 100%;
+            width: auto;
         }
 
         .book-top-row .column-view-select {
-            width: 100%;
-            max-width: none;
-            min-width: 0;
+            width: auto;
+            max-width: 170px;
+            min-width: 132px;
             height: 30px;
         }
 
         .book-pane-right {
-            gap: 6px;
+            display: flex;
+            flex-direction: row;
+            align-items: center;
+            gap: 12px;
+            flex-wrap: wrap;
+            margin-left: auto;
         }
 
         .book-pane-right-bottom {
-            gap: 6px;
+            gap: 8px;
         }
 
         .book-pane-actions {
-            display: grid;
-            grid-template-columns: repeat(3, minmax(0, 1fr));
-            gap: 6px;
-            margin-top: 2px;
+            display: flex;
+            gap: 8px;
+            flex-wrap: wrap;
+            align-items: center;
+            margin-top: 0;
         }
 
         .book-pane-actions .bulk-edit {
@@ -2484,21 +2569,19 @@
 
         @media (max-width: 1280px) {
             .toolbar-pane-book {
-                grid-column: span 4;
+                gap: 10px;
             }
 
             .toolbar-pane-esq-images {
-                grid-column: span 4;
                 min-height: 190px;
             }
 
             .toolbar-pane-pos-preview {
-                grid-column: span 4;
                 min-height: 250px;
             }
 
             .book-pane-actions {
-                grid-template-columns: 1fr 1fr 1fr;
+                gap: 6px;
             }
         }
 
@@ -2522,7 +2605,8 @@
             }
 
             .toolbar-primary {
-                grid-template-columns: 1fr;
+                flex-direction: column;
+                align-items: stretch;
             }
 
             .toolbar-pane,
@@ -2530,11 +2614,11 @@
             .toolbar-pane-esq-images,
             .toolbar-pane-pos-preview,
             .toolbar-pane-pos-actions {
-                grid-column: 1 / -1;
+                width: 100%;
             }
 
             .book-pane-actions {
-                grid-template-columns: 1fr;
+                flex-direction: column;
             }
 
             .book-pane-actions button {

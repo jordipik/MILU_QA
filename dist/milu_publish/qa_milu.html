@@ -105,22 +105,7 @@
                             </div>
                         </div>
 
-                        <div class="toolbar-pane toolbar-pane-esq-images">
-                            <span class="pane-label">Esquemas del libro</span>
-                            <div id="schemasImagesInline" class="schemas-images-inline" title="Imágenes de esquemas">
-                                <div id="schemasImagesStrip" class="schemas-images-strip"></div>
-                            </div>
-                        </div>
 
-                        <div class="toolbar-pane toolbar-pane-pos-preview">
-                            <span class="pane-label">Vista de posición</span>
-                            <div class="pos-top-inline" title="Imagen de posición/círculo del artículo seleccionado">
-                                <span id="selectedPosTopMeta" class="pos-top-meta">Selecciona un registro</span>
-                                <div id="selectedPosTopStrip" class="schemas-images-strip">
-                                    <span class="schemas-images-empty">Sin pos</span>
-                                </div>
-                            </div>
-                        </div>
                     </div>
                 </div>
 
@@ -333,15 +318,6 @@
                     <button id="lastBtn" disabled>Último</button>
                 </div>
 
-                <div id="selectedPosPanel" class="selected-pos-panel">
-                    <div class="selected-pos-head">
-                        <span class="selected-pos-title">Posiciones del artículo seleccionado</span>
-                        <span id="selectedPosMeta" class="selected-pos-meta">Selecciona un registro de la tabla</span>
-                    </div>
-                    <div id="selectedPosStrip" class="schemas-images-strip">
-                        <span class="schemas-images-empty">Sin selección</span>
-                    </div>
-                </div>
 
                 <div id="groupedSection" class="grouped-section" style="display:none;">
                     <div class="grouped-header">
@@ -379,6 +355,8 @@
                         aria-controls="pdfTabPanelRecord" data-pdf-tab="record">Ficha QA</button>
                     <button id="pdfTabExport" class="pdf-tab-btn" type="button" role="tab" aria-selected="false"
                         aria-controls="pdfTabPanelExport" data-pdf-tab="export">Exportación</button>
+                    <button id="pdfTabSchemas" class="pdf-tab-btn" type="button" role="tab" aria-selected="false"
+                        aria-controls="pdfTabPanelSchemas" data-pdf-tab="schemas">Esquemas</button>
                 </div>
 
                 <div id="pdfTabPanelPdf" class="pdf-tab-panel is-active" role="tabpanel" aria-labelledby="pdfTabPdf"
@@ -649,6 +627,36 @@
                                         </tr>
                                     </tbody>
                                 </table>
+                            </div>
+                        </section>
+                    </div>
+                </div>
+
+                <div id="pdfTabPanelSchemas" class="pdf-tab-panel" role="tabpanel" aria-labelledby="pdfTabSchemas"
+                    data-pdf-panel="schemas" hidden>
+                    <div class="pdfbar qa-side-header">
+                        <span class="pdfmeta"><b>Esquemas</b> <span>Libro y esquema_circulos</span></span>
+                    </div>
+                    <div class="qa-side-body qa-schemas-panel">
+                        <section class="qa-modal-related qa-schemas-section">
+                            <div class="qa-modal-related-head">
+                                <h3>Esquemas del libro (página activa)</h3>
+                            </div>
+                            <div id="schemasImagesInline" class="schemas-images-inline" title="Imágenes de esquemas">
+                                <div id="schemasImagesStrip" class="schemas-images-strip">
+                                    <span class="schemas-images-empty">Sin esquemas</span>
+                                </div>
+                            </div>
+                        </section>
+
+                        <section class="qa-modal-related qa-schemas-section">
+                            <div class="selected-pos-head">
+                                <span class="selected-pos-title">Esquema círculos del artículo seleccionado</span>
+                                <span id="selectedPosMeta" class="selected-pos-meta">Selecciona un registro de la
+                                    tabla</span>
+                            </div>
+                            <div id="selectedPosStrip" class="schemas-images-strip">
+                                <span class="schemas-images-empty">Sin selección</span>
                             </div>
                         </section>
                     </div>

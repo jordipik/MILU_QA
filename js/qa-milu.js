@@ -121,7 +121,8 @@ let activeMatchesModalRevisionKey = '';
 let pendingShellRecordModalRequest = null;
 
 function setRightPanelTab(tabName) {
-    const resolvedTab = (tabName === 'record' || tabName === 'export') ? tabName : 'pdf';
+    const validTabs = new Set(['pdf', 'record', 'export', 'schemas']);
+    const resolvedTab = validTabs.has(tabName) ? tabName : 'pdf';
     state.rightPanelTab = resolvedTab;
 
     document.querySelectorAll('[data-pdf-tab]').forEach(btn => {
