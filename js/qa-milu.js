@@ -14,10 +14,10 @@ import {
     getRevisionKey,
     normalizeAccionToNew,
     normalizeEstadoToNew,
-    setRowRevision,
     updateRevisionSelectVisual
 } from './revision.js';
 import { subscribeRevisionSync } from './revision-sync.js';
+import { createChangeControl } from './change-control.js';
 import {
     applyColumnView,
     initColumnResize,
@@ -119,6 +119,237 @@ const modalUiState = {
 };
 let activeMatchesModalRevisionKey = '';
 let pendingShellRecordModalRequest = null;
+
+const QA_ROW_PATCH_CHANGE_TYPE = 'qa-row-patch';
+const QA_BULK_ROW_PATCH_CHANGE_TYPE = 'qa-bulk-row-patch';
+
+function getAuditBackendCandidateUrls() {
+    const currentOrigin = window.location.origin && window.location.origin !== 'null'
+        ? window.location.origin
+        : '';
+    const currentHostname = String(window.location.hostname || '').trim();
+    const sameDirectoryCandidate = new URL('audit-log', new URL('.', window.location.href)).href;
+    const localPortCandidate = currentHostname ? `http://${currentHostname}:3000/audit-log` : '';
+    const sameOriginCandidate = currentOrigin ? `${currentOrigin}/audit-log` : '/audit-log';
+    return [
+        localPortCandidate,
+        'http://localhost:3000/audit-log',
+        sameDirectoryCandidate,
+        sameOriginCandidate
+    ].filter((url, index, arr) => url && arr.indexOf(url) === index);
+}
+
+async function persistAuditEntryToServer(entry) {
+    const urls = getAuditBackendCandidateUrls();
+    for (const url of urls) {
+        try {
+            const response = await fetch(url, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(entry)
+            });
+            if (response.ok) return true;
+        } catch (_) {
+            // Continue with next candidate.
+        }
+    }
+    return false;
+}
+
+const changeControl = createChangeControl({
+    namespace: 'milu:qa',
+    eventPrefix: 'milu:change-control',
+    maxUndoEntries: 200,
+    maxAuditEntries: 2000,
+    onAuditEntry: persistAuditEntryToServer
+});
+
+function updateUndoButtonState() {
+    const undoBtn = $('qaUndoLastChangeBtn');
+    if (!(undoBtn instanceof HTMLButtonElement)) return;
+    const historyState = changeControl.getUndoState();
+    undoBtn.disabled = !historyState.canUndo;
+    undoBtn.textContent = historyState.undoCount > 0
+        ? `Deshacer (${historyState.undoCount})`
+        : 'Deshacer';
+}
+
+function getPersistedValueForField(fieldKey, value) {
+    if (fieldKey === 'qa_revision_estado') return denormalizeEstadoFromNew(value);
+    if (fieldKey === 'qa_revision_accion') return denormalizeAccionFromNew(value);
+    return value;
+}
+
+async function applySinglePatchTarget(target, changes, direction) {
+    const revisionKey = String(target?.revisionKey || '').trim();
+    const engineFile = String(target?.engineFile || '').trim();
+    const rowId = String(target?.id || '').trim();
+    if (!revisionKey || !engineFile || !rowId) {
+        throw new Error('Patch invalido: falta revisionKey/engineFile/id.');
+    }
+
+    const row = getRowByRevisionKey(revisionKey);
+    if (!row) {
+        throw new Error(`No se encontro la fila para revisionKey ${revisionKey}`);
+    }
+
+    const useBefore = direction === 'before';
+    const touchedFields = [];
+    for (const [fieldKey, change] of Object.entries(changes || {})) {
+        const nextValue = useBefore ? change?.before : change?.after;
+        const prevValue = String(row?.[fieldKey] ?? '');
+        const nextAsString = String(nextValue ?? '');
+        if (prevValue === nextAsString) continue;
+
+        await saveCellToServer(engineFile, rowId, fieldKey, getPersistedValueForField(fieldKey, nextValue));
+        row[fieldKey] = nextValue;
+        touchedFields.push(fieldKey);
+    }
+
+    if (!touchedFields.length) return;
+
+    if (touchedFields.includes('qa_revision_estado') || touchedFields.includes('qa_revision_accion')) {
+        row.qa_revision_updated_at = new Date().toISOString();
+    }
+
+    if (touchedFields.some((fieldKey) => MODAL_FIELD_KEYS.includes(fieldKey))) {
+        invalidateRowActiveQaErrors(row);
+    }
+
+    state.selectedRevisionRowKey = revisionKey;
+    const updatedVisibleRow = refreshVisibleRowByRevisionKey(revisionKey);
+    if (!updatedVisibleRow) renderTable();
+    renderPagination();
+
+    const modalForm = $('qaRecordModalForm');
+    if (modalForm instanceof HTMLFormElement && String(modalForm.dataset.revisionKey || '') === revisionKey) {
+        fillRecordModal(row, revisionKey);
+    }
+    fillSideRecordForm(row, revisionKey);
+}
+
+async function applyBulkPatchTargets(targets, direction) {
+    const appliedTargets = [];
+    try {
+        for (const targetPatch of targets) {
+            await applySinglePatchTarget(targetPatch.target, targetPatch.changes, direction);
+            appliedTargets.push(targetPatch);
+        }
+    } catch (error) {
+        const rollbackDirection = direction === 'before' ? 'after' : 'before';
+        for (let index = appliedTargets.length - 1; index >= 0; index -= 1) {
+            const targetPatch = appliedTargets[index];
+            try {
+                await applySinglePatchTarget(targetPatch.target, targetPatch.changes, rollbackDirection);
+            } catch (_) {
+                // Keep original error and stop best-effort rollback failures from hiding it.
+            }
+        }
+        throw error;
+    }
+}
+
+function registerChangeControlTypes() {
+    changeControl.registerType(QA_ROW_PATCH_CHANGE_TYPE, {
+        apply: async (entry) => {
+            const target = entry?.data?.target;
+            const changes = entry?.data?.changes || {};
+            await applySinglePatchTarget(target, changes, 'after');
+        },
+        revert: async (entry) => {
+            const target = entry?.data?.target;
+            const changes = entry?.data?.changes || {};
+            await applySinglePatchTarget(target, changes, 'before');
+        }
+    });
+
+    changeControl.registerType(QA_BULK_ROW_PATCH_CHANGE_TYPE, {
+        apply: async (entry) => {
+            const targets = Array.isArray(entry?.data?.targets) ? entry.data.targets : [];
+            await applyBulkPatchTargets(targets, 'after');
+        },
+        revert: async (entry) => {
+            const targets = Array.isArray(entry?.data?.targets) ? entry.data.targets : [];
+            await applyBulkPatchTargets(targets, 'before');
+        }
+    });
+}
+
+function buildPatchTargetForRow(row) {
+    const revisionKey = String(getRevisionKey(row) || '').trim();
+    const engineFile = String(getEngineJsonForRow(row) || '').trim();
+    const id = String(row?.ID ?? '').trim();
+    if (!revisionKey || !engineFile || !id) {
+        throw new Error('No se pudo construir patch target para la fila.');
+    }
+    return { revisionKey, engineFile, id };
+}
+
+function collectRowChanges(row, nextValues, nextEstado, nextAccion) {
+    const changes = {};
+
+    MODAL_FIELD_KEYS.forEach((fieldKey) => {
+        const beforeValue = String(row?.[fieldKey] ?? '');
+        const afterValue = String(nextValues?.[fieldKey] ?? '');
+        if (beforeValue === afterValue) return;
+        changes[fieldKey] = {
+            before: row?.[fieldKey] ?? '',
+            after: nextValues?.[fieldKey] ?? ''
+        };
+    });
+
+    const normalizedEstadoBefore = normalizeEstadoToNew(row?.qa_revision_estado);
+    const normalizedEstadoAfter = normalizeEstadoToNew(nextEstado);
+    if (normalizedEstadoBefore !== normalizedEstadoAfter) {
+        changes.qa_revision_estado = {
+            before: normalizedEstadoBefore,
+            after: normalizedEstadoAfter
+        };
+    }
+
+    const normalizedAccionBefore = normalizeAccionToNew(row?.qa_revision_accion);
+    const normalizedAccionAfter = normalizeAccionToNew(nextAccion);
+    if (normalizedAccionBefore !== normalizedAccionAfter) {
+        changes.qa_revision_accion = {
+            before: normalizedAccionBefore,
+            after: normalizedAccionAfter
+        };
+    }
+
+    return changes;
+}
+
+async function undoLastQaChange() {
+    try {
+        const entry = await changeControl.undoLast();
+        if (!entry) {
+            const status = $('qaSideStatus');
+            if (status) status.textContent = 'No hay cambios para deshacer.';
+            return;
+        }
+        const status = $('qaSideStatus');
+        if (status) status.textContent = `Deshecho: ${entry.description || entry.action || entry.type}`;
+    } catch (error) {
+        console.error('No se pudo deshacer el ultimo cambio:', error);
+        alert(`No se pudo deshacer el ultimo cambio: ${error.message}`);
+    } finally {
+        updateUndoButtonState();
+    }
+}
+
+async function redoLastQaChange() {
+    try {
+        const entry = await changeControl.redoLast();
+        if (!entry) return;
+        const status = $('qaSideStatus');
+        if (status) status.textContent = `Rehecho: ${entry.description || entry.action || entry.type}`;
+    } catch (error) {
+        console.error('No se pudo rehacer el ultimo cambio:', error);
+        alert(`No se pudo rehacer el ultimo cambio: ${error.message}`);
+    } finally {
+        updateUndoButtonState();
+    }
+}
 
 function setRightPanelTab(tabName) {
     const validTabs = new Set(['pdf', 'record', 'export', 'schemas']);
@@ -1501,25 +1732,29 @@ async function handleRecordModalSubmit(event) {
     const nextValues = getRecordFormValues('modal');
 
     try {
-        const changedFields = MODAL_FIELD_KEYS.filter(key => String(row?.[key] ?? '') !== String(nextValues[key] ?? ''));
-        if (changedFields.length > 0) {
-            const engineFile = getEngineJsonForRow(row);
-            if (!engineFile) throw new Error('No se pudo determinar el archivo engine_*.json del registro.');
-            for (const fieldKey of changedFields) {
-                await saveCellToServer(engineFile, row.ID, fieldKey, nextValues[fieldKey]);
-                row[fieldKey] = nextValues[fieldKey];
-            }
-            invalidateRowActiveQaErrors(row);
+        const changes = collectRowChanges(row, nextValues, nextEstado, nextAccion);
+        if (!Object.keys(changes).length) {
+            if (status) status.textContent = 'Sin cambios para guardar.';
+            closeRecordModal();
+            restoreModalUiState(revisionKey);
+            return;
         }
 
-        setRowRevision(row, nextEstado, nextAccion);
-        state.selectedRevisionRowKey = revisionKey;
-        const updatedVisibleRow = refreshVisibleRowByRevisionKey(revisionKey);
-        if (!updatedVisibleRow) renderTable();
-        renderPagination();
-        syncSideRecordFormWithSelection();
+        await changeControl.applyAndRecord({
+            type: QA_ROW_PATCH_CHANGE_TYPE,
+            module: 'qa_milu',
+            action: 'save-record-modal',
+            description: `Guardar ficha modal ID ${row.ID}`,
+            target: { revisionKey },
+            data: {
+                target: buildPatchTargetForRow(row),
+                changes
+            }
+        });
+
         closeRecordModal();
         restoreModalUiState(revisionKey);
+        updateUndoButtonState();
     } catch (error) {
         console.error('Error guardando formulario modal:', error);
         if (status) status.textContent = `No se pudo guardar: ${error.message}`;
@@ -1552,30 +1787,26 @@ async function handleSideRecordSubmit(event) {
     const nextValues = getRecordFormValues('side');
 
     try {
-        const changedFields = MODAL_FIELD_KEYS.filter(key => String(row?.[key] ?? '') !== String(nextValues[key] ?? ''));
-        if (changedFields.length > 0) {
-            const engineFile = getEngineJsonForRow(row);
-            if (!engineFile) throw new Error('No se pudo determinar el archivo engine_*.json del registro.');
-            for (const fieldKey of changedFields) {
-                await saveCellToServer(engineFile, row.ID, fieldKey, nextValues[fieldKey]);
-                row[fieldKey] = nextValues[fieldKey];
+        const changes = collectRowChanges(row, nextValues, nextEstado, nextAccion);
+        if (!Object.keys(changes).length) {
+            if (status) status.textContent = 'Sin cambios para guardar.';
+            return;
+        }
+
+        await changeControl.applyAndRecord({
+            type: QA_ROW_PATCH_CHANGE_TYPE,
+            module: 'qa_milu',
+            action: 'save-side-form',
+            description: `Guardar ficha lateral ID ${row.ID}`,
+            target: { revisionKey },
+            data: {
+                target: buildPatchTargetForRow(row),
+                changes
             }
-            invalidateRowActiveQaErrors(row);
-        }
+        });
 
-        setRowRevision(row, nextEstado, nextAccion);
-        state.selectedRevisionRowKey = revisionKey;
-        const updatedVisibleRow = refreshVisibleRowByRevisionKey(revisionKey);
-        if (!updatedVisibleRow) renderTable();
-        renderPagination();
-
-        const modalForm = $('qaRecordModalForm');
-        if (modalForm instanceof HTMLFormElement && String(modalForm.dataset.revisionKey || '') === revisionKey) {
-            fillRecordModal(row, revisionKey);
-        }
-
-        fillSideRecordForm(row, revisionKey);
         if (status) status.textContent = 'Cambios guardados.';
+        updateUndoButtonState();
     } catch (error) {
         console.error('Error guardando ficha lateral:', error);
         if (status) status.textContent = `No se pudo guardar: ${error.message}`;
@@ -2198,37 +2429,45 @@ async function applyBulkQuickMode(quickMode) {
     const confirmed = window.confirm(`Se aplicará ${targetValues.label} masiva a ${targetRows.length} ${scopeText}. ¿Continuar?`);
     if (!confirmed) return;
 
-    const failedRows = [];
+    const targets = [];
     for (const row of targetRows) {
         const currentEstado = normalizeEstadoToNew(row.qa_revision_estado);
         const currentAccion = normalizeAccionToNew(row.qa_revision_accion);
         const nextEstado = targetValues.estado === null ? currentEstado : targetValues.estado;
         const nextAccion = targetValues.accion === null ? currentAccion : targetValues.accion;
-        const engineFile = getEngineJsonForRow(row);
 
-        try {
-            if (!engineFile) throw new Error('No se pudo resolver engine JSON');
-            if (nextEstado !== currentEstado) {
-                await saveCellToServer(engineFile, row.ID, 'qa_revision_estado', denormalizeEstadoFromNew(nextEstado));
-            }
-            if (nextAccion !== currentAccion) {
-                await saveCellToServer(engineFile, row.ID, 'qa_revision_accion', denormalizeAccionFromNew(nextAccion));
-            }
-            row.qa_revision_estado = nextEstado;
-            row.qa_revision_accion = nextAccion;
-            row.qa_revision_updated_at = new Date().toISOString();
-        } catch (error) {
-            failedRows.push(String(row?.ID || ''));
-            console.warn('No se pudo aplicar cambio masivo de revision:', error);
+        if (nextEstado === currentEstado && nextAccion === currentAccion) {
+            continue;
         }
+
+        targets.push({
+            target: buildPatchTargetForRow(row),
+            changes: {
+                ...(nextEstado !== currentEstado
+                    ? { qa_revision_estado: { before: currentEstado, after: nextEstado } }
+                    : {}),
+                ...(nextAccion !== currentAccion
+                    ? { qa_revision_accion: { before: currentAccion, after: nextAccion } }
+                    : {})
+            }
+        });
     }
 
-    if (failedRows.length > 0) {
-        alert(`No se pudieron guardar ${failedRows.length} registros en el cambio masivo.`);
+    if (!targets.length) {
+        alert('No hay cambios efectivos para aplicar en el ambito seleccionado.');
+        return;
     }
 
-    renderTable();
-    renderPagination();
+    await changeControl.applyAndRecord({
+        type: QA_BULK_ROW_PATCH_CHANGE_TYPE,
+        module: 'qa_milu',
+        action: `bulk-${quickMode}`,
+        description: `Cambio masivo ${targetValues.label} (${targets.length} filas)`,
+        target: { scope, size: targets.length },
+        data: { targets }
+    });
+
+    updateUndoButtonState();
 }
 
 async function loadData() {
@@ -2469,6 +2708,14 @@ function attachGlobalEvents() {
     $('bulkValidateBtn')?.addEventListener('click', () => applyBulkQuickMode('validate'));
     $('bulkReviewBtn')?.addEventListener('click', () => applyBulkQuickMode('review'));
     $('bulkDiscardBtn')?.addEventListener('click', () => applyBulkQuickMode('discard'));
+    $('qaUndoLastChangeBtn')?.addEventListener('click', () => undoLastQaChange());
+    $('openAuditPageBtn')?.addEventListener('click', () => {
+        window.open('qa_auditoria.html', '_blank', 'noopener');
+    });
+
+    document.addEventListener('milu:change-control:history-updated', () => {
+        updateUndoButtonState();
+    });
 
     document.querySelectorAll('[data-pdf-tab]').forEach(tabBtn => {
         tabBtn.addEventListener('click', () => setRightPanelTab(tabBtn.dataset.pdfTab || 'pdf'));
@@ -2599,6 +2846,21 @@ function attachGlobalEvents() {
     $('qaSideRecordForm')?.addEventListener('submit', handleSideRecordSubmit);
 
     document.addEventListener('keydown', (event) => {
+        if ((event.ctrlKey || event.metaKey) && !event.altKey) {
+            const key = String(event.key || '').toLowerCase();
+            if (key === 'z') {
+                event.preventDefault();
+                if (event.shiftKey) redoLastQaChange();
+                else undoLastQaChange();
+                return;
+            }
+            if (key === 'y') {
+                event.preventDefault();
+                redoLastQaChange();
+                return;
+            }
+        }
+
         if (isMatchesModalOpen()) {
             if (event.key === 'Escape') {
                 event.preventDefault();
@@ -2687,11 +2949,41 @@ function attachGlobalEvents() {
         if (!revisionField || !revisionKey) return;
         const row = state.allData.find(item => getRevisionKey(item) === revisionKey);
         if (!row) return;
-        const estado = revisionField === 'estado' ? target.value : String(row.qa_revision_estado || '');
-        const accion = revisionField === 'accion' ? target.value : String(row.qa_revision_accion || '');
-        setRowRevision(row, estado, accion);
-        updateRevisionSelectVisual(target);
-        syncSideRecordFormWithSelection();
+        const currentEstado = normalizeEstadoToNew(row.qa_revision_estado);
+        const currentAccion = normalizeAccionToNew(row.qa_revision_accion);
+        const nextEstado = revisionField === 'estado' ? normalizeEstadoToNew(target.value) : currentEstado;
+        const nextAccion = revisionField === 'accion' ? normalizeAccionToNew(target.value) : currentAccion;
+        const changes = {};
+        if (nextEstado !== currentEstado) {
+            changes.qa_revision_estado = { before: currentEstado, after: nextEstado };
+        }
+        if (nextAccion !== currentAccion) {
+            changes.qa_revision_accion = { before: currentAccion, after: nextAccion };
+        }
+        if (!Object.keys(changes).length) {
+            updateRevisionSelectVisual(target);
+            return;
+        }
+
+        changeControl.applyAndRecord({
+            type: QA_ROW_PATCH_CHANGE_TYPE,
+            module: 'qa_milu',
+            action: `inline-${revisionField}`,
+            description: `Cambio rapido ${revisionField} ID ${row.ID}`,
+            target: { revisionKey },
+            data: {
+                target: buildPatchTargetForRow(row),
+                changes
+            }
+        }).catch((error) => {
+            console.error('No se pudo guardar cambio rapido:', error);
+            alert(`No se pudo guardar el cambio rapido: ${error.message}`);
+            refreshVisibleRowByRevisionKey(revisionKey);
+            syncSideRecordFormWithSelection();
+        }).finally(() => {
+            updateRevisionSelectVisual(target);
+            updateUndoButtonState();
+        });
     });
 
     const errorViewTbody = $('errorViewTbody');
@@ -2751,11 +3043,41 @@ function attachGlobalEvents() {
         if (!revisionField || !revisionKey) return;
         const row = state.allData.find(item => getRevisionKey(item) === revisionKey);
         if (!row) return;
-        const estado = revisionField === 'estado' ? target.value : String(row.qa_revision_estado || '');
-        const accion = revisionField === 'accion' ? target.value : String(row.qa_revision_accion || '');
-        setRowRevision(row, estado, accion);
-        updateRevisionSelectVisual(target);
-        syncSideRecordFormWithSelection();
+        const currentEstado = normalizeEstadoToNew(row.qa_revision_estado);
+        const currentAccion = normalizeAccionToNew(row.qa_revision_accion);
+        const nextEstado = revisionField === 'estado' ? normalizeEstadoToNew(target.value) : currentEstado;
+        const nextAccion = revisionField === 'accion' ? normalizeAccionToNew(target.value) : currentAccion;
+        const changes = {};
+        if (nextEstado !== currentEstado) {
+            changes.qa_revision_estado = { before: currentEstado, after: nextEstado };
+        }
+        if (nextAccion !== currentAccion) {
+            changes.qa_revision_accion = { before: currentAccion, after: nextAccion };
+        }
+        if (!Object.keys(changes).length) {
+            updateRevisionSelectVisual(target);
+            return;
+        }
+
+        changeControl.applyAndRecord({
+            type: QA_ROW_PATCH_CHANGE_TYPE,
+            module: 'qa_milu',
+            action: `inline-error-view-${revisionField}`,
+            description: `Cambio rapido vista errores ${revisionField} ID ${row.ID}`,
+            target: { revisionKey },
+            data: {
+                target: buildPatchTargetForRow(row),
+                changes
+            }
+        }).catch((error) => {
+            console.error('No se pudo guardar cambio rapido en vista errores:', error);
+            alert(`No se pudo guardar el cambio rapido: ${error.message}`);
+            refreshVisibleRowByRevisionKey(revisionKey);
+            syncSideRecordFormWithSelection();
+        }).finally(() => {
+            updateRevisionSelectVisual(target);
+            updateUndoButtonState();
+        });
     });
 
     window.addEventListener('resize', () => {
@@ -2804,6 +3126,7 @@ function attachGlobalEvents() {
 }
 
 function init() {
+    registerChangeControlTypes();
     initColumnResize();
     loadColumnViewPreference();
     initPdfZoomControls();
@@ -2814,6 +3137,7 @@ function init() {
     subscribeRevisionSync((message) => {
         applyIncomingRevisionSync(message);
     });
+    updateUndoButtonState();
     setRightPanelTab(state.rightPanelTab);
     clearSideRecordForm();
     loadData();
