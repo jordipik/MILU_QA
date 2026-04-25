@@ -446,15 +446,42 @@ function openAnalisisForRow(row) {
     }
 
     const params = new URLSearchParams();
+    const isEmbedded = new URLSearchParams(window.location.search || '').get('embedded') === '1';
     if (book) params.set('engine', book);
     if (id) params.set('id', id);
     params.set('record', record);
-    const returnMode = String(localStorage.getItem('analista02:return-mode') || '').trim().toLowerCase();
-    params.set('returnMode', returnMode === 'navigate' ? 'navigate' : 'close');
-    params.set('returnTo', window.location.href);
+    if (isEmbedded) {
+        params.set('embedded', '1');
+        try {
+            const openViaShell = window.parent?.miluShellOpenAnalisisRecord;
+            if (typeof openViaShell === 'function') {
+                const opened = openViaShell({ engine: book, id, record });
+                if (opened !== false) return;
+            }
+        } catch (_) {
+            // Fallback to direct navigation.
+        }
+    }
 
     const targetUrl = `analista_02.html?${params.toString()}`;
-    window.open(targetUrl, '_blank', 'noopener');
+    window.location.assign(targetUrl);
+}
+
+function getStartupRecordModalRequestFromUrl() {
+    const params = new URLSearchParams(window.location.search || '');
+    const openRecordRaw = String(params.get('openRecord') || '').trim().toLowerCase();
+    const shouldOpenRecord = openRecordRaw === '1' || openRecordRaw === 'true';
+    if (!shouldOpenRecord) return null;
+
+    const request = {
+        engine: String(params.get('engine') || '').trim(),
+        id: String(params.get('id') || '').trim(),
+        record: String(params.get('record') || '').trim(),
+        mode: String(params.get('mode') || '').trim().toLowerCase() === 'export' ? 'export' : 'record'
+    };
+
+    if (!request.engine && !request.id && !request.record) return null;
+    return request;
 }
 
 
@@ -1553,6 +1580,43 @@ function openRecordModal(revisionKey) {
     if (firstInput instanceof HTMLElement) firstInput.focus();
 }
 
+function openSharedRecordEditorForRow(row) {
+    if (!row || typeof row !== 'object') return false;
+
+    const shellBridge = window.parent && window.parent !== window
+        ? window.parent.miluShellOpenSharedRecordEditor
+        : null;
+    if (typeof shellBridge !== 'function') return false;
+
+    const opened = shellBridge({
+        id: String(row?.ID ?? '').trim(),
+        engineModel: String(row?.engine_model ?? '').trim(),
+        engineFile: String(getEngineJsonForRow(row) || '').trim(),
+        record: String(row?.pn_final ?? row?.['PART NO.'] ?? '').trim(),
+        source_file: String(row?.source_file ?? '').trim(),
+        source_page: String(row?.['Source Page'] ?? '').trim(),
+        pos: String(row?.POS ?? '').trim(),
+        part_no: String(row?.['PART NO.'] ?? row?.pn ?? '').trim(),
+        pn_final: String(row?.pn_final ?? '').trim(),
+        designation_final: String(row?.designation_final ?? '').trim(),
+        model_type: String(row?.model_type ?? '').trim(),
+        qty: String(row?.QTY ?? row?.qty ?? '').trim(),
+        units: String(row?.Units ?? row?.units ?? '').trim(),
+        fn: String(row?.FN ?? row?.fn ?? '').trim(),
+        weight_final: String(row?.weight_final ?? '').trim(),
+        measurement_final: String(row?.measurement_final ?? '').trim(),
+        norma: String(row?.norma ?? '').trim(),
+        gesa: String(row?.gesa ?? '').trim(),
+        normalizado: String(row?.normalizado ?? '').trim(),
+        sust_hierarchie: String(row?.sust_hierarchie ?? '').trim(),
+        has_img: String(row?.has_img ?? '').trim(),
+        en_web: String(row?.en_web ?? '').trim(),
+        qa_revision_estado: String(row?.qa_revision_estado ?? '').trim(),
+        qa_revision_accion: String(row?.qa_revision_accion ?? '').trim()
+    });
+    return opened !== false;
+}
+
 function updateExportModalHeader(row) {
     const pnLabel = $('qaExportModalPn');
     const currentLabel = $('qaExportModalCurrent');
@@ -2561,6 +2625,11 @@ async function loadData() {
             openRecordModalFromShell(pendingRequest);
         }
 
+        const startupRecordModalRequest = getStartupRecordModalRequestFromUrl();
+        if (startupRecordModalRequest) {
+            openRecordModalFromShell(startupRecordModalRequest);
+        }
+
         if (syncAutoPageSize()) {
             state.currentPage = 1;
             renderTable();
@@ -2729,6 +2798,8 @@ function attachGlobalEvents() {
             alert('Selecciona un registro para abrir el modal.');
             return;
         }
+        const row = getRowByRevisionKey(revisionKey);
+        if (openSharedRecordEditorForRow(row)) return;
         openRecordModal(revisionKey);
     });
 
@@ -2938,9 +3009,11 @@ function attachGlobalEvents() {
         const tr = target.closest('tr[data-revision-key]');
         const revisionKey = tr?.getAttribute('data-revision-key') || '';
         if (!revisionKey) return;
+        const row = state.allData.find(item => getRevisionKey(item) === revisionKey);
+        if (!row) return;
         event.preventDefault();
         event.stopPropagation();
-        openRecordModal(revisionKey);
+        openAnalisisForRow(row);
     });
 
     tbody?.addEventListener('change', (event) => {
@@ -3031,10 +3104,12 @@ function attachGlobalEvents() {
         const tr = target.closest('tr[data-revision-key]');
         const revisionKey = tr?.getAttribute('data-revision-key') || '';
         if (!revisionKey) return;
+        const row = state.allData.find(item => getRevisionKey(item) === revisionKey);
+        if (!row) return;
 
         event.preventDefault();
         event.stopPropagation();
-        openRecordModal(revisionKey);
+        openAnalisisForRow(row);
     });
 
     errorViewTbody?.addEventListener('change', (event) => {

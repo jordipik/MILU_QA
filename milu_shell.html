@@ -47,6 +47,171 @@
         .shell-frame.is-active {
             display: block;
         }
+
+        .shell-shared-modal[hidden] {
+            display: none;
+        }
+
+        .shell-shared-modal {
+            position: fixed;
+            inset: 0;
+            z-index: 2000;
+            display: grid;
+            place-items: center;
+            padding: 20px;
+        }
+
+        .shell-shared-modal-backdrop {
+            position: absolute;
+            inset: 0;
+            background: rgba(15, 23, 42, 0.42);
+            backdrop-filter: blur(1px);
+        }
+
+        .shell-shared-modal-panel {
+            position: relative;
+            width: min(1120px, calc(100vw - 32px));
+            max-height: calc(100vh - 32px);
+            overflow: auto;
+            border-radius: 14px;
+            border: 1px solid #c9d6e3;
+            background: #ffffff;
+            box-shadow: 0 24px 48px rgba(15, 23, 42, 0.28);
+        }
+
+        .shell-shared-modal-head {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 12px;
+            padding: 12px 14px;
+            border-bottom: 1px solid #d8e2ee;
+            background: linear-gradient(180deg, #f7fbff, #eef5fc);
+        }
+
+        .shell-shared-modal-title {
+            margin: 0;
+            font-size: 14px;
+            font-weight: 800;
+            color: #17324a;
+        }
+
+        .shell-shared-modal-close {
+            width: 30px;
+            height: 30px;
+            border-radius: 8px;
+            border: 1px solid #c9d6e3;
+            background: #ffffff;
+            color: #17324a;
+            font-size: 18px;
+            line-height: 1;
+            cursor: pointer;
+        }
+
+        .shell-shared-modal-body {
+            padding: 14px;
+            display: grid;
+            gap: 12px;
+        }
+
+        .shell-shared-meta {
+            padding: 10px 12px;
+            border-radius: 10px;
+            border: 1px solid #d6e1ee;
+            background: #f8fbff;
+            font-size: 12px;
+            color: #2f4a63;
+            font-family: 'IBM Plex Mono', Consolas, monospace;
+        }
+
+        .shell-shared-grid {
+            display: grid;
+            grid-template-columns: repeat(6, minmax(0, 1fr));
+            gap: 10px;
+        }
+
+        .shell-shared-field {
+            display: grid;
+            gap: 6px;
+        }
+
+        .shell-shared-field.span-2 {
+            grid-column: span 2;
+        }
+
+        .shell-shared-field.span-3 {
+            grid-column: span 3;
+        }
+
+        .shell-shared-field.span-4 {
+            grid-column: span 4;
+        }
+
+        .shell-shared-field label {
+            font-size: 11px;
+            font-weight: 800;
+            color: #4a6179;
+            letter-spacing: 0.03em;
+            text-transform: uppercase;
+        }
+
+        .shell-shared-field input,
+        .shell-shared-field select {
+            height: 34px;
+            border-radius: 9px;
+            border: 1px solid #c9d6e3;
+            padding: 0 10px;
+            font-family: inherit;
+            font-size: 12px;
+            color: #14283a;
+            background: #ffffff;
+        }
+
+        .shell-shared-field input[readonly] {
+            background: #f6f9fc;
+            color: #496079;
+        }
+
+        .shell-shared-actions {
+            display: flex;
+            justify-content: flex-end;
+            gap: 8px;
+            padding: 0 14px 14px;
+        }
+
+        .shell-shared-btn {
+            height: 34px;
+            border-radius: 10px;
+            border: 1px solid #c9d6e3;
+            background: #f3f8fd;
+            color: #143652;
+            font-size: 12px;
+            font-weight: 800;
+            padding: 0 12px;
+            cursor: pointer;
+        }
+
+        .shell-shared-btn.primary {
+            border-color: #1766ac;
+            background: linear-gradient(135deg, #0a4f8f, #1f79c8);
+            color: #ffffff;
+        }
+
+        .shell-shared-status {
+            min-height: 16px;
+            padding: 0 14px 12px;
+            margin: 0;
+            font-size: 12px;
+            color: #46627d;
+        }
+
+        .shell-shared-status.error {
+            color: #a12626;
+        }
+
+        .shell-shared-status.ok {
+            color: #16613f;
+        }
     </style>
 </head>
 
@@ -54,8 +219,118 @@
     <main id="shellMain" class="shell-main">
     </main>
 
+    <div id="shellSharedRecordModal" class="shell-shared-modal" hidden aria-modal="true" role="dialog"
+        aria-labelledby="shellSharedRecordModalTitle">
+        <div class="shell-shared-modal-backdrop" data-shell-shared-close="true"></div>
+        <div class="shell-shared-modal-panel">
+            <div class="shell-shared-modal-head">
+                <h2 id="shellSharedRecordModalTitle" class="shell-shared-modal-title">Editar Registro</h2>
+                <button id="shellSharedRecordModalClose" class="shell-shared-modal-close" type="button"
+                    aria-label="Cerrar">&times;</button>
+            </div>
+            <div class="shell-shared-modal-body">
+                <div id="shellSharedMeta" class="shell-shared-meta">-</div>
+                <div class="shell-shared-grid">
+                    <div class="shell-shared-field span-2">
+                        <label for="shellSharedPnFinal">PN FINAL</label>
+                        <input id="shellSharedPnFinal" type="text" />
+                    </div>
+                    <div class="shell-shared-field span-4">
+                        <label for="shellSharedDesignationFinal">DESIGNATION FINAL</label>
+                        <input id="shellSharedDesignationFinal" type="text" />
+                    </div>
+                    <div class="shell-shared-field">
+                        <label for="shellSharedModelType">MODEL/TYPE</label>
+                        <input id="shellSharedModelType" type="text" readonly />
+                    </div>
+                    <div class="shell-shared-field">
+                        <label for="shellSharedQty">QTY</label>
+                        <input id="shellSharedQty" type="text" readonly />
+                    </div>
+                    <div class="shell-shared-field">
+                        <label for="shellSharedUnits">UNITS</label>
+                        <input id="shellSharedUnits" type="text" readonly />
+                    </div>
+                    <div class="shell-shared-field">
+                        <label for="shellSharedWeightFinal">WEIGHT FINAL</label>
+                        <input id="shellSharedWeightFinal" type="text" />
+                    </div>
+                    <div class="shell-shared-field">
+                        <label for="shellSharedFn">FN</label>
+                        <input id="shellSharedFn" type="text" readonly />
+                    </div>
+                    <div class="shell-shared-field">
+                        <label for="shellSharedMeasurementFinal">MEASUREMENT FINAL</label>
+                        <input id="shellSharedMeasurementFinal" type="text" />
+                    </div>
+                    <div class="shell-shared-field">
+                        <label for="shellSharedNorma">NORMA</label>
+                        <input id="shellSharedNorma" type="text" />
+                    </div>
+                    <div class="shell-shared-field">
+                        <label for="shellSharedEstado">ESTADO</label>
+                        <select id="shellSharedEstado">
+                            <option value="pendiente">Pendiente</option>
+                            <option value="ok">OK</option>
+                        </select>
+                    </div>
+                    <div class="shell-shared-field">
+                        <label for="shellSharedAccion">ACCION</label>
+                        <select id="shellSharedAccion">
+                            <option value="importar">Importar</option>
+                            <option value="revisar">Revisar</option>
+                            <option value="eliminar">Eliminar</option>
+                        </select>
+                    </div>
+                    <div class="shell-shared-field">
+                        <label for="shellSharedGesa">GESA</label>
+                        <input id="shellSharedGesa" type="text" readonly />
+                    </div>
+                    <div class="shell-shared-field">
+                        <label for="shellSharedNormalizado">NORM.</label>
+                        <input id="shellSharedNormalizado" type="text" readonly />
+                    </div>
+                    <div class="shell-shared-field span-2">
+                        <label for="shellSharedNewSup">NEW/SUP</label>
+                        <input id="shellSharedNewSup" type="text" readonly />
+                    </div>
+                    <div class="shell-shared-field">
+                        <label for="shellSharedHasImg">FOTO</label>
+                        <input id="shellSharedHasImg" type="text" readonly />
+                    </div>
+                    <div class="shell-shared-field">
+                        <label for="shellSharedEnWeb">EN WEB</label>
+                        <input id="shellSharedEnWeb" type="text" readonly />
+                    </div>
+                    <div class="shell-shared-field span-3">
+                        <label for="shellSharedBook">LIBRO</label>
+                        <input id="shellSharedBook" type="text" readonly />
+                    </div>
+                    <div class="shell-shared-field">
+                        <label for="shellSharedPage">PAGINA</label>
+                        <input id="shellSharedPage" type="text" readonly />
+                    </div>
+                    <div class="shell-shared-field">
+                        <label for="shellSharedPos">POS</label>
+                        <input id="shellSharedPos" type="text" readonly />
+                    </div>
+                    <div class="shell-shared-field">
+                        <label for="shellSharedPartNo">PART NO.</label>
+                        <input id="shellSharedPartNo" type="text" readonly />
+                    </div>
+                </div>
+            </div>
+            <div class="shell-shared-actions">
+                <button id="shellSharedCancelBtn" class="shell-shared-btn" type="button">Cancelar</button>
+                <button id="shellSharedSaveBtn" class="shell-shared-btn primary" type="button">Guardar</button>
+            </div>
+            <p id="shellSharedStatus" class="shell-shared-status" aria-live="polite"></p>
+        </div>
+    </div>
+
     <script type="module">
         import { initTopbar } from './js/topbar.js';
+        import { saveCellToServer } from './js/data-loader.js';
 
         const VIEW_TO_PAGE = {
             pdf: 'qa_milu.html',
@@ -69,6 +344,124 @@
             analisis: 'MILU • ANALISIS'
         };
         const frameByView = new Map();
+        let sharedEditorContext = null;
+
+        const EDITABLE_FIELDS = [
+            'pn_final',
+            'designation_final',
+            'weight_final',
+            'measurement_final',
+            'norma',
+            'qa_revision_estado',
+            'qa_revision_accion'
+        ];
+
+        function txt(value) {
+            return String(value ?? '').trim();
+        }
+
+        function normalizeEngineFile(payload = {}) {
+            const rawEngineFile = txt(payload.engineFile);
+            if (rawEngineFile) {
+                const normalized = rawEngineFile.endsWith('.json') ? rawEngineFile : `${rawEngineFile}.json`;
+                return normalized.startsWith('engine_') ? normalized : `engine_${normalized}`;
+            }
+
+            const sourceFile = txt(payload.source_file);
+            if (sourceFile) {
+                const base = sourceFile.replace(/^engine_/i, '').replace(/\.xlsx$/i, '').replace(/\.json$/i, '');
+                return `engine_${base}.json`;
+            }
+
+            const engineModel = txt(payload.engineModel || payload.engine || payload.book).replace(/^engine_/i, '');
+            if (engineModel) return `engine_${engineModel}.json`;
+            return '';
+        }
+
+        function normalizeEstado(value) {
+            const raw = txt(value).toLowerCase();
+            if (raw === 'ok' || raw === 'revisado') return 'ok';
+            return 'pendiente';
+        }
+
+        function normalizeAccion(value) {
+            const raw = txt(value).toLowerCase();
+            if (raw === 'mantener' || raw === 'importar') return 'importar';
+            if (raw === 'eliminar') return 'eliminar';
+            if (raw === 'revisar') return 'revisar';
+            return 'importar';
+        }
+
+        function denormalizeEstado(value) {
+            return normalizeEstado(value) === 'ok' ? 'revisado' : '';
+        }
+
+        function denormalizeAccion(value) {
+            const normalized = normalizeAccion(value);
+            if (normalized === 'eliminar') return 'eliminar';
+            if (normalized === 'revisar') return 'revisar';
+            return 'mantener';
+        }
+
+        function getSharedModalElements() {
+            return {
+                modal: document.getElementById('shellSharedRecordModal'),
+                meta: document.getElementById('shellSharedMeta'),
+                status: document.getElementById('shellSharedStatus'),
+                saveBtn: document.getElementById('shellSharedSaveBtn'),
+                pnFinal: document.getElementById('shellSharedPnFinal'),
+                designationFinal: document.getElementById('shellSharedDesignationFinal'),
+                weightFinal: document.getElementById('shellSharedWeightFinal'),
+                measurementFinal: document.getElementById('shellSharedMeasurementFinal'),
+                norma: document.getElementById('shellSharedNorma'),
+                estado: document.getElementById('shellSharedEstado'),
+                accion: document.getElementById('shellSharedAccion'),
+                modelType: document.getElementById('shellSharedModelType'),
+                qty: document.getElementById('shellSharedQty'),
+                units: document.getElementById('shellSharedUnits'),
+                fn: document.getElementById('shellSharedFn'),
+                gesa: document.getElementById('shellSharedGesa'),
+                normalizado: document.getElementById('shellSharedNormalizado'),
+                newSup: document.getElementById('shellSharedNewSup'),
+                hasImg: document.getElementById('shellSharedHasImg'),
+                enWeb: document.getElementById('shellSharedEnWeb'),
+                book: document.getElementById('shellSharedBook'),
+                page: document.getElementById('shellSharedPage'),
+                pos: document.getElementById('shellSharedPos'),
+                partNo: document.getElementById('shellSharedPartNo')
+            };
+        }
+
+        function setSharedModalStatus(message, kind = '') {
+            const { status } = getSharedModalElements();
+            if (!(status instanceof HTMLElement)) return;
+            status.classList.remove('ok', 'error');
+            if (kind === 'ok') status.classList.add('ok');
+            if (kind === 'error') status.classList.add('error');
+            status.textContent = message;
+        }
+
+        function closeSharedRecordEditor() {
+            const { modal } = getSharedModalElements();
+            if (!(modal instanceof HTMLElement)) return;
+            modal.hidden = true;
+            sharedEditorContext = null;
+            setSharedModalStatus('');
+        }
+
+        function notifyAnalisisDataChanged(payload = {}) {
+            const targetFrame = getFrameForView('analisis');
+            if (!(targetFrame instanceof HTMLIFrameElement)) return false;
+            const bridge = targetFrame.contentWindow?.miluRefreshAnalisisRecord;
+            if (typeof bridge !== 'function') return false;
+            try {
+                const result = bridge(payload);
+                if (result && typeof result.catch === 'function') result.catch(() => undefined);
+                return true;
+            } catch (_) {
+                return false;
+            }
+        }
 
         function normalizeView(value) {
             const raw = String(value || '').trim().toLowerCase();
@@ -213,6 +606,164 @@
 
         window.miluShellOpenPdfRecordModal = openPdfRecordModal;
 
+        function openSharedRecordEditor(payload = {}) {
+            const id = txt(payload.id);
+            const engineFile = normalizeEngineFile(payload);
+            if (!id || !engineFile) return false;
+
+            const {
+                modal,
+                meta,
+                pnFinal,
+                designationFinal,
+                weightFinal,
+                measurementFinal,
+                norma,
+                estado,
+                accion,
+                modelType,
+                qty,
+                units,
+                fn,
+                gesa,
+                normalizado,
+                newSup,
+                hasImg,
+                enWeb,
+                book,
+                page,
+                pos,
+                partNo
+            } = getSharedModalElements();
+            if (!(modal instanceof HTMLElement)) return false;
+
+            sharedEditorContext = {
+                id,
+                engineFile,
+                basePayload: { ...payload },
+                values: {
+                    pn_final: txt(payload.pn_final),
+                    designation_final: txt(payload.designation_final),
+                    weight_final: txt(payload.weight_final),
+                    measurement_final: txt(payload.measurement_final),
+                    norma: txt(payload.norma),
+                    qa_revision_estado: normalizeEstado(payload.qa_revision_estado),
+                    qa_revision_accion: normalizeAccion(payload.qa_revision_accion)
+                }
+            };
+
+            if (meta instanceof HTMLElement) {
+                const engineModel = txt(payload.engineModel || payload.engine || payload.book);
+                const record = txt(payload.record || payload.pn_final || payload['PART NO.']);
+                meta.textContent = `ID=${id} | Engine=${engineModel || '-'} | Record=${record || '-'} | File=${engineFile}`;
+            }
+
+            if (pnFinal instanceof HTMLInputElement) pnFinal.value = sharedEditorContext.values.pn_final;
+            if (designationFinal instanceof HTMLInputElement) designationFinal.value = sharedEditorContext.values.designation_final;
+            if (weightFinal instanceof HTMLInputElement) weightFinal.value = sharedEditorContext.values.weight_final;
+            if (measurementFinal instanceof HTMLInputElement) measurementFinal.value = sharedEditorContext.values.measurement_final;
+            if (norma instanceof HTMLInputElement) norma.value = sharedEditorContext.values.norma;
+            if (estado instanceof HTMLSelectElement) estado.value = sharedEditorContext.values.qa_revision_estado;
+            if (accion instanceof HTMLSelectElement) accion.value = sharedEditorContext.values.qa_revision_accion;
+            if (modelType instanceof HTMLInputElement) modelType.value = txt(payload.model_type || payload.ModelType);
+            if (qty instanceof HTMLInputElement) qty.value = txt(payload.qty || payload.QTY);
+            if (units instanceof HTMLInputElement) units.value = txt(payload.units || payload.Units);
+            if (fn instanceof HTMLInputElement) fn.value = txt(payload.fn || payload.FN);
+            if (gesa instanceof HTMLInputElement) gesa.value = txt(payload.gesa);
+            if (normalizado instanceof HTMLInputElement) normalizado.value = txt(payload.normalizado);
+            if (newSup instanceof HTMLInputElement) newSup.value = txt(payload.sust_hierarchie || payload.new_sup);
+            if (hasImg instanceof HTMLInputElement) hasImg.value = txt(payload.has_img);
+            if (enWeb instanceof HTMLInputElement) enWeb.value = txt(payload.en_web);
+            if (book instanceof HTMLInputElement) book.value = txt(payload.engineModel || payload.engine || payload.book);
+            if (page instanceof HTMLInputElement) page.value = txt(payload.source_page || payload.page);
+            if (pos instanceof HTMLInputElement) pos.value = txt(payload.pos || payload.POS);
+            if (partNo instanceof HTMLInputElement) partNo.value = txt(payload.part_no || payload['PART NO.']);
+
+            setSharedModalStatus('');
+            modal.hidden = false;
+            pnFinal?.focus();
+            return true;
+        }
+
+        async function saveSharedRecordEditor() {
+            const context = sharedEditorContext;
+            if (!context) return;
+
+            const { saveBtn, pnFinal, designationFinal, weightFinal, measurementFinal, norma, estado, accion } = getSharedModalElements();
+            const nextValues = {
+                pn_final: txt(pnFinal instanceof HTMLInputElement ? pnFinal.value : ''),
+                designation_final: txt(designationFinal instanceof HTMLInputElement ? designationFinal.value : ''),
+                weight_final: txt(weightFinal instanceof HTMLInputElement ? weightFinal.value : ''),
+                measurement_final: txt(measurementFinal instanceof HTMLInputElement ? measurementFinal.value : ''),
+                norma: txt(norma instanceof HTMLInputElement ? norma.value : ''),
+                qa_revision_estado: normalizeEstado(estado instanceof HTMLSelectElement ? estado.value : ''),
+                qa_revision_accion: normalizeAccion(accion instanceof HTMLSelectElement ? accion.value : '')
+            };
+
+            const changed = EDITABLE_FIELDS.filter((field) => nextValues[field] !== context.values[field]);
+            if (!changed.length) {
+                setSharedModalStatus('Sin cambios para guardar.', 'ok');
+                return;
+            }
+
+            if (saveBtn instanceof HTMLButtonElement) saveBtn.disabled = true;
+            setSharedModalStatus('Guardando cambios...');
+
+            try {
+                for (const field of changed) {
+                    const valueToPersist = field === 'qa_revision_estado'
+                        ? denormalizeEstado(nextValues[field])
+                        : field === 'qa_revision_accion'
+                            ? denormalizeAccion(nextValues[field])
+                            : nextValues[field];
+                    await saveCellToServer(context.engineFile, context.id, field, valueToPersist);
+                    context.values[field] = nextValues[field];
+                }
+
+                const refreshPayload = {
+                    id: context.id,
+                    engine: txt(context.basePayload.engineModel || context.basePayload.engine || context.basePayload.book),
+                    record: txt(nextValues.pn_final || context.basePayload.record || context.basePayload['PART NO.'])
+                };
+                notifyPdfDataChanged(refreshPayload);
+                notifyAnalisisDataChanged(refreshPayload);
+                setSharedModalStatus('Cambios guardados correctamente.', 'ok');
+                window.setTimeout(() => closeSharedRecordEditor(), 120);
+            } catch (error) {
+                setSharedModalStatus(`Error guardando: ${String(error?.message || error)}`, 'error');
+            } finally {
+                if (saveBtn instanceof HTMLButtonElement) saveBtn.disabled = false;
+            }
+        }
+
+        window.miluShellOpenSharedRecordEditor = openSharedRecordEditor;
+
+        function openAnalisisRecord(payload = {}) {
+            mountView('analisis', { updateHistory: true });
+
+            const targetFrame = getFrameForView('analisis');
+            if (!(targetFrame instanceof HTMLIFrameElement)) return false;
+
+            const invokeBridge = () => {
+                const bridge = targetFrame.contentWindow?.miluOpenAnalisisRecord;
+                if (typeof bridge !== 'function') return false;
+                return bridge(payload) !== false;
+            };
+
+            if (invokeBridge()) return true;
+
+            let attemptsLeft = 40;
+            const retry = () => {
+                if (invokeBridge() || attemptsLeft <= 0) return;
+                attemptsLeft -= 1;
+                window.setTimeout(retry, 100);
+            };
+            retry();
+            return true;
+        }
+
+        window.miluShellOpenAnalisisRecord = openAnalisisRecord;
+
         function notifyPdfDataChanged(payload = {}) {
             const targetFrame = getFrameForView('pdf');
             if (!(targetFrame instanceof HTMLIFrameElement)) return false;
@@ -229,6 +780,26 @@
         }
 
         window.miluShellNotifyPdfDataChanged = notifyPdfDataChanged;
+        window.miluShellNotifyAnalisisDataChanged = notifyAnalisisDataChanged;
+
+        const sharedModal = document.getElementById('shellSharedRecordModal');
+        document.getElementById('shellSharedRecordModalClose')?.addEventListener('click', closeSharedRecordEditor);
+        document.getElementById('shellSharedCancelBtn')?.addEventListener('click', closeSharedRecordEditor);
+        document.getElementById('shellSharedSaveBtn')?.addEventListener('click', () => {
+            saveSharedRecordEditor().catch((error) => {
+                setSharedModalStatus(`Error guardando: ${String(error?.message || error)}`, 'error');
+            });
+        });
+        sharedModal?.addEventListener('click', (event) => {
+            const target = event.target;
+            if (!(target instanceof HTMLElement)) return;
+            if (target.dataset.shellSharedClose === 'true') closeSharedRecordEditor();
+        });
+        document.addEventListener('keydown', (event) => {
+            if (event.key === 'Escape' && sharedModal instanceof HTMLElement && !sharedModal.hidden) {
+                closeSharedRecordEditor();
+            }
+        });
 
         window.addEventListener('popstate', () => {
             mountView(getViewFromUrl(), { updateHistory: false });

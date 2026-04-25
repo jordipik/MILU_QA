@@ -81,7 +81,6 @@ const PDF_LINE_Y_TOLERANCE = 2;
 const RIGHT_PANEL_WIDTH_KEY = 'analista02:right-panel-width';
 const COMPARISON_WIDTHS_KEY = 'analista02:comparison-column-widths';
 const COMPARISON_MIN_COL_WIDTH = 30;
-const RETURN_MODE_KEY = 'analista02:return-mode';
 const ENGINE_BOOK_FILES = getEngineJsonFiles();
 const AUTO_RECOMPUTE_TRIGGER_FIELDS = new Set([
     'pn_final',
@@ -97,24 +96,8 @@ function getStartupSelectionFromUrl() {
     const engine = String(params.get('engine') || '').trim();
     const id = String(params.get('id') || '').trim();
     const record = String(params.get('record') || '').trim();
-    const returnModeRaw = String(params.get('returnMode') || '').trim().toLowerCase();
-    const returnToRaw = String(params.get('returnTo') || '').trim();
 
-    let returnTo = '';
-    if (returnToRaw) {
-        try {
-            const candidate = new URL(returnToRaw, window.location.href);
-            if (candidate.origin === window.location.origin) {
-                returnTo = candidate.href;
-            }
-        } catch (_) {
-            returnTo = '';
-        }
-    }
-
-    const returnMode = returnModeRaw === 'navigate' ? 'navigate' : '';
-
-    return { engine, id, record, returnTo, returnMode };
+    return { engine, id, record };
 }
 
 const startupSelection = getStartupSelectionFromUrl();
@@ -250,75 +233,6 @@ function tokenMatchesPdf(pageText, candidateValue) {
 function resolvePdfPageNumber(value) {
     const parsed = Number(String(value ?? '').replace(/[^0-9]/g, ''));
     return Number.isInteger(parsed) && parsed > 0 ? parsed : null;
-}
-
-function getSavedReturnMode() {
-    const mode = String(localStorage.getItem(RETURN_MODE_KEY) || '').trim().toLowerCase();
-    return mode === 'navigate' ? 'navigate' : 'close';
-}
-
-function getSelectedReturnMode() {
-    const modeSelect = $('returnToQaModeSelect');
-    if (modeSelect instanceof HTMLSelectElement) {
-        return String(modeSelect.value || '').trim().toLowerCase() === 'navigate' ? 'navigate' : 'close';
-    }
-    return getSavedReturnMode();
-}
-
-function persistReturnMode(mode) {
-    const normalizedMode = mode === 'navigate' ? 'navigate' : 'close';
-    localStorage.setItem(RETURN_MODE_KEY, normalizedMode);
-}
-
-function syncReturnModeControl() {
-    const modeSelect = $('returnToQaModeSelect');
-    if (!(modeSelect instanceof HTMLSelectElement)) return;
-
-    const selectedMode = startupSelection.returnMode || getSavedReturnMode();
-    modeSelect.value = selectedMode;
-}
-
-function navigateBackToQa() {
-    const returnMode = getSelectedReturnMode();
-    const payload = {
-        id: txt(currentRow?.ID, ''),
-        engine: txt(currentRow?.engine_model, ''),
-        record: txt(currentRow?.pn_final ?? currentRow?.['PART NO.'] ?? '', '')
-    };
-
-    persistReturnMode(returnMode);
-
-    const openerWin = window.opener;
-    if (openerWin && !openerWin.closed && returnMode === 'close') {
-        try {
-            if (typeof openerWin.miluRefreshPdfData === 'function') {
-                const refreshResult = openerWin.miluRefreshPdfData(payload);
-                if (refreshResult && typeof refreshResult.catch === 'function') {
-                    refreshResult.catch(() => undefined);
-                }
-            }
-            openerWin.focus();
-            window.close();
-            return;
-        } catch (_) {
-            // Continue with location fallback.
-        }
-    }
-
-    if (openerWin && !openerWin.closed) {
-        try {
-            if (typeof openerWin.miluRefreshPdfData === 'function') {
-                const refreshResult = openerWin.miluRefreshPdfData(payload);
-                if (refreshResult && typeof refreshResult.catch === 'function') {
-                    refreshResult.catch(() => undefined);
-                }
-            }
-        } catch (_) {
-            // Ignore and continue with local navigation.
-        }
-    }
-
-    window.location.href = startupSelection.returnTo || 'qa_milu.html';
 }
 
 async function getPdfPageNormalizedText(book, sourcePage) {
@@ -845,6 +759,39 @@ function initEditRecordModal() {
 
 function openEditRecordModalForRow(row = currentRow) {
     if (!row || typeof row !== 'object') return;
+
+    const sharedShellBridge = window.parent && window.parent !== window
+        ? window.parent.miluShellOpenSharedRecordEditor
+        : null;
+    if (typeof sharedShellBridge === 'function') {
+        const openedShared = sharedShellBridge({
+            id: String(row?.ID ?? '').trim(),
+            engineModel: String(row?.engine_model ?? '').trim(),
+            engineFile: resolveEngineFile(row),
+            record: String(row?.pn_final ?? row?.['PART NO.'] ?? '').trim(),
+            source_file: String(row?.source_file ?? '').trim(),
+            source_page: String(row?.['Source Page'] ?? '').trim(),
+            pos: String(row?.POS ?? '').trim(),
+            part_no: String(row?.['PART NO.'] ?? row?.pn ?? '').trim(),
+            pn_final: String(row?.pn_final ?? '').trim(),
+            designation_final: String(row?.designation_final ?? '').trim(),
+            model_type: String(row?.model_type ?? '').trim(),
+            qty: String(row?.QTY ?? row?.qty ?? '').trim(),
+            units: String(row?.Units ?? row?.units ?? '').trim(),
+            fn: String(row?.FN ?? row?.fn ?? '').trim(),
+            weight_final: String(row?.weight_final ?? '').trim(),
+            measurement_final: String(row?.measurement_final ?? '').trim(),
+            norma: String(row?.norma ?? '').trim(),
+            gesa: String(row?.gesa ?? '').trim(),
+            normalizado: String(row?.normalizado ?? '').trim(),
+            sust_hierarchie: String(row?.sust_hierarchie ?? '').trim(),
+            has_img: String(row?.has_img ?? '').trim(),
+            en_web: String(row?.en_web ?? '').trim(),
+            qa_revision_estado: normalizeEstadoToNew(row?.qa_revision_estado),
+            qa_revision_accion: normalizeAccionToNew(row?.qa_revision_accion)
+        });
+        if (openedShared !== false) return;
+    }
 
     const shellBridge = window.parent && window.parent !== window
         ? window.parent.miluShellOpenPdfRecordModal
@@ -2243,6 +2190,56 @@ async function loadRecordFromControls() {
     await revalidateCurrentRow();
 }
 
+async function openAnalisisRecordFromShell(request = {}) {
+    const requestedEngine = String(request?.engine || '').trim();
+    const requestedLookup = String(request?.record || request?.id || '').trim();
+
+    if (requestedEngine) {
+        const select = $('engineFilterSelect');
+        const currentEngine = String(select?.value || '').trim();
+        if (requestedEngine !== currentEngine) {
+            await loadEngineForFilter(requestedEngine);
+        }
+    }
+
+    if (requestedLookup) {
+        $('recordIdInput').value = requestedLookup;
+        await loadRecordFromControls();
+        return true;
+    }
+
+    return true;
+}
+
+window.miluOpenAnalisisRecord = (request = {}) => {
+    openAnalisisRecordFromShell(request).catch((error) => {
+        console.warn('No se pudo abrir registro de analisis desde shell:', error);
+    });
+    return true;
+};
+
+window.miluRefreshAnalisisRecord = async (request = {}) => {
+    try {
+        const requestedEngine = String(request?.engine || '').trim();
+        const lookup = String(request?.id || request?.record || '').trim();
+
+        if (requestedEngine) {
+            await loadEngineForFilter(requestedEngine);
+        }
+
+        if (lookup) {
+            $('recordIdInput').value = lookup;
+            await loadRecordFromControls();
+        } else {
+            await revalidateCurrentRow();
+        }
+        return true;
+    } catch (error) {
+        console.warn('No se pudo refrescar analista desde shell:', error);
+        return false;
+    }
+};
+
 async function loadRelativeRecord(direction) {
     const queue = getQueueRows();
     if (!queue.length) return;
@@ -2402,7 +2399,6 @@ async function initialize() {
         initHorizontalSplitter();
         initComparisonColumnResize();
         loadComparisonColumnWidths();
-        syncReturnModeControl();
         initPdfZoomControls();
         loadPdfClear();
 
@@ -2436,10 +2432,6 @@ function bindClick(id, callback) {
 
 bindClick('loadRecordBtn', () => {
     loadRecordFromControls().catch((error) => alert(`No se pudo cargar el registro: ${error.message}`));
-});
-
-bindClick('returnToQaBtn', () => {
-    navigateBackToQa();
 });
 
 bindClick('prevRecordBtn', () => {
@@ -2510,13 +2502,6 @@ if (statusAccionSelect instanceof HTMLSelectElement) {
             alert(`No se pudo guardar acción: ${error.message}`);
             renderReviewStateButtons(currentRow);
         });
-    });
-}
-
-const returnToQaModeSelect = $('returnToQaModeSelect');
-if (returnToQaModeSelect instanceof HTMLSelectElement) {
-    returnToQaModeSelect.addEventListener('change', () => {
-        persistReturnMode(getSelectedReturnMode());
     });
 }
 
