@@ -78,7 +78,7 @@ function applyCanonicalFields(row) {
 
     measure_raw: firstMeaningful(row['MEASUREMENT / STANDARD']),
     measure_gesa: firstMeaningful(row.dimensions_gesa),
-    measure_final: firstMeaningful(row.measurement_final),
+    measure_final: firstMeaningful(row.measure_final, row.measurement_final),
 
     norma_raw: firstMeaningful(row.norma),
     norma_final: firstMeaningful(row.norma)

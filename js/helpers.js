@@ -40,6 +40,7 @@ const COLUMN_FALLBACKS = {
     weight_gesa: ['weight_gesa', 'weight_final', 'weight_raw', 'WEIGHT'],
     FN: ['fn_final', 'fn_raw', 'FN'],
     'MEASUREMENT / STANDARD': ['measure_raw', 'measure_final', 'measure_gesa', 'MEASUREMENT / STANDARD'],
+    measure_final: ['measure_final', 'measure_gesa', 'measure_raw', 'measurement_final', 'MEASUREMENT / STANDARD'],
     measurement_final: ['measure_final', 'measure_gesa', 'measure_raw', 'measurement_final', 'MEASUREMENT / STANDARD'],
     dimensions_gesa: ['measure_gesa', 'measure_final', 'measure_raw', 'dimensions_gesa', 'MEASUREMENT / STANDARD'],
     norma: ['norma_final', 'norma_raw', 'norma']

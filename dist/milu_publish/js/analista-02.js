@@ -86,7 +86,6 @@ const AUTO_RECOMPUTE_TRIGGER_FIELDS = new Set([
     'pn_final',
     'designation_final',
     'weight_final',
-    'measurement_final',
     'norma',
     'measure_final'
 ]);
@@ -824,7 +823,7 @@ function populateEditRecordForm(row) {
     if (row?.pn_final) $('editRecordPnFinal').value = String(row.pn_final);
     if (row?.designation_final) $('editRecordDesignationFinal').value = String(row.designation_final);
     if (row?.weight_final) $('editRecordWeightFinal').value = String(row.weight_final);
-    if (row?.measurement_final) $('editRecordMeasurementFinal').value = String(row.measurement_final);
+    if (row?.measure_final ?? row?.measurement_final) $('editRecordMeasurementFinal').value = String(row?.measure_final ?? row?.measurement_final);
     if (row?.norma) $('editRecordNorma').value = String(row.norma);
     const statusSelect = $('editRecordStatus');
     if (statusSelect instanceof HTMLSelectElement) {
@@ -855,7 +854,7 @@ async function saveEditRecordForm() {
             pn_final: String($('editRecordPnFinal')?.value || '').trim(),
             designation_final: String($('editRecordDesignationFinal')?.value || '').trim(),
             weight_final: String($('editRecordWeightFinal')?.value || '').trim(),
-            measurement_final: String($('editRecordMeasurementFinal')?.value || '').trim(),
+            measure_final: String($('editRecordMeasurementFinal')?.value || '').trim(),
             norma: String($('editRecordNorma')?.value || '').trim(),
             qa_revision_estado: normalizeEstadoToNew($('editRecordStatus')?.value || 'pendiente')
         };
@@ -1534,7 +1533,7 @@ function fillEditFields(row) {
     const revAccion = $('editRevisionAccion');
     if (pnFinal) pnFinal.value = txt(row?.pn_final, '');
     if (desigFinal) desigFinal.value = txt(row?.designation_final, '');
-    if (measFinal) measFinal.value = txt(row?.measurement_final, '');
+    if (measFinal) measFinal.value = txt(row?.measure_final ?? row?.measurement_final, '');
     if (weightFinal) weightFinal.value = txt(row?.weight_final, '');
     if (revEstado) revEstado.value = txt(row?.qa_revision_estado, '');
     if (revAccion) revAccion.value = txt(row?.qa_revision_accion, '');
@@ -2075,7 +2074,7 @@ async function saveCurrentFieldChanges() {
     const changes = [
         ['pn_final', $('editPnFinal')?.value ?? txt(currentRow?.pn_final, '')],
         ['designation_final', $('editDesignationFinal')?.value ?? txt(currentRow?.designation_final, '')],
-        ['measurement_final', $('editMeasurementFinal')?.value ?? txt(currentRow?.measurement_final, '')],
+        ['measure_final', $('editMeasurementFinal')?.value ?? txt(currentRow?.measure_final ?? currentRow?.measurement_final, '')],
         ['weight_final', $('editWeightFinal')?.value ?? txt(currentRow?.weight_final, '')],
         ['qa_revision_estado', $('editRevisionEstado')?.value ?? txt(currentRow?.qa_revision_estado, '')],
         ['qa_revision_accion', $('editRevisionAccion')?.value ?? txt(currentRow?.qa_revision_accion, '')]

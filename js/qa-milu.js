@@ -64,7 +64,7 @@ const MODAL_FIELD_KEYS = [
     'qty_units_final',
     'weight_final',
     'fn_final',
-    'measurement_final',
+    'measure_final',
     'norma_final',
     'gesa',
     'normalizado',
@@ -499,7 +499,7 @@ function getModalMatchesByPn(row) {
             estado: String(item?.qa_revision_estado ?? ''),
             designationFinal: String(item?.designation_final ?? item?.DESIGNATION ?? ''),
             weightFinal: String(item?.weight_final ?? ''),
-            measurementFinal: String(item?.measurement_final ?? ''),
+            measurementFinal: String(item?.measure_final ?? item?.measurement_final ?? ''),
             fgsCodeDescription: String(item?.fgs_code_description ?? ''),
             accion: String(item?.qa_revision_accion ?? ''),
             book: getBookEngineCode(item)
@@ -843,7 +843,7 @@ function resolveMeasurementForExport(row) {
     }
     if (rawMeasurement) return rawMeasurement;
 
-    return String(row?.measurement_final ?? '').trim().replace(/\s{2,}/g, ' ');
+    return String(row?.measure_final ?? row?.measurement_final ?? '').trim().replace(/\s{2,}/g, ' ');
 }
 
 function firstNonEmptyValue(rows, getter) {
@@ -1340,7 +1340,7 @@ function fillRecordModal(row, revisionKey) {
     $('qaModalUnits').value = String(row?.qty_units_final ?? '');
     $('qaModalWeightFinal').value = String(row?.weight_final ?? '');
     $('qaModalFn').value = String(row?.fn_final ?? '');
-    $('qaModalMeasurementFinal').value = String(row?.measurement_final ?? '');
+    $('qaModalMeasurementFinal').value = String(row?.measure_final ?? row?.measurement_final ?? '');
     $('qaModalNorma').value = String(row?.norma_final ?? '');
 
     renderRecordQaErrors(row);
@@ -1376,7 +1376,7 @@ function fillSideRecordForm(row, revisionKey) {
     $('qaSideUnits').value = String(row?.qty_units_final ?? '');
     $('qaSideWeightFinal').value = String(row?.weight_final ?? '');
     $('qaSideFn').value = String(row?.fn_final ?? '');
-    $('qaSideMeasurementFinal').value = String(row?.measurement_final ?? '');
+    $('qaSideMeasurementFinal').value = String(row?.measure_final ?? row?.measurement_final ?? '');
     $('qaSideNorma').value = String(row?.norma_final ?? '');
 
     const sideLabel = $('qaSideLabel');
@@ -1429,7 +1429,7 @@ function getRecordFormValues(scope) {
         qty_units_final: String($(`${prefix}Units`)?.value || ''),
         weight_final: String($(`${prefix}WeightFinal`)?.value || ''),
         fn_final: String($(`${prefix}Fn`)?.value || ''),
-        measurement_final: String($(`${prefix}MeasurementFinal`)?.value || ''),
+        measure_final: String($(`${prefix}MeasurementFinal`)?.value || ''),
         norma_final: String($(`${prefix}Norma`)?.value || ''),
         gesa: String($(`${prefix}Gesa`)?.value || ''),
         normalizado: String($(`${prefix}Normalizado`)?.value || ''),
@@ -1604,7 +1604,7 @@ function openSharedRecordEditorForRow(row) {
         units: String(row?.Units ?? row?.units ?? '').trim(),
         fn: String(row?.FN ?? row?.fn ?? '').trim(),
         weight_final: String(row?.weight_final ?? '').trim(),
-        measurement_final: String(row?.measurement_final ?? '').trim(),
+        measurement_final: String(row?.measure_final ?? row?.measurement_final ?? '').trim(),
         norma: String(row?.norma ?? '').trim(),
         gesa: String(row?.gesa ?? '').trim(),
         normalizado: String(row?.normalizado ?? '').trim(),

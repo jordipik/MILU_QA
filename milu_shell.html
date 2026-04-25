@@ -264,7 +264,7 @@
                         <input id="shellSharedFn" type="text" />
                     </div>
                     <div class="shell-shared-field">
-                        <label for="shellSharedMeasurementFinal">MEASUREMENT FINAL (measurement_final)</label>
+                        <label for="shellSharedMeasurementFinal">MEASURE FINAL (measure_final)</label>
                         <input id="shellSharedMeasurementFinal" type="text" />
                     </div>
                     <div class="shell-shared-field">
@@ -351,7 +351,7 @@
             'qty_units_final',
             'weight_final',
             'fn_final',
-            'measurement_final',
+            'measure_final',
             'norma_final',
             'qa_revision_estado',
             'qa_revision_accion',
@@ -656,7 +656,7 @@
                     qty_units_final: txt(payload.qty_units_final || payload.units || payload.Units || payload.UNITS),
                     weight_final: txt(payload.weight_final),
                     fn_final: txt(payload.fn_final || payload.fn || payload.FN),
-                    measurement_final: txt(payload.measurement_final),
+                    measure_final: txt(payload.measure_final || payload.measurement_final),
                     norma_final: txt(payload.norma_final || payload.norma),
                     qa_revision_estado: normalizeEstado(payload.qa_revision_estado),
                     qa_revision_accion: normalizeAccion(payload.qa_revision_accion),
@@ -684,7 +684,7 @@
             if (units instanceof HTMLInputElement) units.value = sharedEditorContext.values.qty_units_final;
             if (weightFinal instanceof HTMLInputElement) weightFinal.value = sharedEditorContext.values.weight_final;
             if (fn instanceof HTMLInputElement) fn.value = sharedEditorContext.values.fn_final;
-            if (measurementFinal instanceof HTMLInputElement) measurementFinal.value = sharedEditorContext.values.measurement_final;
+            if (measurementFinal instanceof HTMLInputElement) measurementFinal.value = sharedEditorContext.values.measure_final;
             if (norma instanceof HTMLInputElement) norma.value = sharedEditorContext.values.norma_final;
             if (estado instanceof HTMLSelectElement) estado.value = sharedEditorContext.values.qa_revision_estado;
             if (accion instanceof HTMLSelectElement) accion.value = sharedEditorContext.values.qa_revision_accion;
@@ -737,7 +737,7 @@
                 qty_units_final: txt(units instanceof HTMLInputElement ? units.value : ''),
                 weight_final: txt(weightFinal instanceof HTMLInputElement ? weightFinal.value : ''),
                 fn_final: txt(fn instanceof HTMLInputElement ? fn.value : ''),
-                measurement_final: txt(measurementFinal instanceof HTMLInputElement ? measurementFinal.value : ''),
+                measure_final: txt(measurementFinal instanceof HTMLInputElement ? measurementFinal.value : ''),
                 norma_final: txt(norma instanceof HTMLInputElement ? norma.value : ''),
                 qa_revision_estado: normalizeEstado(estado instanceof HTMLSelectElement ? estado.value : ''),
                 qa_revision_accion: normalizeAccion(accion instanceof HTMLSelectElement ? accion.value : ''),

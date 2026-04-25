@@ -89,7 +89,7 @@ def calc_record_errors(record):
         for value in [weight_final, weight_pdf, weight_gesa_with_units]
     )
 
-    measurement_final = record.get("measure_final") or record.get("measurement_final")
+    measurement_final = record.get("measure_final")
     measurement_pdf = record.get("measure_pdf") or record.get("MEASUREMENT / STANDARD")
     measurement_gesa = record.get("dimensions_gesa") or record.get("measure_gesa")
     measurement_all_empty = all(
@@ -295,8 +295,9 @@ def add_final_fields(record):
     # designation_final: siempre prioriza designation_gesa; si no hay, usa DESIGNATION.
     record["designation_final"] = record.get("designation_gesa") or record.get("DESIGNATION", None)
     
-    # measurement_final: siempre prioriza dimensions_gesa, si no usa la medida ya separada de raw.
-    record["measurement_final"] = cleaned_dimensions or cleaned_measure_pdf
+    # measure_final conserva la medida final; measurement_final deja de persistirse.
+    record["measure_final"] = cleaned_dimensions or cleaned_measure_pdf
+    record.pop("measurement_final", None)
 
     # weight_final: siempre prioriza weight_gesa + units; si no, WEIGHT; si no, valor legado.
     legacy_weight_final = normalize_spaces(record.get("wheight_final"))

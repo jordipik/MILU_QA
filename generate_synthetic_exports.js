@@ -50,7 +50,7 @@ function getRowValueForColumn(row, key) {
             const rawMeasurement = normalizeMeasurementText(row?.['MEASUREMENT / STANDARD']);
             if (rawMeasurement) return rawMeasurement;
 
-            return normalizeMeasurementText(row?.measurement_final);
+            return normalizeMeasurementText(row?.measure_final ?? row?.measurement_final);
         }
         case 'weight_final': {
             const explicitFinal = String(row?.weight_final ?? '').trim();
@@ -153,7 +153,7 @@ function resolveMeasurementForExport(row) {
     }
     if (rawMeasurement) return rawMeasurement;
 
-    return String(row?.measurement_final ?? '').trim().replace(/\s{2,}/g, ' ');
+    return String(row?.measure_final ?? row?.measurement_final ?? '').trim().replace(/\s{2,}/g, ' ');
 }
 
 function firstNonEmptyValue(rows, getter) {

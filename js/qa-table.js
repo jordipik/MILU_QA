@@ -150,7 +150,7 @@ function getRowComparisonMeta(row) {
     const finalDesignation = row?.designation_final;
     const gesaDesignation = row?.designation_gesa;
     const pdfMeasurement = row?.['MEASUREMENT / STANDARD'];
-    const finalMeasurement = row?.measurement_final;
+    const finalMeasurement = row?.measure_final ?? row?.measurement_final;
     const gesaMeasurement = row?.dimensions_gesa;
 
     return {
@@ -427,7 +427,7 @@ export function applyFilters(data) {
                     break;
                 }
                 case 'designation_final':
-                case 'measurement_final':
+                case 'measure_final':
                 case 'weight_final':
                     rowValue = getRowValueForColumn(row, key, '').toString().toLowerCase();
                     break;
@@ -767,7 +767,7 @@ function renderRow(row) {
             <td class="${withCellClasses(classGesa, 'weight_gesa')}" title="${escapeHtml(val(row, 'weight_gesa'))}">${escapeHtml(val(row, 'weight_gesa'))}</td>
             <td class="${withCellClasses(`separator-after ${classGesa}`, 'units')}" title="${escapeHtml(val(row, 'units'))}">${escapeHtml(val(row, 'units'))}</td>
       <td title="${escapeHtml(val(row, 'FG/FGS'))}">${escapeHtml(val(row, 'FG/FGS'))}</td>
-        <td class="${withCellClasses(classGesa, 'measurement_final', getComparisonClasses(comparisonMeta.measurement))}" title="${escapeHtml(getRowValueForColumn(row, 'measurement_final'))}">${escapeHtml(getRowValueForColumn(row, 'measurement_final'))}</td>
+        <td class="${withCellClasses(classGesa, 'measure_final', getComparisonClasses(comparisonMeta.measurement))}" title="${escapeHtml(getRowValueForColumn(row, 'measure_final'))}">${escapeHtml(getRowValueForColumn(row, 'measure_final'))}</td>
             <td class="${withCellClasses(classGesa, 'dimensions_gesa', getComparisonClasses({ gesaMatch: comparisonMeta.measurement.gesaMatch }))}" title="${escapeHtml(val(row, 'dimensions_gesa'))}">${escapeHtml(val(row, 'dimensions_gesa'))}</td>
       <td title="${escapeHtml(val(row, 'BOM-No.'))}">${escapeHtml(val(row, 'BOM-No.'))}</td>
       <td title="${escapeHtml(val(row, 'model'))}">${escapeHtml(val(row, 'model'))}</td>
