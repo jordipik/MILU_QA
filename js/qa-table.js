@@ -7,7 +7,9 @@ import { escapeHtml, getPnKey, getRowValueForColumn, val, getRowErrorFields, get
 import {
     getRevisionAccionClass,
     getRevisionEstadoClass,
-    getRevisionKey
+    getRevisionKey,
+    normalizeAccionToNew,
+    normalizeEstadoToNew
 } from './revision.js';
 import { applyColumnView } from './column-view.js';
 import { scheduleVisiblePosCirclePreload } from './pos-preload.js';
@@ -212,12 +214,12 @@ export function applyFilters(data) {
                 case 'qa_revision_estado':
                     rowValue = filterValue === 'empty'
                         ? (String(row.qa_revision_estado || '').trim() === '' ? 'empty' : 'nonempty')
-                        : String(row.qa_revision_estado || '').toLowerCase();
+                        : normalizeEstadoToNew(row.qa_revision_estado);
                     break;
                 case 'qa_revision_accion':
                     rowValue = filterValue === 'empty'
                         ? (String(row.qa_revision_accion || '').trim() === '' ? 'empty' : 'nonempty')
-                        : String(row.qa_revision_accion || '').toLowerCase();
+                        : normalizeAccionToNew(row.qa_revision_accion);
                     break;
                 case 'in_new':
                     rowValue = state.newPnSet.has(row['PART NO.'] || row.pn) ? 'true' : 'false';
@@ -510,11 +512,8 @@ function getRevisionEstadoOptionsHtml(revisionEstado) {
 
 function getRevisionAccionOptionsHtml(revisionAccion) {
     return [
-        { value: '', label: '—' },
-        { value: 'mantener', label: 'Import' },
-        { value: 'actualizar', label: 'Actualizar' },
+        { value: 'importar', label: 'Importar' },
         { value: 'revisar', label: 'Revisar' },
-        { value: 'sustituir', label: 'Sustituir' },
         { value: 'eliminar', label: 'Eliminar' }
     ].map(opt => `<option value="${escapeHtml(opt.value)}" ${revisionAccion === opt.value ? 'selected' : ''}>${escapeHtml(opt.label)}</option>`).join('');
 }
@@ -531,8 +530,8 @@ function renderRow(row) {
     const hasImg = (row.filename_foto || row.ruta_foto || '').toString().trim() !== '';
     const errorMeta = getRowErrorMeta(row);
     const totalError = getRowErrors(row, { activeCodes: state.activeQaErrorChecks }).length;
-    const revisionEstado = String(row.qa_revision_estado || '').trim();
-    const revisionAccion = String(row.qa_revision_accion || '').trim();
+    const revisionEstado = normalizeEstadoToNew(row.qa_revision_estado);
+    const revisionAccion = normalizeAccionToNew(row.qa_revision_accion);
     const revisionKey = getRevisionKey(row);
     const errorFields = errorMeta.errorFields;
     const comparisonMeta = getRowComparisonMeta(row);
@@ -561,8 +560,9 @@ function renderRow(row) {
 
     const classGesa = isGesa ? 'cell-gesa' : '';
     const rowSelectedClass = state.selectedRevisionRowKey && state.selectedRevisionRowKey === revisionKey ? 'row-selected' : '';
+    const rowSaveFailedClass = row?.__qa_revision_save_failed ? 'row-save-failed' : '';
 
-    return `<tr class="${rowSelectedClass}" data-revision-key="${escapeHtml(revisionKey)}">
+    return `<tr class="${[rowSelectedClass, rowSaveFailedClass].filter(Boolean).join(' ')}" data-revision-key="${escapeHtml(revisionKey)}">
         <td class="${withCellClasses('separator-before separator-after', 'ID')}" title="${escapeHtml(id)}">${escapeHtml(id)}</td>
       <td class="status-col" title="GESA: ${isGesa ? 'SI' : 'NO'}">${gesaIcon}</td>
       <td class="status-col" title="Normalizado: ${isNormalizado ? 'SI' : 'NO'}">${normalizadoIcon}</td>
@@ -575,16 +575,6 @@ function renderRow(row) {
       </td>
             <td class="${withCellClasses(`revision-cell ${getRevisionAccionClass(revisionAccion)}`, 'qa_revision_accion')}" title="Acción a realizar">
           <select class="revision-select" data-revision-field="accion" data-revision-key="${escapeHtml(revisionKey)}">${revisionAccionOptions}</select>
-      </td>
-      <td class="quick-col" title="Acciones rápidas de revisión">
-          <div class="quick-actions">
-              <button type="button" class="quick-action-btn validate" data-quick-mode="revok" data-revision-key="${escapeHtml(revisionKey)}" title="Revisión: marcar como OK">V</button>
-              <button type="button" class="quick-action-btn white" data-quick-mode="revempty" data-revision-key="${escapeHtml(revisionKey)}" title="Revisión: marcar como Pendiente">P</button>
-              <button type="button" class="quick-action-btn import" data-quick-mode="validate" data-revision-key="${escapeHtml(revisionKey)}" title="Acción: Importar">I</button>
-              <button type="button" class="quick-action-btn review" data-quick-mode="review" data-revision-key="${escapeHtml(revisionKey)}" title="Acción: Revisar">R</button>
-              <button type="button" class="quick-action-btn discard" data-quick-mode="discard" data-revision-key="${escapeHtml(revisionKey)}" title="Acción: Eliminar">X</button>
-              <button type="button" class="quick-action-btn edit" data-open-record-modal="true" data-revision-key="${escapeHtml(revisionKey)}" title="Editar registro en formulario">ED</button>
-          </div>
       </td>
     <td class="${withCellClasses('', 'PART NO.', getComparisonClasses({ pdfMatch: comparisonMeta.pn.pdfMatch }))}" title="${escapeHtml(val(row, 'PART NO.'))}">${escapeHtml(val(row, 'PART NO.'))}</td>
         <td class="${withCellClasses('', 'POS', getComparisonClasses({ missing: comparisonMeta.pos.missing }))}" title="${escapeHtml(val(row, 'POS'))}">${escapeHtml(val(row, 'POS'))}</td>
@@ -687,6 +677,7 @@ function renderErrorViewRow(row, definitions) {
     const revisionKey = getRevisionKey(row);
     const errorCodes = getRowErrorSet(row);
     const selectedClass = state.selectedRevisionRowKey && state.selectedRevisionRowKey === revisionKey ? 'row-selected' : '';
+    const rowSaveFailedClass = row?.__qa_revision_save_failed ? 'row-save-failed' : '';
 
     const checkCells = definitions.map(def => {
         const hasCode = errorCodes.has(def.code);
@@ -701,8 +692,8 @@ function renderErrorViewRow(row, definitions) {
     const isHierarchySuperseded = sustHierarchyRaw.toUpperCase().includes('SUPERSEDED');
     const hasImg = (row.filename_foto || row.ruta_foto || '').toString().trim() !== '';
     const errorType = getRowErrorType(row, { activeCodes: state.activeQaErrorChecks });
-    const revisionEstado = String(row.qa_revision_estado || '').trim();
-    const revisionAccion = String(row.qa_revision_accion || '').trim();
+    const revisionEstado = normalizeEstadoToNew(row.qa_revision_estado);
+    const revisionAccion = normalizeAccionToNew(row.qa_revision_accion);
 
     const gesaIcon = isGesa ? '<span class="status-icon yes" aria-label="GESA SI">G</span>' : '<span class="status-icon no" aria-label="GESA NO">-</span>';
     const normalizadoIcon = isNormalizado ? '<span class="status-icon yes" aria-label="Normalizado SI">N</span>' : '<span class="status-icon no" aria-label="Normalizado NO">-</span>';
@@ -721,7 +712,7 @@ function renderErrorViewRow(row, definitions) {
     const estadoClass = getRevisionEstadoClass(revisionEstado);
     const accionClass = getRevisionAccionClass(revisionAccion);
 
-    return `<tr class="${selectedClass}" data-revision-key="${escapeHtml(revisionKey)}">
+    return `<tr class="${[selectedClass, rowSaveFailedClass].filter(Boolean).join(' ')}" data-revision-key="${escapeHtml(revisionKey)}">
         <td class="status-col" title="GESA: ${isGesa ? 'SI' : 'NO'}">${gesaIcon}</td>
         <td class="status-col" title="Normalizado: ${isNormalizado ? 'SI' : 'NO'}">${normalizadoIcon}</td>
         <td class="status-col" title="sust_hierarchie: ${escapeHtml(sustHierarchyLabel)}">${hierarchyIcon}</td>

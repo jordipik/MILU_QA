@@ -23,7 +23,6 @@ import {
 import { isInlineEditableTarget, cancelInlineEdit } from './cell-editor.js';
 import { initPdfZoomControls, loadPdfClear, loadPdfWithPage, renderPdfPage, setPdfSelection } from './pdf-viewer.js';
 import { updateSchemasInline, renderSelectedRowPosPanel, renderSelectedRowPosTop } from './schemas.js';
-import './bulk-revision-helper.js';
 import { getEngineJsonForRow } from './helpers.js';
 import {
     changePage,
@@ -1121,11 +1120,6 @@ function restoreModalUiState(revisionKey) {
     if (!safeKey) return;
     const targetRow = document.querySelector(`#tbody tr[data-revision-key="${safeKey}"]`);
     if (!(targetRow instanceof HTMLTableRowElement)) return;
-    const editBtn = targetRow.querySelector('button[data-open-record-modal="true"]');
-    if (editBtn instanceof HTMLButtonElement) {
-        editBtn.focus({ preventScroll: true });
-        return;
-    }
     targetRow.scrollIntoView({ block: 'nearest' });
 }
 
@@ -2014,8 +2008,7 @@ async function applyBulkQuickMode(quickMode) {
         revempty: { estado: '', accion: null, label: 'revisión vacía' },
         validate: { estado: null, accion: 'mantener', label: 'acción Import' },
         review: { estado: null, accion: 'revisar', label: 'acción Revisar' },
-        discard: { estado: null, accion: 'eliminar', label: 'acción Eliminar' },
-        clear: { estado: '', accion: '', label: 'vaciado' }
+        discard: { estado: null, accion: 'eliminar', label: 'acción Eliminar' }
     };
 
     const targetValues = quickMap[quickMode];
@@ -2167,6 +2160,19 @@ function attachGlobalEvents() {
         syncSideRecordFormWithSelection();
     });
 
+    document.addEventListener('qa:revision-save-failed', (event) => {
+        const revisionKey = String(event?.detail?.revisionKey || '').trim();
+        if (!revisionKey) return;
+        const rowRefreshed = refreshVisibleRowByRevisionKey(revisionKey);
+        if (!rowRefreshed) renderTable();
+
+        const selectedRevisionKey = String(state.selectedRevisionRowKey || '').trim();
+        if (selectedRevisionKey === revisionKey) {
+            const status = $('qaSideStatus');
+            if (status) status.textContent = 'Error guardando revisión. Revisa conexión/backend.';
+        }
+    });
+
     $('firstBtn')?.addEventListener('click', () => jumpToPage(1));
     $('prevBtn')?.addEventListener('click', () => changePage(-1));
     $('nextBtn')?.addEventListener('click', () => changePage(1));
@@ -2284,7 +2290,6 @@ function attachGlobalEvents() {
     $('bulkValidateBtn')?.addEventListener('click', () => applyBulkQuickMode('validate'));
     $('bulkReviewBtn')?.addEventListener('click', () => applyBulkQuickMode('review'));
     $('bulkDiscardBtn')?.addEventListener('click', () => applyBulkQuickMode('discard'));
-    $('bulkClearBtn')?.addEventListener('click', () => applyBulkQuickMode('clear'));
 
     document.querySelectorAll('[data-pdf-tab]').forEach(tabBtn => {
         tabBtn.addEventListener('click', () => setRightPanelTab(tabBtn.dataset.pdfTab || 'pdf'));
@@ -2315,10 +2320,6 @@ function attachGlobalEvents() {
             return;
         }
         openMatchesModal(revisionKey);
-    });
-
-    $('qaSideApplyToMatches')?.addEventListener('click', () => {
-        window.qaRevisionBulk?.applySelectedToMatches();
     });
 
     $('qaSideMatchesBookFilter')?.addEventListener('change', () => {
@@ -2442,56 +2443,6 @@ function attachGlobalEvents() {
                 event.preventDefault();
                 event.stopPropagation();
                 openAnalisisForRow(row);
-            }
-            return;
-        }
-
-        const openModalBtn = target.closest('button[data-open-record-modal="true"]');
-        if (openModalBtn) {
-            const revisionKey = openModalBtn.dataset.revisionKey;
-            if (!revisionKey) return;
-            openRecordModal(revisionKey);
-            return;
-        }
-
-        const quickBtn = target.closest('button[data-quick-mode]');
-        if (quickBtn) {
-            const revisionKey = quickBtn.dataset.revisionKey;
-            const quickMode = quickBtn.dataset.quickMode;
-            if (!revisionKey) return;
-            const sortedRowsBefore = getCurrentFilteredSortedRows();
-            const currentIndexBefore = sortedRowsBefore.findIndex(item => getRevisionKey(item) === revisionKey);
-            const nextRow = currentIndexBefore >= 0 ? sortedRowsBefore[currentIndexBefore + 1] : null;
-            const nextRevisionKey = nextRow ? getRevisionKey(nextRow) : '';
-            const row = state.allData.find(item => getRevisionKey(item) === revisionKey);
-            if (!row) return;
-            const quickMap = {
-                revok: { estado: 'revisado', accion: null },
-                revempty: { estado: '', accion: null },
-                validate: { estado: null, accion: 'mantener' },
-                review: { estado: null, accion: 'revisar' },
-                discard: { estado: null, accion: 'eliminar' }
-            };
-            const targetValues = quickMap[quickMode];
-            if (!targetValues) return;
-            const nextEstado = targetValues.estado === null ? String(row.qa_revision_estado || '') : targetValues.estado;
-            const nextAccion = targetValues.accion === null ? String(row.qa_revision_accion || '') : targetValues.accion;
-            setRowRevision(row, nextEstado, nextAccion);
-            state.recentRevisionKeys = [
-                revisionKey,
-                ...state.recentRevisionKeys.filter(key => key !== revisionKey)
-            ];
-            const tr = quickBtn.closest('tr');
-            const estadoSelect = tr?.querySelector('select[data-revision-field="estado"]');
-            const accionSelect = tr?.querySelector('select[data-revision-field="accion"]');
-            if (estadoSelect instanceof HTMLSelectElement) { estadoSelect.value = nextEstado; updateRevisionSelectVisual(estadoSelect); }
-            if (accionSelect instanceof HTMLSelectElement) { accionSelect.value = nextAccion; updateRevisionSelectVisual(accionSelect); }
-            renderTable();
-            renderPagination();
-            if (nextRevisionKey) {
-                selectRevisionRowByKey(nextRevisionKey);
-            } else {
-                syncSideRecordFormWithSelection();
             }
             return;
         }

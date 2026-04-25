@@ -121,8 +121,8 @@ export function applyRevisionDataToRows(rows) {
             accion: row?.qa_revision_accion,
             updated_at: row?.qa_revision_updated_at
         });
-        row.qa_revision_estado = rev.estado || '';
-        row.qa_revision_accion = rev.accion || '';
+        row.qa_revision_estado = normalizeEstadoToNew(rev.estado);
+        row.qa_revision_accion = normalizeAccionToNew(rev.accion);
         row.qa_revision_updated_at = rev.updated_at || '';
     });
 }
@@ -175,8 +175,19 @@ export function setRowRevision(row, estado, accion) {
     if (changedFields.length === 0) return;
 
     row.qa_revision_updated_at = new Date().toISOString();
+    row.__qa_revision_save_failed = false;
 
     persistRevisionRowToServer(row, changedFields).catch(error => {
+        row.__qa_revision_save_failed = true;
+        const revisionKey = getRevisionKey(row);
+        if (typeof document !== 'undefined') {
+            document.dispatchEvent(new CustomEvent('qa:revision-save-failed', {
+                detail: {
+                    revisionKey,
+                    message: String(error?.message || error || 'Error desconocido')
+                }
+            }));
+        }
         console.warn('No se pudo guardar revisión en engine JSON:', error);
         alert(`No se pudo guardar la revisión en servidor: ${error.message}`);
     });
@@ -196,10 +207,8 @@ export function getRevisionEstadoClass(value) {
 export function getRevisionAccionClass(value) {
     const v = String(value || '').trim().toLowerCase();
     if (!v) return 'rev-empty';
-    if (v === 'mantener') return 'rev-accion-mantener';
-    if (v === 'actualizar') return 'rev-accion-actualizar';
-    if (v === 'revisar') return 'rev-accion-revisar';
-    if (v === 'sustituir') return 'rev-accion-sustituir';
+    if (v === 'importar' || v === 'mantener') return 'rev-accion-mantener';
+    if (v === 'revisar' || v === 'actualizar' || v === 'sustituir') return 'rev-accion-revisar';
     if (v === 'eliminar') return 'rev-accion-eliminar';
     return 'rev-empty';
 }

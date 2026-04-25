@@ -564,8 +564,9 @@ function renderRow(row) {
 
     const classGesa = isGesa ? 'cell-gesa' : '';
     const rowSelectedClass = state.selectedRevisionRowKey && state.selectedRevisionRowKey === revisionKey ? 'row-selected' : '';
+    const rowSaveFailedClass = row?.__qa_revision_save_failed ? 'row-save-failed' : '';
 
-    return `<tr class="${rowSelectedClass}" data-revision-key="${escapeHtml(revisionKey)}">
+    return `<tr class="${[rowSelectedClass, rowSaveFailedClass].filter(Boolean).join(' ')}" data-revision-key="${escapeHtml(revisionKey)}">
         <td class="${withCellClasses('separator-before separator-after', 'ID')}" title="${escapeHtml(id)}">${escapeHtml(id)}</td>
       <td class="status-col" title="GESA: ${isGesa ? 'SI' : 'NO'}">${gesaIcon}</td>
       <td class="status-col" title="Normalizado: ${isNormalizado ? 'SI' : 'NO'}">${normalizadoIcon}</td>
@@ -578,16 +579,6 @@ function renderRow(row) {
       </td>
             <td class="${withCellClasses(`revision-cell ${getRevisionAccionClass(revisionAccion)}`, 'qa_revision_accion')}" title="Acción a realizar">
           <select class="revision-select" data-revision-field="accion" data-revision-key="${escapeHtml(revisionKey)}">${revisionAccionOptions}</select>
-      </td>
-      <td class="quick-col" title="Acciones rápidas de revisión">
-          <div class="quick-actions">
-              <button type="button" class="quick-action-btn validate" data-quick-mode="revok" data-revision-key="${escapeHtml(revisionKey)}" title="OK: solo cambia Revisión a OK">V</button>
-              <button type="button" class="quick-action-btn white" data-quick-mode="revempty" data-revision-key="${escapeHtml(revisionKey)}" title="Poner vacío: solo cambia Revisión a vacío">P</button>
-              <button type="button" class="quick-action-btn import" data-quick-mode="validate" data-revision-key="${escapeHtml(revisionKey)}" title="Importar: solo cambia Acción a Import">I</button>
-              <button type="button" class="quick-action-btn review" data-quick-mode="review" data-revision-key="${escapeHtml(revisionKey)}" title="Revisar: solo cambia Acción a Revisar">R</button>
-              <button type="button" class="quick-action-btn discard" data-quick-mode="discard" data-revision-key="${escapeHtml(revisionKey)}" title="Eliminar: solo cambia Acción a Eliminar">X</button>
-              <button type="button" class="quick-action-btn edit" data-open-record-modal="true" data-revision-key="${escapeHtml(revisionKey)}" title="Editar registro en formulario">ED</button>
-          </div>
       </td>
     <td class="${withCellClasses('', 'PART NO.', getComparisonClasses({ pdfMatch: comparisonMeta.pn.pdfMatch }))}" title="${escapeHtml(val(row, 'PART NO.'))}">${escapeHtml(val(row, 'PART NO.'))}</td>
         <td class="${withCellClasses('', 'POS', getComparisonClasses({ missing: comparisonMeta.pos.missing }))}" title="${escapeHtml(val(row, 'POS'))}">${escapeHtml(val(row, 'POS'))}</td>
@@ -690,6 +681,7 @@ function renderErrorViewRow(row, definitions) {
     const revisionKey = getRevisionKey(row);
     const errorCodes = getRowErrorSet(row);
     const selectedClass = state.selectedRevisionRowKey && state.selectedRevisionRowKey === revisionKey ? 'row-selected' : '';
+    const rowSaveFailedClass = row?.__qa_revision_save_failed ? 'row-save-failed' : '';
 
     const checkCells = definitions.map(def => {
         const hasCode = errorCodes.has(def.code);
@@ -724,7 +716,7 @@ function renderErrorViewRow(row, definitions) {
     const estadoClass = getRevisionEstadoClass(revisionEstado);
     const accionClass = getRevisionAccionClass(revisionAccion);
 
-    return `<tr class="${selectedClass}" data-revision-key="${escapeHtml(revisionKey)}">
+    return `<tr class="${[selectedClass, rowSaveFailedClass].filter(Boolean).join(' ')}" data-revision-key="${escapeHtml(revisionKey)}">
         <td class="status-col" title="GESA: ${isGesa ? 'SI' : 'NO'}">${gesaIcon}</td>
         <td class="status-col" title="Normalizado: ${isNormalizado ? 'SI' : 'NO'}">${normalizadoIcon}</td>
         <td class="status-col" title="sust_hierarchie: ${escapeHtml(sustHierarchyLabel)}">${hierarchyIcon}</td>

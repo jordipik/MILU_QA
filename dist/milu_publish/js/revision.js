@@ -122,8 +122,19 @@ export function setRowRevision(row, estado, accion) {
     row.qa_revision_estado = normalizedEstado;
     row.qa_revision_accion = normalizedAccion;
     row.qa_revision_updated_at = new Date().toISOString();
+    row.__qa_revision_save_failed = false;
 
     persistRevisionRowToServer(row).catch(error => {
+        row.__qa_revision_save_failed = true;
+        const revisionKey = getRevisionKey(row);
+        if (typeof document !== 'undefined') {
+            document.dispatchEvent(new CustomEvent('qa:revision-save-failed', {
+                detail: {
+                    revisionKey,
+                    message: String(error?.message || error || 'Error desconocido')
+                }
+            }));
+        }
         console.warn('No se pudo guardar revisión en engine JSON:', error);
         alert(`No se pudo guardar la revisión en servidor: ${error.message}`);
     });

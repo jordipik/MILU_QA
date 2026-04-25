@@ -9,10 +9,15 @@ import { checkSaveBackendConnection, fetchJsonSafe, loadPartitionedEngineData, s
 import {
     applyRevisionDataToRows,
     assignRevisionKeys,
+    denormalizeAccionFromNew,
+    denormalizeEstadoFromNew,
     getRevisionKey,
+    normalizeAccionToNew,
+    normalizeEstadoToNew,
     setRowRevision,
     updateRevisionSelectVisual
 } from './revision.js';
+import { subscribeRevisionSync } from './revision-sync.js';
 import {
     applyColumnView,
     initColumnResize,
@@ -23,7 +28,6 @@ import {
 import { isInlineEditableTarget, cancelInlineEdit } from './cell-editor.js';
 import { initPdfZoomControls, loadPdfClear, loadPdfWithPage, renderPdfPage, setPdfSelection } from './pdf-viewer.js';
 import { updateSchemasInline, renderSelectedRowPosPanel, renderSelectedRowPosTop } from './schemas.js';
-import './bulk-revision-helper.js';
 import { getEngineJsonForRow } from './helpers.js';
 import {
     changePage,
@@ -1051,8 +1055,8 @@ function fillRecordModal(row, revisionKey) {
     $('qaModalHasImg').value = String(row?.has_img ?? '');
     $('qaModalEnWeb').value = String(row?.EN_WEB ?? '');
 
-    $('qaModalRevisionEstado').value = String(row?.qa_revision_estado || '');
-    $('qaModalRevisionAccion').value = String(row?.qa_revision_accion || '');
+    $('qaModalRevisionEstado').value = normalizeEstadoToNew(row?.qa_revision_estado);
+    $('qaModalRevisionAccion').value = normalizeAccionToNew(row?.qa_revision_accion);
     $('qaModalPnFinal').value = String(row?.pn_final ?? '');
     $('qaModalDesignationFinal').value = String(row?.designation_final ?? '');
     $('qaModalModelType').value = String(row?.['MODEL/TYPE'] ?? '');
@@ -1087,8 +1091,8 @@ function fillSideRecordForm(row, revisionKey) {
     $('qaSideHasImg').value = String(row?.has_img ?? '');
     $('qaSideEnWeb').value = String(row?.EN_WEB ?? '');
 
-    $('qaSideRevisionEstado').value = String(row?.qa_revision_estado || '');
-    $('qaSideRevisionAccion').value = String(row?.qa_revision_accion || '');
+    $('qaSideRevisionEstado').value = normalizeEstadoToNew(row?.qa_revision_estado);
+    $('qaSideRevisionAccion').value = normalizeAccionToNew(row?.qa_revision_accion);
     $('qaSidePnFinal').value = String(row?.pn_final ?? '');
     $('qaSideDesignationFinal').value = String(row?.designation_final ?? '');
     $('qaSideModelType').value = String(row?.['MODEL/TYPE'] ?? '');
@@ -1169,6 +1173,8 @@ function clearSideRecordForm() {
     form.querySelectorAll('input').forEach(input => { input.value = ''; });
     form.querySelectorAll('select').forEach(select => {
         if (select.id === 'qaSideMatchesBookFilter') select.value = '__current__';
+        else if (select.id === 'qaSideRevisionEstado') select.value = 'pendiente';
+        else if (select.id === 'qaSideRevisionAccion') select.value = 'importar';
         else select.value = '';
     });
 
@@ -1205,6 +1211,63 @@ function syncSideRecordFormWithSelection() {
     }
 }
 
+function applyIncomingRevisionSync(message) {
+    const id = String(message?.id || '').trim();
+    if (!id || !Array.isArray(state.allData) || state.allData.length === 0) return;
+
+    const engineFile = String(message?.engineFile || '').trim().toLowerCase();
+    const hasEstado = message?.estado !== undefined && message?.estado !== null;
+    const hasAccion = message?.accion !== undefined && message?.accion !== null;
+    if (!hasEstado && !hasAccion) return;
+
+    const nextEstado = hasEstado ? normalizeEstadoToNew(message.estado) : null;
+    const nextAccion = hasAccion ? normalizeAccionToNew(message.accion) : null;
+
+    let changed = false;
+    const touchedKeys = new Set();
+
+    state.allData.forEach((row) => {
+        const rowId = String(row?.ID || '').trim();
+        if (!rowId || rowId !== id) return;
+
+        if (engineFile) {
+            const rowEngineFile = String(getEngineJsonForRow(row) || '').trim().toLowerCase();
+            if (rowEngineFile !== engineFile) return;
+        }
+
+        let rowChanged = false;
+        if (nextEstado && normalizeEstadoToNew(row?.qa_revision_estado) !== nextEstado) {
+            row.qa_revision_estado = nextEstado;
+            rowChanged = true;
+        }
+        if (nextAccion && normalizeAccionToNew(row?.qa_revision_accion) !== nextAccion) {
+            row.qa_revision_accion = nextAccion;
+            rowChanged = true;
+        }
+
+        if (!rowChanged) return;
+        row.qa_revision_updated_at = new Date().toISOString();
+        touchedKeys.add(getRevisionKey(row));
+        changed = true;
+    });
+
+    if (!changed) return;
+
+    renderTable();
+    renderPagination();
+
+    const selectedKey = String(state.selectedRevisionRowKey || '').trim();
+    if (selectedKey && touchedKeys.has(selectedKey)) {
+        syncSideRecordFormWithSelection();
+
+        const modalForm = $('qaRecordModalForm');
+        if (modalForm instanceof HTMLFormElement && String(modalForm.dataset.revisionKey || '') === selectedKey) {
+            const selectedRow = getRowByRevisionKey(selectedKey);
+            if (selectedRow) fillRecordModal(selectedRow, selectedKey);
+        }
+    }
+}
+
 function captureModalUiState() {
     const tableWrap = $('mainTableWrap');
     if (tableWrap instanceof HTMLElement) {
@@ -1227,11 +1290,6 @@ function restoreModalUiState(revisionKey) {
     if (!safeKey) return;
     const targetRow = document.querySelector(`#tbody tr[data-revision-key="${safeKey}"]`);
     if (!(targetRow instanceof HTMLTableRowElement)) return;
-    const editBtn = targetRow.querySelector('button[data-open-record-modal="true"]');
-    if (editBtn instanceof HTMLButtonElement) {
-        editBtn.focus({ preventScroll: true });
-        return;
-    }
     targetRow.scrollIntoView({ block: 'nearest' });
 }
 
@@ -2122,8 +2180,7 @@ async function applyBulkQuickMode(quickMode) {
         revempty: { estado: 'pendiente', accion: null, label: 'revisión Pendiente' },
         validate: { estado: null, accion: 'importar', label: 'acción Importar' },
         review: { estado: null, accion: 'revisar', label: 'acción Revisar' },
-        discard: { estado: null, accion: 'eliminar', label: 'acción Eliminar' },
-        clear: { estado: '', accion: '', label: 'vaciado' }
+        discard: { estado: null, accion: 'eliminar', label: 'acción Eliminar' }
     };
 
     const targetValues = quickMap[quickMode];
@@ -2281,6 +2338,19 @@ function attachGlobalEvents() {
         syncSideRecordFormWithSelection();
     });
 
+    document.addEventListener('qa:revision-save-failed', (event) => {
+        const revisionKey = String(event?.detail?.revisionKey || '').trim();
+        if (!revisionKey) return;
+        const rowRefreshed = refreshVisibleRowByRevisionKey(revisionKey);
+        if (!rowRefreshed) renderTable();
+
+        const selectedRevisionKey = String(state.selectedRevisionRowKey || '').trim();
+        if (selectedRevisionKey === revisionKey) {
+            const status = $('qaSideStatus');
+            if (status) status.textContent = 'Error guardando revisión. Revisa conexión/backend.';
+        }
+    });
+
     $('firstBtn')?.addEventListener('click', () => jumpToPage(1));
     $('prevBtn')?.addEventListener('click', () => changePage(-1));
     $('nextBtn')?.addEventListener('click', () => changePage(1));
@@ -2398,7 +2468,6 @@ function attachGlobalEvents() {
     $('bulkValidateBtn')?.addEventListener('click', () => applyBulkQuickMode('validate'));
     $('bulkReviewBtn')?.addEventListener('click', () => applyBulkQuickMode('review'));
     $('bulkDiscardBtn')?.addEventListener('click', () => applyBulkQuickMode('discard'));
-    $('bulkClearBtn')?.addEventListener('click', () => applyBulkQuickMode('clear'));
 
     document.querySelectorAll('[data-pdf-tab]').forEach(tabBtn => {
         tabBtn.addEventListener('click', () => setRightPanelTab(tabBtn.dataset.pdfTab || 'pdf'));
@@ -2429,10 +2498,6 @@ function attachGlobalEvents() {
             return;
         }
         openMatchesModal(revisionKey);
-    });
-
-    $('qaSideApplyToMatches')?.addEventListener('click', () => {
-        window.qaRevisionBulk?.applySelectedToMatches();
     });
 
     $('qaSideMatchesBookFilter')?.addEventListener('change', () => {
@@ -2581,56 +2646,6 @@ function attachGlobalEvents() {
                 event.preventDefault();
                 event.stopPropagation();
                 openAnalisisForRow(row);
-            }
-            return;
-        }
-
-        const openModalBtn = target.closest('button[data-open-record-modal="true"]');
-        if (openModalBtn) {
-            const revisionKey = openModalBtn.dataset.revisionKey;
-            if (!revisionKey) return;
-            openRecordModal(revisionKey);
-            return;
-        }
-
-        const quickBtn = target.closest('button[data-quick-mode]');
-        if (quickBtn) {
-            const revisionKey = quickBtn.dataset.revisionKey;
-            const quickMode = quickBtn.dataset.quickMode;
-            if (!revisionKey) return;
-            const sortedRowsBefore = getCurrentFilteredSortedRows();
-            const currentIndexBefore = sortedRowsBefore.findIndex(item => getRevisionKey(item) === revisionKey);
-            const nextRow = currentIndexBefore >= 0 ? sortedRowsBefore[currentIndexBefore + 1] : null;
-            const nextRevisionKey = nextRow ? getRevisionKey(nextRow) : '';
-            const row = state.allData.find(item => getRevisionKey(item) === revisionKey);
-            if (!row) return;
-            const quickMap = {
-                revok: { estado: 'ok', accion: null },
-                revempty: { estado: 'pendiente', accion: null },
-                validate: { estado: null, accion: 'importar' },
-                review: { estado: null, accion: 'revisar' },
-                discard: { estado: null, accion: 'eliminar' }
-            };
-            const targetValues = quickMap[quickMode];
-            if (!targetValues) return;
-            const nextEstado = targetValues.estado === null ? String(row.qa_revision_estado || '') : targetValues.estado;
-            const nextAccion = targetValues.accion === null ? String(row.qa_revision_accion || '') : targetValues.accion;
-            setRowRevision(row, nextEstado, nextAccion);
-            state.recentRevisionKeys = [
-                revisionKey,
-                ...state.recentRevisionKeys.filter(key => key !== revisionKey)
-            ];
-            const tr = quickBtn.closest('tr');
-            const estadoSelect = tr?.querySelector('select[data-revision-field="estado"]');
-            const accionSelect = tr?.querySelector('select[data-revision-field="accion"]');
-            if (estadoSelect instanceof HTMLSelectElement) { estadoSelect.value = nextEstado; updateRevisionSelectVisual(estadoSelect); }
-            if (accionSelect instanceof HTMLSelectElement) { accionSelect.value = nextAccion; updateRevisionSelectVisual(accionSelect); }
-            renderTable();
-            renderPagination();
-            if (nextRevisionKey) {
-                selectRevisionRowByKey(nextRevisionKey);
-            } else {
-                syncSideRecordFormWithSelection();
             }
             return;
         }
@@ -2795,6 +2810,9 @@ function init() {
     ensureQaChecksState();
     updateQaChecksSummary();
     attachGlobalEvents();
+    subscribeRevisionSync((message) => {
+        applyIncomingRevisionSync(message);
+    });
     setRightPanelTab(state.rightPanelTab);
     clearSideRecordForm();
     loadData();

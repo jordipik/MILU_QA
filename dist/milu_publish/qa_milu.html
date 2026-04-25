@@ -80,9 +80,6 @@
                                             <button id="bulkDiscardBtn" type="button"
                                                 class="quick-action-btn bulk-quick-btn discard"
                                                 title="Eliminar masivo: solo cambia Acción a Eliminar">X</button>
-                                            <button id="bulkClearBtn" type="button"
-                                                class="quick-action-btn bulk-quick-btn clear"
-                                                title="Vaciar masivo: Revisión y Acción en blanco">-</button>
                                         </div>
                                     </div>
                                 </div>
@@ -140,7 +137,6 @@
                                 <th style="width:70px" data-sort="EN_WEB">W</th>
                                 <th style="width:78px" data-sort="qa_revision_estado">Rev</th>
                                 <th style="width:86px" data-sort="qa_revision_accion">Acc</th>
-                                <th style="width:96px" class="status-head" data-column-key="quick_actions">A</th>
                                 <th style="width:100px" data-sort="PART NO.">PN</th>
                                 <th style="width:50px" data-sort="POS">Pos</th>
                                 <th style="width:110px" data-sort="pn_final">PN Final</th>
@@ -232,7 +228,6 @@
                                         <option value="eliminar">Eliminar</option>
                                         <option value="empty">- (Vacío)</option>
                                     </select></th>
-                                <th></th>
                                 <th><input class="filter-input" data-filter="PART NO." placeholder="filtrar"></th>
                                 <th><input class="filter-input" data-filter="POS" placeholder="filtrar"></th>
                                 <th><input class="filter-input" data-filter="pn_final" placeholder="filtrar"></th>
@@ -502,14 +497,6 @@
                                                 <option value="eliminar">Eliminar</option>
                                             </select>
                                         </label>
-                                    </div>
-
-                                    <div class="qa-modal-row" style="margin-top: 8px;">
-                                        <button id="qaSideApplyToMatches" class="qa-button-apply-matches"
-                                            title="Aplica el estado Ok a todos los registros con el mismo Part Number que estén en estado Copia"
-                                            style="width: 100%; padding: 8px; background: #10b981; color: white; border: none; border-radius: 4px; cursor: pointer; font-weight: bold;">
-                                            Aplicar a Iguales
-                                        </button>
                                     </div>
 
                                     <div class="qa-modal-row qa-modal-row-flags">

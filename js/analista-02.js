@@ -1,6 +1,14 @@
 import { state } from './state.js';
 import { getEngineJsonFiles, loadEngineDataByFileName, saveCellToServer } from './data-loader.js';
-import { assignRevisionKeys, applyRevisionDataToRows } from './revision.js';
+import {
+    assignRevisionKeys,
+    applyRevisionDataToRows,
+    normalizeEstadoToNew,
+    normalizeAccionToNew,
+    denormalizeEstadoFromNew,
+    denormalizeAccionFromNew
+} from './revision.js';
+import { publishRevisionSync } from './revision-sync.js';
 import { initPdfZoomControls, loadPdfClear, loadPdfWithPage, requestPdfRelayout, setPdfReadTokens, setPdfSelection } from './pdf-viewer.js';
 import { evaluateQaChecksForField, evaluateRowQaChecks, getAllQaCheckCodes, getQaCheckLabel } from './qa-checks.js';
 
@@ -863,6 +871,16 @@ async function saveEditRecordForm() {
         }
 
         if (saved) {
+            if (changedFields.has('qa_revision_estado')) {
+                publishRevisionSync({
+                    id,
+                    engineFile,
+                    estado: currentRow?.qa_revision_estado,
+                    accion: currentRow?.qa_revision_accion,
+                    source: 'analista-02'
+                });
+            }
+
             const mustAutoRecompute = [...changedFields].some((field) => AUTO_RECOMPUTE_TRIGGER_FIELDS.has(field));
             if (mustAutoRecompute) {
                 setEditRecordStatus('Registro guardado. Recalculando errores y lectura PDF...', '');
@@ -1540,59 +1558,63 @@ function getRowErrorCount(row) {
     return row?.has_error ? 1 : 0;
 }
 
-function getRowReviewBucket(row) {
-    if (!row) return '';
-
-    const estado = String(row?.qa_revision_estado ?? '').trim().toLowerCase();
-    const action = String(row?.qa_revision_accion ?? '').trim().toLowerCase();
-
-    // Si fue marcado manualmente como OK (qa_revision_estado === 'ok'), 
-    // mantener el valor asignado sin recalcular
-    if (estado === 'ok') {
-        if (action === 'importar') return 'ok';
-        if (action === 'revisar') return 'review';
-        if (action === 'descartar') return 'ko';
-    }
-
-    // Si no fue marcado manualmente como OK, recalcular basándose en errores
-    const errorCount = getRowErrorCount(row);
-    if (action === 'revisar' && errorCount === 0) return 'review';
-    return errorCount > 0 ? 'ko' : 'ok';
-}
-
 function renderReviewStats(rows = getQueueRows(), row = currentRow) {
     const stats = {
         total: 0,
-        ok: 0,
-        review: 0,
-        ko: 0
+        importOk: 0,
+        reviewOk: 0,
+        deleteOk: 0,
+        pending: 0
     };
     const uniqueStats = {
         total: new Set(),
-        ok: new Set(),
-        review: new Set(),
-        ko: new Set()
+        importOk: new Set(),
+        reviewOk: new Set(),
+        deleteOk: new Set(),
+        pending: new Set()
     };
 
-    (Array.isArray(rows) ? rows : []).forEach((row) => {
-        const bucket = getRowReviewBucket(row);
-        if (!bucket) return;
-        const distinctKey = getDistinctRowKey(row);
+    (Array.isArray(rows) ? rows : []).forEach((entry) => {
+        const distinctKey = getDistinctRowKey(entry);
+        const estado = normalizeEstadoToNew(entry?.qa_revision_estado);
+        const accion = normalizeAccionToNew(entry?.qa_revision_accion);
+
         stats.total += 1;
-        stats[bucket] += 1;
         uniqueStats.total.add(distinctKey);
-        uniqueStats[bucket].add(distinctKey);
+
+        if (estado !== 'ok') {
+            stats.pending += 1;
+            uniqueStats.pending.add(distinctKey);
+            return;
+        }
+
+        if (accion === 'revisar') {
+            stats.reviewOk += 1;
+            uniqueStats.reviewOk.add(distinctKey);
+            return;
+        }
+
+        if (accion === 'eliminar') {
+            stats.deleteOk += 1;
+            uniqueStats.deleteOk.add(distinctKey);
+            return;
+        }
+
+        stats.importOk += 1;
+        uniqueStats.importOk.add(distinctKey);
     });
 
     const totalEl = $('statsTotalAnalysed');
     const currentEl = $('statsCurrentIndex');
     const totalUniqueEl = $('statsUniqueTotalAnalysed');
-    const okEl = $('statsTotalOk');
-    const okUniqueEl = $('statsUniqueTotalOk');
-    const reviewEl = $('statsTotalReview');
-    const reviewUniqueEl = $('statsUniqueTotalReview');
-    const koEl = $('statsTotalKo');
-    const koUniqueEl = $('statsUniqueTotalKo');
+    const importOkEl = $('statsTotalImportOk');
+    const importOkUniqueEl = $('statsUniqueTotalImportOk');
+    const reviewOkEl = $('statsTotalReviewOk');
+    const reviewOkUniqueEl = $('statsUniqueTotalReviewOk');
+    const deleteOkEl = $('statsTotalDeleteOk');
+    const deleteOkUniqueEl = $('statsUniqueTotalDeleteOk');
+    const pendingEl = $('statsTotalPending');
+    const pendingUniqueEl = $('statsUniqueTotalPending');
 
     let currentIndex = 0;
     if (row && stats.total > 0) {
@@ -1603,12 +1625,14 @@ function renderReviewStats(rows = getQueueRows(), row = currentRow) {
     if (totalEl instanceof HTMLElement) totalEl.textContent = String(stats.total);
     if (currentEl instanceof HTMLElement) currentEl.textContent = String(currentIndex);
     if (totalUniqueEl instanceof HTMLElement) totalUniqueEl.textContent = `· ${uniqueStats.total.size} únicos`;
-    if (okEl instanceof HTMLElement) okEl.textContent = String(stats.ok);
-    if (okUniqueEl instanceof HTMLElement) okUniqueEl.textContent = `· ${uniqueStats.ok.size} únicos`;
-    if (reviewEl instanceof HTMLElement) reviewEl.textContent = String(stats.review);
-    if (reviewUniqueEl instanceof HTMLElement) reviewUniqueEl.textContent = `· ${uniqueStats.review.size} únicos`;
-    if (koEl instanceof HTMLElement) koEl.textContent = String(stats.ko);
-    if (koUniqueEl instanceof HTMLElement) koUniqueEl.textContent = `· ${uniqueStats.ko.size} únicos`;
+    if (importOkEl instanceof HTMLElement) importOkEl.textContent = String(stats.importOk);
+    if (importOkUniqueEl instanceof HTMLElement) importOkUniqueEl.textContent = `· ${uniqueStats.importOk.size} únicos`;
+    if (reviewOkEl instanceof HTMLElement) reviewOkEl.textContent = String(stats.reviewOk);
+    if (reviewOkUniqueEl instanceof HTMLElement) reviewOkUniqueEl.textContent = `· ${uniqueStats.reviewOk.size} únicos`;
+    if (deleteOkEl instanceof HTMLElement) deleteOkEl.textContent = String(stats.deleteOk);
+    if (deleteOkUniqueEl instanceof HTMLElement) deleteOkUniqueEl.textContent = `· ${uniqueStats.deleteOk.size} únicos`;
+    if (pendingEl instanceof HTMLElement) pendingEl.textContent = String(stats.pending);
+    if (pendingUniqueEl instanceof HTMLElement) pendingUniqueEl.textContent = `· ${uniqueStats.pending.size} únicos`;
 }
 
 function renderReviewStateButtons(row) {
@@ -2200,6 +2224,13 @@ async function setReviewStatus(kind) {
     await saveCellToServer(engineFile, id, 'qa_revision_accion', denormalizeAccionFromNew(values.qa_revision_accion));
 
     currentRow.qa_revision_accion = values.qa_revision_accion;
+    publishRevisionSync({
+        id,
+        engineFile,
+        estado: currentRow?.qa_revision_estado,
+        accion: currentRow?.qa_revision_accion,
+        source: 'analista-02'
+    });
     renderReviewStateButtons(currentRow);
     renderReviewStats();
     notifyPdfDataChangedFromAnalista(currentRow);
@@ -2227,6 +2258,13 @@ async function setManualRevisionEstado(nextEstado) {
 
     await saveCellToServer(engineFile, id, 'qa_revision_estado', denormalizeEstadoFromNew(normalizedEstado));
     currentRow.qa_revision_estado = normalizedEstado;
+    publishRevisionSync({
+        id,
+        engineFile,
+        estado: currentRow?.qa_revision_estado,
+        accion: currentRow?.qa_revision_accion,
+        source: 'analista-02'
+    });
     renderReviewStateButtons(currentRow);
     renderReviewStats();
     notifyPdfDataChangedFromAnalista(currentRow);
