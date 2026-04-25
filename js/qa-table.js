@@ -145,6 +145,132 @@ function getCurrentColumnCount() {
     return visibleCount > 0 ? visibleCount : headerRow.children.length;
 }
 
+function getDistinctReviewKey(row) {
+    const pnKey = getPnKey(row);
+    if (pnKey) return pnKey;
+    return String(getRevisionKey(row) || row?.ID || '').trim();
+}
+
+function getBookScopeRowsWithoutFilters() {
+    const allRows = Array.isArray(state.allData) ? state.allData : [];
+    const bookFilter = String(state?.filters?.book ?? '').trim().toLowerCase();
+    if (!bookFilter) return allRows;
+    return allRows.filter((row) => val(row, 'engine_model', '').toString().toLowerCase().includes(bookFilter));
+}
+
+function buildReviewStats(rows, visibleRows, totalScopeRows) {
+    const scopeRows = Array.isArray(totalScopeRows) ? totalScopeRows : (Array.isArray(rows) ? rows : []);
+    const visRows = Array.isArray(visibleRows) ? visibleRows : [];
+    const summary = {
+        total: scopeRows.length,
+        importOk: 0,
+        reviewOk: 0,
+        deleteOk: 0,
+        pending: 0,
+        visibleImportOk: 0,
+        visibleReviewOk: 0,
+        visibleDeleteOk: 0,
+        visiblePending: 0,
+        unique: {
+            total: new Set(),
+            importOk: new Set(),
+            reviewOk: new Set(),
+            deleteOk: new Set(),
+            pending: new Set()
+        }
+    };
+
+    scopeRows.forEach((row) => {
+        summary.unique.total.add(getDistinctReviewKey(row));
+    });
+
+    const classifyRow = (row) => {
+        const estado = normalizeEstadoToNew(row?.qa_revision_estado);
+        const accion = normalizeAccionToNew(row?.qa_revision_accion);
+        if (estado !== 'ok') return 'pending';
+        if (accion === 'revisar') return 'reviewOk';
+        if (accion === 'eliminar') return 'deleteOk';
+        return 'importOk';
+    };
+
+    scopeRows.forEach((row) => {
+        const distinctKey = getDistinctReviewKey(row);
+        const cat = classifyRow(row);
+        summary[cat] += 1;
+        summary.unique[cat].add(distinctKey);
+    });
+
+    visRows.forEach((row) => {
+        const cat = classifyRow(row);
+        if (cat === 'pending') summary.visiblePending += 1;
+        else if (cat === 'reviewOk') summary.visibleReviewOk += 1;
+        else if (cat === 'deleteOk') summary.visibleDeleteOk += 1;
+        else summary.visibleImportOk += 1;
+    });
+
+    const visibleCount = visRows.length;
+
+    return {
+        ...summary,
+        visibleCount
+    };
+}
+
+function renderReviewStatsSummary(statsElement, rows, visibleRows, totalScopeRows) {
+    if (!statsElement) return;
+    const stats = buildReviewStats(rows, visibleRows, totalScopeRows);
+
+    statsElement.innerHTML = `
+        <div class="qa-stats-row">
+            <article class="qa-stat-card">
+                <span class="qa-stat-label">TOTAL ANALIZADOS</span>
+                <div class="qa-stat-inline-total">
+                    <strong>${stats.visibleCount}</strong>
+                    <span class="qa-stat-inline-separator">de</span>
+                    <strong>${stats.total}</strong>
+                    <span class="qa-stat-inline-unique">· ${stats.unique.total.size} únicos</span>
+                </div>
+            </article>
+            <article class="qa-stat-card is-ok">
+                <span class="qa-stat-label">IMPORTAR (OK)</span>
+                <div class="qa-stat-inline-total">
+                    <strong>${stats.visibleImportOk}</strong>
+                    <span class="qa-stat-inline-separator">de</span>
+                    <strong>${stats.importOk}</strong>
+                    <span class="qa-stat-inline-unique">· ${stats.unique.importOk.size} únicos</span>
+                </div>
+            </article>
+            <article class="qa-stat-card is-review">
+                <span class="qa-stat-label">REVISAR (OK)</span>
+                <div class="qa-stat-inline-total">
+                    <strong>${stats.visibleReviewOk}</strong>
+                    <span class="qa-stat-inline-separator">de</span>
+                    <strong>${stats.reviewOk}</strong>
+                    <span class="qa-stat-inline-unique">· ${stats.unique.reviewOk.size} únicos</span>
+                </div>
+            </article>
+            <article class="qa-stat-card is-ko">
+                <span class="qa-stat-label">ELIMINAR (OK)</span>
+                <div class="qa-stat-inline-total">
+                    <strong>${stats.visibleDeleteOk}</strong>
+                    <span class="qa-stat-inline-separator">de</span>
+                    <strong>${stats.deleteOk}</strong>
+                    <span class="qa-stat-inline-unique">· ${stats.unique.deleteOk.size} únicos</span>
+                </div>
+            </article>
+            <article class="qa-stat-card">
+                <span class="qa-stat-label">PENDIENTES</span>
+                <div class="qa-stat-inline-total">
+                    <strong>${stats.visiblePending}</strong>
+                    <span class="qa-stat-inline-separator">de</span>
+                    <strong>${stats.pending}</strong>
+                    <span class="qa-stat-inline-unique">· ${stats.unique.pending.size} únicos</span>
+                </div>
+            </article>
+        </div>
+    `;
+}
+
 export function sortData(data, key, asc) {
     if (!key) return data;
 
@@ -863,6 +989,7 @@ export function renderTable() {
 
     const errorsMode = state.tableMode === 'errors';
     const baseFiltered = applyFilters(state.allData);
+    const totalBookRowsNoFilters = getBookScopeRowsWithoutFilters();
     state.filteredData = errorsMode
         ? baseFiltered.filter(row => getRowErrors(row, { activeCodes: state.activeQaErrorChecks }).length > 0)
         : baseFiltered;
@@ -875,7 +1002,7 @@ export function renderTable() {
         tbody.innerHTML = `<tr><td colspan="${getCurrentColumnCount()}" class="error">${noDataMessage}</td></tr>`;
         errorViewTbody.innerHTML = `<tr><td colspan="${getErrorViewColumnCount()}" class="error">${noDataMessage}</td></tr>`;
         pagination.style.display = 'none';
-        stats.innerHTML = '<span class="stat">0 total</span>';
+        renderReviewStatsSummary(stats, [], [], totalBookRowsNoFilters);
         if (!errorsMode) applyColumnView();
         return;
     }
@@ -903,27 +1030,9 @@ export function renderTable() {
         renderErrorTableStats(state.filteredData, definitions);
         errorViewTbody.innerHTML = pageData.map(row => renderErrorViewRow(row, definitions)).join('');
         tbody.innerHTML = '';
+        renderReviewStatsSummary(stats, state.filteredData, pageData, totalBookRowsNoFilters);
     } else {
-        const withImages = state.filteredData.filter(r => (r.filename_foto || r.ruta_foto || '').toString().trim() !== '').length;
-        const withGesa = state.filteredData.filter(r => String(r.gesa || '').toUpperCase() === 'SI').length;
-        const superseded = state.filteredData.filter(r => String(r.sust_status || '').toUpperCase() === 'SI').length;
-        const distinctPnFiltered = new Set(state.filteredData.map(r => r['PART NO.'] || r.pn).filter(Boolean).map(pn => String(pn).trim())).size;
-        const distinctPnTotal = new Set(state.allData.map(r => r['PART NO.'] || r.pn).filter(Boolean).map(pn => String(pn).trim())).size;
-        const pnCountMap = new Map();
-        state.filteredData.forEach(r => pnCountMap.set(getPnKey(r), (pnCountMap.get(getPnKey(r)) || 0) + 1));
-        const repeatedPnGroups = [...pnCountMap.values()].filter(count => count > 1).length;
-
-        stats.innerHTML = `
-                    <span class="stat"><b>${total}</b> total</span>
-                    <span class="stat ok"><b>${state.displayRowCount}</b> marcados OK en la izquierda</span>
-                    <span class="stat ok"><b>${distinctPnFiltered}</b> PN distintos (filtrado)</span>
-                    <span class="stat warn"><b>${repeatedPnGroups}</b> PN repetidos (filtrado)</span>
-                    <span class="stat"><b>${distinctPnTotal}</b> PN distintos totales</span>
-                    <span class="stat ok"><b>${withImages}</b> con imágenes</span>
-                    <span class="stat"><b>${withGesa}</b> con GESA</span>
-                    <span class="stat warn"><b>${superseded}</b> superseded</span>
-                    <span class="stat" style="margin-left:auto; color:#64748b; font-size:11px;" title="JSON base de esta vista">📄 ${escapeHtml(state.mainDataSourceLabel)}</span>
-                `;
+        renderReviewStatsSummary(stats, state.filteredData, pageData, totalBookRowsNoFilters);
 
         tbody.innerHTML = pageData.length
             ? pageData.map(renderRow).join('')
