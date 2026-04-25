@@ -438,6 +438,7 @@ function openAnalisisForRow(row) {
     if (!row) return;
 
     const book = String(row?.engine_model ?? '').trim();
+    const id = String(row?.ID ?? '').trim();
     const record = String(row?.pn_final ?? row?.['PART NO.'] ?? row?.pn ?? '').trim();
     if (!record) {
         alert('El registro no tiene PN/PART NO para abrir analisis.');
@@ -446,7 +447,9 @@ function openAnalisisForRow(row) {
 
     const params = new URLSearchParams();
     if (book) params.set('engine', book);
+    if (id) params.set('id', id);
     params.set('record', record);
+    params.set('returnTo', window.location.href);
 
     const targetUrl = `analista_02.html?${params.toString()}`;
     window.open(targetUrl, '_blank', 'noopener');

@@ -94,9 +94,26 @@ const AUTO_RECOMPUTE_TRIGGER_FIELDS = new Set([
 function getStartupSelectionFromUrl() {
     const params = new URLSearchParams(window.location.search || '');
     const engine = String(params.get('engine') || '').trim();
+    const id = String(params.get('id') || '').trim();
     const record = String(params.get('record') || '').trim();
-    return { engine, record };
+    const returnToRaw = String(params.get('returnTo') || '').trim();
+
+    let returnTo = '';
+    if (returnToRaw) {
+        try {
+            const candidate = new URL(returnToRaw, window.location.href);
+            if (candidate.origin === window.location.origin) {
+                returnTo = candidate.href;
+            }
+        } catch (_) {
+            returnTo = '';
+        }
+    }
+
+    return { engine, id, record, returnTo };
 }
+
+const startupSelection = getStartupSelectionFromUrl();
 
 function inferEngineModelFromFileName(fileName) {
     return String(fileName || '')
@@ -229,6 +246,33 @@ function tokenMatchesPdf(pageText, candidateValue) {
 function resolvePdfPageNumber(value) {
     const parsed = Number(String(value ?? '').replace(/[^0-9]/g, ''));
     return Number.isInteger(parsed) && parsed > 0 ? parsed : null;
+}
+
+function navigateBackToQa() {
+    const payload = {
+        id: txt(currentRow?.ID, ''),
+        engine: txt(currentRow?.engine_model, ''),
+        record: txt(currentRow?.pn_final ?? currentRow?.['PART NO.'] ?? '', '')
+    };
+
+    const openerWin = window.opener;
+    if (openerWin && !openerWin.closed) {
+        try {
+            if (typeof openerWin.miluRefreshPdfData === 'function') {
+                const refreshResult = openerWin.miluRefreshPdfData(payload);
+                if (refreshResult && typeof refreshResult.catch === 'function') {
+                    refreshResult.catch(() => undefined);
+                }
+            }
+            openerWin.focus();
+            window.close();
+            return;
+        } catch (_) {
+            // Continue with location fallback.
+        }
+    }
+
+    window.location.href = startupSelection.returnTo || 'qa_milu.html';
 }
 
 async function getPdfPageNormalizedText(book, sourcePage) {
@@ -2315,9 +2359,8 @@ async function initialize() {
         initPdfZoomControls();
         loadPdfClear();
 
-        const startup = getStartupSelectionFromUrl();
-        const requestedModel = startup.engine && ENGINE_BOOK_MODELS.includes(startup.engine)
-            ? startup.engine
+        const requestedModel = startupSelection.engine && ENGINE_BOOK_MODELS.includes(startupSelection.engine)
+            ? startupSelection.engine
             : '';
 
         buildEngineOptions(requestedModel);
@@ -2326,8 +2369,9 @@ async function initialize() {
         syncRecomputeEngineSelect();
         updateRecordSearchSuggestions();
 
-        if (startup.record) {
-            $('recordIdInput').value = startup.record;
+        const startupLookup = startupSelection.record || startupSelection.id;
+        if (startupLookup) {
+            $('recordIdInput').value = startupLookup;
             await loadRecordFromControls();
         }
     } catch (error) {
@@ -2345,6 +2389,10 @@ function bindClick(id, callback) {
 
 bindClick('loadRecordBtn', () => {
     loadRecordFromControls().catch((error) => alert(`No se pudo cargar el registro: ${error.message}`));
+});
+
+bindClick('returnToQaBtn', () => {
+    navigateBackToQa();
 });
 
 bindClick('prevRecordBtn', () => {
