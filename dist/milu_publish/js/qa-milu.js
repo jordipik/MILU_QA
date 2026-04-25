@@ -21,7 +21,7 @@ import {
     saveColumnViewPreference
 } from './column-view.js';
 import { isInlineEditableTarget, cancelInlineEdit } from './cell-editor.js';
-import { initPdfZoomControls, loadPdfClear, loadPdfWithPage, renderPdfPage, setPdfSelection } from './pdf-viewer.js';
+import { initPdfZoomControls, loadPdfClear, loadPdfWithPage, renderPdfPage, requestPdfRelayout, setPdfSelection } from './pdf-viewer.js';
 import { updateSchemasInline, renderSelectedRowPosPanel, renderSelectedRowPosTop } from './schemas.js';
 import { getEngineJsonForRow } from './helpers.js';
 import {
@@ -132,9 +132,8 @@ function setRightPanelTab(tabName) {
         panel.toggleAttribute('hidden', !isActive);
     });
 
-    if (resolvedTab === 'pdf' && state.currentPdfSource && state.currentPdfPageNumber > 0) {
-        renderPdfPage(state.currentPdfSource, state.currentPdfPageNumber)
-            .catch(error => console.error('Error reajustando PDF al cambiar de pestaña:', error));
+    if (resolvedTab === 'pdf') {
+        requestPdfRelayout();
     }
 }
 
@@ -2558,8 +2557,8 @@ function attachGlobalEvents() {
     window.addEventListener('resize', () => {
         if (resizeTimer) clearTimeout(resizeTimer);
         resizeTimer = setTimeout(() => {
-            if (state.rightPanelTab === 'pdf' && state.currentPdfSource && state.currentPdfPageNumber > 0) {
-                renderPdfPage(state.currentPdfSource, state.currentPdfPageNumber).catch(error => console.error('Error reajustando PDF:', error));
+            if (state.rightPanelTab === 'pdf') {
+                requestPdfRelayout();
             }
             if (!state.allData.length || state.groupedVisible) return;
             if (!syncAutoPageSize()) return;
@@ -2600,6 +2599,71 @@ function attachGlobalEvents() {
     });
 }
 
+function initQaSplitter() {
+    const main = document.querySelector('.main');
+    const splitter = document.getElementById('qaSplitter');
+    if (!(main instanceof HTMLElement) || !(splitter instanceof HTMLElement)) return;
+
+    const QA_RIGHT_WIDTH_KEY = 'qamilu:right-panel-width';
+
+    const clampAndApply = (desiredWidth) => {
+        const totalWidth = Math.max(1, main.getBoundingClientRect().width);
+        const min = 320;
+        const max = Math.max(400, Math.floor(totalWidth * 0.70));
+        const clamped = Math.max(min, Math.min(max, Math.round(desiredWidth)));
+        document.documentElement.style.setProperty('--qa-right-width', `${clamped}px`);
+        return clamped;
+    };
+
+    const savedWidth = Number(localStorage.getItem(QA_RIGHT_WIDTH_KEY));
+    if (Number.isFinite(savedWidth) && savedWidth > 0) {
+        clampAndApply(savedWidth);
+    } else {
+        clampAndApply(Math.round(main.getBoundingClientRect().width * 0.35));
+    }
+
+    let dragging = false;
+
+    const onPointerMove = (event) => {
+        if (!dragging) return;
+        const rect = main.getBoundingClientRect();
+        const desiredWidth = rect.right - event.clientX;
+        const applied = clampAndApply(desiredWidth);
+        localStorage.setItem(QA_RIGHT_WIDTH_KEY, String(applied));
+        requestPdfRelayout();
+        event.preventDefault();
+    };
+
+    const stopDragging = () => {
+        if (!dragging) return;
+        dragging = false;
+        document.body.classList.remove('qa-resizing');
+        window.removeEventListener('pointermove', onPointerMove);
+        window.removeEventListener('pointerup', stopDragging);
+        requestPdfRelayout();
+    };
+
+    splitter.addEventListener('pointerdown', (event) => {
+        if (window.matchMedia('(max-width: 1200px)').matches) return;
+        dragging = true;
+        document.body.classList.add('qa-resizing');
+        window.addEventListener('pointermove', onPointerMove);
+        window.addEventListener('pointerup', stopDragging);
+        event.preventDefault();
+    });
+
+    splitter.addEventListener('keydown', (event) => {
+        if (window.matchMedia('(max-width: 1200px)').matches) return;
+        if (event.key !== 'ArrowLeft' && event.key !== 'ArrowRight') return;
+        const current = parseInt(getComputedStyle(document.documentElement).getPropertyValue('--qa-right-width'), 10) || 500;
+        const delta = event.key === 'ArrowLeft' ? 24 : -24;
+        const applied = clampAndApply(current + delta);
+        localStorage.setItem(QA_RIGHT_WIDTH_KEY, String(applied));
+        requestPdfRelayout();
+        event.preventDefault();
+    });
+}
+
 function init() {
     initColumnResize();
     loadColumnViewPreference();
@@ -2608,6 +2672,7 @@ function init() {
     ensureQaChecksState();
     updateQaChecksSummary();
     attachGlobalEvents();
+    initQaSplitter();
     setRightPanelTab(state.rightPanelTab);
     clearSideRecordForm();
     loadData();

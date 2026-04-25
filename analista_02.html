@@ -11,6 +11,14 @@
         href="https://fonts.googleapis.com/css2?family=Manrope:wght@500;600;700;800&family=IBM+Plex+Mono:wght@400;500&display=swap"
         rel="stylesheet">
     <link rel="stylesheet" href="styles/analista_02.css" />
+    <script>
+        (function () {
+            var saved = Number(localStorage.getItem('analista02:right-panel-width'));
+            var w = (saved > 0) ? saved : Math.round(window.innerWidth * 0.35);
+            if (!(saved > 0)) localStorage.setItem('analista02:right-panel-width', String(w));
+            document.documentElement.style.setProperty('--a2-right-width', w + 'px');
+        })();
+    </script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
 </head>
 

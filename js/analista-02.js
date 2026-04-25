@@ -529,6 +529,9 @@ function initHorizontalSplitter() {
     const savedWidth = Number(localStorage.getItem(RIGHT_PANEL_WIDTH_KEY));
     if (Number.isFinite(savedWidth) && savedWidth > 0) {
         clampAndApplyWidth(savedWidth);
+    } else {
+        const layoutWidth = Math.max(1, layout.getBoundingClientRect().width);
+        clampAndApplyWidth(Math.round(layoutWidth * 0.35));
     }
 
     let dragging = false;

@@ -10,6 +10,14 @@
     <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@500;600;700;800&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="styles/qa_milu.css" />
     <link rel="stylesheet" href="styles/analista_02.css" />
+    <script>
+        (function () {
+            var saved = Number(localStorage.getItem('qamilu:right-panel-width'));
+            var w = (saved > 0) ? saved : Math.round(window.innerWidth * 0.35);
+            if (!(saved > 0)) localStorage.setItem('qamilu:right-panel-width', String(w));
+            document.documentElement.style.setProperty('--qa-right-width', w + 'px');
+        })();
+    </script>
     <style>
         /* Personalización de colores para qa_milu */
         .a2-chip {
@@ -347,6 +355,9 @@
                     </div>
                 </div>
             </div>
+
+            <div id="qaSplitter" class="qa-splitter" role="separator" aria-orientation="vertical" tabindex="0"
+                aria-label="Ajustar ancho del panel PDF"></div>
 
             <div class="card pdfbox" id="pdfBox">
                 <div class="pdf-tabs" role="tablist" aria-label="Panel lateral QA">
