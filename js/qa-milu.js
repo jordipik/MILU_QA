@@ -56,16 +56,16 @@ function queueColumnViewRefresh() {
 }
 
 const MODAL_FIELD_KEYS = [
-    'POS',
+    'pos_final',
     'pn_final',
     'designation_final',
+    'model_final',
+    'qty_final',
+    'qty_units_final',
     'weight_final',
+    'fn_final',
     'measurement_final',
-    'norma',
-    'MODEL/TYPE',
-    'QTY',
-    'UNITS',
-    'FN',
+    'norma_final',
     'gesa',
     'normalizado',
     'sust_hierarchie',
@@ -1324,7 +1324,7 @@ function fillRecordModal(row, revisionKey) {
     $('qaModalPn').value = String(row?.['PART NO.'] ?? row?.pn ?? '');
     $('qaModalBook').value = String(row?.engine_model ?? '');
     $('qaModalPage').value = String(row?.['Source Page'] ?? '');
-    $('qaModalPos').value = String(row?.POS ?? '');
+    $('qaModalPos').value = String(row?.pos_final ?? '');
     $('qaModalGesa').value = String(row?.gesa ?? '');
     $('qaModalNormalizado').value = String(row?.normalizado ?? '');
     $('qaModalSustHierarchie').value = String(row?.sust_hierarchie ?? '');
@@ -1335,13 +1335,13 @@ function fillRecordModal(row, revisionKey) {
     $('qaModalRevisionAccion').value = normalizeAccionToNew(row?.qa_revision_accion);
     $('qaModalPnFinal').value = String(row?.pn_final ?? '');
     $('qaModalDesignationFinal').value = String(row?.designation_final ?? '');
-    $('qaModalModelType').value = String(row?.['MODEL/TYPE'] ?? '');
-    $('qaModalQty').value = String(row?.QTY ?? '');
-    $('qaModalUnits').value = String(row?.UNITS ?? '');
+    $('qaModalModelType').value = String(row?.model_final ?? '');
+    $('qaModalQty').value = String(row?.qty_final ?? '');
+    $('qaModalUnits').value = String(row?.qty_units_final ?? '');
     $('qaModalWeightFinal').value = String(row?.weight_final ?? '');
-    $('qaModalFn').value = String(row?.FN ?? '');
+    $('qaModalFn').value = String(row?.fn_final ?? '');
     $('qaModalMeasurementFinal').value = String(row?.measurement_final ?? '');
-    $('qaModalNorma').value = String(row?.norma ?? '');
+    $('qaModalNorma').value = String(row?.norma_final ?? '');
 
     renderRecordQaErrors(row);
     renderRecordModalMatches(row, revisionKey);
@@ -1360,7 +1360,7 @@ function fillSideRecordForm(row, revisionKey) {
     $('qaSidePn').value = String(row?.['PART NO.'] ?? row?.pn ?? '');
     $('qaSideBook').value = String(row?.engine_model ?? '');
     $('qaSidePage').value = String(row?.['Source Page'] ?? '');
-    $('qaSidePos').value = String(row?.POS ?? '');
+    $('qaSidePos').value = String(row?.pos_final ?? '');
     $('qaSideGesa').value = String(row?.gesa ?? '');
     $('qaSideNormalizado').value = String(row?.normalizado ?? '');
     $('qaSideSustHierarchie').value = String(row?.sust_hierarchie ?? '');
@@ -1371,13 +1371,13 @@ function fillSideRecordForm(row, revisionKey) {
     $('qaSideRevisionAccion').value = normalizeAccionToNew(row?.qa_revision_accion);
     $('qaSidePnFinal').value = String(row?.pn_final ?? '');
     $('qaSideDesignationFinal').value = String(row?.designation_final ?? '');
-    $('qaSideModelType').value = String(row?.['MODEL/TYPE'] ?? '');
-    $('qaSideQty').value = String(row?.QTY ?? '');
-    $('qaSideUnits').value = String(row?.UNITS ?? '');
+    $('qaSideModelType').value = String(row?.model_final ?? '');
+    $('qaSideQty').value = String(row?.qty_final ?? '');
+    $('qaSideUnits').value = String(row?.qty_units_final ?? '');
     $('qaSideWeightFinal').value = String(row?.weight_final ?? '');
-    $('qaSideFn').value = String(row?.FN ?? '');
+    $('qaSideFn').value = String(row?.fn_final ?? '');
     $('qaSideMeasurementFinal').value = String(row?.measurement_final ?? '');
-    $('qaSideNorma').value = String(row?.norma ?? '');
+    $('qaSideNorma').value = String(row?.norma_final ?? '');
 
     const sideLabel = $('qaSideLabel');
     if (sideLabel) {
@@ -1421,16 +1421,16 @@ function fillSideRecordForm(row, revisionKey) {
 function getRecordFormValues(scope) {
     const prefix = scope === 'side' ? 'qaSide' : 'qaModal';
     return {
-        POS: String($(`${prefix}Pos`)?.value || ''),
+        pos_final: String($(`${prefix}Pos`)?.value || ''),
         pn_final: String($(`${prefix}PnFinal`)?.value || ''),
         designation_final: String($(`${prefix}DesignationFinal`)?.value || ''),
+        model_final: String($(`${prefix}ModelType`)?.value || ''),
+        qty_final: String($(`${prefix}Qty`)?.value || ''),
+        qty_units_final: String($(`${prefix}Units`)?.value || ''),
         weight_final: String($(`${prefix}WeightFinal`)?.value || ''),
+        fn_final: String($(`${prefix}Fn`)?.value || ''),
         measurement_final: String($(`${prefix}MeasurementFinal`)?.value || ''),
-        norma: String($(`${prefix}Norma`)?.value || ''),
-        'MODEL/TYPE': String($(`${prefix}ModelType`)?.value || ''),
-        QTY: String($(`${prefix}Qty`)?.value || ''),
-        UNITS: String($(`${prefix}Units`)?.value || ''),
-        FN: String($(`${prefix}Fn`)?.value || ''),
+        norma_final: String($(`${prefix}Norma`)?.value || ''),
         gesa: String($(`${prefix}Gesa`)?.value || ''),
         normalizado: String($(`${prefix}Normalizado`)?.value || ''),
         sust_hierarchie: String($(`${prefix}SustHierarchie`)?.value || ''),

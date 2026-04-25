@@ -431,35 +431,35 @@
                                             <input id="qaSideDesignationFinal" type="text" name="designation_final">
                                         </label>
                                         <label>
-                                            <span>Model/Type</span>
-                                            <input id="qaSideModelType" type="text">
+                                            <span>Model Final</span>
+                                            <input id="qaSideModelType" type="text" name="model_final">
                                         </label>
                                     </div>
 
                                     <div class="qa-modal-row qa-modal-row-secondary">
                                         <label>
-                                            <span>QTY</span>
-                                            <input id="qaSideQty" type="text">
+                                            <span>QTY Final</span>
+                                            <input id="qaSideQty" type="text" name="qty_final">
                                         </label>
                                         <label>
-                                            <span>Units</span>
-                                            <input id="qaSideUnits" type="text">
+                                            <span>Units Final</span>
+                                            <input id="qaSideUnits" type="text" name="qty_units_final">
                                         </label>
                                         <label>
                                             <span>Weight Final</span>
                                             <input id="qaSideWeightFinal" type="text" name="weight_final">
                                         </label>
                                         <label>
-                                            <span>FN</span>
-                                            <input id="qaSideFn" type="text">
+                                            <span>FN Final</span>
+                                            <input id="qaSideFn" type="text" name="fn_final">
                                         </label>
                                         <label>
                                             <span>Dim Fin</span>
                                             <input id="qaSideMeasurementFinal" type="text" name="measurement_final">
                                         </label>
                                         <label>
-                                            <span>Norma</span>
-                                            <input id="qaSideNorma" type="text" name="norma">
+                                            <span>Norma Final</span>
+                                            <input id="qaSideNorma" type="text" name="norma_final">
                                         </label>
                                     </div>
 
@@ -516,8 +516,8 @@
                                             <input id="qaSidePage" type="text">
                                         </label>
                                         <label>
-                                            <span>Pos</span>
-                                            <input id="qaSidePos" type="text">
+                                            <span>Pos Final</span>
+                                            <input id="qaSidePos" type="text" name="pos_final">
                                         </label>
                                     </div>
 
@@ -776,43 +776,43 @@
 
                         <div class="qa-modal-row qa-modal-row-primary">
                             <label>
-                                <span>PN FINAL</span>
+                                <span>PN FINAL (pn_final)</span>
                                 <input id="qaModalPnFinal" type="text" name="pn_final">
                             </label>
                             <label class="qa-modal-field-span-4">
-                                <span>DESIGN FINAL</span>
+                                <span>DESIGN FINAL (designation_final)</span>
                                 <input id="qaModalDesignationFinal" type="text" name="designation_final">
                             </label>
                             <label>
-                                <span>Model/Type</span>
-                                <input id="qaModalModelType" type="text">
+                                <span>Model Final (model_final)</span>
+                                <input id="qaModalModelType" type="text" name="model_final">
                             </label>
                         </div>
 
                         <div class="qa-modal-row qa-modal-row-secondary">
                             <label>
-                                <span>QTY</span>
-                                <input id="qaModalQty" type="text">
+                                <span>QTY Final (qty_final)</span>
+                                <input id="qaModalQty" type="text" name="qty_final">
                             </label>
                             <label>
-                                <span>Units</span>
-                                <input id="qaModalUnits" type="text">
+                                <span>Units Final (qty_units_final)</span>
+                                <input id="qaModalUnits" type="text" name="qty_units_final">
                             </label>
                             <label>
-                                <span>Weight Final</span>
+                                <span>Weight Final (weight_final)</span>
                                 <input id="qaModalWeightFinal" type="text" name="weight_final">
                             </label>
                             <label>
-                                <span>FN</span>
-                                <input id="qaModalFn" type="text">
+                                <span>FN Final (fn_final)</span>
+                                <input id="qaModalFn" type="text" name="fn_final">
                             </label>
                             <label>
-                                <span>Meas Fin</span>
+                                <span>Meas Fin (measurement_final)</span>
                                 <input id="qaModalMeasurementFinal" type="text" name="measurement_final">
                             </label>
                             <label>
-                                <span>Norma</span>
-                                <input id="qaModalNorma" type="text" name="norma">
+                                <span>Norma Final (norma_final)</span>
+                                <input id="qaModalNorma" type="text" name="norma_final">
                             </label>
                         </div>
 
@@ -820,14 +820,14 @@
 
                         <div class="qa-modal-row qa-modal-row-status">
                             <label>
-                                <span>Revision</span>
+                                <span>Revision (qa_revision_estado)</span>
                                 <select id="qaModalRevisionEstado" name="qa_revision_estado">
                                     <option value="pendiente">Pendiente</option>
                                     <option value="ok">OK</option>
                                 </select>
                             </label>
                             <label>
-                                <span>Accion</span>
+                                <span>Accion (qa_revision_accion)</span>
                                 <select id="qaModalRevisionAccion" name="qa_revision_accion">
                                     <option value="importar">Importar</option>
                                     <option value="revisar">Revisar</option>
@@ -838,39 +838,39 @@
 
                         <div class="qa-modal-row qa-modal-row-flags">
                             <label>
-                                <span>Gesa</span>
+                                <span>Gesa (gesa)</span>
                                 <input id="qaModalGesa" type="text">
                             </label>
                             <label>
-                                <span>Norm.</span>
+                                <span>Norm. (normalizado)</span>
                                 <input id="qaModalNormalizado" type="text">
                             </label>
                             <label>
-                                <span>New/Sup</span>
+                                <span>New/Sup (sust_hierarchie)</span>
                                 <input id="qaModalSustHierarchie" type="text">
                             </label>
                             <label>
-                                <span>Foto</span>
+                                <span>Foto (has_img)</span>
                                 <input id="qaModalHasImg" type="text">
                             </label>
                             <label>
-                                <span>En Web</span>
+                                <span>En Web (EN_WEB)</span>
                                 <input id="qaModalEnWeb" type="text">
                             </label>
                         </div>
 
                         <div class="qa-modal-row qa-modal-row-book">
                             <label class="qa-modal-field-span-4">
-                                <span>Libro</span>
+                                <span>Libro (engine_model)</span>
                                 <input id="qaModalBook" type="text">
                             </label>
                             <label>
-                                <span>Pagina</span>
+                                <span>Pagina (Source Page)</span>
                                 <input id="qaModalPage" type="text">
                             </label>
                             <label>
-                                <span>Pos</span>
-                                <input id="qaModalPos" type="text">
+                                <span>Pos Final (pos_final)</span>
+                                <input id="qaModalPos" type="text" name="pos_final">
                             </label>
                         </div>
 

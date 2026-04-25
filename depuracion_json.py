@@ -268,6 +268,30 @@ def add_final_fields(record):
     if not normalize_spaces(record.get("norma")) and extracted_norma_raw:
         record["norma"] = extracted_norma_raw
 
+    # Copia/normaliza campos base a sus variantes finales cuando falten.
+    pos_source = normalize_spaces(record.get("POS"))
+    pos_final = normalize_spaces(record.get("pos_final"))
+    record["pos_final"] = pos_final or pos_source
+
+    model_type_source = normalize_spaces(record.get("MODEL/TYPE"))
+    model_final = normalize_spaces(record.get("model_final"))
+    model_type_final = normalize_spaces(record.get("MODEL/TYPE_final"))
+    resolved_model_final = model_final or model_type_final or model_type_source
+    record["model_final"] = resolved_model_final
+    record["MODEL/TYPE_final"] = model_type_final or model_final or model_type_source
+
+    qty_source = normalize_spaces(record.get("QTY"))
+    qty_final = normalize_spaces(record.get("qty_final"))
+    record["qty_final"] = qty_final or qty_source
+
+    qty_units_source = normalize_spaces(record.get("UNITS"))
+    qty_units_final = normalize_spaces(record.get("qty_units_final"))
+    record["qty_units_final"] = qty_units_final or qty_units_source
+
+    norma_source = normalize_spaces(record.get("norma"))
+    norma_final = normalize_spaces(record.get("norma_final"))
+    record["norma_final"] = norma_final or norma_source
+
     # designation_final: siempre prioriza designation_gesa; si no hay, usa DESIGNATION.
     record["designation_final"] = record.get("designation_gesa") or record.get("DESIGNATION", None)
     

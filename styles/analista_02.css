@@ -248,7 +248,7 @@ body.a2-resizing * {
 
 .a2-toolbar {
     display: grid;
-    grid-template-columns: minmax(180px, 220px) minmax(240px, 1fr) minmax(84px, 104px) minmax(96px, 116px) minmax(150px, 190px) 42px 42px minmax(164px, 196px) minmax(96px, 120px);
+    grid-template-columns: minmax(180px, 220px) minmax(240px, 1fr) minmax(84px, 104px) 42px 42px minmax(164px, 196px) minmax(96px, 120px);
     gap: 8px;
     align-items: center;
 }
@@ -293,13 +293,6 @@ body.a2-resizing * {
 .a2-toolbar #openRecomputeModalBtn {
     font-size: 11px;
     letter-spacing: 0.01em;
-}
-
-#returnToQaModeSelect {
-    font-size: 11px;
-    font-weight: 700;
-    color: #0f3f6a;
-    background: #f6fbff;
 }
 
 .a2-error-nav {

@@ -754,16 +754,16 @@ function renderRow(row) {
           <select class="revision-select" data-revision-field="accion" data-revision-key="${escapeHtml(revisionKey)}">${revisionAccionOptions}</select>
       </td>
     <td class="${withCellClasses('', 'PART NO.', getComparisonClasses({ pdfMatch: comparisonMeta.pn.pdfMatch }))}" title="${escapeHtml(val(row, 'PART NO.'))}">${escapeHtml(val(row, 'PART NO.'))}</td>
-        <td class="${withCellClasses('', 'POS', getComparisonClasses({ missing: comparisonMeta.pos.missing }))}" title="${escapeHtml(val(row, 'POS'))}">${escapeHtml(val(row, 'POS'))}</td>
+        <td class="${withCellClasses('', 'pos_final', getComparisonClasses({ missing: comparisonMeta.pos.missing }))}" title="${escapeHtml(getRowValueForColumn(row, 'POS'))}">${escapeHtml(getRowValueForColumn(row, 'POS'))}</td>
     <td${editableAttr('pn_final')} title="${escapeHtml(val(row, 'pn_final'))}" class="${withCellClasses('cell-inline-editable', 'pn_final', getComparisonClasses(comparisonMeta.pn))}">${escapeHtml(val(row, 'pn_final'))}</td>
     <td class="${withCellClasses('', 'designation_final', getComparisonClasses(comparisonMeta.designation))}" title="${escapeHtml(getRowValueForColumn(row, 'designation_final'))}">${escapeHtml(getRowValueForColumn(row, 'designation_final'))}</td>
             <td class="${withCellClasses('', 'pn_raw', getComparisonClasses({ gesaMatch: comparisonMeta.pn.gesaMatch }))}" title="${escapeHtml(val(row, 'pn_raw'))}">${escapeHtml(val(row, 'pn_raw'))}</td>
         <td title="${escapeHtml(val(row, 'criterio_pn'))}">${escapeHtml(val(row, 'criterio_pn'))}</td>
     <td title="${escapeHtml(val(row, 'designation_gesa'))}" class="${withCellClasses(classGesa, 'designation_gesa', getComparisonClasses({ gesaMatch: comparisonMeta.designation.gesaMatch }))}">${escapeHtml(val(row, 'designation_gesa'))}</td>
-      <td class="separator-after" title="${escapeHtml(val(row, 'MODEL/TYPE'))}">${escapeHtml(val(row, 'MODEL/TYPE'))}</td>
-      <td title="${escapeHtml(val(row, 'QTY'))}">${escapeHtml(val(row, 'QTY'))}</td>
+    <td class="separator-after" title="${escapeHtml(getRowValueForColumn(row, 'MODEL/TYPE'))}">${escapeHtml(getRowValueForColumn(row, 'MODEL/TYPE'))}</td>
+    <td title="${escapeHtml(getRowValueForColumn(row, 'QTY'))}">${escapeHtml(getRowValueForColumn(row, 'QTY'))}</td>
         <td class="${withCellClasses(classGesa, 'weight_final')}" title="${escapeHtml(getRowValueForColumn(row, 'weight_final'))}">${escapeHtml(getRowValueForColumn(row, 'weight_final'))}</td>
-            <td class="${withCellClasses('', 'UNITS')}" title="${escapeHtml(val(row, 'UNITS'))}">${escapeHtml(val(row, 'UNITS'))}</td>
+            <td class="${withCellClasses('', 'qty_units_final')}" title="${escapeHtml(getRowValueForColumn(row, 'UNITS'))}">${escapeHtml(getRowValueForColumn(row, 'UNITS'))}</td>
             <td class="${withCellClasses(classGesa, 'weight_gesa')}" title="${escapeHtml(val(row, 'weight_gesa'))}">${escapeHtml(val(row, 'weight_gesa'))}</td>
             <td class="${withCellClasses(`separator-after ${classGesa}`, 'units')}" title="${escapeHtml(val(row, 'units'))}">${escapeHtml(val(row, 'units'))}</td>
       <td title="${escapeHtml(val(row, 'FG/FGS'))}">${escapeHtml(val(row, 'FG/FGS'))}</td>
@@ -775,7 +775,7 @@ function renderRow(row) {
       <td title="${escapeHtml(val(row, 'fgs_code_description'))}">${escapeHtml(val(row, 'fgs_code_description'))}</td>
       <td title="${escapeHtml(val(row, 'filename_foto'))}">${escapeHtml(val(row, 'filename_foto'))}</td>
       <td title="${escapeHtml(val(row, 'nsn'))}">${escapeHtml(val(row, 'nsn'))}</td>
-    <td${editableAttr('norma')} title="${escapeHtml(val(row, 'norma'))}" class="cell-inline-editable">${escapeHtml(val(row, 'norma'))}</td>
+    <td${editableAttr('norma_final')} title="${escapeHtml(getRowValueForColumn(row, 'norma'))}" class="cell-inline-editable">${escapeHtml(getRowValueForColumn(row, 'norma'))}</td>
       <td title="${escapeHtml(val(row, 'sust_status'))}">${escapeHtml(val(row, 'sust_status'))}</td>
       <td title="${escapeHtml(val(row, 'sust_new_part_number'))}">${escapeHtml(val(row, 'sust_new_part_number'))}</td>
       <td title="${escapeHtml(val(row, 'sust_superseded_list'))}">${escapeHtml(val(row, 'sust_superseded_list'))}</td>
@@ -784,7 +784,7 @@ function renderRow(row) {
       <td title="${escapeHtml(val(row, 'engine_model'))}">${escapeHtml(val(row, 'engine_model'))}</td>
       <td title="${escapeHtml(val(row, 'categoria'))}">${escapeHtml(val(row, 'categoria'))}</td>
       <td title="${escapeHtml(val(row, 'precio'))}">${escapeHtml(val(row, 'precio'))}</td>
-      <td title="${escapeHtml(val(row, 'FN'))}">${escapeHtml(val(row, 'FN'))}</td>
+    <td title="${escapeHtml(getRowValueForColumn(row, 'FN'))}">${escapeHtml(getRowValueForColumn(row, 'FN'))}</td>
         <td class="${withCellClasses('', 'source_file')}" title="${escapeHtml(val(row, 'source_file'))}">${escapeHtml(val(row, 'source_file'))}</td>
       <td title="${escapeHtml(val(row, 'source_sheet'))}">${escapeHtml(val(row, 'source_sheet'))}</td>
       <td title="${escapeHtml(val(row, 'engine'))}">${escapeHtml(val(row, 'engine'))}</td>

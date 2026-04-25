@@ -231,51 +231,55 @@
             <div class="shell-shared-modal-body">
                 <div id="shellSharedMeta" class="shell-shared-meta">-</div>
                 <div class="shell-shared-grid">
-                    <div class="shell-shared-field span-2">
-                        <label for="shellSharedPnFinal">PN FINAL</label>
+                    <div class="shell-shared-field">
+                        <label for="shellSharedPos">POS (pos_final)</label>
+                        <input id="shellSharedPos" type="text" />
+                    </div>
+                    <div class="shell-shared-field">
+                        <label for="shellSharedPnFinal">PN FINAL (pn_final)</label>
                         <input id="shellSharedPnFinal" type="text" />
                     </div>
-                    <div class="shell-shared-field span-4">
-                        <label for="shellSharedDesignationFinal">DESIGNATION FINAL</label>
+                    <div class="shell-shared-field span-3">
+                        <label for="shellSharedDesignationFinal">DESIGNATION FINAL (designation_final)</label>
                         <input id="shellSharedDesignationFinal" type="text" />
                     </div>
                     <div class="shell-shared-field">
-                        <label for="shellSharedModelType">MODEL/TYPE</label>
-                        <input id="shellSharedModelType" type="text" readonly />
+                        <label for="shellSharedModelType">MODEL/TYPE FINAL (MODEL/TYPE_final)</label>
+                        <input id="shellSharedModelType" type="text" />
                     </div>
                     <div class="shell-shared-field">
-                        <label for="shellSharedQty">QTY</label>
-                        <input id="shellSharedQty" type="text" readonly />
+                        <label for="shellSharedQty">QTY (qty_final)</label>
+                        <input id="shellSharedQty" type="text" />
                     </div>
                     <div class="shell-shared-field">
-                        <label for="shellSharedUnits">UNITS</label>
-                        <input id="shellSharedUnits" type="text" readonly />
+                        <label for="shellSharedUnits">UNITS (qty_units_final)</label>
+                        <input id="shellSharedUnits" type="text" />
                     </div>
                     <div class="shell-shared-field">
-                        <label for="shellSharedWeightFinal">WEIGHT FINAL</label>
+                        <label for="shellSharedWeightFinal">WEIGHT FINAL (weight_final)</label>
                         <input id="shellSharedWeightFinal" type="text" />
                     </div>
                     <div class="shell-shared-field">
-                        <label for="shellSharedFn">FN</label>
-                        <input id="shellSharedFn" type="text" readonly />
+                        <label for="shellSharedFn">FN (fn_final)</label>
+                        <input id="shellSharedFn" type="text" />
                     </div>
                     <div class="shell-shared-field">
-                        <label for="shellSharedMeasurementFinal">MEASUREMENT FINAL</label>
+                        <label for="shellSharedMeasurementFinal">MEASUREMENT FINAL (measurement_final)</label>
                         <input id="shellSharedMeasurementFinal" type="text" />
                     </div>
                     <div class="shell-shared-field">
-                        <label for="shellSharedNorma">NORMA</label>
+                        <label for="shellSharedNorma">NORMA (norma_final)</label>
                         <input id="shellSharedNorma" type="text" />
                     </div>
                     <div class="shell-shared-field">
-                        <label for="shellSharedEstado">ESTADO</label>
+                        <label for="shellSharedEstado">ESTADO (qa_revision_estado)</label>
                         <select id="shellSharedEstado">
                             <option value="pendiente">Pendiente</option>
                             <option value="ok">OK</option>
                         </select>
                     </div>
                     <div class="shell-shared-field">
-                        <label for="shellSharedAccion">ACCION</label>
+                        <label for="shellSharedAccion">ACCION (qa_revision_accion)</label>
                         <select id="shellSharedAccion">
                             <option value="importar">Importar</option>
                             <option value="revisar">Revisar</option>
@@ -283,40 +287,32 @@
                         </select>
                     </div>
                     <div class="shell-shared-field">
-                        <label for="shellSharedGesa">GESA</label>
-                        <input id="shellSharedGesa" type="text" readonly />
+                        <label for="shellSharedGesa">GESA (gesa)</label>
+                        <input id="shellSharedGesa" type="text" />
                     </div>
                     <div class="shell-shared-field">
-                        <label for="shellSharedNormalizado">NORM.</label>
-                        <input id="shellSharedNormalizado" type="text" readonly />
+                        <label for="shellSharedNormalizado">NORM. (normalizado)</label>
+                        <input id="shellSharedNormalizado" type="text" />
                     </div>
                     <div class="shell-shared-field span-2">
-                        <label for="shellSharedNewSup">NEW/SUP</label>
-                        <input id="shellSharedNewSup" type="text" readonly />
+                        <label for="shellSharedNewSup">NEW/SUP (sust_hierarchie)</label>
+                        <input id="shellSharedNewSup" type="text" />
                     </div>
                     <div class="shell-shared-field">
-                        <label for="shellSharedHasImg">FOTO</label>
-                        <input id="shellSharedHasImg" type="text" readonly />
+                        <label for="shellSharedHasImg">FOTO (has_img)</label>
+                        <input id="shellSharedHasImg" type="text" />
                     </div>
                     <div class="shell-shared-field">
-                        <label for="shellSharedEnWeb">EN WEB</label>
-                        <input id="shellSharedEnWeb" type="text" readonly />
+                        <label for="shellSharedEnWeb">EN WEB (EN_WEB)</label>
+                        <input id="shellSharedEnWeb" type="text" />
                     </div>
                     <div class="shell-shared-field span-3">
-                        <label for="shellSharedBook">LIBRO</label>
-                        <input id="shellSharedBook" type="text" readonly />
+                        <label for="shellSharedBook">LIBRO (engine_model)</label>
+                        <input id="shellSharedBook" type="text" />
                     </div>
                     <div class="shell-shared-field">
-                        <label for="shellSharedPage">PAGINA</label>
-                        <input id="shellSharedPage" type="text" readonly />
-                    </div>
-                    <div class="shell-shared-field">
-                        <label for="shellSharedPos">POS</label>
-                        <input id="shellSharedPos" type="text" readonly />
-                    </div>
-                    <div class="shell-shared-field">
-                        <label for="shellSharedPartNo">PART NO.</label>
-                        <input id="shellSharedPartNo" type="text" readonly />
+                        <label for="shellSharedPage">PAGINA (Source Page)</label>
+                        <input id="shellSharedPage" type="text" />
                     </div>
                 </div>
             </div>
@@ -347,13 +343,25 @@
         let sharedEditorContext = null;
 
         const EDITABLE_FIELDS = [
+            'pos_final',
             'pn_final',
             'designation_final',
+            'MODEL/TYPE_final',
+            'qty_final',
+            'qty_units_final',
             'weight_final',
+            'fn_final',
             'measurement_final',
-            'norma',
+            'norma_final',
             'qa_revision_estado',
-            'qa_revision_accion'
+            'qa_revision_accion',
+            'gesa',
+            'normalizado',
+            'sust_hierarchie',
+            'has_img',
+            'EN_WEB',
+            'engine_model',
+            'Source Page'
         ];
 
         function txt(value) {
@@ -427,8 +435,7 @@
                 enWeb: document.getElementById('shellSharedEnWeb'),
                 book: document.getElementById('shellSharedBook'),
                 page: document.getElementById('shellSharedPage'),
-                pos: document.getElementById('shellSharedPos'),
-                partNo: document.getElementById('shellSharedPartNo')
+                pos: document.getElementById('shellSharedPos')
             };
         }
 
@@ -632,8 +639,7 @@
                 enWeb,
                 book,
                 page,
-                pos,
-                partNo
+                pos
             } = getSharedModalElements();
             if (!(modal instanceof HTMLElement)) return false;
 
@@ -642,13 +648,25 @@
                 engineFile,
                 basePayload: { ...payload },
                 values: {
+                    pos_final: txt(payload.pos_final || payload.pos || payload.POS),
                     pn_final: txt(payload.pn_final),
                     designation_final: txt(payload.designation_final),
+                    'MODEL/TYPE_final': txt(payload['MODEL/TYPE_final'] || payload.model_type_final || payload.model_final || payload.model_type || payload.ModelType),
+                    qty_final: txt(payload.qty_final || payload.qty || payload.QTY),
+                    qty_units_final: txt(payload.qty_units_final || payload.units || payload.Units || payload.UNITS),
                     weight_final: txt(payload.weight_final),
+                    fn_final: txt(payload.fn_final || payload.fn || payload.FN),
                     measurement_final: txt(payload.measurement_final),
-                    norma: txt(payload.norma),
+                    norma_final: txt(payload.norma_final || payload.norma),
                     qa_revision_estado: normalizeEstado(payload.qa_revision_estado),
-                    qa_revision_accion: normalizeAccion(payload.qa_revision_accion)
+                    qa_revision_accion: normalizeAccion(payload.qa_revision_accion),
+                    gesa: txt(payload.gesa),
+                    normalizado: txt(payload.normalizado),
+                    sust_hierarchie: txt(payload.sust_hierarchie || payload.new_sup),
+                    has_img: txt(payload.has_img),
+                    EN_WEB: txt(payload.en_web || payload.EN_WEB),
+                    engine_model: txt(payload.engineModel || payload.engine || payload.book),
+                    'Source Page': txt(payload.source_page || payload.page)
                 }
             };
 
@@ -658,26 +676,25 @@
                 meta.textContent = `ID=${id} | Engine=${engineModel || '-'} | Record=${record || '-'} | File=${engineFile}`;
             }
 
+            if (pos instanceof HTMLInputElement) pos.value = sharedEditorContext.values.pos_final;
             if (pnFinal instanceof HTMLInputElement) pnFinal.value = sharedEditorContext.values.pn_final;
             if (designationFinal instanceof HTMLInputElement) designationFinal.value = sharedEditorContext.values.designation_final;
+            if (modelType instanceof HTMLInputElement) modelType.value = sharedEditorContext.values['MODEL/TYPE_final'];
+            if (qty instanceof HTMLInputElement) qty.value = sharedEditorContext.values.qty_final;
+            if (units instanceof HTMLInputElement) units.value = sharedEditorContext.values.qty_units_final;
             if (weightFinal instanceof HTMLInputElement) weightFinal.value = sharedEditorContext.values.weight_final;
+            if (fn instanceof HTMLInputElement) fn.value = sharedEditorContext.values.fn_final;
             if (measurementFinal instanceof HTMLInputElement) measurementFinal.value = sharedEditorContext.values.measurement_final;
-            if (norma instanceof HTMLInputElement) norma.value = sharedEditorContext.values.norma;
+            if (norma instanceof HTMLInputElement) norma.value = sharedEditorContext.values.norma_final;
             if (estado instanceof HTMLSelectElement) estado.value = sharedEditorContext.values.qa_revision_estado;
             if (accion instanceof HTMLSelectElement) accion.value = sharedEditorContext.values.qa_revision_accion;
-            if (modelType instanceof HTMLInputElement) modelType.value = txt(payload.model_type || payload.ModelType);
-            if (qty instanceof HTMLInputElement) qty.value = txt(payload.qty || payload.QTY);
-            if (units instanceof HTMLInputElement) units.value = txt(payload.units || payload.Units);
-            if (fn instanceof HTMLInputElement) fn.value = txt(payload.fn || payload.FN);
-            if (gesa instanceof HTMLInputElement) gesa.value = txt(payload.gesa);
-            if (normalizado instanceof HTMLInputElement) normalizado.value = txt(payload.normalizado);
-            if (newSup instanceof HTMLInputElement) newSup.value = txt(payload.sust_hierarchie || payload.new_sup);
-            if (hasImg instanceof HTMLInputElement) hasImg.value = txt(payload.has_img);
-            if (enWeb instanceof HTMLInputElement) enWeb.value = txt(payload.en_web);
-            if (book instanceof HTMLInputElement) book.value = txt(payload.engineModel || payload.engine || payload.book);
-            if (page instanceof HTMLInputElement) page.value = txt(payload.source_page || payload.page);
-            if (pos instanceof HTMLInputElement) pos.value = txt(payload.pos || payload.POS);
-            if (partNo instanceof HTMLInputElement) partNo.value = txt(payload.part_no || payload['PART NO.']);
+            if (gesa instanceof HTMLInputElement) gesa.value = sharedEditorContext.values.gesa;
+            if (normalizado instanceof HTMLInputElement) normalizado.value = sharedEditorContext.values.normalizado;
+            if (newSup instanceof HTMLInputElement) newSup.value = sharedEditorContext.values.sust_hierarchie;
+            if (hasImg instanceof HTMLInputElement) hasImg.value = sharedEditorContext.values.has_img;
+            if (enWeb instanceof HTMLInputElement) enWeb.value = sharedEditorContext.values.EN_WEB;
+            if (book instanceof HTMLInputElement) book.value = sharedEditorContext.values.engine_model;
+            if (page instanceof HTMLInputElement) page.value = sharedEditorContext.values['Source Page'];
 
             setSharedModalStatus('');
             modal.hidden = false;
@@ -689,15 +706,48 @@
             const context = sharedEditorContext;
             if (!context) return;
 
-            const { saveBtn, pnFinal, designationFinal, weightFinal, measurementFinal, norma, estado, accion } = getSharedModalElements();
+            const {
+                saveBtn,
+                pos,
+                pnFinal,
+                designationFinal,
+                modelType,
+                qty,
+                units,
+                weightFinal,
+                fn,
+                measurementFinal,
+                norma,
+                estado,
+                accion,
+                gesa,
+                normalizado,
+                newSup,
+                hasImg,
+                enWeb,
+                book,
+                page
+            } = getSharedModalElements();
             const nextValues = {
+                pos_final: txt(pos instanceof HTMLInputElement ? pos.value : ''),
                 pn_final: txt(pnFinal instanceof HTMLInputElement ? pnFinal.value : ''),
                 designation_final: txt(designationFinal instanceof HTMLInputElement ? designationFinal.value : ''),
+                'MODEL/TYPE_final': txt(modelType instanceof HTMLInputElement ? modelType.value : ''),
+                qty_final: txt(qty instanceof HTMLInputElement ? qty.value : ''),
+                qty_units_final: txt(units instanceof HTMLInputElement ? units.value : ''),
                 weight_final: txt(weightFinal instanceof HTMLInputElement ? weightFinal.value : ''),
+                fn_final: txt(fn instanceof HTMLInputElement ? fn.value : ''),
                 measurement_final: txt(measurementFinal instanceof HTMLInputElement ? measurementFinal.value : ''),
-                norma: txt(norma instanceof HTMLInputElement ? norma.value : ''),
+                norma_final: txt(norma instanceof HTMLInputElement ? norma.value : ''),
                 qa_revision_estado: normalizeEstado(estado instanceof HTMLSelectElement ? estado.value : ''),
-                qa_revision_accion: normalizeAccion(accion instanceof HTMLSelectElement ? accion.value : '')
+                qa_revision_accion: normalizeAccion(accion instanceof HTMLSelectElement ? accion.value : ''),
+                gesa: txt(gesa instanceof HTMLInputElement ? gesa.value : ''),
+                normalizado: txt(normalizado instanceof HTMLInputElement ? normalizado.value : ''),
+                sust_hierarchie: txt(newSup instanceof HTMLInputElement ? newSup.value : ''),
+                has_img: txt(hasImg instanceof HTMLInputElement ? hasImg.value : ''),
+                EN_WEB: txt(enWeb instanceof HTMLInputElement ? enWeb.value : ''),
+                engine_model: txt(book instanceof HTMLInputElement ? book.value : ''),
+                'Source Page': txt(page instanceof HTMLInputElement ? page.value : '')
             };
 
             const changed = EDITABLE_FIELDS.filter((field) => nextValues[field] !== context.values[field]);
