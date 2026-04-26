@@ -2,7 +2,11 @@ import json
 import os
 import re
 import unicodedata
+from datetime import datetime, timezone
 from pathlib import Path
+
+# Timestamp de la ejecución actual (ISO 8601 UTC)
+RUN_TIMESTAMP = datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
 
 # Directorio principal
 base_dir = Path(r"c:\Users\jordi\source\repos\milu")
@@ -259,10 +263,10 @@ def add_final_fields(record):
 
     # Limpia también MEASUREMENT / STANDARD y separa medida y norma cuando vengan mezcladas.
     cleaned_measurement_standard = normalize_spaces(record.get("MEASUREMENT / STANDARD"))
-    cleaned_measure_pdf, extracted_norma_raw = split_measurement_and_standard(cleaned_measurement_standard)
+    cleaned_measure_raw, extracted_norma_raw = split_measurement_and_standard(cleaned_measurement_standard)
 
-    record["MEASUREMENT / STANDARD"] = cleaned_measure_pdf
-    record["measure_pdf"] = cleaned_measure_pdf
+    record["MEASUREMENT / STANDARD"] = cleaned_measure_raw
+    record["measure_raw"] = cleaned_measure_raw
     record["norma_raw"] = extracted_norma_raw
 
     if not normalize_spaces(record.get("norma")) and extracted_norma_raw:
@@ -274,11 +278,8 @@ def add_final_fields(record):
     record["pos_final"] = pos_final or pos_source
 
     model_type_source = normalize_spaces(record.get("MODEL/TYPE"))
-    model_final = normalize_spaces(record.get("model_final"))
-    model_type_final = normalize_spaces(record.get("MODEL/TYPE_final"))
-    resolved_model_final = model_final or model_type_final or model_type_source
-    record["model_final"] = resolved_model_final
-    record["MODEL/TYPE_final"] = model_type_final or model_final or model_type_source
+    record["model_final"] = model_type_source
+    record["MODEL/TYPE_final"] = model_type_source
 
     qty_source = normalize_spaces(record.get("QTY"))
     qty_final = normalize_spaces(record.get("qty_final"))
@@ -296,7 +297,7 @@ def add_final_fields(record):
     record["designation_final"] = record.get("designation_gesa") or record.get("DESIGNATION", None)
     
     # measure_final conserva la medida final; measurement_final deja de persistirse.
-    record["measure_final"] = cleaned_dimensions or cleaned_measure_pdf
+    record["measure_final"] = cleaned_dimensions or cleaned_measure_raw
     record.pop("measurement_final", None)
 
     # weight_final: siempre prioriza weight_gesa + units; si no, WEIGHT; si no, valor legado.
@@ -318,6 +319,8 @@ def add_final_fields(record):
 
     if "wheight_final" in record:
         del record["wheight_final"]
+
+    record["depuracion_ts"] = RUN_TIMESTAMP
 
     # exp_imagenes: prioridad 1: ruta_foto, 2: ruta_esquemas_pos
     # Si hay ambas, combinarlas (foto, esquema). Si no hay ninguna, usar sin_imagen

@@ -1,0 +1,191 @@
+import argparse
+import json
+import subprocess
+import sys
+import time
+from pathlib import Path
+
+ENGINE_FILES = [
+    "engine_12V4000M40A.json",
+    "engine_12V4000M53.json",
+    "engine_16V4000M61.json",
+    "engine_16V4000M73.json",
+    "engine_16V4000M73L.json",
+    "engine_16V4000M90.json",
+    "engine_20V4000M93.json",
+    "engine_20V4000M93L.json",
+]
+
+PDF_KEYS = [
+    "pos_pdf",
+    "pn_pdf",
+    "designation_pdf",
+    "model_type_pdf",
+    "qty_pdf",
+    "units_pdf",
+    "weight_pdf",
+    "fn_pdf",
+    "measure_pdf",
+    "fg_fgs_pdf",
+    "gesa_pdf",
+    "nsn_pdf",
+    "normalizado_pdf",
+    "norma_pdf",
+    "sust_status_pdf",
+    "hierarchi_pdf",
+    "sust_new_part_number_pdf",
+    "sust_superseded_list_pdf",
+    "bom_pdf",
+]
+
+
+def run_command(cmd, cwd, label):
+    print(f"\n>>> {label}")
+    print("$ " + " ".join(cmd))
+    result = subprocess.run(cmd, cwd=str(cwd), check=False)
+    if result.returncode != 0:
+        raise RuntimeError(f"Fallo en {label} (exit code {result.returncode})")
+
+
+def qa_filename_for_engine(engine_filename):
+    model_name = engine_filename.replace("engine_", "", 1)
+    return f"qa_{model_name}"
+
+
+def reimport_from_qa(base_dir):
+    """
+    Reemplaza completamente cada engine_*.json con su qa_*.json correspondiente.
+    """
+    print("\n>>> Reimportando engines desde json_originales/qa_*.json")
+    qa_dir = base_dir / "json_originales"
+
+    files_reimported = 0
+    total_rows = 0
+
+    for engine_filename in ENGINE_FILES:
+        engine_path = base_dir / engine_filename
+        qa_filename = qa_filename_for_engine(engine_filename)
+        qa_path = qa_dir / qa_filename
+
+        if not qa_path.exists():
+            raise RuntimeError(f"No existe QA de origen para {engine_filename}: {qa_path}")
+
+        with open(qa_path, "r", encoding="utf-8-sig") as f:
+            qa_data = json.load(f)
+
+        if not isinstance(qa_data, list):
+            raise RuntimeError(f"El QA origen no es un array para {engine_filename}: {qa_path}")
+
+        with open(engine_path, "w", encoding="utf-8") as f:
+            json.dump(qa_data, f, ensure_ascii=False, indent=2)
+
+        files_reimported += 1
+        total_rows += len(qa_data)
+        print(f"- {engine_filename}: {len(qa_data)} filas importadas desde {qa_filename}")
+
+    print(f"Reimport completado. Archivos: {files_reimported}, filas: {total_rows}")
+
+
+def reset_pdf_fields(base_dir):
+    print("\n>>> Reseteando campos *_pdf")
+    files_updated = 0
+    rows_updated = 0
+
+    for filename in ENGINE_FILES:
+        file_path = base_dir / filename
+        if not file_path.exists():
+            print(f"- Omitido (no existe): {filename}")
+            continue
+
+        with open(file_path, "r", encoding="utf-8-sig") as f:
+            data = json.load(f)
+
+        if not isinstance(data, list):
+            print(f"- Omitido (no es array): {filename}")
+            continue
+
+        changed_in_file = 0
+        for row in data:
+            if not isinstance(row, dict):
+                continue
+
+            row_changed = False
+            for key in PDF_KEYS:
+                current_value = row.get(key, "")
+                if str(current_value or "") != "":
+                    row_changed = True
+                row[key] = ""
+
+            if row_changed:
+                changed_in_file += 1
+
+        with open(file_path, "w", encoding="utf-8") as f:
+            json.dump(data, f, ensure_ascii=False, indent=2)
+
+        files_updated += 1
+        rows_updated += changed_in_file
+        print(f"- {filename}: {changed_in_file} filas con cambios")
+
+    print(f"Reset PDF completado. Archivos: {files_updated}, filas afectadas: {rows_updated}")
+
+
+def run_depuracion(base_dir):
+    run_command([sys.executable, "depuracion_json.py"], base_dir, "depuracion_json.py")
+
+
+def run_pdf_regeneration(base_dir):
+    print("\n>>> Regenerando campos PDF con qa_pdf_compare")
+    for filename in ENGINE_FILES:
+        run_command(
+            [
+                "node",
+                "scripts/qa_pdf_compare.js",
+                f"--file={filename}",
+                "--write-pdf",
+                "--recompute-errors",
+                "--no-backup",
+            ],
+            base_dir,
+            f"qa_pdf_compare ({filename})",
+        )
+
+
+def main():
+    parser = argparse.ArgumentParser(
+        description="Reimporta engines desde qa_*.json, ejecuta depuracion y regenera campos PDF."
+    )
+    parser.add_argument(
+        "--skip-pdf",
+        action="store_true",
+        help="Ejecuta solo depuracion_json.py (sin regenerar campos PDF).",
+    )
+    parser.add_argument(
+        "--reset-pdf",
+        action="store_true",
+        help="Antes de regenerar, deja vacios todos los campos *_pdf en los engine_*.json.",
+    )
+    args = parser.parse_args()
+
+    base_dir = Path(__file__).resolve().parent
+    started_at = time.time()
+
+    print("Iniciando importar_json")
+    print(f"Directorio: {base_dir}")
+
+    reimport_from_qa(base_dir)
+
+    run_depuracion(base_dir)
+
+    if not args.skip_pdf:
+        if args.reset_pdf:
+            reset_pdf_fields(base_dir)
+        run_pdf_regeneration(base_dir)
+    else:
+        print("\n>>> Regeneracion PDF omitida por --skip-pdf")
+
+    elapsed = time.time() - started_at
+    print(f"\nProceso completado en {elapsed:.1f}s")
+
+
+if __name__ == "__main__":
+    main()
