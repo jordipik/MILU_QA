@@ -99,7 +99,7 @@ def calc_record_errors(record):
 
     norma_final = record.get("norma_final") or record.get("norma")
     norma_pdf = record.get("norma_pdf") or record.get("norma_raw") or record.get("norma")
-    norma_gesa = record.get("norma_gesa")
+    norma_gesa = record.get("norma_gesa") or record.get("norma")
     norma_all_empty = all(
         normalize_compare_value(value) == ""
         for value in [norma_final, norma_pdf, norma_gesa]

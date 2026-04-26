@@ -129,6 +129,73 @@ def reset_pdf_fields(base_dir):
     print(f"Reset PDF completado. Archivos: {files_updated}, filas afectadas: {rows_updated}")
 
 
+def fix_pn_final_suffix(base_dir):
+    """
+    Corrige pn_final cuando llega truncado y es un sufijo de un PN completo.
+    Busca el valor completo en campos fuente (pn_raw, PART NO., pn_pdf, sust_*).
+    Ejemplo: pn_final="912760297149", pn_raw="000912760297149"
+    En ese caso pn_final se reemplaza por "000912760297149".
+    """
+    print("\n>>> Corrigiendo pn_final (sufijo de pn_raw/pn_pdf)")
+    files_updated = 0
+    rows_fixed = 0
+
+    for filename in ENGINE_FILES:
+        file_path = base_dir / filename
+        if not file_path.exists():
+            print(f"- Omitido (no existe): {filename}")
+            continue
+
+        with open(file_path, "r", encoding="utf-8-sig") as f:
+            data = json.load(f)
+
+        if not isinstance(data, list):
+            continue
+
+        changed_in_file = 0
+        for row in data:
+            if not isinstance(row, dict):
+                continue
+            pn_final = str(row.get("pn_final") or "").strip()
+            if not pn_final:
+                continue
+
+            source_candidates = []
+            for key in [
+                "pn_raw",
+                "PART NO.",
+                "pn_pdf",
+                "sust_new_part_number",
+                "sust_new_part_number_pdf",
+            ]:
+                candidate = str(row.get(key) or "").strip()
+                if not candidate:
+                    continue
+                if candidate == "-":
+                    continue
+                if candidate == pn_final:
+                    continue
+                if candidate.endswith(pn_final):
+                    source_candidates.append(candidate)
+
+            if source_candidates:
+                # Si hay varios candidatos compatibles, preferimos el más largo.
+                best_candidate = max(source_candidates, key=len)
+                row["pn_final"] = best_candidate
+                changed_in_file += 1
+
+        if changed_in_file:
+            with open(file_path, "w", encoding="utf-8") as f:
+                json.dump(data, f, ensure_ascii=False, indent=2)
+            files_updated += 1
+            rows_fixed += changed_in_file
+            print(f"- {filename}: {changed_in_file} filas corregidas")
+        else:
+            print(f"- {filename}: sin cambios")
+
+    print(f"Corrección pn_final completada. Archivos: {files_updated}, filas: {rows_fixed}")
+
+
 def run_depuracion(base_dir):
     run_command([sys.executable, "depuracion_json.py"], base_dir, "depuracion_json.py")
 
@@ -173,6 +240,7 @@ def main():
     print(f"Directorio: {base_dir}")
 
     reimport_from_qa(base_dir)
+    fix_pn_final_suffix(base_dir)
 
     run_depuracion(base_dir)
 

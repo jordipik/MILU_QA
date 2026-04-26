@@ -278,6 +278,20 @@ function extractDesignationFromPnRight(row, pageText, pnAnchor) {
         return '';
     }
 
+    // Case: PN and DESIGNATION merged into same cluster (gap <= PDF_CLUSTER_GAP_MAX).
+    // Extract text following the PN within the cluster as the designation candidate.
+    for (const pnCandidate of pnCandidates) {
+        const idx = pnCluster.normalized.indexOf(pnCandidate);
+        if (idx >= 0) {
+            const afterPnText = pnCluster.text.slice(idx + pnCandidate.length).trim();
+            if (afterPnText && isLikelyDesignationText(afterPnText)) {
+                console.info(`[qa_pdf_compare] ID=${rowId} DESIGNATION fallback: extraído de mismo cluster que PN='${pnCluster.text}', resultado='${afterPnText}'`);
+                return afterPnText;
+            }
+            break;
+        }
+    }
+
     const rightSide = lineClusters
         .filter((cluster) => cluster.left >= pnCluster.right - 1)
         .filter((cluster) => cluster !== pnCluster);

@@ -103,7 +103,7 @@ def calc_record_errors(record):
 
     norma_final = record.get("norma_final") or record.get("norma")
     norma_pdf = record.get("norma_pdf") or record.get("norma_raw") or record.get("norma")
-    norma_gesa = record.get("norma_gesa")
+    norma_gesa = record.get("norma_gesa") or record.get("norma")
     norma_all_empty = all(
         normalize_compare_value(value) == ""
         for value in [norma_final, norma_pdf, norma_gesa]
@@ -277,6 +277,42 @@ def add_final_fields(record):
     pos_final = normalize_spaces(record.get("pos_final"))
     record["pos_final"] = pos_final or pos_source
 
+    # Corrige pn_final truncado cuando es sufijo de un PN completo disponible.
+    pn_final = normalize_spaces(record.get("pn_final"))
+    if pn_final:
+        pn_sources = []
+        for key in [
+            "pn_raw",
+            "PART NO.",
+            "pn_pdf",
+            "sust_new_part_number",
+            "sust_new_part_number_pdf",
+        ]:
+            source_value = normalize_spaces(record.get(key))
+            if not source_value or source_value == "-" or source_value == pn_final:
+                continue
+            if source_value.endswith(pn_final):
+                pn_sources.append(source_value)
+
+        if pn_sources:
+            record["pn_final"] = max(pn_sources, key=len)
+
+    # Si pn_final coincide con el PN nuevo de sustitucion, conservar ese valor
+    # solo en sust_new_part_number y mantener pn_final alineado al PN base.
+    pn_final = normalize_spaces(record.get("pn_final"))
+    pn_new_sust = normalize_spaces(record.get("sust_new_part_number"))
+    if pn_final and pn_new_sust and pn_final == pn_new_sust:
+        base_candidates = [
+            normalize_spaces(record.get("PART NO.")),
+            normalize_spaces(record.get("pn_raw")),
+            normalize_spaces(record.get("pn_pdf")),
+        ]
+        base_candidates = [value for value in base_candidates if value and value != "-"]
+        if base_candidates:
+            base_pn = base_candidates[0]
+            if base_pn != pn_final:
+                record["pn_final"] = base_pn
+
     model_type_source = normalize_spaces(record.get("MODEL/TYPE"))
     record["model_final"] = model_type_source
     record["MODEL/TYPE_final"] = model_type_source
@@ -293,8 +329,18 @@ def add_final_fields(record):
     norma_final = normalize_spaces(record.get("norma_final"))
     record["norma_final"] = norma_final or norma_source
 
-    # designation_final: siempre prioriza designation_gesa; si no hay, usa DESIGNATION.
-    record["designation_final"] = record.get("designation_gesa") or record.get("DESIGNATION", None)
+    # designation_final: prioriza GESA salvo cuando GESA y PDF son equivalentes
+    # tras normalizar (espacios/caja/acentos). En ese caso conserva el formato PDF.
+    designation_gesa = record.get("designation_gesa")
+    designation_pdf = record.get("designation_pdf") or record.get("DESIGNATION")
+    if (
+        normalize_compare_value(designation_gesa)
+        and normalize_compare_value(designation_pdf)
+        and is_compare_match(designation_gesa, designation_pdf)
+    ):
+        record["designation_final"] = designation_pdf
+    else:
+        record["designation_final"] = designation_gesa or record.get("DESIGNATION", None)
     
     # measure_final conserva la medida final; measurement_final deja de persistirse.
     record["measure_final"] = cleaned_dimensions or cleaned_measure_raw
