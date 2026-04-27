@@ -108,7 +108,7 @@ function formatChanges(changes) {
     if (!changes || typeof changes !== 'object') return '-';
     const entries = Object.entries(changes);
     if (!entries.length) return '-';
-    
+
     return entries
         .map(([field, values]) => {
             const before = values?.before ?? '';
@@ -164,8 +164,9 @@ function renderTable() {
     const rowsHtml = rows.map((entry, idx) => {
         const changesSummary = formatChanges(entry?.data?.changes);
         const fullDetails = formatFullChangeDetails(entry);
+        const rowId = `audit-row-${idx}`;
         const detailId = `audit-detail-${idx}`;
-        
+
         const mainRow = '<tr class="audit-main-row" data-detail-id="' + detailId + '">'
             + `<td>${esc(formatTimestamp(entry?.timestamp))}</td>`
             + `<td>${esc(entry?.description || '-')}</td>`
@@ -173,18 +174,19 @@ function renderTable() {
             + `<td>${esc(entry?.action || '-')}</td>`
             + `<td><span class="audit-expand-icon">▸</span>Ver todo</td>`
             + '</tr>';
-        
+
         const detailRow = '<tr class="audit-detail-row" id="' + detailId + '">'
             + '<td colspan="5" class="audit-detail-cell">'
             + esc(fullDetails)
             + '</td>'
             + '</tr>';
-        
+
         return mainRow + detailRow;
     }).join('');
 
     ui.tbody.innerHTML = rowsHtml;
 
+    // Attach click handlers
     ui.tbody.querySelectorAll('.audit-main-row').forEach(row => {
         row.addEventListener('click', () => {
             const detailId = row.dataset.detailId;
@@ -231,6 +233,6 @@ ui.kind?.addEventListener('change', renderTable);
 reloadAudit().catch((error) => {
     if (ui.status) ui.status.textContent = `Error: ${error.message}`;
     if (ui.tbody) {
-        ui.tbody.innerHTML = `<tr><td colspan="5" class="muted">${esc(error.message)}</td></tr>`;
+        ui.tbody.innerHTML = `<tr><td colspan="7" class="muted">${esc(error.message)}</td></tr>`;
     }
 });

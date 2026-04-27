@@ -86,8 +86,14 @@ export function createChangeControl(options = {}) {
         emit('audit-recorded', { entry: nextEntry });
 
         if (typeof config.onAuditEntry === 'function') {
-            Promise.resolve(config.onAuditEntry(nextEntry)).catch(() => {
-                // Ignore remote sink failures to keep local flow resilient.
+            Promise.resolve(config.onAuditEntry(nextEntry)).then((result) => {
+                if (result === false) {
+                    throw new Error('Audit sink returned false');
+                }
+            }).catch((error) => {
+                const message = String(error?.message || error || 'Unknown audit sink error');
+                console.warn('Change-control audit sink failed:', error);
+                emit('audit-persist-failed', { entry: nextEntry, error: message });
             });
         }
 

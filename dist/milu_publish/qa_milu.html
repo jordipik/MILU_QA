@@ -8,14 +8,15 @@
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@500;600;700;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="styles/pdf_shared.css" />
     <link rel="stylesheet" href="styles/qa_milu.css" />
     <link rel="stylesheet" href="styles/analista_02.css" />
     <script>
         (function () {
             var saved = Number(localStorage.getItem('qamilu:right-panel-width'));
-            var w = (saved > 0) ? saved : Math.round(window.innerWidth * 0.35);
-            if (!(saved > 0)) localStorage.setItem('qamilu:right-panel-width', String(w));
-            document.documentElement.style.setProperty('--qa-right-width', w + 'px');
+            if (saved > 0) {
+                document.documentElement.style.setProperty('--qa-right-width', Math.round(saved) + 'px');
+            }
         })();
     </script>
     <style>
@@ -265,6 +266,7 @@
                                         <option value="">Todos</option>
                                         <option value="12V4000M40A.xlsx">12V4000M40A.xlsx</option>
                                         <option value="12V4000M53.xlsx">12V4000M53.xlsx</option>
+                                        <option value="12V4000M70.xlsx">12V4000M70.xlsx</option>
                                         <option value="16V4000M61.xlsx">16V4000M61.xlsx</option>
                                         <option value="16V4000M73.xlsx">16V4000M73.xlsx</option>
                                         <option value="16V4000M73L.xlsx">16V4000M73L.xlsx</option>

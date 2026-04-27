@@ -156,11 +156,12 @@ export function createTopbar(page) {
                 <p class="a2-title">${pageConfig.title}</p>
                 <p class="a2-sub">${pageConfig.subtitle}</p>
             </div>
+            <span id="appVersion" class="a2-version" title="Versión de la aplicación"></span>
         </div>
         <nav class="a2-nav" aria-label="Navegacion">
             <a href="${getNavTargetHref('pdf')}" data-page="pdf" class="${pageConfig.active === 'PDF' ? 'active' : ''}">PDF</a>
-            <a href="${getNavTargetHref('export')}" data-page="export" class="${pageConfig.active === 'EXPORT' ? 'active' : ''}">EXPORT</a>
             <a href="${getNavTargetHref('analisis')}" data-page="analisis" class="${pageConfig.active === 'ANALISIS' ? 'active' : ''}">ANALISIS</a>
+            <a href="${getNavTargetHref('export')}" data-page="export" class="${pageConfig.active === 'EXPORT' ? 'active' : ''}">EXPORT</a>
         </nav>
         <div id="backendStatus" class="backend-status checking" aria-live="polite" title="Estado del backend de guardado">
             <span class="backend-status-dot" aria-hidden="true"></span>
@@ -193,6 +194,15 @@ export function initTopbar(page) {
     // Inicializar monitor de estado del backend
     initBackendStatusMonitor();
     primeNavigationPrefetch();
+
+    // Mostrar versión de la aplicación
+    fetch('/version')
+        .then(r => r.ok ? r.json() : null)
+        .then(data => {
+            const el = document.getElementById('appVersion');
+            if (el && data?.version) el.textContent = `v${data.version}`;
+        })
+        .catch(() => { });
 
     return newHeader;
 }

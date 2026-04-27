@@ -10,6 +10,7 @@
     <link
         href="https://fonts.googleapis.com/css2?family=Manrope:wght@500;600;700;800&family=IBM+Plex+Mono:wght@400;500&display=swap"
         rel="stylesheet">
+    <link rel="stylesheet" href="styles/pdf_shared.css" />
     <link rel="stylesheet" href="styles/analista_02.css" />
     <script>
         (function () {
@@ -281,6 +282,17 @@
                     </div>
 
                     <p id="editRecordStatusMessage" class="edit-record-status" aria-live="polite"></p>
+
+                    <div class="edit-record-row edit-record-recompute-opts">
+                        <label class="a2-auto-recompute-check" for="editRecordRecomputeErrors">
+                            <input id="editRecordRecomputeErrors" type="checkbox" checked>
+                            Recalcular errores
+                        </label>
+                        <label class="a2-auto-recompute-check" for="editRecordRecomputePdf">
+                            <input id="editRecordRecomputePdf" type="checkbox" checked>
+                            Recalcular PDF_AUTO
+                        </label>
+                    </div>
 
                     <div class="edit-record-footer">
                         <button id="editRecordResetBtn" type="button">Recargar</button>
