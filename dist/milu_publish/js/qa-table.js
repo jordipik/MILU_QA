@@ -206,7 +206,7 @@ function getBookScopeRowsWithoutFilters() {
     const allRows = Array.isArray(state.allData) ? state.allData : [];
     const bookFilter = String(state?.filters?.book ?? '').trim().toLowerCase();
     if (!bookFilter) return allRows;
-    return allRows.filter((row) => val(row, 'engine_model', '').toString().toLowerCase().includes(bookFilter));
+    return allRows.filter((row) => val(row, 'engine_model', '').toString().toLowerCase() === bookFilter);
 }
 
 function buildReviewStats(rows, visibleRows, totalScopeRows) {
@@ -416,6 +416,9 @@ export function applyFilters(data) {
                 case 'book':
                     rowValue = val(row, 'engine_model', '').toString().toLowerCase();
                     break;
+                case 'engine_model':
+                    rowValue = val(row, 'engine_model', '').toString().toLowerCase();
+                    break;
                 case 'page': {
                     const filterPage = Number(String(filterValue).replace(/[^0-9]/g, ''));
                     const rowPage = Number(val(row, 'Source Page', '').toString().replace(/[^0-9]/g, ''));
@@ -436,7 +439,22 @@ export function applyFilters(data) {
                     break;
             }
 
-            if (key.startsWith('has_') || key.startsWith('is_') || key.startsWith('in_') || key === 'published' || key === 'sust_hierarchie' || key === 'qa_revision_estado' || key === 'qa_revision_accion') {
+            if (key === 'book' || key === 'engine_model') {
+                if (rowValue !== String(filterValue).toLowerCase()) return false;
+                continue;
+            }
+
+            if (
+                key.startsWith('has_')
+                || key.startsWith('is_')
+                || key.startsWith('in_')
+                || key === 'published'
+                || key === 'sust_hierarchie'
+                || key === 'qa_revision_estado'
+                || key === 'qa_revision_accion'
+                || key === 'book'
+                || key === 'engine_model'
+            ) {
                 if (rowValue !== filterValue) return false;
             } else if (!rowValue.includes(String(filterValue).toLowerCase())) {
                 return false;

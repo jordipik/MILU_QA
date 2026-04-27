@@ -1915,7 +1915,7 @@ async function tryLoadFirstJson(candidates) {
 function getBookPages(book) {
     const bookFilter = String(book || state.filters.book || '').toLowerCase();
     return [...new Set(state.allData
-        .filter(row => !bookFilter || val(row, 'engine_model', '').toString().toLowerCase().includes(bookFilter))
+        .filter(row => !bookFilter || val(row, 'engine_model', '').toString().toLowerCase() === bookFilter)
         .map(row => {
             const n = Number(String(val(row, 'Source Page', '')).replace(/[^0-9]/g, ''));
             return Number.isFinite(n) && !Number.isNaN(n) ? n : null;
