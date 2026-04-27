@@ -9,7 +9,7 @@ const args = new Set(process.argv.slice(2));
 const isDryRun = args.has('--dry-run');
 const isIncremental = args.has('--incremental');
 const shouldPrune = !args.has('--no-prune');
-const includeEngineJson = !args.has('--no-json');
+const includeEngineJson = args.has('--with-json') && !args.has('--no-json');
 
 const requiredStaticEntries = [
     'index.html',
@@ -21,8 +21,6 @@ const requiredStaticEntries = [
     'qa_auditoria.html',
     'styles.css',
     'qa_revision_sync.php',
-    'qa_revision_server_data.json',
-    'qa_audit_log.json',
     'CNAME',
     'js',
     'styles',
@@ -201,9 +199,9 @@ function main() {
         console.log('Incremental mode enabled: copying only changed files.');
     }
     if (includeEngineJson) {
-        console.log('Engine JSON mode: enabled.');
+        console.log('Engine JSON mode: enabled (--with-json).');
     } else {
-        console.log('Engine JSON mode: disabled (--no-json).');
+        console.log('Engine JSON mode: disabled by default.');
     }
 
     const engineFiles = includeEngineJson ? listEngineJsonFiles() : [];
