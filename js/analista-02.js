@@ -921,9 +921,25 @@ async function saveEditRecordForm() {
             }
 
             const mustAutoRecompute = [...changedFields].some((field) => AUTO_RECOMPUTE_TRIGGER_FIELDS.has(field));
-            if (mustAutoRecompute) {
-                setEditRecordStatus('Registro guardado. Recalculando errores y lectura PDF...', '');
-                await autoRecomputeEditedRecord(engineFile, id);
+            const recomputeErrors = ($('editRecordRecomputeErrors') instanceof HTMLInputElement)
+                ? $('editRecordRecomputeErrors').checked
+                : mustAutoRecompute;
+            const recomputePdf = ($('editRecordRecomputePdf') instanceof HTMLInputElement)
+                ? $('editRecordRecomputePdf').checked
+                : mustAutoRecompute;
+
+            if (recomputeErrors || recomputePdf) {
+                setEditRecordStatus('Registro guardado. Recalculando...', '');
+                if (recomputeErrors) {
+                    await postJsonToBackendCandidates('recompute-qa-errors', {
+                        file: engineFile, id, dryRun: false, updateRevision: false, backup: true
+                    });
+                }
+                if (recomputePdf) {
+                    await postJsonToBackendCandidates('recompute-pdf-auto', {
+                        file: engineFile, id, dryRun: false, backup: true
+                    });
+                }
                 await reloadEditedRecord(engineFile, id);
                 setEditRecordStatus('Registro guardado y recalculado correctamente.', 'ok');
             } else {

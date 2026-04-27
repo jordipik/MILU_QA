@@ -85,6 +85,10 @@ function applyFilters(entries) {
         if (kind && String(entry?.kind || '') !== kind) return false;
         if (!q) return true;
 
+        const changesList = Object.entries(entry?.data?.changes || {})
+            .map(([field, values]) => `${field}: ${values?.before} → ${values?.after}`)
+            .join(' ');
+
         const haystack = [
             entry?.kind,
             entry?.type,
@@ -92,6 +96,7 @@ function applyFilters(entries) {
             entry?.action,
             entry?.description,
             entry?.changeId,
+            changesList,
             JSON.stringify(entry?.target || {})
         ].join(' ').toLowerCase();
 
@@ -99,28 +104,100 @@ function applyFilters(entries) {
     });
 }
 
+function formatChanges(changes) {
+    if (!changes || typeof changes !== 'object') return '-';
+    const entries = Object.entries(changes);
+    if (!entries.length) return '-';
+    
+    return entries
+        .map(([field, values]) => {
+            const before = values?.before ?? '';
+            const after = values?.after ?? '';
+            const beforeStr = typeof before === 'object' ? JSON.stringify(before) : String(before);
+            const afterStr = typeof after === 'object' ? JSON.stringify(after) : String(after);
+            return `${field}: "${beforeStr}" → "${afterStr}"`;
+        })
+        .slice(0, 2)
+        .join('<br>');
+}
+
+function formatFullChangeDetails(entry) {
+    const lines = [];
+    lines.push(`ID: ${esc(entry?.id || '-')}`);
+    lines.push(`Timestamp: ${formatTimestamp(entry?.timestamp)}`);
+    lines.push(`Kind: ${esc(entry?.kind || '-')}`);
+    lines.push(`Type: ${esc(entry?.type || '-')}`);
+    lines.push(`Module: ${esc(entry?.module || '-')}`);
+    lines.push(`Action: ${esc(entry?.action || '-')}`);
+    lines.push(`Description: ${esc(entry?.description || '-')}`);
+    lines.push('');
+    lines.push('Target:');
+    lines.push(JSON.stringify(entry?.target || {}, null, 2));
+    lines.push('');
+    lines.push('Cambios detallados:');
+    if (entry?.data?.changes && Object.keys(entry.data.changes).length) {
+        Object.entries(entry.data.changes).forEach(([field, values]) => {
+            const before = values?.before ?? '';
+            const after = values?.after ?? '';
+            const beforeStr = typeof before === 'object' ? JSON.stringify(before) : String(before);
+            const afterStr = typeof after === 'object' ? JSON.stringify(after) : String(after);
+            lines.push(`  ${field}:`);
+            lines.push(`    Antes: ${beforeStr}`);
+            lines.push(`    Despues: ${afterStr}`);
+        });
+    } else {
+        lines.push('  (sin cambios registrados)');
+    }
+    return lines.join('\n');
+}
+
 function renderTable() {
     if (!(ui.tbody instanceof HTMLElement)) return;
     const rows = applyFilters(allEntries);
 
     if (!rows.length) {
-        ui.tbody.innerHTML = '<tr><td colspan="7" class="muted">Sin resultados</td></tr>';
+        ui.tbody.innerHTML = '<tr><td colspan="5" class="muted">Sin resultados</td></tr>';
         if (ui.status) ui.status.textContent = `0 registros visibles de ${allEntries.length}`;
         return;
     }
 
-    ui.tbody.innerHTML = rows.map((entry) => {
-        const targetTxt = JSON.stringify(entry?.target || {});
-        return '<tr>'
+    const rowsHtml = rows.map((entry, idx) => {
+        const changesSummary = formatChanges(entry?.data?.changes);
+        const fullDetails = formatFullChangeDetails(entry);
+        const detailId = `audit-detail-${idx}`;
+        
+        const mainRow = '<tr class="audit-main-row" data-detail-id="' + detailId + '">'
             + `<td>${esc(formatTimestamp(entry?.timestamp))}</td>`
-            + `<td class="mono">${esc(entry?.kind || '-')}</td>`
-            + `<td>${esc(entry?.module || '-')}</td>`
-            + `<td>${esc(entry?.action || '-')}</td>`
             + `<td>${esc(entry?.description || '-')}</td>`
-            + `<td class="mono">${esc(targetTxt || '{}')}</td>`
-            + `<td class="mono">${esc(entry?.changeId || entry?.id || '-')}</td>`
+            + `<td>${changesSummary}</td>`
+            + `<td>${esc(entry?.action || '-')}</td>`
+            + `<td><span class="audit-expand-icon">▸</span>Ver todo</td>`
             + '</tr>';
+        
+        const detailRow = '<tr class="audit-detail-row" id="' + detailId + '">'
+            + '<td colspan="5" class="audit-detail-cell">'
+            + esc(fullDetails)
+            + '</td>'
+            + '</tr>';
+        
+        return mainRow + detailRow;
     }).join('');
+
+    ui.tbody.innerHTML = rowsHtml;
+
+    ui.tbody.querySelectorAll('.audit-main-row').forEach(row => {
+        row.addEventListener('click', () => {
+            const detailId = row.dataset.detailId;
+            const detailRow = document.getElementById(detailId);
+            if (detailRow) {
+                detailRow.classList.toggle('expanded');
+                const icon = row.querySelector('.audit-expand-icon');
+                if (icon) {
+                    icon.textContent = detailRow.classList.contains('expanded') ? '▾' : '▸';
+                }
+            }
+        });
+    });
 
     if (ui.status) ui.status.textContent = `${rows.length} registros visibles de ${allEntries.length}`;
 }
@@ -154,6 +231,6 @@ ui.kind?.addEventListener('change', renderTable);
 reloadAudit().catch((error) => {
     if (ui.status) ui.status.textContent = `Error: ${error.message}`;
     if (ui.tbody) {
-        ui.tbody.innerHTML = `<tr><td colspan="7" class="muted">${esc(error.message)}</td></tr>`;
+        ui.tbody.innerHTML = `<tr><td colspan="5" class="muted">${esc(error.message)}</td></tr>`;
     }
 });

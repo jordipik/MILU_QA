@@ -141,19 +141,23 @@ function getAuditBackendCandidateUrls() {
 
 async function persistAuditEntryToServer(entry) {
     const urls = getAuditBackendCandidateUrls();
+    let lastError = null;
     for (const url of urls) {
         try {
             const response = await fetch(url, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify(entry)
+                body: JSON.stringify(entry),
+                keepalive: true
             });
             if (response.ok) return true;
-        } catch (_) {
+            lastError = new Error(`HTTP ${response.status} en ${url}`);
+        } catch (error) {
+            lastError = error;
             // Continue with next candidate.
         }
     }
-    return false;
+    throw new Error(String(lastError?.message || 'No se pudo persistir la auditoria en servidor'));
 }
 
 const changeControl = createChangeControl({
@@ -2786,6 +2790,19 @@ function attachGlobalEvents() {
 
     document.addEventListener('milu:change-control:history-updated', () => {
         updateUndoButtonState();
+    });
+
+    document.addEventListener('milu:change-control:audit-persist-failed', (event) => {
+        const detail = event?.detail || {};
+        const entry = detail.entry || {};
+        const message = `Aviso: el cambio se guardo, pero la auditoria no se pudo persistir (${detail.error || 'error desconocido'}).`;
+        const sideStatus = $('qaSideStatus');
+        const modalStatus = $('qaRecordModalStatus');
+
+        if (sideStatus) sideStatus.textContent = message;
+        if (modalStatus && String($('qaRecordModalForm')?.dataset.revisionKey || '') === String(entry?.target?.revisionKey || '')) {
+            modalStatus.textContent = message;
+        }
     });
 
     document.querySelectorAll('[data-pdf-tab]').forEach(tabBtn => {

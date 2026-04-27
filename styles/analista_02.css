@@ -137,6 +137,19 @@ body {
     justify-self: end;
 }
 
+.a2-version {
+    font-size: 11px;
+    font-family: ui-monospace, monospace;
+    font-weight: 600;
+    color: #0a4f8f;
+    background: rgba(10, 79, 143, 0.08);
+    border: 1px solid rgba(10, 79, 143, 0.2);
+    border-radius: 6px;
+    padding: 2px 7px;
+    align-self: center;
+    white-space: nowrap;
+}
+
 .backend-status-dot {
     width: 6px;
     height: 6px;
