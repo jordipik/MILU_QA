@@ -6,7 +6,7 @@ const QA_CHECK_DEFINITIONS = [
     { code: 'designation_required', label: 'DESIGNATION: final lleno', field: 'DESIGNATION' },
     { code: 'designation_final_pdf_or_gesa_match', label: 'DESIGNATION: final coincide con PDF o GESA', field: 'DESIGNATION' },
     { code: 'weight_final_pdf_or_gesa_match', label: 'WEIGHT: final coincide con PDF o GESA', field: 'WEIGHT' },
-    { code: 'measurement_final_pdf_or_gesa_match', label: 'MEASUREMENT: final coincide con PDF o GESA', field: 'MEASUREMENT / STANDARD' },
+    { code: 'measure_final_pdf_or_gesa_match', label: 'MEASUREMENT: final coincide con PDF o GESA', field: 'MEASUREMENT / STANDARD' },
     { code: 'norma_final_pdf_or_gesa_match', label: 'NORMA: final coincide con PDF o GESA (o todos vacios)', field: 'NORMA' },
     { code: 'bom_final_pdf_match', label: 'BOM: final coincide con PDF', field: 'BOM-No.' }
 ];
@@ -62,7 +62,7 @@ const QA_FIELD_CHECKS = {
     ],
     'MEASUREMENT / STANDARD': [
         {
-            code: 'measurement_final_pdf_or_gesa_match',
+            code: 'measure_final_pdf_or_gesa_match',
             needsPdf: true,
             check: (row, entry, context) => {
                 const finalValue = normalizeCompareValue(entry?.final);

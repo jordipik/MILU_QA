@@ -251,57 +251,10 @@
         }
 
         .pdf-zoom-wrap {
-            display: inline-flex;
-            align-items: center;
-            gap: 6px;
             margin-left: 6px;
         }
 
-        .pdf-zoom-select {
-            height: 28px;
-            min-width: 92px;
-            border: 1px solid #cbd5e1;
-            border-radius: 8px;
-            background: #ffffff;
-            color: #0f172a;
-            font-size: 12px;
-            padding: 0 8px;
-        }
-
-        .pdf-zoom-select:focus {
-            outline: none;
-            border-color: var(--acc);
-            box-shadow: 0 0 0 2px rgba(37, 99, 235, 0.12);
-        }
-
-        .pdf-zoom-btn {
-            width: 28px;
-            height: 28px;
-            border: 1px solid #cbd5e1;
-            border-radius: 8px;
-            background: #ffffff;
-            color: #0f172a;
-            font-size: 16px;
-            line-height: 1;
-            font-weight: 700;
-            cursor: pointer;
-            padding: 0;
-        }
-
-        .pdf-zoom-btn:hover {
-            background: #f8fafc;
-        }
-
-        .pdf-zoom-btn:focus {
-            outline: none;
-            border-color: var(--acc);
-            box-shadow: 0 0 0 2px rgba(37, 99, 235, 0.12);
-        }
-
         .pdfviewer {
-            flex: 1;
-            min-height: 0;
-            overflow: auto;
             background: #e5e7eb;
             padding: 12px;
             display: flex;
@@ -309,67 +262,9 @@
             align-items: flex-start;
         }
 
-        .pdfviewer-inner {
-            width: 100%;
-            min-height: 100%;
-            display: flex;
-            justify-content: center;
-            align-items: flex-start;
-            position: relative;
-        }
-
         .pdfcanvas {
-            display: block;
             background: #fff;
             box-shadow: 0 4px 20px rgba(15, 23, 42, 0.18);
-        }
-
-        .pdf-selection-layer {
-            position: absolute;
-            inset: 0;
-            pointer-events: none;
-            z-index: 2;
-        }
-
-        .pdf-selection-layer.is-active {
-            display: block;
-        }
-
-        .pdf-selection-highlight {
-            position: absolute;
-            border: 2px solid transparent;
-            border-radius: 2px;
-            box-shadow: 0 0 0 2px rgba(255, 255, 255, 0.88);
-            pointer-events: none;
-        }
-
-        .pdf-selection-highlight.is-ok {
-            border-color: rgba(22, 163, 74, 0.88);
-            background: rgba(134, 239, 172, 0.25);
-        }
-
-        .pdf-selection-highlight.is-error {
-            border-color: rgba(220, 38, 38, 0.88);
-            background: rgba(252, 165, 165, 0.28);
-        }
-
-        .pdfstatus {
-            position: absolute;
-            top: 16px;
-            left: 50%;
-            transform: translateX(-50%);
-            padding: 8px 12px;
-            border-radius: 8px;
-            background: rgba(255, 255, 255, 0.96);
-            border: 1px solid var(--line);
-            color: var(--mut);
-            font-size: 12px;
-            box-shadow: 0 2px 8px rgba(15, 23, 42, 0.08);
-            z-index: 3;
-        }
-
-        .pdfstatus.hidden {
-            display: none;
         }
 
         .qa-side-header {

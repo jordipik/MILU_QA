@@ -56,16 +56,16 @@ function queueColumnViewRefresh() {
 }
 
 const MODAL_FIELD_KEYS = [
-    'POS',
+    'pos_final',
     'pn_final',
     'designation_final',
+    'model_final',
+    'qty_final',
+    'qty_units_final',
     'weight_final',
-    'measurement_final',
-    'norma',
-    'MODEL/TYPE',
-    'QTY',
-    'UNITS',
-    'FN',
+    'fn_final',
+    'measure_final',
+    'norma_final',
     'gesa',
     'normalizado',
     'sust_hierarchie',
@@ -118,6 +118,7 @@ const modalUiState = {
 };
 let activeMatchesModalRevisionKey = '';
 let pendingShellRecordModalRequest = null;
+let syncQaSplitterLayout = () => { };
 
 const QA_ROW_PATCH_CHANGE_TYPE = 'qa-row-patch';
 const QA_BULK_ROW_PATCH_CHANGE_TYPE = 'qa-bulk-row-patch';
@@ -140,19 +141,23 @@ function getAuditBackendCandidateUrls() {
 
 async function persistAuditEntryToServer(entry) {
     const urls = getAuditBackendCandidateUrls();
+    let lastError = null;
     for (const url of urls) {
         try {
             const response = await fetch(url, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify(entry)
+                body: JSON.stringify(entry),
+                keepalive: true
             });
             if (response.ok) return true;
-        } catch (_) {
+            lastError = new Error(`HTTP ${response.status} en ${url}`);
+        } catch (error) {
+            lastError = error;
             // Continue with next candidate.
         }
     }
-    return false;
+    throw new Error(String(lastError?.message || 'No se pudo persistir la auditoria en servidor'));
 }
 
 const changeControl = createChangeControl({
@@ -437,6 +442,7 @@ function openAnalisisForRow(row) {
     if (!row) return;
 
     const book = String(row?.engine_model ?? '').trim();
+    const id = String(row?.ID ?? '').trim();
     const record = String(row?.pn_final ?? row?.['PART NO.'] ?? row?.pn ?? '').trim();
     if (!record) {
         alert('El registro no tiene PN/PART NO para abrir analisis.');
@@ -444,11 +450,42 @@ function openAnalisisForRow(row) {
     }
 
     const params = new URLSearchParams();
+    const isEmbedded = new URLSearchParams(window.location.search || '').get('embedded') === '1';
     if (book) params.set('engine', book);
+    if (id) params.set('id', id);
     params.set('record', record);
+    if (isEmbedded) {
+        params.set('embedded', '1');
+        try {
+            const openViaShell = window.parent?.miluShellOpenAnalisisRecord;
+            if (typeof openViaShell === 'function') {
+                const opened = openViaShell({ engine: book, id, record });
+                if (opened !== false) return;
+            }
+        } catch (_) {
+            // Fallback to direct navigation.
+        }
+    }
 
     const targetUrl = `analista_02.html?${params.toString()}`;
-    window.open(targetUrl, '_blank', 'noopener');
+    window.location.assign(targetUrl);
+}
+
+function getStartupRecordModalRequestFromUrl() {
+    const params = new URLSearchParams(window.location.search || '');
+    const openRecordRaw = String(params.get('openRecord') || '').trim().toLowerCase();
+    const shouldOpenRecord = openRecordRaw === '1' || openRecordRaw === 'true';
+    if (!shouldOpenRecord) return null;
+
+    const request = {
+        engine: String(params.get('engine') || '').trim(),
+        id: String(params.get('id') || '').trim(),
+        record: String(params.get('record') || '').trim(),
+        mode: String(params.get('mode') || '').trim().toLowerCase() === 'export' ? 'export' : 'record'
+    };
+
+    if (!request.engine && !request.id && !request.record) return null;
+    return request;
 }
 
 
@@ -466,7 +503,7 @@ function getModalMatchesByPn(row) {
             estado: String(item?.qa_revision_estado ?? ''),
             designationFinal: String(item?.designation_final ?? item?.DESIGNATION ?? ''),
             weightFinal: String(item?.weight_final ?? ''),
-            measurementFinal: String(item?.measurement_final ?? ''),
+            measurementFinal: String(item?.measure_final ?? item?.measurement_final ?? ''),
             fgsCodeDescription: String(item?.fgs_code_description ?? ''),
             accion: String(item?.qa_revision_accion ?? ''),
             book: getBookEngineCode(item)
@@ -648,6 +685,19 @@ window.miluRefreshPdfData = async (request = {}) => {
     }
 };
 
+window.miluOnShellActivated = () => {
+    try {
+        syncQaSplitterLayout();
+        if (state.rightPanelTab === 'pdf') {
+            requestPdfRelayout();
+        }
+        return true;
+    } catch (error) {
+        console.warn('No se pudo resincronizar QA PDF tras activar la vista en shell:', error);
+        return false;
+    }
+};
+
 function normModalMatch(value) {
     return String(value ?? '').trim().toLowerCase();
 }
@@ -797,7 +847,7 @@ function resolveMeasurementForExport(row) {
     }
     if (rawMeasurement) return rawMeasurement;
 
-    return String(row?.measurement_final ?? '').trim().replace(/\s{2,}/g, ' ');
+    return String(row?.measure_final ?? row?.measurement_final ?? '').trim().replace(/\s{2,}/g, ' ');
 }
 
 function firstNonEmptyValue(rows, getter) {
@@ -1278,7 +1328,7 @@ function fillRecordModal(row, revisionKey) {
     $('qaModalPn').value = String(row?.['PART NO.'] ?? row?.pn ?? '');
     $('qaModalBook').value = String(row?.engine_model ?? '');
     $('qaModalPage').value = String(row?.['Source Page'] ?? '');
-    $('qaModalPos').value = String(row?.POS ?? '');
+    $('qaModalPos').value = String(row?.pos_final ?? '');
     $('qaModalGesa').value = String(row?.gesa ?? '');
     $('qaModalNormalizado').value = String(row?.normalizado ?? '');
     $('qaModalSustHierarchie').value = String(row?.sust_hierarchie ?? '');
@@ -1289,13 +1339,13 @@ function fillRecordModal(row, revisionKey) {
     $('qaModalRevisionAccion').value = normalizeAccionToNew(row?.qa_revision_accion);
     $('qaModalPnFinal').value = String(row?.pn_final ?? '');
     $('qaModalDesignationFinal').value = String(row?.designation_final ?? '');
-    $('qaModalModelType').value = String(row?.['MODEL/TYPE'] ?? '');
-    $('qaModalQty').value = String(row?.QTY ?? '');
-    $('qaModalUnits').value = String(row?.UNITS ?? '');
+    $('qaModalModelType').value = String(row?.model_final ?? '');
+    $('qaModalQty').value = String(row?.qty_final ?? '');
+    $('qaModalUnits').value = String(row?.qty_units_final ?? '');
     $('qaModalWeightFinal').value = String(row?.weight_final ?? '');
-    $('qaModalFn').value = String(row?.FN ?? '');
-    $('qaModalMeasurementFinal').value = String(row?.measurement_final ?? '');
-    $('qaModalNorma').value = String(row?.norma ?? '');
+    $('qaModalFn').value = String(row?.fn_final ?? '');
+    $('qaModalMeasurementFinal').value = String(row?.measure_final ?? row?.measurement_final ?? '');
+    $('qaModalNorma').value = String(row?.norma_final ?? '');
 
     renderRecordQaErrors(row);
     renderRecordModalMatches(row, revisionKey);
@@ -1314,7 +1364,7 @@ function fillSideRecordForm(row, revisionKey) {
     $('qaSidePn').value = String(row?.['PART NO.'] ?? row?.pn ?? '');
     $('qaSideBook').value = String(row?.engine_model ?? '');
     $('qaSidePage').value = String(row?.['Source Page'] ?? '');
-    $('qaSidePos').value = String(row?.POS ?? '');
+    $('qaSidePos').value = String(row?.pos_final ?? '');
     $('qaSideGesa').value = String(row?.gesa ?? '');
     $('qaSideNormalizado').value = String(row?.normalizado ?? '');
     $('qaSideSustHierarchie').value = String(row?.sust_hierarchie ?? '');
@@ -1325,13 +1375,13 @@ function fillSideRecordForm(row, revisionKey) {
     $('qaSideRevisionAccion').value = normalizeAccionToNew(row?.qa_revision_accion);
     $('qaSidePnFinal').value = String(row?.pn_final ?? '');
     $('qaSideDesignationFinal').value = String(row?.designation_final ?? '');
-    $('qaSideModelType').value = String(row?.['MODEL/TYPE'] ?? '');
-    $('qaSideQty').value = String(row?.QTY ?? '');
-    $('qaSideUnits').value = String(row?.UNITS ?? '');
+    $('qaSideModelType').value = String(row?.model_final ?? '');
+    $('qaSideQty').value = String(row?.qty_final ?? '');
+    $('qaSideUnits').value = String(row?.qty_units_final ?? '');
     $('qaSideWeightFinal').value = String(row?.weight_final ?? '');
-    $('qaSideFn').value = String(row?.FN ?? '');
-    $('qaSideMeasurementFinal').value = String(row?.measurement_final ?? '');
-    $('qaSideNorma').value = String(row?.norma ?? '');
+    $('qaSideFn').value = String(row?.fn_final ?? '');
+    $('qaSideMeasurementFinal').value = String(row?.measure_final ?? row?.measurement_final ?? '');
+    $('qaSideNorma').value = String(row?.norma_final ?? '');
 
     const sideLabel = $('qaSideLabel');
     if (sideLabel) {
@@ -1375,16 +1425,16 @@ function fillSideRecordForm(row, revisionKey) {
 function getRecordFormValues(scope) {
     const prefix = scope === 'side' ? 'qaSide' : 'qaModal';
     return {
-        POS: String($(`${prefix}Pos`)?.value || ''),
+        pos_final: String($(`${prefix}Pos`)?.value || ''),
         pn_final: String($(`${prefix}PnFinal`)?.value || ''),
         designation_final: String($(`${prefix}DesignationFinal`)?.value || ''),
+        model_final: String($(`${prefix}ModelType`)?.value || ''),
+        qty_final: String($(`${prefix}Qty`)?.value || ''),
+        qty_units_final: String($(`${prefix}Units`)?.value || ''),
         weight_final: String($(`${prefix}WeightFinal`)?.value || ''),
-        measurement_final: String($(`${prefix}MeasurementFinal`)?.value || ''),
-        norma: String($(`${prefix}Norma`)?.value || ''),
-        'MODEL/TYPE': String($(`${prefix}ModelType`)?.value || ''),
-        QTY: String($(`${prefix}Qty`)?.value || ''),
-        UNITS: String($(`${prefix}Units`)?.value || ''),
-        FN: String($(`${prefix}Fn`)?.value || ''),
+        fn_final: String($(`${prefix}Fn`)?.value || ''),
+        measure_final: String($(`${prefix}MeasurementFinal`)?.value || ''),
+        norma_final: String($(`${prefix}Norma`)?.value || ''),
         gesa: String($(`${prefix}Gesa`)?.value || ''),
         normalizado: String($(`${prefix}Normalizado`)?.value || ''),
         sust_hierarchie: String($(`${prefix}SustHierarchie`)?.value || ''),
@@ -1532,6 +1582,43 @@ function openRecordModal(revisionKey) {
     modal.removeAttribute('hidden');
     const firstInput = $('qaModalRevisionEstado');
     if (firstInput instanceof HTMLElement) firstInput.focus();
+}
+
+function openSharedRecordEditorForRow(row) {
+    if (!row || typeof row !== 'object') return false;
+
+    const shellBridge = window.parent && window.parent !== window
+        ? window.parent.miluShellOpenSharedRecordEditor
+        : null;
+    if (typeof shellBridge !== 'function') return false;
+
+    const opened = shellBridge({
+        id: String(row?.ID ?? '').trim(),
+        engineModel: String(row?.engine_model ?? '').trim(),
+        engineFile: String(getEngineJsonForRow(row) || '').trim(),
+        record: String(row?.pn_final ?? row?.['PART NO.'] ?? '').trim(),
+        source_file: String(row?.source_file ?? '').trim(),
+        source_page: String(row?.['Source Page'] ?? '').trim(),
+        pos: String(row?.POS ?? '').trim(),
+        part_no: String(row?.['PART NO.'] ?? row?.pn ?? '').trim(),
+        pn_final: String(row?.pn_final ?? '').trim(),
+        designation_final: String(row?.designation_final ?? '').trim(),
+        model_type: String(row?.model_type ?? '').trim(),
+        qty: String(row?.QTY ?? row?.qty ?? '').trim(),
+        units: String(row?.Units ?? row?.units ?? '').trim(),
+        fn: String(row?.FN ?? row?.fn ?? '').trim(),
+        weight_final: String(row?.weight_final ?? '').trim(),
+        measurement_final: String(row?.measure_final ?? row?.measurement_final ?? '').trim(),
+        norma: String(row?.norma ?? '').trim(),
+        gesa: String(row?.gesa ?? '').trim(),
+        normalizado: String(row?.normalizado ?? '').trim(),
+        sust_hierarchie: String(row?.sust_hierarchie ?? '').trim(),
+        has_img: String(row?.has_img ?? '').trim(),
+        en_web: String(row?.en_web ?? '').trim(),
+        qa_revision_estado: String(row?.qa_revision_estado ?? '').trim(),
+        qa_revision_accion: String(row?.qa_revision_accion ?? '').trim()
+    });
+    return opened !== false;
 }
 
 function updateExportModalHeader(row) {
@@ -2542,6 +2629,11 @@ async function loadData() {
             openRecordModalFromShell(pendingRequest);
         }
 
+        const startupRecordModalRequest = getStartupRecordModalRequestFromUrl();
+        if (startupRecordModalRequest) {
+            openRecordModalFromShell(startupRecordModalRequest);
+        }
+
         if (syncAutoPageSize()) {
             state.currentPage = 1;
             renderTable();
@@ -2700,6 +2792,19 @@ function attachGlobalEvents() {
         updateUndoButtonState();
     });
 
+    document.addEventListener('milu:change-control:audit-persist-failed', (event) => {
+        const detail = event?.detail || {};
+        const entry = detail.entry || {};
+        const message = `Aviso: el cambio se guardo, pero la auditoria no se pudo persistir (${detail.error || 'error desconocido'}).`;
+        const sideStatus = $('qaSideStatus');
+        const modalStatus = $('qaRecordModalStatus');
+
+        if (sideStatus) sideStatus.textContent = message;
+        if (modalStatus && String($('qaRecordModalForm')?.dataset.revisionKey || '') === String(entry?.target?.revisionKey || '')) {
+            modalStatus.textContent = message;
+        }
+    });
+
     document.querySelectorAll('[data-pdf-tab]').forEach(tabBtn => {
         tabBtn.addEventListener('click', () => setRightPanelTab(tabBtn.dataset.pdfTab || 'pdf'));
     });
@@ -2710,6 +2815,8 @@ function attachGlobalEvents() {
             alert('Selecciona un registro para abrir el modal.');
             return;
         }
+        const row = getRowByRevisionKey(revisionKey);
+        if (openSharedRecordEditorForRow(row)) return;
         openRecordModal(revisionKey);
     });
 
@@ -2919,9 +3026,11 @@ function attachGlobalEvents() {
         const tr = target.closest('tr[data-revision-key]');
         const revisionKey = tr?.getAttribute('data-revision-key') || '';
         if (!revisionKey) return;
+        const row = state.allData.find(item => getRevisionKey(item) === revisionKey);
+        if (!row) return;
         event.preventDefault();
         event.stopPropagation();
-        openRecordModal(revisionKey);
+        openAnalisisForRow(row);
     });
 
     tbody?.addEventListener('change', (event) => {
@@ -3012,10 +3121,12 @@ function attachGlobalEvents() {
         const tr = target.closest('tr[data-revision-key]');
         const revisionKey = tr?.getAttribute('data-revision-key') || '';
         if (!revisionKey) return;
+        const row = state.allData.find(item => getRevisionKey(item) === revisionKey);
+        if (!row) return;
 
         event.preventDefault();
         event.stopPropagation();
-        openRecordModal(revisionKey);
+        openAnalisisForRow(row);
     });
 
     errorViewTbody?.addEventListener('change', (event) => {
@@ -3124,12 +3235,28 @@ function initQaSplitter() {
         return clamped;
     };
 
-    const savedWidth = Number(localStorage.getItem(QA_RIGHT_WIDTH_KEY));
-    if (Number.isFinite(savedWidth) && savedWidth > 0) {
-        clampAndApply(savedWidth);
-    } else {
-        clampAndApply(Math.round(main.getBoundingClientRect().width * 0.35));
-    }
+    const syncWidthFromLayout = ({ persist = false, relayout = false } = {}) => {
+        const savedWidth = Number(localStorage.getItem(QA_RIGHT_WIDTH_KEY));
+        const fallbackWidth = Math.round(main.getBoundingClientRect().width * 0.35);
+        const desiredWidth = Number.isFinite(savedWidth) && savedWidth > 0
+            ? savedWidth
+            : fallbackWidth;
+        const applied = clampAndApply(desiredWidth);
+        if (persist || !(Number.isFinite(savedWidth) && savedWidth > 0)) {
+            localStorage.setItem(QA_RIGHT_WIDTH_KEY, String(applied));
+        }
+        if (relayout) {
+            requestPdfRelayout();
+        }
+        return applied;
+    };
+
+    syncQaSplitterLayout = () => {
+        if (window.matchMedia('(max-width: 1200px)').matches) return;
+        syncWidthFromLayout({ persist: true, relayout: state.rightPanelTab === 'pdf' });
+    };
+
+    syncWidthFromLayout();
 
     let dragging = false;
 
@@ -3170,6 +3297,19 @@ function initQaSplitter() {
         localStorage.setItem(QA_RIGHT_WIDTH_KEY, String(applied));
         requestPdfRelayout();
         event.preventDefault();
+    });
+
+    requestAnimationFrame(() => {
+        syncQaSplitterLayout();
+    });
+
+    window.addEventListener('load', () => {
+        syncQaSplitterLayout();
+    }, { once: true });
+
+    window.addEventListener('resize', () => {
+        if (dragging || window.matchMedia('(max-width: 1200px)').matches) return;
+        syncQaSplitterLayout();
     });
 }
 

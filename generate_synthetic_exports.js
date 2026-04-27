@@ -4,6 +4,7 @@ const path = require('path');
 const ENGINE_JSON_FILES = [
     'engine_12V4000M40A.json',
     'engine_12V4000M53.json',
+    'engine_12V4000M70.json',
     'engine_16V4000M61.json',
     'engine_16V4000M73.json',
     'engine_16V4000M73L.json',
@@ -50,7 +51,7 @@ function getRowValueForColumn(row, key) {
             const rawMeasurement = normalizeMeasurementText(row?.['MEASUREMENT / STANDARD']);
             if (rawMeasurement) return rawMeasurement;
 
-            return normalizeMeasurementText(row?.measurement_final);
+            return normalizeMeasurementText(row?.measure_final ?? row?.measurement_final);
         }
         case 'weight_final': {
             const explicitFinal = String(row?.weight_final ?? '').trim();
@@ -153,7 +154,7 @@ function resolveMeasurementForExport(row) {
     }
     if (rawMeasurement) return rawMeasurement;
 
-    return String(row?.measurement_final ?? '').trim().replace(/\s{2,}/g, ' ');
+    return String(row?.measure_final ?? row?.measurement_final ?? '').trim().replace(/\s{2,}/g, ' ');
 }
 
 function firstNonEmptyValue(rows, getter) {

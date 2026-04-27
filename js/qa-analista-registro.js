@@ -270,8 +270,8 @@ function buildCorrelationRows(row) {
             raw: txt(row?.['MEASUREMENT / STANDARD']),
             gesa: txt(row?.dimensions_gesa),
             sust: '-',
-            final: txt(row?.measurement_final),
-            pdf: txt(row?.measurement_final)
+            final: txt(row?.measure_final ?? row?.measurement_final),
+            pdf: txt(row?.measure_final ?? row?.measurement_final)
         },
         {
             field: 'FG / FGS',
@@ -544,7 +544,7 @@ function fillEditForm(row) {
     $('editPnFinal').value = txt(row?.pn_final, '');
     $('editDesignationFinal').value = txt(row?.designation_final, '');
     $('editWeightFinal').value = txt(row?.weight_final, '');
-    $('editMeasurementFinal').value = txt(row?.measurement_final, '');
+    $('editMeasurementFinal').value = txt(row?.measure_final ?? row?.measurement_final, '');
     $('editRevisionEstado').value = normalizeEstadoToNew(row?.qa_revision_estado);
     $('editRevisionAccion').value = txt(row?.qa_revision_accion, '');
 }
@@ -617,7 +617,7 @@ async function saveCurrentFieldChanges() {
         ['pn_final', $('editPnFinal').value],
         ['designation_final', $('editDesignationFinal').value],
         ['weight_final', $('editWeightFinal').value],
-        ['measurement_final', $('editMeasurementFinal').value],
+        ['measure_final', $('editMeasurementFinal').value],
         ['qa_revision_estado', $('editRevisionEstado').value],
         ['qa_revision_accion', $('editRevisionAccion').value]
     ];

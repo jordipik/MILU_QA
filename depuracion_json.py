@@ -2,7 +2,11 @@ import json
 import os
 import re
 import unicodedata
+from datetime import datetime, timezone
 from pathlib import Path
+
+# Timestamp de la ejecución actual (ISO 8601 UTC)
+RUN_TIMESTAMP = datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
 
 # Directorio principal
 base_dir = Path(r"c:\Users\jordi\source\repos\milu")
@@ -11,6 +15,7 @@ base_dir = Path(r"c:\Users\jordi\source\repos\milu")
 engine_files = [
     "engine_12V4000M40A.json",
     "engine_12V4000M53.json",
+    "engine_12V4000M70.json",
     "engine_16V4000M61.json",
     "engine_16V4000M73.json",
     "engine_16V4000M73L.json",
@@ -89,7 +94,7 @@ def calc_record_errors(record):
         for value in [weight_final, weight_pdf, weight_gesa_with_units]
     )
 
-    measurement_final = record.get("measure_final") or record.get("measurement_final")
+    measurement_final = record.get("measure_final")
     measurement_pdf = record.get("measure_pdf") or record.get("MEASUREMENT / STANDARD")
     measurement_gesa = record.get("dimensions_gesa") or record.get("measure_gesa")
     measurement_all_empty = all(
@@ -99,7 +104,7 @@ def calc_record_errors(record):
 
     norma_final = record.get("norma_final") or record.get("norma")
     norma_pdf = record.get("norma_pdf") or record.get("norma_raw") or record.get("norma")
-    norma_gesa = record.get("norma_gesa")
+    norma_gesa = record.get("norma_gesa") or record.get("norma")
     norma_all_empty = all(
         normalize_compare_value(value) == ""
         for value in [norma_final, norma_pdf, norma_gesa]
@@ -259,20 +264,88 @@ def add_final_fields(record):
 
     # Limpia también MEASUREMENT / STANDARD y separa medida y norma cuando vengan mezcladas.
     cleaned_measurement_standard = normalize_spaces(record.get("MEASUREMENT / STANDARD"))
-    cleaned_measure_pdf, extracted_norma_raw = split_measurement_and_standard(cleaned_measurement_standard)
+    cleaned_measure_raw, extracted_norma_raw = split_measurement_and_standard(cleaned_measurement_standard)
 
-    record["MEASUREMENT / STANDARD"] = cleaned_measure_pdf
-    record["measure_pdf"] = cleaned_measure_pdf
+    record["MEASUREMENT / STANDARD"] = cleaned_measure_raw
+    record["measure_raw"] = cleaned_measure_raw
     record["norma_raw"] = extracted_norma_raw
 
     if not normalize_spaces(record.get("norma")) and extracted_norma_raw:
         record["norma"] = extracted_norma_raw
 
-    # designation_final: siempre prioriza designation_gesa; si no hay, usa DESIGNATION.
-    record["designation_final"] = record.get("designation_gesa") or record.get("DESIGNATION", None)
+    # Copia/normaliza campos base a sus variantes finales cuando falten.
+    pos_source = normalize_spaces(record.get("POS"))
+    pos_final = normalize_spaces(record.get("pos_final"))
+    record["pos_final"] = pos_final or pos_source
+
+    # Corrige pn_final truncado cuando es sufijo de un PN completo disponible.
+    pn_final = normalize_spaces(record.get("pn_final"))
+    if pn_final:
+        pn_sources = []
+        for key in [
+            "pn_raw",
+            "PART NO.",
+            "pn_pdf",
+            "sust_new_part_number",
+            "sust_new_part_number_pdf",
+        ]:
+            source_value = normalize_spaces(record.get(key))
+            if not source_value or source_value == "-" or source_value == pn_final:
+                continue
+            if source_value.endswith(pn_final):
+                pn_sources.append(source_value)
+
+        if pn_sources:
+            record["pn_final"] = max(pn_sources, key=len)
+
+    # Si pn_final coincide con el PN nuevo de sustitucion, conservar ese valor
+    # solo en sust_new_part_number y mantener pn_final alineado al PN base.
+    pn_final = normalize_spaces(record.get("pn_final"))
+    pn_new_sust = normalize_spaces(record.get("sust_new_part_number"))
+    if pn_final and pn_new_sust and pn_final == pn_new_sust:
+        base_candidates = [
+            normalize_spaces(record.get("PART NO.")),
+            normalize_spaces(record.get("pn_raw")),
+            normalize_spaces(record.get("pn_pdf")),
+        ]
+        base_candidates = [value for value in base_candidates if value and value != "-"]
+        if base_candidates:
+            base_pn = base_candidates[0]
+            if base_pn != pn_final:
+                record["pn_final"] = base_pn
+
+    model_type_source = normalize_spaces(record.get("MODEL/TYPE"))
+    record["model_final"] = model_type_source
+    record["MODEL/TYPE_final"] = model_type_source
+
+    qty_source = normalize_spaces(record.get("QTY"))
+    qty_final = normalize_spaces(record.get("qty_final"))
+    record["qty_final"] = qty_final or qty_source
+
+    qty_units_source = normalize_spaces(record.get("UNITS"))
+    qty_units_final = normalize_spaces(record.get("qty_units_final"))
+    record["qty_units_final"] = qty_units_final or qty_units_source
+
+    norma_source = normalize_spaces(record.get("norma"))
+    norma_final = normalize_spaces(record.get("norma_final"))
+    record["norma_final"] = norma_final or norma_source
+
+    # designation_final: prioriza GESA salvo cuando GESA y PDF son equivalentes
+    # tras normalizar (espacios/caja/acentos). En ese caso conserva el formato PDF.
+    designation_gesa = record.get("designation_gesa")
+    designation_pdf = record.get("designation_pdf") or record.get("DESIGNATION")
+    if (
+        normalize_compare_value(designation_gesa)
+        and normalize_compare_value(designation_pdf)
+        and is_compare_match(designation_gesa, designation_pdf)
+    ):
+        record["designation_final"] = designation_pdf
+    else:
+        record["designation_final"] = designation_gesa or record.get("DESIGNATION", None)
     
-    # measurement_final: siempre prioriza dimensions_gesa, si no usa la medida ya separada de raw.
-    record["measurement_final"] = cleaned_dimensions or cleaned_measure_pdf
+    # measure_final conserva la medida final; measurement_final deja de persistirse.
+    record["measure_final"] = cleaned_dimensions or cleaned_measure_raw
+    record.pop("measurement_final", None)
 
     # weight_final: siempre prioriza weight_gesa + units; si no, WEIGHT; si no, valor legado.
     legacy_weight_final = normalize_spaces(record.get("wheight_final"))
@@ -293,6 +366,8 @@ def add_final_fields(record):
 
     if "wheight_final" in record:
         del record["wheight_final"]
+
+    record["depuracion_ts"] = RUN_TIMESTAMP
 
     # exp_imagenes: prioridad 1: ruta_foto, 2: ruta_esquemas_pos
     # Si hay ambas, combinarlas (foto, esquema). Si no hay ninguna, usar sin_imagen

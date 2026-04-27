@@ -101,7 +101,7 @@ c:/Users/jordi/source/repos/milu/.venv/Scripts/python.exe depuracion_json.py
    - Si existe `designation_gesa`, se usa ese valor.
    - Si no, se usa `DESIGNATION`.
 
-2. `measurement_final`
+2. `measure_final`
    - Si existe `dimensions_gesa`, se usa `dimensions_gesa`.
    - Si no, se usa `MEASUREMENT / STANDARD`.
 

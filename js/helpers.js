@@ -30,7 +30,7 @@ const COLUMN_FALLBACKS = {
     DESIGNATION: ['designation_raw', 'DESIGNATION'],
     designation_gesa: ['designation_gesa', 'designation_raw', 'DESIGNATION'],
     designation_final: ['designation_final', 'designation_pdf', 'designation_gesa', 'designation_raw', 'DESIGNATION'],
-    'MODEL/TYPE': ['model_raw', 'model_final', 'model_pdf', 'MODEL/TYPE', 'model'],
+    'MODEL/TYPE': ['model_final', 'model_raw', 'model_pdf', 'MODEL/TYPE', 'model'],
     model: ['model_final', 'model_pdf', 'model', 'MODEL/TYPE'],
     QTY: ['qty_final', 'qty_raw', 'QTY'],
     UNITS: ['qty_units_final', 'qty_units_raw', 'qty_units_gesa', 'UNITS', 'units'],
@@ -40,6 +40,7 @@ const COLUMN_FALLBACKS = {
     weight_gesa: ['weight_gesa', 'weight_final', 'weight_raw', 'WEIGHT'],
     FN: ['fn_final', 'fn_raw', 'FN'],
     'MEASUREMENT / STANDARD': ['measure_raw', 'measure_final', 'measure_gesa', 'MEASUREMENT / STANDARD'],
+    measure_final: ['measure_final', 'measure_gesa', 'measure_raw', 'measurement_final', 'MEASUREMENT / STANDARD'],
     measurement_final: ['measure_final', 'measure_gesa', 'measure_raw', 'measurement_final', 'MEASUREMENT / STANDARD'],
     dimensions_gesa: ['measure_gesa', 'measure_final', 'measure_raw', 'dimensions_gesa', 'MEASUREMENT / STANDARD'],
     norma: ['norma_final', 'norma_raw', 'norma']

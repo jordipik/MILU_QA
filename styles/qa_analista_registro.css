@@ -72,6 +72,15 @@ body {
     color: white;
 }
 
+.app-topbar-version {
+    font-size: 10px;
+    font-family: ui-monospace, monospace;
+    color: var(--muted);
+    opacity: 0.65;
+    margin-left: 8px;
+    align-self: center;
+}
+
 .app-topbar-user {
     color: var(--muted);
     display: inline-flex;

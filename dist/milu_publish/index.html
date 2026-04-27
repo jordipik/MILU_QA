@@ -64,6 +64,15 @@
       color: white;
     }
 
+    .global-nav-version {
+      font-size: 10px;
+      font-family: ui-monospace, monospace;
+      color: #6b7280;
+      opacity: 0.8;
+      margin-left: 6px;
+      align-self: center;
+    }
+
     .wrap {
       max-width: 900px;
       margin: 0 auto;
@@ -134,6 +143,7 @@
       <a href="milu_shell.html?view=pdf">PDF</a>
       <a href="milu_shell.html?view=export">EXPORT</a>
       <a href="milu_shell.html?view=analisis">ANALISIS</a>
+      <span id="appVersionIndex" class="global-nav-version"></span>
     </div>
   </nav>
 
@@ -164,6 +174,12 @@
       </a>
     </div>
   </div>
+  <script>
+    fetch('/version').then(r => r.ok ? r.json() : null).then(d => {
+      const el = document.getElementById('appVersionIndex');
+      if (el && d?.version) el.textContent = 'v' + d.version;
+    }).catch(() => { });
+  </script>
 </body>
 
 </html>

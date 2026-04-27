@@ -312,6 +312,15 @@ app.get('/health', (req, res) => {
     res.json({ ok: true, service: 'milu-save-backend' });
 });
 
+app.get('/version', (req, res) => {
+    try {
+        const pkg = JSON.parse(fs.readFileSync(path.join(__dirname, 'package.json'), 'utf8'));
+        res.json({ version: pkg.version || '0.0.0' });
+    } catch (_) {
+        res.json({ version: '0.0.0' });
+    }
+});
+
 // Ruta para guardar cambios en un archivo JSON
 app.post('/save-json', async (req, res) => {
     const { file, id, col, value } = req.body;

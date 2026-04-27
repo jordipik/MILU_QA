@@ -126,7 +126,7 @@ function getEntryMap(row) {
         'NORMA': {
             final: row?.norma_final ?? row?.norma,
             pdf: row?.norma_pdf ?? row?.norma_raw ?? row?.norma,
-            gesa: row?.norma_gesa
+            gesa: row?.norma_gesa ?? row?.norma
         },
         'BOM-No.': {
             final: row?.['BOM-No.'],

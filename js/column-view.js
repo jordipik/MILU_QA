@@ -12,7 +12,7 @@ const DEFAULT_COLUMN_VIEW = 'pdf';
 export const FOCUS_COLUMN_ORDER = [
     'ID', 'quick_actions', 'esquemas', 'BOM-No.', 'qa_revision_accion', 'pn_final', 'DESIGNATION', 'designation_gesa', 'MODEL/TYPE', 'QTY',
     'gesa', 'normalizado', 'sust_hierarchie', 'has_img', 'has_error', 'EN_WEB', 'qa_revision_estado',
-    'POS', 'PART NO.', 'pn_raw', 'criterio_pn', 'weight_final', 'UNITS', 'weight_gesa', 'units', 'FG/FGS', 'measurement_final', 'dimensions_gesa', 'model', 'Source Page',
+    'POS', 'PART NO.', 'pn_raw', 'criterio_pn', 'weight_final', 'UNITS', 'weight_gesa', 'units', 'FG/FGS', 'measure_final', 'dimensions_gesa', 'model', 'Source Page',
     'precio', 'FN', 'esquemas_circulos_all', 'engine_model', 'categoria', 'source_file', 'source_sheet', 'engine', 'fg_fgs_raw', 'fg_code', 'fgs_description', 'atributo2', 'ruta_foto',
     'esquemas_circulos', 'fgs_code_description', 'filename_foto', 'nsn', 'norma', 'sust_status', 'sust_new_part_number', 'sust_superseded_list'
 ];
@@ -20,7 +20,7 @@ export const FOCUS_COLUMN_ORDER = [
 export const PDF_COLUMN_ORDER = [
     // Sin ID. Se mantienen estados hasta "Acción" y luego columnas clave de consulta rápida.
     'gesa', 'normalizado', 'sust_hierarchie', 'has_img', 'has_error', 'EN_WEB', 'qa_revision_estado', 'qa_revision_accion',
-    'quick_actions', 'POS', 'pn_final', 'designation_final', 'MODEL/TYPE', 'QTY', 'UNITS', 'weight_final', 'measurement_final', 'norma'
+    'quick_actions', 'POS', 'pn_final', 'designation_final', 'MODEL/TYPE', 'QTY', 'UNITS', 'weight_final', 'measure_final', 'norma'
 ];
 
 function syncColumnViewStateFromControl() {
