@@ -47,6 +47,18 @@ const $ = (id) => document.getElementById(id);
 let filterTimeout = null;
 let resizeTimer = null;
 let backendStatusTimer = null;
+let lastReadonlyAlertAt = 0;
+
+const WRITE_ACTION_BUTTON_IDS = [
+    'bulkRevOkBtn',
+    'bulkRevEmptyBtn',
+    'bulkValidateBtn',
+    'bulkReviewBtn',
+    'bulkDiscardBtn',
+    'qaUndoLastChangeBtn',
+    'qaSideSaveBtn',
+    'qaRecordModalSaveBtn'
+];
 
 function queueColumnViewRefresh() {
     requestAnimationFrame(() => {
@@ -128,12 +140,13 @@ function getAuditBackendCandidateUrls() {
         ? window.location.origin
         : '';
     const currentHostname = String(window.location.hostname || '').trim();
+    const isLocalhost = currentHostname === 'localhost' || currentHostname === '127.0.0.1' || currentHostname === '';
     const sameDirectoryCandidate = new URL('audit-log', new URL('.', window.location.href)).href;
-    const localPortCandidate = currentHostname ? `http://${currentHostname}:3000/audit-log` : '';
+    const localPortCandidate = isLocalhost && currentHostname ? `http://${currentHostname}:3000/audit-log` : '';
     const sameOriginCandidate = currentOrigin ? `${currentOrigin}/audit-log` : '/audit-log';
     return [
         localPortCandidate,
-        'http://localhost:3000/audit-log',
+        isLocalhost ? 'http://localhost:3000/audit-log' : '',
         sameDirectoryCandidate,
         sameOriginCandidate
     ].filter((url, index, arr) => url && arr.indexOf(url) === index);
@@ -324,6 +337,7 @@ function collectRowChanges(row, nextValues, nextEstado, nextAccion) {
 }
 
 async function undoLastQaChange() {
+    if (!ensureBackendWritable('deshacer cambios')) return;
     try {
         const entry = await changeControl.undoLast();
         if (!entry) {
@@ -342,6 +356,7 @@ async function undoLastQaChange() {
 }
 
 async function redoLastQaChange() {
+    if (!ensureBackendWritable('rehacer cambios')) return;
     try {
         const entry = await changeControl.redoLast();
         if (!entry) return;
@@ -385,16 +400,62 @@ function setBackendStatusBadge(status, message) {
     statusWrap.classList.remove('checking', 'online', 'offline');
     statusWrap.classList.add(status);
     statusText.textContent = message;
+    state.backendStatusMessage = message;
+}
+
+function applyBackendWriteMode() {
+    const writable = state.backendWritable !== false;
+
+    WRITE_ACTION_BUTTON_IDS.forEach((id) => {
+        const button = $(id);
+        if (button instanceof HTMLButtonElement) {
+            button.disabled = !writable;
+        }
+    });
+
+    document.querySelectorAll('#tbody select[data-revision-field], #errorViewTbody select[data-revision-field]').forEach((elem) => {
+        if (elem instanceof HTMLSelectElement) {
+            elem.disabled = !writable;
+            elem.title = writable ? '' : 'Modo solo lectura: backend sin conexion.';
+        }
+    });
+
+    const sideStatus = $('qaSideStatus');
+    if (!writable && sideStatus instanceof HTMLElement) {
+        sideStatus.textContent = 'Modo solo lectura: backend sin conexion. Los cambios no se guardan.';
+    }
+}
+
+function ensureBackendWritable(actionLabel = 'guardar cambios') {
+    if (state.backendWritable !== false) return true;
+
+    const now = Date.now();
+    if (now - lastReadonlyAlertAt > 1500) {
+        alert(`Modo solo lectura: no se puede ${actionLabel} porque el backend no esta disponible.`);
+        lastReadonlyAlertAt = now;
+    }
+    return false;
 }
 
 async function refreshBackendStatus() {
     setBackendStatusBadge('checking', 'Backend: comprobando...');
-    const result = await checkSaveBackendConnection();
-    if (result.ok) {
-        setBackendStatusBadge('online', 'Backend: conectado');
-        return;
+    try {
+        const result = await checkSaveBackendConnection();
+        if (result.ok) {
+            state.backendWritable = true;
+            setBackendStatusBadge('online', 'Backend: conectado');
+            applyBackendWriteMode();
+            return;
+        }
+
+        state.backendWritable = false;
+        setBackendStatusBadge('offline', 'Backend: sin conexion (solo lectura)');
+        applyBackendWriteMode();
+    } catch (_) {
+        state.backendWritable = false;
+        setBackendStatusBadge('offline', 'Backend: sin conexion (solo lectura)');
+        applyBackendWriteMode();
     }
-    setBackendStatusBadge('offline', 'Backend: sin conexion');
 }
 
 function initBackendStatusMonitor() {
@@ -1816,6 +1877,12 @@ async function handleRecordModalSubmit(event) {
     const nextAccion = String($('qaModalRevisionAccion')?.value || '').trim();
     const nextValues = getRecordFormValues('modal');
 
+    if (!ensureBackendWritable('guardar el registro')) {
+        if (status) status.textContent = 'Modo solo lectura: backend sin conexion.';
+        if (saveBtn) saveBtn.disabled = false;
+        return;
+    }
+
     try {
         const changes = collectRowChanges(row, nextValues, nextEstado, nextAccion);
         if (!Object.keys(changes).length) {
@@ -1870,6 +1937,12 @@ async function handleSideRecordSubmit(event) {
     const nextEstado = String($('qaSideRevisionEstado')?.value || '').trim();
     const nextAccion = String($('qaSideRevisionAccion')?.value || '').trim();
     const nextValues = getRecordFormValues('side');
+
+    if (!ensureBackendWritable('guardar el registro')) {
+        if (status) status.textContent = 'Modo solo lectura: backend sin conexion.';
+        if (saveBtn) saveBtn.disabled = false;
+        return;
+    }
 
     try {
         const changes = collectRowChanges(row, nextValues, nextEstado, nextAccion);
@@ -2474,6 +2547,8 @@ function updatePaginationToggleLabel() {
 }
 
 async function applyBulkQuickMode(quickMode) {
+    if (!ensureBackendWritable('aplicar cambios masivos')) return;
+
     const scopeSelect = $('bulkScopeSelect');
     if (!scopeSelect) return;
 
@@ -2618,6 +2693,7 @@ async function loadData() {
         state.filteredData = [...state.allData];
         renderTable();
         renderPagination();
+        applyBackendWriteMode();
         updatePaginationToggleLabel();
         updateOnlyErrorsToggleLabel();
         syncSideRecordFormWithSelection();
@@ -3036,6 +3112,11 @@ function attachGlobalEvents() {
     tbody?.addEventListener('change', (event) => {
         const target = event.target;
         if (!(target instanceof HTMLSelectElement)) return;
+        if (!ensureBackendWritable('guardar cambios rapidos')) {
+            refreshVisibleRowByRevisionKey(String(target.dataset.revisionKey || ''));
+            syncSideRecordFormWithSelection();
+            return;
+        }
         const revisionField = target.dataset.revisionField;
         const revisionKey = target.dataset.revisionKey;
         if (!revisionField || !revisionKey) return;
@@ -3132,6 +3213,11 @@ function attachGlobalEvents() {
     errorViewTbody?.addEventListener('change', (event) => {
         const target = event.target;
         if (!(target instanceof HTMLSelectElement)) return;
+        if (!ensureBackendWritable('guardar cambios rapidos')) {
+            refreshVisibleRowByRevisionKey(String(target.dataset.revisionKey || ''));
+            syncSideRecordFormWithSelection();
+            return;
+        }
         const revisionField = target.dataset.revisionField;
         const revisionKey = target.dataset.revisionKey;
         if (!revisionField || !revisionKey) return;
@@ -3329,6 +3415,7 @@ function init() {
     initQaSplitter();
     setRightPanelTab(state.rightPanelTab);
     clearSideRecordForm();
+    applyBackendWriteMode();
     loadData();
 }
 

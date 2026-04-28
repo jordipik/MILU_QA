@@ -3,12 +3,13 @@ function getAuditBackendCandidateUrls() {
         ? window.location.origin
         : '';
     const currentHostname = String(window.location.hostname || '').trim();
+    const isLocalhost = currentHostname === 'localhost' || currentHostname === '127.0.0.1' || currentHostname === '';
     const sameDirectoryCandidate = new URL('audit-log', new URL('.', window.location.href)).href;
-    const localPortCandidate = currentHostname ? `http://${currentHostname}:3000/audit-log` : '';
+    const localPortCandidate = isLocalhost && currentHostname ? `http://${currentHostname}:3000/audit-log` : '';
     const sameOriginCandidate = currentOrigin ? `${currentOrigin}/audit-log` : '/audit-log';
     return [
         localPortCandidate,
-        'http://localhost:3000/audit-log',
+        isLocalhost ? 'http://localhost:3000/audit-log' : '',
         sameDirectoryCandidate,
         sameOriginCandidate
     ].filter((url, index, arr) => url && arr.indexOf(url) === index);

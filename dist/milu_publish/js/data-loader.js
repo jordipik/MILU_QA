@@ -17,8 +17,27 @@ const ENGINE_JSON_FILES = [
     'engine_20V4000M93L.json'
 ];
 
+const saveBackendState = {
+    writable: null,
+    checkedAt: 0,
+    url: '',
+    error: ''
+};
+
 export function getEngineJsonFiles() {
     return [...ENGINE_JSON_FILES];
+}
+
+export function getSaveBackendState() {
+    return { ...saveBackendState };
+}
+
+export function setSaveBackendState(writable, options = {}) {
+    const normalizedWritable = writable === null ? null : Boolean(writable);
+    saveBackendState.writable = normalizedWritable;
+    saveBackendState.checkedAt = Date.now();
+    saveBackendState.url = String(options.url || saveBackendState.url || '').trim();
+    saveBackendState.error = String(options.error || '').trim();
 }
 
 export function getResourceUrl(resourceName) {
@@ -99,6 +118,13 @@ export async function loadFirstEngineData() {
  * @param {*} value - Nuevo valor
  */
 export async function saveCellToServer(file, id, col, value) {
+    if (saveBackendState.writable === false) {
+        const detail = saveBackendState.error
+            ? ` (${saveBackendState.error})`
+            : '';
+        throw new Error(`Guardado desactivado: backend no disponible${detail}.`);
+    }
+
     const candidateUrls = getSaveBackendCandidateUrls();
 
     let lastError = null;
@@ -119,6 +145,7 @@ export async function saveCellToServer(file, id, col, value) {
                 continue;
             }
 
+            setSaveBackendState(true, { url, error: '' });
             return await response.json();
         } catch (error) {
             lastError = error instanceof Error ? error : new Error(String(error));
@@ -128,11 +155,19 @@ export async function saveCellToServer(file, id, col, value) {
     const lastMessage = String(lastError?.message || '').trim();
     const isNetworkError = /failed to fetch|networkerror|load failed|fetch/i.test(lastMessage);
     if (isNetworkError || !lastMessage) {
+        setSaveBackendState(false, {
+            url: lastTriedUrl,
+            error: lastMessage || 'sin respuesta del backend'
+        });
         throw new Error(
             `No se pudo conectar con el backend de guardado (${lastTriedUrl || 'sin URL'}). `
-            + 'Comprueba que server.js esta en ejecucion en http://localhost:3000.'
+            + 'Comprueba que la ruta de guardado este disponible (save-json.php en produccion o server.js en local).'
         );
     }
+    setSaveBackendState(false, {
+        url: lastTriedUrl,
+        error: lastMessage
+    });
     throw new Error(lastMessage);
 }
 
@@ -140,30 +175,77 @@ function getSaveBackendCandidateUrls() {
     const currentOrigin = window.location.origin && window.location.origin !== 'null'
         ? window.location.origin
         : '';
+    const currentPathname = String(window.location.pathname || '/');
     const currentHostname = String(window.location.hostname || '').trim();
-    const sameDirectoryCandidate = new URL('save-json', new URL('.', window.location.href)).href;
-    const localPortCandidate = currentHostname ? `http://${currentHostname}:3000/save-json` : '';
-    const sameOriginCandidate = currentOrigin ? `${currentOrigin}/save-json` : '/save-json';
-    return [
-        localPortCandidate,
-        'http://localhost:3000/save-json',
-        sameDirectoryCandidate,
-        sameOriginCandidate
-    ].filter((url, index, arr) => arr.indexOf(url) === index);
+    const isLocalhost = currentHostname === 'localhost' || currentHostname === '127.0.0.1' || currentHostname === '';
+
+    const phpCandidate = new URL('save-json.php', new URL('.', window.location.href)).href;
+    const sameOriginPhpCandidate = currentOrigin ? `${currentOrigin}/save-json.php` : '/save-json.php';
+    const miluPhpCandidate = currentOrigin ? `${currentOrigin}/milu/save-json.php` : '/milu/save-json.php';
+    const pathnameHasMilu = /(^|\/)milu(\/|$)/i.test(currentPathname);
+    const isMiluSubdomain = /^milu\./i.test(currentHostname);
+    const isAlentioHost = /(^|\.)alentio\.es$/i.test(currentHostname);
+    const apexHost = isMiluSubdomain ? currentHostname.replace(/^milu\./i, '') : currentHostname;
+    const apexOrigin = apexHost ? `${window.location.protocol}//${apexHost}` : '';
+    const apexMiluPhpCandidate = apexOrigin ? `${apexOrigin}/milu/save-json.php` : '';
+    const miluSubdomainPhpCandidate = currentHostname
+        ? `${window.location.protocol}//milu.${apexHost || currentHostname}/save-json.php`
+        : '';
+
+    if (isLocalhost) {
+        // En local: probar Express en puerto 3000
+        const localPortCandidate = currentHostname ? `http://${currentHostname}:3000/save-json` : '';
+        const sameOriginCandidate = currentOrigin ? `${currentOrigin}/save-json` : '/save-json';
+        return [
+            localPortCandidate,
+            'http://localhost:3000/save-json',
+            sameOriginCandidate,
+            phpCandidate
+        ].filter(Boolean).filter((url, index, arr) => arr.indexOf(url) === index);
+    } else {
+        // En servidor remoto (Arsys, etc.): usar save-json.php (sin Express)
+        const domainPinnedCandidates = isAlentioHost
+            ? isMiluSubdomain
+                ? [
+                    'https://milu.alentio.es/save-json.php',
+                    'https://alentio.es/milu/save-json.php'
+                ]
+                : [
+                    'https://alentio.es/milu/save-json.php',
+                    'https://milu.alentio.es/save-json.php'
+                ]
+            : [];
+
+        return [
+            ...domainPinnedCandidates,
+            phpCandidate,
+            pathnameHasMilu ? miluPhpCandidate : '',
+            sameOriginPhpCandidate,
+            miluPhpCandidate,
+            apexMiluPhpCandidate,
+            miluSubdomainPhpCandidate
+        ].filter(Boolean).filter((url, index, arr) => arr.indexOf(url) === index);
+    }
 }
 
 export async function checkSaveBackendConnection() {
     const saveUrls = getSaveBackendCandidateUrls();
     let lastError = null;
     for (const saveUrl of saveUrls) {
-        const healthUrl = saveUrl.replace(/\/save-json$/i, '/health');
+        // Para el endpoint PHP, GET sobre el mismo archivo devuelve {"ok":true} (health check integrado).
+        // Para Express, se sustituye /save-json por /health.
+        const healthUrl = saveUrl.endsWith('.php')
+            ? saveUrl
+            : saveUrl.replace(/\/save-json$/i, '/health');
         try {
             const response = await fetch(healthUrl, {
                 method: 'GET',
                 cache: 'no-store'
             });
             if (response.ok) {
-                return { ok: true, url: saveUrl };
+                const payload = { ok: true, url: saveUrl };
+                setSaveBackendState(true, { url: saveUrl, error: '' });
+                return payload;
             }
             lastError = new Error(`HTTP ${response.status}`);
         } catch (error) {
@@ -171,9 +253,14 @@ export async function checkSaveBackendConnection() {
         }
     }
 
-    return {
+    const payload = {
         ok: false,
         url: saveUrls[0] || '',
         error: String(lastError?.message || 'sin respuesta')
     };
+    setSaveBackendState(false, {
+        url: payload.url,
+        error: payload.error
+    });
+    return payload;
 }

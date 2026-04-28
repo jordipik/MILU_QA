@@ -21,6 +21,7 @@ const requiredStaticEntries = [
     'qa_auditoria.html',
     'styles.css',
     'qa_revision_sync.php',
+    'save-json.php',
     'CNAME',
     'js',
     'styles',

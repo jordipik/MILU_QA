@@ -1025,14 +1025,15 @@ function getBackendCandidateUrls(endpointPath) {
         ? window.location.origin
         : '';
     const currentHostname = String(window.location.hostname || '').trim();
+    const isLocalhost = currentHostname === 'localhost' || currentHostname === '127.0.0.1' || currentHostname === '';
     const cleanEndpoint = String(endpointPath || '').trim().replace(/^\/+/, '');
     const sameDirectoryCandidate = new URL(cleanEndpoint, new URL('.', window.location.href)).href;
-    const localPortCandidate = currentHostname ? `http://${currentHostname}:3000/${cleanEndpoint}` : '';
+    const localPortCandidate = isLocalhost && currentHostname ? `http://${currentHostname}:3000/${cleanEndpoint}` : '';
     const sameOriginCandidate = currentOrigin ? `${currentOrigin}/${cleanEndpoint}` : `/${cleanEndpoint}`;
 
     return [
         localPortCandidate,
-        `http://localhost:3000/${cleanEndpoint}`,
+        isLocalhost ? `http://localhost:3000/${cleanEndpoint}` : '',
         sameDirectoryCandidate,
         sameOriginCandidate
     ].filter((url, index, arr) => url && arr.indexOf(url) === index);

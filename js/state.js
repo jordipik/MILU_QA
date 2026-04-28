@@ -41,4 +41,6 @@ export const state = {
     qaErrorCheckDefinitions: getQaCheckDefinitions(),
     activeQaErrorChecks: new Set(),
     qaChecksScopedRows: null,
+    backendWritable: null,
+    backendStatusMessage: 'Backend: comprobando...'
 };

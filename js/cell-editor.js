@@ -80,6 +80,10 @@ async function commitInlineEdit() {
 
 export function startInlineEdit(td) {
     if (!(td instanceof HTMLTableCellElement)) return;
+    if (state.backendWritable === false) {
+        alert('Modo solo lectura: backend sin conexion. No se pueden editar celdas.');
+        return;
+    }
     if (activeEditor) cancelInlineEdit();
 
     const columnKey = td.dataset.colKey;

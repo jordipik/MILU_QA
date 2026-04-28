@@ -3,7 +3,8 @@ param(
     [switch]$NoCommit,
     [switch]$NoPush,
     [switch]$SkipPrepare,
-    [switch]$FullPrepare
+    [switch]$FullPrepare,
+    [switch]$SkipVersionBump
 )
 
 $ErrorActionPreference = "Stop"
@@ -20,7 +21,18 @@ function Invoke-CheckedCommand {
     }
 }
 
+function Get-AppVersion {
+    $packagePath = Join-Path $PSScriptRoot "..\package.json"
+    $pkg = Get-Content -Path $packagePath -Raw | ConvertFrom-Json
+    return [string]$pkg.version
+}
+
 Write-Host "Starting publish workflow..."
+
+if (-not $SkipVersionBump) {
+    Write-Host "Bumping app version (patch)..."
+    Invoke-CheckedCommand -Command "npm" -Arguments @("run", "version:patch")
+}
 
 if (-not $SkipPrepare) {
     if ($FullPrepare) {
@@ -34,13 +46,13 @@ if (-not $SkipPrepare) {
 }
 
 Write-Host "Staging publish artifacts..."
-Invoke-CheckedCommand -Command "git" -Arguments @("add", "dist/milu_publish", "CNAME")
+Invoke-CheckedCommand -Command "git" -Arguments @("add", "dist/milu_publish", "CNAME", "package.json")
 
-& git diff --cached --quiet -- "dist/milu_publish" "CNAME"
+& git diff --cached --quiet -- "dist/milu_publish" "CNAME" "package.json"
 $hasStagedChanges = ($LASTEXITCODE -ne 0)
 
 if (-not $hasStagedChanges) {
-    Write-Host "No staged changes for dist/milu_publish or CNAME. Nothing to publish."
+    Write-Host "No staged changes for dist/milu_publish, CNAME, or package.json. Nothing to publish."
     exit 0
 }
 
@@ -50,7 +62,15 @@ if ($NoCommit) {
 }
 
 Write-Host "Creating commit..."
-Invoke-CheckedCommand -Command "git" -Arguments @("commit", "-m", $Message)
+$currentVersion = Get-AppVersion
+$versionSuffix = "v$currentVersion"
+$commitMessage = $Message
+if ($commitMessage -notmatch [regex]::Escape($versionSuffix)) {
+    $commitMessage = "$commitMessage $versionSuffix"
+}
+
+Write-Host "Commit message: $commitMessage"
+Invoke-CheckedCommand -Command "git" -Arguments @("commit", "-m", $commitMessage)
 
 if ($NoPush) {
     Write-Host "NoPush set. Commit created but not pushed."

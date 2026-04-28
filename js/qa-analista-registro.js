@@ -12,6 +12,19 @@ const QA_PROCESS_DEFINITIONS = getQaCheckDefinitions();
 let currentRow = null;
 let reviewedHistory = [];
 const TOTAL_PROCESS_CHECKS = QA_PROCESS_DEFINITIONS.length;
+let lastReadonlyAlertAt = 0;
+
+const ANALISTA_WRITE_CONTROL_IDS = [
+    'saveFieldsBtn',
+    'markOkBtn',
+    'markKoBtn',
+    'editPnFinal',
+    'editDesignationFinal',
+    'editWeightFinal',
+    'editMeasurementFinal',
+    'editRevisionEstado',
+    'editRevisionAccion'
+];
 
 function txt(value, fallback = '-') {
     const normalized = String(value ?? '').trim();
@@ -106,16 +119,56 @@ function setBackendBadge(status, text) {
     badge.classList.remove('checking', 'online', 'offline');
     badge.classList.add(status);
     badge.textContent = text;
+    state.backendStatusMessage = text;
+}
+
+function applyBackendWriteMode() {
+    const writable = state.backendWritable !== false;
+
+    ANALISTA_WRITE_CONTROL_IDS.forEach((id) => {
+        const elem = $(id);
+        if (elem instanceof HTMLButtonElement || elem instanceof HTMLInputElement || elem instanceof HTMLSelectElement) {
+            elem.disabled = !writable;
+            elem.title = writable ? '' : 'Modo solo lectura: backend sin conexion.';
+        }
+    });
+
+    const statusText = $('statusText');
+    if (!writable && statusText instanceof HTMLElement) {
+        statusText.textContent = 'Modo solo lectura: backend sin conexion. Los cambios no se guardan.';
+    }
+}
+
+function ensureBackendWritable(actionLabel = 'guardar cambios') {
+    if (state.backendWritable !== false) return true;
+
+    const now = Date.now();
+    if (now - lastReadonlyAlertAt > 1500) {
+        alert(`Modo solo lectura: no se puede ${actionLabel} porque el backend no esta disponible.`);
+        lastReadonlyAlertAt = now;
+    }
+    return false;
 }
 
 async function refreshBackendBadge() {
     setBackendBadge('checking', 'Backend: comprobando...');
-    const result = await checkSaveBackendConnection();
-    if (result.ok) {
-        setBackendBadge('online', 'Backend: online');
-        return;
+    try {
+        const result = await checkSaveBackendConnection();
+        if (result.ok) {
+            state.backendWritable = true;
+            setBackendBadge('online', 'Backend: online');
+            applyBackendWriteMode();
+            return;
+        }
+
+        state.backendWritable = false;
+        setBackendBadge('offline', 'Backend: offline (solo lectura)');
+        applyBackendWriteMode();
+    } catch (_) {
+        state.backendWritable = false;
+        setBackendBadge('offline', 'Backend: offline (solo lectura)');
+        applyBackendWriteMode();
     }
-    setBackendBadge('offline', 'Backend: offline');
 }
 
 function buildEngineOptions() {
@@ -601,6 +654,8 @@ function resolveEngineFile(row) {
 }
 
 async function saveCurrentFieldChanges() {
+    if (!ensureBackendWritable('guardar cambios del registro')) return;
+
     if (!currentRow) {
         alert('Primero debes cargar un registro.');
         return;
@@ -632,6 +687,8 @@ async function saveCurrentFieldChanges() {
 }
 
 async function setRevisionOutcome(kind) {
+    if (!ensureBackendWritable('guardar el estado de revision')) return;
+
     if (!currentRow) {
         alert('Primero debes cargar un registro.');
         return;
@@ -692,6 +749,7 @@ async function initialize() {
         buildEngineOptions();
         reviewedHistory = [];
         renderReviewedHistory();
+        applyBackendWriteMode();
 
         if (firstRow) {
             $('recordIdInput').value = txt(firstRow?.ID, '');
@@ -699,9 +757,11 @@ async function initialize() {
             renderRecord(firstRow);
         }
 
-        setBackendBadge('online', 'Backend: modo minimo');
+        await refreshBackendBadge();
     } catch (error) {
+        state.backendWritable = false;
         setBackendBadge('offline', 'Backend: error');
+        applyBackendWriteMode();
         const statusText = $('statusText');
         if (statusText) {
             statusText.textContent = `Error iniciando analista: ${error.message}`;

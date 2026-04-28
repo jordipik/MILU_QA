@@ -9,3 +9,6 @@ esquemas_pos_circulos/
 fotos_articulos/
 fotos_motores/
 node_modules/
+
+# Evitar versionar cambios de datos JSON locales.
+*.json
