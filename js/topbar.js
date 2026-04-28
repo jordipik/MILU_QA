@@ -195,8 +195,10 @@ export function initTopbar(page) {
     initBackendStatusMonitor();
     primeNavigationPrefetch();
 
-    // Mostrar versión de la aplicación
-    fetch('/version')
+    // Mostrar version siempre desde version.json para mantener el mismo flujo en local y produccion.
+    const staticVersionUrl = new URL('version.json', new URL('.', window.location.href)).href;
+
+    fetch(staticVersionUrl)
         .then(r => r.ok ? r.json() : null)
         .then(data => {
             const el = document.getElementById('appVersion');

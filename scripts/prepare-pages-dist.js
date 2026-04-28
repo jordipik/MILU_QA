@@ -20,6 +20,8 @@ const requiredStaticEntries = [
     'qa_analista_registro.html',
     'qa_auditoria.html',
     'styles.css',
+    'favicon.svg',
+    'version.json',
     'qa_revision_sync.php',
     'save-json.php',
     'js',

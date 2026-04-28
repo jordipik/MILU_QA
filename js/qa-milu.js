@@ -1985,6 +1985,35 @@ async function tryLoadFirstJson(candidates) {
     return null;
 }
 
+const ENABLE_OPTIONAL_CATALOGS = false;
+
+async function loadOptionalCatalogsInBackground() {
+    if (!ENABLE_OPTIONAL_CATALOGS) return;
+
+    const [newData, supersededData, productExportData] = await Promise.all([
+        tryLoadFirstJson(['MILU_New_v506.json', 'MILU_New_v507.json']),
+        tryLoadFirstJson(['MILU_Superseded_v506.json', 'MILU_Superseded_v507.json']),
+        tryLoadFirstJson(['product-export-2026-03-29-11-07.json', 'product_export_v507.json'])
+    ]);
+
+    if (Array.isArray(newData)) {
+        state.newPnSet = new Set(newData.map(item => item.pn));
+        state.miluNewData = newData;
+    }
+
+    if (Array.isArray(supersededData)) {
+        state.supersededPnSet = new Set(supersededData.map(item => item.pn));
+        state.miluSupersededData = supersededData;
+    }
+
+    if (Array.isArray(productExportData)) {
+        state.productExportPnSet = new Set(productExportData.map(item => item.pn));
+    }
+
+    // Refresca vistas dependientes de estos catálogos si están habilitados.
+    renderTable();
+}
+
 function getBookPages(book) {
     const bookFilter = String(book || state.filters.book || '').toLowerCase();
     return [...new Set(state.allData
@@ -2630,26 +2659,14 @@ async function loadData() {
         state.allData = await loadPartitionedEngineData();
         if (!Array.isArray(state.allData)) throw new Error('Los datos no son un array');
 
-        const newData = await tryLoadFirstJson(['MILU_New_v506.json', 'MILU_New_v507.json']);
-        if (Array.isArray(newData)) {
-            state.newPnSet = new Set(newData.map(item => item.pn));
-            state.miluNewData = newData;
-        } else {
-            state.miluNewData = [];
-        }
-
-        const supersededData = await tryLoadFirstJson(['MILU_Superseded_v506.json', 'MILU_Superseded_v507.json']);
-        if (Array.isArray(supersededData)) {
-            state.supersededPnSet = new Set(supersededData.map(item => item.pn));
-            state.miluSupersededData = supersededData;
-        } else {
-            state.miluSupersededData = [];
-        }
+        // No bloquear carga principal por catálogos opcionales que pueden no existir en todos los despliegues.
+        state.newPnSet = new Set();
+        state.miluNewData = [];
+        state.supersededPnSet = new Set();
+        state.miluSupersededData = [];
+        state.productExportPnSet = new Set();
 
         state.publishedMap = new Map();
-
-        const productExportData = await tryLoadFirstJson(['product-export-2026-03-29-11-07.json', 'product_export_v507.json']);
-        if (Array.isArray(productExportData)) state.productExportPnSet = new Set(productExportData.map(item => item.pn));
 
         state.currentPage = 1;
         state.sortKey = 'book_page_pos';
@@ -2693,6 +2710,10 @@ async function loadData() {
         state.filteredData = [...state.allData];
         renderTable();
         renderPagination();
+
+        loadOptionalCatalogsInBackground().catch(error => {
+            console.warn('No se pudieron cargar los catálogos opcionales:', error);
+        });
         applyBackendWriteMode();
         updatePaginationToggleLabel();
         updateOnlyErrorsToggleLabel();

@@ -5,6 +5,8 @@
 import { state } from './state.js';
 import { val } from './helpers.js';
 
+const missingSchemaImagePaths = new Set();
+
 export function splitSchemaTokens(rawValue) {
     return String(rawValue || '').split(/[,;|\n]+/).map(s => s.trim()).filter(Boolean);
 }
@@ -66,7 +68,7 @@ export function buildSchemaPosImageCandidates(bookValue, rawTokenOrPath) {
     const tokenExtMatch = tokenFromPath.match(/\.(png|webp|jpg|jpeg)$/i);
     const tokenExt = tokenExtMatch ? tokenExtMatch[1].toLowerCase() : '';
     const folder = `esquemas_pos_circulos/${encodeURIComponent(book)}-POS/`;
-    const extensions = ['webp', 'png', 'jpg', 'jpeg'];
+    const extensions = tokenExt ? [tokenExt] : ['png', 'webp'];
     const names = [tokenNoExt];
     if (!tokenNoExt.toLowerCase().startsWith(`${book.toLowerCase()}-`)) {
         names.push(`${book}-${tokenNoExt}`);
@@ -76,10 +78,12 @@ export function buildSchemaPosImageCandidates(bookValue, rawTokenOrPath) {
     const seen = new Set();
     const pushPath = (p) => { if (!p || seen.has(p)) return; seen.add(p); paths.push(p); };
 
-    if (/^https?:\/\//i.test(raw)) pushPath(raw);
+    if (/^https?:\/\//i.test(raw)) {
+        pushPath(raw);
+        return paths;
+    }
     names.forEach(name => { extensions.forEach(ext => { pushPath(`${folder}${encodeURIComponent(name)}.${ext}`); }); });
-    if (tokenExt === 'webp') pushPath(`${folder}${encodeURIComponent(tokenFromPath)}`);
-    else if (tokenExt) {
+    if (tokenExt) {
         names.forEach(name => { pushPath(`${folder}${encodeURIComponent(name)}.${tokenExt}`); });
     }
     return paths;
@@ -91,8 +95,19 @@ export function setSchemaImageSource(imgElement, candidates, index = 0) {
         imgElement.closest('.schema-thumb')?.remove();
         return;
     }
-    imgElement.src = candidates[index];
-    imgElement.dataset.schemaCandidateIndex = String(index);
+
+    let nextIndex = index;
+    while (nextIndex < candidates.length && missingSchemaImagePaths.has(candidates[nextIndex])) {
+        nextIndex += 1;
+    }
+
+    if (nextIndex >= candidates.length) {
+        imgElement.closest('.schema-thumb')?.remove();
+        return;
+    }
+
+    imgElement.src = candidates[nextIndex];
+    imgElement.dataset.schemaCandidateIndex = String(nextIndex);
 }
 
 function buildImageStrip(candidates, stripEl, label, thumbClass = 'schema-thumb', emptyText = '') {
@@ -118,6 +133,7 @@ function buildImageStrip(candidates, stripEl, label, thumbClass = 'schema-thumb'
     img.decoding = 'async';
     img.addEventListener('error', () => {
         const currentIndex = Number(img.dataset.schemaCandidateIndex || '0');
+        missingSchemaImagePaths.add(candidates[currentIndex]);
         const nextIndex = currentIndex + 1;
         if (nextIndex >= candidates.length) {
             link.remove();
@@ -154,7 +170,9 @@ export function updateSchemasImageInline(bookValue, schemas) {
         const img = document.createElement('img');
         img.alt = 'Esquema'; img.loading = 'lazy'; img.decoding = 'async';
         img.addEventListener('error', () => {
-            const ci = Number(img.dataset.schemaCandidateIndex || '0') + 1;
+            const currentIndex = Number(img.dataset.schemaCandidateIndex || '0');
+            missingSchemaImagePaths.add(candidates[currentIndex]);
+            const ci = currentIndex + 1;
             if (ci >= candidates.length) {
                 link.remove();
                 if (!strip.querySelector('.schema-thumb') && !strip.querySelector('.schemas-images-empty')) {
@@ -258,7 +276,9 @@ function buildPosStrip(row, stripEl, metaEl, opts = {}) {
         const img = document.createElement('img');
         img.alt = label; img.loading = 'lazy'; img.decoding = 'async';
         img.addEventListener('error', () => {
-            const ci = Number(img.dataset.schemaCandidateIndex || '0') + 1;
+            const currentIndex = Number(img.dataset.schemaCandidateIndex || '0');
+            missingSchemaImagePaths.add(candidates[currentIndex]);
+            const ci = currentIndex + 1;
             if (ci >= candidates.length) {
                 link.remove();
                 if (!stripEl.querySelector('.schema-thumb') && !stripEl.querySelector('.schemas-images-empty')) {
@@ -308,7 +328,9 @@ export function renderSelectedRowPosTop(row) {
     const img = document.createElement('img');
     img.alt = 'Pos circulos'; img.loading = 'lazy'; img.decoding = 'async';
     img.addEventListener('error', () => {
-        const ci = Number(img.dataset.schemaCandidateIndex || '0') + 1;
+        const currentIndex = Number(img.dataset.schemaCandidateIndex || '0');
+        missingSchemaImagePaths.add(candidates[currentIndex]);
+        const ci = currentIndex + 1;
         if (ci >= candidates.length) {
             link.remove();
             if (!strip.querySelector('.schema-thumb') && !strip.querySelector('.schemas-images-empty')) {
