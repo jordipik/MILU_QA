@@ -183,14 +183,6 @@ function getSaveBackendCandidateUrls() {
     const sameOriginPhpCandidate = currentOrigin ? `${currentOrigin}/save-json.php` : '/save-json.php';
     const miluPhpCandidate = currentOrigin ? `${currentOrigin}/milu/save-json.php` : '/milu/save-json.php';
     const pathnameHasMilu = /(^|\/)milu(\/|$)/i.test(currentPathname);
-    const isMiluSubdomain = /^milu\./i.test(currentHostname);
-    const isAlentioHost = /(^|\.)alentio\.es$/i.test(currentHostname);
-    const apexHost = isMiluSubdomain ? currentHostname.replace(/^milu\./i, '') : currentHostname;
-    const apexOrigin = apexHost ? `${window.location.protocol}//${apexHost}` : '';
-    const apexMiluPhpCandidate = apexOrigin ? `${apexOrigin}/milu/save-json.php` : '';
-    const miluSubdomainPhpCandidate = currentHostname
-        ? `${window.location.protocol}//milu.${apexHost || currentHostname}/save-json.php`
-        : '';
 
     if (isLocalhost) {
         // En local: probar Express en puerto 3000
@@ -204,26 +196,12 @@ function getSaveBackendCandidateUrls() {
         ].filter(Boolean).filter((url, index, arr) => arr.indexOf(url) === index);
     } else {
         // En servidor remoto (Arsys, etc.): usar save-json.php (sin Express)
-        const domainPinnedCandidates = isAlentioHost
-            ? isMiluSubdomain
-                ? [
-                    'https://milu.alentio.es/save-json.php',
-                    'https://alentio.es/milu/save-json.php'
-                ]
-                : [
-                    'https://alentio.es/milu/save-json.php',
-                    'https://milu.alentio.es/save-json.php'
-                ]
-            : [];
-
+        // Se sirve siempre desde alentio.es/milu/.
         return [
-            ...domainPinnedCandidates,
             phpCandidate,
             pathnameHasMilu ? miluPhpCandidate : '',
             sameOriginPhpCandidate,
-            miluPhpCandidate,
-            apexMiluPhpCandidate,
-            miluSubdomainPhpCandidate
+            miluPhpCandidate
         ].filter(Boolean).filter((url, index, arr) => arr.indexOf(url) === index);
     }
 }

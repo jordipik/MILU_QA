@@ -22,7 +22,6 @@ const requiredStaticEntries = [
     'styles.css',
     'qa_revision_sync.php',
     'save-json.php',
-    'CNAME',
     'js',
     'styles',
     'pdf',
