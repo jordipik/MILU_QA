@@ -1258,6 +1258,8 @@ async function runBackendRecompute() {
     const recomputeEngineSelect = $('recomputeEngineSelect');
     const recomputeIdInput = $('recomputeIdInput');
     const recomputeDryRunInput = $('recomputeDryRunInput');
+    const recomputeUpdateRevisionInput = $('recomputeUpdateRevisionInput');
+    const recomputeForceRevisionInput = $('recomputeForceRevisionInput');
     const recomputeRunBtn = $('recomputeRunBtn');
     const recomputePdfRunBtn = $('recomputePdfRunBtn');
     const engineFilterSelect = $('engineFilterSelect');
@@ -1274,7 +1276,8 @@ async function runBackendRecompute() {
     const file = resolveEngineFileFromFilter(selectedModel);
     const id = String(recomputeIdInput.value || '').trim();
     const dryRun = recomputeDryRunInput.checked;
-    const updateRevision = window.confirm('Quieres actualizar estado y accion de revision segun errores? (sin errores: ok/importar, con errores: pendiente/revisar)');
+    const updateRevision = recomputeUpdateRevisionInput instanceof HTMLInputElement ? recomputeUpdateRevisionInput.checked : false;
+    const forceRevision = recomputeForceRevisionInput instanceof HTMLInputElement ? recomputeForceRevisionInput.checked : false;
 
     if (!file) {
         alert('No se pudo resolver el archivo engine para el recálculo.');
@@ -1285,6 +1288,7 @@ async function runBackendRecompute() {
         file,
         dryRun,
         updateRevision,
+        forceRevision,
         backup: true
     };
     if (id) payload.id = id;

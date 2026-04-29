@@ -496,6 +496,17 @@ body.a2-resizing * {
     margin: 0;
 }
 
+.a2-recompute-force-label {
+    color: #b45309;
+    opacity: 0.5;
+    transition: opacity 0.2s;
+}
+
+.a2-recompute-force-label:has(input:checked) {
+    opacity: 1;
+    color: #b91c1c;
+}
+
 .a2-auto-recompute-status {
     margin: 0;
     font-size: 11px;

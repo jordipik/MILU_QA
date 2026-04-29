@@ -234,8 +234,13 @@ function applyToRow(row, options) {
 
     if (options.updateRevision) {
         if (hasErrors) {
-            if (assignIfChanged(row, 'qa_revision_estado', 'pendiente')) changed = true;
-            if (assignIfChanged(row, 'qa_revision_accion', 'revisar')) changed = true;
+            // Si ya fue revisado manualmente como 'ok', respetar esa decisión (salvo forceRevision)
+            const currentEstado = String(row?.qa_revision_estado || '').trim().toLowerCase();
+            const isManuallyOk = currentEstado === 'ok' || currentEstado === 'revisado';
+            if (!isManuallyOk || options.forceRevision) {
+                if (assignIfChanged(row, 'qa_revision_estado', 'pendiente')) changed = true;
+                if (assignIfChanged(row, 'qa_revision_accion', 'revisar')) changed = true;
+            }
         } else {
             if (assignIfChanged(row, 'qa_revision_estado', 'ok')) changed = true;
             if (assignIfChanged(row, 'qa_revision_accion', 'importar')) changed = true;
@@ -254,6 +259,7 @@ function recomputeEngineErrors(optionsInput = {}) {
         id: String(optionsInput.id ?? '').trim(),
         dryRun: Boolean(optionsInput.dryRun),
         updateRevision: optionsInput.updateRevision === true,
+        forceRevision: optionsInput.forceRevision === true,
         backup: optionsInput.backup !== false,
         rootDir: String(optionsInput.rootDir ?? __dirname).trim() || __dirname
     };

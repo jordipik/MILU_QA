@@ -83,6 +83,7 @@ app.post('/recompute-qa-errors', async (req, res) => {
     const id = String(req.body?.id ?? '').trim();
     const dryRun = Boolean(req.body?.dryRun);
     const updateRevision = req.body?.updateRevision === true;
+    const forceRevision = req.body?.forceRevision === true;
     const backup = req.body?.backup !== false;
 
     if (!file) {
@@ -103,6 +104,7 @@ app.post('/recompute-qa-errors', async (req, res) => {
             id,
             dryRun,
             updateRevision,
+            forceRevision,
             backup,
             rootDir: __dirname
         });

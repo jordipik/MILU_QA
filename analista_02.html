@@ -207,6 +207,14 @@
                         <input id="recomputeDryRunInput" type="checkbox" checked>
                         Simulacion (dry-run)
                     </label>
+                    <label class="a2-auto-recompute-check" for="recomputeUpdateRevisionInput">
+                        <input id="recomputeUpdateRevisionInput" type="checkbox">
+                        Actualizar estados (sin errores→ok, con errores→pendiente)
+                    </label>
+                    <label class="a2-auto-recompute-check a2-recompute-force-label" for="recomputeForceRevisionInput">
+                        <input id="recomputeForceRevisionInput" type="checkbox">
+                        Forzar sobreescritura (incluye revisados como ok)
+                    </label>
                     <button id="recomputeRunBtn" type="button">Ejecutar recálculo</button>
                     <button id="recomputePdfRunBtn" type="button">Recalcular PDF_AUTO</button>
                 </div>
