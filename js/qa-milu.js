@@ -2400,7 +2400,7 @@ async function applyQaChecksFilter(scope = 'all') {
 
             const revisionKeys = targetRows
                 .map(row => String(getRevisionKey(row) || '').trim())
-                .filter(key => /^idx=\d+$/.test(key));
+                .filter(key => /^idx=\d+$/.test(key) || /^id=.+/.test(key));
             if (!revisionKeys.length) {
                 hideQaChecksProgress();
                 alert('No se pudo determinar la clave de revisión para guardar los visibles.');
@@ -2768,6 +2768,8 @@ function attachGlobalEvents() {
     $('nextBtn')?.addEventListener('click', () => changePage(1));
     $('lastBtn')?.addEventListener('click', () => jumpToPage(Number.MAX_SAFE_INTEGER));
     document.querySelector('thead')?.addEventListener('click', handleSort);
+
+    ensureFilterControlNames();
 
     document.querySelectorAll('.filter-input[data-filter], .filter-select[data-filter]').forEach(elem => {
         if (elem.id === 'bookFilterSelect' || elem.id === 'pageFilterSelect') return;
@@ -3323,6 +3325,18 @@ function attachGlobalEvents() {
     $('qaRecordModalForm')?.addEventListener('submit', handleRecordModalSubmit);
     $('backendStatusRetryBtn')?.addEventListener('click', () => {
         refreshBackendStatus().catch(() => setBackendStatusBadge('offline', 'Backend: sin conexion'));
+    });
+}
+
+function ensureFilterControlNames() {
+    document.querySelectorAll('.filter-input[data-filter], .filter-select[data-filter]').forEach((elem, index) => {
+        if (elem.id || elem.name) return;
+        const rawFilterKey = String(elem.dataset?.filter || '').trim();
+        const normalizedFilterKey = rawFilterKey
+            .toLowerCase()
+            .replace(/[^a-z0-9]+/g, '_')
+            .replace(/^_+|_+$/g, '');
+        elem.name = `filter_${normalizedFilterKey || index}`;
     });
 }
 

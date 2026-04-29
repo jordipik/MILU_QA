@@ -84,6 +84,7 @@ async function applyRevisionPayload(parsed, options = {}) {
     let globalIndex = 0;
     let totalApplied = 0;
     const appliedByFile = {};
+    const occById = new Map();
     const occCounter = new Map();
 
     for (const fileName of ENGINE_JSON_FILES) {
@@ -101,12 +102,26 @@ async function applyRevisionPayload(parsed, options = {}) {
         rows.forEach((row) => {
             globalIndex += 1;
             const idxKey = `idx=${globalIndex}`;
+            const id = String(row?.ID ?? '').trim();
+            if (!id) {
+                throw new Error(`Fila sin ID en ${fileName} (indice global ${globalIndex}).`);
+            }
+
+            const nextIdOcc = (occById.get(id) || 0) + 1;
+            occById.set(id, nextIdOcc);
+            const idKey = `id=${id}`;
+            const idOccKey = `${idKey}||occ=${nextIdOcc}`;
+
             const legacyKey = buildLegacyRevisionKey(row);
             const occ = (occCounter.get(legacyKey) || 0) + 1;
             occCounter.set(legacyKey, occ);
             const occKey = `${legacyKey}||occ=${occ}`;
 
-            const rev = revisionData[idxKey] || revisionData[legacyKey] || revisionData[occKey];
+            const rev = revisionData[idOccKey]
+                || revisionData[idKey]
+                || revisionData[idxKey]
+                || revisionData[legacyKey]
+                || revisionData[occKey];
             if (!rev) return;
 
             const nextEstado = String(rev.estado || '').trim();
