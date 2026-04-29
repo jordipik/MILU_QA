@@ -6,6 +6,7 @@
 import { checkSaveBackendConnection } from './data-loader.js';
 
 let backendStatusTimer = null;
+const ENABLE_EXPORT_VIEW = false;
 const BACKEND_STATUS_CACHE_KEY = 'milu_backend_status_cache_v1';
 const BACKEND_STATUS_CACHE_MAX_AGE_MS = 30000;
 const SHELL_PATH = 'milu_shell.html';
@@ -16,7 +17,10 @@ function isEmbeddedMode() {
 }
 
 function getNavTargetHref(pageKey) {
-    const view = pageKey === 'pdf' || pageKey === 'export' || pageKey === 'analisis' ? pageKey : 'pdf';
+    const allowedViews = ENABLE_EXPORT_VIEW
+        ? ['pdf', 'export', 'analisis']
+        : ['pdf', 'analisis'];
+    const view = allowedViews.includes(pageKey) ? pageKey : 'pdf';
     return `${SHELL_PATH}?view=${encodeURIComponent(view)}`;
 }
 
@@ -133,17 +137,20 @@ export function createTopbar(page) {
             subtitle: 'Flujo rápido para filtrar, validar y revisar artículos con contexto de esquemas y posición, todo en la misma vista.',
             active: 'PDF'
         },
-        export: {
-            title: 'Lista agrupada por PN',
-            subtitle: 'Visualización de registros agrupados, estado de entidad y resumen rápido.',
-            active: 'EXPORT'
-        },
         analisis: {
             title: 'Analista de registro 02',
             subtitle: 'De registro_raw a registro_ok o registro_ko, proceso por proceso.',
             active: 'ANALISIS'
         }
     };
+
+    if (ENABLE_EXPORT_VIEW) {
+        pages.export = {
+            title: 'Lista agrupada por PN',
+            subtitle: 'Visualización de registros agrupados, estado de entidad y resumen rápido.',
+            active: 'EXPORT'
+        };
+    }
 
     const pageConfig = pages[page] || pages.pdf;
 
@@ -161,7 +168,7 @@ export function createTopbar(page) {
         <nav class="a2-nav" aria-label="Navegacion">
             <a href="${getNavTargetHref('pdf')}" data-page="pdf" class="${pageConfig.active === 'PDF' ? 'active' : ''}">PDF</a>
             <a href="${getNavTargetHref('analisis')}" data-page="analisis" class="${pageConfig.active === 'ANALISIS' ? 'active' : ''}">ANALISIS</a>
-            <a href="${getNavTargetHref('export')}" data-page="export" class="${pageConfig.active === 'EXPORT' ? 'active' : ''}">EXPORT</a>
+            ${ENABLE_EXPORT_VIEW ? `<a href="${getNavTargetHref('export')}" data-page="export" class="${pageConfig.active === 'EXPORT' ? 'active' : ''}">EXPORT</a>` : ''}
         </nav>
         <div id="backendStatus" class="backend-status checking" aria-live="polite" title="Estado del backend de guardado">
             <span class="backend-status-dot" aria-hidden="true"></span>

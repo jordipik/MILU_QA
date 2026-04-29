@@ -329,11 +329,16 @@
         import { initTopbar } from './js/topbar.js';
         import { saveCellToServer } from './js/data-loader.js';
 
+        const ENABLE_EXPORT_VIEW = false;
+
         const VIEW_TO_PAGE = {
             pdf: 'qa_milu.html',
-            export: 'qa_lista_agrupada.html',
             analisis: 'analista_02.html'
         };
+
+        if (ENABLE_EXPORT_VIEW) {
+            VIEW_TO_PAGE.export = 'qa_lista_agrupada.html';
+        }
 
         const TITLES = {
             pdf: 'MILU • PDF',
@@ -473,7 +478,8 @@
 
         function normalizeView(value) {
             const raw = String(value || '').trim().toLowerCase();
-            if (raw === 'pdf' || raw === 'export' || raw === 'analisis') return raw;
+            if (raw === 'pdf' || raw === 'analisis') return raw;
+            if (ENABLE_EXPORT_VIEW && raw === 'export') return raw;
             return 'pdf';
         }
 

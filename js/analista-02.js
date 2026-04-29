@@ -697,6 +697,8 @@ function initRecomputeModal() {
     const modal = $('recomputeModal');
     const closeBtn = $('recomputeModalClose');
     const backdrop = modal?.querySelector('.recompute-modal-backdrop');
+    const recomputeRunBtn = $('recomputeRunBtn');
+    const recomputePdfRunBtn = $('recomputePdfRunBtn');
 
     if (!(openBtn instanceof HTMLElement) || !(modal instanceof HTMLElement)) return;
 
@@ -706,7 +708,24 @@ function initRecomputeModal() {
 
     openBtn.addEventListener('click', () => {
         syncRecomputeEngineSelect();
-        setRecomputeStatus('Listo para ejecutar.', '');
+        const allowRecompute = isBackendEndpointAllowed('recompute-qa-errors');
+
+        if (recomputeRunBtn instanceof HTMLButtonElement) {
+            recomputeRunBtn.disabled = !allowRecompute;
+            recomputeRunBtn.title = allowRecompute ? '' : 'Disponible solo en local (localhost:3000).';
+        }
+
+        if (recomputePdfRunBtn instanceof HTMLButtonElement) {
+            recomputePdfRunBtn.disabled = !allowRecompute;
+            recomputePdfRunBtn.title = allowRecompute ? '' : 'Disponible solo en local (localhost:3000).';
+        }
+
+        setRecomputeStatus(
+            allowRecompute
+                ? 'Listo para ejecutar.'
+                : getLocalOnlyBackendMessage('recompute-qa-errors'),
+            allowRecompute ? '' : 'error'
+        );
         clearRecomputePdfDetail();
         modal.hidden = false;
         const recomputeIdInput = $('recomputeIdInput');
@@ -1020,26 +1039,78 @@ function resolveEngineFileFromFilter(engineFilter) {
     return directMatch || '';
 }
 
+const LOCAL_ONLY_BACKEND_ENDPOINTS = new Set(['recompute-qa-errors', 'recompute-pdf-auto']);
+
+function getCurrentHostname() {
+    return String(window.location.hostname || '').trim().toLowerCase();
+}
+
+function isLocalRuntime() {
+    const hostname = getCurrentHostname();
+    return hostname === 'localhost' || hostname === '127.0.0.1' || hostname === '';
+}
+
+function normalizeEndpointPath(endpointPath) {
+    return String(endpointPath || '').trim().replace(/^\/+/, '').toLowerCase();
+}
+
+function isLocalOnlyBackendEndpoint(endpointPath) {
+    return LOCAL_ONLY_BACKEND_ENDPOINTS.has(normalizeEndpointPath(endpointPath));
+}
+
+function getLocalOnlyBackendMessage(endpointPath) {
+    const endpoint = normalizeEndpointPath(endpointPath);
+    const endpointLabel = endpoint ? `/${endpoint}` : 'este endpoint';
+    return `${endpointLabel} solo esta disponible en entorno local con server.js (http://localhost:3000).`;
+}
+
+function isBackendEndpointAllowed(endpointPath) {
+    if (!isLocalOnlyBackendEndpoint(endpointPath)) return true;
+    return isLocalRuntime();
+}
+
 function getBackendCandidateUrls(endpointPath) {
     const currentOrigin = window.location.origin && window.location.origin !== 'null'
         ? window.location.origin
         : '';
-    const currentHostname = String(window.location.hostname || '').trim();
-    const isLocalhost = currentHostname === 'localhost' || currentHostname === '127.0.0.1' || currentHostname === '';
-    const cleanEndpoint = String(endpointPath || '').trim().replace(/^\/+/, '');
+    const currentPathname = String(window.location.pathname || '/');
+    const currentHostname = getCurrentHostname();
+    const isLocalhost = isLocalRuntime();
+    const cleanEndpoint = normalizeEndpointPath(endpointPath);
+    const pathnameHasMilu = /(^|\/)milu(\/|$)/i.test(currentPathname);
+
+    if (!isBackendEndpointAllowed(cleanEndpoint)) {
+        return [];
+    }
+
+    const rootCandidate = currentOrigin ? `${currentOrigin}/${cleanEndpoint}` : `/${cleanEndpoint}`;
+    const miluRootCandidate = currentOrigin ? `${currentOrigin}/milu/${cleanEndpoint}` : `/milu/${cleanEndpoint}`;
     const sameDirectoryCandidate = new URL(cleanEndpoint, new URL('.', window.location.href)).href;
     const localPortCandidate = isLocalhost && currentHostname ? `http://${currentHostname}:3000/${cleanEndpoint}` : '';
-    const sameOriginCandidate = currentOrigin ? `${currentOrigin}/${cleanEndpoint}` : `/${cleanEndpoint}`;
+
+    if (isLocalhost) {
+        return [
+            localPortCandidate,
+            `http://localhost:3000/${cleanEndpoint}`,
+            rootCandidate,
+            miluRootCandidate,
+            sameDirectoryCandidate
+        ].filter((url, index, arr) => url && arr.indexOf(url) === index);
+    }
 
     return [
-        localPortCandidate,
-        isLocalhost ? `http://localhost:3000/${cleanEndpoint}` : '',
-        sameDirectoryCandidate,
-        sameOriginCandidate
+        rootCandidate,
+        pathnameHasMilu ? sameDirectoryCandidate : '',
+        pathnameHasMilu ? miluRootCandidate : '',
+        sameDirectoryCandidate
     ].filter((url, index, arr) => url && arr.indexOf(url) === index);
 }
 
 async function postJsonToBackendCandidates(endpointPath, payload) {
+    if (!isBackendEndpointAllowed(endpointPath)) {
+        throw new Error(getLocalOnlyBackendMessage(endpointPath));
+    }
+
     const urls = getBackendCandidateUrls(endpointPath);
     let lastError = '';
 
@@ -1083,6 +1154,10 @@ async function postJsonToBackendCandidates(endpointPath, payload) {
 }
 
 async function autoRecomputeEditedRecord(engineFile, id) {
+    if (!isBackendEndpointAllowed('recompute-qa-errors')) {
+        return;
+    }
+
     await postJsonToBackendCandidates('recompute-qa-errors', {
         file: engineFile,
         id,
@@ -1284,6 +1359,11 @@ async function runBackendRecompute() {
         return;
     }
 
+    if (!isBackendEndpointAllowed('recompute-qa-errors')) {
+        setRecomputeStatus(getLocalOnlyBackendMessage('recompute-qa-errors'), 'error');
+        return;
+    }
+
     const payload = {
         file,
         dryRun,
@@ -1299,9 +1379,11 @@ async function runBackendRecompute() {
 
     const urls = getBackendCandidateUrls('recompute-qa-errors');
     let lastError = '';
+    let lastTriedUrl = '';
     let result = null;
 
     for (const url of urls) {
+        lastTriedUrl = url;
         try {
             const response = await fetch(url, {
                 method: 'POST',
@@ -1317,7 +1399,7 @@ async function runBackendRecompute() {
             }
 
             if (!response.ok) {
-                lastError = String(data?.error || `HTTP ${response.status}`).trim();
+                lastError = String(data?.error || `HTTP ${response.status} en ${url}`).trim();
                 continue;
             }
 
@@ -1360,8 +1442,11 @@ async function runBackendRecompute() {
     if (recomputePdfRunBtn instanceof HTMLButtonElement) recomputePdfRunBtn.disabled = false;
 
     if (!result) {
+        const idHint = id
+            ? ` Verifica si el ID ${id} existe en ${selectedModel} o deja el ID vacio para recalcular el libro completo.`
+            : '';
         setRecomputeStatus(
-            `Error: ${lastError || 'No se pudo ejecutar el recálculo. Comprueba que server.js este activo en http://localhost:3000 y responde en /health.'}`,
+            `Error: ${lastError || `No se pudo ejecutar el recálculo (ultimo endpoint: ${lastTriedUrl || 'sin URL'}). Comprueba que server.js este activo en http://localhost:3000 y responde en /health.`}${idHint}`,
             'error'
         );
         return;
@@ -1422,6 +1507,11 @@ async function runBackendRecomputePdfAuto() {
         return;
     }
 
+    if (!isBackendEndpointAllowed('recompute-pdf-auto')) {
+        setRecomputeStatus(getLocalOnlyBackendMessage('recompute-pdf-auto'), 'error');
+        return;
+    }
+
     const payload = {
         file,
         dryRun,
@@ -1436,10 +1526,12 @@ async function runBackendRecomputePdfAuto() {
 
     const urls = getBackendCandidateUrls('recompute-pdf-auto');
     let lastError = '';
+    let lastTriedUrl = '';
     let result = null;
     let resultUrl = '';
 
     for (const url of urls) {
+        lastTriedUrl = url;
         try {
             const response = await fetch(url, {
                 method: 'POST',
@@ -1455,7 +1547,7 @@ async function runBackendRecomputePdfAuto() {
             }
 
             if (!response.ok) {
-                lastError = String(data?.error || `HTTP ${response.status}`).trim();
+                lastError = String(data?.error || `HTTP ${response.status} en ${url}`).trim();
                 continue;
             }
 
@@ -1481,8 +1573,11 @@ async function runBackendRecomputePdfAuto() {
     recomputePdfRunBtn.disabled = false;
 
     if (!result) {
+        const idHint = id
+            ? ` Verifica si el ID ${id} existe en ${selectedModel} o deja el ID vacio para recalcular el libro completo.`
+            : '';
         setRecomputeStatus(
-            `Error: ${lastError || 'No se pudo ejecutar el recalculo PDF_AUTO. Comprueba que server.js este activo en http://localhost:3000 y responde en /health.'}`,
+            `Error: ${lastError || `No se pudo ejecutar el recalculo PDF_AUTO (ultimo endpoint: ${lastTriedUrl || 'sin URL'}). Comprueba que server.js este activo en http://localhost:3000 y responde en /health.`}${idHint}`,
             'error'
         );
         return;
