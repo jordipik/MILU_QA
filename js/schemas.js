@@ -78,10 +78,6 @@ export function buildSchemaPosImageCandidates(bookValue, rawTokenOrPath) {
     const seen = new Set();
     const pushPath = (p) => { if (!p || seen.has(p)) return; seen.add(p); paths.push(p); };
 
-    if (/^https?:\/\//i.test(raw)) {
-        pushPath(raw);
-        return paths;
-    }
     names.forEach(name => { extensions.forEach(ext => { pushPath(`${folder}${encodeURIComponent(name)}.${ext}`); }); });
     if (tokenExt) {
         names.forEach(name => { pushPath(`${folder}${encodeURIComponent(name)}.${tokenExt}`); });
