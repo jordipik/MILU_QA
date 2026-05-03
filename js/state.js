@@ -46,5 +46,8 @@ export const state = {
     activeQaErrorChecks: new Set(),
     qaChecksScopedRows: null,
     backendWritable: null,
-    backendStatusMessage: 'Backend: comprobando...'
+    backendStatusMessage: 'Backend: comprobando...',
+    exportPreviewRows: [],
+    exportTraceCache: {},
+    selectedExportSku: ''
 };

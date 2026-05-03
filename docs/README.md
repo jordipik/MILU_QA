@@ -12,6 +12,7 @@
 - Plan de remediación: [10_plan_remediacion.md](10_plan_remediacion.md)
 - Progreso de remediación: [11_progreso_remediacion.md](11_progreso_remediacion.md)
 - AR-1 carga incremental: [12_ar1_carga_incremental.md](12_ar1_carga_incremental.md)
+- Pipeline WordPress + IA: [13_wordpress_export_ai_pipeline.md](13_wordpress_export_ai_pipeline.md)
 - Quick AI context: [AI_QUICK_CONTEXT.md](AI_QUICK_CONTEXT.md)
 - Ultra-compact AI context: [AI_QUICK_CONTEXT_COMPACT.md](AI_QUICK_CONTEXT_COMPACT.md)
 

@@ -2,18 +2,59 @@
 const express = require('express');
 const fs = require('fs');
 const path = require('path');
+const { spawn } = require('child_process');
 const bodyParser = require('body-parser');
 const cors = require('cors');
 const { ENGINE_JSON_FILES } = require('./engine_files');
 const { recomputeEngineErrors } = require('./recompute_engine_errors');
 const { runComparison } = require('./scripts/qa_pdf_compare');
 const { applyRevisionPayload } = require('./apply_revision_to_engines');
+const { runSyntheticCompaction, runPreviewBuild } = require('./scripts/export_review_pipeline');
 
 const app = express();
 const PORT = 3000;
 const AUDIT_LOG_FILE = path.join(__dirname, 'qa_audit_log.json');
 const AUDIT_LOG_MAX_ENTRIES = 10000;
 const REVISION_SYNC_FILE = path.join(__dirname, 'qa_revision_server_data.json');
+const EXPORT_REVIEW_DIR = path.join(__dirname, 'data', 'output', 'export_review');
+
+function readJsonFileSafe(filePath, fallback = null) {
+    try {
+        return JSON.parse(fs.readFileSync(filePath, 'utf8'));
+    } catch (_) {
+        return fallback;
+    }
+}
+
+function runNodeScript(scriptRelativePath, args = []) {
+    return new Promise((resolve, reject) => {
+        const scriptPath = path.join(__dirname, scriptRelativePath);
+        const child = spawn(process.execPath, [scriptPath, ...args], {
+            cwd: __dirname,
+            windowsHide: true
+        });
+
+        let stdout = '';
+        let stderr = '';
+
+        child.stdout.on('data', (chunk) => {
+            stdout += String(chunk || '');
+        });
+        child.stderr.on('data', (chunk) => {
+            stderr += String(chunk || '');
+        });
+        child.on('error', (error) => {
+            reject(error);
+        });
+        child.on('close', (code) => {
+            if (code === 0) {
+                resolve({ ok: true, code, stdout, stderr });
+                return;
+            }
+            reject(new Error(`Script ${scriptRelativePath} finalizo con codigo ${code}. ${stderr || stdout}`));
+        });
+    });
+}
 
 function normalizeRevisionRecord(record) {
     return {
@@ -306,6 +347,93 @@ app.post('/apply-revision-to-engines', async (req, res) => {
             sourceName: 'api:/apply-revision-to-engines'
         });
         return res.json({ ok: true, result });
+    } catch (error) {
+        return res.status(500).json({ ok: false, error: String(error?.message || error) });
+    }
+});
+
+app.post('/export/run-synthetic', async (_req, res) => {
+    try {
+        const result = runSyntheticCompaction(__dirname);
+        return res.json({ ok: true, result });
+    } catch (error) {
+        return res.status(500).json({ ok: false, error: String(error?.message || error) });
+    }
+});
+
+app.post('/export/run-wordpress', async (_req, res) => {
+    try {
+        const wordpressRun = await runNodeScript(path.join('scripts', 'export_wordpress_milu.js'));
+        const summary = runPreviewBuild(__dirname);
+        return res.json({
+            ok: true,
+            result: {
+                wordpress: wordpressRun,
+                export_review_summary: summary
+            }
+        });
+    } catch (error) {
+        return res.status(500).json({ ok: false, error: String(error?.message || error) });
+    }
+});
+
+app.post('/export/run-ai-conflicts', async (_req, res) => {
+    try {
+        const aiRun = await runNodeScript(path.join('scripts', 'ai_conflict_rules.js'));
+        return res.json({ ok: true, result: { ai: aiRun } });
+    } catch (error) {
+        return res.status(500).json({ ok: false, error: String(error?.message || error) });
+    }
+});
+
+app.get('/export/preview', async (_req, res) => {
+    try {
+        const summaryPath = path.join(EXPORT_REVIEW_DIR, 'wordpress_export_summary.md');
+        const previewPath = path.join(EXPORT_REVIEW_DIR, 'wordpress_export_preview.json');
+
+        const previewRows = readJsonFileSafe(previewPath, []);
+        const markdownSummary = fs.existsSync(summaryPath)
+            ? fs.readFileSync(summaryPath, 'utf8')
+            : '';
+
+        const parsedSummary = {
+            generated_at: null,
+            preview_total: Array.isArray(previewRows) ? previewRows.length : 0,
+            preview_new: Array.isArray(previewRows) ? previewRows.filter((r) => String(r?.import_decision || '').toLowerCase() === 'import_new').length : 0,
+            preview_superseded: Array.isArray(previewRows) ? previewRows.filter((r) => String(r?.import_decision || '').toLowerCase() === 'import_superseded').length : 0,
+            preview_pending: Array.isArray(previewRows) ? previewRows.filter((r) => String(r?.import_decision || '').toLowerCase() === 'pending_review').length : 0,
+            preview_discarded: Array.isArray(previewRows) ? previewRows.filter((r) => String(r?.import_decision || '').toLowerCase() === 'discard').length : 0,
+            conflict_rows: Array.isArray(previewRows) ? previewRows.filter((r) => {
+                const decision = String(r?.import_decision || '').toLowerCase();
+                return decision === 'pending_review' || decision === 'discard';
+            }).length : 0
+        };
+
+        return res.json({
+            ok: true,
+            summary: parsedSummary,
+            markdownSummary,
+            rows: Array.isArray(previewRows) ? previewRows : []
+        });
+    } catch (error) {
+        return res.status(500).json({ ok: false, error: String(error?.message || error) });
+    }
+});
+
+app.get('/export/trace/:sku', async (req, res) => {
+    const sku = String(req.params?.sku || '').trim();
+    if (!sku) {
+        return res.status(400).json({ ok: false, error: 'SKU requerido.' });
+    }
+
+    try {
+        const tracePath = path.join(EXPORT_REVIEW_DIR, 'wordpress_export_trace.json');
+        const trace = readJsonFileSafe(tracePath, {});
+        const entry = trace && typeof trace === 'object' ? trace[sku] : null;
+        if (!entry) {
+            return res.status(404).json({ ok: false, error: `No hay traza para SKU ${sku}` });
+        }
+        return res.json({ ok: true, sku, trace: entry });
     } catch (error) {
         return res.status(500).json({ ok: false, error: String(error?.message || error) });
     }

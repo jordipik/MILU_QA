@@ -116,3 +116,36 @@ Ver [10_plan_remediacion.md](10_plan_remediacion.md), tareas marcadas como "Pend
 - UX-1 — vista compacta por defecto en la tabla.
 
 Cuando se cierre cada una, añadir aquí un bloque "Commit `<sha>` — `<resumen>`" siguiendo el formato del primero.
+
+---
+
+## Trabajo local (sin commit) — Pipeline WordPress + IA
+
+**Resumen:** se implementó una primera fase operativa para exportación WordPress/WooCommerce y clasificación offline de conflictos con trazabilidad.
+
+### Scripts añadidos
+- [scripts/export_wordpress_milu.js](../scripts/export_wordpress_milu.js)
+- [scripts/ai_conflict_rules.js](../scripts/ai_conflict_rules.js)
+
+### Comandos npm añadidos
+- `export:wordpress`
+- `ai:conflicts`
+
+### Documentación añadida
+- [13_wordpress_export_ai_pipeline.md](13_wordpress_export_ai_pipeline.md)
+
+### Outputs generados
+- WordPress: `data/output/wordpress/` (CSV/JSON/reportes para NEW, SUPERSEDED, PENDING, DISCARDED)
+- IA: `data/output/ai_review/` (conflictos completos, resumen, pendientes humanos y reporte de decisión)
+
+### Resultado de ejecución inicial
+- `new_exportable`: 1020
+- `superseded_exportable`: 657
+- `pending_review`: 4016
+- `discarded`: 1445
+- `duplicated_pn_keys`: 5130
+
+### Verificación
+- No se modificaron los 9 `engine_*.json` activos.
+- CSV en UTF-8 con BOM y delimitador `;`.
+- Pendientes y descartados con motivo trazable (`import_reason`).

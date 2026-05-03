@@ -604,6 +604,65 @@
                                 selección</span></span>
                     </div>
                     <div class="qa-side-body">
+                        <section class="qa-modal-related qa-export-pipeline-panel">
+                            <div class="qa-modal-related-head qa-export-pipeline-head">
+                                <h3>Pipeline global de exportación</h3>
+                                <span id="qaExportRunStatus" class="qa-modal-related-count">Sin ejecutar</span>
+                            </div>
+                            <div class="qa-export-pipeline-actions">
+                                <button id="qaExportRunSyntheticBtn" type="button">Ejecutar synthetic global</button>
+                                <button id="qaExportRunWordpressBtn" type="button">Ejecutar WordPress export</button>
+                                <button id="qaExportRunAiBtn" type="button">Ejecutar IA conflictos</button>
+                                <button id="qaExportReloadPreviewBtn" type="button">Recargar preview</button>
+                            </div>
+                            <div class="qa-export-summary-grid">
+                                <article class="qa-export-summary-card">
+                                    <span>Total preview</span>
+                                    <strong id="qaExportSummaryTotal">0</strong>
+                                </article>
+                                <article class="qa-export-summary-card">
+                                    <span>Import new</span>
+                                    <strong id="qaExportSummaryNew">0</strong>
+                                </article>
+                                <article class="qa-export-summary-card">
+                                    <span>Import superseded</span>
+                                    <strong id="qaExportSummarySuperseded">0</strong>
+                                </article>
+                                <article class="qa-export-summary-card">
+                                    <span>Pending</span>
+                                    <strong id="qaExportSummaryPending">0</strong>
+                                </article>
+                                <article class="qa-export-summary-card">
+                                    <span>Discard</span>
+                                    <strong id="qaExportSummaryDiscarded">0</strong>
+                                </article>
+                            </div>
+                            <div class="qa-modal-export-table-wrap qa-export-preview-wrap">
+                                <table class="qa-modal-related-table qa-modal-export-table" aria-label="Preview global WordPress export">
+                                    <thead>
+                                        <tr>
+                                            <th>SKU</th>
+                                            <th>Decision</th>
+                                            <th>Designation</th>
+                                            <th>Ocurrencias</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody id="qaExportPreviewBody">
+                                        <tr>
+                                            <td colspan="4">No hay preview cargado.</td>
+                                        </tr>
+                                    </tbody>
+                                </table>
+                            </div>
+                            <div class="qa-export-trace-panel">
+                                <div class="qa-modal-related-head">
+                                    <h3>Trace por SKU</h3>
+                                    <span id="qaExportTraceSku" class="qa-modal-related-count">Sin selección</span>
+                                </div>
+                                <div id="qaExportTraceBody" class="qa-export-trace-body">Selecciona una fila del preview para ver la traza.</div>
+                            </div>
+                        </section>
+
                         <section id="qaSideNewSection" class="qa-modal-related qa-modal-export">
                             <div class="qa-modal-related-head">
                                 <h3>Exportacion MILU_New para este codigo</h3>

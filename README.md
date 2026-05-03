@@ -78,6 +78,44 @@ Notas del script de publicacion:
 - `POST /save-json` (edicion puntual de un campo en `engine_*.json`)
 - `POST /apply-revision-to-engines`
 
+## Pipeline WordPress + IA (offline)
+
+Fase nueva para preparar importacion en WordPress/WooCommerce y clasificacion asistida de conflictos.
+
+Scripts:
+- `npm run export:wordpress`
+- `npm run ai:conflicts`
+
+Entradas:
+- 9 `engine_*.json`
+- `MILU_New_v506.json`
+- `MILU_Superseded_v506.json`
+- `qa_synthetic_new.json`
+- `qa_synthetic_superseded.json`
+- `product-export-*.json` (se toma el mas reciente)
+
+Salidas WordPress:
+- `data/output/wordpress/milu_wp_new_import.csv`
+- `data/output/wordpress/milu_wp_superseded_import.csv`
+- `data/output/wordpress/milu_wp_pending_review.csv`
+- `data/output/wordpress/milu_wp_discarded.csv`
+- `data/output/wordpress/milu_wp_export_report.json`
+- `data/output/wordpress/milu_wp_export_summary.md`
+
+Salidas IA:
+- `data/output/ai_review/ai_conflicts_full.json`
+- `data/output/ai_review/ai_conflicts_summary.csv`
+- `data/output/ai_review/ai_pending_human_review.csv`
+- `data/output/ai_review/ai_decision_report.md`
+
+Reglas de seguridad de esta fase:
+- No modifica `engine_*.json`.
+- Toda clasificacion pendiente/descartada debe llevar motivo trazable.
+- La capa IA sugiere decisiones, no sobrescribe datos runtime automaticamente.
+
+Guia detallada:
+- [docs/13_wordpress_export_ai_pipeline.md](docs/13_wordpress_export_ai_pipeline.md)
+
 ## Proceso oficial: pasar de JSON originales a JSON definitivos
 
 Este proceso recalcula campos finales y normaliza formato sobre los 9 archivos `engine_*.json` del root.

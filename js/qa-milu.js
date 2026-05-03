@@ -389,6 +389,10 @@ function setRightPanelTab(tabName) {
 
     if (resolvedTab === 'pdf') {
         requestPdfRelayout();
+    } else if (resolvedTab === 'export') {
+        loadExportPreview().catch(() => {
+            // Keep current panel state if preview is unavailable.
+        });
     }
 }
 
@@ -484,6 +488,177 @@ function isMatchesModalOpen() {
 function isExportModalOpen() {
     const modal = $('qaExportModal');
     return !!modal && !modal.hasAttribute('hidden');
+}
+
+function getExportEndpointUrl(pathname) {
+    return new URL(pathname, new URL('.', window.location.href)).href;
+}
+
+async function fetchExportJson(pathname, options = {}) {
+    const response = await fetch(getExportEndpointUrl(pathname), {
+        cache: 'no-store',
+        ...options
+    });
+
+    let payload = null;
+    try {
+        payload = await response.json();
+    } catch (_) {
+        payload = null;
+    }
+
+    if (!response.ok) {
+        const errorText = String(payload?.error || `HTTP ${response.status}`).trim();
+        throw new Error(errorText || 'Error de backend');
+    }
+
+    return payload;
+}
+
+function setExportRunStatus(message, kind = '') {
+    const elem = $('qaExportRunStatus');
+    if (!(elem instanceof HTMLElement)) return;
+    elem.classList.remove('ok', 'warn', 'bad');
+    if (kind) elem.classList.add(kind);
+    elem.textContent = String(message || 'Sin ejecutar');
+}
+
+function renderExportSummary(summary = {}) {
+    const total = $('qaExportSummaryTotal');
+    const newCount = $('qaExportSummaryNew');
+    const supCount = $('qaExportSummarySuperseded');
+    const pending = $('qaExportSummaryPending');
+    const discarded = $('qaExportSummaryDiscarded');
+
+    if (total) total.textContent = String(Number(summary.preview_total || 0));
+    if (newCount) newCount.textContent = String(Number(summary.preview_new || 0));
+    if (supCount) supCount.textContent = String(Number(summary.preview_superseded || 0));
+    if (pending) pending.textContent = String(Number(summary.preview_pending || 0));
+    if (discarded) discarded.textContent = String(Number(summary.preview_discarded || 0));
+}
+
+function renderExportTrace(trace, sku) {
+    const traceSku = $('qaExportTraceSku');
+    const body = $('qaExportTraceBody');
+    if (!(body instanceof HTMLElement)) return;
+
+    const safeSku = String(sku || '').trim();
+    if (traceSku) traceSku.textContent = safeSku || 'Sin selección';
+
+    if (!trace || typeof trace !== 'object') {
+        body.textContent = 'No hay traza para este SKU.';
+        return;
+    }
+
+    const compacted = trace.compacted || {};
+    const sourceRecords = Array.isArray(trace.source_records) ? trace.source_records : [];
+    const preview = trace.preview || {};
+
+    body.innerHTML = ''
+        + `<p><b>Decision:</b> ${escapeHtml(String(preview.import_decision || '-'))}</p>`
+        + `<p><b>Motivo:</b> ${escapeHtml(String(preview.import_reason || '-'))}</p>`
+        + `<p><b>Motores:</b> ${escapeHtml(String(compacted.engine_models_all || '-'))}</p>`
+        + `<p><b>Páginas:</b> ${escapeHtml(String(compacted.source_pages_all || '-'))}</p>`
+        + `<p><b>IDs:</b> ${escapeHtml(String(compacted.source_ids_all || '-'))}</p>`
+        + `<p><b>Ocurrencias globales:</b> ${escapeHtml(String(compacted.total_occurrences_global || 0))}</p>`
+        + `<p><b>Registros fuente:</b> ${escapeHtml(String(sourceRecords.length))}</p>`;
+}
+
+function renderExportPreviewRows(rows) {
+    const body = $('qaExportPreviewBody');
+    if (!(body instanceof HTMLElement)) return;
+
+    if (!Array.isArray(rows) || !rows.length) {
+        body.innerHTML = '<tr><td colspan="4">No hay preview cargado.</td></tr>';
+        return;
+    }
+
+    body.innerHTML = rows.map((row) => {
+        const sku = String(row?.sku || '').trim();
+        const isSelected = sku && sku === state.selectedExportSku;
+        return `<tr data-export-sku="${escapeHtml(sku)}" class="${isSelected ? 'qa-export-preview-selected' : ''}">`
+            + `<td>${escapeHtml(sku || '-')}</td>`
+            + `<td>${escapeHtml(String(row?.import_decision || '-'))}</td>`
+            + `<td>${escapeHtml(String(row?.designation_final || '-'))}</td>`
+            + `<td>${escapeHtml(String(row?.total_occurrences_global || 0))}</td>`
+            + '</tr>';
+    }).join('');
+}
+
+async function loadExportTraceForSku(sku) {
+    const normalizedSku = String(sku || '').trim();
+    if (!normalizedSku) {
+        renderExportTrace(null, '');
+        return;
+    }
+
+    if (state.exportTraceCache && state.exportTraceCache[normalizedSku]) {
+        renderExportTrace(state.exportTraceCache[normalizedSku], normalizedSku);
+        return;
+    }
+
+    try {
+        const payload = await fetchExportJson(`/export/trace/${encodeURIComponent(normalizedSku)}`);
+        if (!state.exportTraceCache || typeof state.exportTraceCache !== 'object') {
+            state.exportTraceCache = {};
+        }
+        state.exportTraceCache[normalizedSku] = payload.trace || null;
+        renderExportTrace(payload.trace || null, normalizedSku);
+    } catch (error) {
+        renderExportTrace(null, normalizedSku);
+        setExportRunStatus(`Error de traza: ${error.message}`, 'bad');
+    }
+}
+
+async function loadExportPreview() {
+    try {
+        const payload = await fetchExportJson('/export/preview');
+        const rows = Array.isArray(payload?.rows) ? payload.rows : [];
+        state.exportPreviewRows = rows;
+        renderExportSummary(payload?.summary || {});
+        renderExportPreviewRows(rows);
+
+        if (rows.length && !state.selectedExportSku) {
+            state.selectedExportSku = String(rows[0].sku || '').trim();
+        }
+
+        if (state.selectedExportSku) {
+            await loadExportTraceForSku(state.selectedExportSku);
+            renderExportPreviewRows(rows);
+        }
+    } catch (error) {
+        setExportRunStatus(`Error al cargar preview: ${error.message}`, 'bad');
+    }
+}
+
+async function runExportPipeline(endpoint, label) {
+    const actionButtons = [
+        $('qaExportRunSyntheticBtn'),
+        $('qaExportRunWordpressBtn'),
+        $('qaExportRunAiBtn'),
+        $('qaExportReloadPreviewBtn')
+    ].filter((item) => item instanceof HTMLButtonElement);
+
+    actionButtons.forEach((button) => {
+        button.disabled = true;
+    });
+
+    setExportRunStatus(`${label} en ejecución...`, 'warn');
+    try {
+        await fetchExportJson(endpoint, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: '{}'
+        });
+        await loadExportPreview();
+        setExportRunStatus(`${label} completado`, 'ok');
+    } catch (error) {
+        setExportRunStatus(`${label} falló: ${error.message}`, 'bad');
+    } finally {
+        actionButtons.forEach((button) => {
+            button.disabled = false;
+        });
+    }
 }
 
 function getBookEngineCode(row) {
@@ -3171,6 +3346,36 @@ function attachGlobalEvents() {
         });
     });
 
+    $('qaExportRunSyntheticBtn')?.addEventListener('click', async () => {
+        await runExportPipeline('/export/run-synthetic', 'Synthetic global');
+    });
+
+    $('qaExportRunWordpressBtn')?.addEventListener('click', async () => {
+        await runExportPipeline('/export/run-wordpress', 'WordPress export');
+    });
+
+    $('qaExportRunAiBtn')?.addEventListener('click', async () => {
+        await runExportPipeline('/export/run-ai-conflicts', 'IA conflictos');
+    });
+
+    $('qaExportReloadPreviewBtn')?.addEventListener('click', async () => {
+        setExportRunStatus('Recargando preview...', 'warn');
+        await loadExportPreview();
+        setExportRunStatus('Preview actualizado', 'ok');
+    });
+
+    $('qaExportPreviewBody')?.addEventListener('click', async (event) => {
+        const target = event.target;
+        if (!(target instanceof HTMLElement)) return;
+        const row = target.closest('tr[data-export-sku]');
+        const sku = String(row?.getAttribute('data-export-sku') || '').trim();
+        if (!sku) return;
+
+        state.selectedExportSku = sku;
+        renderExportPreviewRows(state.exportPreviewRows || []);
+        await loadExportTraceForSku(sku);
+    });
+
     $('qaModalExportOnlyDiffToggle')?.addEventListener('change', () => {
         if (!isExportModalOpen()) return;
         const revisionKey = String($('qaExportModal')?.dataset.revisionKey || '');
@@ -3662,6 +3867,9 @@ function init() {
     clearSideRecordForm();
     applyBackendWriteMode();
     loadData();
+    loadExportPreview().catch((error) => {
+        setExportRunStatus(`Sin preview: ${error.message}`, 'bad');
+    });
 }
 
 init();
