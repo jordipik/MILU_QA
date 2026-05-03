@@ -76,7 +76,7 @@ Documento detallado: [12_ar1_carga_incremental.md](12_ar1_carga_incremental.md).
 
 ---
 
-## Commit `<pendiente>` — AR-1 UI mínima para carga incremental
+## Commit `bc1fcf45` — AR-1 UI mínima para carga incremental
 
 **Resumen:** se completa la interfaz mínima de usuario para aprovechar AR-1 en `?lazy=1` sin afectar el modo clásico.
 
