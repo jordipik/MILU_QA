@@ -17,7 +17,7 @@
     "source_file": "12V4000M40A.xlsx",
     "source_sheet": "1",
     "pn_raw": null,
-    "pn_final": "xvxcv",
+    "pn_final": "",
     "criterio_pn": "EMPTY",
     "detalle_cambio": null,
     "existeix_gesa": false,
@@ -80,7 +80,7 @@
     "qty_final": "1",
     "qty_units_final": "PC",
     "norma_final": null,
-    "designation_final": "CRANKCASE zvxvzxvzxvzxv",
+    "designation_final": "CRANKCASE",
     "measure_final": null,
     "weight_final": "1.707 TO",
     "depuracion_ts": "2026-04-27T00:11:37Z",
@@ -94,8 +94,8 @@
     "bom_error": 0,
     "total_error": 2,
     "has_error": true,
-    "qa_revision_estado": "ok",
-    "qa_revision_accion": "eliminar"
+    "qa_revision_estado": "pendiente",
+    "qa_revision_accion": "revisar"
   },
   {
     "ID": "1100400",

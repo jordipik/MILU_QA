@@ -621,25 +621,49 @@
             return (v != null && String(v).trim() !== "") ? v : defaultVal;
         }
 
-        function getResourceUrl(resourceName) {
-            return new URL(resourceName, new URL('.', window.location.href)).href;
+        function getResourceCandidateUrls(resourceName) {
+            const currentOrigin = window.location.origin && window.location.origin !== 'null'
+                ? window.location.origin
+                : '';
+            const currentPathname = String(window.location.pathname || '/');
+            const pathnameHasMilu = /(^|\/)milu(\/|$)/i.test(currentPathname);
+            const sameDirectoryUrl = new URL(resourceName, new URL('.', window.location.href)).href;
+            const rootUrl = currentOrigin
+                ? `${currentOrigin}/${String(resourceName || '').replace(/^\/+/, '')}`
+                : `/${String(resourceName || '').replace(/^\/+/, '')}`;
+            const miluUrl = currentOrigin
+                ? `${currentOrigin}/milu/${String(resourceName || '').replace(/^\/+/, '')}`
+                : `/milu/${String(resourceName || '').replace(/^\/+/, '')}`;
+
+            return [
+                sameDirectoryUrl,
+                rootUrl,
+                pathnameHasMilu ? miluUrl : '',
+                miluUrl
+            ].filter(Boolean).filter((url, index, arr) => arr.indexOf(url) === index);
         }
 
         async function fetchJsonSafe(resourceName) {
-            const url = getResourceUrl(resourceName);
-            try {
-                const response = await fetch(url, { cache: "no-store" });
-                if (!response.ok) throw new Error(`HTTP ${response.status}`);
-                if (resourceName.endsWith('.gz')) {
-                    const buffer = await response.arrayBuffer();
-                    const decompressed = pako.ungzip(buffer, { to: 'string' });
-                    return JSON.parse(decompressed);
-                } else {
+            const candidateUrls = getResourceCandidateUrls(resourceName);
+            let lastError = null;
+
+            for (const url of candidateUrls) {
+                try {
+                    const response = await fetch(url, { cache: "no-store" });
+                    if (!response.ok) throw new Error(`HTTP ${response.status}`);
+                    if (resourceName.endsWith('.gz')) {
+                        const buffer = await response.arrayBuffer();
+                        const decompressed = pako.ungzip(buffer, { to: 'string' });
+                        return JSON.parse(decompressed);
+                    }
                     return await response.json();
+                } catch (error) {
+                    const message = error instanceof Error ? error.message : String(error);
+                    lastError = new Error(`${message} (url: ${url})`);
                 }
-            } catch (error) {
-                throw new Error(`No se pudo cargar ${resourceName}: ${error.message}`);
             }
+
+            throw new Error(`No se pudo cargar ${resourceName}: ${lastError?.message || 'sin respuesta'}`);
         }
 
         function inferEngineModelFromFileName(fileName) {

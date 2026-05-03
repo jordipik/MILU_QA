@@ -445,39 +445,90 @@ body.a2-resizing * {
 
 .a2-auto-recompute-controls {
     display: grid;
-    grid-template-columns: minmax(170px, 230px) minmax(220px, 1fr) auto minmax(140px, 180px);
-    gap: 8px;
+    grid-template-columns: minmax(180px, 240px) minmax(220px, 1fr) auto auto;
+    grid-template-areas:
+        "engine id dry update"
+        "force force run pdf";
+    gap: 10px 12px;
     align-items: center;
+    padding: 14px;
+    border: 1px solid #d5e4f2;
+    border-radius: 14px;
+    background: linear-gradient(145deg, #f8fbff, #edf4fb);
+    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.8);
 }
 
 .a2-auto-recompute-controls select,
 .a2-auto-recompute-controls input,
 .a2-auto-recompute-controls button {
     border: 1px solid var(--line-strong);
-    border-radius: 10px;
-    height: 32px;
+    border-radius: 11px;
+    height: 36px;
     font-family: inherit;
     font-size: 12px;
 }
 
+#recomputeEngineSelect {
+    grid-area: engine;
+}
+
+#recomputeIdInput {
+    grid-area: id;
+}
+
+.a2-auto-recompute-check[for="recomputeDryRunInput"] {
+    grid-area: dry;
+}
+
+.a2-auto-recompute-check[for="recomputeUpdateRevisionInput"] {
+    grid-area: update;
+}
+
+.a2-recompute-force-label {
+    grid-area: force;
+}
+
+#recomputeRunBtn {
+    grid-area: run;
+}
+
+#recomputePdfRunBtn {
+    grid-area: pdf;
+}
+
 .a2-auto-recompute-controls select,
 .a2-auto-recompute-controls input {
-    padding: 0 10px;
+    padding: 0 12px;
     background: #ffffff;
     color: var(--text);
 }
 
 .a2-auto-recompute-controls button {
     cursor: pointer;
-    background: linear-gradient(135deg, #0a4f8f, #156fc0);
-    border-color: #0b5ea8;
+    background: linear-gradient(135deg, #0f5a98, #1c7bd0);
+    border-color: #115f9f;
     color: #ffffff;
     font-weight: 700;
+    letter-spacing: 0.01em;
+    transition: transform 0.15s ease, box-shadow 0.2s ease, filter 0.2s ease;
+}
+
+.a2-auto-recompute-controls button:hover {
+    transform: translateY(-1px);
+    box-shadow: 0 8px 16px rgba(15, 90, 152, 0.24);
+    filter: saturate(1.06);
+}
+
+#recomputePdfRunBtn {
+    background: linear-gradient(135deg, #1b4a85, #155a99);
+    border-color: #1a4f88;
 }
 
 .a2-auto-recompute-controls button[disabled] {
     opacity: 0.7;
     cursor: progress;
+    transform: none;
+    box-shadow: none;
 }
 
 .a2-auto-recompute-check {
@@ -487,7 +538,11 @@ body.a2-resizing * {
     font-size: 11px;
     color: #34536f;
     font-weight: 700;
-    white-space: nowrap;
+    white-space: normal;
+    padding: 9px 11px;
+    border-radius: 10px;
+    border: 1px solid #cfdeec;
+    background: #f7fbff;
 }
 
 .a2-auto-recompute-check input {
@@ -499,16 +554,22 @@ body.a2-resizing * {
 .a2-recompute-force-label {
     color: #b45309;
     opacity: 0.5;
-    transition: opacity 0.2s;
+    transition: opacity 0.2s, border-color 0.2s, background-color 0.2s;
 }
 
 .a2-recompute-force-label:has(input:checked) {
     opacity: 1;
     color: #b91c1c;
+    border-color: #f1b7b0;
+    background: #fff4f3;
 }
 
 .a2-auto-recompute-status {
-    margin: 0;
+    margin: 2px 0 0;
+    padding: 9px 11px;
+    border-radius: 10px;
+    border: 1px solid #d5e3f0;
+    background: #f8fbff;
     font-size: 11px;
     color: #36536d;
     font-family: 'IBM Plex Mono', Consolas, monospace;
@@ -516,10 +577,14 @@ body.a2-resizing * {
 
 .a2-auto-recompute-status.is-ok {
     color: #16613f;
+    border-color: #b9dfc9;
+    background: #eefaf2;
 }
 
 .a2-auto-recompute-status.is-error {
     color: #9f2f23;
+    border-color: #efc2bc;
+    background: #fff3f1;
 }
 
 .recompute-modal {
@@ -538,16 +603,18 @@ body.a2-resizing * {
 .recompute-modal-backdrop {
     position: absolute;
     inset: 0;
-    background: rgba(0, 0, 0, 0.35);
+    background: radial-gradient(circle at 22% 8%, rgba(39, 95, 148, 0.22), rgba(7, 17, 29, 0.6));
+    backdrop-filter: blur(2px);
 }
 
 .recompute-modal-panel {
     position: relative;
-    background: #fff;
-    border-radius: 14px;
-    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.18);
-    width: min(760px, 94vw);
-    max-height: 80vh;
+    background: linear-gradient(180deg, #fbfdff, #f4f8fd);
+    border: 1px solid #d3e2f1;
+    border-radius: 16px;
+    box-shadow: 0 22px 44px rgba(8, 31, 56, 0.28);
+    width: min(880px, 95vw);
+    max-height: min(84vh, 860px);
     overflow: auto;
     display: flex;
     flex-direction: column;
@@ -557,36 +624,44 @@ body.a2-resizing * {
     display: flex;
     align-items: center;
     justify-content: space-between;
-    padding: 14px 18px 10px;
-    border-bottom: 1px solid var(--line);
+    padding: 16px 20px 12px;
+    border-bottom: 1px solid #d7e4f2;
+    background: linear-gradient(180deg, #ffffff, #f1f6fc);
 }
 
 .recompute-modal-header h2 {
     margin: 0;
-    font-size: 15px;
-    color: #1a2d42;
+    font-size: 17px;
+    color: #14324e;
+    letter-spacing: 0.01em;
+}
+
+.recompute-modal-subtitle {
+    margin: 4px 0 0;
+    font-size: 11px;
+    color: #4f6780;
 }
 
 .recompute-modal-close {
-    background: none;
-    border: none;
-    font-size: 20px;
+    background: #ffffff;
+    border: 1px solid #d2e1ee;
+    font-size: 22px;
     cursor: pointer;
-    color: #6b7280;
+    color: #4f677e;
     line-height: 1;
-    padding: 2px 6px;
-    border-radius: 6px;
+    padding: 2px 10px;
+    border-radius: 10px;
 }
 
 .recompute-modal-close:hover {
-    background: #f3f7fc;
+    background: #edf5fd;
     color: #1a2d42;
 }
 
 .recompute-modal-body {
-    padding: 14px 18px 18px;
+    padding: 16px 20px 20px;
     display: grid;
-    gap: 8px;
+    gap: 10px;
 }
 
 .recompute-result-panel {
@@ -1582,6 +1657,14 @@ body.a2-resizing * {
 
     .a2-auto-recompute-controls {
         grid-template-columns: 1fr;
+        grid-template-areas:
+            "engine"
+            "id"
+            "dry"
+            "update"
+            "force"
+            "run"
+            "pdf";
     }
 
     .recompute-result-summary {

@@ -18,14 +18,28 @@ export function buildLegacyRevisionKey(row) {
 }
 
 export function assignRevisionKeys(rows) {
+    const occurrenceById = new Map();
     const occurrenceByLegacyKey = new Map();
-    rows.forEach((row, index) => {
+    rows.forEach((row) => {
+        const id = String(row?.ID ?? '').trim();
+        if (!id) {
+            throw new Error('Se detecto una fila sin ID durante la asignacion de claves de revision.');
+        }
+
+        const nextIdOccurrence = (occurrenceById.get(id) || 0) + 1;
+        occurrenceById.set(id, nextIdOccurrence);
+
         const legacyKey = buildLegacyRevisionKey(row);
         const nextOccurrence = (occurrenceByLegacyKey.get(legacyKey) || 0) + 1;
         occurrenceByLegacyKey.set(legacyKey, nextOccurrence);
+
+        const idKey = nextIdOccurrence > 1
+            ? `id=${id}||occ=${nextIdOccurrence}`
+            : `id=${id}`;
+
         row.__qa_revision_legacy_key = legacyKey;
         row.__qa_revision_occ_key = `${legacyKey}||occ=${nextOccurrence}`;
-        row.__qa_revision_key = `idx=${index + 1}`;
+        row.__qa_revision_key = idKey;
     });
 }
 

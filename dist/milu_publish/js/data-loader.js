@@ -69,6 +69,7 @@ export async function loadPartitionedEngineData() {
                 console.warn(`Se ignora ${fileName}: no contiene un array`);
                 return [];
             }
+            validateRowsHaveId(data, fileName);
             loadedFileCount += 1;
             const fallbackEngineModel = inferEngineModelFromFileName(fileName);
             return data.map(row => normalizeEngineModel(row, fallbackEngineModel));
@@ -99,11 +100,29 @@ export async function loadEngineDataByFileName(fileName) {
     if (!Array.isArray(data)) {
         throw new Error(`Se ignora ${targetFile}: no contiene un array`);
     }
+    validateRowsHaveId(data, targetFile);
 
     const fallbackEngineModel = inferEngineModelFromFileName(targetFile);
     const normalizedRows = data.map(row => normalizeEngineModel(row, fallbackEngineModel));
     state.mainDataSourceLabel = targetFile;
     return normalizedRows;
+}
+
+function validateRowsHaveId(rows, fileName) {
+    const missingIndexes = [];
+    rows.forEach((row, index) => {
+        const id = String(row?.ID ?? '').trim();
+        if (!id) missingIndexes.push(index + 1);
+    });
+
+    if (!missingIndexes.length) return;
+
+    const sample = missingIndexes.slice(0, 10).join(', ');
+    const extra = missingIndexes.length > 10 ? ` (+${missingIndexes.length - 10} mas)` : '';
+    throw new Error(
+        `El archivo ${fileName} contiene filas sin ID. `
+        + `Indices (1-based): ${sample}${extra}.`
+    );
 }
 
 export async function loadFirstEngineData() {
@@ -183,6 +202,14 @@ function getSaveBackendCandidateUrls() {
     const sameOriginPhpCandidate = currentOrigin ? `${currentOrigin}/save-json.php` : '/save-json.php';
     const miluPhpCandidate = currentOrigin ? `${currentOrigin}/milu/save-json.php` : '/milu/save-json.php';
     const pathnameHasMilu = /(^|\/)milu(\/|$)/i.test(currentPathname);
+    const normalizedHostname = currentHostname.toLowerCase();
+    const knownMiluProductionCandidates = [];
+    if (normalizedHostname === 'alentio.es' || normalizedHostname.endsWith('.alentio.es')) {
+        knownMiluProductionCandidates.push('https://alentio.es/milu/save-json.php');
+    }
+    if (normalizedHostname === 'milu.alentio.es') {
+        knownMiluProductionCandidates.push('https://milu.alentio.es/save-json.php');
+    }
 
     if (isLocalhost) {
         // En local: probar Express en puerto 3000
@@ -198,10 +225,11 @@ function getSaveBackendCandidateUrls() {
         // En servidor remoto (Arsys, etc.): usar save-json.php (sin Express)
         // Se sirve siempre desde alentio.es/milu/.
         return [
+            pathnameHasMilu ? phpCandidate : '',
+            miluPhpCandidate,
             phpCandidate,
-            pathnameHasMilu ? miluPhpCandidate : '',
             sameOriginPhpCandidate,
-            miluPhpCandidate
+            ...knownMiluProductionCandidates
         ].filter(Boolean).filter((url, index, arr) => arr.indexOf(url) === index);
     }
 }
