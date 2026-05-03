@@ -11,6 +11,7 @@
 - Auditoría 2026: [09_auditoria_2026.md](09_auditoria_2026.md)
 - Plan de remediación: [10_plan_remediacion.md](10_plan_remediacion.md)
 - Progreso de remediación: [11_progreso_remediacion.md](11_progreso_remediacion.md)
+- AR-1 carga incremental: [12_ar1_carga_incremental.md](12_ar1_carga_incremental.md)
 - Quick AI context: [AI_QUICK_CONTEXT.md](AI_QUICK_CONTEXT.md)
 - Ultra-compact AI context: [AI_QUICK_CONTEXT_COMPACT.md](AI_QUICK_CONTEXT_COMPACT.md)
 

@@ -134,8 +134,9 @@ Leyenda:
 ## Bloque 5 — Arquitectura y escalabilidad
 
 ### AR-1. Carga incremental de motores
-- Acción: cargar metadatos primero (filas por motor) y bajar el motor concreto al seleccionarlo, no los 9 a la vez.
-- Impacto: arranque < 2 s incluso con 215 MB en disco.
+- Estado: **infraestructura ✅** (commit pendiente). UI selector pendiente.
+- Detalle: [12_ar1_carga_incremental.md](12_ar1_carga_incremental.md). Endpoint `GET /engines`, helpers `fetchEngineCatalog` y `loadEnginesByFileNames`, feature flag `?lazy=1`.
+- Acción siguiente: añadir selector multi-motor en UI y métricas TTFR.
 - Dificultad: L · Prioridad: 🔴 · Depende de: UX-1, UX-2.
 
 ### AR-2. Separar capas

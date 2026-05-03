@@ -5,7 +5,7 @@
 import { state } from './state.js';
 import { escapeHtml, getRowErrors, getRowErrorType, getRowValueForColumn, val } from './helpers.js';
 import { evaluateRowQaChecks, getQaActiveSignature } from './qa-checks.js';
-import { checkSaveBackendConnection, fetchJsonSafe, loadPartitionedEngineData, saveCellToServer } from './data-loader.js';
+import { checkSaveBackendConnection, fetchJsonSafe, loadPartitionedEngineData, saveCellToServer, fetchEngineCatalog, loadEnginesByFileNames } from './data-loader.js';
 import {
     applyRevisionDataToRows,
     assignRevisionKeys,
@@ -2644,6 +2644,46 @@ async function applyBulkQuickMode(quickMode) {
     updateUndoButtonState();
 }
 
+/**
+ * AR-1: decide si la carga inicial es completa (legacy) o incremental.
+ * Activacion: ?lazy=1 en URL o localStorage.miluLazyEngines='1'.
+ * Default: comportamiento actual (carga los 9 motores en paralelo).
+ */
+function isIncrementalLoadingEnabled() {
+    try {
+        const params = new URLSearchParams(window.location.search);
+        if (params.get('lazy') === '1') return true;
+        if (params.get('lazy') === '0') return false;
+    } catch (_) { /* noop */ }
+    try {
+        if (window.localStorage && window.localStorage.getItem('miluLazyEngines') === '1') return true;
+    } catch (_) { /* noop */ }
+    return false;
+}
+
+async function loadInitialEngineData() {
+    if (!isIncrementalLoadingEnabled()) {
+        state.incrementalLoadingEnabled = false;
+        return loadPartitionedEngineData();
+    }
+    state.incrementalLoadingEnabled = true;
+    try {
+        await fetchEngineCatalog();
+    } catch (error) {
+        console.warn('AR-1: catalogo /engines no disponible, fallback a carga completa.', error);
+        state.incrementalLoadingEnabled = false;
+        return loadPartitionedEngineData();
+    }
+    const catalog = Array.isArray(state.engineCatalog) ? state.engineCatalog : [];
+    const firstEngine = catalog[0];
+    if (!firstEngine || !firstEngine.file) {
+        console.warn('AR-1: catalogo vacio, fallback a carga completa.');
+        state.incrementalLoadingEnabled = false;
+        return loadPartitionedEngineData();
+    }
+    return loadEnginesByFileNames([firstEngine.file], { append: false });
+}
+
 async function loadData() {
     try {
         const isFileProtocol = window.location.protocol === 'file:';
@@ -2656,7 +2696,7 @@ async function loadData() {
         $('stats').innerHTML = '<span class="stat">Cargando datos...</span>';
         $('pagination').style.display = 'none';
 
-        state.allData = await loadPartitionedEngineData();
+        state.allData = await loadInitialEngineData();
         if (!Array.isArray(state.allData)) throw new Error('Los datos no son un array');
 
         // No bloquear carga principal por catálogos opcionales que pueden no existir en todos los despliegues.

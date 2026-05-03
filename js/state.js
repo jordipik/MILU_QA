@@ -28,6 +28,10 @@ export const state = {
     publishedMap: new Map(),
     productExportPnSet: new Set(),
     mainDataSourceLabel: 'engine_*.json',
+    // AR-1: catalogo de motores y carga incremental.
+    engineCatalog: [],
+    loadedEngineFiles: new Set(),
+    incrementalLoadingEnabled: false,
     currentPdfDocument: null,
     currentPdfSource: '',
     currentPdfPageNumber: 0,

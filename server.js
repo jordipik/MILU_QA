@@ -369,6 +369,53 @@ app.get('/health', (req, res) => {
     res.json({ ok: true, service: 'milu-save-backend' });
 });
 
+// Cache en memoria de metadatos de engine_*.json. Clave: fileName -> { rowCount, mtimeMs, size }
+const engineMetaCache = new Map();
+
+function inferEngineModelFromFile(file) {
+    return String(file || '').replace(/^engine_/, '').replace(/\.json$/i, '');
+}
+
+async function getEngineMetadata(file) {
+    const filePath = path.join(__dirname, file);
+    const stat = await fs.promises.stat(filePath);
+    const cached = engineMetaCache.get(file);
+    if (cached && cached.mtimeMs === stat.mtimeMs && cached.size === stat.size) {
+        return { file, engine_model: inferEngineModelFromFile(file), rowCount: cached.rowCount, fileSize: stat.size, mtimeMs: stat.mtimeMs };
+    }
+    const raw = await fs.promises.readFile(filePath, 'utf8');
+    let rowCount = 0;
+    try {
+        const arr = JSON.parse(raw);
+        rowCount = Array.isArray(arr) ? arr.length : 0;
+    } catch (_) {
+        rowCount = 0;
+    }
+    engineMetaCache.set(file, { rowCount, mtimeMs: stat.mtimeMs, size: stat.size });
+    return { file, engine_model: inferEngineModelFromFile(file), rowCount, fileSize: stat.size, mtimeMs: stat.mtimeMs };
+}
+
+// Catalogo de motores (metadatos sin payload). Pensado para AR-1 (carga incremental).
+app.get('/engines', async (req, res) => {
+    try {
+        const items = await Promise.all(ENGINE_JSON_FILES.map(async (file) => {
+            try {
+                return await getEngineMetadata(file);
+            } catch (err) {
+                return { file, engine_model: inferEngineModelFromFile(file), rowCount: 0, fileSize: 0, mtimeMs: 0, error: String(err && err.message || err) };
+            }
+        }));
+        const totals = items.reduce((acc, item) => {
+            acc.rowCount += Number(item.rowCount || 0);
+            acc.fileSize += Number(item.fileSize || 0);
+            return acc;
+        }, { rowCount: 0, fileSize: 0 });
+        res.json({ ok: true, engines: items, totals });
+    } catch (error) {
+        res.status(500).json({ ok: false, error: String(error && error.message || error) });
+    }
+});
+
 app.get('/version', (req, res) => {
     try {
         const pkg = JSON.parse(fs.readFileSync(path.join(__dirname, 'package.json'), 'utf8'));

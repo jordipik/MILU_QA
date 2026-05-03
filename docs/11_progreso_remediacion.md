@@ -54,6 +54,28 @@ Bitácora de cambios efectivos en la rama de remediación. Cada entrada referenc
 
 ---
 
+## Commit `<pendiente>` — AR-1 infraestructura de carga incremental
+
+**Resumen:** primera fase de la mejora AR-1 del plan, sin cambios en flujos por defecto.
+
+### Backend
+- [server.js](../server.js): nuevo `GET /engines` con cache invalidado por `mtimeMs + size`.
+
+### Frontend
+- [js/data-loader.js](../js/data-loader.js): `fetchEngineCatalog()` y `loadEnginesByFileNames(files, { append })`.
+- [js/state.js](../js/state.js): `engineCatalog`, `loadedEngineFiles`, `incrementalLoadingEnabled`.
+- [js/qa-milu.js](../js/qa-milu.js): `loadInitialEngineData()` con feature flag (`?lazy=1` o `localStorage.miluLazyEngines='1'`).
+
+### Verificación
+- `GET /engines` (frío): 9 motores, totals `{ rowCount: 67_882, fileSize: 225_841_891 }`.
+- `GET /engines` (caliente): **19 ms**.
+- `POST /save-json` archivo no permitido: 400 (sin regresión).
+- Sin la flag, `loadData()` usa `loadPartitionedEngineData` exactamente como antes.
+
+Documento detallado: [12_ar1_carga_incremental.md](12_ar1_carga_incremental.md).
+
+---
+
 ## Pendiente (próximos commits)
 
 Ver [10_plan_remediacion.md](10_plan_remediacion.md), tareas marcadas como "Pendiente". Prioridades inmediatas:
