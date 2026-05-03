@@ -105,8 +105,8 @@ function getEntryMap(row) {
         },
         'PART NO.': {
             final: row?.pn_final,
-            pdf: row?.['PART NO.'],
-            gesa: getGesaPn(row)
+            pdf: row?.pn_pdf ?? row?.['PART NO.'],
+            gesa: null
         },
         'DESIGNATION': {
             final: row?.designation_final,

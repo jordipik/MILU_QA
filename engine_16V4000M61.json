@@ -125545,7 +125545,8 @@
     "normalizado_pdf": "NO",
     "sust_new_part_number_pdf": "5241840402",
     "qa_revision_estado": "ok",
-    "qa_revision_accion": "importar"
+    "qa_revision_accion": "importar",
+    "qa_revision_updated_at": "2026-05-03T22:14:44.312Z"
   },
   {
     "ID": "1301221",
@@ -128083,8 +128084,9 @@
     "bom_pdf": "X52418300001",
     "normalizado_pdf": "NO",
     "sust_new_part_number_pdf": "11509528",
-    "qa_revision_estado": "pendiente",
-    "qa_revision_accion": "revisar"
+    "qa_revision_estado": "ok",
+    "qa_revision_accion": "importar",
+    "qa_revision_updated_at": "2026-05-03T22:15:34.763Z"
   },
   {
     "ID": "1301245",
@@ -128824,8 +128826,9 @@
     "units_pdf": "PC",
     "bom_pdf": "0001843597",
     "normalizado_pdf": "NO",
-    "qa_revision_estado": "pendiente",
-    "qa_revision_accion": "revisar"
+    "qa_revision_estado": "ok",
+    "qa_revision_accion": "importar",
+    "qa_revision_updated_at": "2026-05-03T22:27:02.663Z"
   },
   {
     "ID": "1301252",
@@ -137930,8 +137933,9 @@
     "bom_pdf": "XS524180.00021",
     "gesa_pdf": "NO",
     "normalizado_pdf": "NO",
-    "qa_revision_estado": "pendiente",
-    "qa_revision_accion": "revisar"
+    "qa_revision_estado": "ok",
+    "qa_revision_accion": "importar",
+    "qa_revision_updated_at": "2026-05-03T22:29:43.273Z"
   },
   {
     "ID": "1301340",
@@ -159471,7 +159475,8 @@
     "normalizado_pdf": "NO",
     "sust_new_part_number_pdf": "X00030047",
     "qa_revision_estado": "ok",
-    "qa_revision_accion": "importar"
+    "qa_revision_accion": "importar",
+    "qa_revision_updated_at": "2026-05-03T22:29:30.951Z"
   },
   {
     "ID": "1301546",
@@ -205847,8 +205852,9 @@
     "bom_pdf": "500.00986",
     "gesa_pdf": "NO",
     "normalizado_pdf": "NO",
-    "qa_revision_estado": "pendiente",
-    "qa_revision_accion": "revisar"
+    "qa_revision_estado": "ok",
+    "qa_revision_accion": "importar",
+    "qa_revision_updated_at": "2026-05-03T22:29:43.273Z"
   },
   {
     "ID": "1301999",
@@ -206056,7 +206062,8 @@
     "gesa_pdf": "NO",
     "normalizado_pdf": "NO",
     "qa_revision_estado": "ok",
-    "qa_revision_accion": "importar"
+    "qa_revision_accion": "importar",
+    "qa_revision_updated_at": "2026-05-03T22:32:27.841Z"
   },
   {
     "ID": "1302001",
@@ -206160,8 +206167,9 @@
     "bom_pdf": "500.00986",
     "gesa_pdf": "NO",
     "normalizado_pdf": "NO",
-    "qa_revision_estado": "pendiente",
-    "qa_revision_accion": "revisar"
+    "qa_revision_estado": "ok",
+    "qa_revision_accion": "importar",
+    "qa_revision_updated_at": "2026-05-03T22:34:08.616Z"
   },
   {
     "ID": "1302002",
@@ -206369,8 +206377,9 @@
     "bom_pdf": "500.00986",
     "gesa_pdf": "NO",
     "normalizado_pdf": "NO",
-    "qa_revision_estado": "pendiente",
-    "qa_revision_accion": "revisar"
+    "qa_revision_estado": "ok",
+    "qa_revision_accion": "importar",
+    "qa_revision_updated_at": "2026-05-03T22:33:55.912Z"
   },
   {
     "ID": "1302004",
@@ -426608,7 +426617,8 @@
     "normalizado_pdf": "NO",
     "sust_new_part_number_pdf": "5241840402",
     "qa_revision_estado": "ok",
-    "qa_revision_accion": "importar"
+    "qa_revision_accion": "importar",
+    "qa_revision_updated_at": "2026-05-03T22:14:44.312Z"
   },
   {
     "ID": "1304134",
@@ -429146,8 +429156,9 @@
     "bom_pdf": "X52418300001",
     "normalizado_pdf": "NO",
     "sust_new_part_number_pdf": "11509528",
-    "qa_revision_estado": "pendiente",
-    "qa_revision_accion": "revisar"
+    "qa_revision_estado": "ok",
+    "qa_revision_accion": "importar",
+    "qa_revision_updated_at": "2026-05-03T22:15:34.763Z"
   },
   {
     "ID": "1304158",
@@ -429887,8 +429898,9 @@
     "units_pdf": "PC",
     "bom_pdf": "0001843597",
     "normalizado_pdf": "NO",
-    "qa_revision_estado": "pendiente",
-    "qa_revision_accion": "revisar"
+    "qa_revision_estado": "ok",
+    "qa_revision_accion": "importar",
+    "qa_revision_updated_at": "2026-05-03T22:27:02.663Z"
   },
   {
     "ID": "1304165",
@@ -438993,8 +439005,9 @@
     "bom_pdf": "XS524180.00021",
     "gesa_pdf": "NO",
     "normalizado_pdf": "NO",
-    "qa_revision_estado": "pendiente",
-    "qa_revision_accion": "revisar"
+    "qa_revision_estado": "ok",
+    "qa_revision_accion": "importar",
+    "qa_revision_updated_at": "2026-05-03T22:29:43.273Z"
   },
   {
     "ID": "1304253",
@@ -460534,7 +460547,8 @@
     "normalizado_pdf": "NO",
     "sust_new_part_number_pdf": "X00030047",
     "qa_revision_estado": "ok",
-    "qa_revision_accion": "importar"
+    "qa_revision_accion": "importar",
+    "qa_revision_updated_at": "2026-05-03T22:29:30.951Z"
   },
   {
     "ID": "1304459",
@@ -492569,8 +492583,9 @@
     "bom_pdf": "500.00986",
     "gesa_pdf": "NO",
     "normalizado_pdf": "NO",
-    "qa_revision_estado": "pendiente",
-    "qa_revision_accion": "revisar"
+    "qa_revision_estado": "ok",
+    "qa_revision_accion": "importar",
+    "qa_revision_updated_at": "2026-05-03T22:29:43.273Z"
   },
   {
     "ID": "1304770",
@@ -492778,7 +492793,8 @@
     "gesa_pdf": "NO",
     "normalizado_pdf": "NO",
     "qa_revision_estado": "ok",
-    "qa_revision_accion": "importar"
+    "qa_revision_accion": "importar",
+    "qa_revision_updated_at": "2026-05-03T22:32:27.841Z"
   },
   {
     "ID": "1304772",
@@ -492882,8 +492898,9 @@
     "bom_pdf": "500.00986",
     "gesa_pdf": "NO",
     "normalizado_pdf": "NO",
-    "qa_revision_estado": "pendiente",
-    "qa_revision_accion": "revisar"
+    "qa_revision_estado": "ok",
+    "qa_revision_accion": "importar",
+    "qa_revision_updated_at": "2026-05-03T22:34:08.616Z"
   },
   {
     "ID": "1304773",
@@ -493091,8 +493108,9 @@
     "bom_pdf": "500.00986",
     "gesa_pdf": "NO",
     "normalizado_pdf": "NO",
-    "qa_revision_estado": "pendiente",
-    "qa_revision_accion": "revisar"
+    "qa_revision_estado": "ok",
+    "qa_revision_accion": "importar",
+    "qa_revision_updated_at": "2026-05-03T22:33:55.912Z"
   },
   {
     "ID": "1304775",

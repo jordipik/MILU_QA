@@ -139937,7 +139937,8 @@
     "normalizado_pdf": "No",
     "sust_new_part_number_pdf": "5241840402",
     "qa_revision_estado": "ok",
-    "qa_revision_accion": "importar"
+    "qa_revision_accion": "importar",
+    "qa_revision_updated_at": "2026-05-03T22:14:44.312Z"
   },
   {
     "ID": "1601349",
@@ -142607,8 +142608,9 @@
     "bom_pdf": "X52418300001",
     "normalizado_pdf": "No",
     "sust_new_part_number_pdf": "11509528",
-    "qa_revision_estado": "pendiente",
-    "qa_revision_accion": "revisar"
+    "qa_revision_estado": "ok",
+    "qa_revision_accion": "importar",
+    "qa_revision_updated_at": "2026-05-03T22:15:34.763Z"
   },
   {
     "ID": "1601374",
@@ -143349,8 +143351,9 @@
     "units_pdf": "PC",
     "bom_pdf": "0001843597",
     "normalizado_pdf": "No",
-    "qa_revision_estado": "pendiente",
-    "qa_revision_accion": "revisar"
+    "qa_revision_estado": "ok",
+    "qa_revision_accion": "importar",
+    "qa_revision_updated_at": "2026-05-03T22:27:02.663Z"
   },
   {
     "ID": "1601381",
@@ -154417,7 +154420,8 @@
     "normalizado_pdf": "No",
     "sust_new_part_number_pdf": "X00030047",
     "qa_revision_estado": "ok",
-    "qa_revision_accion": "importar"
+    "qa_revision_accion": "importar",
+    "qa_revision_updated_at": "2026-05-03T22:29:30.951Z"
   },
   {
     "ID": "1601487",
@@ -222896,7 +222900,8 @@
     "gesa_pdf": "No",
     "normalizado_pdf": "No",
     "qa_revision_estado": "ok",
-    "qa_revision_accion": "importar"
+    "qa_revision_accion": "importar",
+    "qa_revision_updated_at": "2026-05-03T22:33:55.912Z"
   },
   {
     "ID": "1602144",
@@ -224505,7 +224510,8 @@
     "gesa_pdf": "No",
     "normalizado_pdf": "No",
     "qa_revision_estado": "ok",
-    "qa_revision_accion": "importar"
+    "qa_revision_accion": "importar",
+    "qa_revision_updated_at": "2026-05-03T22:32:27.841Z"
   },
   {
     "ID": "1602159",
@@ -224613,7 +224619,8 @@
     "gesa_pdf": "No",
     "normalizado_pdf": "No",
     "qa_revision_estado": "ok",
-    "qa_revision_accion": "importar"
+    "qa_revision_accion": "importar",
+    "qa_revision_updated_at": "2026-05-03T22:34:08.616Z"
   },
   {
     "ID": "1602160",

@@ -1345,7 +1345,6 @@ function syncRecomputeEngineSelect() {
 async function runBackendRecompute() {
     const recomputeEngineSelect = $('recomputeEngineSelect');
     const recomputeIdInput = $('recomputeIdInput');
-    const recomputeDryRunInput = $('recomputeDryRunInput');
     const recomputeUpdateRevisionInput = $('recomputeUpdateRevisionInput');
     const recomputeForceRevisionInput = $('recomputeForceRevisionInput');
     const recomputeRunBtn = $('recomputeRunBtn');
@@ -1354,7 +1353,6 @@ async function runBackendRecompute() {
 
     if (!(recomputeEngineSelect instanceof HTMLSelectElement)
         || !(recomputeIdInput instanceof HTMLInputElement)
-        || !(recomputeDryRunInput instanceof HTMLInputElement)
         || !(recomputeRunBtn instanceof HTMLButtonElement)
         || !(engineFilterSelect instanceof HTMLSelectElement)) {
         return;
@@ -1363,7 +1361,7 @@ async function runBackendRecompute() {
     const selectedModel = String(recomputeEngineSelect.value || '').trim();
     const file = resolveEngineFileFromFilter(selectedModel);
     const id = String(recomputeIdInput.value || '').trim();
-    const dryRun = recomputeDryRunInput.checked;
+    const dryRun = false;
     const updateRevision = recomputeUpdateRevisionInput instanceof HTMLInputElement ? recomputeUpdateRevisionInput.checked : false;
     const forceRevision = recomputeForceRevisionInput instanceof HTMLInputElement ? recomputeForceRevisionInput.checked : false;
 
@@ -1493,14 +1491,12 @@ async function runBackendRecompute() {
 async function runBackendRecomputePdfAuto() {
     const recomputeEngineSelect = $('recomputeEngineSelect');
     const recomputeIdInput = $('recomputeIdInput');
-    const recomputeDryRunInput = $('recomputeDryRunInput');
     const recomputeRunBtn = $('recomputeRunBtn');
     const recomputePdfRunBtn = $('recomputePdfRunBtn');
     const engineFilterSelect = $('engineFilterSelect');
 
     if (!(recomputeEngineSelect instanceof HTMLSelectElement)
         || !(recomputeIdInput instanceof HTMLInputElement)
-        || !(recomputeDryRunInput instanceof HTMLInputElement)
         || !(recomputeRunBtn instanceof HTMLButtonElement)
         || !(recomputePdfRunBtn instanceof HTMLButtonElement)
         || !(engineFilterSelect instanceof HTMLSelectElement)) {
@@ -1510,7 +1506,7 @@ async function runBackendRecomputePdfAuto() {
     const selectedModel = String(recomputeEngineSelect.value || '').trim();
     const file = resolveEngineFileFromFilter(selectedModel);
     const id = String(recomputeIdInput.value || '').trim();
-    const dryRun = recomputeDryRunInput.checked;
+    const dryRun = false;
     const pdfAutoBefore = Object.fromEntries(
         Object.keys(FIELD_TO_PDF_AUTO_KEY).map((fieldName) => [fieldName, getStoredPdfAutoValue(currentRow, fieldName)])
     );
@@ -1645,7 +1641,6 @@ function setQuickRecomputeButtonsDisabled(disabled) {
 function setRecomputeModalInputsForAction(selectedModel, id = '') {
     const recomputeEngineSelect = $('recomputeEngineSelect');
     const recomputeIdInput = $('recomputeIdInput');
-    const recomputeDryRunInput = $('recomputeDryRunInput');
     const recomputeUpdateRevisionInput = $('recomputeUpdateRevisionInput');
     const recomputeForceRevisionInput = $('recomputeForceRevisionInput');
 
@@ -1655,7 +1650,6 @@ function setRecomputeModalInputsForAction(selectedModel, id = '') {
     if (recomputeIdInput instanceof HTMLInputElement) {
         recomputeIdInput.value = String(id || '').trim();
     }
-    if (recomputeDryRunInput instanceof HTMLInputElement) recomputeDryRunInput.checked = false;
     if (recomputeUpdateRevisionInput instanceof HTMLInputElement) recomputeUpdateRevisionInput.checked = false;
     if (recomputeForceRevisionInput instanceof HTMLInputElement) recomputeForceRevisionInput.checked = false;
 }
