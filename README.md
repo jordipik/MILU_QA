@@ -7,7 +7,7 @@ Proyecto web local para revision y mantenimiento de datos tecnicos de motores.
 - Backend local con Express en [server.js](server.js).
 - Frontend principal en [qa_milu.html](qa_milu.html).
 - Persistencia en archivos JSON del repo (no hay base de datos relacional).
-- Datos runtime cargados desde 8 archivos `engine_*.json` (ver [js/data-loader.js](js/data-loader.js)).
+- Datos runtime cargados desde 9 archivos `engine_*.json` (ver [js/data-loader.js](js/data-loader.js)).
 
 ## Puesta en marcha
 
@@ -73,11 +73,14 @@ Notas del script de publicacion:
 ## Endpoints clave
 
 - `GET /health`
+- `GET /qa_revision_sync.php`
+- `POST /qa_revision_sync.php`
 - `POST /save-json` (edicion puntual de un campo en `engine_*.json`)
+- `POST /apply-revision-to-engines`
 
 ## Proceso oficial: pasar de JSON originales a JSON definitivos
 
-Este proceso recalcula campos finales y normaliza formato sobre los 8 archivos `engine_*.json` del root.
+Este proceso recalcula campos finales y normaliza formato sobre los 9 archivos `engine_*.json` del root.
 
 ### Script
 
