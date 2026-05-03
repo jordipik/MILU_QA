@@ -4,7 +4,7 @@
 
 1. Browser opens `qa_milu.html`.
 2. `js/qa-milu.js` initializes application.
-3. `js/data-loader.js::loadPartitionedEngineData()` fetches the 8 `engine_*.json` files in parallel.
+3. `js/data-loader.js::loadPartitionedEngineData()` fetches the 9 `engine_*.json` files in parallel.
 4. Each row is normalized with fallback `engine_model` inferred from file name.
 5. Combined rows are assigned into `state.allData`.
 6. `js/revision.js::assignRevisionKeys()` adds stable and legacy revision keys per row.
@@ -49,11 +49,11 @@ Output:
 
 ## 5. Final Fields Normalization Flow (Offline)
 
-1. `python depuracion_json.py` iterates all 8 engine JSON files.
+1. `python depuracion_json.py` iterates all 9 engine JSON files.
 2. For each record:
 - normalize spaces in `dimensions_gesa` and `MEASUREMENT / STANDARD`
 - compute `designation_final`
-- compute `measurement_final` with `dimensions_gesa` priority
+- compute `measure_final` with `dimensions_gesa` priority (legacy `measurement_final` is removed)
 - fix legacy typo `wheight_final` -> `weight_final`
 - recompute `exp_imagenes`
 3. Writes files back with pretty JSON formatting.

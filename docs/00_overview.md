@@ -1,7 +1,7 @@
 # MILU Project Overview
 
 ## Purpose
-MILU is a local web application for QA review of MTU engine parts catalogs. The UI lets users browse, filter, validate, and revise article records coming from 8 engine JSON datasets.
+MILU is a local web application for QA review of MTU engine parts catalogs. The UI lets users browse, filter, validate, and revise article records coming from 9 engine JSON datasets.
 
 Main goals:
 - review article quality and normalization
@@ -32,6 +32,9 @@ Offline support system:
 `server.js` exposes:
 - `GET /health`
 - `POST /save-json`
+- `GET|POST /qa_revision_sync.php` (Express-served, returns JSON)
+- `POST /apply-revision-to-engines`
+- `POST /recompute-pdf-auto`
 
 ### Persistence Model
 - no SQL database
@@ -50,7 +53,7 @@ Offline support system:
 
 ## High-Level Data Flows
 1. Load flow:
-- frontend loads 8 `engine_*.json` files in parallel
+- frontend loads 9 `engine_*.json` files in parallel
 - merges rows into `state.allData`
 - assigns stable revision keys
 

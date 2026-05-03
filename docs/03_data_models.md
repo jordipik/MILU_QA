@@ -20,10 +20,11 @@ Each engine file stores an array of row objects.
 ### GESA and final normalization fields
 - `gesa`: usually `SI` or `NO`
 - `designation_gesa`, `dimensions_gesa`, `weight_gesa`, `units`, `norma`, `normalizado`
-- `designation_final`, `measurement_final`, `weight_final`
+- `designation_final`, `measure_final`, `weight_final`
 
 Normalization rule highlights:
-- `measurement_final` prioritizes `dimensions_gesa`; fallback is `MEASUREMENT / STANDARD`.
+- `measure_final` prioritizes `dimensions_gesa`; fallback is `MEASUREMENT / STANDARD`.
+- The legacy field name `measurement_final` is no longer persisted (`depuracion_json.py` removes it).
 - spacing in measurements is collapsed to single spaces.
 
 ### Substitution/export-related fields

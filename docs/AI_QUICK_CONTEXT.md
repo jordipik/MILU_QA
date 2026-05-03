@@ -32,7 +32,7 @@ MILU is a local QA web app for reviewing and correcting MTU engine parts dataset
 Important fields:
 - identity: `ID`, `PART NO.`, `POS`, `Source Page`, `engine_model`, `source_file`
 - QA: `qa_revision_estado`, `qa_revision_accion`, `qa_revision_updated_at`
-- normalization: `designation_final`, `measurement_final`, `weight_final`
+- normalization: `designation_final`, `measure_final`, `weight_final`
 - substitution: `sust_hierarchie`, `sust_new_part_number`, `sust_superseded_list`
 - publication/image: `EN_WEB`, `ruta_foto`, `esquemas*`, `exp_imagenes`
 
@@ -46,7 +46,7 @@ Important fields:
 ## Core Runtime Flows
 ### Load flow
 1. `qa-milu.js` boots
-2. `data-loader.js` fetches all 8 engine JSON files in parallel
+2. `data-loader.js` fetches all 9 engine JSON files in parallel
 3. rows merged into `state.allData`
 4. `revision.js` assigns stable and legacy revision keys
 5. table renders via `qa-table.js`

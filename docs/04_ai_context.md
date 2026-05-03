@@ -20,7 +20,7 @@ Optional early reads when task is specialized:
 ## Minimum Runtime Mental Model
 - Single-page frontend with shared mutable `state` object.
 - Backend is local Express, no DB.
-- Main source-of-truth data is the 8 `engine_*.json` files.
+- Main source-of-truth data is the 9 `engine_*.json` files.
 - Revision data lives in row fields inside `engine_*.json`.
 
 ## Safe Debug Priority

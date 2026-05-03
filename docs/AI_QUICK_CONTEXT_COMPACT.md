@@ -5,8 +5,8 @@
 - Frontend: `qa_milu.html` + ES modules in `js/`.
 - Backend: `server.js` (Express).
 - Persistence is file-based JSON, no relational database.
-- Main runtime source of truth: 8 `engine_*.json` files.
-- Key backend write: `/save-json` (single field).
+- Main runtime source of truth: 9 `engine_*.json` files.
+- Key backend writes: `/save-json` (single field), `/apply-revision-to-engines` (bulk), `POST /qa_revision_sync.php` (revision sync).
 - Health endpoint: `/health`.
 - Main frontend orchestration: `js/qa-milu.js`.
 - Shared mutable state: `js/state.js`.
@@ -21,10 +21,13 @@
 ## Critical Endpoints
 - `GET /health`
 - `POST /save-json`
+- `GET|POST /qa_revision_sync.php`
+- `POST /apply-revision-to-engines`
+- `POST /recompute-pdf-auto`
 
 ## Core Runtime Flows
 ### Load
-- `qa-milu.js` -> `loadPartitionedEngineData()` -> merge 8 engine files -> assign revision keys -> render table.
+- `qa-milu.js` -> `loadPartitionedEngineData()` -> merge 9 engine files -> assign revision keys -> render table.
 
 ### Row Revision Save
 - UI change -> `setRowRevision()` -> `saveCellToServer()` -> `POST /save-json` -> engine JSON write by `ID`.
@@ -32,7 +35,7 @@
 ## Data Keys That Matter Most
 - Identity: `ID`, `PART NO.`, `POS`, `Source Page`, `engine_model`, `source_file`
 - Revision: `qa_revision_estado`, `qa_revision_accion`, `qa_revision_updated_at`
-- Normalized/final: `designation_final`, `measurement_final`, `weight_final`
+- Normalized/final: `designation_final`, `measure_final`, `weight_final`
 - Substitution: `sust_hierarchie`, `sust_new_part_number`, `sust_superseded_list`
 
 ## Debug Order For Persistence Problems

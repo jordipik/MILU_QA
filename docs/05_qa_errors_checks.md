@@ -28,7 +28,7 @@ Los checks vigentes para ERR se definen en js/qa-checks.js y se evalúan en clie
 5. designation_required
 6. designation_final_pdf_or_gesa_match
 7. weight_final_pdf_or_gesa_match
-8. measurement_final_pdf_or_gesa_match
+8. measure_final_pdf_or_gesa_match
 9. norma_final_pdf_or_gesa_match
 10. bom_final_pdf_match
 

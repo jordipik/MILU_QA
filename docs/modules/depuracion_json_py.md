@@ -4,7 +4,7 @@
 Offline normalization pass over all engine JSON files to recompute canonical final fields.
 
 ## Inputs
-- 8 `engine_*.json` files in repo root.
+- 9 `engine_*.json` files in repo root.
 
 ## Outputs
 - Overwritten engine files with normalized/computed fields.
@@ -15,7 +15,7 @@ Offline normalization pass over all engine JSON files to recompute canonical fin
 ## Core Logic
 - Normalize whitespace in `dimensions_gesa` and `MEASUREMENT / STANDARD`.
 - Compute `designation_final` (`designation_gesa` priority).
-- Compute `measurement_final` (`dimensions_gesa` priority).
+- Compute `measure_final` (`dimensions_gesa` priority). Legacy `measurement_final` is removed.
 - Resolve/fix `weight_final` including legacy typo `wheight_final`.
 - Recompute `exp_imagenes` from `ruta_foto` and `ruta_esquemas_pos`, with fallback placeholder URL.
 
