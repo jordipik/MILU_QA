@@ -1,136 +1,20 @@
-# MILU WordPress Export + AI Conflict Pipeline
+﻿# MILU WordPress Export (Estado actual)
 
-## Objetivo
-Generar salidas listas para importacion en WordPress/WooCommerce y un paquete de apoyo IA para priorizar revision humana.
+Este documento queda como referencia de transicion.
 
-## Scripts
-- `npm run export:wordpress`
-- `npm run ai:conflicts`
+## Flujo oficial vigente
+Ver `docs/14_wordpress_export_simplified.md`.
 
-## Entradas
-- 9 archivos `engine_*.json` (fuente de verdad runtime)
-- `MILU_New_v506.json`
-- `MILU_Superseded_v506.json`
-- `qa_synthetic_new.json`
-- `qa_synthetic_superseded.json`
-- `product-export-*.json` (se usa el mas reciente por fecha de modificacion)
+## Cambios relevantes
+- `npm run export:wordpress` es el unico comando oficial para exportacion WordPress.
+- La decision final depende solo de QA humana (`qa_revision_estado` + `qa_revision_accion`) agrupada por PN global en los 9 motores.
+- Endpoints `run-synthetic`, `run-ai-conflicts`, `run-all` y rutas `/pn/*` quedan en estado legacy (desactivadas para operacion principal).
 
-## Salidas
-### Export WordPress
-Carpeta: `data/output/wordpress/`
+## Legacy archivado
+La logica compleja anterior (IA/scoring/export review avanzado) se movio a:
+- `legacy/export_complex_ai/`
 
-- `milu_wp_new_import.csv`
-- `milu_wp_superseded_import.csv`
-- `milu_wp_pending_review.csv`
-- `milu_wp_discarded.csv`
-- `milu_wp_new_import.json`
-- `milu_wp_superseded_import.json`
-- `milu_wp_export_report.json`
-- `milu_wp_export_summary.md`
-
-### Revision IA
-Carpeta: `data/output/ai_review/`
-
-- `ai_conflicts_full.json`
-- `ai_conflicts_summary.csv`
-- `ai_pending_human_review.csv`
-- `ai_decision_report.md`
-
-## Reglas generales aplicadas
-1. Nunca se modifican `engine_*.json`.
-2. Si falta PN o `designation_final`, el articulo se descarta.
-3. Si hay conflicto relevante o contradiccion de fuentes, pasa a `pending_review`.
-4. Si el SKU ya existe en `product-export`, no se importa automaticamente.
-5. Si hay relacion superseded clara (old->new), se clasifica para export superseded.
-6. Si hay ambiguedad en sustitucion, se marca pendiente.
-
-## Modelo canonico de salida (campos principales)
-- `sku`
-- `post_title`
-- `post_name`
-- `post_status`
-- `post_content`
-- `post_excerpt`
-- `regular_price`
-- `categories`
-- `tags`
-- `product_type`
-- `images`
-- `meta:engine_model`
-- `meta:source_page`
-- `meta:pos`
-- `meta:bom`
-- `meta:designation_final`
-- `meta:measure_final`
-- `meta:weight_final`
-- `meta:sust_status`
-- `meta:sust_new_part_number`
-- `meta:sust_superseded_list`
-- `meta:qa_revision_estado`
-- `meta:qa_revision_accion`
-- `meta:import_decision`
-- `meta:import_reason`
-
-## Validaciones incorporadas
-- CSV con BOM UTF-8 y delimitador `;`.
-- Motivo obligatorio para `pending_review` y `discarded`.
-- SKU y slug unicos para filas importables.
-- Reglas trazables en reportes JSON/Markdown.
-
-## Integracion recomendada con QA UI
-No persistir por defecto campos IA en `engine_*.json`.
-Usar `ai_conflicts_full.json` como capa de recomendacion y aplicar cambios en UI solo via `/save-json` con confirmacion humana.
-
-## Export Review Global (UI + API)
-Objetivo: exponer en la pestana Exportacion una vista auditable global por PN/SKU, independiente del estado de carga de la tabla UI.
-
-### Script
-- `npm run export:review`
-
-Genera en `data/output/export_review/`:
-- `synthetic_new_compacted.json`
-- `synthetic_superseded_compacted.json`
-- `wordpress_export_preview.json`
-- `wordpress_export_trace.json`
-- `wordpress_export_preview.csv`
-- `wordpress_export_conflicts.csv`
-- `wordpress_export_summary.md`
-
-### Endpoints backend
-- `POST /export/run-synthetic`: ejecuta compactacion global synthetic.
-- `POST /export/run-wordpress`: ejecuta export WordPress.
-- `POST /export/run-ai-conflicts`: ejecuta analisis IA de conflictos.
-- `GET /export/preview`: devuelve preview resumido para la tabla de Exportacion.
-- `GET /export/trace/:sku`: devuelve traza completa auditable para un SKU.
-
-### Regla de conflictos (export_review)
-`wordpress_export_conflicts.csv` solo incluye filas con:
-- `import_decision = pending_review`
-- `import_decision = discard`
-
-No se incluyen filas solo por coincidencias de texto en `import_reason`.
-
-## Pagina Exportacion (`exportacion.html`)
-Pagina independiente accesible desde QA (boton "Exportacion" en la barra superior) o directamente en `http://localhost:3000/exportacion.html`.
-
-### Funcionalidades
-- Listado de archivos generados en `data/output/wordpress/`, `data/output/ai_review/` y `data/output/export_review/` con carpeta, nombre, tipo, tamano y fecha de modificacion.
-- Botones de recalculo: Synthetic, WordPress, IA conflictos, Todo, Refrescar archivos.
-- Tarjetas de resumen: total archivos, tamano, ultima generacion, preview NEW / SUPERSEDED / pending / discarded / conflictos.
-- Preview integrado de archivos JSON (resumen + muestra), CSV (primeras 50 filas) y MD/TXT (texto plano).
-- Panel de logs con resultado y stdout (cola) de cada ejecucion.
-- Mensaje informativo recordando que Synthetic es global (compacta los 9 motores) y no modifica `engine_*.json`.
-
-### Endpoints adicionales (export manager)
-- `GET /export/files`: listado de archivos + summary (carpeta, tamano, totales) + run_state actual.
-- `GET /export/file?folder=&name=`: contenido seguro para preview (whitelist de carpetas y extensiones).
-- `GET /export/download?folder=&name=`: descarga directa.
-- `GET /export/status`: ultimo job ejecutado, error y timestamps.
-- `POST /export/run-all`: ejecuta synthetic + wordpress + ia en orden (con lock global).
-
-### Reglas de seguridad
-- Carpetas permitidas: `wordpress`, `ai_review`, `export_review`.
-- Extensiones permitidas: `.json`, `.csv`, `.md`, `.txt`.
-- Bloqueo de path traversal (`..`, `/`, `\`) y nombres fuera de la whitelist (HTTP 400).
-- Lock global `exportRunState`: solo un job de exportacion en curso a la vez (HTTP 409 si ya hay uno corriendo). La UI deshabilita los botones mientras dura.
-- Preview limitado a 512KB por archivo no-JSON (se indica `truncated: true`).
+Scripts legacy ejecutables:
+- `npm run legacy:ai:conflicts`
+- `npm run legacy:export:review`
+- `npm run legacy:generate:synthetic`

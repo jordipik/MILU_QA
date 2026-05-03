@@ -5,7 +5,7 @@ MILU is a local QA web app for reviewing and correcting MTU engine parts dataset
 
 - frontend entry: `qa_milu.html`
 - backend entry: `server.js`
-- runtime data: 8 files `engine_*.json`
+- runtime data: 9 files `engine_*.json`
 - no relational DB; persistence is direct JSON file writes
 
 ## Runtime Stack
@@ -59,10 +59,16 @@ Important fields:
 
 ## Offline Scripts (not runtime)
 - `depuracion_json.py`: recompute final fields and normalize measurements
-- `generate_synthetic_exports.js`: build synthetic New/Superseded exports
 - `marcar_articulos_en_web.py`: set `EN_WEB` from product export
 - `estadisticas_articulos.py`, `informe_estadisticas.py`: stats/report
 - `convert_excel_to_json.py`, `pretty_print_all_json.py`: utility transforms
+- *(legacy) `generate_synthetic_exports.js`*: archived in `legacy/export_complex_ai/scripts/`
+
+## WordPress Export (official)
+- Command: `npm run export:wordpress`
+- Script: `scripts/export_wordpress_milu.js`
+- Output: `data/output/wordpress/`
+- Decision: QA-only (`qa_revision_estado=ok` + `qa_revision_accion=importar` → import)
 
 ## High-Value Rules
 - No database: always verify disk writes in JSON files.

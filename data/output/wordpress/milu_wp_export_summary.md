@@ -1,27 +1,18 @@
-# MILU WordPress Export Summary
+# MILU WordPress Export Summary (QA only)
 
-Generated at: 2026-05-03T14:05:35.076Z
+Generated at: 2026-05-03T15:53:04.962Z
 
 ## Totals
-- Rows read: 67882
-- Unique PN: 6113
-- New exportable: 1021
-- Superseded exportable: 657
-- Pending review: 4015
-- Discarded: 1445
-- Duplicate PN keys: 5130
-- Missing designation_final: 420
-- Without valid image: 0
-- Already in WordPress: 3894
+- Engines processed: 9
+- Occurrences processed: 67882
+- PN unique: 6113
+- Importables: 5450
+- Pending review: 663
+- Discarded: 0
 
-## Reference Differences
-- MILU_New not in synthetic: 0
-- Synthetic new not in MILU_New: 1248
-- MILU_Superseded not in synthetic: 2307
-- Synthetic superseded not in MILU_Superseded: 0
+## Official Rules
+- Rule 1: at least one row ok/importar => import
+- Rule 2: all rows ok/eliminar => discard
+- Rule 3: otherwise => pending_review
 
-## Recommendations
-- Revisar primero los pendientes por conflictos de designation/weight para PN duplicado.
-- Confirmar politica de imagen obligatoria antes de mover pendientes a importables.
-- Para PN ya existentes en WordPress, decidir entre update_existing o keep_existing antes de exportar.
-- Usar qa_revision_accion=eliminar para exclusiones definitivas y qa_revision_accion=revisar para circuito humano.
+La decision final depende solo de QA humana.

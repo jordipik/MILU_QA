@@ -9,7 +9,6 @@ const { ENGINE_JSON_FILES } = require('./engine_files');
 const { recomputeEngineErrors } = require('./recompute_engine_errors');
 const { runComparison } = require('./scripts/qa_pdf_compare');
 const { applyRevisionPayload } = require('./apply_revision_to_engines');
-const { runSyntheticCompaction, runPreviewBuild } = require('./scripts/export_review_pipeline');
 
 const app = express();
 const PORT = 3000;
@@ -17,9 +16,10 @@ const AUDIT_LOG_FILE = path.join(__dirname, 'qa_audit_log.json');
 const AUDIT_LOG_MAX_ENTRIES = 10000;
 const REVISION_SYNC_FILE = path.join(__dirname, 'qa_revision_server_data.json');
 const EXPORT_REVIEW_DIR = path.join(__dirname, 'data', 'output', 'export_review');
+const WORDPRESS_OUTPUT_DIR = path.join(__dirname, 'data', 'output', 'wordpress');
 const PN_SYNTHETIC_NEW_FILE = path.join(EXPORT_REVIEW_DIR, 'synthetic_new_compacted.json');
 const PN_SYNTHETIC_SUPERSEDED_FILE = path.join(EXPORT_REVIEW_DIR, 'synthetic_superseded_compacted.json');
-const PN_TRACE_FILE = path.join(EXPORT_REVIEW_DIR, 'wordpress_export_trace.json');
+const PN_TRACE_FILE = path.join(WORDPRESS_OUTPUT_DIR, 'milu_wp_trace.json');
 
 const pnReviewCache = {
     loadedAt: null,
@@ -533,26 +533,30 @@ app.post('/apply-revision-to-engines', async (req, res) => {
     }
 });
 
-app.post('/export/run-synthetic', async (_req, res) => {
-    try {
-        const result = await withExportLock('run-synthetic', async () => {
-            const synthetic = runSyntheticCompaction(__dirname);
-            const previewSummary = runPreviewBuild(__dirname);
-            return { synthetic, export_review_summary: previewSummary };
-        });
-        return res.json({ ok: true, result, run_state: exportRunState });
-    } catch (error) {
-        const status = error?.statusCode || 500;
-        return res.status(status).json({ ok: false, error: String(error?.message || error), run_state: exportRunState });
-    }
-});
+function legacyExportEndpoint(res, endpointName) {
+    return res.status(410).json({
+        ok: false,
+        legacy: true,
+        endpoint: endpointName,
+        error: 'Endpoint legacy desactivado en flujo oficial QA-only. Use /export/run-wordpress.'
+    });
+}
+
+app.post('/export/run-synthetic', async (_req, res) => legacyExportEndpoint(res, 'run-synthetic'));
 
 app.post('/export/run-wordpress', async (_req, res) => {
     try {
         const result = await withExportLock('run-wordpress', async () => {
             const wordpressRun = await runNodeScript(path.join('scripts', 'export_wordpress_milu.js'));
-            const summary = runPreviewBuild(__dirname);
-            return { wordpress: wordpressRun, export_review_summary: summary };
+            const importRows = readJsonFileSafe(path.join(WORDPRESS_OUTPUT_DIR, 'milu_wp_import.json'), []);
+            const pendingRows = readJsonFileSafe(path.join(WORDPRESS_OUTPUT_DIR, 'milu_wp_pending_review.json'), []);
+            const discardedRows = readJsonFileSafe(path.join(WORDPRESS_OUTPUT_DIR, 'milu_wp_discarded.json'), []);
+            const summary = {
+                import: Array.isArray(importRows) ? importRows.length : 0,
+                pending_review: Array.isArray(pendingRows) ? pendingRows.length : 0,
+                discard: Array.isArray(discardedRows) ? discardedRows.length : 0
+            };
+            return { wordpress: wordpressRun, summary };
         });
         return res.json({ ok: true, result, run_state: exportRunState });
     } catch (error) {
@@ -561,51 +565,41 @@ app.post('/export/run-wordpress', async (_req, res) => {
     }
 });
 
-app.post('/export/run-ai-conflicts', async (_req, res) => {
-    try {
-        const result = await withExportLock('run-ai-conflicts', async () => {
-            const aiRun = await runNodeScript(path.join('scripts', 'ai_conflict_rules.js'));
-            return { ai: aiRun };
-        });
-        return res.json({ ok: true, result, run_state: exportRunState });
-    } catch (error) {
-        const status = error?.statusCode || 500;
-        return res.status(status).json({ ok: false, error: String(error?.message || error), run_state: exportRunState });
-    }
-});
+app.post('/export/run-ai-conflicts', async (_req, res) => legacyExportEndpoint(res, 'run-ai-conflicts'));
 
 app.get('/export/preview', async (_req, res) => {
     try {
-        const summaryPath = path.join(EXPORT_REVIEW_DIR, 'wordpress_export_summary.md');
-        const previewPath = path.join(EXPORT_REVIEW_DIR, 'wordpress_export_preview.json');
+        const summaryPath = path.join(WORDPRESS_OUTPUT_DIR, 'milu_wp_export_summary.md');
+        const importRows = readJsonFileSafe(path.join(WORDPRESS_OUTPUT_DIR, 'milu_wp_import.json'), []);
+        const pendingRows = readJsonFileSafe(path.join(WORDPRESS_OUTPUT_DIR, 'milu_wp_pending_review.json'), []);
+        const discardRows = readJsonFileSafe(path.join(WORDPRESS_OUTPUT_DIR, 'milu_wp_discarded.json'), []);
+        const allRows = [
+            ...(Array.isArray(importRows) ? importRows : []),
+            ...(Array.isArray(pendingRows) ? pendingRows : []),
+            ...(Array.isArray(discardRows) ? discardRows : [])
+        ].map((row) => ({
+            ...row,
+            total_occurrences_global: toNumber(row?.total_occurrences_global, toNumber(row?.occurrences, 0))
+        }));
 
-        const previewRows = readJsonFileSafe(previewPath, []);
         const markdownSummary = fs.existsSync(summaryPath)
             ? fs.readFileSync(summaryPath, 'utf8')
             : '';
 
         const parsedSummary = {
             generated_at: null,
-            preview_total: Array.isArray(previewRows) ? previewRows.length : 0,
-            preview_import: Array.isArray(previewRows) ? previewRows.filter((r) => {
-                const decision = String(r?.import_decision || '').toLowerCase();
-                return decision === 'import' || decision === 'import_new' || decision === 'import_superseded';
-            }).length : 0,
-            preview_new: Array.isArray(previewRows) ? previewRows.filter((r) => String(r?.import_decision || '').toLowerCase() === 'import_new').length : 0,
-            preview_superseded: Array.isArray(previewRows) ? previewRows.filter((r) => String(r?.import_decision || '').toLowerCase() === 'import_superseded').length : 0,
-            preview_pending: Array.isArray(previewRows) ? previewRows.filter((r) => String(r?.import_decision || '').toLowerCase() === 'pending_review').length : 0,
-            preview_discarded: Array.isArray(previewRows) ? previewRows.filter((r) => String(r?.import_decision || '').toLowerCase() === 'discard').length : 0,
-            conflict_rows: Array.isArray(previewRows) ? previewRows.filter((r) => {
-                const decision = String(r?.import_decision || '').toLowerCase();
-                return decision === 'pending_review' || decision === 'discard';
-            }).length : 0
+            preview_total: allRows.length,
+            preview_import: Array.isArray(importRows) ? importRows.length : 0,
+            preview_pending: Array.isArray(pendingRows) ? pendingRows.length : 0,
+            preview_discarded: Array.isArray(discardRows) ? discardRows.length : 0,
+            conflict_rows: (Array.isArray(pendingRows) ? pendingRows.length : 0) + (Array.isArray(discardRows) ? discardRows.length : 0)
         };
 
         return res.json({
             ok: true,
             summary: parsedSummary,
             markdownSummary,
-            rows: Array.isArray(previewRows) ? previewRows : []
+            rows: allRows
         });
     } catch (error) {
         return res.status(500).json({ ok: false, error: String(error?.message || error) });
@@ -648,7 +642,7 @@ app.get('/export/trace/:sku', async (req, res) => {
     }
 
     try {
-        const tracePath = path.join(EXPORT_REVIEW_DIR, 'wordpress_export_trace.json');
+        const tracePath = path.join(WORDPRESS_OUTPUT_DIR, 'milu_wp_trace.json');
         const trace = readJsonFileSafe(tracePath, {});
         const entry = trace && typeof trace === 'object' ? trace[sku] : null;
         if (!entry) {
@@ -660,168 +654,18 @@ app.get('/export/trace/:sku', async (req, res) => {
     }
 });
 
-app.get('/pn/list', async (req, res) => {
-    try {
-        const { list } = ensurePnReviewDataLoaded();
+app.get('/pn/list', async (_req, res) => legacyExportEndpoint(res, 'pn/list'));
 
-        const query = String(req.query?.q || '').trim().toLowerCase();
-        const decision = String(req.query?.decision || '').trim().toLowerCase();
-        const minConfidence = req.query?.minConfidence == null ? null : toNumber(req.query.minConfidence, 0);
-        const maxConfidence = req.query?.maxConfidence == null ? null : toNumber(req.query.maxConfidence, 1);
-        const sortBy = String(req.query?.sort || 'sku').trim();
-        const order = String(req.query?.order || 'asc').trim().toLowerCase() === 'desc' ? 'desc' : 'asc';
-        const limitRaw = toNumber(req.query?.limit, 2000);
-        const offsetRaw = toNumber(req.query?.offset, 0);
-        const limit = Math.min(Math.max(1, Math.floor(limitRaw)), 10000);
-        const offset = Math.max(0, Math.floor(offsetRaw));
+app.get('/pn/:sku', async (_req, res) => legacyExportEndpoint(res, 'pn/:sku'));
 
-        let rows = list;
-
-        if (query) {
-            rows = rows.filter((row) => String(row.sku || '').toLowerCase().includes(query));
-        }
-        if (decision) {
-            rows = rows.filter((row) => String(row.decision || '').toLowerCase() === decision);
-        }
-        if (minConfidence != null) {
-            rows = rows.filter((row) => toNumber(row.confidence, 0) >= minConfidence);
-        }
-        if (maxConfidence != null) {
-            rows = rows.filter((row) => toNumber(row.confidence, 0) <= maxConfidence);
-        }
-
-        const sortable = new Set(['sku', 'decision', 'confidence', 'occurrences', 'conflicts_count', 'engines_count']);
-        const effectiveSort = sortable.has(sortBy) ? sortBy : 'sku';
-
-        rows = [...rows].sort((a, b) => {
-            const av = a[effectiveSort];
-            const bv = b[effectiveSort];
-            let cmp = 0;
-            if (typeof av === 'number' && typeof bv === 'number') {
-                cmp = av - bv;
-            } else {
-                cmp = String(av || '').localeCompare(String(bv || ''), 'es', { numeric: true, sensitivity: 'base' });
-            }
-            return order === 'desc' ? -cmp : cmp;
-        });
-
-        const total = rows.length;
-        const page = rows.slice(offset, offset + limit);
-
-        return res.json({
-            ok: true,
-            rows: page,
-            total,
-            offset,
-            limit,
-            loaded_at: pnReviewCache.loadedAt
-        });
-    } catch (error) {
-        return res.status(500).json({ ok: false, error: String(error?.message || error) });
-    }
-});
-
-app.get('/pn/:sku', async (req, res) => {
-    try {
-        const sku = String(req.params?.sku || '').trim();
-        if (!sku) {
-            return res.status(400).json({ ok: false, error: 'SKU requerido.' });
-        }
-
-        const { index } = ensurePnReviewDataLoaded();
-        const entry = index.get(pnKey(sku));
-        if (!entry) {
-            return res.status(404).json({ ok: false, error: `PN no encontrado: ${sku}` });
-        }
-
-        const compacted = entry.compacted || {};
-        const sourceRecords = Array.isArray(compacted?.source_records)
-            ? compacted.source_records
-            : (Array.isArray(entry?.trace?.source_records) ? entry.trace.source_records : []);
-
-        const conflicts = (compacted?.merge_quality?.real_conflict_fields || []).map((field) => ({
-            field,
-            severity: String(compacted?.merge_quality?.conflict_severity || 'medium')
-        }));
-
-        const exportableFields = buildFieldStatuses(compacted);
-
-        const rulesApplied = [
-            ...(Array.isArray(compacted?.merge_decision_reasons) ? compacted.merge_decision_reasons : []),
-            ...exportableFields
-                .filter((field) => field.source_tier > 0)
-                .map((field) => `${field.field}:tier_${field.source_tier}`)
-        ];
-
-        const sourceDiffMeta = buildSourceDiffMeta(sourceRecords);
-
-        return res.json({
-            ok: true,
-            sku: entry.sku,
-            decision: String(entry?.trace?.preview?.import_decision || compacted?.merge_decision || ''),
-            confidence: Number(toNumber(compacted?.merge_quality?.consistency_score, 0).toFixed(3)),
-            score: {
-                consistency_score: toNumber(compacted?.merge_quality?.consistency_score, 0),
-                field_agreement_ratio: toNumber(compacted?.merge_quality?.field_agreement_ratio, 0),
-                conflict_severity: String(compacted?.merge_quality?.conflict_severity || ''),
-                conflicts_count: conflicts.length
-            },
-            resumen_fusion: {
-                total_occurrences_global: toNumber(compacted?.total_occurrences_global, sourceRecords.length),
-                engines_count: splitCsvUnique(compacted?.engine_models_all).length,
-                engine_models_all: String(compacted?.engine_models_all || ''),
-                source_pages_all: String(compacted?.source_pages_all || ''),
-                source_ids_all: String(compacted?.source_ids_all || ''),
-                merge_decision: String(compacted?.merge_decision || ''),
-                merge_decision_reasons: Array.isArray(compacted?.merge_decision_reasons) ? compacted.merge_decision_reasons : []
-            },
-            exportable_fields: exportableFields,
-            rules_applied: [...new Set(rulesApplied)],
-            conflicts,
-            compacted,
-            trace: entry.trace || null,
-            source_diff_meta: sourceDiffMeta
-        });
-    } catch (error) {
-        return res.status(500).json({ ok: false, error: String(error?.message || error) });
-    }
-});
-
-app.get('/pn/:sku/sources', async (req, res) => {
-    try {
-        const sku = String(req.params?.sku || '').trim();
-        if (!sku) {
-            return res.status(400).json({ ok: false, error: 'SKU requerido.' });
-        }
-
-        const { index } = ensurePnReviewDataLoaded();
-        const entry = index.get(pnKey(sku));
-        if (!entry) {
-            return res.status(404).json({ ok: false, error: `PN no encontrado: ${sku}` });
-        }
-
-        const sourceRecords = Array.isArray(entry?.compacted?.source_records)
-            ? entry.compacted.source_records
-            : (Array.isArray(entry?.trace?.source_records) ? entry.trace.source_records : []);
-
-        return res.json({
-            ok: true,
-            sku: entry.sku,
-            count: sourceRecords.length,
-            rows: sourceRecords,
-            diff: buildSourceDiffMeta(sourceRecords)
-        });
-    } catch (error) {
-        return res.status(500).json({ ok: false, error: String(error?.message || error) });
-    }
-});
+app.get('/pn/:sku/sources', async (_req, res) => legacyExportEndpoint(res, 'pn/:sku/sources'));
 
 // =============================================================================
 // Export Manager — listado de archivos generados, preview y orquestador (lock).
 // =============================================================================
 
 const EXPORT_BASE_DIR = path.join(__dirname, 'data', 'output');
-const EXPORT_FOLDER_WHITELIST = new Set(['wordpress', 'ai_review', 'export_review']);
+const EXPORT_FOLDER_WHITELIST = new Set(['wordpress']);
 const EXPORT_EXT_WHITELIST = new Set(['.json', '.csv', '.md', '.txt']);
 const EXPORT_PREVIEW_MAX_BYTES = 512 * 1024; // 512KB
 
@@ -1004,31 +848,7 @@ app.get('/export/download', (req, res) => {
     return res.download(fullPath, name);
 });
 
-app.post('/export/run-all', async (_req, res) => {
-    try {
-        const result = await withExportLock('run-all', async () => {
-            const synthetic = runSyntheticCompaction(__dirname);
-            const wordpress = await runNodeScript(path.join('scripts', 'export_wordpress_milu.js'));
-            const previewSummary = runPreviewBuild(__dirname);
-            let aiResult = null;
-            try {
-                aiResult = await runNodeScript(path.join('scripts', 'ai_conflict_rules.js'));
-            } catch (aiError) {
-                aiResult = { ok: false, error: String(aiError?.message || aiError) };
-            }
-            return {
-                synthetic,
-                wordpress,
-                export_review_summary: previewSummary,
-                ai: aiResult
-            };
-        });
-        return res.json({ ok: true, result, run_state: exportRunState });
-    } catch (error) {
-        const status = error?.statusCode || 500;
-        return res.status(status).json({ ok: false, error: String(error?.message || error), run_state: exportRunState });
-    }
-});
+app.post('/export/run-all', async (_req, res) => legacyExportEndpoint(res, 'run-all'));
 
 app.get('/audit-log', async (req, res) => {
     const limitRaw = Number(req.query?.limit);

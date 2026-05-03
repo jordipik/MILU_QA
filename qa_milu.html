@@ -81,7 +81,7 @@
                                     <button id="openAuditPageBtn" type="button"
                                         title="Abrir visor de auditoría">Auditoría</button>
                                     <button id="openExportPageBtn" type="button"
-                                        title="Abrir página de Exportación (lista archivos y recálculo Synthetic / WordPress / IA)"
+                                        title="Abrir página de Exportación WordPress (flujo oficial QA-only)"
                                         onclick="window.open('exportacion.html', '_blank', 'noopener')">Exportación</button>
                                     <button id="toggleOnlyErrorsBtn" type="button"
                                         title="Mostrar solo registros con errores">Solo errores: OFF</button>
@@ -609,43 +609,40 @@
                     <div class="qa-side-body">
                         <section class="qa-modal-related qa-export-pipeline-panel">
                             <div class="qa-modal-related-head qa-export-pipeline-head">
-                                <h3>Pipeline global de exportación</h3>
+                                <h3>Exportación WordPress QA-only</h3>
                                 <span id="qaExportRunStatus" class="qa-modal-related-count">Sin ejecutar</span>
                             </div>
                             <div class="qa-export-pipeline-actions">
-                                <button id="qaExportRunSyntheticBtn" type="button">Ejecutar synthetic global</button>
-                                <button id="qaExportRunWordpressBtn" type="button">Ejecutar WordPress export</button>
-                                <button id="qaExportRunAiBtn" type="button">Ejecutar IA conflictos</button>
+                                <button id="qaExportRunWordpressBtn" type="button">Recalcular export WordPress</button>
                                 <button id="qaExportReloadPreviewBtn" type="button">Recargar preview</button>
                             </div>
                             <div class="qa-export-summary-grid">
                                 <article class="qa-export-summary-card">
-                                    <span>Total preview</span>
+                                    <span>PN únicos</span>
                                     <strong id="qaExportSummaryTotal">0</strong>
                                 </article>
                                 <article class="qa-export-summary-card">
-                                    <span>Import new</span>
-                                    <strong id="qaExportSummaryNew">0</strong>
+                                    <span>Importables</span>
+                                    <strong id="qaExportSummaryImport">0</strong>
                                 </article>
                                 <article class="qa-export-summary-card">
-                                    <span>Import superseded</span>
-                                    <strong id="qaExportSummarySuperseded">0</strong>
-                                </article>
-                                <article class="qa-export-summary-card">
-                                    <span>Pending</span>
+                                    <span>Pending review</span>
                                     <strong id="qaExportSummaryPending">0</strong>
                                 </article>
                                 <article class="qa-export-summary-card">
                                     <span>Discard</span>
                                     <strong id="qaExportSummaryDiscarded">0</strong>
                                 </article>
+                                <article class="qa-export-summary-card">
+                                    <span>Ocurrencias</span>
+                                    <strong id="qaExportSummaryOccurrences">0</strong>
+                                </article>
                             </div>
                             <div class="qa-export-preview-controls">
                                 <label for="qaExportDecisionFilter">Decision</label>
                                 <select id="qaExportDecisionFilter">
                                     <option value="__all__">Todas</option>
-                                    <option value="import_new">import_new</option>
-                                    <option value="import_superseded">import_superseded</option>
+                                    <option value="import">import</option>
                                     <option value="pending_review">pending_review</option>
                                     <option value="discard">discard</option>
                                 </select>

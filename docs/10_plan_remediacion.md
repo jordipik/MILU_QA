@@ -100,11 +100,12 @@ Leyenda:
 - Acción: revisar reglas de fallback en [depuracion_json.py](../depuracion_json.py#L347); registrar en QA los motores con peor completitud.
 - Dificultad: M · Prioridad: 🟡.
 
-### DT-7. Pipeline export WordPress + capa IA de conflictos ✅ HECHO (fase inicial)
-- Estado: implementado offline con scripts dedicados y reportes trazables.
-- Acción: mantener y endurecer reglas para `update_existing`/`keep_existing`, umbrales de confianza y validaciones de imagen.
-- Entregables base: `data/output/wordpress/*` y `data/output/ai_review/*`.
-- Scripts: `npm run export:wordpress`, `npm run ai:conflicts`.
+### DT-7. Pipeline export WordPress QA-only ✅ ACTUALIZADO
+- Estado: simplificado a decision QA humana por PN global.
+- Acción: mantener `npm run export:wordpress` como unico flujo oficial.
+- Entregables base: `data/output/wordpress/*`.
+- Legacy archivado: `legacy/export_complex_ai/*`.
+- Scripts: `npm run export:wordpress`, `npm run legacy:ai:conflicts`.
 - Dificultad: M · Prioridad: 🔴.
 
 ---

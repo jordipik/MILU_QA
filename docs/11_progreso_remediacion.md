@@ -125,11 +125,11 @@ Cuando se cierre cada una, añadir aquí un bloque "Commit `<sha>` — `<resumen
 
 ### Scripts añadidos
 - [scripts/export_wordpress_milu.js](../scripts/export_wordpress_milu.js)
-- [scripts/ai_conflict_rules.js](../scripts/ai_conflict_rules.js)
+- [legacy/export_complex_ai/scripts/ai_conflict_rules.js](../legacy/export_complex_ai/scripts/ai_conflict_rules.js)
 
 ### Comandos npm añadidos
 - `export:wordpress`
-- `ai:conflicts`
+- `legacy:ai:conflicts` (antes `ai:conflicts`)
 
 ### Documentación añadida
 - [13_wordpress_export_ai_pipeline.md](13_wordpress_export_ai_pipeline.md)
@@ -149,3 +149,32 @@ Cuando se cierre cada una, añadir aquí un bloque "Commit `<sha>` — `<resumen
 - No se modificaron los 9 `engine_*.json` activos.
 - CSV en UTF-8 con BOM y delimitador `;`.
 - Pendientes y descartados con motivo trazable (`import_reason`).
+
+---
+
+## Cambio actual - Simplificacion WordPress QA-only
+
+### Objetivo aplicado
+- El flujo oficial de exportacion WordPress queda reducido a decision QA humana por PN global.
+- La logica compleja de IA/scoring se archiva como legacy.
+
+### Cambios principales
+- Backend:
+  - `POST /export/run-wordpress` ejecuta solo el export oficial simplificado.
+  - `POST /export/run-synthetic`, `POST /export/run-ai-conflicts`, `POST /export/run-all` devuelven `410 legacy`.
+  - `/pn/*` se marca legacy (`410`).
+  - `/export/files` solo lista carpeta oficial `wordpress`.
+- Frontend:
+  - `exportacion.html` y `js/exportacion.js` simplificados (boton principal run-wordpress + refresco + tabla/preview/resumen).
+  - Eliminados controles visibles de IA/Synthetic/scoring.
+- Scripts:
+  - `scripts/export_wordpress_milu.js` reescrito para leer 9 `engine_*.json` y decidir por reglas QA oficiales.
+  - Scripts complejos movidos a `legacy/export_complex_ai/scripts/`.
+- npm:
+  - Se mantiene `export:wordpress`.
+  - `ai:conflicts` y `export:review` pasan a `legacy:*`.
+
+### Documentacion
+- Nuevo: `docs/14_wordpress_export_simplified.md`.
+- Actualizados: `docs/13_wordpress_export_ai_pipeline.md`, `docs/README.md`.
+- Nuevo archivo de archivo: `legacy/export_complex_ai/README.md`.

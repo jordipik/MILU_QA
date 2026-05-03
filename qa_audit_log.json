@@ -1,1 +1,106 @@
-[]
+[
+  {
+    "id": "1777821066477-ki9hycxu",
+    "timestamp": "2026-05-03T15:11:06.477Z",
+    "kind": "change-applied",
+    "type": "qa-row-patch",
+    "module": "qa_milu",
+    "action": "inline-accion",
+    "description": "Cambio rapido accion ID 1102644",
+    "target": {
+      "revisionKey": "id=1102644"
+    },
+    "changeId": "1777821066239-dk5z41j2",
+    "data": {
+      "target": {
+        "revisionKey": "id=1102644",
+        "engineFile": "engine_12V4000M40A.json",
+        "id": "1102644"
+      },
+      "changes": {
+        "qa_revision_accion": {
+          "before": "revisar",
+          "after": "importar"
+        }
+      }
+    }
+  },
+  {
+    "id": "1777821068549-zejxatit",
+    "timestamp": "2026-05-03T15:11:08.549Z",
+    "kind": "change-applied",
+    "type": "qa-row-patch",
+    "module": "qa_milu",
+    "action": "inline-estado",
+    "description": "Cambio rapido estado ID 1102644",
+    "target": {
+      "revisionKey": "id=1102644"
+    },
+    "changeId": "1777821068302-aju362qq",
+    "data": {
+      "target": {
+        "revisionKey": "id=1102644",
+        "engineFile": "engine_12V4000M40A.json",
+        "id": "1102644"
+      },
+      "changes": {
+        "qa_revision_estado": {
+          "before": "pendiente",
+          "after": "ok"
+        }
+      }
+    }
+  },
+  {
+    "id": "1777821070290-q2oef02q",
+    "timestamp": "2026-05-03T15:11:10.290Z",
+    "kind": "change-applied",
+    "type": "qa-row-patch",
+    "module": "qa_milu",
+    "action": "inline-accion",
+    "description": "Cambio rapido accion ID 1101133",
+    "target": {
+      "revisionKey": "id=1101133"
+    },
+    "changeId": "1777821069990-kxqaksi4",
+    "data": {
+      "target": {
+        "revisionKey": "id=1101133",
+        "engineFile": "engine_12V4000M40A.json",
+        "id": "1101133"
+      },
+      "changes": {
+        "qa_revision_accion": {
+          "before": "revisar",
+          "after": "importar"
+        }
+      }
+    }
+  },
+  {
+    "id": "1777821071664-xj416ln3",
+    "timestamp": "2026-05-03T15:11:11.664Z",
+    "kind": "change-applied",
+    "type": "qa-row-patch",
+    "module": "qa_milu",
+    "action": "inline-estado",
+    "description": "Cambio rapido estado ID 1101133",
+    "target": {
+      "revisionKey": "id=1101133"
+    },
+    "changeId": "1777821071384-7otuu33b",
+    "data": {
+      "target": {
+        "revisionKey": "id=1101133",
+        "engineFile": "engine_12V4000M40A.json",
+        "id": "1101133"
+      },
+      "changes": {
+        "qa_revision_estado": {
+          "before": "pendiente",
+          "after": "ok"
+        }
+      }
+    }
+  }
+]

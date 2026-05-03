@@ -16,7 +16,7 @@ Runtime system:
 - persistence: `engine_*.json`
 
 Offline support system:
-- Python/Node scripts in repo root for conversion, normalization, synthetic export generation, and reporting
+- Python/Node scripts in repo root for conversion, normalization, and reporting
 
 ## Architecture
 ### Frontend
@@ -49,7 +49,7 @@ Offline support system:
 
 ## Main Data Domains
 - engine row records: part identity, designation, dimensions, substitution flags, image refs, QA fields
-- export references: `MILU_New_v506.json`, `MILU_Superseded_v506.json`, product export JSON
+- export references (legacy): `MILU_New_v506.json`, `MILU_Superseded_v506.json`, product export JSON
 
 ## High-Level Data Flows
 1. Load flow:
@@ -63,7 +63,7 @@ Offline support system:
 - frontend persists to backend (`/save-json`) and updates in-memory state
 
 3. Export/support flow:
-- synthetic export scripts produce `qa_synthetic_new.json` and `qa_synthetic_superseded.json`
+- WordPress export: `npm run export:wordpress` reads all 9 `engine_*.json`, applies QA-only decision rules, outputs to `data/output/wordpress/`
 - statistics/report scripts generate diagnostics for consistency checks
 
 ## Runtime Entry Points

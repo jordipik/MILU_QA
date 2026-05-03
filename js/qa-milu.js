@@ -525,16 +525,21 @@ function setExportRunStatus(message, kind = '') {
 
 function renderExportSummary(summary = {}) {
     const total = $('qaExportSummaryTotal');
-    const newCount = $('qaExportSummaryNew');
-    const supCount = $('qaExportSummarySuperseded');
+    const importCount = $('qaExportSummaryImport');
     const pending = $('qaExportSummaryPending');
     const discarded = $('qaExportSummaryDiscarded');
+    const occurrences = $('qaExportSummaryOccurrences');
 
     if (total) total.textContent = String(Number(summary.preview_total || 0));
-    if (newCount) newCount.textContent = String(Number(summary.preview_new || 0));
-    if (supCount) supCount.textContent = String(Number(summary.preview_superseded || 0));
+    if (importCount) importCount.textContent = String(Number(summary.preview_import || 0));
     if (pending) pending.textContent = String(Number(summary.preview_pending || 0));
     if (discarded) discarded.textContent = String(Number(summary.preview_discarded || 0));
+
+    if (occurrences) {
+        const rows = Array.isArray(state.exportPreviewRows) ? state.exportPreviewRows : [];
+        const sum = rows.reduce((acc, row) => acc + (Number(row?.total_occurrences_global) || 0), 0);
+        occurrences.textContent = String(sum);
+    }
 }
 
 function getExportPreviewFilterState() {
@@ -796,9 +801,7 @@ function resetExportPreviewFilters() {
 
 async function runExportPipeline(endpoint, label) {
     const actionButtons = [
-        $('qaExportRunSyntheticBtn'),
         $('qaExportRunWordpressBtn'),
-        $('qaExportRunAiBtn'),
         $('qaExportReloadPreviewBtn')
     ].filter((item) => item instanceof HTMLButtonElement);
 
@@ -3509,16 +3512,8 @@ function attachGlobalEvents() {
         });
     });
 
-    $('qaExportRunSyntheticBtn')?.addEventListener('click', async () => {
-        await runExportPipeline('/export/run-synthetic', 'Synthetic global');
-    });
-
     $('qaExportRunWordpressBtn')?.addEventListener('click', async () => {
         await runExportPipeline('/export/run-wordpress', 'WordPress export');
-    });
-
-    $('qaExportRunAiBtn')?.addEventListener('click', async () => {
-        await runExportPipeline('/export/run-ai-conflicts', 'IA conflictos');
     });
 
     $('qaExportReloadPreviewBtn')?.addEventListener('click', async () => {

@@ -1,10 +1,9 @@
 const fs = require('fs');
 const path = require('path');
-const { runSyntheticCompaction } = require('./export_review_pipeline');
+const { ENGINE_JSON_FILES } = require('../engine_files');
 
 const REPO_ROOT = path.resolve(__dirname, '..');
 const OUTPUT_DIR = path.join(REPO_ROOT, 'data', 'output', 'wordpress');
-const EXPORT_REVIEW_DIR = path.join(REPO_ROOT, 'data', 'output', 'export_review');
 
 function ensureDir(dirPath) {
     fs.mkdirSync(dirPath, { recursive: true });
@@ -46,204 +45,250 @@ function key(value) {
     return t(value).toLowerCase();
 }
 
-function splitCsvUnique(value) {
-    return [...new Set(
-        t(value)
-            .split(',')
-            .map((part) => t(part))
-            .filter(Boolean)
-    )];
+function collapseSpaces(value) {
+    return t(value).replace(/\s+/g, ' ');
 }
 
-function normalizeSourceRecords(row) {
-    if (!Array.isArray(row?.source_records)) return [];
-    return row.source_records.map((item) => ({
-        id: t(item?.id),
-        engine_model: t(item?.engine_model),
-        source_file: t(item?.source_file),
-        source_page: t(item?.source_page),
-        pos: t(item?.pos),
-        bom: t(item?.bom),
-        designation_final: t(item?.designation_final),
-        measure_final: t(item?.measure_final),
-        weight_final: t(item?.weight_final),
-        qa_revision_estado: key(item?.qa_revision_estado),
-        qa_revision_accion: key(item?.qa_revision_accion)
-    }));
+function uniq(values) {
+    return [...new Set(values.filter(Boolean))];
 }
 
-function loadSyntheticRows() {
-    ensureDir(EXPORT_REVIEW_DIR);
-
-    const syntheticNewPath = path.join(EXPORT_REVIEW_DIR, 'synthetic_new_compacted.json');
-    const syntheticSupPath = path.join(EXPORT_REVIEW_DIR, 'synthetic_superseded_compacted.json');
-
-    let syntheticNew = readJson(syntheticNewPath, null);
-    let syntheticSup = readJson(syntheticSupPath, null);
-
-    if (!Array.isArray(syntheticNew) || !Array.isArray(syntheticSup)) {
-        runSyntheticCompaction(REPO_ROOT);
-        syntheticNew = readJson(syntheticNewPath, []);
-        syntheticSup = readJson(syntheticSupPath, []);
+function pickMostFrequent(values) {
+    const counts = new Map();
+    let bestKey = '';
+    let bestValue = '';
+    let bestCount = 0;
+    for (const raw of values) {
+        const value = collapseSpaces(raw);
+        if (!value) continue;
+        const k = key(value);
+        const current = counts.get(k) || { count: 0, value };
+        current.count += 1;
+        if (value.length > current.value.length) current.value = value;
+        counts.set(k, current);
+        if (
+            current.count > bestCount
+            || (current.count === bestCount && current.value.length > bestValue.length)
+        ) {
+            bestCount = current.count;
+            bestValue = current.value;
+            bestKey = k;
+        }
     }
-
-    const rows = [
-        ...(Array.isArray(syntheticNew) ? syntheticNew : []),
-        ...(Array.isArray(syntheticSup) ? syntheticSup : [])
-    ];
-
-    return rows.map((row) => ({
-        ...row,
-        pn: t(row?.pn),
-        designation: t(row?.designation),
-        measurement: t(row?.measurement),
-        weight: t(row?.weight),
-        source_records: normalizeSourceRecords(row)
-    }));
+    return bestKey ? bestValue : '';
 }
 
-function buildQaSummary(syntheticRow) {
-    const sourceRows = Array.isArray(syntheticRow?.source_records) ? syntheticRow.source_records : [];
+function getPn(row) {
+    return t(row['PART NO.'] || row.pn || row.pn_final);
+}
+
+function getDesignation(row) {
+    return pickMostFrequent([
+        row.designation_final,
+        row.designation_gesa,
+        row.DESIGNATION
+    ]);
+}
+
+function getMeasurement(row) {
+    return pickMostFrequent([
+        row.measure_final,
+        row.measurement_final,
+        row.dimensions_gesa,
+        row['MEASUREMENT / STANDARD']
+    ]);
+}
+
+function getWeight(row) {
+    return pickMostFrequent([
+        row.weight_final,
+        row.weight_gesa,
+        row.WEIGHT
+    ]);
+}
+
+function loadEngineRows() {
+    const rows = [];
+    for (const fileName of ENGINE_JSON_FILES) {
+        const filePath = path.join(REPO_ROOT, fileName);
+        const parsed = readJson(filePath, []);
+        if (!Array.isArray(parsed)) continue;
+        for (const row of parsed) {
+            rows.push({ ...row, __engine_file: fileName });
+        }
+    }
+    return rows;
+}
+
+function buildQaSummary(rows) {
     const summary = {
-        total_rows: sourceRows.length,
+        total_rows: rows.length,
         count_ok_importar: 0,
         count_ok_eliminar: 0,
-        count_pendiente: 0,
-        count_revisar: 0
+        count_pending: 0,
+        count_review_action: 0,
+        count_other: 0
     };
 
-    for (const row of sourceRows) {
+    for (const row of rows) {
         const estado = key(row.qa_revision_estado);
         const accion = key(row.qa_revision_accion);
-
-        if (estado === 'ok' && accion === 'importar') summary.count_ok_importar += 1;
-        if (estado === 'ok' && accion === 'eliminar') summary.count_ok_eliminar += 1;
-        if (estado === 'pendiente' || estado === 'en revision' || estado === 'en revisión') summary.count_pendiente += 1;
-        if (accion === 'revisar') summary.count_revisar += 1;
+        if (estado === 'ok' && accion === 'importar') {
+            summary.count_ok_importar += 1;
+            continue;
+        }
+        if (estado === 'ok' && accion === 'eliminar') {
+            summary.count_ok_eliminar += 1;
+            continue;
+        }
+        if (estado === 'pendiente' || estado === 'en revision' || estado === 'en revisión') {
+            summary.count_pending += 1;
+        }
+        if (accion === 'revisar') {
+            summary.count_review_action += 1;
+        }
+        if (!(estado === 'ok' && (accion === 'importar' || accion === 'eliminar'))) {
+            summary.count_other += 1;
+        }
     }
 
     return summary;
 }
 
-function decidePnExport(syntheticRow) {
-    const qaSummary = syntheticRow?.qa_summary || buildQaSummary(syntheticRow);
-
-    if (qaSummary.count_ok_importar > 0) {
-        return {
-            decision: 'import',
-            reason: 'validated_by_user',
-            qa_validated: true
-        };
+function decideByQa(rows, qaSummary) {
+    const hasImport = qaSummary.count_ok_importar > 0;
+    if (hasImport) {
+        return { decision: 'import', reason: 'qa_ok_importar_found', qa_validated: true };
     }
 
-    if (qaSummary.total_rows > 0 && qaSummary.count_ok_eliminar === qaSummary.total_rows) {
-        return {
-            decision: 'discard',
-            reason: 'all_rows_marked_delete',
-            qa_validated: false
-        };
+    const allDelete = rows.length > 0 && rows.every((row) => {
+        const estado = key(row.qa_revision_estado);
+        const accion = key(row.qa_revision_accion);
+        return estado === 'ok' && accion === 'eliminar';
+    });
+    if (allDelete) {
+        return { decision: 'discard', reason: 'qa_all_ok_eliminar', qa_validated: true };
     }
 
-    return {
-        decision: 'pending_review',
-        reason: 'requires_review',
-        qa_validated: false
-    };
+    return { decision: 'pending_review', reason: 'qa_pending_or_mixed', qa_validated: false };
 }
 
-function buildSimpleAiSignals(syntheticRow) {
-    const conflicts = Array.isArray(syntheticRow?.merge_quality?.real_conflict_fields)
-        ? syntheticRow.merge_quality.real_conflict_fields.map((item) => key(item))
-        : [];
+function buildAggregates(rows) {
+    const engines = uniq(rows.map((row) => t(row.engine_model || row.model || row.engine || row.__engine_file))).join(', ');
+    const sourceIds = uniq(rows.map((row) => t(row.ID))).join(', ');
+    const sourcePages = uniq(rows.map((row) => t(row['Source Page']))).join(', ');
 
-    const codes = [];
-    const pn = t(syntheticRow?.pn);
-    const designation = t(syntheticRow?.designation);
-    const measurement = t(syntheticRow?.measurement);
-    const weight = t(syntheticRow?.weight);
-    const occurrences = Number(syntheticRow?.total_occurrences_global || syntheticRow?.source_records?.length || 0);
-
-    if (!pn) codes.push('pn_missing');
-    if (!designation) codes.push('designation_missing');
-    if (!measurement) codes.push('measure_missing');
-    if (conflicts.includes('weight')) codes.push('weight_conflict');
-    if (key(syntheticRow?.sust_tipo) === 'superseded' && !t(syntheticRow?.new_pn_relacionado) && !t(syntheticRow?.old_pn_relacionados)) {
-        codes.push('sust_ambiguous');
-    }
-    if (occurrences > 1 && conflicts.length > 0) {
-        codes.push('duplicate_inconsistent');
-    }
-
-    return {
-        ai_conflict_codes: [...new Set(codes)],
-        ai_reason_simple: codes.length ? codes.join('|') : 'none'
-    };
+    return { engines, sourceIds, sourcePages };
 }
 
-function buildExportRow(syntheticRow, decisionMeta) {
-    const qaSummary = syntheticRow.qa_summary || buildQaSummary(syntheticRow);
-    const aiSignals = decisionMeta.decision === 'pending_review'
-        ? buildSimpleAiSignals(syntheticRow)
-        : { ai_conflict_codes: [], ai_reason_simple: '' };
-
-    const engines = splitCsvUnique(syntheticRow.engine_models_all).join(', ');
-    const sourceIds = splitCsvUnique(syntheticRow.source_ids_all).join(', ');
+function buildTraceEntry(sku, rows, merged, decisionMeta, qaSummary) {
+    const sourceRecords = rows.map((row) => ({
+        id: t(row.ID),
+        engine_model: t(row.engine_model || row.model || row.engine),
+        source_file: t(row.__engine_file),
+        source_page: t(row['Source Page']),
+        pos: t(row.POS || row.pos_final),
+        bom: t(row['BOM-No.']),
+        designation_final: getDesignation(row),
+        measure_final: getMeasurement(row),
+        weight_final: getWeight(row),
+        qa_revision_estado: t(row.qa_revision_estado),
+        qa_revision_accion: t(row.qa_revision_accion)
+    }));
 
     return {
-        sku: t(syntheticRow.pn),
-        designation_final: t(syntheticRow.designation),
-        decision: decisionMeta.decision,
-        reason: decisionMeta.reason,
-        qa_validated: decisionMeta.qa_validated,
-        occurrences: Number(syntheticRow.total_occurrences_global || syntheticRow.source_records.length || 0),
-        engines,
-        source_ids: sourceIds,
-        qa_summary: JSON.stringify(qaSummary),
-        ai_reason_simple: aiSignals.ai_reason_simple,
-        ai_conflict_codes: aiSignals.ai_conflict_codes.join(','),
-        import_decision: decisionMeta.decision,
-        import_reason: decisionMeta.reason
+        sku,
+        preview: {
+            import_decision: decisionMeta.decision,
+            import_reason: decisionMeta.reason
+        },
+        compacted: {
+            pn: sku,
+            designation: merged.designation_final,
+            measurement: merged.measurement_final,
+            weight: merged.weight_final,
+            total_occurrences_global: merged.occurrences,
+            engine_models_all: merged.engines,
+            source_ids_all: merged.source_ids,
+            source_pages_all: merged.source_pages
+        },
+        qa_summary: qaSummary,
+        source_records: sourceRecords
     };
 }
 
 function run() {
     ensureDir(OUTPUT_DIR);
+    const allRows = loadEngineRows();
 
-    const syntheticRows = loadSyntheticRows();
-    const prepared = syntheticRows.map((row) => ({
-        ...row,
-        qa_summary: buildQaSummary(row)
-    }));
+    const byPn = new Map();
+    for (const row of allRows) {
+        const pn = getPn(row);
+        if (!pn) continue;
+        const pnKey = key(pn);
+        if (!byPn.has(pnKey)) byPn.set(pnKey, { pn, rows: [] });
+        byPn.get(pnKey).rows.push(row);
+    }
 
     const importRows = [];
     const pendingRows = [];
     const discardedRows = [];
+    const traceBySku = {};
 
-    for (const syntheticRow of prepared) {
-        const decisionMeta = decidePnExport(syntheticRow);
-        const outRow = buildExportRow(syntheticRow, decisionMeta);
+    for (const group of byPn.values()) {
+        const rows = group.rows;
+        const sku = group.pn;
+        const qaSummary = buildQaSummary(rows);
+        const decisionMeta = decideByQa(rows, qaSummary);
+        const agg = buildAggregates(rows);
 
-        if (decisionMeta.decision === 'import') {
-            importRows.push(outRow);
-        } else if (decisionMeta.decision === 'discard') {
-            discardedRows.push(outRow);
-        } else {
-            pendingRows.push(outRow);
-        }
+        const designation = pickMostFrequent(rows.map(getDesignation));
+        const measurement = pickMostFrequent(rows.map(getMeasurement));
+        const weight = pickMostFrequent(rows.map(getWeight));
+
+        const merged = {
+            sku,
+            designation_final: designation,
+            measurement_final: measurement,
+            weight_final: weight,
+            decision: decisionMeta.decision,
+            reason: decisionMeta.reason,
+            qa_validated: decisionMeta.qa_validated,
+            occurrences: rows.length,
+            total_occurrences_global: rows.length,
+            engines: agg.engines,
+            source_ids: agg.sourceIds,
+            source_pages: agg.sourcePages,
+            qa_summary_json: JSON.stringify(qaSummary),
+            import_decision: decisionMeta.decision,
+            import_reason: decisionMeta.reason
+        };
+
+        if (decisionMeta.decision === 'import') importRows.push(merged);
+        else if (decisionMeta.decision === 'discard') discardedRows.push(merged);
+        else pendingRows.push(merged);
+
+        traceBySku[sku] = buildTraceEntry(sku, rows, merged, decisionMeta, qaSummary);
     }
+
+    const sortBySku = (a, b) => String(a.sku || '').localeCompare(String(b.sku || ''), 'es', { numeric: true, sensitivity: 'base' });
+    importRows.sort(sortBySku);
+    pendingRows.sort(sortBySku);
+    discardedRows.sort(sortBySku);
 
     const headers = [
         'sku',
         'designation_final',
+        'measurement_final',
+        'weight_final',
         'decision',
         'reason',
         'qa_validated',
         'occurrences',
         'engines',
         'source_ids',
-        'qa_summary',
-        'ai_reason_simple',
-        'ai_conflict_codes',
+        'source_pages',
+        'qa_summary_json',
         'import_decision',
         'import_reason'
     ];
@@ -255,49 +300,48 @@ function run() {
     writeJson(path.join(OUTPUT_DIR, 'milu_wp_import.json'), importRows);
     writeJson(path.join(OUTPUT_DIR, 'milu_wp_pending_review.json'), pendingRows);
     writeJson(path.join(OUTPUT_DIR, 'milu_wp_discarded.json'), discardedRows);
-
-    // Compatibilidad temporal para consumidores legacy del pipeline.
-    writeJson(path.join(OUTPUT_DIR, 'milu_wp_new_import.json'), importRows);
-    writeJson(path.join(OUTPUT_DIR, 'milu_wp_superseded_import.json'), []);
+    writeJson(path.join(OUTPUT_DIR, 'milu_wp_trace.json'), traceBySku);
 
     const report = {
         generated_at: new Date().toISOString(),
-        source_rows: prepared.length,
+        engines_processed: ENGINE_JSON_FILES.length,
+        occurrences_processed: allRows.length,
+        pn_unique: byPn.size,
         totals: {
             import: importRows.length,
             pending_review: pendingRows.length,
             discard: discardedRows.length
         },
         rules: {
-            rule_1: 'if count_ok_importar > 0 => import',
-            rule_2: 'if count_ok_eliminar == total_rows => discard',
-            rule_3: 'else => pending_review'
+            rule_1: 'Si un PN tiene al menos una fila con qa_revision_estado=ok y qa_revision_accion=importar => import',
+            rule_2: 'Si todas las filas del PN tienen qa_revision_estado=ok y qa_revision_accion=eliminar => discard',
+            rule_3: 'Cualquier otro caso => pending_review'
         }
     };
 
-    writeJson(path.join(OUTPUT_DIR, 'milu_wp_export_report.json'), report);
-
     const summary = [
-        '# MILU WordPress Export Summary (QA-first)',
+        '# MILU WordPress Export Summary (QA only)',
         '',
         `Generated at: ${report.generated_at}`,
         '',
         '## Totals',
-        `- Synthetic PN rows: ${report.source_rows}`,
-        `- Import: ${report.totals.import}`,
+        `- Engines processed: ${report.engines_processed}`,
+        `- Occurrences processed: ${report.occurrences_processed}`,
+        `- PN unique: ${report.pn_unique}`,
+        `- Importables: ${report.totals.import}`,
         `- Pending review: ${report.totals.pending_review}`,
-        `- Discard: ${report.totals.discard}`,
+        `- Discarded: ${report.totals.discard}`,
         '',
-        '## Decision Rules',
-        '- Rule 1: if count_ok_importar > 0 => import',
-        '- Rule 2: if count_ok_eliminar == total_rows => discard',
-        '- Rule 3: else => pending_review'
+        '## Official Rules',
+        '- Rule 1: at least one row ok/importar => import',
+        '- Rule 2: all rows ok/eliminar => discard',
+        '- Rule 3: otherwise => pending_review',
+        '',
+        'La decision final depende solo de QA humana.'
     ].join('\n');
 
     fs.writeFileSync(path.join(OUTPUT_DIR, 'milu_wp_export_summary.md'), `${summary}\n`, 'utf8');
-
-    console.log('WordPress export generated in data/output/wordpress (QA-first).');
-    console.log(JSON.stringify(report.totals, null, 2));
+    console.log(JSON.stringify(report, null, 2));
 }
 
 if (require.main === module) {
@@ -306,7 +350,6 @@ if (require.main === module) {
 
 module.exports = {
     buildQaSummary,
-    decidePnExport,
-    buildSimpleAiSignals,
+    decideByQa,
     run
 };

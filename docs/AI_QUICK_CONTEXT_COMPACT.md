@@ -50,8 +50,13 @@
 
 ## Offline Utilities (Not Runtime)
 - `depuracion_json.py`: recompute canonical final fields
-- `generate_synthetic_exports.js`: build synthetic New/Superseded datasets
 - `marcar_articulos_en_web.py`: set `EN_WEB` from product export
+- *(legacy) `generate_synthetic_exports.js`*: archived in `legacy/export_complex_ai/scripts/`
+
+## WordPress Export (official)
+- `npm run export:wordpress` → `scripts/export_wordpress_milu.js`
+- Output: `data/output/wordpress/`
+- Decision QA-only: `ok/importar` → import, todos `ok/eliminar` → discard, resto → pending_review
 
 ## Fast Start
 - `npm install`

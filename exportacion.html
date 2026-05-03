@@ -13,7 +13,7 @@
         <header class="exp-header">
             <div>
                 <h1>Exportación MILU</h1>
-                <p>Control de exports Synthetic, WordPress e IA — listado, preview y reejecución de pipelines.</p>
+                <p>Flujo oficial QA-only para WordPress.</p>
                 <p style="margin-top:6px;"><a class="exp-back-link" href="qa_milu.html">← Volver a QA</a></p>
             </div>
             <div style="text-align:right;">
@@ -23,18 +23,13 @@
         </header>
 
         <div class="exp-info-banner">
-            <strong>Synthetic es global:</strong> compacta todas las apariciones de cada PN en los 9 motores
+            <strong>La exportación es global:</strong> compacta todas las apariciones de cada PN en los 9 motores
             (<code>engine_*.json</code>). La decisión de exportación se toma <strong>solo con QA</strong>
             (<code>qa_revision_estado</code> + <code>qa_revision_accion</code>) a nivel PN.
-            Recalcular Synthetic <strong>no modifica</strong> los <code>engine_*.json</code>; solo regenera
-            <code>data/output/export_review/</code>.
         </div>
 
         <div class="exp-actions" id="expActions">
-            <button id="expBtnRunSynthetic" data-job="run-synthetic">Recalcular Synthetic</button>
-            <button id="expBtnRunWordpress" data-job="run-wordpress">Recalcular WordPress</button>
-            <button id="expBtnRunAi" data-job="run-ai-conflicts">Recalcular IA conflictos</button>
-            <button id="expBtnRunAll" data-job="run-all">Recalcular todo</button>
+            <button id="expBtnRunWordpress" data-job="run-wordpress">Recalcular export WordPress</button>
             <button id="expBtnRefresh" class="exp-btn-secondary" type="button">Refrescar archivos</button>
         </div>
 
@@ -57,8 +52,8 @@
                 <div class="value" id="expSumImport">—</div>
             </div>
             <div class="exp-summary-card">
-                <div class="label">QA validados</div>
-                <div class="value" id="expSumValidated">—</div>
+                <div class="label">PN únicos</div>
+                <div class="value" id="expSumUniquePn">—</div>
             </div>
             <div class="exp-summary-card">
                 <div class="label">Pendientes</div>
@@ -69,8 +64,8 @@
                 <div class="value" id="expSumDiscard">—</div>
             </div>
             <div class="exp-summary-card">
-                <div class="label">Total decisiones</div>
-                <div class="value" id="expSumDecisionTotal">—</div>
+                <div class="label">Ocurrencias procesadas</div>
+                <div class="value" id="expSumOccurrences">—</div>
             </div>
         </div>
 
@@ -79,7 +74,8 @@
                 <h2>Decisiones QA por PN</h2>
                 <div style="display:flex; gap:8px; align-items:center;">
                     <label for="expDecisionFilter" style="font-size:12px;color:var(--exp-muted);">Filtro:</label>
-                    <select id="expDecisionFilter" style="padding:4px 8px; border:1px solid var(--exp-border); border-radius:6px;">
+                    <select id="expDecisionFilter"
+                        style="padding:4px 8px; border:1px solid var(--exp-border); border-radius:6px;">
                         <option value="">Todos</option>
                         <option value="import">Solo validados</option>
                         <option value="pending_review">Solo pendientes</option>
@@ -94,7 +90,6 @@
                             <tr>
                                 <th>sku</th>
                                 <th>designation_final</th>
-                                <th>qa_validated</th>
                                 <th>decision</th>
                                 <th>reason</th>
                                 <th>occurrences</th>
@@ -104,7 +99,7 @@
                         </thead>
                         <tbody id="expDecisionBody">
                             <tr>
-                                <td colspan="8" class="exp-empty">Cargando decisiones…</td>
+                                <td colspan="7" class="exp-empty">Cargando decisiones…</td>
                             </tr>
                         </tbody>
                     </table>
@@ -125,7 +120,6 @@
                                 <tr>
                                     <th data-sort="folder">Carpeta</th>
                                     <th data-sort="name">Archivo</th>
-                                    <th data-sort="type">Tipo</th>
                                     <th data-sort="size">Tamaño</th>
                                     <th data-sort="mtime">Modificado</th>
                                     <th>Acciones</th>
@@ -133,7 +127,7 @@
                             </thead>
                             <tbody id="expFilesBody">
                                 <tr>
-                                    <td colspan="6" class="exp-empty">Cargando…</td>
+                                    <td colspan="5" class="exp-empty">Cargando…</td>
                                 </tr>
                             </tbody>
                         </table>
