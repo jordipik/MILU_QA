@@ -649,6 +649,7 @@
                                 <input id="qaExportSearchInput" type="search" placeholder="Buscar SKU, designation o motivo"
                                     aria-label="Buscar en preview global" />
                                 <button id="qaExportFilterResetBtn" type="button">Limpiar filtros</button>
+                                <button id="qaExportDownloadCsvBtn" type="button">Descargar CSV</button>
                                 <span id="qaExportFilteredCount" class="qa-modal-related-count">0 / 0</span>
                             </div>
                             <div class="qa-modal-export-table-wrap qa-export-preview-wrap">
@@ -656,10 +657,10 @@
                                     aria-label="Preview global WordPress export">
                                     <thead>
                                         <tr>
-                                            <th>SKU</th>
-                                            <th>Decision</th>
-                                            <th>Designation</th>
-                                            <th>Ocurrencias</th>
+                                            <th data-export-sort="sku" class="qa-export-sortable">SKU</th>
+                                            <th data-export-sort="import_decision" class="qa-export-sortable">Decision</th>
+                                            <th data-export-sort="designation_final" class="qa-export-sortable">Designation</th>
+                                            <th data-export-sort="total_occurrences_global" class="qa-export-sortable">Ocurrencias</th>
                                         </tr>
                                     </thead>
                                     <tbody id="qaExportPreviewBody">

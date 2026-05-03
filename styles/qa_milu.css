@@ -3718,6 +3718,27 @@
             background: #eef2f7;
         }
 
+        .qa-export-sortable {
+            cursor: pointer;
+            user-select: none;
+        }
+
+        .qa-export-sortable:hover {
+            color: #1d4ed8;
+        }
+
+        .qa-export-sortable.is-sorted-asc::after {
+            content: ' \25B2';
+            font-size: 9px;
+            color: #2563eb;
+        }
+
+        .qa-export-sortable.is-sorted-desc::after {
+            content: ' \25BC';
+            font-size: 9px;
+            color: #2563eb;
+        }
+
         #qaExportPreviewBody tr {
             cursor: pointer;
         }

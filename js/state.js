@@ -49,5 +49,7 @@ export const state = {
     backendStatusMessage: 'Backend: comprobando...',
     exportPreviewRows: [],
     exportTraceCache: {},
-    selectedExportSku: ''
+    selectedExportSku: '',
+    exportPreviewSortKey: '',
+    exportPreviewSortAsc: true
 };

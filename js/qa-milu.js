@@ -576,6 +576,95 @@ function renderExportFilteredCount(visible, total) {
     elem.textContent = `${Number(visible || 0)} / ${Number(total || 0)}`;
 }
 
+function applyExportPreviewSort(rows) {
+    const key = String(state.exportPreviewSortKey || '').trim();
+    if (!key) return rows;
+    const asc = state.exportPreviewSortAsc !== false;
+    const numericKeys = new Set(['total_occurrences_global']);
+
+    const sorted = [...rows].sort((a, b) => {
+        const va = a?.[key];
+        const vb = b?.[key];
+        if (numericKeys.has(key)) {
+            return (Number(va) || 0) - (Number(vb) || 0);
+        }
+        return String(va || '').localeCompare(String(vb || ''), 'es', { numeric: true, sensitivity: 'base' });
+    });
+
+    return asc ? sorted : sorted.reverse();
+}
+
+function updateExportSortHeaderClasses() {
+    document.querySelectorAll('th[data-export-sort]').forEach((th) => {
+        th.classList.remove('is-sorted-asc', 'is-sorted-desc');
+        if (th.getAttribute('data-export-sort') === state.exportPreviewSortKey) {
+            th.classList.add(state.exportPreviewSortAsc !== false ? 'is-sorted-asc' : 'is-sorted-desc');
+        }
+    });
+}
+
+function toggleExportPreviewSort(key) {
+    const normalized = String(key || '').trim();
+    if (!normalized) return;
+    if (state.exportPreviewSortKey === normalized) {
+        state.exportPreviewSortAsc = !state.exportPreviewSortAsc;
+    } else {
+        state.exportPreviewSortKey = normalized;
+        state.exportPreviewSortAsc = true;
+    }
+    updateExportSortHeaderClasses();
+    renderExportPreviewRows(state.exportPreviewRows || []);
+}
+
+function toCsvCell(value) {
+    const text = String(value == null ? '' : value);
+    if (text.includes('"') || text.includes(';') || text.includes('\n') || text.includes('\r')) {
+        return `"${text.replace(/"/g, '""')}"`;
+    }
+    return text;
+}
+
+function downloadExportPreviewCsv() {
+    const rows = applyExportPreviewSort(applyExportPreviewFilters(state.exportPreviewRows || []));
+    if (!rows.length) {
+        setExportRunStatus('No hay filas para exportar', 'warn');
+        return;
+    }
+
+    const headers = [
+        'sku',
+        'import_decision',
+        'import_reason',
+        'designation_final',
+        'measure_final',
+        'weight_final',
+        'source_engine_file',
+        'source_id',
+        'total_occurrences_global',
+        'engine_models_all',
+        'source_pages_all',
+        'source_ids_all',
+        'compacted_type'
+    ];
+
+    const lines = [headers.join(';')];
+    for (const row of rows) {
+        lines.push(headers.map((h) => toCsvCell(row?.[h])).join(';'));
+    }
+
+    const blob = new Blob([`\uFEFF${lines.join('\n')}\n`], { type: 'text/csv;charset=utf-8' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = `wordpress_export_preview_filtered_${new Date().toISOString().slice(0, 10)}.csv`;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    URL.revokeObjectURL(url);
+
+    setExportRunStatus(`CSV descargado (${rows.length} filas)`, 'ok');
+}
+
 function renderExportTrace(trace, sku) {
     const traceSku = $('qaExportTraceSku');
     const body = $('qaExportTraceBody');
@@ -627,7 +716,8 @@ function renderExportPreviewRows(rows) {
     if (!(body instanceof HTMLElement)) return;
 
     const totalRows = Array.isArray(rows) ? rows : [];
-    const visibleRows = applyExportPreviewFilters(totalRows);
+    const filteredRows = applyExportPreviewFilters(totalRows);
+    const visibleRows = applyExportPreviewSort(filteredRows);
     renderExportFilteredCount(visibleRows.length, totalRows.length);
 
     if (!visibleRows.length) {
@@ -3448,6 +3538,17 @@ function attachGlobalEvents() {
     $('qaExportFilterResetBtn')?.addEventListener('click', () => {
         resetExportPreviewFilters();
         renderExportPreviewRows(state.exportPreviewRows || []);
+    });
+
+    $('qaExportDownloadCsvBtn')?.addEventListener('click', () => {
+        downloadExportPreviewCsv();
+    });
+
+    document.querySelectorAll('th[data-export-sort]').forEach((th) => {
+        th.addEventListener('click', () => {
+            const key = th.getAttribute('data-export-sort');
+            toggleExportPreviewSort(key);
+        });
     });
 
     $('qaExportPreviewBody')?.addEventListener('click', async (event) => {
