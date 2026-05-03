@@ -1883,6 +1883,15 @@ function renderReviewStats(rows = getQueueRows(), row = currentRow) {
     if (deleteOkUniqueEl instanceof HTMLElement) deleteOkUniqueEl.textContent = `· ${uniqueStats.deleteOk.size} únicos`;
     if (pendingEl instanceof HTMLElement) pendingEl.textContent = String(stats.pending);
     if (pendingUniqueEl instanceof HTMLElement) pendingUniqueEl.textContent = `· ${uniqueStats.pending.size} únicos`;
+
+    // Update nav button labels with counts
+    const queue = rows;
+    const errorCount = queue.filter(r => rowHasErrors(r)).length;
+    const pendingCount = queue.filter(r => rowIsPending(r)).length;
+    const errorNavSpan = document.querySelector('.a2-search-nav.is-error .a2-search-nav-center');
+    const pendingNavSpan = document.querySelector('.a2-search-nav.is-pending .a2-search-nav-center');
+    if (errorNavSpan instanceof HTMLElement) errorNavSpan.textContent = `Error (${errorCount})`;
+    if (pendingNavSpan instanceof HTMLElement) pendingNavSpan.textContent = `Pendiente (${pendingCount})`;
 }
 
 function renderReviewStateButtons(row) {

@@ -2,6 +2,7 @@
 
 const fs = require('fs');
 const path = require('path');
+const { pathToFileURL } = require('url');
 const { ENGINE_JSON_FILES } = require('../engine_files');
 const { recomputeEngineErrors } = require('../recompute_engine_errors');
 
@@ -32,6 +33,29 @@ const PDF_FIELD_TO_JSON_KEY = {
     'SUST_SUPERSEDED_LIST': 'sust_superseded_list_pdf',
     'BOM-No.': 'bom_pdf'
 };
+
+let cachedStandardFontDataUrl = null;
+
+function getPdfStandardFontDataUrl() {
+    if (cachedStandardFontDataUrl !== null) return cachedStandardFontDataUrl;
+
+    try {
+        const pdfjsPkgPath = require.resolve('pdfjs-dist/package.json');
+        const standardFontsDir = path.join(path.dirname(pdfjsPkgPath), 'standard_fonts');
+        if (fs.existsSync(standardFontsDir)) {
+            const withSep = standardFontsDir.endsWith(path.sep)
+                ? standardFontsDir
+                : `${standardFontsDir}${path.sep}`;
+            cachedStandardFontDataUrl = pathToFileURL(withSep).href;
+            return cachedStandardFontDataUrl;
+        }
+    } catch (_error) {
+        // Si no se puede resolver pdfjs-dist, dejamos null y pdf.js usara fallback interno.
+    }
+
+    cachedStandardFontDataUrl = null;
+    return cachedStandardFontDataUrl;
+}
 
 function printUsage() {
     console.log('Uso:');
@@ -415,9 +439,11 @@ async function getPdfPageNormalizedText(pdfjsLib, caches, book, sourcePage) {
 
         if (!caches.pdfDocumentPromiseCache.has(pdfPath)) {
             const pdfBuffer = fs.readFileSync(pdfPath);
+            const standardFontDataUrl = getPdfStandardFontDataUrl();
             const loadingTask = pdfjsLib.getDocument({
                 data: new Uint8Array(pdfBuffer),
-                isEvalSupported: false
+                isEvalSupported: false,
+                ...(standardFontDataUrl ? { standardFontDataUrl } : {})
             });
             caches.pdfDocumentPromiseCache.set(pdfPath, loadingTask.promise);
         }

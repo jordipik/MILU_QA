@@ -30,9 +30,11 @@ import { initPdfZoomControls, loadPdfClear, loadPdfWithPage, renderPdfPage, requ
 import { updateSchemasInline, renderSelectedRowPosPanel, renderSelectedRowPosTop } from './schemas.js';
 import { getEngineJsonForRow } from './helpers.js';
 import {
+    applyFilters,
     changePage,
     focusRevisionRowInMainTable,
     getCurrentFilteredSortedRows,
+    getPersistedHasError,
     getRowsForBulkScope,
     jumpToPage,
     moveSelectionBy,
@@ -2757,6 +2759,38 @@ function hideQaChecksProgress() {
     area.style.display = 'none';
 }
 
+function toFiniteNumber(value) {
+    const parsed = Number(value);
+    return Number.isFinite(parsed) ? parsed : NaN;
+}
+
+function getPersistedErrorCountFromRow(row) {
+    const total = toFiniteNumber(row?.total_error);
+    if (!Number.isNaN(total)) return Math.max(0, Math.trunc(total));
+
+    const breakdownKeys = [
+        'pos_error',
+        'pn_error',
+        'designation_error',
+        'weight_error',
+        'measurement_error',
+        'norma_error',
+        'bom_error'
+    ];
+
+    let sum = 0;
+    let hasBreakdown = false;
+    breakdownKeys.forEach((key) => {
+        const value = toFiniteNumber(row?.[key]);
+        if (Number.isNaN(value)) return;
+        hasBreakdown = true;
+        sum += Math.max(0, Math.trunc(value));
+    });
+
+    if (hasBreakdown) return sum;
+    return getPersistedHasError(row) ? 1 : 0;
+}
+
 function buildFoundErrorRows(rows, activeCodes, maxItems = 300) {
     const definitionMap = getQaErrorDefinitionMap();
     const output = [];
@@ -2771,7 +2805,8 @@ function buildFoundErrorRows(rows, activeCodes, maxItems = 300) {
             page: String(row?.['Source Page'] ?? '').trim(),
             pos: String(row?.POS ?? '').trim(),
             pn: String(row?.['PART NO.'] ?? row?.pn ?? '').trim(),
-            errors: activeErrors.codes.map(code => definitionMap.get(code) || code)
+            errors: getPersistedErrorCountFromRow(row),
+            activeChecks: activeErrors.codes.map(code => definitionMap.get(code) || code)
         });
 
         if (output.length >= maxItems) break;
@@ -2802,7 +2837,7 @@ function renderQaChecksFoundRows(foundRows, totalFound) {
             <td>${escapeHtml(item.page || '-')}</td>
             <td>${escapeHtml(item.pos || '-')}</td>
             <td>${escapeHtml(item.pn || '-')}</td>
-            <td>${escapeHtml((item.errors || []).join(' | ') || '-')}</td>
+            <td title="Errores persistidos en engine_*.json. Checks activos: ${escapeHtml((item.activeChecks || []).join(' | ') || 'ninguno')}">${escapeHtml(String(item.errors ?? '-'))}</td>
         </tr>
     `).join('');
 }
@@ -2988,12 +3023,33 @@ function updateOnlyErrorsToggleLabel() {
 
     const onlyErrorsActive = String(state.filters?.has_error || '') === 'true';
     toggleBtn.classList.toggle('is-active', onlyErrorsActive);
-    toggleBtn.textContent = onlyErrorsActive ? 'Solo errores: ON' : 'Solo errores: OFF';
+
+    // Compute counts excluding the has_error filter to always show X/Total
+    const savedErrorFilter = state.filters?.has_error;
+    if (state.filters) delete state.filters.has_error;
+    const baseFiltered = applyFilters(state.allData || []);
+    if (state.filters && savedErrorFilter !== undefined) state.filters.has_error = savedErrorFilter;
+    const errorsCount = baseFiltered.filter(row => getPersistedHasError(row)).length;
+    const total = baseFiltered.length;
+    const countStr = total > 0 ? ` (${errorsCount}/${total})` : '';
+
+    toggleBtn.textContent = (onlyErrorsActive ? 'Solo errores: ON' : 'Solo errores: OFF') + countStr;
 }
 
 function setOnlyErrorsFilter(enabled) {
     if (enabled) state.filters.has_error = 'true';
     else delete state.filters.has_error;
+
+    if (enabled) {
+        // En modo Solo errores: siempre paginación ON y sin filtro de página.
+        state.paginationEnabled = true;
+        const pageSelect = $('pageFilterSelect');
+        if (pageSelect instanceof HTMLSelectElement) {
+            pageSelect.value = '';
+        }
+        delete state.filters.page;
+        updatePaginationToggleLabel();
+    }
 
     const hasErrorSelect = document.querySelector('.filter-select[data-filter="has_error"]');
     if (hasErrorSelect instanceof HTMLSelectElement) {
@@ -3020,6 +3076,7 @@ function handleFilter(event) {
         state.currentPage = 1;
         renderTable();
         renderPagination();
+        updateOnlyErrorsToggleLabel();
     }, 120);
 }
 

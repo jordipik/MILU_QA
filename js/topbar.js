@@ -169,7 +169,6 @@ export function createTopbar(page) {
             <a href="${getNavTargetHref('pdf')}" data-page="pdf" class="${pageConfig.active === 'PDF' ? 'active' : ''}">PDF</a>
             <a href="${getNavTargetHref('analisis')}" data-page="analisis" class="${pageConfig.active === 'ANALISIS' ? 'active' : ''}">ANALISIS</a>
             ${ENABLE_EXPORT_VIEW ? `<a href="${getNavTargetHref('export')}" data-page="export" class="${pageConfig.active === 'EXPORT' ? 'active' : ''}">EXPORT</a>` : ''}
-            <a href="pn_review.html" target="_blank" rel="noopener">PN REVIEW</a>
         </nav>
         <div id="backendStatus" class="backend-status checking" aria-live="polite" title="Estado del backend de guardado">
             <span class="backend-status-dot" aria-hidden="true"></span>

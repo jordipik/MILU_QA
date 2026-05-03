@@ -37,19 +37,6 @@
     <div class="content">
         <div class="main">
             <div class="card">
-                <div class="stats" id="stats">
-                    <span class="stat">Cargando...</span>
-                </div>
-
-                <div id="lazyEnginePanel" class="lazy-engine-panel" hidden>
-                    <span id="lazyEngineInfo" class="lazy-engine-info">Modo carga incremental activo</span>
-                    <span id="lazyEngineBadge" class="lazy-engine-badge">Motores cargados: 0 / 0</span>
-                    <select id="lazyEngineSelect" class="filter-select lazy-engine-select"
-                        title="Selecciona un motor para cargar"></select>
-                    <button id="lazyLoadEngineBtn" type="button">Cargar motor</button>
-                    <button id="lazyLoadAllEnginesBtn" type="button">Cargar todos</button>
-                </div>
-
                 <div class="clear-filters modern-control-deck">
                     <div class="deck-head">
                         <p class="deck-title">Centro de control</p>
@@ -57,23 +44,27 @@
                     </div>
                     <div class="toolbar-primary">
                         <div class="toolbar-pane toolbar-pane-book">
+                            <div class="book-pane-right">
+                                <div class="book-pane-right-top">
+                                    <select id="bookFilterSelect" class="filter-select book-main-select"
+                                        data-filter="book">
+                                        <option value="">Todos los libros</option>
+                                    </select>
+                                </div>
+                                <div class="book-pane-right-bottom">
+                                    <button id="prevBookPageBtn" class="page-nav-btn" title="Página anterior del libro"
+                                        aria-label="Página anterior">&#9664;</button>
+                                    <select id="pageFilterSelect" class="filter-select page-main-select"
+                                        data-filter="page" title="Filtrar por página o ver todas las páginas del libro">
+                                        <option value="">Todas las páginas</option>
+                                    </select>
+                                    <button id="nextBookPageBtn" class="page-nav-btn" title="Página siguiente del libro"
+                                        aria-label="Página siguiente">&#9654;</button>
+                                </div>
+                            </div>
+
                             <div class="book-pane-left">
                                 <span class="pane-label">Navegación</span>
-                                <div class="book-top-row">
-                                    <button id="sortBookPagePosBtn">Ordenar</button>
-                                    <button id="togglePaginationBtn" type="button"
-                                        title="Activar o desactivar paginación">Paginación: ON</button>
-                                    <div class="view-toggle-inline">
-                                        <select id="columnViewSelect" class="filter-select column-view-select"
-                                            title="Seleccionar vista de tabla">
-                                            <option value="qa">Vista QA</option>
-                                            <option value="focus">Vista foco PN</option>
-                                            <option value="pdf" selected>Vista PDF</option>
-                                            <option value="errors">Vista errores</option>
-                                        </select>
-                                    </div>
-                                </div>
-
                                 <div class="book-pane-actions">
                                     <button id="clearFiltersBtn">Limpiar</button>
                                     <button id="qaUndoLastChangeBtn" type="button"
@@ -83,9 +74,6 @@
                                     <button id="openExportPageBtn" type="button"
                                         title="Abrir página de Exportación WordPress (flujo oficial QA-only)"
                                         onclick="window.open('exportacion.html', '_blank', 'noopener')">Exportación</button>
-                                    <button id="openPnReviewPageBtn" type="button"
-                                        title="Abrir página de revisión global por PN"
-                                        onclick="window.open('pn_review.html', '_blank', 'noopener')">PN Review</button>
                                     <button id="toggleOnlyErrorsBtn" type="button"
                                         title="Mostrar solo registros con errores">Solo errores: OFF</button>
                                     <div class="bulk-edit">
@@ -112,30 +100,39 @@
                                         </div>
                                     </div>
                                 </div>
-                            </div>
 
-                            <div class="book-pane-right">
-                                <div class="book-pane-right-top">
-                                    <select id="bookFilterSelect" class="filter-select book-main-select"
-                                        data-filter="book">
-                                        <option value="">Todos los libros</option>
-                                    </select>
-                                </div>
-                                <div class="book-pane-right-bottom">
-                                    <button id="prevBookPageBtn" class="page-nav-btn" title="Página anterior del libro"
-                                        aria-label="Página anterior">&#9664;</button>
-                                    <select id="pageFilterSelect" class="filter-select page-main-select"
-                                        data-filter="page" title="Filtrar por página o ver todas las páginas del libro">
-                                        <option value="">Todas las páginas</option>
-                                    </select>
-                                    <button id="nextBookPageBtn" class="page-nav-btn" title="Página siguiente del libro"
-                                        aria-label="Página siguiente">&#9654;</button>
+                                <div class="book-top-row">
+                                    <button id="sortBookPagePosBtn">Ordenar</button>
+                                    <button id="togglePaginationBtn" type="button"
+                                        title="Activar o desactivar paginación">Paginación: ON</button>
+                                    <div class="view-toggle-inline">
+                                        <select id="columnViewSelect" class="filter-select column-view-select"
+                                            title="Seleccionar vista de tabla">
+                                            <option value="qa">Vista QA</option>
+                                            <option value="focus">Vista foco PN</option>
+                                            <option value="pdf" selected>Vista PDF</option>
+                                            <option value="errors">Vista errores</option>
+                                        </select>
+                                    </div>
                                 </div>
                             </div>
                         </div>
 
 
                     </div>
+                </div>
+
+                <div class="stats" id="stats">
+                    <span class="stat">Cargando...</span>
+                </div>
+
+                <div id="lazyEnginePanel" class="lazy-engine-panel" hidden>
+                    <span id="lazyEngineInfo" class="lazy-engine-info">Modo carga incremental activo</span>
+                    <span id="lazyEngineBadge" class="lazy-engine-badge">Motores cargados: 0 / 0</span>
+                    <select id="lazyEngineSelect" class="filter-select lazy-engine-select"
+                        title="Selecciona un motor para cargar"></select>
+                    <button id="lazyLoadEngineBtn" type="button">Cargar motor</button>
+                    <button id="lazyLoadAllEnginesBtn" type="button">Cargar todos</button>
                 </div>
 
                 <div id="mainTableWrap" class="tableWrap">

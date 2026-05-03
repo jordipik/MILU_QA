@@ -209,7 +209,8 @@
     "bom_pdf": "000.00899",
     "norma_pdf": "MMN425",
     "qa_revision_estado": "ok",
-    "qa_revision_accion": "importar"
+    "qa_revision_accion": "importar",
+    "qa_revision_updated_at": "2026-05-03T22:58:29.223Z"
   },
   {
     "ID": "1600003",
