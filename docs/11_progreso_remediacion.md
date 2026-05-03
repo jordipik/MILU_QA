@@ -54,7 +54,7 @@ Bitácora de cambios efectivos en la rama de remediación. Cada entrada referenc
 
 ---
 
-## Commit `<pendiente>` — AR-1 infraestructura de carga incremental
+## Commit `020eee85` — AR-1 infraestructura de carga incremental
 
 **Resumen:** primera fase de la mejora AR-1 del plan, sin cambios en flujos por defecto.
 
@@ -73,6 +73,36 @@ Bitácora de cambios efectivos en la rama de remediación. Cada entrada referenc
 - Sin la flag, `loadData()` usa `loadPartitionedEngineData` exactamente como antes.
 
 Documento detallado: [12_ar1_carga_incremental.md](12_ar1_carga_incremental.md).
+
+---
+
+## Commit `<pendiente>` — AR-1 UI mínima para carga incremental
+
+**Resumen:** se completa la interfaz mínima de usuario para aprovechar AR-1 en `?lazy=1` sin afectar el modo clásico.
+
+### Frontend UI
+- [qa_milu.html](../qa_milu.html): nuevo bloque `lazyEnginePanel` con:
+   - badge `lazyEngineBadge` (`n / 9`),
+   - selector `lazyEngineSelect`,
+   - botones `lazyLoadEngineBtn` y `lazyLoadAllEnginesBtn`.
+- [styles/qa_milu.css](../styles/qa_milu.css): estilos específicos del panel lazy.
+
+### Frontend lógica
+- [js/qa-milu.js](../js/qa-milu.js):
+   - muestra/oculta panel lazy según `state.incrementalLoadingEnabled`,
+   - carga incremental por botón con `loadEnginesByFileNames(..., { append: true })`,
+   - refresca badge/selector,
+   - recompone catálogo libro/página tras añadir motores,
+   - re-renderiza tabla/paginación y mantiene compatibilidad con revisión/guardado.
+
+### Verificación
+- Modo clásico: panel oculto y carga completa como antes.
+- Modo lazy:
+   - inicio en `1 / 9`,
+   - tras cargar un motor: `2 / 9`,
+   - tras "Cargar todos": `9 / 9`.
+- Selector de libros actualizado según motores ya cargados.
+- Persistencia: `/save-json` escribe y restaura correctamente `qa_revision_accion` en `engine_12V4000M40A.json`.
 
 ---
 

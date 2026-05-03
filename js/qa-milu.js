@@ -2102,6 +2102,139 @@ function setPageFilterValue(pageValue) {
     updateSchemasInline(selectedBook, selectedPage);
 }
 
+function getLoadedEngineFilesSet() {
+    if (state.loadedEngineFiles instanceof Set) return state.loadedEngineFiles;
+    return new Set();
+}
+
+function getEngineCatalogList() {
+    return Array.isArray(state.engineCatalog) ? state.engineCatalog : [];
+}
+
+function formatLazyEngineOptionLabel(engineItem) {
+    const model = String(engineItem?.engine_model || '').trim();
+    const file = String(engineItem?.file || '').trim();
+    const rowCountRaw = Number(engineItem?.rowCount);
+    const rowCountText = Number.isFinite(rowCountRaw) && rowCountRaw >= 0
+        ? ` (${rowCountRaw.toLocaleString('es-ES')} filas)`
+        : '';
+    return `${model || file}${rowCountText}`;
+}
+
+function updateLazyEngineBadge() {
+    const badge = $('lazyEngineBadge');
+    if (!(badge instanceof HTMLElement)) return;
+    const total = getEngineCatalogList().length || 0;
+    const loaded = getLoadedEngineFilesSet().size;
+    badge.textContent = `Motores cargados: ${loaded} / ${total}`;
+}
+
+function refreshLazyEngineSelectOptions() {
+    const select = $('lazyEngineSelect');
+    const loadBtn = $('lazyLoadEngineBtn');
+    const loadAllBtn = $('lazyLoadAllEnginesBtn');
+    if (!(select instanceof HTMLSelectElement)) return;
+
+    const catalog = getEngineCatalogList();
+    const loaded = getLoadedEngineFilesSet();
+    select.innerHTML = catalog.map((item) => {
+        const file = String(item?.file || '').trim();
+        const isLoaded = loaded.has(file);
+        const label = formatLazyEngineOptionLabel(item);
+        return `<option value="${escapeHtml(file)}" ${isLoaded ? 'disabled' : ''}>${escapeHtml(label)}${isLoaded ? ' (cargado)' : ''}</option>`;
+    }).join('');
+
+    const firstPending = catalog.find(item => !loaded.has(String(item?.file || '').trim()));
+    const hasPending = Boolean(firstPending && firstPending.file);
+    select.value = hasPending ? String(firstPending.file) : '';
+    select.disabled = !hasPending;
+
+    if (loadBtn instanceof HTMLButtonElement) {
+        loadBtn.disabled = !hasPending;
+    }
+    if (loadAllBtn instanceof HTMLButtonElement) {
+        loadAllBtn.disabled = !hasPending;
+    }
+
+    updateLazyEngineBadge();
+}
+
+function refreshBookFilterCatalog({ keepCurrentSelection = true } = {}) {
+    const bookFilterSelect = $('bookFilterSelect');
+    if (!(bookFilterSelect instanceof HTMLSelectElement)) return;
+
+    const previousBook = keepCurrentSelection
+        ? String(state.filters.book || bookFilterSelect.value || '').trim()
+        : '';
+    const previousPage = keepCurrentSelection
+        ? normalizePageNumber(state.filters.page || $('pageFilterSelect')?.value || '')
+        : '';
+
+    const allBooks = [...new Set(state.allData
+        .map(item => val(item, 'engine_model', '').toString().trim())
+        .filter(b => b && b !== '—'))].sort((a, b) => a.localeCompare(b, undefined, { numeric: true }));
+
+    bookFilterSelect.innerHTML = '<option value="">Todos los libros</option>'
+        + allBooks.map(book => `<option value="${escapeHtml(book)}">${escapeHtml(book)}</option>`).join('');
+
+    if (!allBooks.length) {
+        delete state.filters.book;
+        delete state.filters.page;
+        populatePageFilterOptions('', '');
+        loadPdfClear();
+        updateSchemasInline('', '');
+        return;
+    }
+
+    const nextBook = previousBook && allBooks.includes(previousBook)
+        ? previousBook
+        : allBooks[0];
+    applyBookSelection(nextBook, {
+        pageValue: previousPage,
+        fallbackToFirstAvailablePage: true,
+        render: false,
+        updatePdf: true
+    });
+}
+
+async function loadLazyEnginesAndRefresh(fileNames, options = {}) {
+    const mergedRows = await loadEnginesByFileNames(fileNames, options);
+    if (!Array.isArray(mergedRows)) {
+        throw new Error('La carga incremental no devolvio datos validos.');
+    }
+
+    const previousSelectedRevisionKey = String(state.selectedRevisionRowKey || '').trim();
+    state.allData = mergedRows;
+    assignRevisionKeys(state.allData);
+    applyRevisionDataToRows(state.allData);
+
+    if (previousSelectedRevisionKey) {
+        const selectedExists = state.allData.some(item => getRevisionKey(item) === previousSelectedRevisionKey);
+        if (!selectedExists) state.selectedRevisionRowKey = '';
+    }
+
+    refreshBookFilterCatalog({ keepCurrentSelection: true });
+    state.currentPage = 1;
+    renderTable();
+    renderPagination();
+    queueColumnViewRefresh();
+    syncSideRecordFormWithSelection();
+    refreshLazyEngineSelectOptions();
+}
+
+function initLazyEnginePanel() {
+    const panel = $('lazyEnginePanel');
+    if (!(panel instanceof HTMLElement)) return;
+
+    if (!state.incrementalLoadingEnabled) {
+        panel.hidden = true;
+        return;
+    }
+
+    panel.hidden = false;
+    refreshLazyEngineSelectOptions();
+}
+
 function syncPdfWithSelectedRow(revisionKey) {
     const normalizedKey = String(revisionKey || '').trim();
     if (!normalizedKey) {
@@ -2728,17 +2861,7 @@ async function loadData() {
         applyRevisionDataToRows(state.allData);
         loadColumnWidths();
 
-        const allBooks = [...new Set(state.allData
-            .map(item => val(item, 'engine_model', '').toString().trim())
-            .filter(b => b && b !== '—'))].sort((a, b) => a.localeCompare(b, undefined, { numeric: true }));
-
-        const bookFilterSelect = $('bookFilterSelect');
-        if (bookFilterSelect) {
-            bookFilterSelect.innerHTML = '<option value="">Todos los libros</option>' + allBooks.map(book => `<option value="${escapeHtml(book)}">${escapeHtml(book)}</option>`).join('');
-            if (allBooks.length > 0) {
-                applyBookSelection(allBooks[0], { fallbackToFirstAvailablePage: true, render: false, updatePdf: true });
-            }
-        }
+        refreshBookFilterCatalog({ keepCurrentSelection: false });
 
         if (!state.allData.length) {
             $('tbody').innerHTML = '<tr><td colspan="53" class="error">No se encontró información en los archivos engine_*.json</td></tr>';
@@ -2750,6 +2873,7 @@ async function loadData() {
         state.filteredData = [...state.allData];
         renderTable();
         renderPagination();
+        initLazyEnginePanel();
 
         loadOptionalCatalogsInBackground().catch(error => {
             console.warn('No se pudieron cargar los catálogos opcionales:', error);
@@ -2915,6 +3039,52 @@ function attachGlobalEvents() {
 
     $('pageFilterSelect')?.addEventListener('change', () => {
         setPageFilterValue($('pageFilterSelect')?.value || '');
+    });
+
+    $('lazyLoadEngineBtn')?.addEventListener('click', async () => {
+        if (!state.incrementalLoadingEnabled) return;
+        const select = $('lazyEngineSelect');
+        if (!(select instanceof HTMLSelectElement)) return;
+        const file = String(select.value || '').trim();
+        if (!file) return;
+
+        const status = $('stats');
+        const previousStats = status?.innerHTML || '';
+        if (status) status.innerHTML = '<span class="stat">Cargando motor seleccionado...</span>';
+
+        try {
+            await loadLazyEnginesAndRefresh([file], { append: true });
+        } catch (error) {
+            console.error('No se pudo cargar el motor seleccionado:', error);
+            alert(`No se pudo cargar el motor: ${error.message}`);
+            if (status) status.innerHTML = previousStats;
+            renderTable();
+            renderPagination();
+        }
+    });
+
+    $('lazyLoadAllEnginesBtn')?.addEventListener('click', async () => {
+        if (!state.incrementalLoadingEnabled) return;
+        const catalog = getEngineCatalogList();
+        const loaded = getLoadedEngineFilesSet();
+        const pending = catalog
+            .map(item => String(item?.file || '').trim())
+            .filter(file => file && !loaded.has(file));
+        if (!pending.length) return;
+
+        const status = $('stats');
+        const previousStats = status?.innerHTML || '';
+        if (status) status.innerHTML = `<span class="stat">Cargando ${pending.length} motores pendientes...</span>`;
+
+        try {
+            await loadLazyEnginesAndRefresh(pending, { append: true });
+        } catch (error) {
+            console.error('No se pudieron cargar todos los motores:', error);
+            alert(`No se pudieron cargar todos los motores: ${error.message}`);
+            if (status) status.innerHTML = previousStats;
+            renderTable();
+            renderPagination();
+        }
     });
 
     $('bulkRevOkBtn')?.addEventListener('click', () => applyBulkQuickMode('revok'));

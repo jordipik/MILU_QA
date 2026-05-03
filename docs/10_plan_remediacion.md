@@ -134,9 +134,9 @@ Leyenda:
 ## Bloque 5 — Arquitectura y escalabilidad
 
 ### AR-1. Carga incremental de motores
-- Estado: **infraestructura ✅** (commit pendiente). UI selector pendiente.
-- Detalle: [12_ar1_carga_incremental.md](12_ar1_carga_incremental.md). Endpoint `GET /engines`, helpers `fetchEngineCatalog` y `loadEnginesByFileNames`, feature flag `?lazy=1`.
-- Acción siguiente: añadir selector multi-motor en UI y métricas TTFR.
+- Estado: **infraestructura + UI mínima ✅**.
+- Detalle: [12_ar1_carga_incremental.md](12_ar1_carga_incremental.md). Endpoint `GET /engines`, helpers `fetchEngineCatalog` y `loadEnginesByFileNames`, feature flag `?lazy=1`, panel UI con badge + selector + botones de carga.
+- Acción siguiente: métricas TTFR comparativas y conmutador visual sin URL param.
 - Dificultad: L · Prioridad: 🔴 · Depende de: UX-1, UX-2.
 
 ### AR-2. Separar capas
@@ -168,7 +168,7 @@ Leyenda:
 | 🔴 | BK-1 Validación de payloads | Pendiente |
 | 🔴 | DT-1 Path configurable en pipeline | Pendiente |
 | 🔴 | UX-1 Vista compacta por defecto | Pendiente |
-| 🔴 | AR-1 Carga incremental | Pendiente |
+| 🔴 | AR-1 Carga incremental | ✅ |
 | 🟡 | QW-4 Lint, QW-6 Toasts, BK-2/3, DT-2/3/4/5/6, UX-2/3/4, AR-2/3/4 | Pendiente |
 | 🟢 | BK-4/5, UX-5/6, AR-5 | Pendiente |
 
