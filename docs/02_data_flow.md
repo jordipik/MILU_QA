@@ -68,3 +68,23 @@ Recommended sequence:
 2. `POST /save-json` depending on user path
 3. verify write on disk in target `engine_*.json`
 4. only then inspect UI behavior
+
+## 7. PN Review Global Decision Flow
+
+1. Usuario abre `pn_review.html` o activa la pestaña **PN Review** en `analista_02.html`.
+2. Se cargan en paralelo `GET /pn-review/:sku` (detalle + qa_summary) y `GET /pn-review/:sku/sources` (todas las apariciones).
+3. `detectPnSourceConflicts(sourceRows)` analiza conflictos por familias (`pn`, `designation`, `measure`, `weight`, `sust`) y devuelve `{familiesToShow, cellStatus, summary}`.
+4. Usuario pulsa Validar/Revisar/Descartar → confirm `<dialog>` nativo (sin `window.confirm`).
+5. `POST /pn-review/:sku/apply-decision {action: "validar"|"revisar"|"descartar"}` recorre los 9 engine JSON, actualiza `qa_revision_estado`, `qa_revision_accion`, `qa_revision_updated_at` en todas las filas coincidentes por `pn_final` / `PART NO.` / `pn`.
+6. Backend responde `{ok, sku, decision_applied, rows_updated, files_touched, errors}`.
+7. Toast CSS animado aparece inmediatamente; luego recarga datos del PN.
+8. En `analista_02.html` el callback `onDecisionApplied` llama a `revalidateCurrentRow()` y `renderReviewStats()`.
+
+Output:
+- todos los registros del PN en todos los motores quedan con el mismo estado de decisión.
+
+Recommended sequence:
+1. `GET /health`
+2. `POST /save-json` depending on user path
+3. verify write on disk in target `engine_*.json`
+4. only then inspect UI behavior

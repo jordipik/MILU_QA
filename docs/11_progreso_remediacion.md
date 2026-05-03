@@ -178,3 +178,31 @@ Cuando se cierre cada una, añadir aquí un bloque "Commit `<sha>` — `<resumen
 - Nuevo: `docs/14_wordpress_export_simplified.md`.
 - Actualizados: `docs/13_wordpress_export_ai_pipeline.md`, `docs/README.md`.
 - Nuevo archivo de archivo: `legacy/export_complex_ai/README.md`.
+
+---
+
+## Cambio actual - PN Review QA-only por PN global
+
+### Objetivo aplicado
+- Se crea la pantalla operativa PN Review para revisar productos por PN unico global.
+- La decision oficial se mantiene QA-only (sin scoring, sin IA de decision).
+
+### Backend
+- Nuevos endpoints oficiales:
+   - `GET /pn-review/list`
+   - `GET /pn-review/:sku`
+   - `GET /pn-review/:sku/sources`
+   - `POST /pn-review/:sku/apply-decision`
+- Agrupacion global por PN usando los mismos criterios base del export oficial (`buildQaSummary` + `decideByQa`).
+- Accion masiva por PN con validacion fuerte de payload (`estado=ok` y `accion` en `importar|eliminar|revisar`).
+- Escritura atomica por archivo y refresco de cache de PN Review tras cambios.
+
+### Frontend
+- Nueva UX completa en `pn_review.html` + `js/pn-review.js` + `styles/pn-review.css`.
+- Tabla de PN unicos, panel de detalle, validaciones auxiliares, badges de issues y modal de apariciones.
+- Acciones masivas desde el panel de detalle con confirmacion explicita.
+
+### Navegacion
+- Enlace a PN Review añadido desde:
+   - `qa_milu.html`
+   - `exportacion.html`

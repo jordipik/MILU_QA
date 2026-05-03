@@ -14,6 +14,7 @@
 - AR-1 carga incremental: [12_ar1_carga_incremental.md](12_ar1_carga_incremental.md)
 - WordPress export (transicion): [13_wordpress_export_ai_pipeline.md](13_wordpress_export_ai_pipeline.md)
 - WordPress export simplificado: [14_wordpress_export_simplified.md](14_wordpress_export_simplified.md)
+- PN Review QA-only: [14_wordpress_export_simplified.md](14_wordpress_export_simplified.md)
 - Quick AI context: [AI_QUICK_CONTEXT.md](AI_QUICK_CONTEXT.md)
 - Ultra-compact AI context: [AI_QUICK_CONTEXT_COMPACT.md](AI_QUICK_CONTEXT_COMPACT.md)
 
@@ -46,6 +47,11 @@
 3. [14_wordpress_export_simplified.md](14_wordpress_export_simplified.md)
 4. [modules/marcar_articulos_en_web_py.md](modules/marcar_articulos_en_web_py.md)
 5. [03_data_models.md](03_data_models.md)
+
+### E) Revision global por PN (QA-only)
+1. [14_wordpress_export_simplified.md](14_wordpress_export_simplified.md)
+2. [11_progreso_remediacion.md](11_progreso_remediacion.md)
+3. [modules/server.md](modules/server.md)
 
 ## Module Catalog
 

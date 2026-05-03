@@ -37,6 +37,60 @@ La decision final de exportacion depende solo de QA humana.
 - `GET /export/download`
 - `GET /export/status`
 - `POST /export/run-wordpress`
+- `GET /pn-review/list`
+- `GET /pn-review/:sku`
+- `GET /pn-review/:sku/sources`
+- `POST /pn-review/:sku/apply-decision`
+
+## Pantalla PN Review
+- URL: `pn_review.html`
+- Objetivo: revisar PN unicos globales (no filas BOM individuales).
+- Fuente de decision: solo QA humana (`qa_revision_estado` + `qa_revision_accion`).
+- Carga recomendada:
+   - listado compacto inicial con `GET /pn-review/list`
+   - detalle bajo demanda con `GET /pn-review/:sku`
+   - fuentes bajo demanda con `GET /pn-review/:sku/sources`
+
+## Accion masiva por PN
+Endpoint: `POST /pn-review/:sku/apply-decision`
+
+Payload:
+
+```json
+{
+   "estado": "ok",
+   "accion": "importar"
+}
+```
+
+`accion` permitidas:
+- `importar`
+- `eliminar`
+- `revisar`
+
+Efecto:
+- actualiza todas las apariciones del PN en los 9 `engine_*.json`
+- solo modifica:
+   - `qa_revision_estado`
+   - `qa_revision_accion`
+   - `qa_revision_updated_at`
+
+Respuesta:
+- `rows_updated`
+- `files_touched`
+- `errors`
+
+## Validaciones auxiliares de PN Review
+Estas validaciones ayudan a revisar, pero no deciden exportacion:
+
+- `has_pn`
+- `has_designation`
+- `has_image`
+- `has_measure`
+- `has_weight`
+- `has_sust`
+- `has_conflicts`
+- `conflict_codes`
 
 ## Endpoints legacy (desactivados)
 - `POST /export/run-synthetic`

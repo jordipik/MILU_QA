@@ -35,6 +35,10 @@ Offline support system:
 - `GET|POST /qa_revision_sync.php` (Express-served, returns JSON)
 - `POST /apply-revision-to-engines`
 - `POST /recompute-pdf-auto`
+- `GET /pn-review/list`
+- `GET /pn-review/:sku` (detalle de PN con qa_summary y engine_models_all)
+- `GET /pn-review/:sku/sources` (todas las apariciones en todos los engine JSON)
+- `POST /pn-review/:sku/apply-decision` (acción global: `validar`|`revisar`|`descartar`)
 
 ### Persistence Model
 - no SQL database
@@ -50,6 +54,11 @@ Offline support system:
 ## Main Data Domains
 - engine row records: part identity, designation, dimensions, substitution flags, image refs, QA fields
 - export references (legacy): `MILU_New_v506.json`, `MILU_Superseded_v506.json`, product export JSON
+
+## Main Views
+- `qa_milu.html`: QA principal (tabla + detalle + PDF)
+- `analista_02.html`: Analista avanzado con panel derecho de dos pestañas: **PDF** y **PN Review** (tab PN Review muestra `js/pn-review-embedded.js`)
+- `pn_review.html`: vista autónoma de PN Review con bútones Validar/Revisar/Descartar, confirm `<dialog>` nativo y toasts CSS
 
 ## High-Level Data Flows
 1. Load flow:

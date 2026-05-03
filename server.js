@@ -9,25 +9,18 @@ const { ENGINE_JSON_FILES } = require('./engine_files');
 const { recomputeEngineErrors } = require('./recompute_engine_errors');
 const { runComparison } = require('./scripts/qa_pdf_compare');
 const { applyRevisionPayload } = require('./apply_revision_to_engines');
+const { buildQaSummary: buildQaSummaryFromExport, decideByQa } = require('./scripts/export_wordpress_milu');
 
 const app = express();
 const PORT = 3000;
 const AUDIT_LOG_FILE = path.join(__dirname, 'qa_audit_log.json');
 const AUDIT_LOG_MAX_ENTRIES = 10000;
 const REVISION_SYNC_FILE = path.join(__dirname, 'qa_revision_server_data.json');
-const EXPORT_REVIEW_DIR = path.join(__dirname, 'data', 'output', 'export_review');
 const WORDPRESS_OUTPUT_DIR = path.join(__dirname, 'data', 'output', 'wordpress');
-const PN_SYNTHETIC_NEW_FILE = path.join(EXPORT_REVIEW_DIR, 'synthetic_new_compacted.json');
-const PN_SYNTHETIC_SUPERSEDED_FILE = path.join(EXPORT_REVIEW_DIR, 'synthetic_superseded_compacted.json');
-const PN_TRACE_FILE = path.join(WORDPRESS_OUTPUT_DIR, 'milu_wp_trace.json');
 
-const pnReviewCache = {
+const pnReviewQaCache = {
     loadedAt: null,
-    files: {
-        syntheticNew: null,
-        syntheticSuperseded: null,
-        trace: null
-    },
+    engineFingerprints: {},
     payload: null
 };
 
@@ -49,7 +42,9 @@ function getFileFingerprint(filePath) {
 }
 
 function fingerprintsEqual(a, b) {
-    return !!a && !!b && a.mtimeMs === b.mtimeMs && a.size === b.size;
+    if (!a && !b) return true;
+    if (!a || !b) return false;
+    return a.mtimeMs === b.mtimeMs && a.size === b.size;
 }
 
 function toNumber(value, fallback = 0) {
@@ -57,154 +52,345 @@ function toNumber(value, fallback = 0) {
     return Number.isFinite(numeric) ? numeric : fallback;
 }
 
+function normalizeText(value) {
+    return String(value == null ? '' : value).trim();
+}
+
+function lowerKey(value) {
+    return normalizeText(value).toLowerCase();
+}
+
+function collapseSpaces(value) {
+    return normalizeText(value).replace(/\s+/g, ' ');
+}
+
 function splitCsvUnique(value) {
-    const parts = String(value || '')
+    const parts = normalizeText(value)
         .split(',')
-        .map((part) => part.trim())
+        .map((part) => normalizeText(part))
         .filter(Boolean);
     return [...new Set(parts)];
 }
 
 function pnKey(value) {
-    return String(value || '').trim().toLowerCase();
+    return lowerKey(value);
 }
 
-function buildPnListItem(compactedRow, traceEntry) {
-    const sku = String(compactedRow?.pn || traceEntry?.sku || '').trim();
-    const decision = String(
-        traceEntry?.preview?.import_decision || compactedRow?.merge_decision || 'pending_review'
-    ).trim();
-    const confidence = Number(toNumber(compactedRow?.merge_quality?.consistency_score, 0).toFixed(3));
-    const occurrences = toNumber(compactedRow?.total_occurrences_global, Array.isArray(compactedRow?.source_records) ? compactedRow.source_records.length : 0);
-    const conflicts = Array.isArray(compactedRow?.merge_quality?.real_conflict_fields)
-        ? compactedRow.merge_quality.real_conflict_fields
-        : [];
-    const enginesCount = splitCsvUnique(compactedRow?.engine_models_all).length;
+function uniq(values) {
+    return [...new Set((values || []).filter(Boolean))];
+}
+
+function pickMostFrequent(values) {
+    const counts = new Map();
+    let bestKey = '';
+    let bestValue = '';
+    let bestCount = 0;
+
+    for (const raw of values || []) {
+        const value = collapseSpaces(raw);
+        if (!value) continue;
+        const key = lowerKey(value);
+        const current = counts.get(key) || { count: 0, value };
+        current.count += 1;
+        if (value.length > current.value.length) current.value = value;
+        counts.set(key, current);
+
+        if (
+            current.count > bestCount
+            || (current.count === bestCount && current.value.length > bestValue.length)
+        ) {
+            bestCount = current.count;
+            bestValue = current.value;
+            bestKey = key;
+        }
+    }
+
+    return bestKey ? bestValue : '';
+}
+
+function getRowPn(row) {
+    return normalizeText(row?.['PART NO.'] || row?.pn || row?.pn_final);
+}
+
+function getRowDesignation(row) {
+    return pickMostFrequent([
+        row?.designation_final,
+        row?.designation_gesa,
+        row?.designation_pdf,
+        row?.DESIGNATION
+    ]);
+}
+
+function getRowMeasure(row) {
+    return pickMostFrequent([
+        row?.measure_final,
+        row?.measurement_final,
+        row?.dimensions_gesa,
+        row?.measure_pdf,
+        row?.['MEASUREMENT / STANDARD']
+    ]);
+}
+
+function getRowWeight(row) {
+    return pickMostFrequent([
+        row?.weight_final,
+        row?.weight_gesa,
+        row?.weight_pdf,
+        row?.WEIGHT
+    ]);
+}
+
+function parseImagesFromValue(value) {
+    if (Array.isArray(value)) {
+        return uniq(value.map((item) => normalizeText(item)).filter(Boolean));
+    }
+
+    const text = normalizeText(value);
+    if (!text) return [];
+
+    return uniq(text
+        .split(/[\n,;|]/)
+        .map((part) => normalizeText(part))
+        .filter(Boolean));
+}
+
+function rowHasAnySust(row) {
+    return Boolean(
+        normalizeText(row?.sust_status)
+        || normalizeText(row?.sust_hierarchie)
+        || normalizeText(row?.sust_new_part_number)
+        || normalizeText(row?.sust_superseded_list)
+    );
+}
+
+function uniqueValues(rows, picker) {
+    return uniq((rows || [])
+        .map((row) => collapseSpaces(picker(row)))
+        .filter(Boolean)
+    );
+}
+
+function uniqueNormalizedValues(rows, picker) {
+    return uniq((rows || [])
+        .map((row) => lowerKey(collapseSpaces(picker(row))))
+        .filter(Boolean)
+    );
+}
+
+function normalizeQaSummary(qaSummary) {
+    return {
+        total_rows: toNumber(qaSummary?.total_rows, 0),
+        ok_importar: toNumber(qaSummary?.count_ok_importar, 0),
+        ok_eliminar: toNumber(qaSummary?.count_ok_eliminar, 0),
+        pendiente: toNumber(qaSummary?.count_pending, 0),
+        revisar: toNumber(qaSummary?.count_review_action, 0),
+        otros: toNumber(qaSummary?.count_other, 0)
+    };
+}
+
+function buildMergedFields(rows) {
+    const designationFinal = pickMostFrequent(rows.map(getRowDesignation));
+    const measureFinal = pickMostFrequent(rows.map(getRowMeasure));
+    const weightFinal = pickMostFrequent(rows.map(getRowWeight));
+    const sustNewPartNumber = pickMostFrequent(rows.map((row) => row?.sust_new_part_number));
+    const sustSupersededList = pickMostFrequent(rows.map((row) => row?.sust_superseded_list));
+    const categories = uniq(rows.map((row) => normalizeText(row?.categoria)).filter(Boolean));
+    const tags = uniq(rows.flatMap((row) => splitCsvUnique(row?.tags)).filter(Boolean));
+    const images = uniq(rows.flatMap((row) => parseImagesFromValue(row?.exp_imagenes)));
 
     return {
-        sku,
-        decision,
-        confidence,
-        occurrences,
-        conflicts_count: conflicts.length,
-        engines_count: enginesCount,
-        sust_tipo: String(compactedRow?.sust_tipo || '').trim(),
-        conflict_severity: String(compactedRow?.merge_quality?.conflict_severity || '').trim()
+        designation_final: designationFinal,
+        measure_final: measureFinal,
+        weight_final: weightFinal,
+        images,
+        sust_new_part_number: sustNewPartNumber,
+        sust_superseded_list: sustSupersededList,
+        categories,
+        tags
     };
 }
 
-function buildFieldStatuses(compactedRow) {
-    const fieldResolutions = compactedRow?.merge_quality?.field_resolutions || {};
+function buildPnValidation(sku, rows, mergedFields) {
+    const distinctDesignation = uniqueNormalizedValues(rows, getRowDesignation);
+    const distinctMeasure = uniqueNormalizedValues(rows, getRowMeasure);
+    const distinctWeight = uniqueNormalizedValues(rows, getRowWeight);
+    const distinctSustNew = uniqueNormalizedValues(rows, (row) => row?.sust_new_part_number);
+    const conflictCodes = [];
 
-    const fields = [
-        { key: 'designation', label: 'designation', value: String(compactedRow?.designation || '') },
-        { key: 'measurement', label: 'measurement', value: String(compactedRow?.measurement || '') },
-        { key: 'weight', label: 'weight', value: String(compactedRow?.weight || '') },
-        { key: 'categoria', label: 'categoria', value: String(compactedRow?.categoria || '') },
-        { key: 'new_pn_relacionado', label: 'new_pn_relacionado', value: String(compactedRow?.new_pn_relacionado || '') },
-        { key: 'old_pn_relacionados', label: 'old_pn_relacionados', value: String(compactedRow?.old_pn_relacionados || '') }
-    ];
+    if (distinctDesignation.length > 1) conflictCodes.push('designation_conflict');
+    if (distinctWeight.length > 1) conflictCodes.push('weight_conflict');
+    if (distinctMeasure.length > 1) conflictCodes.push('measure_conflict');
+    if (distinctSustNew.length > 1) conflictCodes.push('sust_new_part_number_conflict');
 
-    return fields.map((field) => {
-        const resolutionKey = field.key === 'measurement' ? 'measure' : field.key;
-        const resolution = fieldResolutions?.[resolutionKey] || {};
-        const value = String(field.value || '').trim();
-        let status = 'OK';
-        let reason = 'consistente';
+    return {
+        has_pn: Boolean(normalizeText(sku)),
+        has_designation: Boolean(normalizeText(mergedFields?.designation_final)),
+        has_image: Array.isArray(mergedFields?.images) && mergedFields.images.length > 0,
+        has_measure: Boolean(normalizeText(mergedFields?.measure_final)),
+        has_weight: Boolean(normalizeText(mergedFields?.weight_final)),
+        has_sust: rows.some((row) => rowHasAnySust(row)),
+        has_conflicts: conflictCodes.length > 0,
+        conflict_codes: conflictCodes
+    };
+}
 
-        if (!value) {
-            status = 'ERROR';
-            reason = 'valor_vacio';
-        } else if (resolution?.conflict_real) {
-            status = 'ERROR';
-            reason = 'conflicto_real';
-        } else if (resolution?.truncation_likely) {
-            status = 'WARNING';
-            reason = 'truncacion_probable';
+function buildMappedSourceRow(row) {
+    return {
+        ID: normalizeText(row?.ID),
+        engine_model: normalizeText(row?.engine_model || row?.model || row?.engine),
+        source_file: normalizeText(row?.__engine_file || row?.source_file),
+        'Source Page': normalizeText(row?.['Source Page']),
+        POS: normalizeText(row?.POS || row?.pos_final),
+        'PART NO.': normalizeText(row?.['PART NO.']),
+        pn_final: normalizeText(row?.pn_final),
+        DESIGNATION: normalizeText(row?.DESIGNATION),
+        designation_final: getRowDesignation(row),
+        designation_gesa: normalizeText(row?.designation_gesa),
+        designation_pdf: normalizeText(row?.designation_pdf),
+        measure_final: getRowMeasure(row),
+        dimensions_gesa: normalizeText(row?.dimensions_gesa),
+        measure_pdf: normalizeText(row?.measure_pdf),
+        weight_final: getRowWeight(row),
+        weight_gesa: normalizeText(row?.weight_gesa),
+        weight_pdf: normalizeText(row?.weight_pdf),
+        sust_status: normalizeText(row?.sust_status),
+        sust_hierarchie: normalizeText(row?.sust_hierarchie),
+        sust_new_part_number: normalizeText(row?.sust_new_part_number),
+        sust_superseded_list: normalizeText(row?.sust_superseded_list),
+        qa_revision_estado: normalizeText(row?.qa_revision_estado),
+        qa_revision_accion: normalizeText(row?.qa_revision_accion),
+        exp_imagenes: normalizeText(row?.exp_imagenes)
+    };
+}
+
+function buildSustSummary(rows) {
+    return {
+        statuses: uniqueValues(rows, (row) => row?.sust_status),
+        hierarchies: uniqueValues(rows, (row) => row?.sust_hierarchie),
+        new_part_numbers: uniqueValues(rows, (row) => row?.sust_new_part_number),
+        superseded_lists: uniqueValues(rows, (row) => row?.sust_superseded_list)
+    };
+}
+
+function buildConflictSummary(rows, validation) {
+    return {
+        has_conflicts: Boolean(validation?.has_conflicts),
+        conflict_codes: Array.isArray(validation?.conflict_codes) ? validation.conflict_codes : [],
+        distinct_values: {
+            designation_final: uniqueValues(rows, getRowDesignation),
+            measure_final: uniqueValues(rows, getRowMeasure),
+            weight_final: uniqueValues(rows, getRowWeight),
+            sust_new_part_number: uniqueValues(rows, (row) => row?.sust_new_part_number)
         }
-
-        return {
-            field: field.label,
-            value,
-            status,
-            reason,
-            source_tier: toNumber(resolution?.source_tier, 0),
-            agreement: Number(toNumber(resolution?.agreement, 0).toFixed(3)),
-            distinct_values: toNumber(resolution?.distinct_values, 0)
-        };
-    });
-}
-
-function buildSourceDiffMeta(sourceRows) {
-    const columns = ['designation_final', 'measure_final', 'weight_final', 'bom', 'pos', 'engine_model', 'source_page'];
-    const conflictColumns = [];
-    const distinctByColumn = {};
-
-    for (const column of columns) {
-        const values = [...new Set((sourceRows || []).map((row) => String(row?.[column] || '').trim()).filter(Boolean))];
-        distinctByColumn[column] = values;
-        if (values.length > 1) conflictColumns.push(column);
-    }
-
-    return { columns, conflictColumns, distinctByColumn };
-}
-
-function ensurePnReviewDataLoaded() {
-    const fingerprints = {
-        syntheticNew: getFileFingerprint(PN_SYNTHETIC_NEW_FILE),
-        syntheticSuperseded: getFileFingerprint(PN_SYNTHETIC_SUPERSEDED_FILE),
-        trace: getFileFingerprint(PN_TRACE_FILE)
     };
+}
 
-    const upToDate = pnReviewCache.payload
-        && fingerprintsEqual(pnReviewCache.files.syntheticNew, fingerprints.syntheticNew)
-        && fingerprintsEqual(pnReviewCache.files.syntheticSuperseded, fingerprints.syntheticSuperseded)
-        && fingerprintsEqual(pnReviewCache.files.trace, fingerprints.trace);
+function getEngineFingerprints() {
+    const fingerprints = {};
+    for (const file of ENGINE_JSON_FILES) {
+        fingerprints[file] = getFileFingerprint(path.join(__dirname, file));
+    }
+    return fingerprints;
+}
+
+function fingerprintsByFileEqual(a, b) {
+    const keys = new Set([...Object.keys(a || {}), ...Object.keys(b || {})]);
+    for (const key of keys) {
+        if (!fingerprintsEqual(a?.[key], b?.[key])) return false;
+    }
+    return true;
+}
+
+function ensurePnReviewQaDataLoaded() {
+    const fingerprints = getEngineFingerprints();
+    const upToDate = pnReviewQaCache.payload && fingerprintsByFileEqual(pnReviewQaCache.engineFingerprints, fingerprints);
 
     if (upToDate) {
-        return pnReviewCache.payload;
+        return pnReviewQaCache.payload;
     }
-
-    const syntheticNew = readJsonFileSafe(PN_SYNTHETIC_NEW_FILE, []);
-    const syntheticSuperseded = readJsonFileSafe(PN_SYNTHETIC_SUPERSEDED_FILE, []);
-    const traceMap = readJsonFileSafe(PN_TRACE_FILE, {});
 
     const index = new Map();
-    const traceIndex = new Map();
     const list = [];
 
-    if (traceMap && typeof traceMap === 'object') {
-        for (const [sku, entry] of Object.entries(traceMap)) {
-            traceIndex.set(pnKey(sku), entry);
+    for (const file of ENGINE_JSON_FILES) {
+        const filePath = path.join(__dirname, file);
+        const rows = readJsonFileSafe(filePath, []);
+        if (!Array.isArray(rows)) continue;
+
+        const engineModel = String(file).replace(/^engine_/, '').replace(/\.json$/i, '');
+        for (const row of rows) {
+            const sku = getRowPn(row);
+            if (!sku) continue;
+            const key = pnKey(sku);
+            if (!index.has(key)) {
+                index.set(key, { sku, rows: [] });
+            }
+            index.get(key).rows.push({ ...row, __engine_file: file, __engine_model: engineModel });
         }
     }
 
-    const indexRows = [];
-    if (Array.isArray(syntheticNew)) indexRows.push(...syntheticNew);
-    if (Array.isArray(syntheticSuperseded)) indexRows.push(...syntheticSuperseded);
+    for (const group of index.values()) {
+        const rows = group.rows;
+        const qaSummaryRaw = buildQaSummaryFromExport(rows);
+        const qaSummary = normalizeQaSummary(qaSummaryRaw);
+        const decisionMeta = decideByQa(rows, qaSummaryRaw);
+        const mergedFields = buildMergedFields(rows);
+        const validation = buildPnValidation(group.sku, rows, mergedFields);
+        const engineModels = uniq(rows.map((row) => normalizeText(row?.__engine_model || row?.engine_model || row?.model || row?.engine)).filter(Boolean));
+        const sourcePages = uniq(rows.map((row) => normalizeText(row?.['Source Page'])).filter(Boolean));
+        const sourceRows = rows.map((row) => buildMappedSourceRow(row));
 
-    for (const row of indexRows) {
-        const sku = String(row?.pn || '').trim();
-        if (!sku) continue;
-        const key = pnKey(sku);
-        const traceEntry = traceIndex.get(key) || null;
+        const detail = {
+            sku: group.sku,
+            decision: decisionMeta.decision,
+            reason: decisionMeta.reason,
+            export_row: {
+                sku: group.sku,
+                designation_final: mergedFields.designation_final,
+                measure_final: mergedFields.measure_final,
+                weight_final: mergedFields.weight_final,
+                decision: decisionMeta.decision,
+                reason: decisionMeta.reason,
+                occurrences: rows.length,
+                engine_models: engineModels
+            },
+            qa_summary: qaSummary,
+            validation,
+            merged_fields: mergedFields,
+            source_rows_preview: sourceRows.slice(0, 120),
+            source_row_ids: uniq(sourceRows.map((row) => row.ID).filter(Boolean)),
+            engine_models_all: engineModels,
+            source_pages_all: sourcePages,
+            images_all: mergedFields.images,
+            sust_summary: buildSustSummary(rows),
+            conflict_summary: buildConflictSummary(rows, validation),
+            source_rows_all: sourceRows
+        };
 
-        if (!index.has(key)) {
-            list.push(buildPnListItem(row, traceEntry));
-        }
-        index.set(key, {
-            sku,
-            compacted: row,
-            trace: traceEntry
+        list.push({
+            sku: group.sku,
+            decision: decisionMeta.decision,
+            reason: decisionMeta.reason,
+            designation_final: mergedFields.designation_final,
+            measure_final: mergedFields.measure_final,
+            weight_final: mergedFields.weight_final,
+            occurrences: rows.length,
+            engine_models: engineModels,
+            source_pages_count: sourcePages.length,
+            images_count: mergedFields.images.length,
+            qa_summary: qaSummary,
+            validation
         });
+
+        index.set(pnKey(group.sku), detail);
     }
 
     list.sort((a, b) => String(a.sku).localeCompare(String(b.sku), 'es', { numeric: true, sensitivity: 'base' }));
 
-    pnReviewCache.files = fingerprints;
-    pnReviewCache.loadedAt = new Date().toISOString();
-    pnReviewCache.payload = { list, index };
-    return pnReviewCache.payload;
+    pnReviewQaCache.engineFingerprints = fingerprints;
+    pnReviewQaCache.loadedAt = new Date().toISOString();
+    pnReviewQaCache.payload = { list, index };
+    return pnReviewQaCache.payload;
 }
 
 function runNodeScript(scriptRelativePath, args = []) {
@@ -527,6 +713,7 @@ app.post('/apply-revision-to-engines', async (req, res) => {
             repoRoot: __dirname,
             sourceName: 'api:/apply-revision-to-engines'
         });
+        invalidatePnReviewQaCache();
         return res.json({ ok: true, result });
     } catch (error) {
         return res.status(500).json({ ok: false, error: String(error?.message || error) });
@@ -652,6 +839,211 @@ app.get('/export/trace/:sku', async (req, res) => {
     } catch (error) {
         return res.status(500).json({ ok: false, error: String(error?.message || error) });
     }
+});
+
+function invalidatePnReviewQaCache() {
+    pnReviewQaCache.loadedAt = null;
+    pnReviewQaCache.engineFingerprints = {};
+    pnReviewQaCache.payload = null;
+}
+
+async function writeJsonAtomic(filePath, payload) {
+    const tmpPath = `${filePath}.tmp`;
+    await fs.promises.writeFile(tmpPath, `${JSON.stringify(payload, null, 2)}\n`, 'utf8');
+    await fs.promises.rename(tmpPath, filePath);
+}
+
+app.get('/pn-review/list', async (req, res) => {
+    try {
+        const data = ensurePnReviewQaDataLoaded();
+        const decision = lowerKey(req.query?.decision);
+        const q = lowerKey(req.query?.q);
+        const offsetRaw = Number(req.query?.offset);
+        const limitRaw = Number(req.query?.limit);
+        const offset = Number.isFinite(offsetRaw) && offsetRaw > 0 ? Math.floor(offsetRaw) : 0;
+        const limit = Number.isFinite(limitRaw) && limitRaw > 0
+            ? Math.min(Math.floor(limitRaw), 20000)
+            : data.list.length;
+
+        let rows = data.list;
+        if (decision) {
+            rows = rows.filter((row) => lowerKey(row.decision) === decision);
+        }
+        if (q) {
+            rows = rows.filter((row) => {
+                return lowerKey(row.sku).includes(q) || lowerKey(row.designation_final).includes(q);
+            });
+        }
+
+        const pagedRows = rows.slice(offset, offset + limit);
+        return res.json({
+            ok: true,
+            rows: pagedRows,
+            total: rows.length,
+            loaded_at: pnReviewQaCache.loadedAt
+        });
+    } catch (error) {
+        return res.status(500).json({ ok: false, error: String(error?.message || error) });
+    }
+});
+
+app.get('/pn-review/:sku', async (req, res) => {
+    const sku = normalizeText(req.params?.sku);
+    if (!sku) {
+        return res.status(400).json({ ok: false, error: 'SKU requerido.' });
+    }
+
+    try {
+        const data = ensurePnReviewQaDataLoaded();
+        const detail = data.index.get(pnKey(sku));
+        if (!detail) {
+            return res.status(404).json({ ok: false, error: `PN no encontrado: ${sku}` });
+        }
+
+        return res.json({
+            ok: true,
+            sku: detail.sku,
+            export_row: detail.export_row,
+            qa_summary: detail.qa_summary,
+            validation: detail.validation,
+            merged_fields: detail.merged_fields,
+            source_rows_preview: detail.source_rows_preview,
+            source_row_ids: detail.source_row_ids,
+            engine_models_all: detail.engine_models_all,
+            source_pages_all: detail.source_pages_all,
+            images_all: detail.images_all,
+            sust_summary: detail.sust_summary,
+            conflict_summary: detail.conflict_summary,
+            decision: detail.decision,
+            reason: detail.reason
+        });
+    } catch (error) {
+        return res.status(500).json({ ok: false, error: String(error?.message || error) });
+    }
+});
+
+app.get('/pn-review/:sku/sources', async (req, res) => {
+    const sku = normalizeText(req.params?.sku);
+    if (!sku) {
+        return res.status(400).json({ ok: false, error: 'SKU requerido.' });
+    }
+
+    try {
+        const data = ensurePnReviewQaDataLoaded();
+        const detail = data.index.get(pnKey(sku));
+        if (!detail) {
+            return res.status(404).json({ ok: false, error: `PN no encontrado: ${sku}` });
+        }
+
+        return res.json({
+            ok: true,
+            sku: detail.sku,
+            count: detail.source_rows_all.length,
+            rows: detail.source_rows_all
+        });
+    } catch (error) {
+        return res.status(500).json({ ok: false, error: String(error?.message || error) });
+    }
+});
+
+app.post('/pn-review/:sku/apply-decision', async (req, res) => {
+    const sku = normalizeText(req.params?.sku);
+    const skuNormalized = pnKey(sku);
+    const action = lowerKey(req.body?.action);
+    const estadoRaw = lowerKey(req.body?.estado);
+    const accionRaw = lowerKey(req.body?.accion);
+
+    const decisionMap = {
+        validar: { estado: 'ok', accion: 'importar' },
+        descartar: { estado: 'ok', accion: 'eliminar' },
+        revisar: { estado: 'pendiente', accion: 'revisar' }
+    };
+
+    const explicitMap = {
+        'ok|importar': 'validar',
+        'ok|eliminar': 'descartar',
+        'pendiente|revisar': 'revisar'
+    };
+
+    if (!sku || !skuNormalized) {
+        return res.status(400).json({ ok: false, error: 'SKU requerido.' });
+    }
+
+    let decisionApplied = '';
+    let targetEstado = '';
+    let targetAccion = '';
+
+    if (action) {
+        if (!decisionMap[action]) {
+            return res.status(400).json({ ok: false, error: 'action invalida. Permitidas: validar, revisar, descartar.' });
+        }
+        decisionApplied = action;
+        targetEstado = decisionMap[action].estado;
+        targetAccion = decisionMap[action].accion;
+    } else {
+        const explicitKey = `${estadoRaw}|${accionRaw}`;
+        const mappedDecision = explicitMap[explicitKey];
+        if (!mappedDecision) {
+            return res.status(400).json({ ok: false, error: 'Payload invalido. Envia action=validar|revisar|descartar o una combinacion valida estado/accion.' });
+        }
+        decisionApplied = mappedDecision;
+        targetEstado = decisionMap[mappedDecision].estado;
+        targetAccion = decisionMap[mappedDecision].accion;
+    }
+
+    const nowIso = new Date().toISOString();
+    const errors = [];
+    const filesTouched = [];
+    let rowsUpdated = 0;
+
+    for (const file of ENGINE_JSON_FILES) {
+        const filePath = path.join(__dirname, file);
+        try {
+            const raw = await fs.promises.readFile(filePath, 'utf8');
+            const json = JSON.parse(raw);
+            if (!Array.isArray(json)) {
+                throw new Error('Contenido JSON invalido: se esperaba array.');
+            }
+
+            let touched = false;
+            for (const row of json) {
+                if (pnKey(getRowPn(row)) !== skuNormalized) continue;
+                row.qa_revision_estado = targetEstado;
+                row.qa_revision_accion = targetAccion;
+                row.qa_revision_updated_at = nowIso;
+                rowsUpdated += 1;
+                touched = true;
+            }
+
+            if (touched) {
+                await writeJsonAtomic(filePath, json);
+                filesTouched.push(file);
+            }
+        } catch (error) {
+            errors.push({ file, error: String(error?.message || error) });
+        }
+    }
+
+    if (rowsUpdated === 0) {
+        return res.status(404).json({
+            ok: false,
+            error: `No se encontraron apariciones para PN ${sku}`,
+            rows_updated: 0,
+            files_touched: [],
+            errors
+        });
+    }
+
+    invalidatePnReviewQaCache();
+
+    return res.json({
+        ok: errors.length === 0,
+        sku,
+        decision_applied: decisionApplied,
+        rows_updated: rowsUpdated,
+        files_touched: filesTouched,
+        errors
+    });
 });
 
 app.get('/pn/list', async (_req, res) => legacyExportEndpoint(res, 'pn/list'));
@@ -991,6 +1383,7 @@ app.post('/save-json', async (req, res) => {
         row[col] = value;
         stripLegacyQaFields(json);
         await fs.promises.writeFile(filePath, `${JSON.stringify(json, null, 2)}\n`, 'utf8');
+        invalidatePnReviewQaCache();
         return res.json({ ok: true });
     } catch (_error) {
         return res.status(500).json({ error: 'No se pudo guardar el archivo' });

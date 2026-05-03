@@ -24,6 +24,10 @@
 - `GET|POST /qa_revision_sync.php`
 - `POST /apply-revision-to-engines`
 - `POST /recompute-pdf-auto`
+- `GET /pn-review/list`
+- `GET /pn-review/:sku`
+- `GET /pn-review/:sku/sources`
+- `POST /pn-review/:sku/apply-decision` — action: `validar`|`revisar`|`descartar`; aplica en todos los engine JSON
 
 ## Core Runtime Flows
 ### Load
@@ -31,6 +35,9 @@
 
 ### Row Revision Save
 - UI change -> `setRowRevision()` -> `saveCellToServer()` -> `POST /save-json` -> engine JSON write by `ID`.
+
+### PN Review Global Decision
+- `pn_review.html` o tab PN Review en `analista_02.html` -> `GET /pn-review/:sku` + sources -> botón Validar/Revisar/Descartar -> confirm `<dialog>` -> `POST /pn-review/:sku/apply-decision` -> escribe en TODOS los engine JSON -> toast inmediato.
 
 ## Data Keys That Matter Most
 - Identity: `ID`, `PART NO.`, `POS`, `Source Page`, `engine_model`, `source_file`
@@ -43,6 +50,13 @@
 2. `POST /save-json`
 4. verify disk write in JSON files
 5. only then inspect UI rendering
+
+## PN Review Embedded (Analista 02)
+- Panel derecho de `analista_02.html` tiene tabs **PDF** | **PN Review**
+- Módulo: `js/pn-review-embedded.js` (exports: `init`, `onRecordChange`, `refresh`, `detectPnSourceConflicts`)
+- Estilos: `styles/pn-review-embedded.css` (prefijo `pre-`)
+- Conflict detection por familias: `pn`, `designation`, `measure`, `weight`, `sust`
+- Celdas conflicto: color únicamente (`pre-cell--conflict` rojo, `pre-cell--warning` amarillo)
 
 ## Usually Ignore First Pass
 - `dist/`, `zz_old/`, `zz_copias/`, `json_originales/`

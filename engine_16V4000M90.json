@@ -48083,8 +48083,9 @@
     "bom_error": 0,
     "total_error": 4,
     "has_error": true,
-    "qa_revision_estado": "pendiente",
-    "qa_revision_accion": "revisar"
+    "qa_revision_estado": "ok",
+    "qa_revision_accion": "eliminar",
+    "qa_revision_updated_at": "2026-05-03T16:14:50.362Z"
   },
   {
     "ID": "1600473",

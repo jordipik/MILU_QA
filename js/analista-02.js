@@ -11,6 +11,7 @@ import {
 import { publishRevisionSync } from './revision-sync.js';
 import { initPdfZoomControls, loadPdfClear, loadPdfWithPage, requestPdfRelayout, setPdfReadTokens, setPdfSelection } from './pdf-viewer.js';
 import { evaluateQaChecksForField, evaluateRowQaChecks, getAllQaCheckCodes, getQaCheckLabel } from './qa-checks.js';
+import * as PnReviewEmbedded from './pn-review-embedded.js';
 
 const $ = (id) => document.getElementById(id);
 
@@ -2184,6 +2185,11 @@ function renderRecord(row) {
     renderVerdict(processState);
     renderReviewStateButtons(row);
     syncPdfWithCurrentRow(row);
+
+    // Notify embedded PN Review if that tab is active
+    if (state.rightPanelTab === 'pn-review') {
+        PnReviewEmbedded.onRecordChange(row).catch(() => { });
+    }
 }
 
 function syncCurrentRowReference() {
@@ -2507,6 +2513,40 @@ async function runAllProcesses() {
 async function initialize() {
     try {
         state.rightPanelTab = 'pdf';
+
+        // ── Right-panel tabs (PDF / PN Review) ────────────────────────────
+        const tabPdf = document.getElementById('tabPdf');
+        const tabPnReview = document.getElementById('tabPnReview');
+        const panelPdf = document.getElementById('tabpanelPdf');
+        const panelPnRev = document.getElementById('tabpanelPnReview');
+        const pnRevRoot = document.getElementById('pnReviewEmbeddedRoot');
+
+        function switchRightTab(tab) {
+            state.rightPanelTab = tab;
+            const isPdf = tab === 'pdf';
+            if (tabPdf) { tabPdf.setAttribute('aria-selected', String(isPdf)); }
+            if (tabPnReview) { tabPnReview.setAttribute('aria-selected', String(!isPdf)); }
+            if (panelPdf) { panelPdf.style.display = isPdf ? 'flex' : 'none'; }
+            if (panelPnRev) { panelPnRev.style.display = isPdf ? 'none' : 'flex'; }
+            if (!isPdf && currentRow && pnRevRoot) {
+                PnReviewEmbedded.onRecordChange(currentRow).catch(() => { });
+            }
+        }
+
+        if (tabPdf) tabPdf.addEventListener('click', () => switchRightTab('pdf'));
+        if (tabPnReview) tabPnReview.addEventListener('click', () => switchRightTab('pn-review'));
+
+        // Init embedded PN Review module
+        if (pnRevRoot) {
+            PnReviewEmbedded.init(pnRevRoot, {
+                onDecisionApplied: (_sku, _response) => {
+                    revalidateCurrentRow().catch(() => { });
+                    renderReviewStats();
+                }
+            });
+        }
+        // ──────────────────────────────────────────────────────────────────
+
         initChecksModal();
         initRecomputeModal();
         initEditRecordModal();

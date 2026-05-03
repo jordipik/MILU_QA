@@ -14059,9 +14059,10 @@
     "bom_error": 0,
     "total_error": 2,
     "has_error": true,
-    "qa_revision_estado": "pendiente",
-    "qa_revision_accion": "revisar",
-    "ID": 1900131
+    "qa_revision_estado": "ok",
+    "qa_revision_accion": "eliminar",
+    "ID": 1900131,
+    "qa_revision_updated_at": "2026-05-03T16:37:57.647Z"
   },
   {
     "POS": "100",
@@ -41781,9 +41782,10 @@
     "bom_error": 0,
     "total_error": 2,
     "has_error": true,
-    "qa_revision_estado": "pendiente",
-    "qa_revision_accion": "revisar",
-    "ID": 1900392
+    "qa_revision_estado": "ok",
+    "qa_revision_accion": "eliminar",
+    "ID": 1900392,
+    "qa_revision_updated_at": "2026-05-03T16:38:05.184Z"
   },
   {
     "POS": "10",
@@ -80080,9 +80082,10 @@
     "bom_error": 0,
     "total_error": 2,
     "has_error": true,
-    "qa_revision_estado": "pendiente",
-    "qa_revision_accion": "revisar",
-    "ID": 1900752
+    "qa_revision_estado": "ok",
+    "qa_revision_accion": "eliminar",
+    "ID": 1900752,
+    "qa_revision_updated_at": "2026-05-03T16:37:57.647Z"
   },
   {
     "POS": "100",
@@ -108256,9 +108259,10 @@
     "bom_error": 0,
     "total_error": 2,
     "has_error": true,
-    "qa_revision_estado": "pendiente",
-    "qa_revision_accion": "revisar",
-    "ID": 1901017
+    "qa_revision_estado": "ok",
+    "qa_revision_accion": "eliminar",
+    "ID": 1901017,
+    "qa_revision_updated_at": "2026-05-03T16:37:26.725Z"
   },
   {
     "POS": "175",
@@ -109963,9 +109967,10 @@
     "bom_error": 0,
     "total_error": 2,
     "has_error": true,
-    "qa_revision_estado": "pendiente",
-    "qa_revision_accion": "revisar",
-    "ID": 1901033
+    "qa_revision_estado": "ok",
+    "qa_revision_accion": "eliminar",
+    "ID": 1901033,
+    "qa_revision_updated_at": "2026-05-03T16:37:26.725Z"
   },
   {
     "POS": "nan",
@@ -126019,9 +126024,10 @@
     "bom_error": 0,
     "total_error": 2,
     "has_error": true,
-    "qa_revision_estado": "pendiente",
-    "qa_revision_accion": "revisar",
-    "ID": 1901184
+    "qa_revision_estado": "ok",
+    "qa_revision_accion": "eliminar",
+    "ID": 1901184,
+    "qa_revision_updated_at": "2026-05-03T18:40:32.122Z"
   },
   {
     "POS": "100",
@@ -165173,9 +165179,10 @@
     "bom_error": 0,
     "total_error": 2,
     "has_error": true,
-    "qa_revision_estado": "pendiente",
-    "qa_revision_accion": "revisar",
-    "ID": 1901552
+    "qa_revision_estado": "ok",
+    "qa_revision_accion": "eliminar",
+    "ID": 1901552,
+    "qa_revision_updated_at": "2026-05-03T18:40:32.122Z"
   },
   {
     "POS": "1800",
@@ -167208,9 +167215,10 @@
     "bom_error": 0,
     "total_error": 2,
     "has_error": true,
-    "qa_revision_estado": "pendiente",
-    "qa_revision_accion": "revisar",
-    "ID": 1901571
+    "qa_revision_estado": "ok",
+    "qa_revision_accion": "eliminar",
+    "ID": 1901571,
+    "qa_revision_updated_at": "2026-05-03T18:40:32.122Z"
   },
   {
     "POS": "1000",
@@ -173055,9 +173063,10 @@
     "bom_error": 0,
     "total_error": 2,
     "has_error": true,
-    "qa_revision_estado": "pendiente",
-    "qa_revision_accion": "revisar",
-    "ID": 1901626
+    "qa_revision_estado": "ok",
+    "qa_revision_accion": "eliminar",
+    "ID": 1901626,
+    "qa_revision_updated_at": "2026-05-03T18:40:32.122Z"
   },
   {
     "POS": "100",
@@ -175834,9 +175843,10 @@
     "bom_error": 0,
     "total_error": 2,
     "has_error": true,
-    "qa_revision_estado": "pendiente",
-    "qa_revision_accion": "revisar",
-    "ID": 1901652
+    "qa_revision_estado": "ok",
+    "qa_revision_accion": "eliminar",
+    "ID": 1901652,
+    "qa_revision_updated_at": "2026-05-03T18:40:32.122Z"
   },
   {
     "POS": "1025",
@@ -179240,9 +179250,10 @@
     "bom_error": 0,
     "total_error": 2,
     "has_error": true,
-    "qa_revision_estado": "pendiente",
-    "qa_revision_accion": "revisar",
-    "ID": 1901684
+    "qa_revision_estado": "ok",
+    "qa_revision_accion": "eliminar",
+    "ID": 1901684,
+    "qa_revision_updated_at": "2026-05-03T18:40:32.122Z"
   },
   {
     "POS": "10",
@@ -202164,9 +202175,10 @@
     "bom_error": 0,
     "total_error": 2,
     "has_error": true,
-    "qa_revision_estado": "pendiente",
-    "qa_revision_accion": "revisar",
-    "ID": 1901906
+    "qa_revision_estado": "ok",
+    "qa_revision_accion": "eliminar",
+    "ID": 1901906,
+    "qa_revision_updated_at": "2026-05-03T16:37:57.647Z"
   },
   {
     "POS": "100",
@@ -272909,9 +272921,10 @@
     "bom_error": 0,
     "total_error": 2,
     "has_error": true,
-    "qa_revision_estado": "pendiente",
-    "qa_revision_accion": "revisar",
-    "ID": 1902571
+    "qa_revision_estado": "ok",
+    "qa_revision_accion": "eliminar",
+    "ID": 1902571,
+    "qa_revision_updated_at": "2026-05-03T16:37:57.647Z"
   },
   {
     "POS": "100",
@@ -300616,9 +300629,10 @@
     "bom_error": 0,
     "total_error": 2,
     "has_error": true,
-    "qa_revision_estado": "pendiente",
-    "qa_revision_accion": "revisar",
-    "ID": 1902832
+    "qa_revision_estado": "ok",
+    "qa_revision_accion": "eliminar",
+    "ID": 1902832,
+    "qa_revision_updated_at": "2026-05-03T16:38:05.184Z"
   },
   {
     "POS": "10",
@@ -318528,9 +318542,10 @@
     "bom_error": 0,
     "total_error": 2,
     "has_error": true,
-    "qa_revision_estado": "pendiente",
-    "qa_revision_accion": "revisar",
-    "ID": 1903002
+    "qa_revision_estado": "ok",
+    "qa_revision_accion": "eliminar",
+    "ID": 1903002,
+    "qa_revision_updated_at": "2026-05-03T16:37:26.725Z"
   },
   {
     "POS": "1025",
@@ -324435,9 +324450,10 @@
     "bom_error": 0,
     "total_error": 2,
     "has_error": true,
-    "qa_revision_estado": "pendiente",
-    "qa_revision_accion": "revisar",
-    "ID": 1903057
+    "qa_revision_estado": "ok",
+    "qa_revision_accion": "eliminar",
+    "ID": 1903057,
+    "qa_revision_updated_at": "2026-05-03T16:37:26.725Z"
   },
   {
     "POS": "2475",
@@ -339122,9 +339138,10 @@
     "bom_error": 0,
     "total_error": 2,
     "has_error": true,
-    "qa_revision_estado": "pendiente",
-    "qa_revision_accion": "revisar",
-    "ID": 1903194
+    "qa_revision_estado": "ok",
+    "qa_revision_accion": "eliminar",
+    "ID": 1903194,
+    "qa_revision_updated_at": "2026-05-03T16:37:57.647Z"
   },
   {
     "POS": "100",
@@ -367298,9 +367315,10 @@
     "bom_error": 0,
     "total_error": 2,
     "has_error": true,
-    "qa_revision_estado": "pendiente",
-    "qa_revision_accion": "revisar",
-    "ID": 1903459
+    "qa_revision_estado": "ok",
+    "qa_revision_accion": "eliminar",
+    "ID": 1903459,
+    "qa_revision_updated_at": "2026-05-03T16:37:26.725Z"
   },
   {
     "POS": "175",
@@ -369005,9 +369023,10 @@
     "bom_error": 0,
     "total_error": 2,
     "has_error": true,
-    "qa_revision_estado": "pendiente",
-    "qa_revision_accion": "revisar",
-    "ID": 1903475
+    "qa_revision_estado": "ok",
+    "qa_revision_accion": "eliminar",
+    "ID": 1903475,
+    "qa_revision_updated_at": "2026-05-03T16:37:26.725Z"
   },
   {
     "POS": "nan",
@@ -385061,9 +385080,10 @@
     "bom_error": 0,
     "total_error": 2,
     "has_error": true,
-    "qa_revision_estado": "pendiente",
-    "qa_revision_accion": "revisar",
-    "ID": 1903626
+    "qa_revision_estado": "ok",
+    "qa_revision_accion": "eliminar",
+    "ID": 1903626,
+    "qa_revision_updated_at": "2026-05-03T18:40:32.122Z"
   },
   {
     "POS": "100",
@@ -418379,9 +418399,10 @@
     "bom_error": 0,
     "total_error": 2,
     "has_error": true,
-    "qa_revision_estado": "pendiente",
-    "qa_revision_accion": "revisar",
-    "ID": 1903939
+    "qa_revision_estado": "ok",
+    "qa_revision_accion": "eliminar",
+    "ID": 1903939,
+    "qa_revision_updated_at": "2026-05-03T18:40:32.122Z"
   },
   {
     "POS": "1800",
@@ -420414,9 +420435,10 @@
     "bom_error": 0,
     "total_error": 2,
     "has_error": true,
-    "qa_revision_estado": "pendiente",
-    "qa_revision_accion": "revisar",
-    "ID": 1903958
+    "qa_revision_estado": "ok",
+    "qa_revision_accion": "eliminar",
+    "ID": 1903958,
+    "qa_revision_updated_at": "2026-05-03T18:40:32.122Z"
   },
   {
     "POS": "1000",
@@ -426261,9 +426283,10 @@
     "bom_error": 0,
     "total_error": 2,
     "has_error": true,
-    "qa_revision_estado": "pendiente",
-    "qa_revision_accion": "revisar",
-    "ID": 1904013
+    "qa_revision_estado": "ok",
+    "qa_revision_accion": "eliminar",
+    "ID": 1904013,
+    "qa_revision_updated_at": "2026-05-03T18:40:32.122Z"
   },
   {
     "POS": "100",
@@ -429040,9 +429063,10 @@
     "bom_error": 0,
     "total_error": 2,
     "has_error": true,
-    "qa_revision_estado": "pendiente",
-    "qa_revision_accion": "revisar",
-    "ID": 1904039
+    "qa_revision_estado": "ok",
+    "qa_revision_accion": "eliminar",
+    "ID": 1904039,
+    "qa_revision_updated_at": "2026-05-03T18:40:32.122Z"
   },
   {
     "POS": "1025",
@@ -432446,9 +432470,10 @@
     "bom_error": 0,
     "total_error": 2,
     "has_error": true,
-    "qa_revision_estado": "pendiente",
-    "qa_revision_accion": "revisar",
-    "ID": 1904071
+    "qa_revision_estado": "ok",
+    "qa_revision_accion": "eliminar",
+    "ID": 1904071,
+    "qa_revision_updated_at": "2026-05-03T18:40:32.122Z"
   },
   {
     "POS": "10",
@@ -455370,9 +455395,10 @@
     "bom_error": 0,
     "total_error": 2,
     "has_error": true,
-    "qa_revision_estado": "pendiente",
-    "qa_revision_accion": "revisar",
-    "ID": 1904293
+    "qa_revision_estado": "ok",
+    "qa_revision_accion": "eliminar",
+    "ID": 1904293,
+    "qa_revision_updated_at": "2026-05-03T16:37:57.647Z"
   },
   {
     "POS": "100",
