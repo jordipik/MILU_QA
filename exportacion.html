@@ -1,0 +1,134 @@
+<!DOCTYPE html>
+<html lang="es">
+
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Exportación MILU</title>
+    <link rel="stylesheet" href="styles/exportacion.css" />
+</head>
+
+<body class="exp-body">
+    <div class="exp-shell">
+        <header class="exp-header">
+            <div>
+                <h1>Exportación MILU</h1>
+                <p>Control de exports Synthetic, WordPress e IA — listado, preview y reejecución de pipelines.</p>
+                <p style="margin-top:6px;"><a class="exp-back-link" href="qa_milu.html">← Volver a QA</a></p>
+            </div>
+            <div style="text-align:right;">
+                <span id="expBackendStatus" class="exp-status-pill" data-state="loading">Comprobando backend…</span>
+                <div id="expRunStatus" style="margin-top:6px; font-size:12px; color: var(--exp-muted);">—</div>
+            </div>
+        </header>
+
+        <div class="exp-info-banner">
+            <strong>Synthetic es global:</strong> compacta todas las apariciones de cada PN en los 9 motores
+            (<code>engine_*.json</code>) y aplica reglas de fusión inteligente (jerarquía GESA → FINAL → RAW,
+            valor dominante, tolerancia a truncamientos OCR, score de consistencia).
+            Recalcular Synthetic <strong>no modifica</strong> los <code>engine_*.json</code>; solo regenera
+            <code>data/output/export_review/</code>.
+        </div>
+
+        <div class="exp-actions" id="expActions">
+            <button id="expBtnRunSynthetic" data-job="run-synthetic">Recalcular Synthetic</button>
+            <button id="expBtnRunWordpress" data-job="run-wordpress">Recalcular WordPress</button>
+            <button id="expBtnRunAi" data-job="run-ai-conflicts">Recalcular IA conflictos</button>
+            <button id="expBtnRunAll" data-job="run-all">Recalcular todo</button>
+            <button id="expBtnRefresh" class="exp-btn-secondary" type="button">Refrescar archivos</button>
+        </div>
+
+        <div class="exp-summary-grid" id="expSummaryGrid">
+            <div class="exp-summary-card">
+                <div class="label">Archivos</div>
+                <div class="value" id="expSumFiles">—</div>
+                <div class="sub" id="expSumByFolder"></div>
+            </div>
+            <div class="exp-summary-card">
+                <div class="label">Tamaño total</div>
+                <div class="value" id="expSumSize">—</div>
+            </div>
+            <div class="exp-summary-card">
+                <div class="label">Última generación</div>
+                <div class="value" id="expSumLast">—</div>
+            </div>
+            <div class="exp-summary-card">
+                <div class="label">Preview NEW</div>
+                <div class="value" id="expSumNew">—</div>
+            </div>
+            <div class="exp-summary-card">
+                <div class="label">Preview SUPERSEDED</div>
+                <div class="value" id="expSumSup">—</div>
+            </div>
+            <div class="exp-summary-card">
+                <div class="label">Pending review</div>
+                <div class="value" id="expSumPending">—</div>
+            </div>
+            <div class="exp-summary-card">
+                <div class="label">Discarded</div>
+                <div class="value" id="expSumDiscard">—</div>
+            </div>
+            <div class="exp-summary-card">
+                <div class="label">Conflictos</div>
+                <div class="value" id="expSumConflicts">—</div>
+            </div>
+        </div>
+
+        <div class="exp-main">
+            <section class="exp-panel exp-files-panel">
+                <div class="exp-panel-header">
+                    <h2>Archivos generados</h2>
+                    <span id="expFilesCount" style="font-size:12px;color:var(--exp-muted);">0 archivos</span>
+                </div>
+                <div class="exp-panel-body">
+                    <div class="exp-table-wrap">
+                        <table class="exp-files-table" id="expFilesTable">
+                            <thead>
+                                <tr>
+                                    <th data-sort="folder">Carpeta</th>
+                                    <th data-sort="name">Archivo</th>
+                                    <th data-sort="type">Tipo</th>
+                                    <th data-sort="size">Tamaño</th>
+                                    <th data-sort="mtime">Modificado</th>
+                                    <th>Acciones</th>
+                                </tr>
+                            </thead>
+                            <tbody id="expFilesBody">
+                                <tr>
+                                    <td colspan="6" class="exp-empty">Cargando…</td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </section>
+
+            <section class="exp-panel exp-preview-panel">
+                <div class="exp-panel-header">
+                    <h2 id="expPreviewTitle">Preview</h2>
+                    <span id="expPreviewMetaTop" style="font-size:12px;color:var(--exp-muted);"></span>
+                </div>
+                <div class="exp-panel-body exp-preview-body">
+                    <div class="exp-preview-meta" id="expPreviewMeta">Selecciona un archivo de la tabla para ver su
+                        contenido.</div>
+                    <div id="expPreviewContainer" class="exp-preview-scroll"></div>
+                </div>
+            </section>
+        </div>
+
+        <section class="exp-panel exp-logs-panel" style="margin-top:16px;">
+            <div class="exp-panel-header">
+                <h2>Logs ejecución</h2>
+                <button id="expBtnClearLog" class="exp-btn-secondary" type="button"
+                    style="border:1px solid var(--exp-border); background:#fff; padding:4px 10px; border-radius:4px; cursor:pointer; font-size:12px;">Limpiar</button>
+            </div>
+            <div class="exp-panel-body">
+                <div class="exp-log-panel" id="expLog">Esperando acciones…</div>
+            </div>
+        </section>
+    </div>
+
+    <script src="js/exportacion.js"></script>
+</body>
+
+</html>

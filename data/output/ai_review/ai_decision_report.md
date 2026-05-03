@@ -1,6 +1,6 @@
 # AI Decision Report
 
-Generated at: 2026-05-03T12:50:14.855Z
+Generated at: 2026-05-03T14:05:40.093Z
 Source rows: 67882
 Unique records analyzed: 7138
 Product export baseline: product-export-2026-03-29-11-07.json
@@ -20,7 +20,7 @@ Product export baseline: product-export-2026-03-29-11-07.json
 - already_exists_web: 3894
 - designation_mismatch_sources: 2024
 - sust_status_ambiguous: 1993
-- manual_review_marked: 1824
+- manual_review_marked: 1823
 - pn_in_pdf_not_gesa: 1804
 - diff_milu_new_vs_synthetic: 1111
 - pn_missing: 1025

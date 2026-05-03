@@ -1,13 +1,13 @@
 # MILU WordPress Export Summary
 
-Generated at: 2026-05-03T12:50:10.505Z
+Generated at: 2026-05-03T14:05:35.076Z
 
 ## Totals
 - Rows read: 67882
 - Unique PN: 6113
-- New exportable: 1020
+- New exportable: 1021
 - Superseded exportable: 657
-- Pending review: 4016
+- Pending review: 4015
 - Discarded: 1445
 - Duplicate PN keys: 5130
 - Missing designation_final: 420

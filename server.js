@@ -354,35 +354,42 @@ app.post('/apply-revision-to-engines', async (req, res) => {
 
 app.post('/export/run-synthetic', async (_req, res) => {
     try {
-        const result = runSyntheticCompaction(__dirname);
-        return res.json({ ok: true, result });
+        const result = await withExportLock('run-synthetic', async () => {
+            const synthetic = runSyntheticCompaction(__dirname);
+            const previewSummary = runPreviewBuild(__dirname);
+            return { synthetic, export_review_summary: previewSummary };
+        });
+        return res.json({ ok: true, result, run_state: exportRunState });
     } catch (error) {
-        return res.status(500).json({ ok: false, error: String(error?.message || error) });
+        const status = error?.statusCode || 500;
+        return res.status(status).json({ ok: false, error: String(error?.message || error), run_state: exportRunState });
     }
 });
 
 app.post('/export/run-wordpress', async (_req, res) => {
     try {
-        const wordpressRun = await runNodeScript(path.join('scripts', 'export_wordpress_milu.js'));
-        const summary = runPreviewBuild(__dirname);
-        return res.json({
-            ok: true,
-            result: {
-                wordpress: wordpressRun,
-                export_review_summary: summary
-            }
+        const result = await withExportLock('run-wordpress', async () => {
+            const wordpressRun = await runNodeScript(path.join('scripts', 'export_wordpress_milu.js'));
+            const summary = runPreviewBuild(__dirname);
+            return { wordpress: wordpressRun, export_review_summary: summary };
         });
+        return res.json({ ok: true, result, run_state: exportRunState });
     } catch (error) {
-        return res.status(500).json({ ok: false, error: String(error?.message || error) });
+        const status = error?.statusCode || 500;
+        return res.status(status).json({ ok: false, error: String(error?.message || error), run_state: exportRunState });
     }
 });
 
 app.post('/export/run-ai-conflicts', async (_req, res) => {
     try {
-        const aiRun = await runNodeScript(path.join('scripts', 'ai_conflict_rules.js'));
-        return res.json({ ok: true, result: { ai: aiRun } });
+        const result = await withExportLock('run-ai-conflicts', async () => {
+            const aiRun = await runNodeScript(path.join('scripts', 'ai_conflict_rules.js'));
+            return { ai: aiRun };
+        });
+        return res.json({ ok: true, result, run_state: exportRunState });
     } catch (error) {
-        return res.status(500).json({ ok: false, error: String(error?.message || error) });
+        const status = error?.statusCode || 500;
+        return res.status(status).json({ ok: false, error: String(error?.message || error), run_state: exportRunState });
     }
 });
 
@@ -436,6 +443,220 @@ app.get('/export/trace/:sku', async (req, res) => {
         return res.json({ ok: true, sku, trace: entry });
     } catch (error) {
         return res.status(500).json({ ok: false, error: String(error?.message || error) });
+    }
+});
+
+// =============================================================================
+// Export Manager — listado de archivos generados, preview y orquestador (lock).
+// =============================================================================
+
+const EXPORT_BASE_DIR = path.join(__dirname, 'data', 'output');
+const EXPORT_FOLDER_WHITELIST = new Set(['wordpress', 'ai_review', 'export_review']);
+const EXPORT_EXT_WHITELIST = new Set(['.json', '.csv', '.md', '.txt']);
+const EXPORT_PREVIEW_MAX_BYTES = 512 * 1024; // 512KB
+
+const exportRunState = {
+    running: false,
+    currentJob: null,
+    startedAt: null,
+    lastJob: null,
+    lastResult: null,
+    lastError: null,
+    finishedAt: null
+};
+
+async function withExportLock(jobName, runner) {
+    if (exportRunState.running) {
+        const error = new Error(`Ya hay un proceso de exportacion en curso: ${exportRunState.currentJob}`);
+        error.statusCode = 409;
+        throw error;
+    }
+    exportRunState.running = true;
+    exportRunState.currentJob = jobName;
+    exportRunState.startedAt = new Date().toISOString();
+    exportRunState.lastError = null;
+    try {
+        const result = await runner();
+        exportRunState.lastResult = result;
+        exportRunState.lastJob = jobName;
+        exportRunState.finishedAt = new Date().toISOString();
+        return result;
+    } catch (error) {
+        exportRunState.lastError = String(error?.message || error);
+        exportRunState.lastJob = jobName;
+        exportRunState.finishedAt = new Date().toISOString();
+        throw error;
+    } finally {
+        exportRunState.running = false;
+        exportRunState.currentJob = null;
+    }
+}
+
+function safeFolderName(folder) {
+    const value = String(folder || '').trim();
+    if (!EXPORT_FOLDER_WHITELIST.has(value)) return null;
+    return value;
+}
+
+function safeFileName(name) {
+    const value = String(name || '').trim();
+    if (!value) return null;
+    if (value.includes('..') || value.includes('/') || value.includes('\\')) return null;
+    const ext = path.extname(value).toLowerCase();
+    if (!EXPORT_EXT_WHITELIST.has(ext)) return null;
+    return value;
+}
+
+function listExportFolder(folderName) {
+    const dir = path.join(EXPORT_BASE_DIR, folderName);
+    if (!fs.existsSync(dir)) return [];
+    const entries = fs.readdirSync(dir, { withFileTypes: true });
+    const files = [];
+    for (const entry of entries) {
+        if (!entry.isFile()) continue;
+        const ext = path.extname(entry.name).toLowerCase();
+        if (!EXPORT_EXT_WHITELIST.has(ext)) continue;
+        const fullPath = path.join(dir, entry.name);
+        const stat = fs.statSync(fullPath);
+        files.push({
+            folder: folderName,
+            name: entry.name,
+            path: path.relative(__dirname, fullPath).replace(/\\/g, '/'),
+            size: stat.size,
+            mtime: stat.mtime.toISOString(),
+            type: ext.replace(/^\./, '')
+        });
+    }
+    return files;
+}
+
+app.get('/export/files', (_req, res) => {
+    try {
+        const allFiles = [];
+        const byFolder = {};
+        for (const folder of EXPORT_FOLDER_WHITELIST) {
+            const files = listExportFolder(folder);
+            byFolder[folder] = files.length;
+            allFiles.push(...files);
+        }
+        let totalSize = 0;
+        let lastModified = null;
+        for (const f of allFiles) {
+            totalSize += f.size;
+            if (!lastModified || f.mtime > lastModified) lastModified = f.mtime;
+        }
+        return res.json({
+            ok: true,
+            files: allFiles,
+            summary: {
+                totalFiles: allFiles.length,
+                totalSize,
+                lastModified,
+                byFolder
+            },
+            run_state: exportRunState
+        });
+    } catch (error) {
+        return res.status(500).json({ ok: false, error: String(error?.message || error) });
+    }
+});
+
+app.get('/export/status', (_req, res) => {
+    res.json({ ok: true, run_state: exportRunState });
+});
+
+app.get('/export/file', (req, res) => {
+    const folder = safeFolderName(req.query?.folder);
+    const name = safeFileName(req.query?.name);
+    if (!folder || !name) {
+        return res.status(400).json({ ok: false, error: 'Carpeta o archivo no permitidos.' });
+    }
+    const fullPath = path.join(EXPORT_BASE_DIR, folder, name);
+    if (!fs.existsSync(fullPath)) {
+        return res.status(404).json({ ok: false, error: 'Archivo no encontrado.' });
+    }
+    try {
+        const stat = fs.statSync(fullPath);
+        const ext = path.extname(name).toLowerCase();
+        const truncated = stat.size > EXPORT_PREVIEW_MAX_BYTES;
+        const fd = fs.openSync(fullPath, 'r');
+        const bufferSize = Math.min(stat.size, EXPORT_PREVIEW_MAX_BYTES);
+        const buffer = Buffer.alloc(bufferSize);
+        fs.readSync(fd, buffer, 0, bufferSize, 0);
+        fs.closeSync(fd);
+        const content = buffer.toString('utf8');
+
+        const result = {
+            ok: true,
+            folder,
+            name,
+            size: stat.size,
+            mtime: stat.mtime.toISOString(),
+            type: ext.replace(/^\./, ''),
+            truncated,
+            preview_bytes: bufferSize
+        };
+
+        if (ext === '.json') {
+            try {
+                const fullText = truncated ? fs.readFileSync(fullPath, 'utf8') : content;
+                const parsed = JSON.parse(fullText);
+                result.json = {
+                    is_array: Array.isArray(parsed),
+                    length: Array.isArray(parsed) ? parsed.length : null,
+                    keys: !Array.isArray(parsed) && parsed && typeof parsed === 'object' ? Object.keys(parsed).slice(0, 50) : null,
+                    sample: Array.isArray(parsed) ? parsed.slice(0, 20) : parsed
+                };
+                result.truncated = false;
+            } catch (parseError) {
+                result.json_parse_error = String(parseError?.message || parseError);
+                result.text = content;
+            }
+        } else {
+            result.text = content;
+        }
+        return res.json(result);
+    } catch (error) {
+        return res.status(500).json({ ok: false, error: String(error?.message || error) });
+    }
+});
+
+app.get('/export/download', (req, res) => {
+    const folder = safeFolderName(req.query?.folder);
+    const name = safeFileName(req.query?.name);
+    if (!folder || !name) {
+        return res.status(400).json({ ok: false, error: 'Carpeta o archivo no permitidos.' });
+    }
+    const fullPath = path.join(EXPORT_BASE_DIR, folder, name);
+    if (!fs.existsSync(fullPath)) {
+        return res.status(404).json({ ok: false, error: 'Archivo no encontrado.' });
+    }
+    return res.download(fullPath, name);
+});
+
+app.post('/export/run-all', async (_req, res) => {
+    try {
+        const result = await withExportLock('run-all', async () => {
+            const synthetic = runSyntheticCompaction(__dirname);
+            const wordpress = await runNodeScript(path.join('scripts', 'export_wordpress_milu.js'));
+            const previewSummary = runPreviewBuild(__dirname);
+            let aiResult = null;
+            try {
+                aiResult = await runNodeScript(path.join('scripts', 'ai_conflict_rules.js'));
+            } catch (aiError) {
+                aiResult = { ok: false, error: String(aiError?.message || aiError) };
+            }
+            return {
+                synthetic,
+                wordpress,
+                export_review_summary: previewSummary,
+                ai: aiResult
+            };
+        });
+        return res.json({ ok: true, result, run_state: exportRunState });
+    } catch (error) {
+        const status = error?.statusCode || 500;
+        return res.status(status).json({ ok: false, error: String(error?.message || error), run_state: exportRunState });
     }
 });
 

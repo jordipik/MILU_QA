@@ -869,16 +869,16 @@ BOM: X00030241
 Substitution Status: SI
 New Part Number: X52408300016
 Superseded List: X52408300004";COLLECTING TROUGH;;12VM40A-81;12V4000M40A, Superseded, importar;simple;https://milu-naval.mystagingwebsite.com/wp-content/uploads/2026/02/12V4000M40A-0103-01-1425.webp;12V4000M40A;105;1425;X00030241;COLLECTING TROUGH;;;SI;X52408300016;X52408300004;ok;importar;import_superseded;ya existe en WordPress/product-export | relacion superseded clara;import_superseded;ya existe en WordPress/product-export | relacion superseded clara;engine_12V4000M40A.json;1102611;105;X52408300004;COLLECTING TROUGH;;;SI;Superseded;X52408300016;X52408300004;ok;importar;yes
-X52421300002;RETAINER FOR ALTER;x52421300002;publish;"Engine: 12V4000M40A
+X52421300002;RETAINER FOR ALTERNATOR;x52421300002;publish;"Engine: 12V4000M40A
 Part Number: X52421300002
-Designation: RETAINER FOR ALTER
+Designation: RETAINER FOR ALTERNATOR
 Measurement: 
 Weight: 
 Source Page: 105
 BOM: X00030241
 Substitution Status: SI
 New Part Number: X52421300005
-Superseded List: X52421300002";RETAINER FOR ALTER;;12VM40A-81;12V4000M40A, Superseded, revisar;simple;https://milu-naval.mystagingwebsite.com/wp-content/uploads/2026/02/12V4000M40A-0103-01-1600.webp;12V4000M40A;105;1600;X00030241;RETAINER FOR ALTER;;;SI;X52421300005;X52421300002;pendiente;revisar;import_superseded;estado QA requiere revision manual | ya existe en WordPress/product-export | relacion superseded clara;import_superseded;estado QA requiere revision manual | ya existe en WordPress/product-export | relacion superseded clara;engine_12V4000M40A.json;1102616;105;X52421300002;RETAINER FOR ALTER;;;SI;Superseded;X52421300005;X52421300002;pendiente;revisar;yes
+Superseded List: X52421300002";RETAINER FOR ALTERNATOR;;12VM40A-81;12V4000M40A, Superseded, revisar;simple;https://milu-naval.mystagingwebsite.com/wp-content/uploads/2026/02/12V4000M40A-0103-01-1600.webp;12V4000M40A;105;1600;X00030241;RETAINER FOR ALTERNATOR;;;SI;X52421300005;X52421300002;pendiente;revisar;import_superseded;estado QA requiere revision manual | ya existe en WordPress/product-export | relacion superseded clara;import_superseded;estado QA requiere revision manual | ya existe en WordPress/product-export | relacion superseded clara;engine_12V4000M40A.json;1102616;105;X52421300002;RETAINER FOR ALTERNATOR;;;SI;Superseded;X52421300005;X52421300002;pendiente;revisar;yes
 X52450700016;RETAINER F. WIRING HARNESS;x52450700016;publish;"Engine: 12V4000M40A
 Part Number: X52450700016
 Designation: RETAINER F. WIRING HARNESS

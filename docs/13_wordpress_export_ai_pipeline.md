@@ -109,3 +109,28 @@ Genera en `data/output/export_review/`:
 - `import_decision = discard`
 
 No se incluyen filas solo por coincidencias de texto en `import_reason`.
+
+## Pagina Exportacion (`exportacion.html`)
+Pagina independiente accesible desde QA (boton "Exportacion" en la barra superior) o directamente en `http://localhost:3000/exportacion.html`.
+
+### Funcionalidades
+- Listado de archivos generados en `data/output/wordpress/`, `data/output/ai_review/` y `data/output/export_review/` con carpeta, nombre, tipo, tamano y fecha de modificacion.
+- Botones de recalculo: Synthetic, WordPress, IA conflictos, Todo, Refrescar archivos.
+- Tarjetas de resumen: total archivos, tamano, ultima generacion, preview NEW / SUPERSEDED / pending / discarded / conflictos.
+- Preview integrado de archivos JSON (resumen + muestra), CSV (primeras 50 filas) y MD/TXT (texto plano).
+- Panel de logs con resultado y stdout (cola) de cada ejecucion.
+- Mensaje informativo recordando que Synthetic es global (compacta los 9 motores) y no modifica `engine_*.json`.
+
+### Endpoints adicionales (export manager)
+- `GET /export/files`: listado de archivos + summary (carpeta, tamano, totales) + run_state actual.
+- `GET /export/file?folder=&name=`: contenido seguro para preview (whitelist de carpetas y extensiones).
+- `GET /export/download?folder=&name=`: descarga directa.
+- `GET /export/status`: ultimo job ejecutado, error y timestamps.
+- `POST /export/run-all`: ejecuta synthetic + wordpress + ia en orden (con lock global).
+
+### Reglas de seguridad
+- Carpetas permitidas: `wordpress`, `ai_review`, `export_review`.
+- Extensiones permitidas: `.json`, `.csv`, `.md`, `.txt`.
+- Bloqueo de path traversal (`..`, `/`, `\`) y nombres fuera de la whitelist (HTTP 400).
+- Lock global `exportRunState`: solo un job de exportacion en curso a la vez (HTTP 409 si ya hay uno corriendo). La UI deshabilita los botones mientras dura.
+- Preview limitado a 512KB por archivo no-JSON (se indica `truncated: true`).

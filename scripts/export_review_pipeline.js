@@ -1,6 +1,7 @@
 const fs = require('fs');
 const path = require('path');
 const { ENGINE_JSON_FILES } = require('../engine_files');
+const mergeRules = require('./synthetic_merge_rules');
 
 const REPO_ROOT = path.resolve(__dirname, '..');
 const WORDPRESS_DIR = path.join(REPO_ROOT, 'data', 'output', 'wordpress');
@@ -84,6 +85,54 @@ function getWeight(row) {
 
 function getCategory(row) {
     return collapseSpaces(row.exp_categorias || row.categoria || row.atributo);
+}
+
+// Fase 2 — jerarquía explícita de fuentes por campo (mayor a menor prioridad).
+function designationTiers(row) {
+    return [
+        [collapseSpaces(row.designation_gesa)],
+        [collapseSpaces(row.designation_final)],
+        [collapseSpaces(row.DESIGNATION)]
+    ];
+}
+
+function measureTiers(row) {
+    return [
+        [collapseSpaces(row.dimensions_gesa)],
+        [collapseSpaces(row.measure_final || row.measurement_final)],
+        [collapseSpaces(row['MEASUREMENT / STANDARD'])]
+    ];
+}
+
+function weightTiers(row) {
+    return [
+        [collapseSpaces(row.weight_gesa)],
+        [collapseSpaces(row.weight_final)],
+        [collapseSpaces(row.WEIGHT)]
+    ];
+}
+
+// Acumula los tiers de un grupo en arrays paralelos por nivel jerárquico.
+function aggregateTiers(rows, tiersFn) {
+    const aggregated = [[], [], []];
+    for (const row of rows) {
+        const tiers = tiersFn(row);
+        for (let i = 0; i < aggregated.length; i += 1) {
+            for (const value of tiers[i] || []) {
+                if (value) aggregated[i].push(value);
+            }
+        }
+    }
+    return aggregated;
+}
+
+function flatOccurrences(rows, getter) {
+    const out = [];
+    for (const row of rows) {
+        const value = getter(row);
+        if (value) out.push(value);
+    }
+    return out;
 }
 
 function getImages(row) {
@@ -189,34 +238,30 @@ function buildSyntheticCompactedRows(allRows) {
         const aggregation = buildGlobalAggregation(groupRows);
         const sourceRecords = buildSourceRecords(groupRows);
 
-        const representativeNew = chooseRepresentative(groupRows, 'new');
-        if (representativeNew && key(representativeNew.sust_hierarchie) !== 'superseded') {
-            syntheticNew.push({
+        // Particionar por jerarquía superseded.
+        const supersededRows = groupRows.filter((r) => key(r.sust_hierarchie) === 'superseded');
+        const newRows = groupRows.filter((r) => key(r.sust_hierarchie) !== 'superseded');
+
+        if (newRows.length > 0) {
+            const merged = mergeGroupForSynthetic({
                 pn,
-                designation: getDesignation(representativeNew),
-                measurement: getMeasure(representativeNew),
-                weight: getWeight(representativeNew),
-                categoria: getCategory(representativeNew),
-                sust_tipo: t(representativeNew.sust_hierarchie) || 'New',
-                ...aggregation,
-                source_records: sourceRecords
+                groupRows: newRows,
+                aggregation,
+                sourceRecords,
+                mode: 'new'
             });
+            if (merged) syntheticNew.push(merged);
         }
 
-        const representativeSup = chooseRepresentative(groupRows, 'superseded');
-        if (representativeSup && key(representativeSup.sust_hierarchie) === 'superseded') {
-            syntheticSuperseded.push({
+        if (supersededRows.length > 0) {
+            const merged = mergeGroupForSynthetic({
                 pn,
-                designation: getDesignation(representativeSup),
-                measurement: getMeasure(representativeSup),
-                weight: getWeight(representativeSup),
-                categoria: getCategory(representativeSup),
-                sust_tipo: 'Superseded',
-                new_pn_relacionado: t(representativeSup.sust_new_part_number || representativeSup['New Part Number']),
-                old_pn_relacionados: t(representativeSup.sust_superseded_list || representativeSup['Superseded Part Number']),
-                ...aggregation,
-                source_records: sourceRecords
+                groupRows: supersededRows,
+                aggregation,
+                sourceRecords,
+                mode: 'superseded'
             });
+            if (merged) syntheticSuperseded.push(merged);
         }
     }
 
@@ -224,6 +269,109 @@ function buildSyntheticCompactedRows(allRows) {
     syntheticSuperseded.sort((a, b) => a.pn.localeCompare(b.pn, 'es', { numeric: true, sensitivity: 'base' }));
 
     return { syntheticNew, syntheticSuperseded };
+}
+
+// Fusión inteligente Fase 3-6: jerarquía + dominante + tolerancia OCR + score + decisión.
+function mergeGroupForSynthetic({ pn, groupRows, aggregation, sourceRecords, mode }) {
+    const designationTierValues = aggregateTiers(groupRows, designationTiers);
+    const measureTierValues = aggregateTiers(groupRows, measureTiers);
+    const weightTierValues = aggregateTiers(groupRows, weightTiers);
+
+    const designationOccurrences = flatOccurrences(groupRows, getDesignation);
+    const measureOccurrences = flatOccurrences(groupRows, getMeasure);
+    const weightOccurrences = flatOccurrences(groupRows, getWeight);
+
+    const designationResolution = mergeRules.resolveTextField(designationTierValues, designationOccurrences);
+    const measureResolution = mergeRules.resolveTextField(measureTierValues, measureOccurrences);
+    const weightResolution = mergeRules.resolveTextField(weightTierValues, weightOccurrences);
+
+    const fieldResolutions = {
+        designation: designationResolution,
+        measure: measureResolution,
+        weight: weightResolution
+    };
+    const consistency = mergeRules.computeConsistencyMetrics(fieldResolutions);
+
+    // Categoría: dominante tolerante.
+    const categoryDominant = mergeRules.pickDominant(flatOccurrences(groupRows, getCategory));
+    const category = categoryDominant.value || '';
+
+    // SUST: prioridad sust_new_part_number; debe ser único entre fuentes para ser consistente.
+    const sustNewSet = mergeRules.uniqueNonEmpty(groupRows.map((r) => r.sust_new_part_number || r['New Part Number']));
+    const sustOldSet = mergeRules.uniqueNonEmpty(groupRows.map((r) => r.sust_superseded_list || r['Superseded Part Number']));
+    const sustNewDominant = mergeRules.pickDominant(groupRows.map((r) => r.sust_new_part_number || r['New Part Number']));
+    const sustOldDominant = mergeRules.pickDominant(groupRows.map((r) => r.sust_superseded_list || r['Superseded Part Number']));
+
+    const hasSupersededSignal = mode === 'superseded';
+    const hasClearSupersededRelation = hasSupersededSignal
+        ? (sustNewSet.length === 1 || sustNewDominant.agreement >= 0.6)
+        : true;
+
+    const qaActions = mergeRules.uniqueNonEmpty(groupRows.map((r) => r.qa_revision_accion)).map((v) => v.toLowerCase());
+    const qaStates = mergeRules.uniqueNonEmpty(groupRows.map((r) => r.qa_revision_estado)).map((v) => v.toLowerCase());
+
+    const decision = mergeRules.computeMergeDecision({
+        pn,
+        consistency,
+        hasDesignation: !!designationResolution.value,
+        hasMeasure: !!measureResolution.value,
+        hasSupersededSignal,
+        hasClearSupersededRelation,
+        qaActions,
+        qaStates
+    });
+
+    const sustTipo = hasSupersededSignal ? 'Superseded' : 'New';
+
+    const base = {
+        pn,
+        designation: designationResolution.value,
+        measurement: measureResolution.value,
+        weight: weightResolution.value,
+        categoria: category,
+        sust_tipo: sustTipo,
+        ...aggregation,
+        merge_quality: {
+            consistency_score: consistency.consistency_score,
+            field_agreement_ratio: consistency.field_agreement_ratio,
+            conflict_severity: consistency.conflict_severity,
+            real_conflict_fields: consistency.real_conflict_fields,
+            truncation_only_fields: consistency.truncation_only_fields,
+            field_resolutions: {
+                designation: {
+                    source_tier: designationResolution.source_tier,
+                    agreement: Number(designationResolution.agreement.toFixed(3)),
+                    distinct_values: designationResolution.distinct_values,
+                    truncation_likely: designationResolution.truncation_likely,
+                    conflict_real: designationResolution.conflict_real
+                },
+                measure: {
+                    source_tier: measureResolution.source_tier,
+                    agreement: Number(measureResolution.agreement.toFixed(3)),
+                    distinct_values: measureResolution.distinct_values,
+                    truncation_likely: measureResolution.truncation_likely,
+                    conflict_real: measureResolution.conflict_real
+                },
+                weight: {
+                    source_tier: weightResolution.source_tier,
+                    agreement: Number(weightResolution.agreement.toFixed(3)),
+                    distinct_values: weightResolution.distinct_values,
+                    truncation_likely: weightResolution.truncation_likely,
+                    conflict_real: weightResolution.conflict_real
+                }
+            }
+        },
+        merge_decision: decision.decision,
+        merge_decision_reasons: decision.reasons,
+        source_records: sourceRecords
+    };
+
+    if (hasSupersededSignal) {
+        base.new_pn_relacionado = sustNewDominant.value || sustNewSet[0] || '';
+        base.old_pn_relacionados = sustOldDominant.value || sustOldSet[0] || '';
+    }
+
+    return base;
 }
 
 function buildPreviewAndTraceArtifacts(allRows, compacted) {

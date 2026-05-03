@@ -1058,7 +1058,7 @@ R5260101605;1102431;engine_12V4000M40A.json;3;update_existing;0.3;low;el SKU ya 
 5240110732;1100973;engine_12V4000M40A.json;30;update_existing;0.32;low;el SKU ya existe y hay inconsistencias menores a corregir;actualizar;ok;importar;COVER CYL BLOCK ACCE SS PORT;;2.753 KGM
 5240111380;1100974;engine_12V4000M40A.json;113;update_existing;0.17;low;el SKU ya existe y hay inconsistencias menores a corregir;actualizar;ok;importar;GASKET;;0.03 KGM
 000125008427;1100488;engine_12V4000M40A.json;576;import_superseded;0.27;low;relacion de sustitucion clara detectada;importar;ok;importar;WASHER;8;0.001 KGM
-000931008075;1100658;engine_12V4000M40A.json;1;pending_review;0.42;low;se requiere validacion humana por conflictos detectados;revisar;pendiente;revisar;HEX SCREW;M 8 X 45;0.021 KGM
+000931008075;1100658;engine_12V4000M40A.json;1;pending_review;0.57;low;se requiere validacion humana por conflictos detectados;revisar;ok;importar;HEX SCREW;M 8 X 45;0.021 KGM
 700429095004;1102105;engine_12V4000M40A.json;45;pending_review;0.7;medium;se requiere validacion humana por conflictos detectados;revisar;ok;importar;O-RING;A 95 X 5;0.014 KGM
 0000181802;1100092;engine_12V4000M40A.json;23;update_existing;0.05;low;el SKU ya existe y hay inconsistencias menores a corregir;actualizar;ok;importar;OIL FILL CAP;;0.111 KGM
 5240100266;1100957;engine_12V4000M40A.json;4;update_existing;0.05;low;el SKU ya existe y hay inconsistencias menores a corregir;actualizar;ok;importar;GUIDE TUBE;;3.39 KGM
@@ -1451,7 +1451,7 @@ X599004-743689;1102645;engine_12V4000M40A.json;2;pending_review;0.11;low;se requ
 000933012050;1100759;engine_12V4000M40A.json;20;update_existing;0.17;low;el SKU ya existe y hay inconsistencias menores a corregir;actualizar;ok;importar;HEX SCREW;M 12 X 55;0.057 KGM
 5240701333;1101108;engine_12V4000M40A.json;6;update_existing;0.05;low;el SKU ya existe y hay inconsistencias menores a corregir;actualizar;ok;importar;TUBE ASM LOW PRESSURE FUEL SUPPLY;;0.727 KGM
 5240782141;1101131;engine_12V4000M40A.json;8;update_existing;0.17;low;el SKU ya existe y hay inconsistencias menores a corregir;actualizar;ok;importar;BRACKET FLAT M8 TAP D M10 HOLE;;0.032 KGM
-5240900850;1300509;engine_16V4000M61.json;6;import_superseded;0.05;low;relacion de sustitucion clara detectada;importar;ok;importar;PUMP FUEL LOW PRESSURE (7.5 BAR);;5 KG EM
+5240900850;1101133;engine_12V4000M40A.json;6;import_superseded;0.05;low;relacion de sustitucion clara detectada;importar;pendiente;revisar;PUMP FUEL LOW PRESSURE (7.5 BAR);;5 KG
 304017008088;1101896;engine_12V4000M40A.json;161;import_superseded;0.27;low;relacion de sustitucion clara detectada;importar;ok;importar;HEX SCREW;M 8 X 55;0.022 KGM
 304032008014;1101912;engine_12V4000M40A.json;376;update_existing;0.32;low;el SKU ya existe y hay inconsistencias menores a corregir;actualizar;ok;importar;HEX NUT;M 8;0.004 KGM
 700429030002;1102058;engine_12V4000M40A.json;32;import_superseded;0.55;low;relacion de sustitucion clara detectada;importar;ok;importar;O-RING;A 30 X 4;0.003 KGM
@@ -1499,7 +1499,7 @@ X00015090;1102465;engine_12V4000M40A.json;6;update_existing;0.45;low;el SKU ya e
 X00035409;1102513;engine_12V4000M40A.json;6;update_existing;0.45;low;el SKU ya existe y hay inconsistencias menores a corregir;actualizar;ok;importar;FILTER ASM FUEL;;16.39 KGM
 X00035418;1102514;engine_12V4000M40A.json;6;update_existing;0.45;low;el SKU ya existe y hay inconsistencias menores a corregir;actualizar;ok;importar;BRACKET;;0.168 KGM
 X52408300004;1102611;engine_12V4000M40A.json;1;update_existing;0.5;low;el SKU ya existe y hay inconsistencias menores a corregir;actualizar;ok;importar;COLLECTING TROUGH;;
-X52421300002;1102616;engine_12V4000M40A.json;1;update_existing;0.07;low;el SKU ya existe y hay inconsistencias menores a corregir;actualizar;pendiente;revisar;RETAINER FOR ALTER;;
+X52421300002;1102616;engine_12V4000M40A.json;1;update_existing;0.07;low;el SKU ya existe y hay inconsistencias menores a corregir;actualizar;pendiente;revisar;RETAINER FOR ALTERNATOR;;
 X52450700016;1102618;engine_12V4000M40A.json;1;update_existing;0.32;low;el SKU ya existe y hay inconsistencias menores a corregir;actualizar;ok;importar;RETAINER F. WIRING HARNESS;HC219/1;1.566 KGM
 X52608300001;1102631;engine_12V4000M40A.json;6;update_existing;0.05;low;el SKU ya existe y hay inconsistencias menores a corregir;actualizar;ok;importar;BRACKET FUEL FILTER ASM;;9.275 KGM
 000910012000;1100637;engine_12V4000M40A.json;20;update_existing;0.45;low;el SKU ya existe y hay inconsistencias menores a corregir;actualizar;ok;importar;PLUG;M 12 X 1,5;0.021 KGM

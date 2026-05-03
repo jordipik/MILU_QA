@@ -80,6 +80,9 @@
                                         title="Deshacer último cambio guardado (Ctrl+Z)">Deshacer</button>
                                     <button id="openAuditPageBtn" type="button"
                                         title="Abrir visor de auditoría">Auditoría</button>
+                                    <button id="openExportPageBtn" type="button"
+                                        title="Abrir página de Exportación (lista archivos y recálculo Synthetic / WordPress / IA)"
+                                        onclick="window.open('exportacion.html', '_blank', 'noopener')">Exportación</button>
                                     <button id="toggleOnlyErrorsBtn" type="button"
                                         title="Mostrar solo registros con errores">Solo errores: OFF</button>
                                     <div class="bulk-edit">
@@ -646,7 +649,8 @@
                                     <option value="pending_review">pending_review</option>
                                     <option value="discard">discard</option>
                                 </select>
-                                <input id="qaExportSearchInput" type="search" placeholder="Buscar SKU, designation o motivo"
+                                <input id="qaExportSearchInput" type="search"
+                                    placeholder="Buscar SKU, designation o motivo"
                                     aria-label="Buscar en preview global" />
                                 <button id="qaExportFilterResetBtn" type="button">Limpiar filtros</button>
                                 <button id="qaExportDownloadCsvBtn" type="button">Descargar CSV</button>
@@ -658,9 +662,12 @@
                                     <thead>
                                         <tr>
                                             <th data-export-sort="sku" class="qa-export-sortable">SKU</th>
-                                            <th data-export-sort="import_decision" class="qa-export-sortable">Decision</th>
-                                            <th data-export-sort="designation_final" class="qa-export-sortable">Designation</th>
-                                            <th data-export-sort="total_occurrences_global" class="qa-export-sortable">Ocurrencias</th>
+                                            <th data-export-sort="import_decision" class="qa-export-sortable">Decision
+                                            </th>
+                                            <th data-export-sort="designation_final" class="qa-export-sortable">
+                                                Designation</th>
+                                            <th data-export-sort="total_occurrences_global" class="qa-export-sortable">
+                                                Ocurrencias</th>
                                         </tr>
                                     </thead>
                                     <tbody id="qaExportPreviewBody">
