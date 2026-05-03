@@ -1,0 +1,155 @@
+<!doctype html>
+<html lang="es">
+
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <link rel="icon" type="image/svg+xml" href="favicon.svg" />
+    <title>MILU - PN Review (Synthetic)</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link
+        href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;700&family=IBM+Plex+Mono:wght@400;500&display=swap"
+        rel="stylesheet">
+    <link rel="stylesheet" href="styles/pn_review.css" />
+</head>
+
+<body>
+    <div class="bg-shape bg-shape-a" aria-hidden="true"></div>
+    <div class="bg-shape bg-shape-b" aria-hidden="true"></div>
+
+    <main class="layout">
+        <header class="topbar">
+            <div>
+                <p class="eyebrow">Synthetic Export Review</p>
+                <h1>PN unicos</h1>
+            </div>
+            <div class="topbar-actions">
+                <button id="reloadBtn" type="button">Recargar</button>
+                <span id="statusBadge" class="status-badge">Cargando...</span>
+            </div>
+        </header>
+
+        <section class="grid-shell">
+            <article class="panel left-panel">
+                <div class="controls">
+                    <input id="searchInput" type="search" placeholder="Buscar SKU..." autocomplete="off" />
+                    <select id="decisionFilter">
+                        <option value="">Todas las decisiones</option>
+                        <option value="import_new">import_new</option>
+                        <option value="import_superseded">import_superseded</option>
+                        <option value="pending_review">pending_review</option>
+                        <option value="discard">discard</option>
+                    </select>
+                    <select id="severityFilter">
+                        <option value="">Todas las severidades</option>
+                        <option value="low">low</option>
+                        <option value="medium">medium</option>
+                        <option value="high">high</option>
+                    </select>
+                </div>
+
+                <div class="table-meta" id="tableMeta">Cargando lista...</div>
+
+                <div class="table-wrap" id="tableWrap">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th data-sort="sku">sku</th>
+                                <th data-sort="decision">decision</th>
+                                <th data-sort="confidence">confidence</th>
+                                <th data-sort="occurrences">occurrences</th>
+                                <th data-sort="conflicts_count">conflicts_count</th>
+                                <th data-sort="engines_count">engines_count</th>
+                            </tr>
+                        </thead>
+                        <tbody id="pnTableBody">
+                            <tr>
+                                <td colspan="6">Cargando...</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+
+                <footer class="pager">
+                    <button id="prevPageBtn" type="button">Anterior</button>
+                    <span id="pageInfo">Pagina 1</span>
+                    <button id="nextPageBtn" type="button">Siguiente</button>
+                </footer>
+            </article>
+
+            <article class="panel right-panel">
+                <div id="detailEmpty" class="detail-empty">
+                    Selecciona un PN para ver detalle completo, reglas y conflictos.
+                </div>
+                <div id="detailContent" class="detail-content" hidden>
+                    <header class="detail-head">
+                        <h2 id="detailSku">-</h2>
+                        <button id="openSourcesBtn" type="button">Ver apariciones</button>
+                    </header>
+
+                    <div class="detail-grid">
+                        <section class="card">
+                            <h3>Campos exportables</h3>
+                            <div id="exportableFields"></div>
+                        </section>
+
+                        <section class="card">
+                            <h3>Score</h3>
+                            <div id="scoreBlock"></div>
+                        </section>
+
+                        <section class="card">
+                            <h3>Reglas aplicadas</h3>
+                            <ul id="rulesList" class="list"></ul>
+                        </section>
+
+                        <section class="card">
+                            <h3>Conflictos</h3>
+                            <ul id="conflictsList" class="list"></ul>
+                        </section>
+
+                        <section class="card full-width">
+                            <h3>Resumen fusion</h3>
+                            <div id="mergeSummary"></div>
+                        </section>
+                    </div>
+                </div>
+            </article>
+        </section>
+    </main>
+
+    <dialog id="sourcesModal" class="sources-modal">
+        <form method="dialog" class="modal-shell">
+            <header class="modal-head">
+                <h3 id="modalTitle">Apariciones</h3>
+                <button id="closeModalBtn" type="submit" class="ghost">Cerrar</button>
+            </header>
+            <p id="modalMeta" class="modal-meta"></p>
+            <div class="sources-wrap">
+                <table>
+                    <thead>
+                        <tr>
+                            <th>id</th>
+                            <th>engine_model</th>
+                            <th>source_file</th>
+                            <th>source_page</th>
+                            <th>pos</th>
+                            <th>bom</th>
+                            <th>designation_final</th>
+                            <th>measure_final</th>
+                            <th>weight_final</th>
+                            <th>qa_revision_estado</th>
+                            <th>qa_revision_accion</th>
+                        </tr>
+                    </thead>
+                    <tbody id="sourcesTableBody"></tbody>
+                </table>
+            </div>
+        </form>
+    </dialog>
+
+    <script src="js/pn_review.js" defer></script>
+</body>
+
+</html>

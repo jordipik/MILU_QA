@@ -5,6 +5,7 @@
     const API = {
         health: '/health',
         files: '/export/files',
+        wordpressDecisions: '/export/wordpress-decisions',
         file: (folder, name) => `/export/file?folder=${encodeURIComponent(folder)}&name=${encodeURIComponent(name)}`,
         download: (folder, name) => `/export/download?folder=${encodeURIComponent(folder)}&name=${encodeURIComponent(name)}`,
         preview: '/export/preview',
@@ -17,6 +18,7 @@
 
     const state = {
         files: [],
+        decisionRows: [],
         sortKey: 'mtime',
         sortAsc: false,
         selected: null,
@@ -106,15 +108,70 @@
             appendLog(`Error cargando archivos: ${err.message}`, 'error');
         }
 
+        await loadDecisionRows();
+    }
+
+    function renderDecisionTable() {
+        const tbody = $('expDecisionBody');
+        if (!tbody) return;
+
+        const filter = String(($('expDecisionFilter')?.value || '')).trim().toLowerCase();
+        const rows = state.decisionRows.filter((row) => {
+            if (!filter) return true;
+            return String(row?.decision || '').toLowerCase() === filter;
+        });
+
+        if (!rows.length) {
+            tbody.innerHTML = '<tr><td colspan="8" class="exp-empty">Sin resultados para el filtro seleccionado.</td></tr>';
+            return;
+        }
+
+        tbody.innerHTML = rows.slice(0, 1500).map((row) => `
+            <tr>
+                <td>${escapeHtml(row?.sku || '')}</td>
+                <td>${escapeHtml(row?.designation_final || '')}</td>
+                <td>${String(row?.qa_validated).toLowerCase() === 'true' ? 'true' : 'false'}</td>
+                <td>${escapeHtml(row?.decision || '')}</td>
+                <td>${escapeHtml(row?.reason || '')}</td>
+                <td>${escapeHtml(row?.occurrences || '')}</td>
+                <td>${escapeHtml(row?.engines || '')}</td>
+                <td>${escapeHtml(row?.source_ids || '')}</td>
+            </tr>
+        `).join('');
+    }
+
+    async function loadDecisionRows() {
+        try {
+            const payload = await fetchJson(API.wordpressDecisions);
+            state.decisionRows = Array.isArray(payload?.rows) ? payload.rows : [];
+            const summary = payload?.summary || {};
+
+            $('expSumImport').textContent = summary.import ?? '—';
+            $('expSumPending').textContent = summary.pending_review ?? '—';
+            $('expSumDiscard').textContent = summary.discard ?? '—';
+            $('expSumValidated').textContent = summary.qa_validated ?? '—';
+            $('expSumDecisionTotal').textContent = summary.total ?? '—';
+
+            renderDecisionTable();
+        } catch (err) {
+            appendLog(`No se pudo cargar decisiones QA: ${err.message}`, 'error');
+        }
+
         try {
             const preview = await fetchJson(API.preview);
             const s = preview?.summary || {};
-            $('expSumNew').textContent = s.preview_new ?? '—';
-            $('expSumSup').textContent = s.preview_superseded ?? '—';
-            $('expSumPending').textContent = s.preview_pending ?? '—';
-            $('expSumDiscard').textContent = s.preview_discarded ?? '—';
-            $('expSumConflicts').textContent = s.conflict_rows ?? '—';
-        } catch (_) { /* preview puede no existir aún */ }
+            if (!Number.isFinite(Number($('expSumImport').textContent))) {
+                $('expSumImport').textContent = s.preview_import ?? s.preview_new ?? '—';
+            }
+            if (!Number.isFinite(Number($('expSumPending').textContent))) {
+                $('expSumPending').textContent = s.preview_pending ?? '—';
+            }
+            if (!Number.isFinite(Number($('expSumDiscard').textContent))) {
+                $('expSumDiscard').textContent = s.preview_discarded ?? '—';
+            }
+        } catch (_) {
+            // preview puede no existir aún.
+        }
     }
 
     function renderSummary(summary, runState) {
@@ -350,6 +407,7 @@
     function bindEvents() {
         $('expBtnRefresh').addEventListener('click', () => { loadFiles(); });
         $('expBtnClearLog').addEventListener('click', () => { $('expLog').textContent = 'Esperando acciones…'; });
+        $('expDecisionFilter')?.addEventListener('change', renderDecisionTable);
 
         document.querySelectorAll('#expActions button[data-job]').forEach((btn) => {
             btn.addEventListener('click', () => runJob(btn.dataset.job));

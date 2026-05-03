@@ -17,6 +17,19 @@ const AUDIT_LOG_FILE = path.join(__dirname, 'qa_audit_log.json');
 const AUDIT_LOG_MAX_ENTRIES = 10000;
 const REVISION_SYNC_FILE = path.join(__dirname, 'qa_revision_server_data.json');
 const EXPORT_REVIEW_DIR = path.join(__dirname, 'data', 'output', 'export_review');
+const PN_SYNTHETIC_NEW_FILE = path.join(EXPORT_REVIEW_DIR, 'synthetic_new_compacted.json');
+const PN_SYNTHETIC_SUPERSEDED_FILE = path.join(EXPORT_REVIEW_DIR, 'synthetic_superseded_compacted.json');
+const PN_TRACE_FILE = path.join(EXPORT_REVIEW_DIR, 'wordpress_export_trace.json');
+
+const pnReviewCache = {
+    loadedAt: null,
+    files: {
+        syntheticNew: null,
+        syntheticSuperseded: null,
+        trace: null
+    },
+    payload: null
+};
 
 function readJsonFileSafe(filePath, fallback = null) {
     try {
@@ -24,6 +37,174 @@ function readJsonFileSafe(filePath, fallback = null) {
     } catch (_) {
         return fallback;
     }
+}
+
+function getFileFingerprint(filePath) {
+    try {
+        const stat = fs.statSync(filePath);
+        return { mtimeMs: stat.mtimeMs, size: stat.size };
+    } catch (_) {
+        return null;
+    }
+}
+
+function fingerprintsEqual(a, b) {
+    return !!a && !!b && a.mtimeMs === b.mtimeMs && a.size === b.size;
+}
+
+function toNumber(value, fallback = 0) {
+    const numeric = Number(value);
+    return Number.isFinite(numeric) ? numeric : fallback;
+}
+
+function splitCsvUnique(value) {
+    const parts = String(value || '')
+        .split(',')
+        .map((part) => part.trim())
+        .filter(Boolean);
+    return [...new Set(parts)];
+}
+
+function pnKey(value) {
+    return String(value || '').trim().toLowerCase();
+}
+
+function buildPnListItem(compactedRow, traceEntry) {
+    const sku = String(compactedRow?.pn || traceEntry?.sku || '').trim();
+    const decision = String(
+        traceEntry?.preview?.import_decision || compactedRow?.merge_decision || 'pending_review'
+    ).trim();
+    const confidence = Number(toNumber(compactedRow?.merge_quality?.consistency_score, 0).toFixed(3));
+    const occurrences = toNumber(compactedRow?.total_occurrences_global, Array.isArray(compactedRow?.source_records) ? compactedRow.source_records.length : 0);
+    const conflicts = Array.isArray(compactedRow?.merge_quality?.real_conflict_fields)
+        ? compactedRow.merge_quality.real_conflict_fields
+        : [];
+    const enginesCount = splitCsvUnique(compactedRow?.engine_models_all).length;
+
+    return {
+        sku,
+        decision,
+        confidence,
+        occurrences,
+        conflicts_count: conflicts.length,
+        engines_count: enginesCount,
+        sust_tipo: String(compactedRow?.sust_tipo || '').trim(),
+        conflict_severity: String(compactedRow?.merge_quality?.conflict_severity || '').trim()
+    };
+}
+
+function buildFieldStatuses(compactedRow) {
+    const fieldResolutions = compactedRow?.merge_quality?.field_resolutions || {};
+
+    const fields = [
+        { key: 'designation', label: 'designation', value: String(compactedRow?.designation || '') },
+        { key: 'measurement', label: 'measurement', value: String(compactedRow?.measurement || '') },
+        { key: 'weight', label: 'weight', value: String(compactedRow?.weight || '') },
+        { key: 'categoria', label: 'categoria', value: String(compactedRow?.categoria || '') },
+        { key: 'new_pn_relacionado', label: 'new_pn_relacionado', value: String(compactedRow?.new_pn_relacionado || '') },
+        { key: 'old_pn_relacionados', label: 'old_pn_relacionados', value: String(compactedRow?.old_pn_relacionados || '') }
+    ];
+
+    return fields.map((field) => {
+        const resolutionKey = field.key === 'measurement' ? 'measure' : field.key;
+        const resolution = fieldResolutions?.[resolutionKey] || {};
+        const value = String(field.value || '').trim();
+        let status = 'OK';
+        let reason = 'consistente';
+
+        if (!value) {
+            status = 'ERROR';
+            reason = 'valor_vacio';
+        } else if (resolution?.conflict_real) {
+            status = 'ERROR';
+            reason = 'conflicto_real';
+        } else if (resolution?.truncation_likely) {
+            status = 'WARNING';
+            reason = 'truncacion_probable';
+        }
+
+        return {
+            field: field.label,
+            value,
+            status,
+            reason,
+            source_tier: toNumber(resolution?.source_tier, 0),
+            agreement: Number(toNumber(resolution?.agreement, 0).toFixed(3)),
+            distinct_values: toNumber(resolution?.distinct_values, 0)
+        };
+    });
+}
+
+function buildSourceDiffMeta(sourceRows) {
+    const columns = ['designation_final', 'measure_final', 'weight_final', 'bom', 'pos', 'engine_model', 'source_page'];
+    const conflictColumns = [];
+    const distinctByColumn = {};
+
+    for (const column of columns) {
+        const values = [...new Set((sourceRows || []).map((row) => String(row?.[column] || '').trim()).filter(Boolean))];
+        distinctByColumn[column] = values;
+        if (values.length > 1) conflictColumns.push(column);
+    }
+
+    return { columns, conflictColumns, distinctByColumn };
+}
+
+function ensurePnReviewDataLoaded() {
+    const fingerprints = {
+        syntheticNew: getFileFingerprint(PN_SYNTHETIC_NEW_FILE),
+        syntheticSuperseded: getFileFingerprint(PN_SYNTHETIC_SUPERSEDED_FILE),
+        trace: getFileFingerprint(PN_TRACE_FILE)
+    };
+
+    const upToDate = pnReviewCache.payload
+        && fingerprintsEqual(pnReviewCache.files.syntheticNew, fingerprints.syntheticNew)
+        && fingerprintsEqual(pnReviewCache.files.syntheticSuperseded, fingerprints.syntheticSuperseded)
+        && fingerprintsEqual(pnReviewCache.files.trace, fingerprints.trace);
+
+    if (upToDate) {
+        return pnReviewCache.payload;
+    }
+
+    const syntheticNew = readJsonFileSafe(PN_SYNTHETIC_NEW_FILE, []);
+    const syntheticSuperseded = readJsonFileSafe(PN_SYNTHETIC_SUPERSEDED_FILE, []);
+    const traceMap = readJsonFileSafe(PN_TRACE_FILE, {});
+
+    const index = new Map();
+    const traceIndex = new Map();
+    const list = [];
+
+    if (traceMap && typeof traceMap === 'object') {
+        for (const [sku, entry] of Object.entries(traceMap)) {
+            traceIndex.set(pnKey(sku), entry);
+        }
+    }
+
+    const indexRows = [];
+    if (Array.isArray(syntheticNew)) indexRows.push(...syntheticNew);
+    if (Array.isArray(syntheticSuperseded)) indexRows.push(...syntheticSuperseded);
+
+    for (const row of indexRows) {
+        const sku = String(row?.pn || '').trim();
+        if (!sku) continue;
+        const key = pnKey(sku);
+        const traceEntry = traceIndex.get(key) || null;
+
+        if (!index.has(key)) {
+            list.push(buildPnListItem(row, traceEntry));
+        }
+        index.set(key, {
+            sku,
+            compacted: row,
+            trace: traceEntry
+        });
+    }
+
+    list.sort((a, b) => String(a.sku).localeCompare(String(b.sku), 'es', { numeric: true, sensitivity: 'base' }));
+
+    pnReviewCache.files = fingerprints;
+    pnReviewCache.loadedAt = new Date().toISOString();
+    pnReviewCache.payload = { list, index };
+    return pnReviewCache.payload;
 }
 
 function runNodeScript(scriptRelativePath, args = []) {
@@ -406,6 +587,10 @@ app.get('/export/preview', async (_req, res) => {
         const parsedSummary = {
             generated_at: null,
             preview_total: Array.isArray(previewRows) ? previewRows.length : 0,
+            preview_import: Array.isArray(previewRows) ? previewRows.filter((r) => {
+                const decision = String(r?.import_decision || '').toLowerCase();
+                return decision === 'import' || decision === 'import_new' || decision === 'import_superseded';
+            }).length : 0,
             preview_new: Array.isArray(previewRows) ? previewRows.filter((r) => String(r?.import_decision || '').toLowerCase() === 'import_new').length : 0,
             preview_superseded: Array.isArray(previewRows) ? previewRows.filter((r) => String(r?.import_decision || '').toLowerCase() === 'import_superseded').length : 0,
             preview_pending: Array.isArray(previewRows) ? previewRows.filter((r) => String(r?.import_decision || '').toLowerCase() === 'pending_review').length : 0,
@@ -427,6 +612,35 @@ app.get('/export/preview', async (_req, res) => {
     }
 });
 
+app.get('/export/wordpress-decisions', async (_req, res) => {
+    try {
+        const wpDir = path.join(__dirname, 'data', 'output', 'wordpress');
+        const importRows = readJsonFileSafe(path.join(wpDir, 'milu_wp_import.json'), []);
+        const pendingRows = readJsonFileSafe(path.join(wpDir, 'milu_wp_pending_review.json'), []);
+        const discardRows = readJsonFileSafe(path.join(wpDir, 'milu_wp_discarded.json'), []);
+
+        const allRows = [
+            ...(Array.isArray(importRows) ? importRows : []),
+            ...(Array.isArray(pendingRows) ? pendingRows : []),
+            ...(Array.isArray(discardRows) ? discardRows : [])
+        ];
+
+        return res.json({
+            ok: true,
+            rows: allRows,
+            summary: {
+                total: allRows.length,
+                import: Array.isArray(importRows) ? importRows.length : 0,
+                pending_review: Array.isArray(pendingRows) ? pendingRows.length : 0,
+                discard: Array.isArray(discardRows) ? discardRows.length : 0,
+                qa_validated: allRows.filter((row) => String(row?.qa_validated).toLowerCase() === 'true').length
+            }
+        });
+    } catch (error) {
+        return res.status(500).json({ ok: false, error: String(error?.message || error) });
+    }
+});
+
 app.get('/export/trace/:sku', async (req, res) => {
     const sku = String(req.params?.sku || '').trim();
     if (!sku) {
@@ -441,6 +655,162 @@ app.get('/export/trace/:sku', async (req, res) => {
             return res.status(404).json({ ok: false, error: `No hay traza para SKU ${sku}` });
         }
         return res.json({ ok: true, sku, trace: entry });
+    } catch (error) {
+        return res.status(500).json({ ok: false, error: String(error?.message || error) });
+    }
+});
+
+app.get('/pn/list', async (req, res) => {
+    try {
+        const { list } = ensurePnReviewDataLoaded();
+
+        const query = String(req.query?.q || '').trim().toLowerCase();
+        const decision = String(req.query?.decision || '').trim().toLowerCase();
+        const minConfidence = req.query?.minConfidence == null ? null : toNumber(req.query.minConfidence, 0);
+        const maxConfidence = req.query?.maxConfidence == null ? null : toNumber(req.query.maxConfidence, 1);
+        const sortBy = String(req.query?.sort || 'sku').trim();
+        const order = String(req.query?.order || 'asc').trim().toLowerCase() === 'desc' ? 'desc' : 'asc';
+        const limitRaw = toNumber(req.query?.limit, 2000);
+        const offsetRaw = toNumber(req.query?.offset, 0);
+        const limit = Math.min(Math.max(1, Math.floor(limitRaw)), 10000);
+        const offset = Math.max(0, Math.floor(offsetRaw));
+
+        let rows = list;
+
+        if (query) {
+            rows = rows.filter((row) => String(row.sku || '').toLowerCase().includes(query));
+        }
+        if (decision) {
+            rows = rows.filter((row) => String(row.decision || '').toLowerCase() === decision);
+        }
+        if (minConfidence != null) {
+            rows = rows.filter((row) => toNumber(row.confidence, 0) >= minConfidence);
+        }
+        if (maxConfidence != null) {
+            rows = rows.filter((row) => toNumber(row.confidence, 0) <= maxConfidence);
+        }
+
+        const sortable = new Set(['sku', 'decision', 'confidence', 'occurrences', 'conflicts_count', 'engines_count']);
+        const effectiveSort = sortable.has(sortBy) ? sortBy : 'sku';
+
+        rows = [...rows].sort((a, b) => {
+            const av = a[effectiveSort];
+            const bv = b[effectiveSort];
+            let cmp = 0;
+            if (typeof av === 'number' && typeof bv === 'number') {
+                cmp = av - bv;
+            } else {
+                cmp = String(av || '').localeCompare(String(bv || ''), 'es', { numeric: true, sensitivity: 'base' });
+            }
+            return order === 'desc' ? -cmp : cmp;
+        });
+
+        const total = rows.length;
+        const page = rows.slice(offset, offset + limit);
+
+        return res.json({
+            ok: true,
+            rows: page,
+            total,
+            offset,
+            limit,
+            loaded_at: pnReviewCache.loadedAt
+        });
+    } catch (error) {
+        return res.status(500).json({ ok: false, error: String(error?.message || error) });
+    }
+});
+
+app.get('/pn/:sku', async (req, res) => {
+    try {
+        const sku = String(req.params?.sku || '').trim();
+        if (!sku) {
+            return res.status(400).json({ ok: false, error: 'SKU requerido.' });
+        }
+
+        const { index } = ensurePnReviewDataLoaded();
+        const entry = index.get(pnKey(sku));
+        if (!entry) {
+            return res.status(404).json({ ok: false, error: `PN no encontrado: ${sku}` });
+        }
+
+        const compacted = entry.compacted || {};
+        const sourceRecords = Array.isArray(compacted?.source_records)
+            ? compacted.source_records
+            : (Array.isArray(entry?.trace?.source_records) ? entry.trace.source_records : []);
+
+        const conflicts = (compacted?.merge_quality?.real_conflict_fields || []).map((field) => ({
+            field,
+            severity: String(compacted?.merge_quality?.conflict_severity || 'medium')
+        }));
+
+        const exportableFields = buildFieldStatuses(compacted);
+
+        const rulesApplied = [
+            ...(Array.isArray(compacted?.merge_decision_reasons) ? compacted.merge_decision_reasons : []),
+            ...exportableFields
+                .filter((field) => field.source_tier > 0)
+                .map((field) => `${field.field}:tier_${field.source_tier}`)
+        ];
+
+        const sourceDiffMeta = buildSourceDiffMeta(sourceRecords);
+
+        return res.json({
+            ok: true,
+            sku: entry.sku,
+            decision: String(entry?.trace?.preview?.import_decision || compacted?.merge_decision || ''),
+            confidence: Number(toNumber(compacted?.merge_quality?.consistency_score, 0).toFixed(3)),
+            score: {
+                consistency_score: toNumber(compacted?.merge_quality?.consistency_score, 0),
+                field_agreement_ratio: toNumber(compacted?.merge_quality?.field_agreement_ratio, 0),
+                conflict_severity: String(compacted?.merge_quality?.conflict_severity || ''),
+                conflicts_count: conflicts.length
+            },
+            resumen_fusion: {
+                total_occurrences_global: toNumber(compacted?.total_occurrences_global, sourceRecords.length),
+                engines_count: splitCsvUnique(compacted?.engine_models_all).length,
+                engine_models_all: String(compacted?.engine_models_all || ''),
+                source_pages_all: String(compacted?.source_pages_all || ''),
+                source_ids_all: String(compacted?.source_ids_all || ''),
+                merge_decision: String(compacted?.merge_decision || ''),
+                merge_decision_reasons: Array.isArray(compacted?.merge_decision_reasons) ? compacted.merge_decision_reasons : []
+            },
+            exportable_fields: exportableFields,
+            rules_applied: [...new Set(rulesApplied)],
+            conflicts,
+            compacted,
+            trace: entry.trace || null,
+            source_diff_meta: sourceDiffMeta
+        });
+    } catch (error) {
+        return res.status(500).json({ ok: false, error: String(error?.message || error) });
+    }
+});
+
+app.get('/pn/:sku/sources', async (req, res) => {
+    try {
+        const sku = String(req.params?.sku || '').trim();
+        if (!sku) {
+            return res.status(400).json({ ok: false, error: 'SKU requerido.' });
+        }
+
+        const { index } = ensurePnReviewDataLoaded();
+        const entry = index.get(pnKey(sku));
+        if (!entry) {
+            return res.status(404).json({ ok: false, error: `PN no encontrado: ${sku}` });
+        }
+
+        const sourceRecords = Array.isArray(entry?.compacted?.source_records)
+            ? entry.compacted.source_records
+            : (Array.isArray(entry?.trace?.source_records) ? entry.trace.source_records : []);
+
+        return res.json({
+            ok: true,
+            sku: entry.sku,
+            count: sourceRecords.length,
+            rows: sourceRecords,
+            diff: buildSourceDiffMeta(sourceRecords)
+        });
     } catch (error) {
         return res.status(500).json({ ok: false, error: String(error?.message || error) });
     }

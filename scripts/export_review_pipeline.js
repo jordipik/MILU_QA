@@ -375,7 +375,10 @@ function mergeGroupForSynthetic({ pn, groupRows, aggregation, sourceRecords, mod
 }
 
 function buildPreviewAndTraceArtifacts(allRows, compacted) {
-    const wpNew = readJson(path.join(WORDPRESS_DIR, 'milu_wp_new_import.json'), []);
+    const wpImport = readJson(path.join(WORDPRESS_DIR, 'milu_wp_import.json'), null);
+    const wpNew = Array.isArray(wpImport)
+        ? wpImport
+        : readJson(path.join(WORDPRESS_DIR, 'milu_wp_new_import.json'), []);
     const wpSup = readJson(path.join(WORDPRESS_DIR, 'milu_wp_superseded_import.json'), []);
     const wpPending = readJson(path.join(WORDPRESS_DIR, 'milu_wp_pending_review.json'), []);
     const wpDiscarded = readJson(path.join(WORDPRESS_DIR, 'milu_wp_discarded.json'), []);
@@ -446,6 +449,10 @@ function buildPreviewAndTraceArtifacts(allRows, compacted) {
     const summary = {
         generated_at: new Date().toISOString(),
         preview_total: previewRows.length,
+        preview_import: previewRows.filter((row) => {
+            const decision = key(row.import_decision);
+            return decision === 'import' || decision === 'import_new' || decision === 'import_superseded';
+        }).length,
         preview_new: previewRows.filter((row) => key(row.import_decision) === 'import_new').length,
         preview_superseded: previewRows.filter((row) => key(row.import_decision) === 'import_superseded').length,
         preview_pending: previewRows.filter((row) => key(row.import_decision) === 'pending_review').length,
@@ -466,6 +473,7 @@ function writeSummaryMarkdown(summary, filePath) {
         '',
         '## Preview',
         `- Total rows: ${summary.preview_total}`,
+        `- import: ${summary.preview_import}`,
         `- import_new: ${summary.preview_new}`,
         `- import_superseded: ${summary.preview_superseded}`,
         `- pending_review: ${summary.preview_pending}`,
