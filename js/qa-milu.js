@@ -537,6 +537,45 @@ function renderExportSummary(summary = {}) {
     if (discarded) discarded.textContent = String(Number(summary.preview_discarded || 0));
 }
 
+function getExportPreviewFilterState() {
+    const decisionFilter = String($('qaExportDecisionFilter')?.value || '__all__').trim().toLowerCase();
+    const query = String($('qaExportSearchInput')?.value || '').trim().toLowerCase();
+    return {
+        decision: decisionFilter || '__all__',
+        query
+    };
+}
+
+function applyExportPreviewFilters(rows) {
+    const sourceRows = Array.isArray(rows) ? rows : [];
+    const filters = getExportPreviewFilterState();
+
+    return sourceRows.filter((row) => {
+        const decision = String(row?.import_decision || '').trim().toLowerCase();
+        if (filters.decision !== '__all__' && decision !== filters.decision) {
+            return false;
+        }
+
+        if (!filters.query) return true;
+
+        const haystack = [
+            row?.sku,
+            row?.designation_final,
+            row?.import_reason,
+            row?.engine_models_all,
+            row?.source_ids_all
+        ].map((item) => String(item || '').toLowerCase()).join(' | ');
+
+        return haystack.includes(filters.query);
+    });
+}
+
+function renderExportFilteredCount(visible, total) {
+    const elem = $('qaExportFilteredCount');
+    if (!(elem instanceof HTMLElement)) return;
+    elem.textContent = `${Number(visible || 0)} / ${Number(total || 0)}`;
+}
+
 function renderExportTrace(trace, sku) {
     const traceSku = $('qaExportTraceSku');
     const body = $('qaExportTraceBody');
@@ -554,26 +593,52 @@ function renderExportTrace(trace, sku) {
     const sourceRecords = Array.isArray(trace.source_records) ? trace.source_records : [];
     const preview = trace.preview || {};
 
+    const sourcePreviewRows = sourceRecords.slice(0, 30).map((row) => (`<tr>`
+        + `<td>${escapeHtml(String(row?.id || '-'))}</td>`
+        + `<td>${escapeHtml(String(row?.engine_model || '-'))}</td>`
+        + `<td>${escapeHtml(String(row?.source_page || '-'))}</td>`
+        + `<td>${escapeHtml(String(row?.pos || '-'))}</td>`
+        + `<td>${escapeHtml(String(row?.designation_final || '-'))}</td>`
+        + `<td>${escapeHtml(String(row?.measure_final || '-'))}</td>`
+        + `<td>${escapeHtml(String(row?.weight_final || '-'))}</td>`
+        + `</tr>`)).join('');
+
     body.innerHTML = ''
-        + `<p><b>Decision:</b> ${escapeHtml(String(preview.import_decision || '-'))}</p>`
+        + '<div class="qa-export-trace-kpis">'
+        + `<div class="qa-export-trace-kpi"><span>Decision</span><strong>${escapeHtml(String(preview.import_decision || '-'))}</strong></div>`
+        + `<div class="qa-export-trace-kpi"><span>Ocurrencias</span><strong>${escapeHtml(String(compacted.total_occurrences_global || 0))}</strong></div>`
+        + `<div class="qa-export-trace-kpi"><span>Registros fuente</span><strong>${escapeHtml(String(sourceRecords.length))}</strong></div>`
+        + '</div>'
         + `<p><b>Motivo:</b> ${escapeHtml(String(preview.import_reason || '-'))}</p>`
         + `<p><b>Motores:</b> ${escapeHtml(String(compacted.engine_models_all || '-'))}</p>`
         + `<p><b>Páginas:</b> ${escapeHtml(String(compacted.source_pages_all || '-'))}</p>`
         + `<p><b>IDs:</b> ${escapeHtml(String(compacted.source_ids_all || '-'))}</p>`
-        + `<p><b>Ocurrencias globales:</b> ${escapeHtml(String(compacted.total_occurrences_global || 0))}</p>`
-        + `<p><b>Registros fuente:</b> ${escapeHtml(String(sourceRecords.length))}</p>`;
+        + '<p><b>Provenance (máx. 30 filas):</b></p>'
+        + '<div class="qa-export-trace-table-wrap">'
+        + '<table class="qa-export-trace-table" aria-label="Registros fuente del SKU">'
+        + '<thead><tr><th>ID</th><th>Motor</th><th>Página</th><th>POS</th><th>Designation</th><th>Measure</th><th>Weight</th></tr></thead>'
+        + `<tbody>${sourcePreviewRows || '<tr><td colspan="7">Sin registros fuente</td></tr>'}</tbody>`
+        + '</table>'
+        + '</div>';
 }
 
 function renderExportPreviewRows(rows) {
     const body = $('qaExportPreviewBody');
     if (!(body instanceof HTMLElement)) return;
 
-    if (!Array.isArray(rows) || !rows.length) {
-        body.innerHTML = '<tr><td colspan="4">No hay preview cargado.</td></tr>';
+    const totalRows = Array.isArray(rows) ? rows : [];
+    const visibleRows = applyExportPreviewFilters(totalRows);
+    renderExportFilteredCount(visibleRows.length, totalRows.length);
+
+    if (!visibleRows.length) {
+        const emptyMessage = totalRows.length
+            ? 'No hay filas para los filtros actuales.'
+            : 'No hay preview cargado.';
+        body.innerHTML = `<tr><td colspan="4">${emptyMessage}</td></tr>`;
         return;
     }
 
-    body.innerHTML = rows.map((row) => {
+    body.innerHTML = visibleRows.map((row) => {
         const sku = String(row?.sku || '').trim();
         const isSelected = sku && sku === state.selectedExportSku;
         return `<tr data-export-sku="${escapeHtml(sku)}" class="${isSelected ? 'qa-export-preview-selected' : ''}">`
@@ -629,6 +694,14 @@ async function loadExportPreview() {
     } catch (error) {
         setExportRunStatus(`Error al cargar preview: ${error.message}`, 'bad');
     }
+}
+
+function resetExportPreviewFilters() {
+    const decision = $('qaExportDecisionFilter');
+    if (decision instanceof HTMLSelectElement) decision.value = '__all__';
+
+    const search = $('qaExportSearchInput');
+    if (search instanceof HTMLInputElement) search.value = '';
 }
 
 async function runExportPipeline(endpoint, label) {
@@ -3362,6 +3435,19 @@ function attachGlobalEvents() {
         setExportRunStatus('Recargando preview...', 'warn');
         await loadExportPreview();
         setExportRunStatus('Preview actualizado', 'ok');
+    });
+
+    $('qaExportDecisionFilter')?.addEventListener('change', () => {
+        renderExportPreviewRows(state.exportPreviewRows || []);
+    });
+
+    $('qaExportSearchInput')?.addEventListener('input', () => {
+        renderExportPreviewRows(state.exportPreviewRows || []);
+    });
+
+    $('qaExportFilterResetBtn')?.addEventListener('click', () => {
+        resetExportPreviewFilters();
+        renderExportPreviewRows(state.exportPreviewRows || []);
     });
 
     $('qaExportPreviewBody')?.addEventListener('click', async (event) => {

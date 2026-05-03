@@ -637,8 +637,23 @@
                                     <strong id="qaExportSummaryDiscarded">0</strong>
                                 </article>
                             </div>
+                            <div class="qa-export-preview-controls">
+                                <label for="qaExportDecisionFilter">Decision</label>
+                                <select id="qaExportDecisionFilter">
+                                    <option value="__all__">Todas</option>
+                                    <option value="import_new">import_new</option>
+                                    <option value="import_superseded">import_superseded</option>
+                                    <option value="pending_review">pending_review</option>
+                                    <option value="discard">discard</option>
+                                </select>
+                                <input id="qaExportSearchInput" type="search" placeholder="Buscar SKU, designation o motivo"
+                                    aria-label="Buscar en preview global" />
+                                <button id="qaExportFilterResetBtn" type="button">Limpiar filtros</button>
+                                <span id="qaExportFilteredCount" class="qa-modal-related-count">0 / 0</span>
+                            </div>
                             <div class="qa-modal-export-table-wrap qa-export-preview-wrap">
-                                <table class="qa-modal-related-table qa-modal-export-table" aria-label="Preview global WordPress export">
+                                <table class="qa-modal-related-table qa-modal-export-table"
+                                    aria-label="Preview global WordPress export">
                                     <thead>
                                         <tr>
                                             <th>SKU</th>
@@ -659,7 +674,8 @@
                                     <h3>Trace por SKU</h3>
                                     <span id="qaExportTraceSku" class="qa-modal-related-count">Sin selección</span>
                                 </div>
-                                <div id="qaExportTraceBody" class="qa-export-trace-body">Selecciona una fila del preview para ver la traza.</div>
+                                <div id="qaExportTraceBody" class="qa-export-trace-body">Selecciona una fila del preview
+                                    para ver la traza.</div>
                             </div>
                         </section>
 
