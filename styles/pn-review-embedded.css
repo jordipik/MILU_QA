@@ -71,6 +71,7 @@
     flex-direction: column;
     gap: 0;
     height: 100%;
+    min-height: 0;
 }
 
 /* ── Header ─────────────────────────────────────────────────────────────── */
@@ -154,6 +155,12 @@
     font-style: italic;
 }
 
+.pre-error-inline {
+    margin-top: 6px;
+    font-size: 11px;
+    color: #a12626;
+}
+
 /* ── Action buttons ─────────────────────────────────────────────────────── */
 
 .pre-actions {
@@ -163,6 +170,9 @@
     padding: 10px 12px;
     background: #f0f6ff;
     border-bottom: 1px solid #dde8f2;
+    position: sticky;
+    top: 0;
+    z-index: 3;
 }
 
 .pre-btn {
@@ -208,18 +218,12 @@
     border-color: #991b1b;
 }
 
-.pre-btn--sources {
-    background: #fff;
-    color: #2c5282;
-    border-color: #c2d4e8;
-    margin-left: auto;
-}
-
 /* ── QA summary pills ───────────────────────────────────────────────────── */
 
 .pre-qa-summary {
     padding: 6px 12px;
     border-bottom: 1px solid #dde8f2;
+    background: #fff;
 }
 
 .pre-qa-pills {
@@ -294,6 +298,7 @@
     flex: 1;
     overflow: auto;
     border-top: 1px solid #dde8f2;
+    min-height: 0;
 }
 
 .pre-sources-table {
@@ -310,7 +315,7 @@
 }
 
 .pre-th {
-    padding: 5px 8px;
+    padding: 6px 8px;
     text-align: left;
     font-weight: 800;
     font-size: 10px;
@@ -330,10 +335,10 @@
 }
 
 .pre-td {
-    padding: 4px 8px;
+    padding: 5px 8px;
     vertical-align: top;
     border-bottom: 1px solid #e8f0f8;
-    max-width: 180px;
+    max-width: 160px;
     overflow: hidden;
     text-overflow: ellipsis;
     white-space: nowrap;
@@ -363,11 +368,11 @@
 
 /* Conflict cell highlight – no text labels, just color */
 .pre-cell--conflict {
-    background: #fee2e2 !important;
+    background: #fde8e8 !important;
 }
 
 .pre-cell--warning {
-    background: #fef9c3 !important;
+    background: #fff6d8 !important;
 }
 
 /* Value display helpers */

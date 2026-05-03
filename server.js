@@ -853,6 +853,57 @@ async function writeJsonAtomic(filePath, payload) {
     await fs.promises.rename(tmpPath, filePath);
 }
 
+function normalizeEngineFileName(value) {
+    const raw = normalizeText(value);
+    if (!raw) return '';
+    if (/^engine_.*\.json$/i.test(raw)) return raw;
+    if (/^.*\.json$/i.test(raw)) return raw;
+    return `engine_${raw}.json`;
+}
+
+function resolveEngineFileCandidates(engineModelOrFile) {
+    const normalized = normalizeEngineFileName(engineModelOrFile);
+    const candidates = [];
+
+    if (normalized && ENGINE_JSON_FILES.includes(normalized)) {
+        candidates.push(normalized);
+    }
+
+    const modelNormalized = lowerKey(String(engineModelOrFile || '').replace(/^engine_/i, '').replace(/\.json$/i, ''));
+    if (modelNormalized) {
+        for (const file of ENGINE_JSON_FILES) {
+            const fileModel = lowerKey(String(file).replace(/^engine_/i, '').replace(/\.json$/i, ''));
+            if (fileModel === modelNormalized && !candidates.includes(file)) {
+                candidates.push(file);
+            }
+        }
+    }
+
+    for (const file of ENGINE_JSON_FILES) {
+        if (!candidates.includes(file)) candidates.push(file);
+    }
+
+    return candidates;
+}
+
+function normalizeIdForCompare(value) {
+    const text = normalizeText(value);
+    if (!text) return '';
+
+    const numeric = text.replace(/^0+/, '');
+    if (/^\d+$/.test(text)) return numeric || '0';
+
+    return lowerKey(text);
+}
+
+function idsEquivalent(a, b) {
+    const aText = normalizeText(a);
+    const bText = normalizeText(b);
+    if (!aText || !bText) return false;
+    if (aText === bText) return true;
+    return normalizeIdForCompare(aText) === normalizeIdForCompare(bText);
+}
+
 app.get('/pn-review/list', async (req, res) => {
     try {
         const data = ensurePnReviewQaDataLoaded();
@@ -1036,9 +1087,153 @@ app.post('/pn-review/:sku/apply-decision', async (req, res) => {
 
     invalidatePnReviewQaCache();
 
+    console.info('[PN Review] decision applied by SKU', {
+        sku,
+        decision_applied: decisionApplied,
+        rows_updated: rowsUpdated,
+        files_touched: filesTouched
+    });
+
     return res.json({
         ok: errors.length === 0,
         sku,
+        target_estado: targetEstado,
+        target_accion: targetAccion,
+        decision_applied: decisionApplied,
+        rows_updated: rowsUpdated,
+        files_touched: filesTouched,
+        errors
+    });
+});
+
+app.post('/pn-review/by-id/:id/apply-decision', async (req, res) => {
+    const rowId = normalizeText(req.params?.id);
+    const action = lowerKey(req.body?.action);
+    const engineModel = normalizeText(req.body?.engine_model);
+    const sourceFile = normalizeText(req.body?.source_file);
+    const sourcePage = normalizeText(req.body?.source_page);
+    const sourcePos = normalizeText(req.body?.pos);
+    const sourcePartNo = normalizeText(req.body?.part_no);
+    const estadoRaw = lowerKey(req.body?.estado);
+    const accionRaw = lowerKey(req.body?.accion);
+
+    const decisionMap = {
+        validar: { estado: 'ok', accion: 'importar' },
+        descartar: { estado: 'ok', accion: 'eliminar' },
+        revisar: { estado: 'pendiente', accion: 'revisar' }
+    };
+
+    const explicitMap = {
+        'ok|importar': 'validar',
+        'ok|eliminar': 'descartar',
+        'pendiente|revisar': 'revisar'
+    };
+
+    if (!rowId) {
+        return res.status(400).json({ ok: false, error: 'ID requerido.' });
+    }
+
+    let decisionApplied = '';
+    let targetEstado = '';
+    let targetAccion = '';
+
+    if (action) {
+        if (!decisionMap[action]) {
+            return res.status(400).json({ ok: false, error: 'action invalida. Permitidas: validar, revisar, descartar.' });
+        }
+        decisionApplied = action;
+        targetEstado = decisionMap[action].estado;
+        targetAccion = decisionMap[action].accion;
+    } else {
+        const explicitKey = `${estadoRaw}|${accionRaw}`;
+        const mappedDecision = explicitMap[explicitKey];
+        if (!mappedDecision) {
+            return res.status(400).json({ ok: false, error: 'Payload invalido. Envia action=validar|revisar|descartar o una combinacion valida estado/accion.' });
+        }
+        decisionApplied = mappedDecision;
+        targetEstado = decisionMap[mappedDecision].estado;
+        targetAccion = decisionMap[mappedDecision].accion;
+    }
+
+    const nowIso = new Date().toISOString();
+    const candidateSeed = sourceFile || engineModel;
+    const filesByPriority = resolveEngineFileCandidates(candidateSeed);
+    const errors = [];
+    const filesTouched = [];
+
+    let found = false;
+    let rowsUpdated = 0;
+    let updatedTarget = null;
+
+    for (const file of filesByPriority) {
+        if (found) break;
+        const filePath = path.join(__dirname, file);
+
+        try {
+            const raw = await fs.promises.readFile(filePath, 'utf8');
+            const json = JSON.parse(raw);
+            if (!Array.isArray(json)) {
+                throw new Error('Contenido JSON invalido: se esperaba array.');
+            }
+
+            let idx = json.findIndex((row) => idsEquivalent(row?.ID, rowId));
+            if (idx < 0) {
+                idx = json.findIndex((row) => {
+                    if (sourcePage && normalizeText(row?.['Source Page']) !== sourcePage) return false;
+                    if (sourcePos && normalizeText(row?.POS) !== sourcePos) return false;
+                    if (sourcePartNo && normalizeText(row?.['PART NO.']) !== sourcePartNo) return false;
+                    return idsEquivalent(row?.ID, rowId);
+                });
+            }
+            if (idx < 0) continue;
+
+            json[idx].qa_revision_estado = targetEstado;
+            json[idx].qa_revision_accion = targetAccion;
+            json[idx].qa_revision_updated_at = nowIso;
+
+            await writeJsonAtomic(filePath, json);
+
+            found = true;
+            rowsUpdated = 1;
+            filesTouched.push(file);
+            updatedTarget = {
+                id: rowId,
+                qa_revision_estado: targetEstado,
+                qa_revision_accion: targetAccion,
+                engine_file: file,
+                engine_model: String(file).replace(/^engine_/i, '').replace(/\.json$/i, '')
+            };
+        } catch (error) {
+            errors.push({ file, error: String(error?.message || error) });
+        }
+    }
+
+    if (!found) {
+        return res.status(404).json({
+            ok: false,
+            error: `No se encontro registro con ID ${rowId}`,
+            id: rowId,
+            rows_updated: 0,
+            files_touched: [],
+            errors
+        });
+    }
+
+    invalidatePnReviewQaCache();
+
+    console.info('[PN Review] decision applied by ID', {
+        id: rowId,
+        decision_applied: decisionApplied,
+        rows_updated: rowsUpdated,
+        files_touched: filesTouched
+    });
+
+    return res.json({
+        ok: errors.length === 0,
+        id: rowId,
+        target: updatedTarget,
+        target_estado: targetEstado,
+        target_accion: targetAccion,
         decision_applied: decisionApplied,
         rows_updated: rowsUpdated,
         files_touched: filesTouched,

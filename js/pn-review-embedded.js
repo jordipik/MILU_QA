@@ -1,10 +1,7 @@
 /**
  * pn-review-embedded.js
  * Vista embebida de PN Review para el panel derecho de Analista 02.
- * Se monta dentro del <aside class="a2-right"> cuando el tab "PN Review" está activo.
  */
-
-/* ── helpers ─────────────────────────────────────────────────────────────── */
 
 function emptyVal(v) {
     const s = String(v ?? '').trim();
@@ -26,231 +23,200 @@ function normWeight(v) {
 }
 
 function esc(str) {
-    return String(str ?? '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+    return String(str ?? '')
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;');
 }
 
 function dispVal(v) {
-    if (emptyVal(v)) return '<span class="pre-empty">—</span>';
+    if (emptyVal(v)) return '<span class="pre-empty">-</span>';
     return `<span class="pre-val">${esc(String(v))}</span>`;
 }
 
-/* ── conflict detection ──────────────────────────────────────────────────── */
-
-/**
- * detectPnSourceConflicts(sourceRows) → { familiesToShow, cellStatus, summary }
- *
- * Families checked:
- *   pn         : pn_final, pn_pdf
- *   designation: designation_final, designation_gesa, designation_pdf
- *   measure    : measure_final, dimensions_gesa, measure_pdf
- *   weight     : weight_final, weight_gesa, weight_pdf
- *   sust       : sust_status, sust_hierarchie, pn_new (new part number)
- */
-export function detectPnSourceConflicts(sourceRows) {
-    const familiesToShow = [];
-    const cellStatus = {};
-    const summary = {};
-
-    if (!Array.isArray(sourceRows) || sourceRows.length === 0) {
-        return { familiesToShow, cellStatus, summary };
+function firstNonEmpty(...values) {
+    for (const value of values) {
+        if (!emptyVal(value)) return String(value).trim();
     }
-
-    const FAMILIES = [
-        {
-            key: 'pn',
-            fields: ['pn_final', 'pn_pdf'],
-            normalize: norm,
-        },
-        {
-            key: 'designation',
-            fields: ['designation_final', 'designation_gesa', 'designation_pdf'],
-            normalize: norm,
-        },
-        {
-            key: 'measure',
-            fields: ['measure_final', 'dimensions_gesa', 'measure_pdf'],
-            normalize: norm,
-        },
-        {
-            key: 'weight',
-            fields: ['weight_final', 'weight_gesa', 'weight_pdf'],
-            normalize: normWeight,
-        },
-        {
-            key: 'sust',
-            fields: ['sust_status', 'sust_hierarchie', 'pn_new'],
-            normalize: norm,
-        },
-    ];
-
-    for (const family of FAMILIES) {
-        // Collect unique non-empty values per field across all rows
-        const fieldValues = {};
-        for (const field of family.fields) {
-            fieldValues[field] = new Set();
-            for (const row of sourceRows) {
-                const v = family.normalize(row[field]);
-                if (v !== '') fieldValues[field].add(v);
-            }
-        }
-
-        // Has any non-empty value at all?
-        const hasData = family.fields.some(f => fieldValues[f].size > 0);
-        if (!hasData) continue;
-
-        // Is there disagreement across rows for any field?
-        let familyStatus = null;
-        for (const field of family.fields) {
-            const vals = fieldValues[field];
-            if (vals.size <= 1) continue; // 0 or 1 unique value → no conflict
-            // Multiple distinct values → conflict
-            familyStatus = 'conflict';
-        }
-
-        // Cross-field disagreement within the same row (e.g. designation_final ≠ designation_pdf)
-        if (!familyStatus) {
-            // Flatten all non-empty values to check if there are differences
-            const allVals = new Set();
-            for (const field of family.fields) {
-                for (const v of fieldValues[field]) allVals.add(v);
-            }
-            if (allVals.size > 1) familyStatus = 'warning';
-        }
-
-        if (!familyStatus) continue;
-
-        familiesToShow.push(family.key);
-        summary[family.key] = familyStatus;
-
-        // Per-cell status
-        for (const row of sourceRows) {
-            const rowId = String(row.ID ?? row._idx ?? Math.random());
-            for (const field of family.fields) {
-                const v = family.normalize(row[field]);
-                if (v === '') continue;
-
-                // Compare against the most common value for this field
-                const vals = [...fieldValues[field]];
-                const dominant = vals[0]; // simplistic: first unique value
-                const statusKey = `${rowId}:${field}`;
-                if (v !== dominant) {
-                    cellStatus[statusKey] = familyStatus;
-                }
-            }
-        }
-    }
-
-    return { familiesToShow, cellStatus, summary };
+    return '';
 }
 
-/* ── column definitions per family ──────────────────────────────────────── */
+function buildSourceRow(row = {}, idx = 0) {
+    const sourceFile = String(row.source_file || row.__engine_file || '').trim();
+    const engineModel = String(row.engine_model || row.__engine_model || row.model || row.engine || '').trim();
+    return {
+        _idx: idx,
+        ID: String(row.ID ?? '').trim(),
+        source_file: sourceFile,
+        engine_model: engineModel,
+        'Source Page': String(row['Source Page'] ?? '').trim(),
+        POS: firstNonEmpty(row.POS, row.pos_final),
+        'PART NO.': firstNonEmpty(row['PART NO.'], row.pn_final, row.pn),
+        designation: firstNonEmpty(row.designation_final, row.DESIGNATION, row.designation_gesa, row.designation_pdf),
+        measurement: firstNonEmpty(row.measure_final, row.measurement_final, row['MEASUREMENT / STANDARD'], row.dimensions_gesa, row.measure_pdf),
+        weight: firstNonEmpty(row.weight_final, row.WEIGHT, row.weight_gesa, row.weight_pdf),
+        sust_status: firstNonEmpty(row.sust_status),
+        sust_hierarchie: firstNonEmpty(row.sust_hierarchie),
+        new_part_number: firstNonEmpty(row.sust_new_part_number, row.pn_new, row.new_part_number),
+        qa_revision_estado: firstNonEmpty(row.qa_revision_estado, 'pendiente'),
+        qa_revision_accion: firstNonEmpty(row.qa_revision_accion, '-'),
+    };
+}
 
-const FAMILY_COLUMNS = {
-    pn: [
-        { key: 'pn_final', label: 'PN final' },
-        { key: 'pn_pdf', label: 'PN PDF' },
-    ],
-    designation: [
-        { key: 'designation_final', label: 'Desig. final' },
-        { key: 'designation_gesa', label: 'Desig. GESA' },
-        { key: 'designation_pdf', label: 'Desig. PDF' },
-    ],
-    measure: [
-        { key: 'measure_final', label: 'Medida final' },
-        { key: 'dimensions_gesa', label: 'Medida GESA' },
-        { key: 'measure_pdf', label: 'Medida PDF' },
-    ],
-    weight: [
-        { key: 'weight_final', label: 'Peso final' },
-        { key: 'weight_gesa', label: 'Peso GESA' },
-        { key: 'weight_pdf', label: 'Peso PDF' },
-    ],
-    sust: [
-        { key: 'sust_status', label: 'SUST status' },
-        { key: 'sust_hierarchie', label: 'Jerarquía' },
-        { key: 'pn_new', label: 'PN nuevo' },
-    ],
-};
+function deriveDecisionFromQa(row) {
+    const estado = String(row?.qa_revision_estado || '').trim().toLowerCase();
+    const accion = String(row?.qa_revision_accion || '').trim().toLowerCase();
+    if (estado === 'ok' && accion === 'importar') return 'import';
+    if (estado === 'ok' && accion === 'eliminar') return 'discard';
+    return 'pending_review';
+}
 
-/* ── module state ────────────────────────────────────────────────────────── */
+function detectTableCellStatus(rows) {
+    const cellStatus = {};
+    if (!Array.isArray(rows) || rows.length === 0) return cellStatus;
 
-let _container = null;      // HTMLElement where we render
-let _currentSku = null;
+    const conflictKeys = new Set(['PART NO.', 'designation', 'measurement', 'weight', 'new_part_number']);
+    const warningKeys = new Set(['POS', 'Source Page', 'sust_status', 'sust_hierarchie']);
+    const columns = [...conflictKeys, ...warningKeys];
+
+    for (const key of columns) {
+        const values = new Set();
+        for (const row of rows) {
+            const raw = row?.[key];
+            const normalized = key === 'weight' ? normWeight(raw) : norm(raw);
+            if (normalized) values.add(normalized);
+        }
+        if (values.size <= 1) continue;
+
+        const status = conflictKeys.has(key) ? 'conflict' : 'warning';
+        for (const row of rows) {
+            const rowId = String(row.ID || row._idx);
+            const raw = row?.[key];
+            const normalized = key === 'weight' ? normWeight(raw) : norm(raw);
+            if (!normalized) continue;
+            cellStatus[`${rowId}:${key}`] = status;
+        }
+    }
+    return cellStatus;
+}
+
+let _container = null;
+let _onDecisionApplied = null;
+let _currentRow = null;
+let _currentSku = '';
+let _currentId = '';
+let _isNoPnMode = false;
 let _detail = null;
-let _sources = null;
-let _showSources = false;
-let _onDecisionApplied = null; // callback(sku, response)
+let _sources = [];
+let _loadError = '';
 
-/* ── public API ──────────────────────────────────────────────────────────── */
-
-/**
- * init(container, { onDecisionApplied })
- * Call once when the embedded panel is created.
- */
 export function init(container, { onDecisionApplied } = {}) {
     _container = container;
     _onDecisionApplied = onDecisionApplied || null;
-    renderEmpty();
+    renderPanel();
 }
 
-/**
- * onRecordChange(row)
- * Call every time a new row is selected in Analista 02.
- */
 export async function onRecordChange(row) {
+    _currentRow = row || null;
+    _currentId = String(row?.ID || '').trim();
+    _loadError = '';
+
     if (!row) {
-        _currentSku = null;
+        _currentSku = '';
+        _isNoPnMode = false;
         _detail = null;
-        _sources = null;
-        renderEmpty();
+        _sources = [];
+        renderPanel();
         return;
     }
 
     const sku = String(row.pn_final || row['PART NO.'] || row.pn || '').trim();
     if (!sku) {
-        _currentSku = null;
-        renderNoSku();
+        _currentSku = '';
+        _isNoPnMode = true;
+        _detail = buildNoPnDetail(row);
+        _sources = [buildSourceRow(row, 0)];
+        console.info('[PN Review Embedded] modo sin PN', { id: _currentId, engine_model: row?.engine_model || '' });
+        console.info('[PN Review Embedded] numero de apariciones', { count: _sources.length, mode: 'no-pn' });
+        renderPanel();
         return;
     }
 
+    _isNoPnMode = false;
     if (sku === _currentSku && _detail) {
-        // same PN already loaded; just re-render in case QA state changed
+        _sources = ensureSourcesFallback(_sources, row);
+        console.info('[PN Review Embedded] PN cargado (cache)', { sku: _currentSku });
+        console.info('[PN Review Embedded] numero de apariciones', { count: _sources.length, mode: 'pn' });
         renderPanel();
         return;
     }
 
     _currentSku = sku;
     _detail = null;
-    _sources = null;
+    _sources = [];
     renderLoading(sku);
-    await fetchAndRender(sku);
+    await fetchPnModeAndRender(sku, row);
 }
 
-/**
- * refresh()
- * Force-reload data for the current SKU.
- */
 export async function refresh() {
-    if (!_currentSku) return;
-    _detail = null;
-    _sources = null;
-    renderLoading(_currentSku);
-    await fetchAndRender(_currentSku);
+    if (!_currentRow) return;
+    await onRecordChange(_currentRow);
 }
 
-/* ── data fetching ───────────────────────────────────────────────────────── */
+function buildNoPnDetail(row) {
+    const source = buildSourceRow(row, 0);
+    return {
+        ok: true,
+        sku: '',
+        export_row: {
+            sku: '',
+            designation_final: source.designation,
+            decision: deriveDecisionFromQa(row),
+            occurrences: 1,
+            engine_models: source.engine_model ? [source.engine_model] : []
+        },
+        qa_summary: {
+            ok_importar: String(source.qa_revision_estado).toLowerCase() === 'ok' && String(source.qa_revision_accion).toLowerCase() === 'importar' ? 1 : 0,
+            ok_eliminar: String(source.qa_revision_estado).toLowerCase() === 'ok' && String(source.qa_revision_accion).toLowerCase() === 'eliminar' ? 1 : 0,
+            revisar: String(source.qa_revision_accion).toLowerCase() === 'revisar' ? 1 : 0,
+            pendiente: String(source.qa_revision_estado).toLowerCase() === 'pendiente' ? 1 : 0,
+            total_rows: 1
+        },
+        engine_models_all: source.engine_model ? [source.engine_model] : []
+    };
+}
 
-async function fetchAndRender(sku) {
+function ensureSourcesFallback(sources, row) {
+    const normalized = Array.isArray(sources)
+        ? sources.map((src, idx) => buildSourceRow(src, idx))
+        : [];
+    if (normalized.length > 0) return normalized;
+    if (!row) return [];
+    return [buildSourceRow(row, 0)];
+}
+
+async function fetchPnModeAndRender(sku, rowForFallback) {
     try {
         const [detail, sourcesResp] = await Promise.all([
             apiFetch(`/pn-review/${encodeURIComponent(sku)}`),
             apiFetch(`/pn-review/${encodeURIComponent(sku)}/sources`),
         ]);
+
         _detail = detail;
-        _sources = Array.isArray(sourcesResp?.sources) ? sourcesResp.sources : [];
+        const incomingSources = Array.isArray(sourcesResp?.rows)
+            ? sourcesResp.rows
+            : (Array.isArray(sourcesResp?.sources) ? sourcesResp.sources : []);
+        _sources = ensureSourcesFallback(incomingSources, rowForFallback);
+
+        console.info('[PN Review Embedded] PN cargado', { sku });
+        console.info('[PN Review Embedded] numero de apariciones', { count: _sources.length, mode: 'pn' });
         renderPanel();
     } catch (err) {
-        renderError(sku, err);
+        _detail = buildNoPnDetail(rowForFallback || {});
+        _sources = ensureSourcesFallback([], rowForFallback);
+        _loadError = String(err?.message || err);
+        renderPanel();
     }
 }
 
@@ -258,56 +224,101 @@ async function apiFetch(path, opts = {}) {
     const res = await fetch(path, opts);
     if (!res.ok) {
         const body = await res.json().catch(() => ({}));
-        throw new Error(body?.error || `HTTP ${res.status}`);
+        const error = new Error(body?.error || `HTTP ${res.status}`);
+        error.status = res.status;
+        error.body = body;
+        throw error;
     }
     return res.json();
 }
 
-/* ── action handler ──────────────────────────────────────────────────────── */
+function buildByIdPayload(action) {
+    return {
+        action,
+        engine_model: String(_currentRow?.engine_model || '').trim(),
+        source_file: String(_currentRow?.source_file || _currentRow?.__engine_file || '').trim(),
+        source_page: String(_currentRow?.['Source Page'] || '').trim(),
+        pos: String(_currentRow?.POS || '').trim(),
+        part_no: String(_currentRow?.['PART NO.'] || _currentRow?.pn_final || _currentRow?.pn || '').trim(),
+    };
+}
 
 async function applyDecision(action) {
-    if (!_currentSku || !_detail) return;
+    if (!_currentRow) return;
 
-    const exportRow = _detail.export_row || _detail;
-    const sku = _currentSku;
-    const occurrences = Number(exportRow.occurrences || _sources?.length || 0);
-    const engines = Array.isArray(exportRow.engine_models)
-        ? exportRow.engine_models
-        : (Array.isArray(_detail.engine_models_all) ? _detail.engine_models_all : []);
-    const enginesCount = engines.length;
-
-    const ACTION_LABELS = {
+    const actionLabel = {
         validar: 'OK / IMPORTAR',
         revisar: 'PENDIENTE / REVISAR',
         descartar: 'OK / ELIMINAR',
-    };
-    const label = ACTION_LABELS[action] || action;
-    const msg = `Vas a marcar todas las apariciones del PN ${sku} como ${label}.\nAfectará a ${occurrences} registros en ${enginesCount} motores. ¿Continuar?`;
+    }[action] || action;
+
+    const inPnMode = !_isNoPnMode && Boolean(_currentSku);
+    const targetLabel = inPnMode
+        ? `PN ${_currentSku}`
+        : `registro ID ${_currentId || '-'}`;
+    const occurrences = inPnMode ? (_sources.length || Number(_detail?.export_row?.occurrences || 0)) : 1;
+    const msg = `Vas a marcar ${targetLabel} como ${actionLabel}.\nAfectara a ${occurrences} registro(s). ¿Continuar?`;
 
     const confirmed = await showConfirmDialog(`Confirmar: ${action}`, msg);
     if (!confirmed) return;
 
     try {
         setButtonsLoading(true);
-        const response = await apiFetch(`/pn-review/${encodeURIComponent(sku)}/apply-decision`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ action }),
-        });
+
+        let response;
+        if (inPnMode) {
+            try {
+                response = await apiFetch(`/pn-review/${encodeURIComponent(_currentSku)}/apply-decision`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ action }),
+                });
+            } catch (error) {
+                // Defensive fallback: if SKU path cannot find rows but we have a concrete ID,
+                // retry by ID to avoid hard-blocking the analyst action.
+                if (error?.status === 404 && _currentId) {
+                    console.warn('[PN Review Embedded] 404 por SKU, reintentando por ID', {
+                        sku: _currentSku,
+                        id: _currentId,
+                    });
+                    response = await apiFetch(`/pn-review/by-id/${encodeURIComponent(_currentId)}/apply-decision`, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify(buildByIdPayload(action)),
+                    });
+                } else {
+                    throw error;
+                }
+            }
+        } else {
+            if (!_currentId) throw new Error('El registro actual no tiene ID para modo sin PN.');
+            response = await apiFetch(`/pn-review/by-id/${encodeURIComponent(_currentId)}/apply-decision`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(buildByIdPayload(action)),
+            });
+        }
 
         if (!response.ok) throw new Error(response.error || 'Error al aplicar decision');
 
-        showToast(`PN actualizado: ${response.rows_updated} apariciones en ${(response.files_touched || []).length} motores.`, 'success');
+        showToast(`Decision aplicada: ${response.rows_updated} registro(s), ${(response.files_touched || []).length} archivo(s).`, 'success');
+        console.info('[PN Review Embedded] decision aplicada', { action, mode: inPnMode ? 'pn' : 'no-pn' });
+        console.info('[PN Review Embedded] rows_updated', { rows_updated: response.rows_updated });
+        console.info('[PN Review Embedded] files_touched', { files_touched: response.files_touched || [] });
 
-        // Notify parent
         if (typeof _onDecisionApplied === 'function') {
-            _onDecisionApplied(sku, response);
+            _onDecisionApplied(inPnMode ? _currentSku : _currentId, response, {
+                mode: inPnMode ? 'pn' : 'no-pn',
+                currentRow: _currentRow,
+            });
         }
 
-        // Refresh own data
-        _detail = null;
-        _sources = null;
-        await fetchAndRender(sku);
+        if (!inPnMode && response?.target) {
+            _currentRow.qa_revision_estado = response.target.qa_revision_estado;
+            _currentRow.qa_revision_accion = response.target.qa_revision_accion;
+        }
+
+        await refresh();
     } catch (err) {
         showToast(`Error: ${err.message}`, 'error');
     } finally {
@@ -315,40 +326,19 @@ async function applyDecision(action) {
     }
 }
 
-/* ── rendering ───────────────────────────────────────────────────────────── */
-
-function renderEmpty() {
-    if (!_container) return;
-    _container.innerHTML = `<div class="pre-empty-state">Selecciona un registro con PN válido para ver PN Review.</div>`;
-}
-
-function renderNoSku() {
-    if (!_container) return;
-    _container.innerHTML = `<div class="pre-empty-state">El registro seleccionado no tiene PN válido.</div>`;
-}
-
-function renderLoading(sku) {
-    if (!_container) return;
-    _container.innerHTML = `<div class="pre-loading">Cargando PN Review para <strong>${esc(sku)}</strong>…</div>`;
-}
-
-function renderError(sku, err) {
-    if (!_container) return;
-    _container.innerHTML = `<div class="pre-error">No se pudo cargar PN Review para <strong>${esc(sku)}</strong>: ${esc(err?.message || String(err))}</div>`;
-}
-
 function renderPanel() {
-    if (!_container || !_detail) return;
+    if (!_container) return;
 
-    const exportRow = _detail.export_row || _detail;
+    const exportRow = _detail?.export_row || {};
     const sku = _currentSku;
-    const designation = exportRow.designation_final || '';
-    const decision = exportRow.decision || 'pending_review';
-    const occurrences = Number(exportRow.occurrences || _sources?.length || 0);
-    const engines = Array.isArray(exportRow.engine_models) ? exportRow.engine_models
-        : (Array.isArray(_detail.engine_models_all) ? _detail.engine_models_all : []);
-
-    const qaSummary = exportRow.qa_summary || _detail.qa_summary || {};
+    const designation = exportRow.designation_final || firstNonEmpty(_currentRow?.designation_final, _currentRow?.DESIGNATION);
+    const decision = exportRow.decision || deriveDecisionFromQa(_currentRow || {});
+    const engines = Array.isArray(exportRow.engine_models)
+        ? exportRow.engine_models
+        : (Array.isArray(_detail?.engine_models_all) ? _detail.engine_models_all : []);
+    const qaSummary = _detail?.qa_summary || {};
+    const sources = ensureSourcesFallback(_sources, _currentRow);
+    const cellStatus = detectTableCellStatus(sources);
 
     const decisionClass = {
         import: 'pre-badge--import',
@@ -362,53 +352,38 @@ function renderPanel() {
         pending_review: 'Pending',
     }[decision] || decision;
 
-    // Conflict analysis
-    const conflicts = detectPnSourceConflicts(_sources || []);
+    const titleSku = _isNoPnMode ? 'SIN PN' : (sku || '-');
+    const modeNote = _isNoPnMode
+        ? `Modo sin PN por ID ${esc(_currentId || '-')}: la decision se aplica solo al registro actual.`
+        : 'Las acciones se aplican globalmente a todas las apariciones en todos los libros.';
 
     const html = `
 <div class="pre-panel">
-
-  <!-- Header -->
   <div class="pre-header">
     <div class="pre-header-top">
-      <span class="pre-sku">${esc(sku)}</span>
+      <span class="pre-sku">${esc(titleSku)}</span>
       <span class="pre-badge ${decisionClass}">${decisionLabel}</span>
-      <span class="pre-occurrences">${occurrences} aparic.</span>
+      <span class="pre-occurrences">${sources.length} aparic.</span>
       <span class="pre-engines">${engines.map(e => `<span class="pre-engine-pill">${esc(e)}</span>`).join('')}</span>
     </div>
     ${designation ? `<div class="pre-designation">${esc(designation)}</div>` : ''}
-    <div class="pre-global-note">Las acciones se aplican globalmente a todas las apariciones en todos los libros.</div>
+    <div class="pre-global-note">${modeNote}</div>
+    ${_loadError ? `<div class="pre-error-inline">No se pudo cargar el detalle PN: ${esc(_loadError)}</div>` : ''}
   </div>
 
-  <!-- Action buttons -->
   <div class="pre-actions" id="preActions">
-    <button class="pre-btn pre-btn--validar" data-action="validar">✔ Validar PN</button>
-    <button class="pre-btn pre-btn--revisar" data-action="revisar">⚠ Revisar PN</button>
-    <button class="pre-btn pre-btn--descartar" data-action="descartar">✖ Descartar PN</button>
-    <button class="pre-btn pre-btn--sources" id="preToggleSources">
-      ${_showSources ? '▲ Ocultar apariciones' : '▼ Ver apariciones'}
-    </button>
+    <button class="pre-btn pre-btn--validar" data-action="validar">Validar PN</button>
+    <button class="pre-btn pre-btn--revisar" data-action="revisar">Revisar PN</button>
+    <button class="pre-btn pre-btn--descartar" data-action="descartar">Descartar PN</button>
   </div>
 
-  <!-- QA Summary -->
   <div class="pre-qa-summary">
     ${buildQaSummaryHtml(qaSummary)}
   </div>
 
-  <!-- Conflict summary badges -->
-  ${conflicts.familiesToShow.length ? `
-  <div class="pre-conflict-badges">
-    ${conflicts.familiesToShow.map(fam => `
-      <span class="pre-conflict-badge pre-conflict-badge--${conflicts.summary[fam]}">${fam}</span>
-    `).join('')}
-  </div>` : ''}
-
-  <!-- Sources table -->
-  ${_showSources ? buildSourcesTableHtml(_sources || [], conflicts) : ''}
-
+  ${buildSourcesTableHtml(sources, cellStatus)}
 </div>
 
-<!-- Confirm dialog -->
 <dialog id="preConfirmDialog" class="pre-confirm-dialog">
   <form method="dialog" class="pre-confirm-shell">
     <header class="pre-confirm-head">
@@ -422,12 +397,17 @@ function renderPanel() {
   </form>
 </dialog>
 
-<!-- Toast container -->
 <div id="preToastContainer" class="pre-toast-container" aria-live="polite"></div>
 `;
 
     _container.innerHTML = html;
     bindActions();
+    setButtonsLoading(!_currentRow);
+}
+
+function renderLoading(sku) {
+    if (!_container) return;
+    _container.innerHTML = `<div class="pre-loading">Cargando PN Review para <strong>${esc(sku)}</strong>...</div>`;
 }
 
 function buildQaSummaryHtml(qa) {
@@ -442,52 +422,51 @@ function buildQaSummaryHtml(qa) {
     ).join('')}</div>`;
 }
 
-function buildSourcesTableHtml(sources, conflicts) {
-    if (!sources.length) return `<div class="pre-empty-state">Sin apariciones.</div>`;
-
-    const { familiesToShow, cellStatus } = conflicts;
-
-    // Fixed columns
-    const fixedCols = [
-        { key: 'engine_model', label: 'Motor' },
-        { key: 'Source Page', label: 'Pág.' },
-        { key: 'POS', label: 'POS' },
-        { key: '_qa', label: 'QA Estado/Acción' },
-    ];
-
-    // Dynamic conflict columns
-    const dynCols = [];
-    for (const fam of familiesToShow) {
-        for (const col of (FAMILY_COLUMNS[fam] || [])) {
-            dynCols.push({ ...col, family: fam });
-        }
+function buildSourcesTableHtml(sources, cellStatus) {
+    if (!Array.isArray(sources) || sources.length === 0) {
+        return `<div class="pre-empty-state">Sin apariciones; selecciona un registro para mostrar fallback local.</div>`;
     }
 
-    const allCols = [...fixedCols, ...dynCols];
+    const hasSust = sources.some((row) => !emptyVal(row.sust_status) || !emptyVal(row.sust_hierarchie) || !emptyVal(row.new_part_number));
+    const columns = [
+        { key: 'engine_model', label: 'motor / libro' },
+        { key: 'Source Page', label: 'pagina' },
+        { key: 'POS', label: 'POS' },
+        { key: 'PART NO.', label: 'PART NO.' },
+        { key: 'designation', label: 'designation' },
+        { key: 'measurement', label: 'measurement' },
+        { key: 'weight', label: 'weight' },
+    ];
 
-    const headerHtml = allCols.map(col =>
-        `<th class="pre-th">${esc(col.label)}</th>`
-    ).join('');
+    if (hasSust) {
+        columns.push(
+            { key: 'sust_status', label: 'sust_status' },
+            { key: 'sust_hierarchie', label: 'hierarchie' },
+            { key: 'new_part_number', label: 'new_part_number' }
+        );
+    }
 
-    const rowsHtml = sources.map((row, idx) => {
-        const rowId = String(row.ID ?? idx);
+    columns.push({ key: '_qa', label: 'estado / accion' });
 
+    const headerHtml = columns.map((col) => `<th class="pre-th">${esc(col.label)}</th>`).join('');
+    const rowsHtml = sources.map((row) => {
+        const rowId = String(row.ID || row._idx);
         const qaEstado = row.qa_revision_estado || 'pendiente';
-        const qaAccion = row.qa_revision_accion || '—';
-        const qaClass = qaEstado === 'ok'
-            ? (qaAccion === 'importar' ? 'pre-qa-cell--import' : 'pre-qa-cell--discard')
+        const qaAccion = row.qa_revision_accion || '-';
+        const qaClass = String(qaEstado).toLowerCase() === 'ok'
+            ? (String(qaAccion).toLowerCase() === 'importar' ? 'pre-qa-cell--import' : 'pre-qa-cell--discard')
             : 'pre-qa-cell--pending';
 
-        const cells = allCols.map(col => {
+        const cells = columns.map((col) => {
             if (col.key === '_qa') {
                 return `<td class="pre-td pre-qa-cell ${qaClass}">${esc(qaEstado)} / ${esc(qaAccion)}</td>`;
             }
-            const rawVal = row[col.key];
-            const statusKey = `${rowId}:${col.key}`;
-            const cellConflict = cellStatus[statusKey];
-            const cellClass = cellConflict === 'conflict' ? 'pre-cell--conflict'
-                : cellConflict === 'warning' ? 'pre-cell--warning' : '';
-            return `<td class="pre-td ${cellClass}">${dispVal(rawVal)}</td>`;
+            const key = `${rowId}:${col.key}`;
+            const status = cellStatus[key];
+            const cls = status === 'conflict'
+                ? 'pre-cell--conflict'
+                : (status === 'warning' ? 'pre-cell--warning' : '');
+            return `<td class="pre-td ${cls}">${dispVal(row[col.key])}</td>`;
         }).join('');
 
         return `<tr class="pre-tr">${cells}</tr>`;
@@ -502,40 +481,29 @@ function buildSourcesTableHtml(sources, conflicts) {
 </div>`;
 }
 
-/* ── event binding ───────────────────────────────────────────────────────── */
-
 function bindActions() {
-    // Action buttons
-    _container.querySelectorAll('[data-action]').forEach(btn => {
+    _container.querySelectorAll('[data-action]').forEach((btn) => {
         btn.addEventListener('click', () => {
             const action = btn.dataset.action;
-            applyDecision(action).catch(err => showToast(`Error: ${err.message}`, 'error'));
+            applyDecision(action).catch((err) => showToast(`Error: ${err.message}`, 'error'));
         });
     });
-
-    // Toggle sources
-    const toggleBtn = _container.querySelector('#preToggleSources');
-    if (toggleBtn) {
-        toggleBtn.addEventListener('click', () => {
-            _showSources = !_showSources;
-            renderPanel();
-        });
-    }
 }
 
 function setButtonsLoading(loading) {
-    _container.querySelectorAll('.pre-btn[data-action]').forEach(btn => {
+    _container.querySelectorAll('.pre-btn[data-action]').forEach((btn) => {
         btn.disabled = loading;
         btn.style.opacity = loading ? '0.6' : '';
     });
 }
 
-/* ── confirm dialog ──────────────────────────────────────────────────────── */
-
 function showConfirmDialog(title, msg) {
     return new Promise((resolve) => {
         const dlg = _container.querySelector('#preConfirmDialog');
-        if (!dlg) { resolve(window.confirm(msg)); return; }
+        if (!dlg) {
+            resolve(window.confirm(msg));
+            return;
+        }
 
         _container.querySelector('#preConfirmTitle').textContent = title;
         _container.querySelector('#preConfirmMsg').textContent = msg;
@@ -549,23 +517,21 @@ function showConfirmDialog(title, msg) {
             dlg.removeEventListener('close', onClose);
             resolve(dlg.returnValue === 'ok');
         };
+
         dlg.addEventListener('close', onClose);
         dlg.showModal();
     });
 }
 
-/* ── toast ───────────────────────────────────────────────────────────────── */
-
 function showToast(msg, type = 'success') {
-    // Try container inside panel first, fallback to global
-    const container = _container?.querySelector('#preToastContainer')
-        || document.getElementById('toastContainer');
+    const container = _container?.querySelector('#preToastContainer') || document.getElementById('toastContainer');
     if (!container) return;
 
     const toast = document.createElement('div');
     toast.className = `pre-toast pre-toast--${type}`;
     toast.textContent = msg;
     container.appendChild(toast);
+
     requestAnimationFrame(() => toast.classList.add('pre-toast--visible'));
     setTimeout(() => {
         toast.classList.remove('pre-toast--visible');

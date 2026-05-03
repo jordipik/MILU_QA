@@ -2539,7 +2539,38 @@ async function initialize() {
         // Init embedded PN Review module
         if (pnRevRoot) {
             PnReviewEmbedded.init(pnRevRoot, {
-                onDecisionApplied: (_sku, _response) => {
+                onDecisionApplied: (_key, response) => {
+                    const nextEstado = String(response?.target_estado || '').trim();
+                    const nextAccion = String(response?.target_accion || '').trim();
+                    const updatedId = String(response?.target?.id || response?.id || '').trim();
+
+                    if (nextEstado && nextAccion) {
+                        const updateRow = (row) => {
+                            if (!row) return;
+                            row.qa_revision_estado = normalizeEstadoToNew(nextEstado);
+                            row.qa_revision_accion = normalizeAccionToNew(nextAccion);
+                        };
+
+                        if (updatedId) {
+                            (state.allData || []).forEach((row) => {
+                                if (String(row?.ID || '').trim() === updatedId) updateRow(row);
+                            });
+                        } else if (response?.sku) {
+                            const skuKey = String(response.sku || '').trim().toLowerCase();
+                            (state.allData || []).forEach((row) => {
+                                const rowSku = String(row?.pn_final || row?.['PART NO.'] || row?.pn || '').trim().toLowerCase();
+                                if (rowSku && rowSku === skuKey) updateRow(row);
+                            });
+                        }
+
+                        if (currentRow) {
+                            const currentId = String(currentRow?.ID || '').trim();
+                            if (!updatedId || (updatedId && currentId === updatedId)) {
+                                updateRow(currentRow);
+                            }
+                        }
+                    }
+
                     revalidateCurrentRow().catch(() => { });
                     renderReviewStats();
                 }
