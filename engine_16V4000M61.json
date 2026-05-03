@@ -67358,7 +67358,8 @@
     "gesa_pdf": "NO",
     "normalizado_pdf": "NO",
     "qa_revision_estado": "ok",
-    "qa_revision_accion": "importar"
+    "qa_revision_accion": "importar",
+    "qa_revision_updated_at": "2026-05-03T19:59:08.652Z"
   },
   {
     "ID": "1300659",
@@ -69271,7 +69272,8 @@
     "gesa_pdf": "NO",
     "normalizado_pdf": "NO",
     "qa_revision_estado": "ok",
-    "qa_revision_accion": "importar"
+    "qa_revision_accion": "importar",
+    "qa_revision_updated_at": "2026-05-03T19:57:12.387Z"
   },
   {
     "ID": "1300677",
@@ -73001,7 +73003,8 @@
     "gesa_pdf": "NO",
     "normalizado_pdf": "NO",
     "qa_revision_estado": "ok",
-    "qa_revision_accion": "importar"
+    "qa_revision_accion": "importar",
+    "qa_revision_updated_at": "2026-05-03T19:59:08.652Z"
   },
   {
     "ID": "1300712",
@@ -74808,7 +74811,8 @@
     "gesa_pdf": "NO",
     "normalizado_pdf": "NO",
     "qa_revision_estado": "ok",
-    "qa_revision_accion": "importar"
+    "qa_revision_accion": "importar",
+    "qa_revision_updated_at": "2026-05-03T19:57:12.387Z"
   },
   {
     "ID": "1300729",
@@ -86817,7 +86821,7 @@
     "sust_status": "SI",
     "sust_hierarchie": "Superseded",
     "sust_new_part_number": "X59612400009",
-    "sust_superseded_list": null,
+    "sust_superseded_list": "",
     "page4": "0149",
     "pages": "16V4000M61-0149",
     "book_set": "16V4000M61",
@@ -86829,9 +86833,9 @@
     "qty_final": "1",
     "qty_units_final": "PC",
     "norma_final": null,
-    "designation_final": "MANIFOLD CHAR GE AIR FRONT A-BANK",
-    "measure_final": null,
-    "weight_final": null,
+    "designation_final": "MANIFOLD CHARGE AIR FRONT A-BANK",
+    "measure_final": "",
+    "weight_final": "7,721 KG",
     "depuracion_ts": "2026-04-27T00:11:37Z",
     "exp_imagenes": "https://milu-naval.mystagingwebsite.com/wp-content/uploads/2026/02/16V4000M61-0148-01-10.webp",
     "pos_error": 0,
@@ -86851,8 +86855,9 @@
     "bom_pdf": "120.00228",
     "gesa_pdf": "NO",
     "normalizado_pdf": "NO",
-    "qa_revision_estado": "pendiente",
-    "qa_revision_accion": "revisar"
+    "qa_revision_estado": "ok",
+    "qa_revision_accion": "importar",
+    "qa_revision_updated_at": "2026-05-03T20:00:38.020Z"
   },
   {
     "ID": "1300845",
@@ -89398,8 +89403,9 @@
     "bom_pdf": "120.00228",
     "gesa_pdf": "NO",
     "normalizado_pdf": "NO",
-    "qa_revision_estado": "pendiente",
-    "qa_revision_accion": "revisar"
+    "qa_revision_estado": "ok",
+    "qa_revision_accion": "importar",
+    "qa_revision_updated_at": "2026-05-03T20:02:00.093Z"
   },
   {
     "ID": "1300869",
@@ -97881,8 +97887,9 @@
     "bom_pdf": "XS526140.00014",
     "gesa_pdf": "NO",
     "normalizado_pdf": "NO",
-    "qa_revision_estado": "pendiente",
-    "qa_revision_accion": "revisar"
+    "qa_revision_estado": "ok",
+    "qa_revision_accion": "importar",
+    "qa_revision_updated_at": "2026-05-03T20:06:34.760Z"
   },
   {
     "ID": "1300950",
@@ -117754,7 +117761,7 @@
     "sust_status": "SI",
     "sust_hierarchie": "Superseded",
     "sust_new_part_number": "X52418400001",
-    "sust_superseded_list": null,
+    "sust_superseded_list": "",
     "page4": "0190",
     "pages": "16V4000M61-0190",
     "book_set": "16V4000M61",
@@ -117767,8 +117774,8 @@
     "qty_units_final": "PC",
     "norma_final": null,
     "designation_final": "BLOCK PSTN LUBE NOZZLE SUPT W/THRU HOLE",
-    "measure_final": null,
-    "weight_final": null,
+    "measure_final": "",
+    "weight_final": "166,600 G",
     "depuracion_ts": "2026-04-27T00:11:37Z",
     "exp_imagenes": "https://milu-naval.mystagingwebsite.com/wp-content/uploads/2026/02/16V4000M61-0189-02-125.webp",
     "pos_error": 0,
@@ -117789,7 +117796,8 @@
     "gesa_pdf": "NO",
     "normalizado_pdf": "NO",
     "qa_revision_estado": "ok",
-    "qa_revision_accion": "importar"
+    "qa_revision_accion": "importar",
+    "qa_revision_updated_at": "2026-05-03T21:57:26.912Z"
   },
   {
     "ID": "1301144",
@@ -368310,7 +368318,8 @@
     "gesa_pdf": "NO",
     "normalizado_pdf": "NO",
     "qa_revision_estado": "ok",
-    "qa_revision_accion": "importar"
+    "qa_revision_accion": "importar",
+    "qa_revision_updated_at": "2026-05-03T19:59:08.652Z"
   },
   {
     "ID": "1303570",
@@ -370223,7 +370232,8 @@
     "gesa_pdf": "NO",
     "normalizado_pdf": "NO",
     "qa_revision_estado": "ok",
-    "qa_revision_accion": "importar"
+    "qa_revision_accion": "importar",
+    "qa_revision_updated_at": "2026-05-03T19:57:12.387Z"
   },
   {
     "ID": "1303588",
@@ -373953,7 +373963,8 @@
     "gesa_pdf": "NO",
     "normalizado_pdf": "NO",
     "qa_revision_estado": "ok",
-    "qa_revision_accion": "importar"
+    "qa_revision_accion": "importar",
+    "qa_revision_updated_at": "2026-05-03T19:59:08.652Z"
   },
   {
     "ID": "1303623",
@@ -375760,7 +375771,8 @@
     "gesa_pdf": "NO",
     "normalizado_pdf": "NO",
     "qa_revision_estado": "ok",
-    "qa_revision_accion": "importar"
+    "qa_revision_accion": "importar",
+    "qa_revision_updated_at": "2026-05-03T19:57:12.387Z"
   },
   {
     "ID": "1303640",
@@ -387769,7 +387781,7 @@
     "sust_status": "SI",
     "sust_hierarchie": "Superseded",
     "sust_new_part_number": "X59612400009",
-    "sust_superseded_list": null,
+    "sust_superseded_list": "",
     "page4": "0653",
     "pages": "16V4000M61-0653",
     "book_set": "16V4000M61",
@@ -387781,9 +387793,9 @@
     "qty_final": "1",
     "qty_units_final": "PC",
     "norma_final": null,
-    "designation_final": "MANIFOLD CHAR GE AIR FRONT A-BANK",
-    "measure_final": null,
-    "weight_final": null,
+    "designation_final": "MANIFOLD CHARGE AIR FRONT A-BANK",
+    "measure_final": "",
+    "weight_final": "7,721 KG",
     "depuracion_ts": "2026-04-27T00:11:37Z",
     "exp_imagenes": "https://milu-naval.mystagingwebsite.com/wp-content/uploads/2026/02/16V4000M61-0652-01-10.webp",
     "pos_error": 0,
@@ -387803,8 +387815,9 @@
     "bom_pdf": "120.00228",
     "gesa_pdf": "NO",
     "normalizado_pdf": "NO",
-    "qa_revision_estado": "pendiente",
-    "qa_revision_accion": "revisar"
+    "qa_revision_estado": "ok",
+    "qa_revision_accion": "importar",
+    "qa_revision_updated_at": "2026-05-03T20:00:38.020Z"
   },
   {
     "ID": "1303756",
@@ -390350,8 +390363,9 @@
     "bom_pdf": "120.00228",
     "gesa_pdf": "NO",
     "normalizado_pdf": "NO",
-    "qa_revision_estado": "pendiente",
-    "qa_revision_accion": "revisar"
+    "qa_revision_estado": "ok",
+    "qa_revision_accion": "importar",
+    "qa_revision_updated_at": "2026-05-03T20:02:00.093Z"
   },
   {
     "ID": "1303780",
@@ -398833,8 +398847,9 @@
     "bom_pdf": "XS526140.00014",
     "gesa_pdf": "NO",
     "normalizado_pdf": "NO",
-    "qa_revision_estado": "pendiente",
-    "qa_revision_accion": "revisar"
+    "qa_revision_estado": "ok",
+    "qa_revision_accion": "importar",
+    "qa_revision_updated_at": "2026-05-03T20:06:34.760Z"
   },
   {
     "ID": "1303861",
@@ -418809,7 +418824,7 @@
     "sust_status": "SI",
     "sust_hierarchie": "Superseded",
     "sust_new_part_number": "X52418400001",
-    "sust_superseded_list": null,
+    "sust_superseded_list": "",
     "page4": "0692",
     "pages": "16V4000M61-0692",
     "book_set": "16V4000M61",
@@ -418822,8 +418837,8 @@
     "qty_units_final": "PC",
     "norma_final": null,
     "designation_final": "BLOCK PSTN LUBE NOZZLE SUPT W/THRU HOLE",
-    "measure_final": null,
-    "weight_final": null,
+    "measure_final": "",
+    "weight_final": "166,600 G",
     "depuracion_ts": "2026-04-27T00:11:37Z",
     "exp_imagenes": "https://milu-naval.mystagingwebsite.com/wp-content/uploads/2026/02/16V4000M61-0691-02-125.webp",
     "pos_error": 0,
@@ -418844,7 +418859,8 @@
     "gesa_pdf": "NO",
     "normalizado_pdf": "NO",
     "qa_revision_estado": "ok",
-    "qa_revision_accion": "importar"
+    "qa_revision_accion": "importar",
+    "qa_revision_updated_at": "2026-05-03T21:57:26.912Z"
   },
   {
     "ID": "1304057",

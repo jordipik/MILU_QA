@@ -402,6 +402,12 @@ function getDisplayPn(row) {
     return '-';
 }
 
+function getDisplayPnForInput(row) {
+    const pnFinal = String(row?.pn_final ?? '').trim();
+    if (pnFinal) return pnFinal;
+    return String(row?.['PART NO.'] ?? '').trim();
+}
+
 function getDistinctRowKey(row) {
     const pnFinal = String(row?.pn_final ?? '').trim();
     if (pnFinal) return pnFinal.toLowerCase();
@@ -694,48 +700,54 @@ function initChecksModal() {
 }
 
 function initRecomputeModal() {
-    const openBtn = $('openRecomputeModalBtn');
+    const quickRecomputeBtn = $('openRecomputeModalBtn');
+    const recomputeAllBtn = $('recomputeAllBtn');
     const modal = $('recomputeModal');
     const closeBtn = $('recomputeModalClose');
     const backdrop = modal?.querySelector('.recompute-modal-backdrop');
     const recomputeRunBtn = $('recomputeRunBtn');
     const recomputePdfRunBtn = $('recomputePdfRunBtn');
 
-    if (!(openBtn instanceof HTMLElement) || !(modal instanceof HTMLElement)) return;
+    if (!(modal instanceof HTMLElement)) return;
+
+    const allowRecompute = isBackendEndpointAllowed('recompute-qa-errors');
+
+    if (quickRecomputeBtn instanceof HTMLButtonElement) {
+        quickRecomputeBtn.disabled = !allowRecompute;
+        quickRecomputeBtn.title = allowRecompute ? '' : 'Disponible solo en local (localhost:3000).';
+    }
+
+    if (recomputeAllBtn instanceof HTMLButtonElement) {
+        recomputeAllBtn.disabled = !allowRecompute;
+        recomputeAllBtn.title = allowRecompute ? '' : 'Disponible solo en local (localhost:3000).';
+    }
+
+    syncRecomputeEngineSelect();
+    const recomputeIdInput = $('recomputeIdInput');
+    if (recomputeIdInput instanceof HTMLInputElement) {
+        recomputeIdInput.value = String(currentRow?.ID ?? '').trim();
+    }
 
     const closeModal = () => {
         modal.hidden = true;
     };
 
-    openBtn.addEventListener('click', () => {
-        syncRecomputeEngineSelect();
-        const allowRecompute = isBackendEndpointAllowed('recompute-qa-errors');
+    if (recomputeRunBtn instanceof HTMLButtonElement) {
+        recomputeRunBtn.disabled = !allowRecompute;
+        recomputeRunBtn.title = allowRecompute ? '' : 'Disponible solo en local (localhost:3000).';
+    }
 
-        if (recomputeRunBtn instanceof HTMLButtonElement) {
-            recomputeRunBtn.disabled = !allowRecompute;
-            recomputeRunBtn.title = allowRecompute ? '' : 'Disponible solo en local (localhost:3000).';
-        }
+    if (recomputePdfRunBtn instanceof HTMLButtonElement) {
+        recomputePdfRunBtn.disabled = !allowRecompute;
+        recomputePdfRunBtn.title = allowRecompute ? '' : 'Disponible solo en local (localhost:3000).';
+    }
 
-        if (recomputePdfRunBtn instanceof HTMLButtonElement) {
-            recomputePdfRunBtn.disabled = !allowRecompute;
-            recomputePdfRunBtn.title = allowRecompute ? '' : 'Disponible solo en local (localhost:3000).';
-        }
-
-        setRecomputeStatus(
-            allowRecompute
-                ? 'Listo para ejecutar.'
-                : getLocalOnlyBackendMessage('recompute-qa-errors'),
-            allowRecompute ? '' : 'error'
-        );
-        clearRecomputePdfDetail();
-        modal.hidden = false;
-        const recomputeIdInput = $('recomputeIdInput');
-        if (recomputeIdInput instanceof HTMLInputElement) {
-            recomputeIdInput.value = String(currentRow?.ID ?? '').trim();
-            recomputeIdInput.focus();
-            recomputeIdInput.select();
-        }
-    });
+    setRecomputeStatus(
+        allowRecompute
+            ? 'Listo para ejecutar.'
+            : getLocalOnlyBackendMessage('recompute-qa-errors'),
+        allowRecompute ? '' : 'error'
+    );
 
     closeBtn?.addEventListener('click', closeModal);
     backdrop?.addEventListener('click', closeModal);
@@ -1182,7 +1194,7 @@ async function reloadEditedRecord(engineFile, id) {
     const reloaded = findRecordByPrimaryKey(id, selectedModel);
     if (reloaded) {
         currentRow = reloaded;
-        $('recordIdInput').value = getDisplayPn(reloaded);
+        $('recordIdInput').value = getDisplayPnForInput(reloaded);
         currentProcessIndex = 0;
         await revalidateCurrentRow();
     }
@@ -1468,7 +1480,7 @@ async function runBackendRecompute() {
                 const reloaded = findRecordByPrimaryKey(keepRecord, selectedMainModel);
                 if (reloaded) {
                     currentRow = reloaded;
-                    $('recordIdInput').value = getDisplayPn(reloaded);
+                    $('recordIdInput').value = getDisplayPnForInput(reloaded);
                     currentProcessIndex = 0;
                     await revalidateCurrentRow();
                 }
@@ -1613,13 +1625,101 @@ async function runBackendRecomputePdfAuto() {
                 const reloaded = findRecordByPrimaryKey(keepRecord, selectedMainModel);
                 if (reloaded) {
                     currentRow = reloaded;
-                    $('recordIdInput').value = getDisplayPn(reloaded);
+                    $('recordIdInput').value = getDisplayPnForInput(reloaded);
                     currentProcessIndex = 0;
                     await revalidateCurrentRow();
                 }
             }
             updateRecordSearchSuggestions();
         }
+    }
+}
+
+function setQuickRecomputeButtonsDisabled(disabled) {
+    const quickRecomputeBtn = $('openRecomputeModalBtn');
+    const recomputeAllBtn = $('recomputeAllBtn');
+    if (quickRecomputeBtn instanceof HTMLButtonElement) quickRecomputeBtn.disabled = disabled;
+    if (recomputeAllBtn instanceof HTMLButtonElement) recomputeAllBtn.disabled = disabled;
+}
+
+function setRecomputeModalInputsForAction(selectedModel, id = '') {
+    const recomputeEngineSelect = $('recomputeEngineSelect');
+    const recomputeIdInput = $('recomputeIdInput');
+    const recomputeDryRunInput = $('recomputeDryRunInput');
+    const recomputeUpdateRevisionInput = $('recomputeUpdateRevisionInput');
+    const recomputeForceRevisionInput = $('recomputeForceRevisionInput');
+
+    if (recomputeEngineSelect instanceof HTMLSelectElement && selectedModel) {
+        recomputeEngineSelect.value = selectedModel;
+    }
+    if (recomputeIdInput instanceof HTMLInputElement) {
+        recomputeIdInput.value = String(id || '').trim();
+    }
+    if (recomputeDryRunInput instanceof HTMLInputElement) recomputeDryRunInput.checked = false;
+    if (recomputeUpdateRevisionInput instanceof HTMLInputElement) recomputeUpdateRevisionInput.checked = false;
+    if (recomputeForceRevisionInput instanceof HTMLInputElement) recomputeForceRevisionInput.checked = false;
+}
+
+async function runQuickRecomputeForCurrentRecord() {
+    if (!currentRow) {
+        alert('Primero debes cargar un registro.');
+        return;
+    }
+
+    const engineFilterSelect = $('engineFilterSelect');
+    if (!(engineFilterSelect instanceof HTMLSelectElement)) return;
+
+    const selectedModel = String(engineFilterSelect.value || '').trim();
+    const currentId = String(currentRow?.ID || '').trim();
+    if (!selectedModel || !currentId) {
+        alert('No se pudo resolver libro o ID del registro actual.');
+        return;
+    }
+
+    if (!isBackendEndpointAllowed('recompute-qa-errors') || !isBackendEndpointAllowed('recompute-pdf-auto')) {
+        setRecomputeStatus(getLocalOnlyBackendMessage('recompute-qa-errors'), 'error');
+        return;
+    }
+
+    setRecomputeModalInputsForAction(selectedModel, currentId);
+    setQuickRecomputeButtonsDisabled(true);
+    try {
+        setRecomputeStatus(`Recalculando registro ID ${currentId} (errores + PDF_AUTO)...`, '');
+        await runBackendRecompute();
+        await runBackendRecomputePdfAuto();
+        setRecomputeStatus(`Registro ID ${currentId} recalculado correctamente.`, 'ok');
+    } finally {
+        setQuickRecomputeButtonsDisabled(false);
+    }
+}
+
+async function runQuickRecomputeForFullBook() {
+    const engineFilterSelect = $('engineFilterSelect');
+    if (!(engineFilterSelect instanceof HTMLSelectElement)) return;
+
+    const selectedModel = String(engineFilterSelect.value || '').trim();
+    if (!selectedModel) {
+        alert('Selecciona un libro para recalcular.');
+        return;
+    }
+
+    const confirmed = window.confirm(`Se recalcularan ERRORES y PDF_AUTO para TODO el libro ${selectedModel}. ¿Continuar?`);
+    if (!confirmed) return;
+
+    if (!isBackendEndpointAllowed('recompute-qa-errors') || !isBackendEndpointAllowed('recompute-pdf-auto')) {
+        setRecomputeStatus(getLocalOnlyBackendMessage('recompute-qa-errors'), 'error');
+        return;
+    }
+
+    setRecomputeModalInputsForAction(selectedModel, '');
+    setQuickRecomputeButtonsDisabled(true);
+    try {
+        setRecomputeStatus(`Recalculando libro ${selectedModel} completo (errores + PDF_AUTO)...`, '');
+        await runBackendRecompute();
+        await runBackendRecomputePdfAuto();
+        setRecomputeStatus(`Libro ${selectedModel} recalculado correctamente.`, 'ok');
+    } finally {
+        setQuickRecomputeButtonsDisabled(false);
     }
 }
 
@@ -1645,7 +1745,7 @@ async function loadEngineForFilter(engineFilter) {
     const firstRow = state.allData[0] || null;
     if (firstRow) {
         currentRow = firstRow;
-        $('recordIdInput').value = getDisplayPn(firstRow);
+        $('recordIdInput').value = getDisplayPnForInput(firstRow);
         currentProcessIndex = 0;
         renderRecord(firstRow);
         await revalidateCurrentRow();
@@ -2379,13 +2479,24 @@ async function loadRelativeRecord(direction) {
     }
 
     currentRow = queue[targetIndex];
-    $('recordIdInput').value = getDisplayPn(currentRow);
+    $('recordIdInput').value = getDisplayPnForInput(currentRow);
     currentProcessIndex = 0;
     await revalidateCurrentRow();
 }
 
 function rowHasErrors(row) {
     return getRowErrorCount(row) > 0;
+}
+
+function rowIsPending(row) {
+    const estado = normalizeEstadoToNew(row?.qa_revision_estado);
+    if (estado === 'pendiente') return true;
+
+    const accion = normalizeAccionToNew(row?.qa_revision_accion);
+    if (accion === 'revisar') return true;
+
+    const rawAccion = String(row?.qa_revision_accion || '').trim().toLowerCase();
+    return rawAccion === 'revision';
 }
 
 async function loadRelativeError(direction) {
@@ -2407,7 +2518,31 @@ async function loadRelativeError(direction) {
     }
 
     currentRow = queue[idx];
-    $('recordIdInput').value = getDisplayPn(currentRow);
+    $('recordIdInput').value = getDisplayPnForInput(currentRow);
+    currentProcessIndex = 0;
+    await revalidateCurrentRow();
+}
+
+async function loadRelativePending(direction) {
+    const queue = getQueueRows();
+    if (!queue.length) return;
+
+    const startIndex = currentRow
+        ? queue.findIndex(row => getRevisionKey(row) === getRevisionKey(currentRow))
+        : -1;
+
+    let idx = startIndex;
+    while (true) {
+        idx += direction;
+        if (idx < 0 || idx >= queue.length) {
+            alert(direction > 0 ? 'No hay mas registros pendientes.' : 'No hay pendientes anteriores.');
+            return;
+        }
+        if (rowIsPending(queue[idx])) break;
+    }
+
+    currentRow = queue[idx];
+    $('recordIdInput').value = getDisplayPnForInput(currentRow);
     currentProcessIndex = 0;
     await revalidateCurrentRow();
 }
@@ -2573,6 +2708,32 @@ async function initialize() {
 
                     revalidateCurrentRow().catch(() => { });
                     renderReviewStats();
+                },
+                onValuesApplied: (_key, response, context) => {
+                    const appliedFields = response?.applied_fields || context?.fields || {};
+                    const skuKey = String(response?.sku || _key || '').trim().toLowerCase();
+                    if (!skuKey) return;
+
+                    const updateRowValues = (row) => {
+                        if (!row) return;
+                        row.pn_final = txt(appliedFields.pn_final, row?.pn_final);
+                        row.designation_final = txt(appliedFields.designation_final, row?.designation_final);
+                        row.measure_final = txt(appliedFields.measure_final, row?.measure_final ?? row?.measurement_final);
+                        row.weight_final = txt(appliedFields.weight_final, row?.weight_final);
+                        row.sust_status = txt(appliedFields.sust_status, row?.sust_status);
+                        row.sust_hierarchie = txt(appliedFields.sust_hierarchie, row?.sust_hierarchie);
+                        row.sust_new_part_number = txt(appliedFields.sust_new_part_number, row?.sust_new_part_number);
+                        row.sust_superseded_list = txt(appliedFields.sust_superseded_list, row?.sust_superseded_list);
+                    };
+
+                    (state.allData || []).forEach((row) => {
+                        const rowSku = String(row?.pn_final || row?.['PART NO.'] || row?.pn || '').trim().toLowerCase();
+                        if (rowSku && rowSku === skuKey) updateRowValues(row);
+                    });
+
+                    updateRowValues(currentRow);
+                    fillEditFields(currentRow);
+                    renderRecord(currentRow);
                 }
             });
         }
@@ -2634,6 +2795,26 @@ bindClick('prevErrorBtn', () => {
 
 bindClick('nextErrorBtn', () => {
     loadRelativeError(1).catch((error) => alert(`No se pudo cargar siguiente error: ${error.message}`));
+});
+
+bindClick('prevPendingBtn', () => {
+    loadRelativePending(-1).catch((error) => alert(`No se pudo cargar pendiente anterior: ${error.message}`));
+});
+
+bindClick('nextPendingBtn', () => {
+    loadRelativePending(1).catch((error) => alert(`No se pudo cargar siguiente pendiente: ${error.message}`));
+});
+
+bindClick('openRecomputeModalBtn', () => {
+    runQuickRecomputeForCurrentRecord().catch((error) => {
+        setRecomputeStatus(`Error: ${String(error?.message || error)}`, 'error');
+    });
+});
+
+bindClick('recomputeAllBtn', () => {
+    runQuickRecomputeForFullBook().catch((error) => {
+        setRecomputeStatus(`Error: ${String(error?.message || error)}`, 'error');
+    });
 });
 
 bindClick('recomputeRunBtn', () => {

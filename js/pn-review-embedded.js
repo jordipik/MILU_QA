@@ -53,9 +53,9 @@ function buildSourceRow(row = {}, idx = 0) {
         'Source Page': String(row['Source Page'] ?? '').trim(),
         POS: firstNonEmpty(row.POS, row.pos_final),
         'PART NO.': firstNonEmpty(row['PART NO.'], row.pn_final, row.pn),
-        designation: firstNonEmpty(row.designation_final, row.DESIGNATION, row.designation_gesa, row.designation_pdf),
-        measurement: firstNonEmpty(row.measure_final, row.measurement_final, row['MEASUREMENT / STANDARD'], row.dimensions_gesa, row.measure_pdf),
-        weight: firstNonEmpty(row.weight_final, row.WEIGHT, row.weight_gesa, row.weight_pdf),
+        designation_final: firstNonEmpty(row.designation_final, row.DESIGNATION, row.designation_gesa, row.designation_pdf),
+        measure_final: firstNonEmpty(row.measure_final, row.measurement_final, row['MEASUREMENT / STANDARD'], row.dimensions_gesa, row.measure_pdf),
+        weight_final: firstNonEmpty(row.weight_final, row.WEIGHT, row.weight_gesa, row.weight_pdf),
         sust_status: firstNonEmpty(row.sust_status),
         sust_hierarchie: firstNonEmpty(row.sust_hierarchie),
         new_part_number: firstNonEmpty(row.sust_new_part_number, row.pn_new, row.new_part_number),
@@ -76,25 +76,38 @@ function detectTableCellStatus(rows) {
     const cellStatus = {};
     if (!Array.isArray(rows) || rows.length === 0) return cellStatus;
 
-    const conflictKeys = new Set(['PART NO.', 'designation', 'measurement', 'weight', 'new_part_number']);
+    const conflictKeys = new Set(['PART NO.', 'designation_final', 'measure_final', 'weight_final', 'new_part_number']);
     const warningKeys = new Set(['POS', 'Source Page', 'sust_status', 'sust_hierarchie']);
     const columns = [...conflictKeys, ...warningKeys];
 
     for (const key of columns) {
-        const values = new Set();
+        const counts = new Map();
         for (const row of rows) {
             const raw = row?.[key];
-            const normalized = key === 'weight' ? normWeight(raw) : norm(raw);
-            if (normalized) values.add(normalized);
+            const normalized = key === 'weight_final' ? normWeight(raw) : norm(raw);
+            if (!normalized) continue;
+            counts.set(normalized, (counts.get(normalized) || 0) + 1);
         }
-        if (values.size <= 1) continue;
+
+        if (counts.size <= 1) continue;
+
+        let majorityKey = '';
+        let majorityCount = 0;
+        for (const [value, count] of counts.entries()) {
+            if (count > majorityCount) {
+                majorityKey = value;
+                majorityCount = count;
+            }
+        }
+
+        if (!majorityKey) continue;
 
         const status = conflictKeys.has(key) ? 'conflict' : 'warning';
         for (const row of rows) {
             const rowId = String(row.ID || row._idx);
             const raw = row?.[key];
-            const normalized = key === 'weight' ? normWeight(raw) : norm(raw);
-            if (!normalized) continue;
+            const normalized = key === 'weight_final' ? normWeight(raw) : norm(raw);
+            if (!normalized || normalized === majorityKey) continue;
             cellStatus[`${rowId}:${key}`] = status;
         }
     }
@@ -103,6 +116,7 @@ function detectTableCellStatus(rows) {
 
 let _container = null;
 let _onDecisionApplied = null;
+let _onValuesApplied = null;
 let _currentRow = null;
 let _currentSku = '';
 let _currentId = '';
@@ -111,10 +125,24 @@ let _detail = null;
 let _sources = [];
 let _loadError = '';
 
-export function init(container, { onDecisionApplied } = {}) {
+export function init(container, { onDecisionApplied, onValuesApplied } = {}) {
     _container = container;
     _onDecisionApplied = onDecisionApplied || null;
+    _onValuesApplied = onValuesApplied || null;
     renderPanel();
+}
+
+function buildPropagationFieldsFromCurrentRow() {
+    return {
+        pn_final: firstNonEmpty(_currentRow?.pn_final, _currentRow?.['PART NO.'], _currentRow?.pn),
+        designation_final: firstNonEmpty(_currentRow?.designation_final, _currentRow?.DESIGNATION, _currentRow?.designation_gesa, _currentRow?.designation_pdf),
+        measure_final: firstNonEmpty(_currentRow?.measure_final, _currentRow?.measurement_final, _currentRow?.['MEASUREMENT / STANDARD'], _currentRow?.dimensions_gesa, _currentRow?.measure_pdf),
+        weight_final: firstNonEmpty(_currentRow?.weight_final, _currentRow?.WEIGHT, _currentRow?.weight_gesa, _currentRow?.weight_pdf),
+        sust_status: firstNonEmpty(_currentRow?.sust_status),
+        sust_hierarchie: firstNonEmpty(_currentRow?.sust_hierarchie),
+        sust_new_part_number: firstNonEmpty(_currentRow?.sust_new_part_number),
+        sust_superseded_list: firstNonEmpty(_currentRow?.sust_superseded_list)
+    };
 }
 
 export async function onRecordChange(row) {
@@ -171,7 +199,7 @@ function buildNoPnDetail(row) {
         sku: '',
         export_row: {
             sku: '',
-            designation_final: source.designation,
+            designation_final: source.designation_final,
             decision: deriveDecisionFromQa(row),
             occurrences: 1,
             engine_models: source.engine_model ? [source.engine_model] : []
@@ -326,6 +354,47 @@ async function applyDecision(action) {
     }
 }
 
+async function applyCurrentValuesToAppearances() {
+    if (!_currentRow || !_currentSku || _isNoPnMode) return;
+
+    const fields = buildPropagationFieldsFromCurrentRow();
+    const msg = `Vas a copiar los valores del registro actual a ${_sources.length || 0} aparicion(es) del PN ${_currentSku}.\nNo se tocaran motor, pagina, POS ni ID. ¿Continuar?`;
+    const confirmed = await showConfirmDialog('Confirmar: actualizar apariciones', msg);
+    if (!confirmed) return;
+
+    try {
+        setButtonsLoading(true);
+
+        const response = await apiFetch(`/pn-review/${encodeURIComponent(_currentSku)}/apply-values`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ fields }),
+        });
+
+        if (!response.ok) throw new Error(response.error || 'Error al actualizar apariciones');
+
+        showToast(`Valores actualizados en ${response.rows_updated} registro(s).`, 'success');
+        console.info('[PN Review Embedded] values applied', {
+            sku: _currentSku,
+            rows_updated: response.rows_updated,
+            files_touched: response.files_touched || []
+        });
+
+        if (typeof _onValuesApplied === 'function') {
+            _onValuesApplied(_currentSku, response, {
+                currentRow: _currentRow,
+                fields
+            });
+        }
+
+        await refresh();
+    } catch (err) {
+        showToast(`Error: ${err.message}`, 'error');
+    } finally {
+        setButtonsLoading(false);
+    }
+}
+
 function renderPanel() {
     if (!_container) return;
 
@@ -375,6 +444,7 @@ function renderPanel() {
     <button class="pre-btn pre-btn--validar" data-action="validar">Validar PN</button>
     <button class="pre-btn pre-btn--revisar" data-action="revisar">Revisar PN</button>
     <button class="pre-btn pre-btn--descartar" data-action="descartar">Descartar PN</button>
+        <button class="pre-btn pre-btn--sync" data-command="apply-values" ${_isNoPnMode ? 'disabled' : ''}>Actualizar apariciones</button>
   </div>
 
   <div class="pre-qa-summary">
@@ -433,9 +503,9 @@ function buildSourcesTableHtml(sources, cellStatus) {
         { key: 'Source Page', label: 'pagina' },
         { key: 'POS', label: 'POS' },
         { key: 'PART NO.', label: 'PART NO.' },
-        { key: 'designation', label: 'designation' },
-        { key: 'measurement', label: 'measurement' },
-        { key: 'weight', label: 'weight' },
+        { key: 'designation_final', label: 'designation_final' },
+        { key: 'measure_final', label: 'measure_final' },
+        { key: 'weight_final', label: 'weight_final' },
     ];
 
     if (hasSust) {
@@ -488,11 +558,18 @@ function bindActions() {
             applyDecision(action).catch((err) => showToast(`Error: ${err.message}`, 'error'));
         });
     });
+
+    _container.querySelectorAll('[data-command="apply-values"]').forEach((btn) => {
+        btn.addEventListener('click', () => {
+            applyCurrentValuesToAppearances().catch((err) => showToast(`Error: ${err.message}`, 'error'));
+        });
+    });
 }
 
 function setButtonsLoading(loading) {
-    _container.querySelectorAll('.pre-btn[data-action]').forEach((btn) => {
-        btn.disabled = loading;
+    _container.querySelectorAll('.pre-btn[data-action], .pre-btn[data-command]').forEach((btn) => {
+        const keepDisabled = btn.dataset.command === 'apply-values' && _isNoPnMode;
+        btn.disabled = loading || keepDisabled;
         btn.style.opacity = loading ? '0.6' : '';
     });
 }

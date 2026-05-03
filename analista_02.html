@@ -35,24 +35,38 @@
     <main class="a2-layout">
         <section class="a2-main">
             <div class="a2-toolbar">
-                <select id="engineFilterSelect" aria-label="Filtro de libro">
-                </select>
-                <input id="recordIdInput" list="recordSearchList" type="search"
-                    placeholder="Buscar por PN, PART NO, ID o DESIGNATION" autocomplete="off">
-                <datalist id="recordSearchList"></datalist>
-                <button id="loadRecordBtn" type="button">Buscar</button>
-                <button id="prevRecordBtn" class="a2-btn-nav" type="button" title="Registro anterior"
-                    aria-label="Registro anterior">&#9664;</button>
-                <button id="nextRecordBtn" class="a2-btn-nav" type="button" title="Registro siguiente"
-                    aria-label="Registro siguiente">&#9654;</button>
-                <div class="a2-error-nav" aria-label="Busqueda de errores">
-                    <span class="a2-error-nav-label">Buscar ERROR:</span>
-                    <button id="prevErrorBtn" class="a2-btn-nav a2-btn-nav-err" type="button" title="Error anterior"
-                        aria-label="Error anterior">&#9664;</button>
-                    <button id="nextErrorBtn" class="a2-btn-nav a2-btn-nav-err" type="button" title="Siguiente error"
-                        aria-label="Siguiente error">&#9654;</button>
+                <div class="a2-toolbar-top">
+                    <select id="engineFilterSelect" aria-label="Filtro de libro"></select>
+                    <input id="recordIdInput" list="recordSearchList" type="search" placeholder="Escribe para buscar..."
+                        autocomplete="off">
+                    <datalist id="recordSearchList"></datalist>
+                    <button id="loadRecordBtn" class="a2-search-submit" type="button">Buscar</button>
                 </div>
-                <button id="openRecomputeModalBtn" type="button">RECALCULAR</button>
+                <div class="a2-toolbar-bottom">
+                    <div class="a2-search-nav is-record" aria-label="Busqueda de registros">
+                        <button id="prevRecordBtn" class="a2-btn-nav a2-btn-nav-record" type="button"
+                            title="Registro anterior" aria-label="Registro anterior">&#9664;</button>
+                        <span class="a2-search-nav-center">Registro</span>
+                        <button id="nextRecordBtn" class="a2-btn-nav a2-btn-nav-record" type="button"
+                            title="Registro siguiente" aria-label="Registro siguiente">&#9654;</button>
+                    </div>
+                    <div class="a2-search-nav is-error" aria-label="Busqueda de errores">
+                        <button id="prevErrorBtn" class="a2-btn-nav a2-btn-nav-err" type="button" title="Error anterior"
+                            aria-label="Error anterior">&#9664;</button>
+                        <span class="a2-search-nav-center">Error</span>
+                        <button id="nextErrorBtn" class="a2-btn-nav a2-btn-nav-err" type="button"
+                            title="Siguiente error" aria-label="Siguiente error">&#9654;</button>
+                    </div>
+                    <div class="a2-search-nav is-pending" aria-label="Busqueda de pendientes">
+                        <button id="prevPendingBtn" class="a2-btn-nav a2-btn-nav-err" type="button"
+                            title="Pendiente anterior" aria-label="Pendiente anterior">&#9664;</button>
+                        <span class="a2-search-nav-center">Pendiente</span>
+                        <button id="nextPendingBtn" class="a2-btn-nav a2-btn-nav-err" type="button"
+                            title="Siguiente pendiente" aria-label="Siguiente pendiente">&#9654;</button>
+                    </div>
+                    <button id="openRecomputeModalBtn" type="button">Recalcular registro</button>
+                    <button id="recomputeAllBtn" type="button">Recalcular todo</button>
+                </div>
             </div>
 
             <section class="a2-stats-row" aria-label="Estadisticas de revision">
@@ -163,7 +177,8 @@
                         <button id="pdfZoomOutBtn" class="pdf-zoom-btn" type="button"
                             aria-label="Reducir zoom PDF">-</button>
                         <select id="pdfZoomSelect" class="pdf-zoom-select" aria-label="Zoom del visor PDF">
-                            <option value="fit">100%</option>
+                            <option value="fit">Ajustar</option>
+                            <option value="height">Altura</option>
                             <option value="75">75%</option>
                             <option value="100">100%</option>
                             <option value="125">125%</option>

@@ -263,6 +263,30 @@ function buildMappedSourceRow(row) {
     };
 }
 
+function buildPnPropagationFields(input = {}) {
+    return {
+        pn_final: normalizeText(input?.pn_final),
+        designation_final: normalizeText(input?.designation_final),
+        measure_final: normalizeText(input?.measure_final ?? input?.measurement_final),
+        weight_final: normalizeText(input?.weight_final),
+        sust_status: normalizeText(input?.sust_status),
+        sust_hierarchie: normalizeText(input?.sust_hierarchie),
+        sust_new_part_number: normalizeText(input?.sust_new_part_number),
+        sust_superseded_list: normalizeText(input?.sust_superseded_list)
+    };
+}
+
+function applyPnPropagationFields(row, fields) {
+    row.pn_final = fields.pn_final;
+    row.designation_final = fields.designation_final;
+    row.measure_final = fields.measure_final;
+    row.weight_final = fields.weight_final;
+    row.sust_status = fields.sust_status;
+    row.sust_hierarchie = fields.sust_hierarchie;
+    row.sust_new_part_number = fields.sust_new_part_number;
+    row.sust_superseded_list = fields.sust_superseded_list;
+}
+
 function buildSustSummary(rows) {
     return {
         statuses: uniqueValues(rows, (row) => row?.sust_status),
@@ -1100,6 +1124,82 @@ app.post('/pn-review/:sku/apply-decision', async (req, res) => {
         target_estado: targetEstado,
         target_accion: targetAccion,
         decision_applied: decisionApplied,
+        rows_updated: rowsUpdated,
+        files_touched: filesTouched,
+        errors
+    });
+});
+
+app.post('/pn-review/:sku/apply-values', async (req, res) => {
+    const sku = normalizeText(req.params?.sku);
+    const skuNormalized = pnKey(sku);
+    const fields = buildPnPropagationFields(req.body?.fields || req.body || {});
+
+    if (!sku || !skuNormalized) {
+        return res.status(400).json({ ok: false, error: 'SKU requerido.' });
+    }
+
+    const hasAnyField = Object.values(fields).some((value) => normalizeText(value));
+    if (!hasAnyField) {
+        return res.status(400).json({ ok: false, error: 'No hay campos para propagar.' });
+    }
+
+    const nowIso = new Date().toISOString();
+    const errors = [];
+    const filesTouched = [];
+    let rowsUpdated = 0;
+
+    for (const file of ENGINE_JSON_FILES) {
+        const filePath = path.join(__dirname, file);
+        try {
+            const raw = await fs.promises.readFile(filePath, 'utf8');
+            const json = JSON.parse(raw);
+            if (!Array.isArray(json)) {
+                throw new Error('Contenido JSON invalido: se esperaba array.');
+            }
+
+            let touched = false;
+            for (const row of json) {
+                if (pnKey(getRowPn(row)) !== skuNormalized) continue;
+                applyPnPropagationFields(row, fields);
+                row.qa_revision_updated_at = nowIso;
+                rowsUpdated += 1;
+                touched = true;
+            }
+
+            if (touched) {
+                await writeJsonAtomic(filePath, json);
+                filesTouched.push(file);
+            }
+        } catch (error) {
+            errors.push({ file, error: String(error?.message || error) });
+        }
+    }
+
+    if (rowsUpdated === 0) {
+        return res.status(404).json({
+            ok: false,
+            error: `No se encontraron apariciones para PN ${sku}`,
+            rows_updated: 0,
+            files_touched: [],
+            applied_fields: fields,
+            errors
+        });
+    }
+
+    invalidatePnReviewQaCache();
+
+    console.info('[PN Review] values propagated by SKU', {
+        sku,
+        rows_updated: rowsUpdated,
+        files_touched: filesTouched,
+        applied_fields: fields
+    });
+
+    return res.json({
+        ok: errors.length === 0,
+        sku,
+        applied_fields: fields,
         rows_updated: rowsUpdated,
         files_touched: filesTouched,
         errors

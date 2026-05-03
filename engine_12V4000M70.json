@@ -82323,7 +82323,8 @@
     "normalizado_pdf": "No",
     "qa_revision_estado": "ok",
     "qa_revision_accion": "importar",
-    "ID": 1900773
+    "ID": 1900773,
+    "qa_revision_updated_at": "2026-05-03T19:57:12.387Z"
   },
   {
     "POS": "160",
@@ -83179,7 +83180,8 @@
     "normalizado_pdf": "No",
     "qa_revision_estado": "ok",
     "qa_revision_accion": "importar",
-    "ID": 1900781
+    "ID": 1900781,
+    "qa_revision_updated_at": "2026-05-03T19:59:08.652Z"
   },
   {
     "POS": "250",
@@ -86882,7 +86884,8 @@
     "normalizado_pdf": "No",
     "qa_revision_estado": "ok",
     "qa_revision_accion": "importar",
-    "ID": 1900816
+    "ID": 1900816,
+    "qa_revision_updated_at": "2026-05-03T19:57:12.387Z"
   },
   {
     "POS": "160",
@@ -87726,7 +87729,8 @@
     "normalizado_pdf": "No",
     "qa_revision_estado": "ok",
     "qa_revision_accion": "importar",
-    "ID": 1900824
+    "ID": 1900824,
+    "qa_revision_updated_at": "2026-05-03T19:59:08.652Z"
   },
   {
     "POS": "250",
@@ -105470,7 +105474,7 @@
     "sust_status": "SI",
     "sust_hierarchie": "Superseded",
     "sust_new_part_number": "X59612400009",
-    "sust_superseded_list": null,
+    "sust_superseded_list": "",
     "page4": "0161",
     "pages": "12V4000M70-0161",
     "book_set": "12V4000M70",
@@ -105482,9 +105486,9 @@
     "qty_final": "nan",
     "qty_units_final": "pc",
     "norma_final": null,
-    "designation_final": "MANIFOLD CHARG",
-    "measure_final": null,
-    "weight_final": "7,700 kg",
+    "designation_final": "MANIFOLD CHARGE AIR FRONT A-BANK",
+    "measure_final": "",
+    "weight_final": "7,721 KG",
     "depuracion_ts": "2026-04-27T00:11:37Z",
     "exp_imagenes": "https://milu-naval.mystagingwebsite.com/wp-content/uploads/2026/01/sin_imagen.jpeg",
     "pos_error": 0,
@@ -105505,9 +105509,10 @@
     "bom_pdf": "120.00227",
     "gesa_pdf": "No",
     "normalizado_pdf": "No",
-    "qa_revision_estado": "pendiente",
-    "qa_revision_accion": "revisar",
-    "ID": 1900991
+    "qa_revision_estado": "ok",
+    "qa_revision_accion": "importar",
+    "ID": 1900991,
+    "qa_revision_updated_at": "2026-05-03T20:00:38.020Z"
   },
   {
     "POS": "100",
@@ -341379,7 +341384,8 @@
     "normalizado_pdf": "No",
     "qa_revision_estado": "ok",
     "qa_revision_accion": "importar",
-    "ID": 1903215
+    "ID": 1903215,
+    "qa_revision_updated_at": "2026-05-03T19:57:12.387Z"
   },
   {
     "POS": "160",
@@ -342235,7 +342241,8 @@
     "normalizado_pdf": "No",
     "qa_revision_estado": "ok",
     "qa_revision_accion": "importar",
-    "ID": 1903223
+    "ID": 1903223,
+    "qa_revision_updated_at": "2026-05-03T19:59:08.652Z"
   },
   {
     "POS": "250",
@@ -345938,7 +345945,8 @@
     "normalizado_pdf": "No",
     "qa_revision_estado": "ok",
     "qa_revision_accion": "importar",
-    "ID": 1903258
+    "ID": 1903258,
+    "qa_revision_updated_at": "2026-05-03T19:57:12.387Z"
   },
   {
     "POS": "160",
@@ -346782,7 +346790,8 @@
     "normalizado_pdf": "No",
     "qa_revision_estado": "ok",
     "qa_revision_accion": "importar",
-    "ID": 1903266
+    "ID": 1903266,
+    "qa_revision_updated_at": "2026-05-03T19:59:08.652Z"
   },
   {
     "POS": "250",
@@ -364526,7 +364535,7 @@
     "sust_status": "SI",
     "sust_hierarchie": "Superseded",
     "sust_new_part_number": "X59612400009",
-    "sust_superseded_list": null,
+    "sust_superseded_list": "",
     "page4": "0500",
     "pages": "12V4000M70-0500",
     "book_set": "12V4000M70",
@@ -364538,9 +364547,9 @@
     "qty_final": "nan",
     "qty_units_final": "pc",
     "norma_final": null,
-    "designation_final": "MANIFOLD CHARG",
-    "measure_final": null,
-    "weight_final": "7,700 kg",
+    "designation_final": "MANIFOLD CHARGE AIR FRONT A-BANK",
+    "measure_final": "",
+    "weight_final": "7,721 KG",
     "depuracion_ts": "2026-04-27T00:11:37Z",
     "exp_imagenes": "https://milu-naval.mystagingwebsite.com/wp-content/uploads/2026/01/sin_imagen.jpeg",
     "pos_error": 0,
@@ -364561,9 +364570,10 @@
     "bom_pdf": "120.00227",
     "gesa_pdf": "No",
     "normalizado_pdf": "No",
-    "qa_revision_estado": "pendiente",
-    "qa_revision_accion": "revisar",
-    "ID": 1903433
+    "qa_revision_estado": "ok",
+    "qa_revision_accion": "importar",
+    "ID": 1903433,
+    "qa_revision_updated_at": "2026-05-03T20:00:38.020Z"
   },
   {
     "POS": "100",

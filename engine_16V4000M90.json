@@ -80236,7 +80236,8 @@
     "normalizado_pdf": "No",
     "norma_pdf": "MMN425",
     "qa_revision_estado": "ok",
-    "qa_revision_accion": "importar"
+    "qa_revision_accion": "importar",
+    "qa_revision_updated_at": "2026-05-03T19:59:08.652Z"
   },
   {
     "ID": "1600776",
@@ -81583,7 +81584,8 @@
     "gesa_pdf": "No",
     "normalizado_pdf": "No",
     "qa_revision_estado": "ok",
-    "qa_revision_accion": "importar"
+    "qa_revision_accion": "importar",
+    "qa_revision_updated_at": "2026-05-03T19:49:34.275Z"
   },
   {
     "ID": "1600789",
@@ -81893,8 +81895,9 @@
     "bom_pdf": "X52710100017",
     "gesa_pdf": "No",
     "normalizado_pdf": "No",
-    "qa_revision_estado": "pendiente",
-    "qa_revision_accion": "revisar"
+    "qa_revision_estado": "ok",
+    "qa_revision_accion": "importar",
+    "qa_revision_updated_at": "2026-05-03T19:57:12.387Z"
   },
   {
     "ID": "1600792",
@@ -85933,7 +85936,8 @@
     "gesa_pdf": "No",
     "normalizado_pdf": "No",
     "qa_revision_estado": "ok",
-    "qa_revision_accion": "importar"
+    "qa_revision_accion": "importar",
+    "qa_revision_updated_at": "2026-05-03T19:59:08.652Z"
   },
   {
     "ID": "1600831",
@@ -87280,7 +87284,8 @@
     "gesa_pdf": "No",
     "normalizado_pdf": "No",
     "qa_revision_estado": "ok",
-    "qa_revision_accion": "importar"
+    "qa_revision_accion": "importar",
+    "qa_revision_updated_at": "2026-05-03T19:49:34.275Z"
   },
   {
     "ID": "1600844",
@@ -87591,8 +87596,9 @@
     "bom_pdf": "X52710100016",
     "gesa_pdf": "No",
     "normalizado_pdf": "No",
-    "qa_revision_estado": "pendiente",
-    "qa_revision_accion": "revisar"
+    "qa_revision_estado": "ok",
+    "qa_revision_accion": "importar",
+    "qa_revision_updated_at": "2026-05-03T19:57:12.387Z"
   },
   {
     "ID": "1600847",
@@ -102981,7 +102987,7 @@
     "sust_status": "SI",
     "sust_hierarchie": "Superseded",
     "sust_new_part_number": "X59612400009",
-    "sust_superseded_list": null,
+    "sust_superseded_list": "",
     "page4": "0153",
     "pages": "16V4000M90-0153",
     "book_set": "16V4000M90",
@@ -102993,9 +102999,9 @@
     "qty_final": "1",
     "qty_units_final": "PC",
     "norma_final": null,
-    "designation_final": "CHARGE-AIR PIPE END PIECE , LEFT",
-    "measure_final": null,
-    "weight_final": null,
+    "designation_final": "MANIFOLD CHARGE AIR FRONT A-BANK",
+    "measure_final": "",
+    "weight_final": "7,721 KG",
     "depuracion_ts": "2026-04-27T00:11:37Z",
     "exp_imagenes": "https://milu-naval.mystagingwebsite.com/wp-content/uploads/2026/02/16V4000M90-0152-01-10.webp",
     "pos_error": 0,
@@ -103015,8 +103021,9 @@
     "bom_pdf": "120.00228",
     "gesa_pdf": "No",
     "normalizado_pdf": "No",
-    "qa_revision_estado": "pendiente",
-    "qa_revision_accion": "revisar"
+    "qa_revision_estado": "ok",
+    "qa_revision_accion": "importar",
+    "qa_revision_updated_at": "2026-05-03T20:00:38.020Z"
   },
   {
     "ID": "1600996",
@@ -105262,7 +105269,8 @@
     "gesa_pdf": "No",
     "normalizado_pdf": "No",
     "qa_revision_estado": "ok",
-    "qa_revision_accion": "importar"
+    "qa_revision_accion": "importar",
+    "qa_revision_updated_at": "2026-05-03T20:02:00.093Z"
   },
   {
     "ID": "1601017",
@@ -119786,7 +119794,8 @@
     "gesa_pdf": "No",
     "normalizado_pdf": "No",
     "qa_revision_estado": "ok",
-    "qa_revision_accion": "importar"
+    "qa_revision_accion": "importar",
+    "qa_revision_updated_at": "2026-05-03T20:06:34.760Z"
   },
   {
     "ID": "1601154",
@@ -130469,7 +130478,7 @@
     "sust_status": "SI",
     "sust_hierarchie": "Superseded",
     "sust_new_part_number": "X52418400001",
-    "sust_superseded_list": null,
+    "sust_superseded_list": "",
     "page4": "0185",
     "pages": "16V4000M90-0185",
     "book_set": "16V4000M90",
@@ -130481,9 +130490,9 @@
     "qty_final": "7",
     "qty_units_final": "PC",
     "norma_final": null,
-    "designation_final": "BLOCK PSTN LUBE NOZZ LE SUPT W/THRU HOLE",
-    "measure_final": null,
-    "weight_final": "166.600 g",
+    "designation_final": "BLOCK PSTN LUBE NOZZLE SUPT W/THRU HOLE",
+    "measure_final": "",
+    "weight_final": "166,600 G",
     "depuracion_ts": "2026-04-27T00:11:37Z",
     "exp_imagenes": "https://milu-naval.mystagingwebsite.com/wp-content/uploads/2026/02/16V4000M90-0184-02-125.webp",
     "pos_error": 0,
@@ -130505,7 +130514,8 @@
     "gesa_pdf": "No",
     "normalizado_pdf": "No",
     "qa_revision_estado": "ok",
-    "qa_revision_accion": "importar"
+    "qa_revision_accion": "importar",
+    "qa_revision_updated_at": "2026-05-03T21:57:26.912Z"
   },
   {
     "ID": "1601260",
@@ -131536,7 +131546,7 @@
     "sust_status": "SI",
     "sust_hierarchie": "Superseded",
     "sust_new_part_number": "X52418400001",
-    "sust_superseded_list": null,
+    "sust_superseded_list": "",
     "page4": "0185",
     "pages": "16V4000M90-0185",
     "book_set": "16V4000M90",
@@ -131548,9 +131558,9 @@
     "qty_final": "7",
     "qty_units_final": "PC",
     "norma_final": null,
-    "designation_final": "BLOCK PSTN LUBE NOZZ LE SUPT W/THRU HOLE",
-    "measure_final": null,
-    "weight_final": "166.600 g",
+    "designation_final": "BLOCK PSTN LUBE NOZZLE SUPT W/THRU HOLE",
+    "measure_final": "",
+    "weight_final": "166,600 G",
     "depuracion_ts": "2026-04-27T00:11:37Z",
     "exp_imagenes": "https://milu-naval.mystagingwebsite.com/wp-content/uploads/2026/02/16V4000M90-0184-02-180.webp",
     "pos_error": 0,
@@ -131572,7 +131582,8 @@
     "gesa_pdf": "No",
     "normalizado_pdf": "No",
     "qa_revision_estado": "ok",
-    "qa_revision_accion": "importar"
+    "qa_revision_accion": "importar",
+    "qa_revision_updated_at": "2026-05-03T21:57:26.912Z"
   },
   {
     "ID": "1601270",

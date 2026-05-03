@@ -218,6 +218,12 @@
     border-color: #991b1b;
 }
 
+.pre-btn--sync {
+    background: linear-gradient(135deg, #0f5f8f, #38bdf8);
+    color: #fff;
+    border-color: #0f5f8f;
+}
+
 /* ── QA summary pills ───────────────────────────────────────────────────── */
 
 .pre-qa-summary {

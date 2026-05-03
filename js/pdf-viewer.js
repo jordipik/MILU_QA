@@ -6,9 +6,10 @@ import { state } from './state.js';
 import { evaluateRowQaChecks } from './qa-checks.js';
 
 const PDF_FIT_WIDTH_MARGIN = 8;
+const PDF_FIT_HEIGHT_MARGIN = 8;
 const PDF_SELECTION_MAX_HIGHLIGHTS = 40;
 const PDF_ZOOM_PERCENTAGES = new Set([75, 100, 125, 150, 200]);
-const PDF_ZOOM_STEPS = ['fit', 75, 100, 125, 150, 200];
+const PDF_ZOOM_STEPS = ['fit', 'height', 75, 100, 125, 150, 200];
 let pdfRelayoutRafId = 0;
 
 if (window.pdfjsLib) {
@@ -22,19 +23,13 @@ function normalizePdfToken(value) {
 function normalizePdfZoom(value) {
     const raw = String(value ?? '').trim().toLowerCase();
     if (raw === 'fit') return 'fit';
+    if (raw === 'height') return 'height';
 
     const parsed = Number(raw);
     if (!Number.isFinite(parsed)) return 'fit';
 
     const normalized = Math.round(parsed);
     return PDF_ZOOM_PERCENTAGES.has(normalized) ? normalized : 100;
-}
-
-function getCurrentPdfZoomFactor() {
-    const currentZoom = normalizePdfZoom(state.currentPdfZoom);
-    state.currentPdfZoom = currentZoom;
-    if (currentZoom === 'fit') return 1;
-    return Math.max(0.2, currentZoom / 100);
 }
 
 function applyPdfZoom(nextZoom, zoomSelect) {
@@ -45,7 +40,11 @@ function applyPdfZoom(nextZoom, zoomSelect) {
     if (state.rightPanelTab !== 'pdf') return;
     if (!state.currentPdfSource || state.currentPdfPageNumber <= 0) return;
 
-    renderPdfPage(state.currentPdfSource, state.currentPdfPageNumber)
+    const isFitMode = normalizedZoom === 'fit' || normalizedZoom === 'height';
+    renderPdfPage(state.currentPdfSource, state.currentPdfPageNumber, {
+        preserveViewport: !isFitMode,
+        resetScroll: isFitMode
+    })
         .catch(error => console.error('Error aplicando zoom del PDF:', error));
 }
 
@@ -66,6 +65,19 @@ export function initPdfZoomControls() {
 
     const currentZoom = normalizePdfZoom(state.currentPdfZoom);
     state.currentPdfZoom = currentZoom;
+
+    if (!zoomSelect.querySelector('option[value="height"]')) {
+        const fitOption = zoomSelect.querySelector('option[value="fit"]');
+        const option = document.createElement('option');
+        option.value = 'height';
+        option.textContent = 'Altura';
+        if (fitOption && fitOption.nextSibling) {
+            zoomSelect.insertBefore(option, fitOption.nextSibling);
+        } else {
+            zoomSelect.appendChild(option);
+        }
+    }
+
     zoomSelect.value = String(currentZoom);
 
     if (zoomSelect.dataset.boundZoom === 'true') return;
@@ -743,13 +755,50 @@ export function setPdfStatus(message, isVisible = true) {
     pdfStatus.classList.toggle('hidden', !isVisible);
 }
 
-export async function renderPdfPage(pdfUrl, pageNum) {
+function clamp(value, min, max) {
+    return Math.min(Math.max(value, min), max);
+}
+
+function captureViewerViewport(viewer) {
+    if (!(viewer instanceof HTMLElement)) return null;
+    return {
+        scrollLeft: viewer.scrollLeft,
+        scrollTop: viewer.scrollTop,
+        clientWidth: viewer.clientWidth,
+        clientHeight: viewer.clientHeight,
+        scrollWidth: viewer.scrollWidth,
+        scrollHeight: viewer.scrollHeight
+    };
+}
+
+function restoreViewerViewport(viewer, snapshot) {
+    if (!(viewer instanceof HTMLElement) || !snapshot) return;
+
+    const prevCenterX = (snapshot.scrollLeft + snapshot.clientWidth / 2) / Math.max(snapshot.scrollWidth, 1);
+    const prevCenterY = (snapshot.scrollTop + snapshot.clientHeight / 2) / Math.max(snapshot.scrollHeight, 1);
+
+    const targetLeft = prevCenterX * Math.max(viewer.scrollWidth, 1) - viewer.clientWidth / 2;
+    const targetTop = prevCenterY * Math.max(viewer.scrollHeight, 1) - viewer.clientHeight / 2;
+
+    const maxLeft = Math.max(0, viewer.scrollWidth - viewer.clientWidth);
+    const maxTop = Math.max(0, viewer.scrollHeight - viewer.clientHeight);
+
+    viewer.scrollLeft = clamp(targetLeft, 0, maxLeft);
+    viewer.scrollTop = clamp(targetTop, 0, maxTop);
+}
+
+export async function renderPdfPage(pdfUrl, pageNum, options = {}) {
     if (!window.pdfjsLib) throw new Error('PDF.js no está disponible');
+
+    const preserveViewport = options?.preserveViewport === true;
+    const resetScroll = options?.resetScroll === true;
 
     const canvas = document.getElementById('pdfCanvas');
     const viewer = document.getElementById('pdfViewer');
     const viewerInner = document.querySelector('.pdfviewer-inner');
     if (!(canvas instanceof HTMLCanvasElement) || !viewer) return;
+
+    const viewportSnapshot = preserveViewport ? captureViewerViewport(viewer) : null;
 
     const requestToken = ++state.currentPdfRequestToken;
 
@@ -779,9 +828,24 @@ export async function renderPdfPage(pdfUrl, pageNum) {
 
     const baseViewport = page.getViewport({ scale: 1 });
     const availableWidth = Math.max(120, (viewerInner?.clientWidth || viewer.clientWidth || baseViewport.width) - PDF_FIT_WIDTH_MARGIN);
-    const fitScale = Math.max(0.1, availableWidth / baseViewport.width);
-    const zoomFactor = getCurrentPdfZoomFactor();
-    const viewport = page.getViewport({ scale: fitScale * zoomFactor });
+    const innerStyles = viewerInner instanceof HTMLElement ? getComputedStyle(viewerInner) : null;
+    const innerPaddingTop = innerStyles ? (parseFloat(innerStyles.paddingTop) || 0) : 0;
+    const innerPaddingBottom = innerStyles ? (parseFloat(innerStyles.paddingBottom) || 0) : 0;
+    const viewerEffectiveHeight = (viewer?.clientHeight || baseViewport.height) - innerPaddingTop - innerPaddingBottom;
+    const availableHeight = Math.max(120, viewerEffectiveHeight - PDF_FIT_HEIGHT_MARGIN);
+    const fitWidthScale = Math.max(0.1, availableWidth / baseViewport.width);
+    const fitHeightScale = Math.max(0.1, availableHeight / baseViewport.height);
+
+    const currentZoom = normalizePdfZoom(state.currentPdfZoom);
+    state.currentPdfZoom = currentZoom;
+
+    const effectiveScale = currentZoom === 'fit'
+        ? fitWidthScale
+        : currentZoom === 'height'
+            ? fitHeightScale
+            : fitWidthScale * Math.max(0.2, currentZoom / 100);
+
+    const viewport = page.getViewport({ scale: effectiveScale });
     const outputScale = window.devicePixelRatio || 1;
     const context = canvas.getContext('2d');
     if (!context) throw new Error('No se pudo inicializar el canvas del PDF');
@@ -810,12 +874,19 @@ export async function renderPdfPage(pdfUrl, pageNum) {
         state.currentPdfSelection.renderBook = renderBook;
         state.currentPdfSelection.renderPageNum = pageNum;
     }
+    if (resetScroll) {
+        viewer.scrollTop = 0;
+        viewer.scrollLeft = 0;
+    }
+
     await renderPdfSelectionOverlay(page, viewport);
     if (requestToken !== state.currentPdfRequestToken) return;
 
+    if (preserveViewport) {
+        restoreViewerViewport(viewer, viewportSnapshot);
+    }
+
     state.currentPdfRenderTask = null;
-    viewer.scrollTop = 0;
-    viewer.scrollLeft = 0;
     setPdfStatus('', false);
 }
 
@@ -843,7 +914,7 @@ export async function loadPdfWithPage(book, page) {
     state.currentPdfPageNumber = pageNum;
 
     try {
-        await renderPdfPage(pdfUrl, pageNum);
+        await renderPdfPage(pdfUrl, pageNum, { resetScroll: true });
     } catch (error) {
         console.error('Error cargando PDF:', error);
         setPdfStatus(`Error cargando PDF: ${error.message}`, true);
@@ -898,7 +969,7 @@ export function requestPdfRelayout() {
         if (state.rightPanelTab !== 'pdf') return;
         if (!state.currentPdfSource || state.currentPdfPageNumber <= 0) return;
 
-        renderPdfPage(state.currentPdfSource, state.currentPdfPageNumber)
+        renderPdfPage(state.currentPdfSource, state.currentPdfPageNumber, { preserveViewport: true })
             .catch(error => console.error('Error recalculando layout del PDF:', error));
     });
 }
