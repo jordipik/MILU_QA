@@ -1579,10 +1579,17 @@ app.delete('/audit-log', async (_req, res) => {
 });
 
 app.use((req, res, next) => {
-    if (/\.php$/i.test(req.path) && req.path.toLowerCase() !== '/qa_revision_sync.php') {
+    const phpPath = String(req.path || '').toLowerCase();
+    const allowedPhpRoutes = new Set(['/qa_revision_sync.php', '/save-json.php']);
+    if (/\.php$/i.test(req.path) && !allowedPhpRoutes.has(phpPath)) {
         return res.status(404).json({ ok: false, error: 'Ruta no disponible en backend local.' });
     }
     return next();
+});
+
+// Compatibilidad local: esta ruta debe resolverse por Express antes del static middleware.
+app.get('/save-json.php', (_req, res) => {
+    res.json({ ok: true, service: 'milu-save-backend', route: '/save-json.php' });
 });
 
 app.use(express.static(__dirname));
@@ -1651,8 +1658,7 @@ app.get('/version', (req, res) => {
     }
 });
 
-// Ruta para guardar cambios en un archivo JSON
-app.post('/save-json', async (req, res) => {
+async function handleSaveJson(req, res) {
     const { file, id, col, value } = req.body;
     if (!file || !id || !col) {
         return res.status(400).json({ error: 'Faltan parámetros requeridos' });
@@ -1681,9 +1687,14 @@ app.post('/save-json', async (req, res) => {
         invalidatePnReviewQaCache();
         return res.json({ ok: true });
     } catch (_error) {
+        console.error('[save-json] Error guardando', _error);
         return res.status(500).json({ error: 'No se pudo guardar el archivo' });
     }
-});
+}
+
+// Ruta para guardar cambios en un archivo JSON.
+app.post('/save-json', handleSaveJson);
+app.post('/save-json.php', handleSaveJson);
 
 app.post('/apply-qa-checks-filter', async (req, res) => {
     return legacyQaPipelineDisabled(res);
