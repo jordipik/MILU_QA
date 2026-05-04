@@ -61,7 +61,7 @@ function getPersistedErrorCount(row) {
     return getPersistedHasError(row) ? 1 : 0;
 }
 
-function getPersistedHasError(row) {
+export function getPersistedHasError(row) {
     const boolFromFlag = parseBooleanLike(row?.has_error);
     if (boolFromFlag !== null) return boolFromFlag;
 

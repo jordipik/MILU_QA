@@ -11,6 +11,7 @@ import {
 import { publishRevisionSync } from './revision-sync.js';
 import { initPdfZoomControls, loadPdfClear, loadPdfWithPage, requestPdfRelayout, setPdfReadTokens, setPdfSelection } from './pdf-viewer.js';
 import { evaluateQaChecksForField, evaluateRowQaChecks, getAllQaCheckCodes, getQaCheckLabel } from './qa-checks.js';
+import * as PnReviewEmbedded from './pn-review-embedded.js';
 
 const $ = (id) => document.getElementById(id);
 
@@ -401,6 +402,12 @@ function getDisplayPn(row) {
     return '-';
 }
 
+function getDisplayPnForInput(row) {
+    const pnFinal = String(row?.pn_final ?? '').trim();
+    if (pnFinal) return pnFinal;
+    return String(row?.['PART NO.'] ?? '').trim();
+}
+
 function getDistinctRowKey(row) {
     const pnFinal = String(row?.pn_final ?? '').trim();
     if (pnFinal) return pnFinal.toLowerCase();
@@ -693,48 +700,54 @@ function initChecksModal() {
 }
 
 function initRecomputeModal() {
-    const openBtn = $('openRecomputeModalBtn');
+    const quickRecomputeBtn = $('openRecomputeModalBtn');
+    const recomputeAllBtn = $('recomputeAllBtn');
     const modal = $('recomputeModal');
     const closeBtn = $('recomputeModalClose');
     const backdrop = modal?.querySelector('.recompute-modal-backdrop');
     const recomputeRunBtn = $('recomputeRunBtn');
     const recomputePdfRunBtn = $('recomputePdfRunBtn');
 
-    if (!(openBtn instanceof HTMLElement) || !(modal instanceof HTMLElement)) return;
+    if (!(modal instanceof HTMLElement)) return;
+
+    const allowRecompute = isBackendEndpointAllowed('recompute-qa-errors');
+
+    if (quickRecomputeBtn instanceof HTMLButtonElement) {
+        quickRecomputeBtn.disabled = !allowRecompute;
+        quickRecomputeBtn.title = allowRecompute ? '' : 'Disponible solo en local (localhost:3000).';
+    }
+
+    if (recomputeAllBtn instanceof HTMLButtonElement) {
+        recomputeAllBtn.disabled = !allowRecompute;
+        recomputeAllBtn.title = allowRecompute ? '' : 'Disponible solo en local (localhost:3000).';
+    }
+
+    syncRecomputeEngineSelect();
+    const recomputeIdInput = $('recomputeIdInput');
+    if (recomputeIdInput instanceof HTMLInputElement) {
+        recomputeIdInput.value = String(currentRow?.ID ?? '').trim();
+    }
 
     const closeModal = () => {
         modal.hidden = true;
     };
 
-    openBtn.addEventListener('click', () => {
-        syncRecomputeEngineSelect();
-        const allowRecompute = isBackendEndpointAllowed('recompute-qa-errors');
+    if (recomputeRunBtn instanceof HTMLButtonElement) {
+        recomputeRunBtn.disabled = !allowRecompute;
+        recomputeRunBtn.title = allowRecompute ? '' : 'Disponible solo en local (localhost:3000).';
+    }
 
-        if (recomputeRunBtn instanceof HTMLButtonElement) {
-            recomputeRunBtn.disabled = !allowRecompute;
-            recomputeRunBtn.title = allowRecompute ? '' : 'Disponible solo en local (localhost:3000).';
-        }
+    if (recomputePdfRunBtn instanceof HTMLButtonElement) {
+        recomputePdfRunBtn.disabled = !allowRecompute;
+        recomputePdfRunBtn.title = allowRecompute ? '' : 'Disponible solo en local (localhost:3000).';
+    }
 
-        if (recomputePdfRunBtn instanceof HTMLButtonElement) {
-            recomputePdfRunBtn.disabled = !allowRecompute;
-            recomputePdfRunBtn.title = allowRecompute ? '' : 'Disponible solo en local (localhost:3000).';
-        }
-
-        setRecomputeStatus(
-            allowRecompute
-                ? 'Listo para ejecutar.'
-                : getLocalOnlyBackendMessage('recompute-qa-errors'),
-            allowRecompute ? '' : 'error'
-        );
-        clearRecomputePdfDetail();
-        modal.hidden = false;
-        const recomputeIdInput = $('recomputeIdInput');
-        if (recomputeIdInput instanceof HTMLInputElement) {
-            recomputeIdInput.value = String(currentRow?.ID ?? '').trim();
-            recomputeIdInput.focus();
-            recomputeIdInput.select();
-        }
-    });
+    setRecomputeStatus(
+        allowRecompute
+            ? 'Listo para ejecutar.'
+            : getLocalOnlyBackendMessage('recompute-qa-errors'),
+        allowRecompute ? '' : 'error'
+    );
 
     closeBtn?.addEventListener('click', closeModal);
     backdrop?.addEventListener('click', closeModal);
@@ -1181,7 +1194,7 @@ async function reloadEditedRecord(engineFile, id) {
     const reloaded = findRecordByPrimaryKey(id, selectedModel);
     if (reloaded) {
         currentRow = reloaded;
-        $('recordIdInput').value = getDisplayPn(reloaded);
+        $('recordIdInput').value = getDisplayPnForInput(reloaded);
         currentProcessIndex = 0;
         await revalidateCurrentRow();
     }
@@ -1332,7 +1345,6 @@ function syncRecomputeEngineSelect() {
 async function runBackendRecompute() {
     const recomputeEngineSelect = $('recomputeEngineSelect');
     const recomputeIdInput = $('recomputeIdInput');
-    const recomputeDryRunInput = $('recomputeDryRunInput');
     const recomputeUpdateRevisionInput = $('recomputeUpdateRevisionInput');
     const recomputeForceRevisionInput = $('recomputeForceRevisionInput');
     const recomputeRunBtn = $('recomputeRunBtn');
@@ -1341,7 +1353,6 @@ async function runBackendRecompute() {
 
     if (!(recomputeEngineSelect instanceof HTMLSelectElement)
         || !(recomputeIdInput instanceof HTMLInputElement)
-        || !(recomputeDryRunInput instanceof HTMLInputElement)
         || !(recomputeRunBtn instanceof HTMLButtonElement)
         || !(engineFilterSelect instanceof HTMLSelectElement)) {
         return;
@@ -1350,7 +1361,7 @@ async function runBackendRecompute() {
     const selectedModel = String(recomputeEngineSelect.value || '').trim();
     const file = resolveEngineFileFromFilter(selectedModel);
     const id = String(recomputeIdInput.value || '').trim();
-    const dryRun = recomputeDryRunInput.checked;
+    const dryRun = false;
     const updateRevision = recomputeUpdateRevisionInput instanceof HTMLInputElement ? recomputeUpdateRevisionInput.checked : false;
     const forceRevision = recomputeForceRevisionInput instanceof HTMLInputElement ? recomputeForceRevisionInput.checked : false;
 
@@ -1467,7 +1478,7 @@ async function runBackendRecompute() {
                 const reloaded = findRecordByPrimaryKey(keepRecord, selectedMainModel);
                 if (reloaded) {
                     currentRow = reloaded;
-                    $('recordIdInput').value = getDisplayPn(reloaded);
+                    $('recordIdInput').value = getDisplayPnForInput(reloaded);
                     currentProcessIndex = 0;
                     await revalidateCurrentRow();
                 }
@@ -1480,14 +1491,12 @@ async function runBackendRecompute() {
 async function runBackendRecomputePdfAuto() {
     const recomputeEngineSelect = $('recomputeEngineSelect');
     const recomputeIdInput = $('recomputeIdInput');
-    const recomputeDryRunInput = $('recomputeDryRunInput');
     const recomputeRunBtn = $('recomputeRunBtn');
     const recomputePdfRunBtn = $('recomputePdfRunBtn');
     const engineFilterSelect = $('engineFilterSelect');
 
     if (!(recomputeEngineSelect instanceof HTMLSelectElement)
         || !(recomputeIdInput instanceof HTMLInputElement)
-        || !(recomputeDryRunInput instanceof HTMLInputElement)
         || !(recomputeRunBtn instanceof HTMLButtonElement)
         || !(recomputePdfRunBtn instanceof HTMLButtonElement)
         || !(engineFilterSelect instanceof HTMLSelectElement)) {
@@ -1497,7 +1506,7 @@ async function runBackendRecomputePdfAuto() {
     const selectedModel = String(recomputeEngineSelect.value || '').trim();
     const file = resolveEngineFileFromFilter(selectedModel);
     const id = String(recomputeIdInput.value || '').trim();
-    const dryRun = recomputeDryRunInput.checked;
+    const dryRun = false;
     const pdfAutoBefore = Object.fromEntries(
         Object.keys(FIELD_TO_PDF_AUTO_KEY).map((fieldName) => [fieldName, getStoredPdfAutoValue(currentRow, fieldName)])
     );
@@ -1612,13 +1621,99 @@ async function runBackendRecomputePdfAuto() {
                 const reloaded = findRecordByPrimaryKey(keepRecord, selectedMainModel);
                 if (reloaded) {
                     currentRow = reloaded;
-                    $('recordIdInput').value = getDisplayPn(reloaded);
+                    $('recordIdInput').value = getDisplayPnForInput(reloaded);
                     currentProcessIndex = 0;
                     await revalidateCurrentRow();
                 }
             }
             updateRecordSearchSuggestions();
         }
+    }
+}
+
+function setQuickRecomputeButtonsDisabled(disabled) {
+    const quickRecomputeBtn = $('openRecomputeModalBtn');
+    const recomputeAllBtn = $('recomputeAllBtn');
+    if (quickRecomputeBtn instanceof HTMLButtonElement) quickRecomputeBtn.disabled = disabled;
+    if (recomputeAllBtn instanceof HTMLButtonElement) recomputeAllBtn.disabled = disabled;
+}
+
+function setRecomputeModalInputsForAction(selectedModel, id = '') {
+    const recomputeEngineSelect = $('recomputeEngineSelect');
+    const recomputeIdInput = $('recomputeIdInput');
+    const recomputeUpdateRevisionInput = $('recomputeUpdateRevisionInput');
+    const recomputeForceRevisionInput = $('recomputeForceRevisionInput');
+
+    if (recomputeEngineSelect instanceof HTMLSelectElement && selectedModel) {
+        recomputeEngineSelect.value = selectedModel;
+    }
+    if (recomputeIdInput instanceof HTMLInputElement) {
+        recomputeIdInput.value = String(id || '').trim();
+    }
+    if (recomputeUpdateRevisionInput instanceof HTMLInputElement) recomputeUpdateRevisionInput.checked = false;
+    if (recomputeForceRevisionInput instanceof HTMLInputElement) recomputeForceRevisionInput.checked = false;
+}
+
+async function runQuickRecomputeForCurrentRecord() {
+    if (!currentRow) {
+        alert('Primero debes cargar un registro.');
+        return;
+    }
+
+    const engineFilterSelect = $('engineFilterSelect');
+    if (!(engineFilterSelect instanceof HTMLSelectElement)) return;
+
+    const selectedModel = String(engineFilterSelect.value || '').trim();
+    const currentId = String(currentRow?.ID || '').trim();
+    if (!selectedModel || !currentId) {
+        alert('No se pudo resolver libro o ID del registro actual.');
+        return;
+    }
+
+    if (!isBackendEndpointAllowed('recompute-qa-errors') || !isBackendEndpointAllowed('recompute-pdf-auto')) {
+        setRecomputeStatus(getLocalOnlyBackendMessage('recompute-qa-errors'), 'error');
+        return;
+    }
+
+    setRecomputeModalInputsForAction(selectedModel, currentId);
+    setQuickRecomputeButtonsDisabled(true);
+    try {
+        setRecomputeStatus(`Recalculando registro ID ${currentId} (errores + PDF_AUTO)...`, '');
+        await runBackendRecompute();
+        await runBackendRecomputePdfAuto();
+        setRecomputeStatus(`Registro ID ${currentId} recalculado correctamente.`, 'ok');
+    } finally {
+        setQuickRecomputeButtonsDisabled(false);
+    }
+}
+
+async function runQuickRecomputeForFullBook() {
+    const engineFilterSelect = $('engineFilterSelect');
+    if (!(engineFilterSelect instanceof HTMLSelectElement)) return;
+
+    const selectedModel = String(engineFilterSelect.value || '').trim();
+    if (!selectedModel) {
+        alert('Selecciona un libro para recalcular.');
+        return;
+    }
+
+    const confirmed = window.confirm(`Se recalcularan ERRORES y PDF_AUTO para TODO el libro ${selectedModel}. ¿Continuar?`);
+    if (!confirmed) return;
+
+    if (!isBackendEndpointAllowed('recompute-qa-errors') || !isBackendEndpointAllowed('recompute-pdf-auto')) {
+        setRecomputeStatus(getLocalOnlyBackendMessage('recompute-qa-errors'), 'error');
+        return;
+    }
+
+    setRecomputeModalInputsForAction(selectedModel, '');
+    setQuickRecomputeButtonsDisabled(true);
+    try {
+        setRecomputeStatus(`Recalculando libro ${selectedModel} completo (errores + PDF_AUTO)...`, '');
+        await runBackendRecompute();
+        await runBackendRecomputePdfAuto();
+        setRecomputeStatus(`Libro ${selectedModel} recalculado correctamente.`, 'ok');
+    } finally {
+        setQuickRecomputeButtonsDisabled(false);
     }
 }
 
@@ -1644,7 +1739,7 @@ async function loadEngineForFilter(engineFilter) {
     const firstRow = state.allData[0] || null;
     if (firstRow) {
         currentRow = firstRow;
-        $('recordIdInput').value = getDisplayPn(firstRow);
+        $('recordIdInput').value = getDisplayPnForInput(firstRow);
         currentProcessIndex = 0;
         renderRecord(firstRow);
         await revalidateCurrentRow();
@@ -1788,6 +1883,15 @@ function renderReviewStats(rows = getQueueRows(), row = currentRow) {
     if (deleteOkUniqueEl instanceof HTMLElement) deleteOkUniqueEl.textContent = `· ${uniqueStats.deleteOk.size} únicos`;
     if (pendingEl instanceof HTMLElement) pendingEl.textContent = String(stats.pending);
     if (pendingUniqueEl instanceof HTMLElement) pendingUniqueEl.textContent = `· ${uniqueStats.pending.size} únicos`;
+
+    // Update nav button labels with counts
+    const queue = rows;
+    const errorCount = queue.filter(r => rowHasErrors(r)).length;
+    const pendingCount = queue.filter(r => rowIsPending(r)).length;
+    const errorNavSpan = document.querySelector('.a2-search-nav.is-error .a2-search-nav-center');
+    const pendingNavSpan = document.querySelector('.a2-search-nav.is-pending .a2-search-nav-center');
+    if (errorNavSpan instanceof HTMLElement) errorNavSpan.textContent = `Error (${errorCount})`;
+    if (pendingNavSpan instanceof HTMLElement) pendingNavSpan.textContent = `Pendiente (${pendingCount})`;
 }
 
 function renderReviewStateButtons(row) {
@@ -2184,6 +2288,11 @@ function renderRecord(row) {
     renderVerdict(processState);
     renderReviewStateButtons(row);
     syncPdfWithCurrentRow(row);
+
+    // Notify embedded PN Review if that tab is active
+    if (state.rightPanelTab === 'pn-review') {
+        PnReviewEmbedded.onRecordChange(row).catch(() => { });
+    }
 }
 
 function syncCurrentRowReference() {
@@ -2373,13 +2482,24 @@ async function loadRelativeRecord(direction) {
     }
 
     currentRow = queue[targetIndex];
-    $('recordIdInput').value = getDisplayPn(currentRow);
+    $('recordIdInput').value = getDisplayPnForInput(currentRow);
     currentProcessIndex = 0;
     await revalidateCurrentRow();
 }
 
 function rowHasErrors(row) {
     return getRowErrorCount(row) > 0;
+}
+
+function rowIsPending(row) {
+    const estado = normalizeEstadoToNew(row?.qa_revision_estado);
+    if (estado === 'pendiente') return true;
+
+    const accion = normalizeAccionToNew(row?.qa_revision_accion);
+    if (accion === 'revisar') return true;
+
+    const rawAccion = String(row?.qa_revision_accion || '').trim().toLowerCase();
+    return rawAccion === 'revision';
 }
 
 async function loadRelativeError(direction) {
@@ -2401,7 +2521,31 @@ async function loadRelativeError(direction) {
     }
 
     currentRow = queue[idx];
-    $('recordIdInput').value = getDisplayPn(currentRow);
+    $('recordIdInput').value = getDisplayPnForInput(currentRow);
+    currentProcessIndex = 0;
+    await revalidateCurrentRow();
+}
+
+async function loadRelativePending(direction) {
+    const queue = getQueueRows();
+    if (!queue.length) return;
+
+    const startIndex = currentRow
+        ? queue.findIndex(row => getRevisionKey(row) === getRevisionKey(currentRow))
+        : -1;
+
+    let idx = startIndex;
+    while (true) {
+        idx += direction;
+        if (idx < 0 || idx >= queue.length) {
+            alert(direction > 0 ? 'No hay mas registros pendientes.' : 'No hay pendientes anteriores.');
+            return;
+        }
+        if (rowIsPending(queue[idx])) break;
+    }
+
+    currentRow = queue[idx];
+    $('recordIdInput').value = getDisplayPnForInput(currentRow);
     currentProcessIndex = 0;
     await revalidateCurrentRow();
 }
@@ -2507,6 +2651,97 @@ async function runAllProcesses() {
 async function initialize() {
     try {
         state.rightPanelTab = 'pdf';
+
+        // ── Right-panel tabs (PDF / PN Review) ────────────────────────────
+        const tabPdf = document.getElementById('tabPdf');
+        const tabPnReview = document.getElementById('tabPnReview');
+        const panelPdf = document.getElementById('tabpanelPdf');
+        const panelPnRev = document.getElementById('tabpanelPnReview');
+        const pnRevRoot = document.getElementById('pnReviewEmbeddedRoot');
+
+        function switchRightTab(tab) {
+            state.rightPanelTab = tab;
+            const isPdf = tab === 'pdf';
+            if (tabPdf) { tabPdf.setAttribute('aria-selected', String(isPdf)); }
+            if (tabPnReview) { tabPnReview.setAttribute('aria-selected', String(!isPdf)); }
+            if (panelPdf) { panelPdf.style.display = isPdf ? 'flex' : 'none'; }
+            if (panelPnRev) { panelPnRev.style.display = isPdf ? 'none' : 'flex'; }
+            if (!isPdf && currentRow && pnRevRoot) {
+                PnReviewEmbedded.onRecordChange(currentRow).catch(() => { });
+            }
+        }
+
+        if (tabPdf) tabPdf.addEventListener('click', () => switchRightTab('pdf'));
+        if (tabPnReview) tabPnReview.addEventListener('click', () => switchRightTab('pn-review'));
+
+        // Init embedded PN Review module
+        if (pnRevRoot) {
+            PnReviewEmbedded.init(pnRevRoot, {
+                onDecisionApplied: (_key, response) => {
+                    const nextEstado = String(response?.target_estado || '').trim();
+                    const nextAccion = String(response?.target_accion || '').trim();
+                    const updatedId = String(response?.target?.id || response?.id || '').trim();
+
+                    if (nextEstado && nextAccion) {
+                        const updateRow = (row) => {
+                            if (!row) return;
+                            row.qa_revision_estado = normalizeEstadoToNew(nextEstado);
+                            row.qa_revision_accion = normalizeAccionToNew(nextAccion);
+                        };
+
+                        if (updatedId) {
+                            (state.allData || []).forEach((row) => {
+                                if (String(row?.ID || '').trim() === updatedId) updateRow(row);
+                            });
+                        } else if (response?.sku) {
+                            const skuKey = String(response.sku || '').trim().toLowerCase();
+                            (state.allData || []).forEach((row) => {
+                                const rowSku = String(row?.pn_final || row?.['PART NO.'] || row?.pn || '').trim().toLowerCase();
+                                if (rowSku && rowSku === skuKey) updateRow(row);
+                            });
+                        }
+
+                        if (currentRow) {
+                            const currentId = String(currentRow?.ID || '').trim();
+                            if (!updatedId || (updatedId && currentId === updatedId)) {
+                                updateRow(currentRow);
+                            }
+                        }
+                    }
+
+                    revalidateCurrentRow().catch(() => { });
+                    renderReviewStats();
+                },
+                onValuesApplied: (_key, response, context) => {
+                    const appliedFields = response?.applied_fields || context?.fields || {};
+                    const skuKey = String(response?.sku || _key || '').trim().toLowerCase();
+                    if (!skuKey) return;
+
+                    const updateRowValues = (row) => {
+                        if (!row) return;
+                        row.pn_final = txt(appliedFields.pn_final, row?.pn_final);
+                        row.designation_final = txt(appliedFields.designation_final, row?.designation_final);
+                        row.measure_final = txt(appliedFields.measure_final, row?.measure_final ?? row?.measurement_final);
+                        row.weight_final = txt(appliedFields.weight_final, row?.weight_final);
+                        row.sust_status = txt(appliedFields.sust_status, row?.sust_status);
+                        row.sust_hierarchie = txt(appliedFields.sust_hierarchie, row?.sust_hierarchie);
+                        row.sust_new_part_number = txt(appliedFields.sust_new_part_number, row?.sust_new_part_number);
+                        row.sust_superseded_list = txt(appliedFields.sust_superseded_list, row?.sust_superseded_list);
+                    };
+
+                    (state.allData || []).forEach((row) => {
+                        const rowSku = String(row?.pn_final || row?.['PART NO.'] || row?.pn || '').trim().toLowerCase();
+                        if (rowSku && rowSku === skuKey) updateRowValues(row);
+                    });
+
+                    updateRowValues(currentRow);
+                    fillEditFields(currentRow);
+                    renderRecord(currentRow);
+                }
+            });
+        }
+        // ──────────────────────────────────────────────────────────────────
+
         initChecksModal();
         initRecomputeModal();
         initEditRecordModal();
@@ -2563,6 +2798,26 @@ bindClick('prevErrorBtn', () => {
 
 bindClick('nextErrorBtn', () => {
     loadRelativeError(1).catch((error) => alert(`No se pudo cargar siguiente error: ${error.message}`));
+});
+
+bindClick('prevPendingBtn', () => {
+    loadRelativePending(-1).catch((error) => alert(`No se pudo cargar pendiente anterior: ${error.message}`));
+});
+
+bindClick('nextPendingBtn', () => {
+    loadRelativePending(1).catch((error) => alert(`No se pudo cargar siguiente pendiente: ${error.message}`));
+});
+
+bindClick('openRecomputeModalBtn', () => {
+    runQuickRecomputeForCurrentRecord().catch((error) => {
+        setRecomputeStatus(`Error: ${String(error?.message || error)}`, 'error');
+    });
+});
+
+bindClick('recomputeAllBtn', () => {
+    runQuickRecomputeForFullBook().catch((error) => {
+        setRecomputeStatus(`Error: ${String(error?.message || error)}`, 'error');
+    });
 });
 
 bindClick('recomputeRunBtn', () => {

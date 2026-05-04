@@ -10,6 +10,10 @@ const isDryRun = args.has('--dry-run');
 const isIncremental = args.has('--incremental');
 const shouldPrune = !args.has('--no-prune');
 const includeEngineJson = args.has('--with-json') && !args.has('--no-json');
+const incrementalExcludedPrefixes = [
+    'esquemas/',
+    'esquemas_pos_circulos/'
+];
 
 const requiredStaticEntries = [
     'index.html',
@@ -26,9 +30,7 @@ const requiredStaticEntries = [
     'save-json.php',
     'js',
     'styles',
-    'pdf',
-    'esquemas',
-    'esquemas_pos_circulos'
+    'pdf'
 ];
 
 function ensureExists(relPath) {
@@ -55,6 +57,12 @@ function copyEntry(relPath) {
 
 function normalizeRelativePath(relPath) {
     return relPath.split(path.sep).join('/');
+}
+
+function isIncrementalExcludedPath(relPath) {
+    if (!isIncremental) return false;
+    const normalized = normalizeRelativePath(String(relPath || ''));
+    return incrementalExcludedPrefixes.some((prefix) => normalized === prefix.slice(0, -1) || normalized.startsWith(prefix));
 }
 
 function walkFilesRecursively(dirPath, currentRel = '') {
@@ -96,7 +104,7 @@ function buildManagedFileList(relEntries) {
         }
     }
 
-    return managedFiles;
+    return managedFiles.filter((relFile) => !isIncrementalExcludedPath(relFile));
 }
 
 function filesAreEqual(src, dest) {
@@ -119,8 +127,15 @@ function ensureOutputFolder() {
 function copyManagedFiles(managedFiles) {
     let copied = 0;
     let skipped = 0;
+    let skippedExcluded = 0;
 
     for (const relFile of managedFiles) {
+        if (isIncrementalExcludedPath(relFile)) {
+            skippedExcluded += 1;
+            if (isDryRun) console.log(`[dry-run] skip excluded ${relFile}`);
+            continue;
+        }
+
         const src = path.join(rootDir, relFile);
         const dest = path.join(outDir, relFile);
 
@@ -141,7 +156,7 @@ function copyManagedFiles(managedFiles) {
         console.log(`copied ${relFile}`);
     }
 
-    return { copied, skipped };
+    return { copied, skipped, skippedExcluded };
 }
 
 function pruneOutputFolder(managedFiles) {
@@ -155,6 +170,7 @@ function pruneOutputFolder(managedFiles) {
 
     for (const relFile of currentFiles) {
         const normalized = normalizeRelativePath(relFile);
+        if (isIncrementalExcludedPath(normalized)) continue;
         if (managedSet.has(normalized)) continue;
 
         pruned += 1;
@@ -216,7 +232,7 @@ function main() {
         resetOutputFolder();
     }
 
-    const { copied, skipped } = copyManagedFiles(managedFiles);
+    const { copied, skipped, skippedExcluded } = copyManagedFiles(managedFiles);
     const { pruned } = pruneOutputFolder(managedFiles);
 
     console.log('Done.');
@@ -224,6 +240,9 @@ function main() {
     console.log(`Managed files: ${managedFiles.length}`);
     console.log(`Copied files: ${copied}`);
     console.log(`Skipped unchanged: ${skipped}`);
+    if (isIncremental) {
+        console.log(`Skipped excluded (incremental): ${skippedExcluded}`);
+    }
     console.log(`Pruned files: ${pruned}`);
     console.log(`Output folder: ${path.relative(rootDir, outDir)}`);
 }

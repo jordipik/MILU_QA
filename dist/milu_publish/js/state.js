@@ -28,6 +28,10 @@ export const state = {
     publishedMap: new Map(),
     productExportPnSet: new Set(),
     mainDataSourceLabel: 'engine_*.json',
+    // AR-1: catalogo de motores y carga incremental.
+    engineCatalog: [],
+    loadedEngineFiles: new Set(),
+    incrementalLoadingEnabled: false,
     currentPdfDocument: null,
     currentPdfSource: '',
     currentPdfPageNumber: 0,
@@ -42,5 +46,10 @@ export const state = {
     activeQaErrorChecks: new Set(),
     qaChecksScopedRows: null,
     backendWritable: null,
-    backendStatusMessage: 'Backend: comprobando...'
+    backendStatusMessage: 'Backend: comprobando...',
+    exportPreviewRows: [],
+    exportTraceCache: {},
+    selectedExportSku: '',
+    exportPreviewSortKey: '',
+    exportPreviewSortAsc: true
 };

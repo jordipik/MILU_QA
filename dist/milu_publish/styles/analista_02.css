@@ -260,9 +260,28 @@ body.a2-resizing * {
 }
 
 .a2-toolbar {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    padding: 8px;
+    border: 1px solid #d9e1ea;
+    border-radius: 14px;
+    background: linear-gradient(180deg, #ffffff, #f8fafc);
+}
+
+.a2-toolbar-top {
     display: grid;
-    grid-template-columns: minmax(180px, 220px) minmax(240px, 1fr) minmax(84px, 104px) 42px 42px minmax(164px, 196px) minmax(96px, 120px);
-    gap: 8px;
+    grid-template-columns: minmax(220px, 300px) minmax(300px, 1fr) minmax(130px, 150px);
+    gap: 10px;
+    align-items: center;
+    padding-bottom: 10px;
+    border-bottom: 1px solid #dfe6ef;
+}
+
+.a2-toolbar-bottom {
+    display: grid;
+    grid-template-columns: minmax(230px, 1fr) minmax(230px, 1fr) minmax(230px, 1fr) minmax(170px, 210px) minmax(170px, 210px);
+    gap: 10px;
     align-items: center;
 }
 
@@ -303,41 +322,126 @@ body.a2-resizing * {
 }
 
 .a2-toolbar #loadRecordBtn,
-.a2-toolbar #openRecomputeModalBtn {
-    font-size: 11px;
+.a2-toolbar #openRecomputeModalBtn,
+.a2-toolbar #recomputeAllBtn {
+    font-size: 12px;
     letter-spacing: 0.01em;
 }
 
-.a2-error-nav {
-    display: inline-flex;
-    align-items: center;
-    gap: 6px;
-    height: 32px;
-    padding: 0 8px;
-    border: 1px solid #efb2ab;
-    border-radius: 10px;
-    background: #fff1f0;
+.a2-search-submit {
+    background: linear-gradient(135deg, #1f6fe3, #195ec5) !important;
+    color: #ffffff !important;
+    border-color: #1b63cf !important;
+    font-weight: 800;
 }
 
-.a2-error-nav-label {
-    font-size: 11px;
+.a2-search-submit:hover {
+    filter: brightness(1.05);
+}
+
+.a2-search-nav {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    height: 42px;
+    padding: 0 10px;
+    border-radius: 14px;
+}
+
+.a2-search-nav.is-record {
+    border: 1px solid #bfd3f6;
+    background: #edf4ff;
+}
+
+.a2-search-nav.is-error {
+    border: 1px solid #f1c2bc;
+    background: #fff2f1;
+}
+
+.a2-search-nav.is-pending {
+    border: 1px solid #e5d4ad;
+    background: #fff8e8;
+}
+
+.a2-toolbar #openRecomputeModalBtn {
+    height: 42px;
+    border-radius: 14px;
+    border-color: #a9c6ef;
+    background: #eef5ff;
+    color: #1f65c9;
+}
+
+.a2-toolbar #recomputeAllBtn {
+    height: 42px;
+    border-radius: 14px;
+    background: #edf8f1;
+    color: #1f6a3a;
+    border-color: #9fd4b1;
+}
+
+.a2-toolbar #recomputeAllBtn:hover {
+    background: #d9f0df;
+    color: #18532e;
+    border-color: #7fbe95;
+}
+
+.a2-search-nav-center {
+    flex: 1;
+    min-width: 0;
+    height: 26px;
+    border: 1px solid transparent;
+    border-radius: 10px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    padding: 0 8px;
+    font-size: 13px;
     font-weight: 800;
-    color: #9f2f23;
+    letter-spacing: 0.01em;
     white-space: nowrap;
 }
 
+.a2-search-nav.is-record .a2-search-nav-center {
+    color: #1f4f82;
+}
+
+.a2-search-nav.is-error .a2-search-nav-center {
+    color: #9f2f23;
+}
+
+.a2-search-nav.is-pending .a2-search-nav-center {
+    color: #8a6518;
+}
+
 .a2-btn-nav {
-    width: 42px;
-    min-width: 42px;
+    width: 30px;
+    min-width: 30px;
+    height: 28px;
     padding: 0;
-    font-size: 12px;
+    font-size: 13px;
     font-weight: 800;
     line-height: 1;
+    border-radius: 10px;
+}
+
+.a2-btn-nav-record {
+    color: #1f4f82;
+    background: #e5eff9;
+    border-color: #a8c2de;
+}
+
+.a2-btn-nav-record:hover {
+    color: #1a436d;
+    background: #d8e7f6;
+    border-color: #8eaecd;
+}
+
+.a2-btn-nav-record:focus-visible {
+    outline: 2px solid #3b78b8;
+    outline-offset: 1px;
 }
 
 .a2-btn-nav-err {
-    width: 34px;
-    min-width: 34px;
     font-size: 12px;
     color: #9f2f23;
     background: #ffe9e6;
@@ -352,6 +456,26 @@ body.a2-resizing * {
 
 .a2-btn-nav-err:focus-visible {
     outline: 2px solid #d6453a;
+    outline-offset: 1px;
+}
+
+#prevPendingBtn,
+#nextPendingBtn {
+    color: #8a6518;
+    background: #fff3d2;
+    border-color: #d8c9a2;
+}
+
+#prevPendingBtn:hover,
+#nextPendingBtn:hover {
+    color: #6e4f0c;
+    background: #ffe9b7;
+    border-color: #c9b27f;
+}
+
+#prevPendingBtn:focus-visible,
+#nextPendingBtn:focus-visible {
+    outline: 2px solid #b3881f;
     outline-offset: 1px;
 }
 
@@ -1632,15 +1756,14 @@ body.a2-resizing * {
         justify-self: start;
     }
 
-    .a2-toolbar {
-        grid-template-columns: 1fr 1fr;
+    .a2-toolbar-top {
+        grid-template-columns: 1fr;
+        border-bottom: none;
+        padding-bottom: 0;
     }
 
-    .a2-toolbar #recordIdInput,
-    .a2-toolbar #loadRecordBtn,
-    .a2-toolbar .a2-error-nav,
-    .a2-toolbar #openRecomputeModalBtn {
-        grid-column: span 2;
+    .a2-toolbar-bottom {
+        grid-template-columns: 1fr;
     }
 
     .a2-review-actions {

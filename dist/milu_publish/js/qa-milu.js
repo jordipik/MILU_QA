@@ -5,7 +5,7 @@
 import { state } from './state.js';
 import { escapeHtml, getRowErrors, getRowErrorType, getRowValueForColumn, val } from './helpers.js';
 import { evaluateRowQaChecks, getQaActiveSignature } from './qa-checks.js';
-import { checkSaveBackendConnection, fetchJsonSafe, loadPartitionedEngineData, saveCellToServer } from './data-loader.js';
+import { checkSaveBackendConnection, fetchJsonSafe, loadPartitionedEngineData, saveCellToServer, fetchEngineCatalog, loadEnginesByFileNames } from './data-loader.js';
 import {
     applyRevisionDataToRows,
     assignRevisionKeys,
@@ -30,9 +30,11 @@ import { initPdfZoomControls, loadPdfClear, loadPdfWithPage, renderPdfPage, requ
 import { updateSchemasInline, renderSelectedRowPosPanel, renderSelectedRowPosTop } from './schemas.js';
 import { getEngineJsonForRow } from './helpers.js';
 import {
+    applyFilters,
     changePage,
     focusRevisionRowInMainTable,
     getCurrentFilteredSortedRows,
+    getPersistedHasError,
     getRowsForBulkScope,
     jumpToPage,
     moveSelectionBy,
@@ -389,6 +391,10 @@ function setRightPanelTab(tabName) {
 
     if (resolvedTab === 'pdf') {
         requestPdfRelayout();
+    } else if (resolvedTab === 'export') {
+        loadExportPreview().catch(() => {
+            // Keep current panel state if preview is unavailable.
+        });
     }
 }
 
@@ -484,6 +490,343 @@ function isMatchesModalOpen() {
 function isExportModalOpen() {
     const modal = $('qaExportModal');
     return !!modal && !modal.hasAttribute('hidden');
+}
+
+function getExportEndpointUrl(pathname) {
+    return new URL(pathname, new URL('.', window.location.href)).href;
+}
+
+async function fetchExportJson(pathname, options = {}) {
+    const response = await fetch(getExportEndpointUrl(pathname), {
+        cache: 'no-store',
+        ...options
+    });
+
+    let payload = null;
+    try {
+        payload = await response.json();
+    } catch (_) {
+        payload = null;
+    }
+
+    if (!response.ok) {
+        const errorText = String(payload?.error || `HTTP ${response.status}`).trim();
+        throw new Error(errorText || 'Error de backend');
+    }
+
+    return payload;
+}
+
+function setExportRunStatus(message, kind = '') {
+    const elem = $('qaExportRunStatus');
+    if (!(elem instanceof HTMLElement)) return;
+    elem.classList.remove('ok', 'warn', 'bad');
+    if (kind) elem.classList.add(kind);
+    elem.textContent = String(message || 'Sin ejecutar');
+}
+
+function renderExportSummary(summary = {}) {
+    const total = $('qaExportSummaryTotal');
+    const importCount = $('qaExportSummaryImport');
+    const pending = $('qaExportSummaryPending');
+    const discarded = $('qaExportSummaryDiscarded');
+    const occurrences = $('qaExportSummaryOccurrences');
+
+    if (total) total.textContent = String(Number(summary.preview_total || 0));
+    if (importCount) importCount.textContent = String(Number(summary.preview_import || 0));
+    if (pending) pending.textContent = String(Number(summary.preview_pending || 0));
+    if (discarded) discarded.textContent = String(Number(summary.preview_discarded || 0));
+
+    if (occurrences) {
+        const rows = Array.isArray(state.exportPreviewRows) ? state.exportPreviewRows : [];
+        const sum = rows.reduce((acc, row) => acc + (Number(row?.total_occurrences_global) || 0), 0);
+        occurrences.textContent = String(sum);
+    }
+}
+
+function getExportPreviewFilterState() {
+    const decisionFilter = String($('qaExportDecisionFilter')?.value || '__all__').trim().toLowerCase();
+    const query = String($('qaExportSearchInput')?.value || '').trim().toLowerCase();
+    return {
+        decision: decisionFilter || '__all__',
+        query
+    };
+}
+
+function applyExportPreviewFilters(rows) {
+    const sourceRows = Array.isArray(rows) ? rows : [];
+    const filters = getExportPreviewFilterState();
+
+    return sourceRows.filter((row) => {
+        const decision = String(row?.import_decision || '').trim().toLowerCase();
+        if (filters.decision !== '__all__' && decision !== filters.decision) {
+            return false;
+        }
+
+        if (!filters.query) return true;
+
+        const haystack = [
+            row?.sku,
+            row?.designation_final,
+            row?.import_reason,
+            row?.engine_models_all,
+            row?.source_ids_all
+        ].map((item) => String(item || '').toLowerCase()).join(' | ');
+
+        return haystack.includes(filters.query);
+    });
+}
+
+function renderExportFilteredCount(visible, total) {
+    const elem = $('qaExportFilteredCount');
+    if (!(elem instanceof HTMLElement)) return;
+    elem.textContent = `${Number(visible || 0)} / ${Number(total || 0)}`;
+}
+
+function applyExportPreviewSort(rows) {
+    const key = String(state.exportPreviewSortKey || '').trim();
+    if (!key) return rows;
+    const asc = state.exportPreviewSortAsc !== false;
+    const numericKeys = new Set(['total_occurrences_global']);
+
+    const sorted = [...rows].sort((a, b) => {
+        const va = a?.[key];
+        const vb = b?.[key];
+        if (numericKeys.has(key)) {
+            return (Number(va) || 0) - (Number(vb) || 0);
+        }
+        return String(va || '').localeCompare(String(vb || ''), 'es', { numeric: true, sensitivity: 'base' });
+    });
+
+    return asc ? sorted : sorted.reverse();
+}
+
+function updateExportSortHeaderClasses() {
+    document.querySelectorAll('th[data-export-sort]').forEach((th) => {
+        th.classList.remove('is-sorted-asc', 'is-sorted-desc');
+        if (th.getAttribute('data-export-sort') === state.exportPreviewSortKey) {
+            th.classList.add(state.exportPreviewSortAsc !== false ? 'is-sorted-asc' : 'is-sorted-desc');
+        }
+    });
+}
+
+function toggleExportPreviewSort(key) {
+    const normalized = String(key || '').trim();
+    if (!normalized) return;
+    if (state.exportPreviewSortKey === normalized) {
+        state.exportPreviewSortAsc = !state.exportPreviewSortAsc;
+    } else {
+        state.exportPreviewSortKey = normalized;
+        state.exportPreviewSortAsc = true;
+    }
+    updateExportSortHeaderClasses();
+    renderExportPreviewRows(state.exportPreviewRows || []);
+}
+
+function toCsvCell(value) {
+    const text = String(value == null ? '' : value);
+    if (text.includes('"') || text.includes(';') || text.includes('\n') || text.includes('\r')) {
+        return `"${text.replace(/"/g, '""')}"`;
+    }
+    return text;
+}
+
+function downloadExportPreviewCsv() {
+    const rows = applyExportPreviewSort(applyExportPreviewFilters(state.exportPreviewRows || []));
+    if (!rows.length) {
+        setExportRunStatus('No hay filas para exportar', 'warn');
+        return;
+    }
+
+    const headers = [
+        'sku',
+        'import_decision',
+        'import_reason',
+        'designation_final',
+        'measure_final',
+        'weight_final',
+        'source_engine_file',
+        'source_id',
+        'total_occurrences_global',
+        'engine_models_all',
+        'source_pages_all',
+        'source_ids_all',
+        'compacted_type'
+    ];
+
+    const lines = [headers.join(';')];
+    for (const row of rows) {
+        lines.push(headers.map((h) => toCsvCell(row?.[h])).join(';'));
+    }
+
+    const blob = new Blob([`\uFEFF${lines.join('\n')}\n`], { type: 'text/csv;charset=utf-8' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = `wordpress_export_preview_filtered_${new Date().toISOString().slice(0, 10)}.csv`;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    URL.revokeObjectURL(url);
+
+    setExportRunStatus(`CSV descargado (${rows.length} filas)`, 'ok');
+}
+
+function renderExportTrace(trace, sku) {
+    const traceSku = $('qaExportTraceSku');
+    const body = $('qaExportTraceBody');
+    if (!(body instanceof HTMLElement)) return;
+
+    const safeSku = String(sku || '').trim();
+    if (traceSku) traceSku.textContent = safeSku || 'Sin selección';
+
+    if (!trace || typeof trace !== 'object') {
+        body.textContent = 'No hay traza para este SKU.';
+        return;
+    }
+
+    const compacted = trace.compacted || {};
+    const sourceRecords = Array.isArray(trace.source_records) ? trace.source_records : [];
+    const preview = trace.preview || {};
+
+    const sourcePreviewRows = sourceRecords.slice(0, 30).map((row) => (`<tr>`
+        + `<td>${escapeHtml(String(row?.id || '-'))}</td>`
+        + `<td>${escapeHtml(String(row?.engine_model || '-'))}</td>`
+        + `<td>${escapeHtml(String(row?.source_page || '-'))}</td>`
+        + `<td>${escapeHtml(String(row?.pos || '-'))}</td>`
+        + `<td>${escapeHtml(String(row?.designation_final || '-'))}</td>`
+        + `<td>${escapeHtml(String(row?.measure_final || '-'))}</td>`
+        + `<td>${escapeHtml(String(row?.weight_final || '-'))}</td>`
+        + `</tr>`)).join('');
+
+    body.innerHTML = ''
+        + '<div class="qa-export-trace-kpis">'
+        + `<div class="qa-export-trace-kpi"><span>Decision</span><strong>${escapeHtml(String(preview.import_decision || '-'))}</strong></div>`
+        + `<div class="qa-export-trace-kpi"><span>Ocurrencias</span><strong>${escapeHtml(String(compacted.total_occurrences_global || 0))}</strong></div>`
+        + `<div class="qa-export-trace-kpi"><span>Registros fuente</span><strong>${escapeHtml(String(sourceRecords.length))}</strong></div>`
+        + '</div>'
+        + `<p><b>Motivo:</b> ${escapeHtml(String(preview.import_reason || '-'))}</p>`
+        + `<p><b>Motores:</b> ${escapeHtml(String(compacted.engine_models_all || '-'))}</p>`
+        + `<p><b>Páginas:</b> ${escapeHtml(String(compacted.source_pages_all || '-'))}</p>`
+        + `<p><b>IDs:</b> ${escapeHtml(String(compacted.source_ids_all || '-'))}</p>`
+        + '<p><b>Provenance (máx. 30 filas):</b></p>'
+        + '<div class="qa-export-trace-table-wrap">'
+        + '<table class="qa-export-trace-table" aria-label="Registros fuente del SKU">'
+        + '<thead><tr><th>ID</th><th>Motor</th><th>Página</th><th>POS</th><th>Designation</th><th>Measure</th><th>Weight</th></tr></thead>'
+        + `<tbody>${sourcePreviewRows || '<tr><td colspan="7">Sin registros fuente</td></tr>'}</tbody>`
+        + '</table>'
+        + '</div>';
+}
+
+function renderExportPreviewRows(rows) {
+    const body = $('qaExportPreviewBody');
+    if (!(body instanceof HTMLElement)) return;
+
+    const totalRows = Array.isArray(rows) ? rows : [];
+    const filteredRows = applyExportPreviewFilters(totalRows);
+    const visibleRows = applyExportPreviewSort(filteredRows);
+    renderExportFilteredCount(visibleRows.length, totalRows.length);
+
+    if (!visibleRows.length) {
+        const emptyMessage = totalRows.length
+            ? 'No hay filas para los filtros actuales.'
+            : 'No hay preview cargado.';
+        body.innerHTML = `<tr><td colspan="4">${emptyMessage}</td></tr>`;
+        return;
+    }
+
+    body.innerHTML = visibleRows.map((row) => {
+        const sku = String(row?.sku || '').trim();
+        const isSelected = sku && sku === state.selectedExportSku;
+        return `<tr data-export-sku="${escapeHtml(sku)}" class="${isSelected ? 'qa-export-preview-selected' : ''}">`
+            + `<td>${escapeHtml(sku || '-')}</td>`
+            + `<td>${escapeHtml(String(row?.import_decision || '-'))}</td>`
+            + `<td>${escapeHtml(String(row?.designation_final || '-'))}</td>`
+            + `<td>${escapeHtml(String(row?.total_occurrences_global || 0))}</td>`
+            + '</tr>';
+    }).join('');
+}
+
+async function loadExportTraceForSku(sku) {
+    const normalizedSku = String(sku || '').trim();
+    if (!normalizedSku) {
+        renderExportTrace(null, '');
+        return;
+    }
+
+    if (state.exportTraceCache && state.exportTraceCache[normalizedSku]) {
+        renderExportTrace(state.exportTraceCache[normalizedSku], normalizedSku);
+        return;
+    }
+
+    try {
+        const payload = await fetchExportJson(`/export/trace/${encodeURIComponent(normalizedSku)}`);
+        if (!state.exportTraceCache || typeof state.exportTraceCache !== 'object') {
+            state.exportTraceCache = {};
+        }
+        state.exportTraceCache[normalizedSku] = payload.trace || null;
+        renderExportTrace(payload.trace || null, normalizedSku);
+    } catch (error) {
+        renderExportTrace(null, normalizedSku);
+        setExportRunStatus(`Error de traza: ${error.message}`, 'bad');
+    }
+}
+
+async function loadExportPreview() {
+    try {
+        const payload = await fetchExportJson('/export/preview');
+        const rows = Array.isArray(payload?.rows) ? payload.rows : [];
+        state.exportPreviewRows = rows;
+        renderExportSummary(payload?.summary || {});
+        renderExportPreviewRows(rows);
+
+        if (rows.length && !state.selectedExportSku) {
+            state.selectedExportSku = String(rows[0].sku || '').trim();
+        }
+
+        if (state.selectedExportSku) {
+            await loadExportTraceForSku(state.selectedExportSku);
+            renderExportPreviewRows(rows);
+        }
+    } catch (error) {
+        setExportRunStatus(`Error al cargar preview: ${error.message}`, 'bad');
+    }
+}
+
+function resetExportPreviewFilters() {
+    const decision = $('qaExportDecisionFilter');
+    if (decision instanceof HTMLSelectElement) decision.value = '__all__';
+
+    const search = $('qaExportSearchInput');
+    if (search instanceof HTMLInputElement) search.value = '';
+}
+
+async function runExportPipeline(endpoint, label) {
+    const actionButtons = [
+        $('qaExportRunWordpressBtn'),
+        $('qaExportReloadPreviewBtn')
+    ].filter((item) => item instanceof HTMLButtonElement);
+
+    actionButtons.forEach((button) => {
+        button.disabled = true;
+    });
+
+    setExportRunStatus(`${label} en ejecución...`, 'warn');
+    try {
+        await fetchExportJson(endpoint, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: '{}'
+        });
+        await loadExportPreview();
+        setExportRunStatus(`${label} completado`, 'ok');
+    } catch (error) {
+        setExportRunStatus(`${label} falló: ${error.message}`, 'bad');
+    } finally {
+        actionButtons.forEach((button) => {
+            button.disabled = false;
+        });
+    }
 }
 
 function getBookEngineCode(row) {
@@ -2102,6 +2445,139 @@ function setPageFilterValue(pageValue) {
     updateSchemasInline(selectedBook, selectedPage);
 }
 
+function getLoadedEngineFilesSet() {
+    if (state.loadedEngineFiles instanceof Set) return state.loadedEngineFiles;
+    return new Set();
+}
+
+function getEngineCatalogList() {
+    return Array.isArray(state.engineCatalog) ? state.engineCatalog : [];
+}
+
+function formatLazyEngineOptionLabel(engineItem) {
+    const model = String(engineItem?.engine_model || '').trim();
+    const file = String(engineItem?.file || '').trim();
+    const rowCountRaw = Number(engineItem?.rowCount);
+    const rowCountText = Number.isFinite(rowCountRaw) && rowCountRaw >= 0
+        ? ` (${rowCountRaw.toLocaleString('es-ES')} filas)`
+        : '';
+    return `${model || file}${rowCountText}`;
+}
+
+function updateLazyEngineBadge() {
+    const badge = $('lazyEngineBadge');
+    if (!(badge instanceof HTMLElement)) return;
+    const total = getEngineCatalogList().length || 0;
+    const loaded = getLoadedEngineFilesSet().size;
+    badge.textContent = `Motores cargados: ${loaded} / ${total}`;
+}
+
+function refreshLazyEngineSelectOptions() {
+    const select = $('lazyEngineSelect');
+    const loadBtn = $('lazyLoadEngineBtn');
+    const loadAllBtn = $('lazyLoadAllEnginesBtn');
+    if (!(select instanceof HTMLSelectElement)) return;
+
+    const catalog = getEngineCatalogList();
+    const loaded = getLoadedEngineFilesSet();
+    select.innerHTML = catalog.map((item) => {
+        const file = String(item?.file || '').trim();
+        const isLoaded = loaded.has(file);
+        const label = formatLazyEngineOptionLabel(item);
+        return `<option value="${escapeHtml(file)}" ${isLoaded ? 'disabled' : ''}>${escapeHtml(label)}${isLoaded ? ' (cargado)' : ''}</option>`;
+    }).join('');
+
+    const firstPending = catalog.find(item => !loaded.has(String(item?.file || '').trim()));
+    const hasPending = Boolean(firstPending && firstPending.file);
+    select.value = hasPending ? String(firstPending.file) : '';
+    select.disabled = !hasPending;
+
+    if (loadBtn instanceof HTMLButtonElement) {
+        loadBtn.disabled = !hasPending;
+    }
+    if (loadAllBtn instanceof HTMLButtonElement) {
+        loadAllBtn.disabled = !hasPending;
+    }
+
+    updateLazyEngineBadge();
+}
+
+function refreshBookFilterCatalog({ keepCurrentSelection = true } = {}) {
+    const bookFilterSelect = $('bookFilterSelect');
+    if (!(bookFilterSelect instanceof HTMLSelectElement)) return;
+
+    const previousBook = keepCurrentSelection
+        ? String(state.filters.book || bookFilterSelect.value || '').trim()
+        : '';
+    const previousPage = keepCurrentSelection
+        ? normalizePageNumber(state.filters.page || $('pageFilterSelect')?.value || '')
+        : '';
+
+    const allBooks = [...new Set(state.allData
+        .map(item => val(item, 'engine_model', '').toString().trim())
+        .filter(b => b && b !== '—'))].sort((a, b) => a.localeCompare(b, undefined, { numeric: true }));
+
+    bookFilterSelect.innerHTML = '<option value="">Todos los libros</option>'
+        + allBooks.map(book => `<option value="${escapeHtml(book)}">${escapeHtml(book)}</option>`).join('');
+
+    if (!allBooks.length) {
+        delete state.filters.book;
+        delete state.filters.page;
+        populatePageFilterOptions('', '');
+        loadPdfClear();
+        updateSchemasInline('', '');
+        return;
+    }
+
+    const nextBook = previousBook && allBooks.includes(previousBook)
+        ? previousBook
+        : allBooks[0];
+    applyBookSelection(nextBook, {
+        pageValue: previousPage,
+        fallbackToFirstAvailablePage: true,
+        render: false,
+        updatePdf: true
+    });
+}
+
+async function loadLazyEnginesAndRefresh(fileNames, options = {}) {
+    const mergedRows = await loadEnginesByFileNames(fileNames, options);
+    if (!Array.isArray(mergedRows)) {
+        throw new Error('La carga incremental no devolvio datos validos.');
+    }
+
+    const previousSelectedRevisionKey = String(state.selectedRevisionRowKey || '').trim();
+    state.allData = mergedRows;
+    assignRevisionKeys(state.allData);
+    applyRevisionDataToRows(state.allData);
+
+    if (previousSelectedRevisionKey) {
+        const selectedExists = state.allData.some(item => getRevisionKey(item) === previousSelectedRevisionKey);
+        if (!selectedExists) state.selectedRevisionRowKey = '';
+    }
+
+    refreshBookFilterCatalog({ keepCurrentSelection: true });
+    state.currentPage = 1;
+    renderTable();
+    renderPagination();
+    queueColumnViewRefresh();
+    syncSideRecordFormWithSelection();
+    refreshLazyEngineSelectOptions();
+}
+
+function initLazyEnginePanel() {
+    const panel = $('lazyEnginePanel');
+    if (!(panel instanceof HTMLElement)) return;
+
+    if (!state.incrementalLoadingEnabled) {
+        panel.hidden = true;
+        return;
+    }
+
+    panel.hidden = false;
+    refreshLazyEngineSelectOptions();
+}
+
 function syncPdfWithSelectedRow(revisionKey) {
     const normalizedKey = String(revisionKey || '').trim();
     if (!normalizedKey) {
@@ -2283,6 +2759,38 @@ function hideQaChecksProgress() {
     area.style.display = 'none';
 }
 
+function toFiniteNumber(value) {
+    const parsed = Number(value);
+    return Number.isFinite(parsed) ? parsed : NaN;
+}
+
+function getPersistedErrorCountFromRow(row) {
+    const total = toFiniteNumber(row?.total_error);
+    if (!Number.isNaN(total)) return Math.max(0, Math.trunc(total));
+
+    const breakdownKeys = [
+        'pos_error',
+        'pn_error',
+        'designation_error',
+        'weight_error',
+        'measurement_error',
+        'norma_error',
+        'bom_error'
+    ];
+
+    let sum = 0;
+    let hasBreakdown = false;
+    breakdownKeys.forEach((key) => {
+        const value = toFiniteNumber(row?.[key]);
+        if (Number.isNaN(value)) return;
+        hasBreakdown = true;
+        sum += Math.max(0, Math.trunc(value));
+    });
+
+    if (hasBreakdown) return sum;
+    return getPersistedHasError(row) ? 1 : 0;
+}
+
 function buildFoundErrorRows(rows, activeCodes, maxItems = 300) {
     const definitionMap = getQaErrorDefinitionMap();
     const output = [];
@@ -2297,7 +2805,8 @@ function buildFoundErrorRows(rows, activeCodes, maxItems = 300) {
             page: String(row?.['Source Page'] ?? '').trim(),
             pos: String(row?.POS ?? '').trim(),
             pn: String(row?.['PART NO.'] ?? row?.pn ?? '').trim(),
-            errors: activeErrors.codes.map(code => definitionMap.get(code) || code)
+            errors: getPersistedErrorCountFromRow(row),
+            activeChecks: activeErrors.codes.map(code => definitionMap.get(code) || code)
         });
 
         if (output.length >= maxItems) break;
@@ -2328,7 +2837,7 @@ function renderQaChecksFoundRows(foundRows, totalFound) {
             <td>${escapeHtml(item.page || '-')}</td>
             <td>${escapeHtml(item.pos || '-')}</td>
             <td>${escapeHtml(item.pn || '-')}</td>
-            <td>${escapeHtml((item.errors || []).join(' | ') || '-')}</td>
+            <td title="Errores persistidos en engine_*.json. Checks activos: ${escapeHtml((item.activeChecks || []).join(' | ') || 'ninguno')}">${escapeHtml(String(item.errors ?? '-'))}</td>
         </tr>
     `).join('');
 }
@@ -2514,12 +3023,33 @@ function updateOnlyErrorsToggleLabel() {
 
     const onlyErrorsActive = String(state.filters?.has_error || '') === 'true';
     toggleBtn.classList.toggle('is-active', onlyErrorsActive);
-    toggleBtn.textContent = onlyErrorsActive ? 'Solo errores: ON' : 'Solo errores: OFF';
+
+    // Compute counts excluding the has_error filter to always show X/Total
+    const savedErrorFilter = state.filters?.has_error;
+    if (state.filters) delete state.filters.has_error;
+    const baseFiltered = applyFilters(state.allData || []);
+    if (state.filters && savedErrorFilter !== undefined) state.filters.has_error = savedErrorFilter;
+    const errorsCount = baseFiltered.filter(row => getPersistedHasError(row)).length;
+    const total = baseFiltered.length;
+    const countStr = total > 0 ? ` (${errorsCount}/${total})` : '';
+
+    toggleBtn.textContent = (onlyErrorsActive ? 'Solo errores: ON' : 'Solo errores: OFF') + countStr;
 }
 
 function setOnlyErrorsFilter(enabled) {
     if (enabled) state.filters.has_error = 'true';
     else delete state.filters.has_error;
+
+    if (enabled) {
+        // En modo Solo errores: siempre paginación ON y sin filtro de página.
+        state.paginationEnabled = true;
+        const pageSelect = $('pageFilterSelect');
+        if (pageSelect instanceof HTMLSelectElement) {
+            pageSelect.value = '';
+        }
+        delete state.filters.page;
+        updatePaginationToggleLabel();
+    }
 
     const hasErrorSelect = document.querySelector('.filter-select[data-filter="has_error"]');
     if (hasErrorSelect instanceof HTMLSelectElement) {
@@ -2546,6 +3076,7 @@ function handleFilter(event) {
         state.currentPage = 1;
         renderTable();
         renderPagination();
+        updateOnlyErrorsToggleLabel();
     }, 120);
 }
 
@@ -2644,6 +3175,46 @@ async function applyBulkQuickMode(quickMode) {
     updateUndoButtonState();
 }
 
+/**
+ * AR-1: decide si la carga inicial es completa (legacy) o incremental.
+ * Activacion: ?lazy=1 en URL o localStorage.miluLazyEngines='1'.
+ * Default: comportamiento actual (carga los 9 motores en paralelo).
+ */
+function isIncrementalLoadingEnabled() {
+    try {
+        const params = new URLSearchParams(window.location.search);
+        if (params.get('lazy') === '1') return true;
+        if (params.get('lazy') === '0') return false;
+    } catch (_) { /* noop */ }
+    try {
+        if (window.localStorage && window.localStorage.getItem('miluLazyEngines') === '1') return true;
+    } catch (_) { /* noop */ }
+    return false;
+}
+
+async function loadInitialEngineData() {
+    if (!isIncrementalLoadingEnabled()) {
+        state.incrementalLoadingEnabled = false;
+        return loadPartitionedEngineData();
+    }
+    state.incrementalLoadingEnabled = true;
+    try {
+        await fetchEngineCatalog();
+    } catch (error) {
+        console.warn('AR-1: catalogo /engines no disponible, fallback a carga completa.', error);
+        state.incrementalLoadingEnabled = false;
+        return loadPartitionedEngineData();
+    }
+    const catalog = Array.isArray(state.engineCatalog) ? state.engineCatalog : [];
+    const firstEngine = catalog[0];
+    if (!firstEngine || !firstEngine.file) {
+        console.warn('AR-1: catalogo vacio, fallback a carga completa.');
+        state.incrementalLoadingEnabled = false;
+        return loadPartitionedEngineData();
+    }
+    return loadEnginesByFileNames([firstEngine.file], { append: false });
+}
+
 async function loadData() {
     try {
         const isFileProtocol = window.location.protocol === 'file:';
@@ -2656,7 +3227,7 @@ async function loadData() {
         $('stats').innerHTML = '<span class="stat">Cargando datos...</span>';
         $('pagination').style.display = 'none';
 
-        state.allData = await loadPartitionedEngineData();
+        state.allData = await loadInitialEngineData();
         if (!Array.isArray(state.allData)) throw new Error('Los datos no son un array');
 
         // No bloquear carga principal por catálogos opcionales que pueden no existir en todos los despliegues.
@@ -2688,17 +3259,7 @@ async function loadData() {
         applyRevisionDataToRows(state.allData);
         loadColumnWidths();
 
-        const allBooks = [...new Set(state.allData
-            .map(item => val(item, 'engine_model', '').toString().trim())
-            .filter(b => b && b !== '—'))].sort((a, b) => a.localeCompare(b, undefined, { numeric: true }));
-
-        const bookFilterSelect = $('bookFilterSelect');
-        if (bookFilterSelect) {
-            bookFilterSelect.innerHTML = '<option value="">Todos los libros</option>' + allBooks.map(book => `<option value="${escapeHtml(book)}">${escapeHtml(book)}</option>`).join('');
-            if (allBooks.length > 0) {
-                applyBookSelection(allBooks[0], { fallbackToFirstAvailablePage: true, render: false, updatePdf: true });
-            }
-        }
+        refreshBookFilterCatalog({ keepCurrentSelection: false });
 
         if (!state.allData.length) {
             $('tbody').innerHTML = '<tr><td colspan="53" class="error">No se encontró información en los archivos engine_*.json</td></tr>';
@@ -2710,6 +3271,7 @@ async function loadData() {
         state.filteredData = [...state.allData];
         renderTable();
         renderPagination();
+        initLazyEnginePanel();
 
         loadOptionalCatalogsInBackground().catch(error => {
             console.warn('No se pudieron cargar los catálogos opcionales:', error);
@@ -2877,6 +3439,52 @@ function attachGlobalEvents() {
         setPageFilterValue($('pageFilterSelect')?.value || '');
     });
 
+    $('lazyLoadEngineBtn')?.addEventListener('click', async () => {
+        if (!state.incrementalLoadingEnabled) return;
+        const select = $('lazyEngineSelect');
+        if (!(select instanceof HTMLSelectElement)) return;
+        const file = String(select.value || '').trim();
+        if (!file) return;
+
+        const status = $('stats');
+        const previousStats = status?.innerHTML || '';
+        if (status) status.innerHTML = '<span class="stat">Cargando motor seleccionado...</span>';
+
+        try {
+            await loadLazyEnginesAndRefresh([file], { append: true });
+        } catch (error) {
+            console.error('No se pudo cargar el motor seleccionado:', error);
+            alert(`No se pudo cargar el motor: ${error.message}`);
+            if (status) status.innerHTML = previousStats;
+            renderTable();
+            renderPagination();
+        }
+    });
+
+    $('lazyLoadAllEnginesBtn')?.addEventListener('click', async () => {
+        if (!state.incrementalLoadingEnabled) return;
+        const catalog = getEngineCatalogList();
+        const loaded = getLoadedEngineFilesSet();
+        const pending = catalog
+            .map(item => String(item?.file || '').trim())
+            .filter(file => file && !loaded.has(file));
+        if (!pending.length) return;
+
+        const status = $('stats');
+        const previousStats = status?.innerHTML || '';
+        if (status) status.innerHTML = `<span class="stat">Cargando ${pending.length} motores pendientes...</span>`;
+
+        try {
+            await loadLazyEnginesAndRefresh(pending, { append: true });
+        } catch (error) {
+            console.error('No se pudieron cargar todos los motores:', error);
+            alert(`No se pudieron cargar todos los motores: ${error.message}`);
+            if (status) status.innerHTML = previousStats;
+            renderTable();
+            renderPagination();
+        }
+    });
+
     $('bulkRevOkBtn')?.addEventListener('click', () => applyBulkQuickMode('revok'));
     $('bulkRevEmptyBtn')?.addEventListener('click', () => applyBulkQuickMode('revempty'));
     $('bulkValidateBtn')?.addEventListener('click', () => applyBulkQuickMode('validate'));
@@ -2959,6 +3567,52 @@ function attachGlobalEvents() {
             countId: 'qaSideExportCount',
             onlyDiffToggleId: 'qaSideExportOnlyDiffToggle'
         });
+    });
+
+    $('qaExportRunWordpressBtn')?.addEventListener('click', async () => {
+        await runExportPipeline('/export/run-wordpress', 'WordPress export');
+    });
+
+    $('qaExportReloadPreviewBtn')?.addEventListener('click', async () => {
+        setExportRunStatus('Recargando preview...', 'warn');
+        await loadExportPreview();
+        setExportRunStatus('Preview actualizado', 'ok');
+    });
+
+    $('qaExportDecisionFilter')?.addEventListener('change', () => {
+        renderExportPreviewRows(state.exportPreviewRows || []);
+    });
+
+    $('qaExportSearchInput')?.addEventListener('input', () => {
+        renderExportPreviewRows(state.exportPreviewRows || []);
+    });
+
+    $('qaExportFilterResetBtn')?.addEventListener('click', () => {
+        resetExportPreviewFilters();
+        renderExportPreviewRows(state.exportPreviewRows || []);
+    });
+
+    $('qaExportDownloadCsvBtn')?.addEventListener('click', () => {
+        downloadExportPreviewCsv();
+    });
+
+    document.querySelectorAll('th[data-export-sort]').forEach((th) => {
+        th.addEventListener('click', () => {
+            const key = th.getAttribute('data-export-sort');
+            toggleExportPreviewSort(key);
+        });
+    });
+
+    $('qaExportPreviewBody')?.addEventListener('click', async (event) => {
+        const target = event.target;
+        if (!(target instanceof HTMLElement)) return;
+        const row = target.closest('tr[data-export-sku]');
+        const sku = String(row?.getAttribute('data-export-sku') || '').trim();
+        if (!sku) return;
+
+        state.selectedExportSku = sku;
+        renderExportPreviewRows(state.exportPreviewRows || []);
+        await loadExportTraceForSku(sku);
     });
 
     $('qaModalExportOnlyDiffToggle')?.addEventListener('change', () => {
@@ -3452,6 +4106,9 @@ function init() {
     clearSideRecordForm();
     applyBackendWriteMode();
     loadData();
+    loadExportPreview().catch((error) => {
+        setExportRunStatus(`Sin preview: ${error.message}`, 'bad');
+    });
 }
 
 init();

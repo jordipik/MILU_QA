@@ -2,7 +2,6 @@
 
 const fs = require('fs');
 const path = require('path');
-const { pathToFileURL } = require('url');
 const { ENGINE_JSON_FILES } = require('../engine_files');
 const { recomputeEngineErrors } = require('../recompute_engine_errors');
 
@@ -43,10 +42,9 @@ function getPdfStandardFontDataUrl() {
         const pdfjsPkgPath = require.resolve('pdfjs-dist/package.json');
         const standardFontsDir = path.join(path.dirname(pdfjsPkgPath), 'standard_fonts');
         if (fs.existsSync(standardFontsDir)) {
-            const withSep = standardFontsDir.endsWith(path.sep)
+            cachedStandardFontDataUrl = standardFontsDir.endsWith(path.sep)
                 ? standardFontsDir
                 : `${standardFontsDir}${path.sep}`;
-            cachedStandardFontDataUrl = pathToFileURL(withSep).href;
             return cachedStandardFontDataUrl;
         }
     } catch (_error) {
