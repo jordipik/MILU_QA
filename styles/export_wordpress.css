@@ -1,0 +1,307 @@
+:root {
+    --bg-main: #f3f6f8;
+    --bg-panel: #ffffff;
+    --bg-accent: linear-gradient(135deg, #003049 0%, #264653 100%);
+    --text-main: #182430;
+    --text-soft: #5e6f7f;
+    --line: #d7dee6;
+    --line-strong: #b2c2d1;
+    --btn: #0f766e;
+    --btn-hover: #0b5f59;
+    --btn-text: #ffffff;
+    --chip: #e8f3ff;
+    --chip-text: #184e77;
+    --warn: #ad2f45;
+    --ok: #1f7a5c;
+}
+
+* {
+    box-sizing: border-box;
+}
+
+body {
+    margin: 0;
+    font-family: "IBM Plex Sans", "Segoe UI", sans-serif;
+    background: radial-gradient(circle at 8% -10%, #d3e8ff 0%, transparent 35%), var(--bg-main);
+    color: var(--text-main);
+}
+
+.ewp-shell {
+    max-width: 1700px;
+    margin: 0 auto;
+    padding: 16px clamp(12px, 2vw, 28px) 20px;
+}
+
+.ewp-header {
+    display: flex;
+    justify-content: space-between;
+    gap: 12px;
+    flex-wrap: wrap;
+    padding: 14px;
+    border-radius: 14px;
+    background: var(--bg-accent);
+    color: #f9fafb;
+}
+
+.ewp-eyebrow {
+    margin: 0;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    font-size: 11px;
+    opacity: 0.85;
+}
+
+.ewp-header h1 {
+    margin: 4px 0;
+    font-size: clamp(22px, 2vw, 32px);
+    font-family: "Space Grotesk", "Segoe UI", sans-serif;
+}
+
+.ewp-subtitle {
+    margin: 0 0 6px;
+    opacity: 0.92;
+}
+
+.ewp-link {
+    color: #e2f2ff;
+    text-decoration: none;
+}
+
+.ewp-link:hover {
+    text-decoration: underline;
+}
+
+.ewp-actions {
+    display: flex;
+    gap: 8px;
+    align-items: flex-start;
+}
+
+.ewp-actions button {
+    border: 1px solid transparent;
+    background: var(--btn);
+    color: var(--btn-text);
+    font-weight: 600;
+    font-size: 13px;
+    border-radius: 10px;
+    padding: 8px 12px;
+    cursor: pointer;
+}
+
+.ewp-actions button.secondary {
+    background: #f4f8fa;
+    border-color: var(--line-strong);
+    color: #163347;
+}
+
+.ewp-actions button:hover:not(:disabled) {
+    background: var(--btn-hover);
+}
+
+.ewp-actions button.secondary:hover:not(:disabled) {
+    background: #e7edf1;
+}
+
+.ewp-actions button:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+}
+
+.ewp-summary {
+    margin-top: 12px;
+    display: grid;
+    gap: 10px;
+    grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+}
+
+.ewp-card {
+    border: 1px solid var(--line);
+    border-radius: 12px;
+    background: var(--bg-panel);
+    padding: 12px;
+}
+
+.ewp-card.wide {
+    grid-column: span 2;
+}
+
+.ewp-card .label {
+    margin: 0;
+    font-size: 12px;
+    color: var(--text-soft);
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+}
+
+.ewp-card .value {
+    margin: 4px 0 0;
+    font-size: clamp(18px, 1.4vw, 26px);
+    font-family: "Space Grotesk", "Segoe UI", sans-serif;
+}
+
+.ewp-panel {
+    margin-top: 12px;
+    border: 1px solid var(--line);
+    border-radius: 12px;
+    background: var(--bg-panel);
+    overflow: hidden;
+}
+
+.ewp-tabs {
+    display: flex;
+    gap: 6px;
+    padding: 10px;
+    border-bottom: 1px solid var(--line);
+    flex-wrap: wrap;
+}
+
+.ewp-tabs button {
+    border: 1px solid var(--line);
+    background: #f7fbff;
+    color: #294962;
+    border-radius: 999px;
+    padding: 6px 10px;
+    cursor: pointer;
+    font-size: 12px;
+    font-weight: 600;
+}
+
+.ewp-tabs button.active {
+    background: var(--chip);
+    color: var(--chip-text);
+    border-color: #9fc7ec;
+}
+
+.ewp-filters {
+    padding: 10px;
+    border-bottom: 1px solid var(--line);
+    display: grid;
+    grid-template-columns: minmax(220px, 2fr) minmax(160px, 1fr) minmax(160px, 1fr) auto;
+    gap: 8px;
+    align-items: center;
+}
+
+.ewp-filters input,
+.ewp-filters select {
+    border: 1px solid var(--line-strong);
+    border-radius: 8px;
+    padding: 7px 9px;
+    font-size: 13px;
+    width: 100%;
+}
+
+.ewp-status {
+    justify-self: end;
+    font-size: 12px;
+    color: var(--text-soft);
+}
+
+.ewp-table-wrap {
+    overflow: auto;
+    max-height: calc(100vh - 300px);
+}
+
+.ewp-table {
+    width: 100%;
+    min-width: 950px;
+    border-collapse: collapse;
+    font-size: 12px;
+}
+
+.ewp-table th,
+.ewp-table td {
+    border-bottom: 1px solid #edf2f6;
+    padding: 7px 8px;
+    text-align: left;
+    vertical-align: top;
+}
+
+.ewp-table thead th {
+    position: sticky;
+    top: 0;
+    background: #f5f9fc;
+    color: #27445b;
+    z-index: 2;
+}
+
+.ewp-table tbody tr:hover {
+    background: #f1f8ff;
+}
+
+.ewp-table .empty {
+    text-align: center;
+    color: var(--text-soft);
+    padding: 18px;
+}
+
+.ewp-row-action {
+    border: 1px solid var(--line-strong);
+    background: #fff;
+    color: #0b4f66;
+    border-radius: 6px;
+    padding: 3px 8px;
+    cursor: pointer;
+    font-size: 12px;
+}
+
+.ewp-toast-container {
+    position: fixed;
+    top: 16px;
+    right: 16px;
+    z-index: 1200;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.ewp-toast {
+    min-width: 220px;
+    max-width: 360px;
+    border-radius: 10px;
+    padding: 10px 12px;
+    color: #fff;
+    box-shadow: 0 10px 22px rgba(0, 0, 0, 0.14);
+    animation: toast-in 180ms ease-out;
+}
+
+.ewp-toast.info {
+    background: #1d4e89;
+}
+
+.ewp-toast.success {
+    background: var(--ok);
+}
+
+.ewp-toast.error {
+    background: var(--warn);
+}
+
+@keyframes toast-in {
+    from {
+        opacity: 0;
+        transform: translateY(-8px);
+    }
+
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+@media (max-width: 920px) {
+    .ewp-card.wide {
+        grid-column: span 1;
+    }
+
+    .ewp-filters {
+        grid-template-columns: 1fr;
+    }
+
+    .ewp-status {
+        justify-self: start;
+    }
+
+    .ewp-table-wrap {
+        max-height: calc(100vh - 340px);
+    }
+}

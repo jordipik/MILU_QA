@@ -1431,6 +1431,125 @@ function listExportFolder(folderName) {
     return files;
 }
 
+function parseCsvLine(line, separator) {
+    const output = [];
+    let current = '';
+    let inQuotes = false;
+
+    for (let index = 0; index < line.length; index += 1) {
+        const ch = line[index];
+        if (inQuotes) {
+            if (ch === '"' && line[index + 1] === '"') {
+                current += '"';
+                index += 1;
+            } else if (ch === '"') {
+                inQuotes = false;
+            } else {
+                current += ch;
+            }
+        } else if (ch === '"') {
+            inQuotes = true;
+        } else if (ch === separator) {
+            output.push(current);
+            current = '';
+        } else {
+            current += ch;
+        }
+    }
+
+    output.push(current);
+    return output;
+}
+
+function parseCsvText(content, maxRows = 500) {
+    const text = String(content || '');
+    const normalized = text.charCodeAt(0) === 0xfeff ? text.slice(1) : text;
+    const lines = normalized.split(/\r?\n/).filter((line) => line.length > 0);
+    if (!lines.length) {
+        return { headers: [], rows: [], total_rows: 0 };
+    }
+
+    const separator = lines[0].includes(';') ? ';' : ',';
+    const headers = parseCsvLine(lines[0], separator);
+    const dataLines = lines.slice(1);
+    const rows = dataLines.slice(0, maxRows).map((line) => {
+        const cols = parseCsvLine(line, separator);
+        const record = {};
+        headers.forEach((header, idx) => {
+            record[header] = cols[idx] == null ? '' : cols[idx];
+        });
+        return record;
+    });
+
+    return {
+        headers,
+        rows,
+        total_rows: dataLines.length,
+        truncated: dataLines.length > rows.length
+    };
+}
+
+function getWordpressStatusSnapshot() {
+    const fileCandidates = {
+        new: ['milu_wp_import.json', 'milu_wp_new_import.json'],
+        superseded: ['milu_wp_superseded.json', 'milu_wp_superseded_import.json'],
+        pending: ['milu_wp_pending_review.json'],
+        discarded: ['milu_wp_discarded.json']
+    };
+
+    const resolvedFiles = {
+        new: null,
+        superseded: null,
+        pending: null,
+        discarded: null
+    };
+
+    const counts = {
+        new: 0,
+        superseded: 0,
+        pending: 0,
+        discarded: 0
+    };
+
+    for (const [key, names] of Object.entries(fileCandidates)) {
+        for (const name of names) {
+            const fullPath = path.join(WORDPRESS_OUTPUT_DIR, name);
+            if (!fs.existsSync(fullPath)) continue;
+            const rows = readJsonFileSafe(fullPath, []);
+            resolvedFiles[key] = name;
+            counts[key] = Array.isArray(rows) ? rows.length : 0;
+            break;
+        }
+    }
+
+    const reportPath = path.join(WORDPRESS_OUTPUT_DIR, 'milu_wp_export_report.json');
+    const report = readJsonFileSafe(reportPath, null);
+
+    if (report?.totals && typeof report.totals === 'object') {
+        counts.new = toNumber(report.totals.new, counts.new);
+        counts.superseded = toNumber(report.totals.superseded, counts.superseded);
+        counts.pending = toNumber(report.totals.pending_review, counts.pending);
+        counts.discarded = toNumber(report.totals.discard, counts.discarded);
+    }
+
+    let lastGeneratedAt = String(report?.generated_at || '').trim() || null;
+    if (!lastGeneratedAt) {
+        const files = listExportFolder('wordpress');
+        for (const item of files) {
+            if (!lastGeneratedAt || item.mtime > lastGeneratedAt) {
+                lastGeneratedAt = item.mtime;
+            }
+        }
+    }
+
+    return {
+        counts,
+        files: resolvedFiles,
+        last_generated_at: lastGeneratedAt,
+        report: report || null
+    };
+}
+
 app.get('/export/files', (_req, res) => {
     try {
         const allFiles = [];
@@ -1463,11 +1582,23 @@ app.get('/export/files', (_req, res) => {
 });
 
 app.get('/export/status', (_req, res) => {
-    res.json({ ok: true, run_state: exportRunState });
+    try {
+        const snapshot = getWordpressStatusSnapshot();
+        return res.json({
+            ok: true,
+            run_state: exportRunState,
+            timestamp: snapshot.last_generated_at,
+            counts: snapshot.counts,
+            files: snapshot.files,
+            report: snapshot.report
+        });
+    } catch (error) {
+        return res.status(500).json({ ok: false, error: String(error?.message || error) });
+    }
 });
 
 app.get('/export/file', (req, res) => {
-    const folder = safeFolderName(req.query?.folder);
+    const folder = safeFolderName(req.query?.folder || 'wordpress');
     const name = safeFileName(req.query?.name);
     if (!folder || !name) {
         return res.status(400).json({ ok: false, error: 'Carpeta o archivo no permitidos.' });
@@ -1502,6 +1633,7 @@ app.get('/export/file', (req, res) => {
             try {
                 const fullText = truncated ? fs.readFileSync(fullPath, 'utf8') : content;
                 const parsed = JSON.parse(fullText);
+                result.data = parsed;
                 result.json = {
                     is_array: Array.isArray(parsed),
                     length: Array.isArray(parsed) ? parsed.length : null,
@@ -1513,6 +1645,9 @@ app.get('/export/file', (req, res) => {
                 result.json_parse_error = String(parseError?.message || parseError);
                 result.text = content;
             }
+        } else if (ext === '.csv') {
+            result.text = content;
+            result.csv = parseCsvText(content);
         } else {
             result.text = content;
         }
@@ -1523,8 +1658,18 @@ app.get('/export/file', (req, res) => {
 });
 
 app.get('/export/download', (req, res) => {
-    const folder = safeFolderName(req.query?.folder);
-    const name = safeFileName(req.query?.name);
+    const folder = safeFolderName(req.query?.folder || 'wordpress');
+    let name = safeFileName(req.query?.name);
+
+    if (folder && !name) {
+        const csvFiles = listExportFolder(folder)
+            .filter((file) => String(file.type || '').toLowerCase() === 'csv')
+            .sort((a, b) => String(b.mtime || '').localeCompare(String(a.mtime || '')));
+        if (csvFiles.length) {
+            name = csvFiles[0].name;
+        }
+    }
+
     if (!folder || !name) {
         return res.status(400).json({ ok: false, error: 'Carpeta o archivo no permitidos.' });
     }

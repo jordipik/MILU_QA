@@ -73,34 +73,39 @@
     "book_set": "12V4000M70",
     "measure_raw": "nan",
     "norma_raw": null,
-    "pos_final": "nan",
+    "pos_final": "20",
     "model_final": "nan",
     "MODEL/TYPE_final": "nan",
-    "qty_final": "nan",
+    "qty_final": "1",
     "qty_units_final": "nan",
-    "norma_final": null,
-    "designation_final": "nan",
-    "measure_final": "nan",
-    "weight_final": "nan",
+    "norma_final": "MMN425",
+    "designation_final": "NAMEPLATE FOR DIESEL ENGINE",
+    "measure_final": "04.21",
+    "weight_final": "6.700 g",
     "depuracion_ts": "2026-04-27T00:11:37Z",
     "exp_imagenes": "https://milu-naval.mystagingwebsite.com/wp-content/uploads/2026/01/sin_imagen.jpeg",
     "pos_error": 0,
     "pn_error": 0,
-    "designation_error": 1,
-    "weight_error": 0,
+    "designation_error": 0,
+    "weight_error": 1,
     "measurement_error": 0,
-    "norma_error": 0,
+    "norma_error": 1,
     "bom_error": 0,
-    "total_error": 1,
+    "total_error": 2,
     "has_error": true,
     "pn_pdf": "700425000219",
-    "designation_pdf": "NAMEPLATE FOR DIESEL ENGINE 1",
+    "designation_pdf": "NAMEPLATE FOR DIESEL ENGINE",
     "bom_pdf": "XS524000.00097",
     "gesa_pdf": "No",
     "normalizado_pdf": "No",
-    "qa_revision_estado": "pendiente",
-    "qa_revision_accion": "revisar",
-    "ID": 1900000
+    "qa_revision_estado": "ok",
+    "qa_revision_accion": "importar",
+    "ID": 1900000,
+    "fn_final": "EM",
+    "pos_pdf": "20",
+    "qty_pdf": "1",
+    "measure_pdf": "04.21",
+    "qa_revision_updated_at": "2026-05-04T13:01:05.427Z"
   },
   {
     "POS": "105",
@@ -4902,7 +4907,8 @@
     "sust_new_part_number_pdf": "X52601100055",
     "qa_revision_estado": "ok",
     "qa_revision_accion": "importar",
-    "ID": 1900045
+    "ID": 1900045,
+    "qa_revision_updated_at": "2026-05-04T13:02:26.097Z"
   },
   {
     "POS": "5 15 25 30",
@@ -4978,26 +4984,26 @@
     "book_set": "12V4000M70",
     "measure_raw": "nan",
     "norma_raw": null,
-    "pos_final": "5 15 25 30",
+    "pos_final": "5",
     "model_final": "nan",
     "MODEL/TYPE_final": "nan",
     "qty_final": null,
     "qty_units_final": "nan",
     "norma_final": null,
-    "designation_final": null,
+    "designation_final": "OIL FILLER NECK",
     "measure_final": "nan",
     "weight_final": "nan",
     "depuracion_ts": "2026-04-27T00:11:37Z",
     "exp_imagenes": "https://milu-naval.mystagingwebsite.com/wp-content/uploads/2026/01/sin_imagen.jpeg",
     "pos_error": 0,
-    "pn_error": 1,
-    "designation_error": 2,
+    "pn_error": 0,
+    "designation_error": 0,
     "weight_error": 0,
     "measurement_error": 0,
     "norma_error": 0,
     "bom_error": 0,
-    "total_error": 3,
-    "has_error": true,
+    "total_error": 0,
+    "has_error": false,
     "pn_pdf": "X52601100055",
     "designation_pdf": "OIL FILLER NECK",
     "bom_pdf": "010.00002",
@@ -5005,7 +5011,8 @@
     "normalizado_pdf": "No",
     "qa_revision_estado": "pendiente",
     "qa_revision_accion": "revisar",
-    "ID": 1900046
+    "ID": 1900046,
+    "pos_pdf": "5"
   },
   {
     "POS": "nan",
@@ -6898,22 +6905,22 @@
     "book_set": "12V4000M70",
     "measure_raw": "nan",
     "norma_raw": null,
-    "pos_final": "250 350 450 500 550 600 700 750 850 900 1000 1050 1150 1200 1300 1350 1400 1500 1550 1600 1650 1700 1750 1850 1900",
+    "pos_final": "450",
     "model_final": "nan",
     "MODEL/TYPE_final": "nan",
-    "qty_final": "nan",
+    "qty_final": "14",
     "qty_units_final": "nan",
     "norma_final": null,
-    "designation_final": "OIL PAN SEAL RUBBER STRI STRESS BOLT SPACER SLEEVE BOLT HEX SPACER STRESS BOLT SPACER SLEEVE BOLT HEX SPACER STRESS BOLT SPACER SLEEVE THREAD PLUG COPPER SEALING R BOLT HEX WASHER BASKET OIL PICKUP BOLT HEX WASHER TUBE ASM FLOATIN O-RING TUBE CONNECTOR O-RING BOLT HEX WASHER",
-    "measure_final": "nan",
-    "weight_final": "nan",
+    "designation_final": "STRESS BOLT",
+    "measure_final": "8 M 10x90",
+    "weight_final": "50.000 g",
     "depuracion_ts": "2026-04-27T00:11:37Z",
     "exp_imagenes": "https://milu-naval.mystagingwebsite.com/wp-content/uploads/2026/01/sin_imagen.jpeg",
     "pos_error": 0,
-    "pn_error": 1,
-    "designation_error": 1,
-    "weight_error": 0,
-    "measurement_error": 0,
+    "pn_error": 0,
+    "designation_error": 0,
+    "weight_error": 1,
+    "measurement_error": 1,
     "norma_error": 0,
     "bom_error": 0,
     "total_error": 2,
@@ -6925,7 +6932,10 @@
     "normalizado_pdf": "No",
     "qa_revision_estado": "pendiente",
     "qa_revision_accion": "revisar",
-    "ID": 1900064
+    "ID": 1900064,
+    "pos_pdf": "450",
+    "fn_final": "",
+    "qty_pdf": "14"
   },
   {
     "POS": "350",
@@ -14062,7 +14072,7 @@
     "qa_revision_estado": "ok",
     "qa_revision_accion": "eliminar",
     "ID": 1900131,
-    "qa_revision_updated_at": "2026-05-03T16:37:57.647Z"
+    "qa_revision_updated_at": "2026-05-04T13:06:57.310Z"
   },
   {
     "POS": "100",
@@ -80085,7 +80095,7 @@
     "qa_revision_estado": "ok",
     "qa_revision_accion": "eliminar",
     "ID": 1900752,
-    "qa_revision_updated_at": "2026-05-03T16:37:57.647Z"
+    "qa_revision_updated_at": "2026-05-04T13:06:57.310Z"
   },
   {
     "POS": "100",
@@ -202186,7 +202196,7 @@
     "qa_revision_estado": "ok",
     "qa_revision_accion": "eliminar",
     "ID": 1901906,
-    "qa_revision_updated_at": "2026-05-03T16:37:57.647Z"
+    "qa_revision_updated_at": "2026-05-04T13:06:57.310Z"
   },
   {
     "POS": "100",
@@ -214205,7 +214215,7 @@
     "gesa_pdf": "No",
     "normalizado_pdf": "No",
     "qa_revision_estado": "ok",
-    "qa_revision_accion": "importar",
+    "qa_revision_accion": "eliminar",
     "ID": 1902019
   },
   {
@@ -259000,9 +259010,10 @@
     "bom_pdf": "XS524000.00097",
     "gesa_pdf": "No",
     "normalizado_pdf": "No",
-    "qa_revision_estado": "pendiente",
-    "qa_revision_accion": "revisar",
-    "ID": 1902440
+    "qa_revision_estado": "ok",
+    "qa_revision_accion": "importar",
+    "ID": 1902440,
+    "qa_revision_updated_at": "2026-05-04T13:01:05.427Z"
   },
   {
     "POS": "105",
@@ -263910,7 +263921,8 @@
     "sust_new_part_number_pdf": "X52601100055",
     "qa_revision_estado": "ok",
     "qa_revision_accion": "importar",
-    "ID": 1902486
+    "ID": 1902486,
+    "qa_revision_updated_at": "2026-05-04T13:02:26.097Z"
   },
   {
     "POS": "5 15 25 30",
@@ -272934,7 +272946,7 @@
     "qa_revision_estado": "ok",
     "qa_revision_accion": "eliminar",
     "ID": 1902571,
-    "qa_revision_updated_at": "2026-05-03T16:37:57.647Z"
+    "qa_revision_updated_at": "2026-05-04T13:06:57.310Z"
   },
   {
     "POS": "100",
@@ -339151,7 +339163,7 @@
     "qa_revision_estado": "ok",
     "qa_revision_accion": "eliminar",
     "ID": 1903194,
-    "qa_revision_updated_at": "2026-05-03T16:37:57.647Z"
+    "qa_revision_updated_at": "2026-05-04T13:06:57.310Z"
   },
   {
     "POS": "100",
@@ -455416,7 +455428,7 @@
     "qa_revision_estado": "ok",
     "qa_revision_accion": "eliminar",
     "ID": 1904293,
-    "qa_revision_updated_at": "2026-05-03T16:37:57.647Z"
+    "qa_revision_updated_at": "2026-05-04T13:06:57.310Z"
   },
   {
     "POS": "100",
@@ -467435,7 +467447,7 @@
     "gesa_pdf": "No",
     "normalizado_pdf": "No",
     "qa_revision_estado": "ok",
-    "qa_revision_accion": "importar",
+    "qa_revision_accion": "eliminar",
     "ID": 1904406
   },
   {

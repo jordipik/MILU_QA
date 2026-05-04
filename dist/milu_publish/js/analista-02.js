@@ -919,6 +919,8 @@ async function saveEditRecordForm() {
             return;
         }
 
+        const prevEstado = normalizeEstadoToNew(currentRow?.qa_revision_estado);
+
         const updates = {
             pn_final: String($('editRecordPnFinal')?.value || '').trim(),
             designation_final: String($('editRecordDesignationFinal')?.value || '').trim(),
@@ -939,6 +941,14 @@ async function saveEditRecordForm() {
                 saved = true;
                 changedFields.add(key);
             }
+        }
+
+        // Si el registro estaba en pendiente y pasa a OK, también persistir acción importar
+        if (prevEstado === 'pendiente' && updates.qa_revision_estado === 'ok') {
+            await saveCellToServer(engineFile, id, 'qa_revision_accion', 'importar');
+            currentRow.qa_revision_accion = 'importar';
+            saved = true;
+            changedFields.add('qa_revision_accion');
         }
 
         if (saved) {

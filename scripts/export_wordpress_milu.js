@@ -217,6 +217,33 @@ function buildTraceEntry(sku, rows, merged, decisionMeta, qaSummary) {
     };
 }
 
+function isQaOkImportRow(row) {
+    return key(row?.qa_revision_estado) === 'ok' && key(row?.qa_revision_accion) === 'importar';
+}
+
+function isQaOkDeleteRow(row) {
+    return key(row?.qa_revision_estado) === 'ok' && key(row?.qa_revision_accion) === 'eliminar';
+}
+
+function isQaPendingOrReviewRow(row) {
+    const estado = key(row?.qa_revision_estado);
+    const accion = key(row?.qa_revision_accion);
+    if (estado === 'pendiente' || estado === 'en revision' || estado === 'en revisión') return true;
+    if (accion === 'revisar') return true;
+    return false;
+}
+
+function isSupersededRow(row) {
+    const hierarchy = key(row?.sust_hierarchie);
+    const status = key(row?.sust_status);
+    const supersededList = t(row?.sust_superseded_list);
+
+    if (hierarchy === 'old' || hierarchy === 'superseded') return true;
+    if (status.includes('supersed') || status === 'old') return true;
+    if (supersededList) return true;
+    return false;
+}
+
 function run() {
     ensureDir(OUTPUT_DIR);
     const allRows = loadEngineRows();
@@ -231,48 +258,86 @@ function run() {
     }
 
     const importRows = [];
+    const supersededRows = [];
     const pendingRows = [];
     const discardedRows = [];
     const traceBySku = {};
 
     for (const group of byPn.values()) {
         const rows = group.rows;
-        const sku = group.pn;
-        const qaSummary = buildQaSummary(rows);
-        const decisionMeta = decideByQa(rows, qaSummary);
-        const agg = buildAggregates(rows);
+        const okImportRows = rows.filter((row) => isQaOkImportRow(row));
+        const pendingOrReviewRows = rows.filter((row) => isQaPendingOrReviewRow(row));
+        const okDeleteRows = rows.filter((row) => isQaOkDeleteRow(row));
 
-        const designation = pickMostFrequent(rows.map(getDesignation));
-        const measurement = pickMostFrequent(rows.map(getMeasurement));
-        const weight = pickMostFrequent(rows.map(getWeight));
+        const sku = group.pn;
+        let selectedRows = rows;
+        let decisionMeta = { decision: 'pending_review', reason: 'qa_pending_or_mixed', qa_validated: false };
+
+        if (okImportRows.length > 0) {
+            selectedRows = okImportRows;
+            decisionMeta = { decision: 'import', reason: 'qa_ok_importar_found', qa_validated: true };
+        } else if (pendingOrReviewRows.length > 0) {
+            selectedRows = pendingOrReviewRows;
+            decisionMeta = { decision: 'pending_review', reason: 'qa_pending_or_review_found', qa_validated: false };
+        } else if (okDeleteRows.length > 0) {
+            selectedRows = okDeleteRows;
+            decisionMeta = { decision: 'discard', reason: 'qa_ok_eliminar_found', qa_validated: true };
+        } else {
+            selectedRows = rows;
+            decisionMeta = { decision: 'pending_review', reason: 'qa_without_supported_state', qa_validated: false };
+        }
+
+        const qaSummary = buildQaSummary(selectedRows);
+        const agg = buildAggregates(selectedRows);
+
+        const designation = pickMostFrequent(selectedRows.map(getDesignation));
+        const measurement = pickMostFrequent(selectedRows.map(getMeasurement));
+        const weight = pickMostFrequent(selectedRows.map(getWeight));
+        const pnNew = pickMostFrequent(selectedRows.map((row) => row?.sust_new_part_number));
+        const supersededList = pickMostFrequent(selectedRows.map((row) => row?.sust_superseded_list));
+        const hasSuperseded = selectedRows.some((row) => isSupersededRow(row));
 
         const merged = {
             sku,
+            pn: sku,
+            pn_new: pnNew,
+            sust_superseded_list: supersededList,
             designation_final: designation,
+            measure_final: measurement,
             measurement_final: measurement,
             weight_final: weight,
             decision: decisionMeta.decision,
             reason: decisionMeta.reason,
             qa_validated: decisionMeta.qa_validated,
-            occurrences: rows.length,
-            total_occurrences_global: rows.length,
+            occurrences: selectedRows.length,
+            apariciones: selectedRows.length,
+            total_occurrences_global: selectedRows.length,
             engines: agg.engines,
+            motores: agg.engines,
             source_ids: agg.sourceIds,
             source_pages: agg.sourcePages,
+            qa_revision_estado: decisionMeta.decision === 'discard' ? 'ok' : (decisionMeta.decision === 'import' ? 'ok' : 'pendiente'),
+            qa_revision_accion: decisionMeta.decision === 'discard' ? 'eliminar' : (decisionMeta.decision === 'import' ? 'importar' : 'revisar'),
             qa_summary_json: JSON.stringify(qaSummary),
             import_decision: decisionMeta.decision,
             import_reason: decisionMeta.reason
         };
 
-        if (decisionMeta.decision === 'import') importRows.push(merged);
-        else if (decisionMeta.decision === 'discard') discardedRows.push(merged);
-        else pendingRows.push(merged);
+        if (decisionMeta.decision === 'import') {
+            if (hasSuperseded) supersededRows.push(merged);
+            else importRows.push(merged);
+        } else if (decisionMeta.decision === 'discard') {
+            discardedRows.push(merged);
+        } else {
+            pendingRows.push(merged);
+        }
 
-        traceBySku[sku] = buildTraceEntry(sku, rows, merged, decisionMeta, qaSummary);
+        traceBySku[sku] = buildTraceEntry(sku, selectedRows, merged, decisionMeta, qaSummary);
     }
 
     const sortBySku = (a, b) => String(a.sku || '').localeCompare(String(b.sku || ''), 'es', { numeric: true, sensitivity: 'base' });
     importRows.sort(sortBySku);
+    supersededRows.sort(sortBySku);
     pendingRows.sort(sortBySku);
     discardedRows.sort(sortBySku);
 
@@ -294,10 +359,16 @@ function run() {
     ];
 
     writeCsv(path.join(OUTPUT_DIR, 'milu_wp_import.csv'), importRows, headers);
+    writeCsv(path.join(OUTPUT_DIR, 'milu_wp_new_import.csv'), importRows, headers);
+    writeCsv(path.join(OUTPUT_DIR, 'milu_wp_superseded.csv'), supersededRows, headers);
+    writeCsv(path.join(OUTPUT_DIR, 'milu_wp_superseded_import.csv'), supersededRows, headers);
     writeCsv(path.join(OUTPUT_DIR, 'milu_wp_pending_review.csv'), pendingRows, headers);
     writeCsv(path.join(OUTPUT_DIR, 'milu_wp_discarded.csv'), discardedRows, headers);
 
     writeJson(path.join(OUTPUT_DIR, 'milu_wp_import.json'), importRows);
+    writeJson(path.join(OUTPUT_DIR, 'milu_wp_new_import.json'), importRows);
+    writeJson(path.join(OUTPUT_DIR, 'milu_wp_superseded.json'), supersededRows);
+    writeJson(path.join(OUTPUT_DIR, 'milu_wp_superseded_import.json'), supersededRows);
     writeJson(path.join(OUTPUT_DIR, 'milu_wp_pending_review.json'), pendingRows);
     writeJson(path.join(OUTPUT_DIR, 'milu_wp_discarded.json'), discardedRows);
     writeJson(path.join(OUTPUT_DIR, 'milu_wp_trace.json'), traceBySku);
@@ -308,14 +379,16 @@ function run() {
         occurrences_processed: allRows.length,
         pn_unique: byPn.size,
         totals: {
-            import: importRows.length,
+            import: importRows.length + supersededRows.length,
+            new: importRows.length,
+            superseded: supersededRows.length,
             pending_review: pendingRows.length,
             discard: discardedRows.length
         },
         rules: {
-            rule_1: 'Si un PN tiene al menos una fila con qa_revision_estado=ok y qa_revision_accion=importar => import',
-            rule_2: 'Si todas las filas del PN tienen qa_revision_estado=ok y qa_revision_accion=eliminar => discard',
-            rule_3: 'Cualquier otro caso => pending_review'
+            rule_1: 'Si un PN tiene filas ok/importar => se exporta como NEW o SUPERSEDED (segun marcas de superseded)',
+            rule_2: 'Si no tiene import y tiene pendiente/revisar => PENDING',
+            rule_3: 'Si no tiene import ni pending/revisar y tiene ok/eliminar => DISCARDED'
         }
     };
 
@@ -328,19 +401,22 @@ function run() {
         `- Engines processed: ${report.engines_processed}`,
         `- Occurrences processed: ${report.occurrences_processed}`,
         `- PN unique: ${report.pn_unique}`,
-        `- Importables: ${report.totals.import}`,
+        `- Importables (total): ${report.totals.import}`,
+        `- New: ${report.totals.new}`,
+        `- Superseded: ${report.totals.superseded}`,
         `- Pending review: ${report.totals.pending_review}`,
         `- Discarded: ${report.totals.discard}`,
         '',
         '## Official Rules',
-        '- Rule 1: at least one row ok/importar => import',
-        '- Rule 2: all rows ok/eliminar => discard',
-        '- Rule 3: otherwise => pending_review',
+        '- Rule 1: if PN has ok/importar rows => export as NEW or SUPERSEDED',
+        '- Rule 2: if no import and PN has pendiente/revisar => PENDING',
+        '- Rule 3: if no import and no pending/revisar, and PN has ok/eliminar => DISCARDED',
         '',
         'La decision final depende solo de QA humana.'
     ].join('\n');
 
     fs.writeFileSync(path.join(OUTPUT_DIR, 'milu_wp_export_summary.md'), `${summary}\n`, 'utf8');
+    writeJson(path.join(OUTPUT_DIR, 'milu_wp_export_report.json'), report);
     console.log(JSON.stringify(report, null, 2));
 }
 

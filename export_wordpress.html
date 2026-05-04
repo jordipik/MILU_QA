@@ -1,0 +1,88 @@
+<!doctype html>
+<html lang="es">
+
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Export WordPress | MILU</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link
+        href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=IBM+Plex+Sans:wght@400;500;600&display=swap"
+        rel="stylesheet">
+    <link rel="stylesheet" href="styles/export_wordpress.css" />
+</head>
+
+<body>
+    <div class="ewp-shell">
+        <header class="ewp-header">
+            <div>
+                <p class="ewp-eyebrow">MILU</p>
+                <h1>Export WordPress</h1>
+                <p class="ewp-subtitle">Vista QA para validar el export antes de publicar en WordPress.</p>
+                <p><a class="ewp-link" href="/qa_milu.html">Volver a QA</a> | <a class="ewp-link"
+                        href="/pn_review.html">PN Review</a></p>
+            </div>
+            <div class="ewp-actions" id="ewpActions">
+                <button id="ewpRunBtn" type="button">Ejecutar export</button>
+                <button id="ewpRefreshBtn" class="secondary" type="button">Refrescar</button>
+                <button id="ewpDownloadBtn" class="secondary" type="button">Descargar CSV</button>
+            </div>
+        </header>
+
+        <section class="ewp-summary" id="ewpSummary">
+            <article class="ewp-card">
+                <p class="label">New</p>
+                <p class="value" id="sumNew">0</p>
+            </article>
+            <article class="ewp-card">
+                <p class="label">Superseded</p>
+                <p class="value" id="sumSuperseded">0</p>
+            </article>
+            <article class="ewp-card">
+                <p class="label">Pending</p>
+                <p class="value" id="sumPending">0</p>
+            </article>
+            <article class="ewp-card">
+                <p class="label">Discarded</p>
+                <p class="value" id="sumDiscarded">0</p>
+            </article>
+            <article class="ewp-card wide">
+                <p class="label">Ultima generacion</p>
+                <p class="value" id="sumTimestamp">-</p>
+            </article>
+        </section>
+
+        <section class="ewp-panel">
+            <div class="ewp-tabs" id="ewpTabs"></div>
+
+            <div class="ewp-filters">
+                <input id="ewpSearchPn" type="search" placeholder="Buscar PN..." />
+                <select id="ewpMotorFilter">
+                    <option value="">Todos los motores</option>
+                </select>
+                <select id="ewpQaFilter">
+                    <option value="">Todos los estados QA</option>
+                </select>
+                <span id="ewpStatusText" class="ewp-status">Listo</span>
+            </div>
+
+            <div class="ewp-table-wrap">
+                <table class="ewp-table" id="ewpTable">
+                    <thead id="ewpTableHead"></thead>
+                    <tbody id="ewpTableBody">
+                        <tr>
+                            <td colspan="8" class="empty">Cargando datos...</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </section>
+    </div>
+
+    <div id="ewpToastContainer" class="ewp-toast-container" aria-live="polite"></div>
+
+    <script type="module" src="js/export-wordpress.js"></script>
+</body>
+
+</html>
