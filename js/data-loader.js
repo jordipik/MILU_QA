@@ -322,13 +322,9 @@ function getSaveBackendCandidateUrls() {
     const miluPhpCandidate = currentOrigin ? `${currentOrigin}/milu/save-json.php` : '/milu/save-json.php';
     const pathnameHasMilu = /(^|\/)milu(\/|$)/i.test(currentPathname);
     const normalizedHostname = currentHostname.toLowerCase();
-    const knownMiluProductionCandidates = [];
-    if (normalizedHostname === 'alentio.es' || normalizedHostname.endsWith('.alentio.es')) {
-        knownMiluProductionCandidates.push('https://alentio.es/milu/save-json.php');
-    }
-    if (normalizedHostname === 'milu.alentio.es') {
-        knownMiluProductionCandidates.push('https://milu.alentio.es/save-json.php');
-    }
+    const isAlentioRoot = normalizedHostname === 'alentio.es';
+    const isAlentioSubdomain = normalizedHostname.endsWith('.alentio.es');
+    const isMiluSubdomain = normalizedHostname === 'milu.alentio.es';
 
     if (isLocalhost) {
         // En local: probar Express en puerto 3000
@@ -342,13 +338,35 @@ function getSaveBackendCandidateUrls() {
         ].filter(Boolean).filter((url, index, arr) => arr.indexOf(url) === index);
     } else {
         // En servidor remoto (Arsys, etc.): usar save-json.php (sin Express)
-        // Se sirve siempre desde alentio.es/milu/.
+        // En alentio.es la app vive bajo /milu/, por lo que /save-json.php en raiz da 404.
+        if (isAlentioRoot) {
+            return [
+                pathnameHasMilu ? phpCandidate : '',
+                miluPhpCandidate,
+                'https://alentio.es/milu/save-json.php'
+            ].filter(Boolean).filter((url, index, arr) => arr.indexOf(url) === index);
+        }
+
+        if (isMiluSubdomain) {
+            return [
+                sameOriginPhpCandidate,
+                phpCandidate,
+                'https://milu.alentio.es/save-json.php'
+            ].filter(Boolean).filter((url, index, arr) => arr.indexOf(url) === index);
+        }
+
+        if (isAlentioSubdomain) {
+            return [
+                sameOriginPhpCandidate,
+                phpCandidate
+            ].filter(Boolean).filter((url, index, arr) => arr.indexOf(url) === index);
+        }
+
         return [
             pathnameHasMilu ? phpCandidate : '',
             miluPhpCandidate,
             phpCandidate,
-            sameOriginPhpCandidate,
-            ...knownMiluProductionCandidates
+            sameOriginPhpCandidate
         ].filter(Boolean).filter((url, index, arr) => arr.indexOf(url) === index);
     }
 }
