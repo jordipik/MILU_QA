@@ -352,7 +352,7 @@
             'pos_final',
             'pn_final',
             'designation_final',
-            'MODEL/TYPE_final',
+            'model_final',
             'qty_final',
             'qty_units_final',
             'weight_final',
@@ -369,6 +369,7 @@
             'engine_model',
             'Source Page'
         ];
+        const PENDING_SHARED_EDITOR_KEY = 'milu:pending-shared-editor-payload';
 
         function txt(value) {
             return String(value ?? '').trim();
@@ -415,6 +416,19 @@
             if (normalized === 'eliminar') return 'eliminar';
             if (normalized === 'revisar') return 'revisar';
             return 'mantener';
+        }
+
+        function consumePendingSharedEditorPayload() {
+            try {
+                const raw = sessionStorage.getItem(PENDING_SHARED_EDITOR_KEY);
+                if (!raw) return null;
+                sessionStorage.removeItem(PENDING_SHARED_EDITOR_KEY);
+                const parsed = JSON.parse(raw);
+                return parsed && typeof parsed === 'object' ? parsed : null;
+            } catch (error) {
+                console.warn('No se pudo leer payload de modal compartido:', error);
+                return null;
+            }
         }
 
         function getSharedModalElements() {
@@ -658,7 +672,7 @@
                     pos_final: txt(payload.pos_final || payload.pos || payload.POS),
                     pn_final: txt(payload.pn_final),
                     designation_final: txt(payload.designation_final),
-                    'MODEL/TYPE_final': txt(payload['MODEL/TYPE_final'] || payload.model_type_final || payload.model_final || payload.model_type || payload.ModelType),
+                    model_final: txt(payload.model_final || payload['MODEL/TYPE_final'] || payload.model_type_final || payload.model_type || payload.ModelType),
                     qty_final: txt(payload.qty_final || payload.qty || payload.QTY),
                     qty_units_final: txt(payload.qty_units_final || payload.units || payload.Units || payload.UNITS),
                     weight_final: txt(payload.weight_final),
@@ -686,7 +700,7 @@
             if (pos instanceof HTMLInputElement) pos.value = sharedEditorContext.values.pos_final;
             if (pnFinal instanceof HTMLInputElement) pnFinal.value = sharedEditorContext.values.pn_final;
             if (designationFinal instanceof HTMLInputElement) designationFinal.value = sharedEditorContext.values.designation_final;
-            if (modelType instanceof HTMLInputElement) modelType.value = sharedEditorContext.values['MODEL/TYPE_final'];
+            if (modelType instanceof HTMLInputElement) modelType.value = sharedEditorContext.values['model_final'];
             if (qty instanceof HTMLInputElement) qty.value = sharedEditorContext.values.qty_final;
             if (units instanceof HTMLInputElement) units.value = sharedEditorContext.values.qty_units_final;
             if (weightFinal instanceof HTMLInputElement) weightFinal.value = sharedEditorContext.values.weight_final;
@@ -739,7 +753,7 @@
                 pos_final: txt(pos instanceof HTMLInputElement ? pos.value : ''),
                 pn_final: txt(pnFinal instanceof HTMLInputElement ? pnFinal.value : ''),
                 designation_final: txt(designationFinal instanceof HTMLInputElement ? designationFinal.value : ''),
-                'MODEL/TYPE_final': txt(modelType instanceof HTMLInputElement ? modelType.value : ''),
+                model_final: txt(modelType instanceof HTMLInputElement ? modelType.value : ''),
                 qty_final: txt(qty instanceof HTMLInputElement ? qty.value : ''),
                 qty_units_final: txt(units instanceof HTMLInputElement ? units.value : ''),
                 weight_final: txt(weightFinal instanceof HTMLInputElement ? weightFinal.value : ''),
@@ -864,6 +878,21 @@
 
         const initialView = getViewFromUrl();
         mountView(initialView, { replaceHistory: true });
+
+        const pendingSharedPayload = consumePendingSharedEditorPayload();
+        if (pendingSharedPayload) {
+            mountView('analisis', { updateHistory: false });
+            const opened = openSharedRecordEditor(pendingSharedPayload);
+            if (!opened) {
+                let attemptsLeft = 40;
+                const retry = () => {
+                    if (openSharedRecordEditor(pendingSharedPayload) || attemptsLeft <= 0) return;
+                    attemptsLeft -= 1;
+                    window.setTimeout(retry, 100);
+                };
+                retry();
+            }
+        }
     </script>
 </body>
 

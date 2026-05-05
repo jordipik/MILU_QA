@@ -233,7 +233,18 @@ function applyToRow(row, options) {
     if (assignIfChanged(row, 'has_error', hasErrors)) changed = true;
 
     if (options.updateRevision) {
-        if (hasErrors) {
+        const isNoiseFooter = String(row?.criterio_pn || '').trim() === 'C_NOISE_FOOTER'
+            || String(row?.status || '').trim().toUpperCase() === 'NOISE';
+        if (isNoiseFooter) {
+            // Registros footer/ruido: siempre marcar OK/Eliminar (salvo que ya esté ok/eliminar y no se fuerza)
+            const currentEstado = String(row?.qa_revision_estado || '').trim().toLowerCase();
+            const currentAccion = String(row?.qa_revision_accion || '').trim().toLowerCase();
+            const alreadySet = currentEstado === 'ok' && currentAccion === 'eliminar';
+            if (!alreadySet || options.forceRevision) {
+                if (assignIfChanged(row, 'qa_revision_estado', 'ok')) changed = true;
+                if (assignIfChanged(row, 'qa_revision_accion', 'eliminar')) changed = true;
+            }
+        } else if (hasErrors) {
             // Si ya fue revisado manualmente como 'ok', respetar esa decisión (salvo forceRevision)
             const currentEstado = String(row?.qa_revision_estado || '').trim().toLowerCase();
             const isManuallyOk = currentEstado === 'ok' || currentEstado === 'revisado';

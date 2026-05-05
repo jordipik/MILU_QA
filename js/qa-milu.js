@@ -1991,9 +1991,15 @@ function openRecordModal(revisionKey) {
 function openSharedRecordEditorForRow(row) {
     if (!row || typeof row !== 'object') return false;
 
-    const shellBridge = window.parent && window.parent !== window
+    const parentBridge = window.parent && window.parent !== window
         ? window.parent.miluShellOpenSharedRecordEditor
         : null;
+    const topBridge = window.top && window.top !== window
+        ? window.top.miluShellOpenSharedRecordEditor
+        : null;
+    const shellBridge = typeof parentBridge === 'function'
+        ? parentBridge
+        : (typeof topBridge === 'function' ? topBridge : null);
     if (typeof shellBridge !== 'function') return false;
 
     const opened = shellBridge({
@@ -2004,10 +2010,11 @@ function openSharedRecordEditorForRow(row) {
         source_file: String(row?.source_file ?? '').trim(),
         source_page: String(row?.['Source Page'] ?? '').trim(),
         pos: String(row?.POS ?? '').trim(),
+        pos_final: String(row?.pos_final ?? '').trim(),
         part_no: String(row?.['PART NO.'] ?? row?.pn ?? '').trim(),
         pn_final: String(row?.pn_final ?? '').trim(),
         designation_final: String(row?.designation_final ?? '').trim(),
-        model_type: String(row?.model_type ?? '').trim(),
+        model_final: String(row?.model_final ?? row?.['MODEL/TYPE_final'] ?? '').trim(),
         qty: String(row?.QTY ?? row?.qty ?? '').trim(),
         units: String(row?.Units ?? row?.units ?? '').trim(),
         fn: String(row?.FN ?? row?.fn ?? '').trim(),
@@ -3522,6 +3529,7 @@ function attachGlobalEvents() {
             alert('Selecciona un registro para abrir el modal.');
             return;
         }
+
         const row = getRowByRevisionKey(revisionKey);
         if (openSharedRecordEditorForRow(row)) return;
         openRecordModal(revisionKey);

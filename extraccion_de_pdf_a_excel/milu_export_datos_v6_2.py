@@ -167,6 +167,10 @@ def row_signature(page:int, rec:dict)->str:
     return re.sub(r"\s+"," ",sig)
 
 def row_has_footer_noise(rec:dict, footer_patterns)->bool:
+    pos_norm = re.sub(r"\s+", " ", str(rec.get("POS") or rec.get("C1") or "").strip()).lower()
+    if pos_norm == "tu fri":
+        return True
+
     pats = [re.compile(p, re.IGNORECASE) for p in footer_patterns]
     for v in rec.values():
         if v is None: continue

@@ -75,6 +75,7 @@ function getStoredPdfAutoValue(row, fieldName) {
 let currentRow = null;
 let currentProcessIndex = 0;
 let comparisonRenderToken = 0;
+let isApplyingPdfAutoDesignation = false;
 const pdfDocumentPromiseCache = new Map();
 const pdfPageTextCache = new Map();
 const PDF_CLUSTER_GAP_MAX = 24;
@@ -791,42 +792,57 @@ function initEditRecordModal() {
 function openEditRecordModalForRow(row = currentRow) {
     if (!row || typeof row !== 'object') return;
 
-    const sharedShellBridge = window.parent && window.parent !== window
+    const sharedPayload = {
+        id: String(row?.ID ?? '').trim(),
+        engineModel: String(row?.engine_model ?? '').trim(),
+        engineFile: resolveEngineFile(row),
+        record: String(row?.pn_final ?? row?.['PART NO.'] ?? '').trim(),
+        source_file: String(row?.source_file ?? '').trim(),
+        source_page: String(row?.['Source Page'] ?? '').trim(),
+        pos: String(row?.POS ?? '').trim(),
+        pos_final: String(row?.pos_final ?? '').trim(),
+        part_no: String(row?.['PART NO.'] ?? row?.pn ?? '').trim(),
+        pn_final: String(row?.pn_final ?? '').trim(),
+        designation_final: String(row?.designation_final ?? '').trim(),
+        model_final: String(row?.model_final ?? row?.['MODEL/TYPE_final'] ?? '').trim(),
+        qty: String(row?.QTY ?? row?.qty ?? '').trim(),
+        units: String(row?.Units ?? row?.units ?? '').trim(),
+        fn: String(row?.FN ?? row?.fn ?? '').trim(),
+        weight_final: String(row?.weight_final ?? '').trim(),
+        measurement_final: String(row?.measure_final ?? row?.measurement_final ?? '').trim(),
+        norma: String(row?.norma ?? '').trim(),
+        gesa: String(row?.gesa ?? '').trim(),
+        normalizado: String(row?.normalizado ?? '').trim(),
+        sust_hierarchie: String(row?.sust_hierarchie ?? '').trim(),
+        has_img: String(row?.has_img ?? '').trim(),
+        en_web: String(row?.en_web ?? '').trim(),
+        qa_revision_estado: normalizeEstadoToNew(row?.qa_revision_estado),
+        qa_revision_accion: normalizeAccionToNew(row?.qa_revision_accion)
+    };
+
+    const parentBridge = window.parent && window.parent !== window
         ? window.parent.miluShellOpenSharedRecordEditor
         : null;
+    const topBridge = window.top && window.top !== window
+        ? window.top.miluShellOpenSharedRecordEditor
+        : null;
+    const sharedShellBridge = typeof parentBridge === 'function'
+        ? parentBridge
+        : (typeof topBridge === 'function' ? topBridge : null);
     if (typeof sharedShellBridge === 'function') {
-        const openedShared = sharedShellBridge({
-            id: String(row?.ID ?? '').trim(),
-            engineModel: String(row?.engine_model ?? '').trim(),
-            engineFile: resolveEngineFile(row),
-            record: String(row?.pn_final ?? row?.['PART NO.'] ?? '').trim(),
-            source_file: String(row?.source_file ?? '').trim(),
-            source_page: String(row?.['Source Page'] ?? '').trim(),
-            pos: String(row?.POS ?? '').trim(),
-            part_no: String(row?.['PART NO.'] ?? row?.pn ?? '').trim(),
-            pn_final: String(row?.pn_final ?? '').trim(),
-            designation_final: String(row?.designation_final ?? '').trim(),
-            model_type: String(row?.model_type ?? '').trim(),
-            qty: String(row?.QTY ?? row?.qty ?? '').trim(),
-            units: String(row?.Units ?? row?.units ?? '').trim(),
-            fn: String(row?.FN ?? row?.fn ?? '').trim(),
-            weight_final: String(row?.weight_final ?? '').trim(),
-            measurement_final: String(row?.measure_final ?? row?.measurement_final ?? '').trim(),
-            norma: String(row?.norma ?? '').trim(),
-            gesa: String(row?.gesa ?? '').trim(),
-            normalizado: String(row?.normalizado ?? '').trim(),
-            sust_hierarchie: String(row?.sust_hierarchie ?? '').trim(),
-            has_img: String(row?.has_img ?? '').trim(),
-            en_web: String(row?.en_web ?? '').trim(),
-            qa_revision_estado: normalizeEstadoToNew(row?.qa_revision_estado),
-            qa_revision_accion: normalizeAccionToNew(row?.qa_revision_accion)
-        });
+        const openedShared = sharedShellBridge(sharedPayload);
         if (openedShared !== false) return;
     }
 
-    const shellBridge = window.parent && window.parent !== window
+    const parentPdfBridge = window.parent && window.parent !== window
         ? window.parent.miluShellOpenPdfRecordModal
         : null;
+    const topPdfBridge = window.top && window.top !== window
+        ? window.top.miluShellOpenPdfRecordModal
+        : null;
+    const shellBridge = typeof parentPdfBridge === 'function'
+        ? parentPdfBridge
+        : (typeof topPdfBridge === 'function' ? topPdfBridge : null);
     if (typeof shellBridge === 'function') {
         const openedInPdfView = shellBridge({
             engine: String(row?.engine_model ?? '').trim(),
@@ -836,6 +852,22 @@ function openEditRecordModalForRow(row = currentRow) {
         if (openedInPdfView !== false) return;
     }
 
+    if (window.top === window) {
+        try {
+            sessionStorage.setItem('milu:pending-shared-editor-payload', JSON.stringify(sharedPayload));
+            const shellUrl = new URL('milu_shell.html', window.location.href);
+            shellUrl.searchParams.set('view', 'analisis');
+            if (sharedPayload.engineModel) shellUrl.searchParams.set('engine', sharedPayload.engineModel);
+            if (sharedPayload.id) shellUrl.searchParams.set('id', sharedPayload.id);
+            if (sharedPayload.record) shellUrl.searchParams.set('record', sharedPayload.record);
+            window.location.href = shellUrl.toString();
+            return;
+        } catch (error) {
+            console.warn('No se pudo abrir shell para modal compartido:', error);
+        }
+    }
+
+    // Fallback local si no hay shell/bridge disponible.
     populateEditRecordForm(row);
     setEditRecordStatus('', '');
 
@@ -898,6 +930,11 @@ function populateEditRecordForm(row) {
     if (statusSelect instanceof HTMLSelectElement) {
         statusSelect.value = normalizeEstadoToNew(row?.qa_revision_estado);
     }
+    const actionSelect = $('editRecordAction');
+    if (actionSelect instanceof HTMLSelectElement) {
+        const nextAction = normalizeAccionToNew(row?.qa_revision_accion);
+        actionSelect.value = nextAction || (normalizeEstadoToNew(row?.qa_revision_estado) === 'ok' ? 'importar' : 'revisar');
+    }
 }
 
 async function saveEditRecordForm() {
@@ -919,15 +956,14 @@ async function saveEditRecordForm() {
             return;
         }
 
-        const prevEstado = normalizeEstadoToNew(currentRow?.qa_revision_estado);
-
         const updates = {
             pn_final: String($('editRecordPnFinal')?.value || '').trim(),
             designation_final: String($('editRecordDesignationFinal')?.value || '').trim(),
             weight_final: String($('editRecordWeightFinal')?.value || '').trim(),
             measure_final: String($('editRecordMeasurementFinal')?.value || '').trim(),
             norma: String($('editRecordNorma')?.value || '').trim(),
-            qa_revision_estado: normalizeEstadoToNew($('editRecordStatus')?.value || 'pendiente')
+            qa_revision_estado: normalizeEstadoToNew($('editRecordStatus')?.value || 'pendiente'),
+            qa_revision_accion: normalizeAccionToNew($('editRecordAction')?.value || currentRow?.qa_revision_accion || 'revisar')
         };
 
         let saved = false;
@@ -943,16 +979,8 @@ async function saveEditRecordForm() {
             }
         }
 
-        // Si el registro estaba en pendiente y pasa a OK, también persistir acción importar
-        if (prevEstado === 'pendiente' && updates.qa_revision_estado === 'ok') {
-            await saveCellToServer(engineFile, id, 'qa_revision_accion', 'importar');
-            currentRow.qa_revision_accion = 'importar';
-            saved = true;
-            changedFields.add('qa_revision_accion');
-        }
-
         if (saved) {
-            if (changedFields.has('qa_revision_estado')) {
+            if (changedFields.has('qa_revision_estado') || changedFields.has('qa_revision_accion')) {
                 publishRevisionSync({
                     id,
                     engineFile,
@@ -1033,9 +1061,16 @@ function initComparisonEditTriggers() {
     const body = $('comparisonBody');
     if (!(body instanceof HTMLElement)) return;
 
-    body.addEventListener('dblclick', (event) => {
+    body.addEventListener('dblclick', async (event) => {
         const target = event.target;
         if (!(target instanceof HTMLElement)) return;
+
+        const pdfAutoCopyCell = target.closest('td[data-copy-pdf-auto-designation="true"]');
+        if (pdfAutoCopyCell && currentRow) {
+            event.preventDefault();
+            await copyPdfAutoDesignationToFinalAndRecompute();
+            return;
+        }
 
         const editableCell = target.closest('td[data-open-edit-record-modal="true"]');
         if (!editableCell || !currentRow) return;
@@ -1043,6 +1078,54 @@ function initComparisonEditTriggers() {
         event.preventDefault();
         openEditRecordModalForRow(currentRow);
     });
+}
+
+async function copyPdfAutoDesignationToFinalAndRecompute() {
+    if (!currentRow || isApplyingPdfAutoDesignation) return;
+
+    const engineFile = resolveEngineFile(currentRow);
+    const id = txt(currentRow?.ID, '');
+    if (!engineFile || !id) {
+        alert('No se pudo resolver archivo engine o ID para aplicar DESIGNATION desde PDF_AUTO.');
+        return;
+    }
+
+    const pdfAutoDesignation = normalizeString(getStoredPdfAutoValue(currentRow, 'DESIGNATION'));
+    if (!pdfAutoDesignation) {
+        setRecomputeStatus('No hay valor PDF_AUTO en DESIGNATION para copiar.', 'error');
+        return;
+    }
+
+    const currentFinalDesignation = normalizeString(currentRow?.designation_final);
+    const changed = normalizeCompareValue(pdfAutoDesignation) !== normalizeCompareValue(currentFinalDesignation);
+
+    isApplyingPdfAutoDesignation = true;
+    try {
+        setRecomputeStatus(`Aplicando DESIGNATION PDF_AUTO en ID ${id} y recalculando...`, '');
+
+        if (changed) {
+            await saveCellToServer(engineFile, id, 'designation_final', pdfAutoDesignation);
+            currentRow.designation_final = pdfAutoDesignation;
+
+            const editDesignationInput = $('editDesignationFinal');
+            if (editDesignationInput instanceof HTMLInputElement) {
+                editDesignationInput.value = pdfAutoDesignation;
+            }
+        }
+
+        await autoRecomputeEditedRecord(engineFile, id);
+        await reloadEditedRecord(engineFile, id);
+        renderReviewStateButtons(currentRow);
+        renderReviewStats();
+        notifyPdfDataChangedFromAnalista(currentRow);
+
+        const actionLabel = changed ? 'copiado a FINAL' : 'ya coincide con FINAL';
+        setRecomputeStatus(`Registro ID ${id}: ${actionLabel}. Recalculo completo aplicado.`, 'ok');
+    } catch (error) {
+        setRecomputeStatus(`Error aplicando DESIGNATION desde PDF_AUTO: ${String(error?.message || error)}`, 'error');
+    } finally {
+        isApplyingPdfAutoDesignation = false;
+    }
 }
 
 function buildEngineOptions(selectedModel = '') {
@@ -1648,6 +1731,23 @@ function setQuickRecomputeButtonsDisabled(disabled) {
     if (recomputeAllBtn instanceof HTMLButtonElement) recomputeAllBtn.disabled = disabled;
 }
 
+function setQuickRecomputeBusyUi(busy) {
+    const quickRecomputeBtn = $('openRecomputeModalBtn');
+    if (quickRecomputeBtn instanceof HTMLButtonElement) {
+        if (!quickRecomputeBtn.dataset.defaultLabel) {
+            quickRecomputeBtn.dataset.defaultLabel = quickRecomputeBtn.textContent || 'Recalcular registro';
+        }
+
+        quickRecomputeBtn.textContent = busy
+            ? `⌛ ${quickRecomputeBtn.dataset.defaultLabel}`
+            : quickRecomputeBtn.dataset.defaultLabel;
+        quickRecomputeBtn.style.cursor = busy ? 'wait' : '';
+        quickRecomputeBtn.setAttribute('aria-busy', busy ? 'true' : 'false');
+    }
+
+    document.body.style.cursor = busy ? 'wait' : '';
+}
+
 function setRecomputeModalInputsForAction(selectedModel, id = '') {
     const recomputeEngineSelect = $('recomputeEngineSelect');
     const recomputeIdInput = $('recomputeIdInput');
@@ -1687,14 +1787,73 @@ async function runQuickRecomputeForCurrentRecord() {
 
     setRecomputeModalInputsForAction(selectedModel, currentId);
     setQuickRecomputeButtonsDisabled(true);
+    setQuickRecomputeBusyUi(true);
     try {
         setRecomputeStatus(`Recalculando registro ID ${currentId} (errores + PDF_AUTO)...`, '');
         await runBackendRecompute();
         await runBackendRecomputePdfAuto();
-        setRecomputeStatus(`Registro ID ${currentId} recalculado correctamente.`, 'ok');
+        const revisionAutoUpdate = await setRevisionOkImportIfNoErrors();
+        const revisionSuffix = revisionAutoUpdate === 'applied'
+            ? ' Sin errores: estado=OK y accion=Importar aplicados automaticamente.'
+            : revisionAutoUpdate === 'applied-eliminar'
+                ? ' Footer/ruido detectado: estado=OK y accion=Eliminar aplicados automaticamente.'
+                : revisionAutoUpdate === 'already-ok-importar'
+                    ? ' Sin errores: estado/accion ya estaban en OK/Importar.'
+                    : revisionAutoUpdate === 'already-ok-eliminar'
+                        ? ' Footer/ruido: estado/accion ya estaban en OK/Eliminar.'
+                        : '';
+        setRecomputeStatus(`Registro ID ${currentId} recalculado correctamente.${revisionSuffix}`, 'ok');
     } finally {
+        setQuickRecomputeBusyUi(false);
         setQuickRecomputeButtonsDisabled(false);
     }
+}
+
+async function setRevisionOkImportIfNoErrors() {
+    if (!currentRow) return false;
+
+    const isNoiseFooter = String(currentRow?.criterio_pn || '').trim() === 'C_NOISE_FOOTER'
+        || String(currentRow?.status || '').trim().toUpperCase() === 'NOISE';
+
+    if (!isNoiseFooter && getRowErrorCount(currentRow) > 0) return 'has-errors';
+
+    const engineFile = resolveEngineFile(currentRow);
+    const id = txt(currentRow?.ID, '');
+    if (!engineFile || !id) return 'has-errors';
+
+    const nextEstado = 'ok';
+    const nextAccion = isNoiseFooter ? 'eliminar' : 'importar';
+    const currentEstado = normalizeEstadoToNew(currentRow?.qa_revision_estado);
+    const currentAccion = normalizeAccionToNew(currentRow?.qa_revision_accion);
+
+    let changed = false;
+
+    if (currentEstado !== nextEstado) {
+        await saveCellToServer(engineFile, id, 'qa_revision_estado', denormalizeEstadoFromNew(nextEstado));
+        currentRow.qa_revision_estado = nextEstado;
+        changed = true;
+    }
+
+    if (currentAccion !== nextAccion) {
+        await saveCellToServer(engineFile, id, 'qa_revision_accion', denormalizeAccionFromNew(nextAccion));
+        currentRow.qa_revision_accion = nextAccion;
+        changed = true;
+    }
+
+    if (!changed) return isNoiseFooter ? 'already-ok-eliminar' : 'already-ok-importar';
+
+    publishRevisionSync({
+        id,
+        engineFile,
+        estado: currentRow?.qa_revision_estado,
+        accion: currentRow?.qa_revision_accion,
+        source: 'analista-02'
+    });
+
+    renderReviewStateButtons(currentRow);
+    renderReviewStats();
+    notifyPdfDataChangedFromAnalista(currentRow);
+    return isNoiseFooter ? 'applied-eliminar' : 'applied';
 }
 
 async function runQuickRecomputeForFullBook() {
@@ -2022,7 +2181,7 @@ function buildComparisonRows(row) {
         { field: 'POS', raw: row?.POS, gesa: null, sust: null, final: row?.pos_final, errFields: ['POS'] },
         { field: 'PART NO.', raw: row?.['PART NO.'], gesa: getGesaPn(row), sust: getSustPn(row), final: row?.pn_final, errFields: ['PART NO.', 'pn_final'] },
         { field: 'DESIGNATION', raw: row?.DESIGNATION, gesa: row?.designation_gesa, sust: null, final: row?.designation_final, errFields: ['designation_final'] },
-        { field: 'MODEL/TYPE', raw: row?.['MODEL/TYPE'], gesa: null, sust: null, final: row?.['MODEL/TYPE'], errFields: [] },
+        { field: 'MODEL/TYPE', raw: row?.['MODEL/TYPE'], gesa: null, sust: null, final: row?.model_final ?? row?.['MODEL/TYPE'], errFields: [] },
         { field: 'QTY', raw: row?.QTY, gesa: null, sust: null, final: row?.qty_final, errFields: [] },
         { field: 'UNITS', raw: row?.UNITS, gesa: null, sust: null, final: row?.UNITS, errFields: [] },
         { field: 'WEIGHT', raw: row?.WEIGHT, gesa: getGesaWeightWithUnits(row), sust: null, final: row?.weight_final, errFields: [] },
@@ -2128,6 +2287,9 @@ async function renderComparisonTable(row) {
         const loadingClass = 'pdf-loading';
         const rowClass = entry.separatorTop ? 'separator-top' : '';
         const pdfAutoValue = getStoredPdfAutoValue(row, entry.field);
+        const pdfAutoActionAttrs = entry.field === 'DESIGNATION'
+            ? ' data-copy-pdf-auto-designation="true" title="Doble clic para copiar PDF_AUTO a DESIGNATION_FINAL y recalcular"'
+            : '';
         const errCount = getStoredFieldErrorCount(row, entry.field);
         const errCellClass = errCount > 0 ? 'field-err has-errors' : 'field-err';
         const errTitle = errCount > 0 ? ` title="${escapeHtml(`Errores persistidos en JSON: ${errCount}`)}"` : '';
@@ -2141,7 +2303,7 @@ async function renderComparisonTable(row) {
             <td>${escapeHtml(txt(entry.sust))}</td>
             <td${finalEditAttrs}>${escapeHtml(txt(entry.final))}</td>
             <td class="${loadingClass}">${escapeHtml('...')}</td>
-            <td>${escapeHtml(txt(pdfAutoValue))}</td>
+            <td${pdfAutoActionAttrs}>${escapeHtml(txt(pdfAutoValue))}</td>
             <td class="${errCellClass}"${errTitle}>${errCount > 0 ? errCount : ''}</td>
         </tr>`;
     }).join('');
@@ -2160,6 +2322,9 @@ async function renderComparisonTable(row) {
             readTokens.push({ field: entry.field, token: pdfRead.token });
         }
         const pdfAutoValue = getStoredPdfAutoValue(row, entry.field);
+        const pdfAutoActionAttrs = entry.field === 'DESIGNATION'
+            ? ' data-copy-pdf-auto-designation="true" title="Doble clic para copiar PDF_AUTO a DESIGNATION_FINAL y recalcular"'
+            : '';
         const cellClasses = getComparisonCellClasses(entry, pdfRead.value, pdfAutoValue);
         const rowClass = entry.separatorTop ? 'separator-top' : '';
         const errCount = getStoredFieldErrorCount(row, entry.field);
@@ -2178,7 +2343,7 @@ async function renderComparisonTable(row) {
             <td class="${cellClasses.sustClass}">${escapeHtml(txt(entry.sust))}</td>
             <td class="${finalFullClass}"${finalEditAttrs}>${escapeHtml(txt(entry.final))}</td>
             <td class="${cellClasses.pdfClass}">${escapeHtml(txt(pdfRead.value))}</td>
-            <td class="${cellClasses.pdfAutoClass}">${escapeHtml(txt(pdfAutoValue))}</td>
+            <td class="${cellClasses.pdfAutoClass}"${pdfAutoActionAttrs}>${escapeHtml(txt(pdfAutoValue))}</td>
             <td class="${errCellClass}"${errTitle}>${errCount > 0 ? errCount : ''}</td>
         </tr>`;
     }).join('');
