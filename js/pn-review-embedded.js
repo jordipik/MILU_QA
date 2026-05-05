@@ -145,7 +145,8 @@ function buildPropagationFieldsFromCurrentRow() {
     };
 }
 
-export async function onRecordChange(row) {
+export async function onRecordChange(row, options = {}) {
+    const forceRefresh = Boolean(options?.force);
     _currentRow = row || null;
     _currentId = String(row?.ID || '').trim();
     _loadError = '';
@@ -172,7 +173,7 @@ export async function onRecordChange(row) {
     }
 
     _isNoPnMode = false;
-    if (sku === _currentSku && _detail) {
+    if (!forceRefresh && sku === _currentSku && _detail) {
         _sources = ensureSourcesFallback(_sources, row);
         console.info('[PN Review Embedded] PN cargado (cache)', { sku: _currentSku });
         console.info('[PN Review Embedded] numero de apariciones', { count: _sources.length, mode: 'pn' });
@@ -189,7 +190,14 @@ export async function onRecordChange(row) {
 
 export async function refresh() {
     if (!_currentRow) return;
-    await onRecordChange(_currentRow);
+    await onRecordChange(_currentRow, { force: true });
+}
+
+export function showBusy(message = '') {
+    if (!_container) return;
+    const target = String(_currentSku || '').trim() || String(_currentId || '').trim() || '-';
+    const text = String(message || '').trim() || `Actualizando PN Review para ${target}...`;
+    _container.innerHTML = `<div class="pre-loading">${esc(text)}</div>`;
 }
 
 function buildNoPnDetail(row) {
@@ -355,39 +363,13 @@ async function applyDecision(action) {
 }
 
 async function applyCurrentValuesToAppearances() {
-    if (!_currentRow || !_currentSku || _isNoPnMode) return;
-
-    const fields = buildPropagationFieldsFromCurrentRow();
-    const msg = `Vas a copiar los valores del registro actual a ${_sources.length || 0} aparicion(es) del PN ${_currentSku}.\nNo se tocaran motor, pagina, POS ni ID. ¿Continuar?`;
-    const confirmed = await showConfirmDialog('Confirmar: actualizar apariciones', msg);
-    if (!confirmed) return;
+    if (!_currentRow) return;
 
     try {
         setButtonsLoading(true);
-
-        const response = await apiFetch(`/pn-review/${encodeURIComponent(_currentSku)}/apply-values`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ fields }),
-        });
-
-        if (!response.ok) throw new Error(response.error || 'Error al actualizar apariciones');
-
-        showToast(`Valores actualizados en ${response.rows_updated} registro(s).`, 'success');
-        console.info('[PN Review Embedded] values applied', {
-            sku: _currentSku,
-            rows_updated: response.rows_updated,
-            files_touched: response.files_touched || []
-        });
-
-        if (typeof _onValuesApplied === 'function') {
-            _onValuesApplied(_currentSku, response, {
-                currentRow: _currentRow,
-                fields
-            });
-        }
-
+        showBusy('Recargando PN Review...');
         await refresh();
+        showToast('PN Review actualizado.', 'success');
     } catch (err) {
         showToast(`Error: ${err.message}`, 'error');
     } finally {
@@ -423,8 +405,8 @@ function renderPanel() {
 
     const titleSku = _isNoPnMode ? 'SIN PN' : (sku || '-');
     const modeNote = _isNoPnMode
-        ? `Modo sin PN por ID ${esc(_currentId || '-')}: la decision se aplica solo al registro actual.`
-        : 'Las acciones se aplican globalmente a todas las apariciones en todos los libros.';
+        ? `Modo sin PN por ID ${esc(_currentId || '-')}: puedes recargar la tabla para ver el estado actual.`
+        : 'Usa Actualizar apariciones para recargar la tabla PN Review con los datos mas recientes.';
 
     const html = `
 <div class="pre-panel">
@@ -441,14 +423,11 @@ function renderPanel() {
   </div>
 
   <div class="pre-actions" id="preActions">
-    <button class="pre-btn pre-btn--validar" data-action="validar">Validar PN</button>
-    <button class="pre-btn pre-btn--revisar" data-action="revisar">Revisar PN</button>
-    <button class="pre-btn pre-btn--descartar" data-action="descartar">Descartar PN</button>
-        <button class="pre-btn pre-btn--sync" data-command="apply-values" ${_isNoPnMode ? 'disabled' : ''}>Actualizar apariciones</button>
+        <button class="pre-btn pre-btn--sync" data-command="apply-values">Actualizar apariciones</button>
   </div>
 
-  <div class="pre-qa-summary">
-    ${buildQaSummaryHtml(qaSummary)}
+    <div class="pre-qa-summary">
+        ${buildQaSummaryHtml(qaSummary, sources)}
   </div>
 
   ${buildSourcesTableHtml(sources, cellStatus)}
@@ -480,10 +459,23 @@ function renderLoading(sku) {
     _container.innerHTML = `<div class="pre-loading">Cargando PN Review para <strong>${esc(sku)}</strong>...</div>`;
 }
 
-function buildQaSummaryHtml(qa) {
+function buildQaSummaryHtml(qa, sources = []) {
+    const copyFromSources = Array.isArray(sources)
+        ? sources.filter((row) => {
+            const estado = String(row?.qa_revision_estado || '').trim().toLowerCase();
+            const accion = String(row?.qa_revision_accion || '').trim().toLowerCase();
+            return estado === 'ok' && accion === 'copia';
+        }).length
+        : 0;
+
+    const copyCount = Number.isFinite(Number(qa?.ok_copia))
+        ? Number(qa.ok_copia)
+        : copyFromSources;
+
     const items = [
         { label: 'Importar', val: qa.ok_importar ?? 0, cls: 'pre-qa--import' },
         { label: 'Eliminar', val: qa.ok_eliminar ?? 0, cls: 'pre-qa--discard' },
+        { label: 'Copia', val: copyCount, cls: 'pre-qa--copy' },
         { label: 'Revisar', val: qa.revisar ?? 0, cls: 'pre-qa--review' },
         { label: 'Pendiente', val: qa.pendiente ?? 0, cls: 'pre-qa--pending' },
     ];
@@ -499,6 +491,7 @@ function buildSourcesTableHtml(sources, cellStatus) {
 
     const hasSust = sources.some((row) => !emptyVal(row.sust_status) || !emptyVal(row.sust_hierarchie) || !emptyVal(row.new_part_number));
     const columns = [
+        { key: '_qa', label: 'estado / accion' },
         { key: 'engine_model', label: 'motor / libro' },
         { key: 'Source Page', label: 'pagina' },
         { key: 'POS', label: 'POS' },
@@ -515,8 +508,6 @@ function buildSourcesTableHtml(sources, cellStatus) {
             { key: 'new_part_number', label: 'new_part_number' }
         );
     }
-
-    columns.push({ key: '_qa', label: 'estado / accion' });
 
     const headerHtml = columns.map((col) => `<th class="pre-th">${esc(col.label)}</th>`).join('');
     const rowsHtml = sources.map((row) => {
@@ -552,13 +543,6 @@ function buildSourcesTableHtml(sources, cellStatus) {
 }
 
 function bindActions() {
-    _container.querySelectorAll('[data-action]').forEach((btn) => {
-        btn.addEventListener('click', () => {
-            const action = btn.dataset.action;
-            applyDecision(action).catch((err) => showToast(`Error: ${err.message}`, 'error'));
-        });
-    });
-
     _container.querySelectorAll('[data-command="apply-values"]').forEach((btn) => {
         btn.addEventListener('click', () => {
             applyCurrentValuesToAppearances().catch((err) => showToast(`Error: ${err.message}`, 'error'));

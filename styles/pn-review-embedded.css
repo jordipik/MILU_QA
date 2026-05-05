@@ -258,6 +258,11 @@
     color: #991b1b;
 }
 
+.pre-qa--copy {
+    background: #fff3bf;
+    color: #8a5a05;
+}
+
 .pre-qa--review {
     background: #fef9c3;
     color: #854d0e;

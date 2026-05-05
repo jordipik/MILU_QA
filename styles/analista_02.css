@@ -280,7 +280,7 @@ body.a2-resizing * {
 
 .a2-toolbar-bottom {
     display: grid;
-    grid-template-columns: repeat(5, minmax(0, 1fr));
+    grid-template-columns: repeat(6, minmax(0, 1fr));
     gap: 10px;
     align-items: stretch;
 }
@@ -365,6 +365,11 @@ body.a2-resizing * {
     background: #f5efff;
 }
 
+.a2-search-nav.is-copy {
+    border: 1px solid #f1c849;
+    background: linear-gradient(180deg, #fff8de, #ffeaa3);
+}
+
 .a2-search-nav.is-pending {
     border: 1px solid #d7dee7;
     background: linear-gradient(180deg, #ffffff, #f5f8fb);
@@ -430,6 +435,10 @@ body.a2-resizing * {
 
 .a2-search-nav.is-review .a2-search-nav-center {
     color: #6a38b3;
+}
+
+.a2-search-nav.is-copy .a2-search-nav-center {
+    color: #8a5a05;
 }
 
 .a2-search-nav.is-pending .a2-search-nav-center {
@@ -530,7 +539,7 @@ body.a2-resizing * {
 
 .a2-stats-row {
     display: grid;
-    grid-template-columns: repeat(5, minmax(0, 1fr));
+    grid-template-columns: repeat(6, minmax(0, 1fr));
     gap: 10px;
 }
 
@@ -590,6 +599,11 @@ body.a2-resizing * {
 .a2-stat-card.is-ok {
     border-color: #b7e0c8;
     background: linear-gradient(180deg, #f6fffa, #e8f8ef);
+}
+
+.a2-stat-card.is-copy {
+    border-color: #f1c849;
+    background: linear-gradient(180deg, #fff8de, #ffeaa3);
 }
 
 .a2-stat-card.is-review {

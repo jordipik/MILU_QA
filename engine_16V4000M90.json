@@ -422,7 +422,7 @@
     "norma_pdf": "MTN5084",
     "sust_new_part_number_pdf": "735084050000",
     "qa_revision_estado": "ok",
-    "qa_revision_accion": "importar"
+    "qa_revision_accion": "copia"
   },
   {
     "ID": "1600005",
@@ -530,7 +530,7 @@
     "norma_pdf": "DIN933",
     "sust_new_part_number_pdf": "000933010089",
     "qa_revision_estado": "ok",
-    "qa_revision_accion": "importar"
+    "qa_revision_accion": "copia"
   },
   {
     "ID": "1600006",
@@ -636,7 +636,7 @@
     "bom_pdf": "010.00476",
     "sust_new_part_number_pdf": "700429042000",
     "qa_revision_estado": "ok",
-    "qa_revision_accion": "importar"
+    "qa_revision_accion": "copia"
   },
   {
     "ID": "1600007",
@@ -743,7 +743,7 @@
     "bom_pdf": "010.00476",
     "normalizado_pdf": "No",
     "qa_revision_estado": "ok",
-    "qa_revision_accion": "importar"
+    "qa_revision_accion": "copia"
   },
   {
     "ID": "1600008",
@@ -1923,7 +1923,7 @@
     "gesa_pdf": "No",
     "normalizado_pdf": "No",
     "qa_revision_estado": "ok",
-    "qa_revision_accion": "importar"
+    "qa_revision_accion": "copia"
   },
   {
     "ID": "1600019",
@@ -2031,7 +2031,7 @@
     "norma_pdf": "DIN912",
     "sust_new_part_number_pdf": "000912008115",
     "qa_revision_estado": "ok",
-    "qa_revision_accion": "importar"
+    "qa_revision_accion": "copia"
   },
   {
     "ID": "1600020",
@@ -2138,7 +2138,7 @@
     "normalizado_pdf": "No",
     "sust_new_part_number_pdf": "0049976736",
     "qa_revision_estado": "ok",
-    "qa_revision_accion": "importar"
+    "qa_revision_accion": "copia"
   },
   {
     "ID": "1600021",
@@ -15251,7 +15251,7 @@
     "bom_pdf": "010.00368",
     "sust_new_part_number_pdf": "700429042000",
     "qa_revision_estado": "ok",
-    "qa_revision_accion": "importar"
+    "qa_revision_accion": "copia"
   },
   {
     "ID": "1600149",
@@ -117035,7 +117035,7 @@
     "normalizado_pdf": "No",
     "sust_new_part_number_pdf": "0049976736",
     "qa_revision_estado": "ok",
-    "qa_revision_accion": "importar"
+    "qa_revision_accion": "copia"
   },
   {
     "ID": "1601128",
@@ -136943,7 +136943,7 @@
     "bom_pdf": "X00021913",
     "sust_new_part_number_pdf": "700429042000",
     "qa_revision_estado": "ok",
-    "qa_revision_accion": "importar"
+    "qa_revision_accion": "copia"
   },
   {
     "ID": "1601321",
@@ -137578,7 +137578,7 @@
     "bom_pdf": "X00021913",
     "sust_new_part_number_pdf": "700429042000",
     "qa_revision_estado": "ok",
-    "qa_revision_accion": "importar"
+    "qa_revision_accion": "copia"
   },
   {
     "ID": "1601327",
@@ -151313,7 +151313,7 @@
     "normalizado_pdf": "No",
     "sust_new_part_number_pdf": "0049976736",
     "qa_revision_estado": "ok",
-    "qa_revision_accion": "importar"
+    "qa_revision_accion": "copia"
   },
   {
     "ID": "1601458",
@@ -177982,7 +177982,7 @@
     "norma_pdf": "DIN933",
     "sust_new_part_number_pdf": "000933010089",
     "qa_revision_estado": "ok",
-    "qa_revision_accion": "importar"
+    "qa_revision_accion": "copia"
   },
   {
     "ID": "1601710",
@@ -188731,7 +188731,7 @@
     "bom_pdf": "200.00120",
     "sust_new_part_number_pdf": "700429042000",
     "qa_revision_estado": "ok",
-    "qa_revision_accion": "importar"
+    "qa_revision_accion": "copia"
   },
   {
     "ID": "1601811",

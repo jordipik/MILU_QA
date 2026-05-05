@@ -215,16 +215,19 @@ function buildReviewStats(rows, visibleRows, totalScopeRows) {
     const summary = {
         total: scopeRows.length,
         importOk: 0,
+        copyOk: 0,
         reviewOk: 0,
         deleteOk: 0,
         pending: 0,
         visibleImportOk: 0,
+        visibleCopyOk: 0,
         visibleReviewOk: 0,
         visibleDeleteOk: 0,
         visiblePending: 0,
         unique: {
             total: new Set(),
             importOk: new Set(),
+            copyOk: new Set(),
             reviewOk: new Set(),
             deleteOk: new Set(),
             pending: new Set()
@@ -241,6 +244,7 @@ function buildReviewStats(rows, visibleRows, totalScopeRows) {
         if (estado !== 'ok') return 'pending';
         if (accion === 'revisar') return 'reviewOk';
         if (accion === 'eliminar') return 'deleteOk';
+        if (accion === 'copia') return 'copyOk';
         return 'importOk';
     };
 
@@ -256,6 +260,7 @@ function buildReviewStats(rows, visibleRows, totalScopeRows) {
         if (cat === 'pending') summary.visiblePending += 1;
         else if (cat === 'reviewOk') summary.visibleReviewOk += 1;
         else if (cat === 'deleteOk') summary.visibleDeleteOk += 1;
+        else if (cat === 'copyOk') summary.visibleCopyOk += 1;
         else summary.visibleImportOk += 1;
     });
 
@@ -289,6 +294,15 @@ function renderReviewStatsSummary(statsElement, rows, visibleRows, totalScopeRow
                     <span class="qa-stat-inline-separator">de</span>
                     <strong>${stats.importOk}</strong>
                     <span class="qa-stat-inline-unique">· ${stats.unique.importOk.size} únicos</span>
+                </div>
+            </article>
+            <article class="qa-stat-card is-copy">
+                <span class="qa-stat-label">COPIA (OK)</span>
+                <div class="qa-stat-inline-total">
+                    <strong>${stats.visibleCopyOk}</strong>
+                    <span class="qa-stat-inline-separator">de</span>
+                    <strong>${stats.copyOk}</strong>
+                    <span class="qa-stat-inline-unique">· ${stats.unique.copyOk.size} únicos</span>
                 </div>
             </article>
             <article class="qa-stat-card is-review">

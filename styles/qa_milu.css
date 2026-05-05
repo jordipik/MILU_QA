@@ -633,6 +633,11 @@
             background: linear-gradient(180deg, #f6fffa, #e8f8ef);
         }
 
+        .qa-stat-card.is-copy {
+            border-color: #f1c849;
+            background: linear-gradient(180deg, #fff8de, #ffeaa3);
+        }
+
         .qa-stat-card.is-review {
             border-color: #efd39a;
             background: linear-gradient(180deg, #fffaf0, #fff1d7);

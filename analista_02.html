@@ -54,6 +54,13 @@
                         <button id="openRecomputeModalBtn" type="button" title="Recalcular registro">Rec.</button>
                         <button id="recomputeAllBtn" type="button" title="Recalcular todo">Rec-Tot</button>
                     </div>
+                    <div class="a2-search-nav is-copy" aria-label="Busqueda de copia">
+                        <button id="prevCopyBtn" class="a2-btn-nav a2-btn-nav-err" type="button" title="Copia anterior"
+                            aria-label="Copia anterior">&#9664;</button>
+                        <span class="a2-search-nav-center">Copia</span>
+                        <button id="nextCopyBtn" class="a2-btn-nav a2-btn-nav-err" type="button" title="Siguiente copia"
+                            aria-label="Siguiente copia">&#9654;</button>
+                    </div>
                     <div class="a2-search-nav is-review" aria-label="Busqueda de revisar">
                         <button id="prevReviewBtn" class="a2-btn-nav a2-btn-nav-err" type="button"
                             title="Revisar anterior" aria-label="Revisar anterior">&#9664;</button>
@@ -93,6 +100,13 @@
                     <div class="a2-stat-total-row">
                         <strong id="statsTotalImportOk">0</strong>
                         <span id="statsUniqueTotalImportOk" class="a2-stat-inline-unique">0</span>
+                    </div>
+                </article>
+                <article class="a2-stat-card is-copy">
+                    <span class="a2-stat-label">Copia (OK)</span>
+                    <div class="a2-stat-total-row">
+                        <strong id="statsTotalCopyOk">0</strong>
+                        <span id="statsUniqueTotalCopyOk" class="a2-stat-inline-unique">0</span>
                     </div>
                 </article>
                 <article class="a2-stat-card is-review">
@@ -140,6 +154,7 @@
                         <span>Accion</span>
                         <select id="statusAccionSelect" name="qa_revision_accion">
                             <option value="importar">Importar</option>
+                            <option value="copia">Copia</option>
                             <option value="revisar">Revisar</option>
                             <option value="eliminar">Eliminar</option>
                         </select>
@@ -149,6 +164,9 @@
                         <button id="statusAccionRevisarBtn" class="a2-review-btn is-review"
                             type="button">Revisar</button>
                         <button id="statusAccionEliminarBtn" class="a2-review-btn is-ko" type="button">Eliminar</button>
+                        <button id="propagateHermanosBtn" class="a2-review-btn" type="button"
+                            title="Propagar revisión OK+Importar a todos los hermanos con el mismo PN">⬇
+                            Hermanos</button>
                     </div>
                 </div>
             </div>

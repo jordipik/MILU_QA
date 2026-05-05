@@ -1803,6 +1803,28 @@ app.get('/version', (req, res) => {
     }
 });
 
+const saveJsonFileLocks = new Map();
+
+async function withSaveJsonFileLock(file, task) {
+    const previous = saveJsonFileLocks.get(file) || Promise.resolve();
+    let release;
+    const current = new Promise((resolve) => {
+        release = resolve;
+    });
+    const queued = previous.then(() => current);
+    saveJsonFileLocks.set(file, queued);
+
+    await previous;
+    try {
+        return await task();
+    } finally {
+        release();
+        if (saveJsonFileLocks.get(file) === queued) {
+            saveJsonFileLocks.delete(file);
+        }
+    }
+}
+
 async function handleSaveJson(req, res) {
     const { file, id, col, value } = req.body;
     if (!file || !id || !col) {
@@ -1815,24 +1837,34 @@ async function handleSaveJson(req, res) {
     }
     const filePath = path.join(__dirname, file);
     try {
-        const data = await fs.promises.readFile(filePath, 'utf8');
-        let json;
-        try {
-            json = JSON.parse(data);
-        } catch (_parseError) {
-            return res.status(500).json({ error: 'JSON inválido' });
-        }
-        const row = json.find(r => String(r.ID) === String(id));
-        if (!row) {
-            return res.status(404).json({ error: 'Registro no encontrado' });
-        }
-        row[col] = value;
-        stripLegacyQaFields(json);
-        await fs.promises.writeFile(filePath, `${JSON.stringify(json, null, 2)}\n`, 'utf8');
-        invalidatePnReviewQaCache();
+        await withSaveJsonFileLock(file, async () => {
+            const data = await fs.promises.readFile(filePath, 'utf8');
+            let json;
+            try {
+                json = JSON.parse(data);
+            } catch (_parseError) {
+                const parseError = new Error('JSON inválido');
+                parseError.status = 500;
+                throw parseError;
+            }
+            const row = json.find(r => String(r.ID) === String(id));
+            if (!row) {
+                const notFoundError = new Error('Registro no encontrado');
+                notFoundError.status = 404;
+                throw notFoundError;
+            }
+            row[col] = value;
+            stripLegacyQaFields(json);
+            await fs.promises.writeFile(filePath, `${JSON.stringify(json, null, 2)}\n`, 'utf8');
+            invalidatePnReviewQaCache();
+        });
         return res.json({ ok: true });
-    } catch (_error) {
-        console.error('[save-json] Error guardando', _error);
+    } catch (error) {
+        console.error('[save-json] Error guardando', error);
+        const status = Number(error?.status || 500);
+        if (error?.message === 'JSON inválido' || error?.message === 'Registro no encontrado') {
+            return res.status(status).json({ error: error.message });
+        }
         return res.status(500).json({ error: 'No se pudo guardar el archivo' });
     }
 }

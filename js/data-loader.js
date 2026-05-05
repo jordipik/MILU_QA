@@ -302,7 +302,7 @@ export async function saveCellToServer(file, id, col, value) {
             + 'Comprueba que la ruta de guardado este disponible (save-json.php en produccion o server.js en local).'
         );
     }
-    setSaveBackendState(false, {
+    setSaveBackendState(true, {
         url: lastTriedUrl,
         error: lastMessage
     });

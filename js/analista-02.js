@@ -1988,6 +1988,7 @@ async function setRevisionOkImportIfNoErrors() {
 
     renderReviewStateButtons(currentRow);
     renderReviewStats();
+    refreshPnReviewIfVisible();
     notifyPdfDataChangedFromAnalista(currentRow);
     return isNoiseFooter ? 'applied-eliminar' : 'applied';
 }
@@ -2117,6 +2118,7 @@ function renderReviewStats(rows = getQueueRows(), row = currentRow) {
     const stats = {
         total: 0,
         importOk: 0,
+        copyOk: 0,
         reviewOk: 0,
         deleteOk: 0,
         pending: 0
@@ -2124,6 +2126,7 @@ function renderReviewStats(rows = getQueueRows(), row = currentRow) {
     const uniqueStats = {
         total: new Set(),
         importOk: new Set(),
+        copyOk: new Set(),
         reviewOk: new Set(),
         deleteOk: new Set(),
         pending: new Set()
@@ -2155,6 +2158,12 @@ function renderReviewStats(rows = getQueueRows(), row = currentRow) {
             return;
         }
 
+        if (accion === 'copia') {
+            stats.copyOk += 1;
+            uniqueStats.copyOk.add(distinctKey);
+            return;
+        }
+
         stats.importOk += 1;
         uniqueStats.importOk.add(distinctKey);
     });
@@ -2164,6 +2173,8 @@ function renderReviewStats(rows = getQueueRows(), row = currentRow) {
     const totalUniqueEl = $('statsUniqueTotalAnalysed');
     const importOkEl = $('statsTotalImportOk');
     const importOkUniqueEl = $('statsUniqueTotalImportOk');
+    const copyOkEl = $('statsTotalCopyOk');
+    const copyOkUniqueEl = $('statsUniqueTotalCopyOk');
     const reviewOkEl = $('statsTotalReviewOk');
     const reviewOkUniqueEl = $('statsUniqueTotalReviewOk');
     const deleteOkEl = $('statsTotalDeleteOk');
@@ -2182,6 +2193,8 @@ function renderReviewStats(rows = getQueueRows(), row = currentRow) {
     if (totalUniqueEl instanceof HTMLElement) totalUniqueEl.textContent = `· ${uniqueStats.total.size} únicos`;
     if (importOkEl instanceof HTMLElement) importOkEl.textContent = String(stats.importOk);
     if (importOkUniqueEl instanceof HTMLElement) importOkUniqueEl.textContent = `· ${uniqueStats.importOk.size} únicos`;
+    if (copyOkEl instanceof HTMLElement) copyOkEl.textContent = String(stats.copyOk);
+    if (copyOkUniqueEl instanceof HTMLElement) copyOkUniqueEl.textContent = `· ${uniqueStats.copyOk.size} únicos`;
     if (reviewOkEl instanceof HTMLElement) reviewOkEl.textContent = String(stats.reviewOk);
     if (reviewOkUniqueEl instanceof HTMLElement) reviewOkUniqueEl.textContent = `· ${uniqueStats.reviewOk.size} únicos`;
     if (deleteOkEl instanceof HTMLElement) deleteOkEl.textContent = String(stats.deleteOk);
@@ -2221,6 +2234,7 @@ function renderReviewStateButtons(row) {
     estadoSelect.value = estado === 'ok' ? 'ok' : 'pendiente';
     if (accion === 'revisar') accionSelect.value = 'revisar';
     else if (accion === 'eliminar') accionSelect.value = 'eliminar';
+    else if (accion === 'copia') accionSelect.value = 'copia';
     else accionSelect.value = 'importar';
 
     if (estadoOkBtn instanceof HTMLElement) {
@@ -2639,6 +2653,11 @@ function renderRecord(row) {
     }
 }
 
+function refreshPnReviewIfVisible() {
+    if (state.rightPanelTab !== 'pn-review') return;
+    PnReviewEmbedded.refresh().catch(() => { });
+}
+
 function syncCurrentRowReference() {
     if (!currentRow) return;
     const key = getRevisionKey(currentRow);
@@ -2920,6 +2939,102 @@ async function loadRelativeReview(direction) {
     await revalidateCurrentRow();
 }
 
+async function applyPnCopyPropagationFromCurrent() {
+    if (!currentRow) {
+        alert('Primero debes cargar un registro.');
+        return;
+    }
+
+    const currentEstado = normalizeEstadoToNew(currentRow?.qa_revision_estado);
+    const currentAccion = normalizeAccionToNew(currentRow?.qa_revision_accion);
+
+    if (currentEstado !== 'ok' || currentAccion !== 'importar') {
+        const pn = String(currentRow?.pn_final ?? currentRow?.['PART NO.'] ?? '').trim();
+        alert(`El registro debe tener estado OK + Importar para propagar hermanos (PN: ${pn || '—'}).`);
+        return;
+    }
+
+    const pn = String(currentRow?.pn_final ?? currentRow?.['PART NO.'] ?? '').trim();
+    if (!pn) {
+        alert('El registro activo no tiene Part Number.');
+        return;
+    }
+
+    const shouldRefreshPnReview = state.rightPanelTab === 'pn-review';
+    if (shouldRefreshPnReview) {
+        PnReviewEmbedded.showBusy(`Actualizando hermanos para PN ${pn}...`);
+    }
+
+    try {
+        // Obtener todas las apariciones del PN desde el servidor (incluye todos los motores)
+        let sourcesResp;
+        const res = await fetch(`/pn-review/${encodeURIComponent(pn)}/sources`);
+        if (!res.ok) throw new Error(`HTTP ${res.status}`);
+        sourcesResp = await res.json();
+        const allSources = Array.isArray(sourcesResp?.rows)
+            ? sourcesResp.rows
+            : (Array.isArray(sourcesResp?.sources) ? sourcesResp.sources : []);
+
+        const currentId = String(currentRow?.ID ?? '').trim();
+        const currentEngine = resolveEngineFile(currentRow);
+
+        // Filtrar: excluir el registro actual y los que ya son ok+copia
+        const siblings = allSources.filter(src => {
+            const srcId = String(src?.ID ?? '').trim();
+            const srcFile = String(src?.source_file ?? src?.engine_file ?? '').trim();
+            const srcFileNorm = srcFile.replace(/^engine_/i, '').replace(/\.json$/i, '').toLowerCase();
+            const currentEngineNorm = currentEngine.replace(/^engine_/i, '').replace(/\.json$/i, '').toLowerCase();
+            if (srcId === currentId && srcFileNorm === currentEngineNorm) return false;
+            const estado = normalizeEstadoToNew(src?.qa_revision_estado);
+            const accion = normalizeAccionToNew(src?.qa_revision_accion);
+            return !(estado === 'ok' && accion === 'copia');
+        });
+
+        console.log('[Hermanos] Registro actual:', currentId, currentEngine);
+        console.log('[Hermanos] Total apariciones:', allSources.length, '| A propagar:', siblings.length);
+        siblings.forEach(s => console.log('  ->', s.ID, s.source_file, s.qa_revision_estado, s.qa_revision_accion));
+
+        if (siblings.length === 0) {
+            alert(`No hay hermanos para propagar (PN: ${pn}). Todos ya tienen OK + Copia o no hay más apariciones.`);
+            return;
+        }
+
+        const errors = [];
+        for (const src of siblings) {
+            const srcId = String(src?.ID ?? '').trim();
+            const srcFile = String(src?.source_file ?? src?.engine_file ?? '').trim();
+            if (!srcId || !srcFile) continue;
+            console.log('[Hermanos] Guardando:', srcFile, srcId);
+            try {
+                await saveCellToServer(srcFile, srcId, 'qa_revision_estado', denormalizeEstadoFromNew('ok'));
+                await saveCellToServer(srcFile, srcId, 'qa_revision_accion', denormalizeAccionFromNew('copia'));
+                // Actualizar en memoria si está en el engine cargado actualmente
+                const inMemRow = state.allData.find(r => String(r?.ID ?? '') === srcId);
+                if (inMemRow) {
+                    inMemRow.qa_revision_estado = 'ok';
+                    inMemRow.qa_revision_accion = 'copia';
+                }
+            } catch (err) {
+                errors.push(`ID ${srcId} (${srcFile}): ${err.message}`);
+            }
+        }
+
+        if (errors.length > 0) {
+            alert(`Propagación parcial (PN: ${pn}). Errores:\n${errors.join('\n')}`);
+        } else {
+            alert(`Propagados ${siblings.length} hermano(s) con PN "${pn}" → OK + Copia.`);
+        }
+
+        renderReviewStats();
+    } catch (err) {
+        alert(`Error al obtener o propagar hermanos: ${err.message}`);
+    } finally {
+        if (shouldRefreshPnReview) {
+            refreshPnReviewIfVisible();
+        }
+    }
+}
+
 async function setReviewStatus(kind) {
     if (!currentRow) {
         alert('Primero debes cargar un registro.');
@@ -2936,7 +3051,8 @@ async function setReviewStatus(kind) {
     const mapping = {
         ok: { qa_revision_accion: 'importar' },
         review: { qa_revision_accion: 'revisar' },
-        ko: { qa_revision_accion: 'eliminar' }
+        ko: { qa_revision_accion: 'eliminar' },
+        copia: { qa_revision_accion: 'copia' }
     };
     const values = mapping[kind] || mapping.review;
 
@@ -2953,6 +3069,7 @@ async function setReviewStatus(kind) {
     });
     renderReviewStateButtons(currentRow);
     renderReviewStats();
+    refreshPnReviewIfVisible();
     notifyPdfDataChangedFromAnalista(currentRow);
 }
 
@@ -2988,6 +3105,7 @@ async function setManualRevisionEstado(nextEstado) {
     });
     renderReviewStateButtons(currentRow);
     renderReviewStats();
+    refreshPnReviewIfVisible();
     notifyPdfDataChangedFromAnalista(currentRow);
 }
 
@@ -3232,6 +3350,10 @@ bindClick('statusAccionRevisarBtn', () => {
     setReviewStatus('review').catch((error) => alert(`No se pudo guardar accion revisar: ${error.message}`));
 });
 
+bindClick('propagateHermanosBtn', () => {
+    applyPnCopyPropagationFromCurrent().catch((error) => alert(`Error al propagar hermanos: ${error.message}`));
+});
+
 const statusEstadoSelect = $('statusEstadoSelect');
 if (statusEstadoSelect instanceof HTMLSelectElement) {
     statusEstadoSelect.addEventListener('change', () => {
@@ -3247,7 +3369,9 @@ const statusAccionSelect = $('statusAccionSelect');
 if (statusAccionSelect instanceof HTMLSelectElement) {
     statusAccionSelect.addEventListener('change', () => {
         const nextAccion = String(statusAccionSelect.value || '').trim().toLowerCase();
-        const kind = nextAccion === 'eliminar' ? 'ko' : (nextAccion === 'revisar' ? 'review' : 'ok');
+        const kind = nextAccion === 'eliminar' ? 'ko'
+            : (nextAccion === 'revisar' ? 'review'
+                : (nextAccion === 'copia' ? 'copia' : 'ok'));
         setReviewStatus(kind).catch((error) => {
             alert(`No se pudo guardar acción: ${error.message}`);
             renderReviewStateButtons(currentRow);
