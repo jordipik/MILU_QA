@@ -31,6 +31,17 @@ Puntos clave:
 - **Sistema QA**: Validaciones modular por-campo y por-fila
 - **Revisiones**: Sistema de estado + acción, sincronización con servidor
 
+## Backend Documentation
+
+La documentación completa del backend, incluyendo Express server, endpoints, scripts Node.js y flujos de datos, está en [BACKEND.md](BACKEND.md).
+
+Puntos clave:
+- **Express server**: Servidor en puerto 3000, middleware CORS y body-parser
+- **Endpoints principales**: `/save-json`, `/apply-revision-to-engines`, `/qa_revision_sync.php`
+- **Persistencia**: Filesystem-based (9 `engine_*.json` + `qa_revision_server_data.json`)
+- **Scripts Node.js**: WordPress export, PDF compare, GitHub Pages prep
+- **Auditoría**: Logging de todas las operaciones con timestamps
+
 ## Ediciones Recientes (Mayo 2026)
 
 ### Frontend
