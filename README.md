@@ -19,6 +19,31 @@ Proyecto web local para revision y mantenimiento de datos tecnicos de motores.
 3. Abrir la app:
    - `http://localhost:3000/qa_milu.html`
 
+## Frontend Documentation
+
+La documentación completa del frontend, incluyendo arquitectura modular, state management, módulos JS y patrones de desarrollo, está en [FRONTEND.md](FRONTEND.md).
+
+Puntos clave:
+- **Arquitectura modular**: ~25 módulos ES6+ sin framework
+- **Estado global**: Todos los módulos usan `state.js`
+- **Data-driven UI**: Cambios en estado disparan re-renders explícitos
+- **Visor PDF**: Integrado con PDF.js, zoom ajustable, búsqueda
+- **Sistema QA**: Validaciones modular por-campo y por-fila
+- **Revisiones**: Sistema de estado + acción, sincronización con servidor
+
+## Ediciones Recientes (Mayo 2026)
+
+### Frontend
+- **PDF zoom improvements**: Modo "Ajustar vertical" mejorado + opción 50% zoom
+- **Modal de edición**: Flujo mejorado, mejor feedback visual
+- **QA validaciones**: Correcciones y mejoras en reglas de validación
+- **PN Review embedded**: Integración en panel Analista 02, botones siempre visibles
+
+### Backend & Pipeline
+- **Export WordPress**: Nueva lógica basada en estado QA + acción
+- **Decisiones globales**: Decisiones por PN dependentes de `qa_revision_estado` + `qa_revision_accion`
+- **PDF compare**: Herramienta de comparación PDF mejorada
+
 ## Publicacion automatica (GitHub Pages)
 
 El repo ya incluye workflow de despliegue automatico en:
@@ -72,11 +97,88 @@ Notas del script de publicacion:
 
 ## Endpoints clave
 
-- `GET /health`
-- `GET /qa_revision_sync.php`
-- `POST /qa_revision_sync.php`
-- `POST /save-json` (edicion puntual de un campo en `engine_*.json`)
-- `POST /apply-revision-to-engines`
+- `GET /health` - Validar conexión backend
+- `GET /qa_revision_sync.php` - Obtener revisiones remotas
+- `POST /qa_revision_sync.php` - Actualizar revisiones
+- `POST /save-json` - Guardar cambio puntual en campo `engine_*.json`
+- `POST /apply-revision-to-engines` - Aplicar revisiones masivas
+- `GET /qa_milu.html` - Frontend principal
+
+## Sistema de Revisiones (QA Pipeline)
+
+El flujo QA se basa en dos campos por registro:
+
+1. **qa_revision_estado**: Estado de aprobación
+   - `aprobado` / `1`: Listo para exportar
+   - `pendiente_revision` / `2`: Requiere revisión
+   - `rechazado` / `3`: Rechazado
+   - Valores legacy: strings; valores nuevos: números
+
+2. **qa_revision_accion**: Acción a tomar
+   - `Sin_accion`: Sin cambios
+   - `Import`: Importar a WordPress
+   - `Supersede`: Marcar como supersedido
+   - Otros estados según pipeline
+
+**Persistencia de revisiones**: Los datos de revisión se guardan en [qa_revision_server_data.json](qa_revision_server_data.json) y se sincronizan con la tabla principal vía endpoint `/qa_revision_sync.php`.
+
+## Validación de Datos (QA Checks)
+
+Sistema modular de validaciones definidas en [js/qa-checks.js](js/qa-checks.js):
+
+- **Por-campo**: Validaciones individuales (ej: POS requerido, PART NO. formato)
+- **Por-fila**: Validaciones cross-field (ej: consistencia POS/Part No.)
+- **Estados**: `OK`, `WARNING`, `ERROR`
+- **Persistencia**: Errores se registran como flags en los registros (ej: `pos_error`, `pn_error`)
+
+Funciones principales:
+- `evaluateRowQaChecks(row)`: Valida toda la fila
+- `evaluateQaChecksForField(row, fieldName)`: Valida campo específico
+
+## Backend (Express)
+
+El servidor Node.js en [server.js](server.js) proporciona:
+
+### Middleware Principal
+- Express estático para servir HTML, JS, CSS
+- Body-parser para JSON POST
+- CORS habilitado
+- Routes especiales `/qa_revision_sync.php` antes del middleware estático (importante: retorna JSON, no el archivo .php)
+
+### Responsabilidades
+- Servir frontend en `/qa_milu.html`
+- Atender endpoints `/save-json`, `/apply-revision-to-engines`, `/qa_revision_sync.php`
+- No usa base de datos relacional; toda persistencia es en archivos JSON
+- Health check: `GET /health`
+
+## Persistence Layer
+
+### Data Storage
+- **Main data**: 9 archivos `engine_*.json` (uno por modelo motor)
+  - Cargados en runtime a `state.allData`
+  - Editables vía `/save-json` (cambio puntual por celda)
+  - Procesables vía `/apply-revision-to-engines` (cambios masivos)
+  
+- **Revision data**: [qa_revision_server_data.json](qa_revision_server_data.json)
+  - Almacena estados y acciones de revisión
+  - Sincronizado vía `/qa_revision_sync.php`
+
+- **Catalogs**: Archivos JSON adicionales para lookup
+  - `MILU_New_v506.json`, `MILU_Superseded_v506.json`
+  - `product-export-*.json`
+
+### Write Path
+```
+Frontend POST /save-json
+  ↓
+server.js body-parser
+  ↓
+File write (engine_*.json)
+  ↓
+Return success/error JSON
+  ↓
+Frontend updates state + UI
+```
 
 ## Export WordPress (flujo oficial QA-only)
 
