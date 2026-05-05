@@ -1,0 +1,1364 @@
+file,total_rows,field_name,type_detected,pct_present,present_count,empty_count,examples,duplicate_candidates,legacy_candidate,domains
+MILU_New_v506.json,3875,atributo,string,100.0,3875,0,"Accesories ; 12VM40A-75, 12VM53-75, 16VM73-75, 16VM73L-75, 16VM90-75, 20VM93-75, 20VM93L-75 ; 12VM40A-35, 16VM61-35, 16VM90-35 ; 12VM53-11, 16VM73L-11",,no,
+MILU_New_v506.json,3875,BOM_no,string,100.0,3875,0,X00030235 ; 180.00466 ; X52405500124 ; 5185302185,BOM-No.|bom_no,no,
+MILU_New_v506.json,3875,designation,null|string,100.0,3875,1,BOLT HEX ; BOLT HEX A3C ; NUT ADEC ; OVAL-HEAD SCREW,DESIGNATION,no,
+MILU_New_v506.json,3875,EN_EXCEL_SUSTITUCION,string,100.0,3875,2603,SI,,no,sust
+MILU_New_v506.json,3875,engine,string,100.0,3875,0,4000,,no,
+MILU_New_v506.json,3875,esquema_general,string,100.0,3875,3875,,,no,media
+MILU_New_v506.json,3875,exp_categorias,string,100.0,3875,0,"Accesories ; 12VM40A-75, 12VM53-75, 16VM73-75, 16VM73L-75, 16VM90-75, 20VM93-75, 20VM93L-75 ; 12VM40A-35, 16VM61-35, 16VM90-35 ; 12VM53-11, 16VM73L-11",,no,
+MILU_New_v506.json,3875,exp_imagenes,string,100.0,3875,0,https://milu-naval.mystagingwebsite.com/wp-content/uploads/2026/02/12V4000M40A-0229-02-1425.webp ; https://milu-naval.mystagingwebsite.com/wp-content/uploads/2026/02/12V4000M40A-0208-01-70.webp ; https://milu-naval.mystagingwebsite.com/wp-content/uploads/2026/02/12V4000M53-0089-01-50.webp ; https://milu-naval.mystagingwebsite.com/wp-content/uploads/2026/02/12V4000M40A-0356-02-720.webp,,no,media
+MILU_New_v506.json,3875,exp_motor,string,100.0,3875,0,"12V4000M40A, 16V4000M61 ; 12V4000M40A, 20V4000M93L ; 12V4000M53, 20V4000M93 ; 12V4000M40A",,no,
+MILU_New_v506.json,3875,fecha_version,string,100.0,3875,0,20260131.2339,,no,
+MILU_New_v506.json,3875,fg_code,string,100.0,3875,0,200 ; 183 ; 55 ; 508,,no,
+MILU_New_v506.json,3875,fg_code_description,null|string,100.0,3875,7,200 COOLANT SYSTEM ; 183 OIL FILTRATION/COOLING ; 55 VALVE DRIVE ; 508 ACCESSORIES FOR ENGINE GOVERNOR (ELECTRONIC) CONTROL SYSTEM,,no,
+MILU_New_v506.json,3875,fg_description,null|string,100.0,3875,7,COOLANT SYSTEM ; OIL FILTRATION/COOLING ; VALVE DRIVE ; ACCESSORIES FOR ENGINE GOVERNOR (ELECTRONIC) CONTROL SYSTEM,,no,
+MILU_New_v506.json,3875,GESA_NORM,null|string,100.0,3875,2754,ISO4017 ; ISO8675 ; DIN7985 ; MBN10223,,no,gesa
+MILU_New_v506.json,3875,GESA_NORMALIZADO,string,100.0,3875,0,SI ; NO,,no,gesa
+MILU_New_v506.json,3875,Id,number,100.0,3875,0,1 ; 2 ; 3 ; 4,ID,no,
+MILU_New_v506.json,3875,measurement,string,100.0,3875,1826,"M 16  X280 ; M 16  X180 ; M 16 X 1,5 ; M  3  X  6",,no,
+MILU_New_v506.json,3875,model_type,string,100.0,3875,0,"12VM40A, 16VM61 ; 12VM40A, 20VM93L ; 12VM53, 20VM93 ; 12VM40A",MODEL/TYPE,no,
+MILU_New_v506.json,3875,new_pn_relacionado,null|string,100.0,3875,2603,null ; 000000000403 ; 000000000668 ; 000000000670,,no,
+MILU_New_v506.json,3875,nsn,null|string,100.0,3875,1003,5305123871447 ; 5305123991673 ; 5310123761085 ; 5305124017103,,no,
+MILU_New_v506.json,3875,old_pn_relacionados,null|string,100.0,3875,2668,"null ; 200439016200 ; 0009976290, 0069970490, 700433024000, 916017025000, 916018025000, 916026025000, 916026028000 ; 916017032000",,no,
+MILU_New_v506.json,3875,PAG,string,100.0,3875,0,"12V4000M40A-0231, 16V4000M61-0220, 16V4000M61-0722 ; 12V4000M40A-0208, 20V4000M93L-1400, 20V4000M93L-1780 ; 12V4000M53-0089, 12V4000M53-0090, 12V4000M53-0444, 12V4000M53-0445, 20V4000M93-0093, 20V4000M93-0094, 20V4000M93-0489, 20V4000M93-0490, 20V4 ; 12V4000M40A-0359, 12V4000M40A-0388",,no,
+MILU_New_v506.json,3875,pn,string,100.0,3875,0,000000000359 ; 000000000360 ; 000000000403 ; 000000000611,,no,
+MILU_New_v506.json,3875,POS,null|string,100.0,3875,9,1425 ; 70 ; 50 ; 720,pos,no,
+MILU_New_v506.json,3875,ruta_foto,null|string,100.0,3875,3818,null ; https://milu-naval.mystagingwebsite.com/wp-content/uploads/2026/01/0000530926.jpeg ; https://milu-naval.mystagingwebsite.com/wp-content/uploads/2026/01/0035352231.jpeg ; https://milu-naval.mystagingwebsite.com/wp-content/uploads/2026/01/0049976736.jpeg,,no,media
+MILU_New_v506.json,3875,SUST_TIPO,null|string,100.0,3875,2603,null ; New,,no,sust
+MILU_New_v506.json,3875,TIPOARTICULO,string,100.0,3875,0,piezas,,no,
+MILU_New_v506.json,3875,type,string,100.0,3875,3875,,,no,
+MILU_New_v506.json,3875,weight,null|number,100.0,3875,61,0.4 ; 0.27 ; 0.018 ; 0.006,WEIGHT,no,
+MILU_New_v506.json,3875,weight_txt,null|string,100.0,3875,61,0.400 KGM ; 0.270 KGM ; 0.018 KGM ; 0.006 KGM,,no,
+MILU_Superseded_v506.json,2945,atributo,string,100.0,2945,0,"Accesories ; 12VM40A-18, 16VM61-18, 16VM90-18 ; 12VM40A-35, 16VM61-35, 16VM90-35 ; 12VM40A-77",,no,
+MILU_Superseded_v506.json,2945,BOM_no,string,100.0,2945,0,XS594200.00065 ; X00030241 ; XS594110.00042 ; 010.00367,BOM-No.|bom_no,no,
+MILU_Superseded_v506.json,2945,designation,null|string,100.0,2945,5,HEX SCREW ; HEX NUT ; MANIFOLD ; DAMPER,DESIGNATION,no,
+MILU_Superseded_v506.json,2945,EN_EXCEL_SUSTITUCION,string,100.0,2945,0,SI ; AUTO_FROM_120_NEW,,no,sust
+MILU_Superseded_v506.json,2945,engine,string,100.0,2945,0,4000,,no,
+MILU_Superseded_v506.json,2945,esquema_general,string,100.0,2945,2945,,,no,media
+MILU_Superseded_v506.json,2945,exp_categorias,string,100.0,2945,0,"Accesories ; 12VM40A-18, 16VM61-18, 16VM90-18 ; 12VM40A-35, 16VM61-35, 16VM90-35 ; 12VM40A-77",,no,
+MILU_Superseded_v506.json,2945,exp_imagenes,string,100.0,2945,0,https://milu-naval.mystagingwebsite.com/wp-content/uploads/2026/02/12V4000M53-0228-01-550.webp ; https://milu-naval.mystagingwebsite.com/wp-content/uploads/2026/02/12V4000M40A-0102-01-400.webp ; https://milu-naval.mystagingwebsite.com/wp-content/uploads/2026/02/12V4000M53-0138-01-1050.webp ; https://milu-naval.mystagingwebsite.com/wp-content/uploads/2026/02/12V4000M40A-0029-01-220.webp,,no,media
+MILU_Superseded_v506.json,2945,exp_motor,string,100.0,2945,0,"12V4000M53, 16V4000M73, 16V4000M73L, 20V4000M93, 20V4000M93L ; 12V4000M40A, 12V4000M53, 16V4000M61, 16V4000M73, 16V4000M73L, 16V4000M90, 20V4000M93, 20V4000M93L ; 12V4000M40A, 16V4000M61, 16V4000M90 ; 12V4000M40A",,no,
+MILU_Superseded_v506.json,2945,fecha_version,string,100.0,2945,0,20260131.2339,,no,
+MILU_Superseded_v506.json,2945,fg_code,string,100.0,2945,0,200 ; 81 ; 111 ; 18,,no,
+MILU_Superseded_v506.json,2945,fg_code_description,null|string,100.0,2945,23,"200 COOLANT SYSTEM ; 81 FUEL PIPEWORK BEFORE DELIVERY PUMP ; 111 CHARGE AIR COOLING, GERENAL, LEFT SIDE ; 18 CRANKCASE BREATHER",,no,
+MILU_Superseded_v506.json,2945,fg_description,null|string,100.0,2945,23,"COOLANT SYSTEM ; FUEL PIPEWORK BEFORE DELIVERY PUMP ; CHARGE AIR COOLING, GERENAL, LEFT SIDE ; CRANKCASE BREATHER",,no,
+MILU_Superseded_v506.json,2945,GESA_NORM,null|string,100.0,2945,1666,ISO4017 ; ISO4032 ; null ; DIN472,,no,gesa
+MILU_Superseded_v506.json,2945,GESA_NORMALIZADO,string,100.0,2945,0,SI ; NO,,no,gesa
+MILU_Superseded_v506.json,2945,Id,null|number,100.0,2945,2307,38 ; 50 ; 92 ; 99,ID,no,
+MILU_Superseded_v506.json,2945,measurement,string,100.0,2945,1409,"M 12  X 70 ; M 10  X 35 ; M 12 ; STD EL 145 MM,DN 150 MM",,no,
+MILU_Superseded_v506.json,2945,model_type,string,100.0,2945,0,"12VM53, 16VM73, 16VM73L, 20VM93, 20VM93L ; 12VM40A, 12VM53, 16VM61, 16VM73, 16VM73L, 16VM90, 20VM93, 20VM93L ; 12VM40A, 16VM61, 16VM90 ; 12VM40A",MODEL/TYPE,no,
+MILU_Superseded_v506.json,2945,new_pn_relacionado,string,100.0,2945,0,000000002970/85 ; 000000003326/85 ; 000000004744/85 ; X00023475,,no,
+MILU_Superseded_v506.json,2945,nsn,null|string,100.0,2945,839,5305124003883 ; 5305123394682 ; 5310145478208 ; 2815123785012,,no,
+MILU_Superseded_v506.json,2945,PAG,string,100.0,2945,0,"12V4000M53-0228, 12V4000M53-0261, 12V4000M53-0583, 12V4000M53-0616, 16V4000M73-0293, 16V4000M73-0647, 16V4000M73-1002, 16V4000M73-1340, 16V4 ; 12V4000M40A-0104, 12V4000M40A-0332, 12V4000M53-0022, 12V4000M53-0111, 12V4000M53-0160, 12V4000M53-0163, 12V4000M53-0174, 12V4000M53-0194, 12 ; 12V4000M53-0138, 12V4000M53-0184, 12V4000M53-0234, 12V4000M53-0247, 12V4000M53-0493, 12V4000M53-0539, 12V4000M53-0589, 12V4000M53-0602, 16V4 ; 12V4000M40A-0029, 16V4000M61-0028, 16V4000M61-0535, 16V4000M90-0034",,no,
+MILU_Superseded_v506.json,2945,pn,string,100.0,2945,0,000000002970 ; 000000003326 ; 000000004744 ; 0000100070,,no,
+MILU_Superseded_v506.json,2945,POS,null|string,100.0,2945,3,550 ; 400 ; 1050 ; 220,pos,no,
+MILU_Superseded_v506.json,2945,ruta_foto,null|string,100.0,2945,2867,null ; https://milu-naval.mystagingwebsite.com/wp-content/uploads/2026/01/0299976748.jpeg ; https://milu-naval.mystagingwebsite.com/wp-content/uploads/2026/01/5110850960.jpeg ; https://milu-naval.mystagingwebsite.com/wp-content/uploads/2026/01/5240530120.jpeg,,no,media
+MILU_Superseded_v506.json,2945,SUST_TIPO,string,100.0,2945,0,Superseded ; SUPERSEDED,,no,sust
+MILU_Superseded_v506.json,2945,TIPOARTICULO,string,100.0,2945,0,piezas,,no,
+MILU_Superseded_v506.json,2945,type,string,100.0,2945,2945,,,no,
+MILU_Superseded_v506.json,2945,vinculo,string,100.0,2945,0,milu-naval.mystagingwebsite.com/producto/000000002970/85 ; milu-naval.mystagingwebsite.com/producto/000000003326/85 ; milu-naval.mystagingwebsite.com/producto/000000004744/85 ; milu-naval.mystagingwebsite.com/producto/X00023475,,no,
+MILU_Superseded_v506.json,2945,weight,null|number,100.0,2945,304,0.065 ; 0.027 ; 0.014 ; 1.347,WEIGHT,no,
+MILU_Superseded_v506.json,2945,weight_txt,null|string,100.0,2945,304,0.065 KGM ; 0.027 KGM ; 0.014 KGM ; 1.347 KGM,,no,
+data/output/wordpress/milu_wp_discarded.json,8,apariciones,number,100.0,8,0,12 ; 6 ; 2 ; 1,,no,
+data/output/wordpress/milu_wp_discarded.json,8,decision,string,100.0,8,0,discard,,no,import
+data/output/wordpress/milu_wp_discarded.json,8,designation_final,string,100.0,8,1,richshafen Gmb ; ichshafen Gmb ; chshafen Gm ; hshafen Gmb,,no,
+data/output/wordpress/milu_wp_discarded.json,8,engines,string,100.0,8,0,"12V4000M70 ; 16V4000M90 ; 16V4000M73, 20V4000M93 ; 12V4000M53, 16V4000M73, 20V4000M93, 20V4000M93L",,no,
+data/output/wordpress/milu_wp_discarded.json,8,import_decision,string,100.0,8,0,discard,,no,import
+data/output/wordpress/milu_wp_discarded.json,8,import_reason,string,100.0,8,0,qa_ok_eliminar_found,,no,import
+data/output/wordpress/milu_wp_discarded.json,8,measure_final,string,100.0,8,3,nan ; ge: 133 ; Page: 28 ; Page: 351,,no,
+data/output/wordpress/milu_wp_discarded.json,8,measurement_final,string,100.0,8,3,nan ; ge: 133 ; Page: 28 ; Page: 351,,no,
+data/output/wordpress/milu_wp_discarded.json,8,motores,string,100.0,8,0,"12V4000M70 ; 16V4000M90 ; 16V4000M73, 20V4000M93 ; 12V4000M53, 16V4000M73, 20V4000M93, 20V4000M93L",,no,
+data/output/wordpress/milu_wp_discarded.json,8,occurrences,number,100.0,8,0,12 ; 6 ; 2 ; 1,,no,
+data/output/wordpress/milu_wp_discarded.json,8,pn,string,100.0,8,0,4 MTU Fried ; 4 MTU Friedr ; 4 MTU Friedri ; 4 MTU Friedric,,no,
+data/output/wordpress/milu_wp_discarded.json,8,pn_new,string,100.0,8,8,,,no,
+data/output/wordpress/milu_wp_discarded.json,8,qa_revision_accion,string,100.0,8,0,eliminar,,no,qa
+data/output/wordpress/milu_wp_discarded.json,8,qa_revision_estado,string,100.0,8,0,ok,,no,qa
+data/output/wordpress/milu_wp_discarded.json,8,qa_summary_json,string,100.0,8,0,"{""total_rows"":12,""count_ok_importar"":0,""count_ok_eliminar"":12,""count_pending"":0,""count_review_action"":0,""count_other"":0} ; {""total_rows"":6,""count_ok_importar"":0,""count_ok_eliminar"":6,""count_pending"":0,""count_review_action"":0,""count_other"":0} ; {""total_rows"":2,""count_ok_importar"":0,""count_ok_eliminar"":2,""count_pending"":0,""count_review_action"":0,""count_other"":0} ; {""total_rows"":1,""count_ok_importar"":0,""count_ok_eliminar"":1,""count_pending"":0,""count_review_action"":0,""count_other"":0}",,no,qa
+data/output/wordpress/milu_wp_discarded.json,8,qa_validated,boolean,100.0,8,0,true,,no,qa
+data/output/wordpress/milu_wp_discarded.json,8,reason,string,100.0,8,0,qa_ok_eliminar_found,,no,
+data/output/wordpress/milu_wp_discarded.json,8,sku,string,100.0,8,0,4 MTU Fried ; 4 MTU Friedr ; 4 MTU Friedri ; 4 MTU Friedric,,no,
+data/output/wordpress/milu_wp_discarded.json,8,source_ids,string,100.0,8,0,"1901184, 1901552, 1901571, 1901626, 1901652, 1901684, 1903626, 1903939, 1903958, 1904013, 1904039, 1904071 ; 1901017, 1901033, 1903002, 1903057, 1903459, 1903475 ; 1900131, 1900752, 1901906, 1902571, 1903194, 1904293 ; 1900392, 1902832",,no,
+data/output/wordpress/milu_wp_discarded.json,8,source_pages,string,100.0,8,0,"178, 227, 228, 236, 239, 240, 517, 564, 565, 573, 576, 577 ; 161, 162, 452, 453, 500, 501 ; 39, 126, 259, 378, 465, 596 ; 79, 418",,no,
+data/output/wordpress/milu_wp_discarded.json,8,sust_superseded_list,string,100.0,8,8,,,no,sust
+data/output/wordpress/milu_wp_discarded.json,8,total_occurrences_global,number,100.0,8,0,12 ; 6 ; 2 ; 1,,no,
+data/output/wordpress/milu_wp_discarded.json,8,weight_final,string,100.0,8,4,4-04 ; nan,,no,
+data/output/wordpress/milu_wp_import.json,3573,apariciones,number,100.0,3573,0,2 ; 1 ; 8 ; 4,,no,
+data/output/wordpress/milu_wp_import.json,3573,decision,string,100.0,3573,0,import,,no,import
+data/output/wordpress/milu_wp_import.json,3573,designation_final,string,100.0,3573,0,CONNECTOR THREADED 1 ; IDENTIFICATION PLATE ; PRESSURE SENSOR 50 BAR RELATIV ; CONNECTING CABLE FOR GEARBOX,,no,
+data/output/wordpress/milu_wp_import.json,3573,engines,string,100.0,3573,0,"12V4000M70 ; 12V4000M53 ; 12V4000M40A ; 12V4000M40A, 12V4000M70, 16V4000M61, 16V4000M90, 20V4000M93L",,no,
+data/output/wordpress/milu_wp_import.json,3573,import_decision,string,100.0,3573,0,import,,no,import
+data/output/wordpress/milu_wp_import.json,3573,import_reason,string,100.0,3573,0,qa_ok_importar_found,,no,import
+data/output/wordpress/milu_wp_import.json,3573,measure_final,string,100.0,3573,1844,nan ; GR.6 EMV M25 G ; M 16 X280 ; M 16 X180,,no,
+data/output/wordpress/milu_wp_import.json,3573,measurement_final,string,100.0,3573,1844,nan ; GR.6 EMV M25 G ; M 16 X280 ; M 16 X180,,no,
+data/output/wordpress/milu_wp_import.json,3573,motores,string,100.0,3573,0,"12V4000M70 ; 12V4000M53 ; 12V4000M40A ; 12V4000M40A, 12V4000M70, 16V4000M61, 16V4000M90, 20V4000M93L",,no,
+data/output/wordpress/milu_wp_import.json,3573,occurrences,number,100.0,3573,0,2 ; 1 ; 8 ; 4,,no,
+data/output/wordpress/milu_wp_import.json,3573,pn,string,100.0,3573,0,15 5240100266 ; 25 0175311083 ; 35 0055351531 ; 100 B00E50203275,,no,
+data/output/wordpress/milu_wp_import.json,3573,pn_new,string,100.0,3573,3507,000000003712 ; 0001843597 ; 0005316188 ; 0035352731,,no,
+data/output/wordpress/milu_wp_import.json,3573,qa_revision_accion,string,100.0,3573,0,importar,,no,qa
+data/output/wordpress/milu_wp_import.json,3573,qa_revision_estado,string,100.0,3573,0,ok,,no,qa
+data/output/wordpress/milu_wp_import.json,3573,qa_summary_json,string,100.0,3573,0,"{""total_rows"":2,""count_ok_importar"":2,""count_ok_eliminar"":0,""count_pending"":0,""count_review_action"":0,""count_other"":0} ; {""total_rows"":1,""count_ok_importar"":1,""count_ok_eliminar"":0,""count_pending"":0,""count_review_action"":0,""count_other"":0} ; {""total_rows"":8,""count_ok_importar"":8,""count_ok_eliminar"":0,""count_pending"":0,""count_review_action"":0,""count_other"":0} ; {""total_rows"":4,""count_ok_importar"":4,""count_ok_eliminar"":0,""count_pending"":0,""count_review_action"":0,""count_other"":0}",,no,qa
+data/output/wordpress/milu_wp_import.json,3573,qa_validated,boolean,100.0,3573,0,true,,no,qa
+data/output/wordpress/milu_wp_import.json,3573,reason,string,100.0,3573,0,qa_ok_importar_found,,no,
+data/output/wordpress/milu_wp_import.json,3573,sku,string,100.0,3573,0,15 5240100266 ; 25 0175311083 ; 35 0055351531 ; 100 B00E50203275,,no,
+data/output/wordpress/milu_wp_import.json,3573,source_ids,string,100.0,3573,0,"1900047, 1902482 ; 1905139, 1905146 ; 1902439, 1904826 ; 1206546",,no,
+data/output/wordpress/milu_wp_import.json,3573,source_pages,string,100.0,3573,0,"29, 367 ; 767, 769 ; 348, 685 ; 800",,no,
+data/output/wordpress/milu_wp_import.json,3573,sust_superseded_list,string,100.0,3573,3573,,,no,sust
+data/output/wordpress/milu_wp_import.json,3573,total_occurrences_global,number,100.0,3573,0,2 ; 1 ; 8 ; 4,,no,
+data/output/wordpress/milu_wp_import.json,3573,weight_final,string,100.0,3573,456,"nan ; 6,000 g ; 0.051 KGM ; 0.048 KGM",,no,
+data/output/wordpress/milu_wp_pending_review.json,644,apariciones,number,100.0,644,0,2 ; 1 ; 7 ; 8,,no,
+data/output/wordpress/milu_wp_pending_review.json,644,decision,string,100.0,644,0,pending_review,,no,import
+data/output/wordpress/milu_wp_pending_review.json,644,designation_final,string,100.0,644,416,RETAINER CABLING AND PIPEWO SCREW WASHER NUT HEX ; MANIFOLD INTAKE CHRG AIR O-RING HEX SCREW WASHER THREADED BUSHI COPPER SEALING THREAD PLUG COPPER SEALING THREAD PLUG COPPER SEALING ; PLUG-IN BOARD PLATE SOFTWARE PLATE SOFTWARE ; PLUG-IN BOARD PLATE PLATE,,no,
+data/output/wordpress/milu_wp_pending_review.json,644,engines,string,100.0,644,0,12V4000M53 ; 20V4000M93L ; 16V4000M61 ; 16V4000M90,,no,
+data/output/wordpress/milu_wp_pending_review.json,644,import_decision,string,100.0,644,0,pending_review,,no,import
+data/output/wordpress/milu_wp_pending_review.json,644,import_reason,string,100.0,644,0,qa_pending_or_review_found,,no,import
+data/output/wordpress/milu_wp_pending_review.json,644,measure_final,string,100.0,644,486,"e: 207 / 2 ; 47X135MM, BED 47X25MM ; ge: 106 / 1 ; 1 KAR = 12 ST À 50 ML",,no,
+data/output/wordpress/milu_wp_pending_review.json,644,measurement_final,string,100.0,644,486,"e: 207 / 2 ; 47X135MM, BED 47X25MM ; ge: 106 / 1 ; 1 KAR = 12 ST À 50 ML",,no,
+data/output/wordpress/milu_wp_pending_review.json,644,motores,string,100.0,644,0,12V4000M53 ; 20V4000M93L ; 16V4000M61 ; 16V4000M90,,no,
+data/output/wordpress/milu_wp_pending_review.json,644,occurrences,number,100.0,644,0,2 ; 1 ; 7 ; 8,,no,
+data/output/wordpress/milu_wp_pending_review.json,644,pn,string,100.0,644,0,5 5621531140 ; 10 5240981407 ; 10 5275305512 ; 10 5275308412,,no,
+data/output/wordpress/milu_wp_pending_review.json,644,pn_new,string,100.0,644,607,40201 ; X00058032 ; 46531 ; 0002035183,,no,
+data/output/wordpress/milu_wp_pending_review.json,644,qa_revision_accion,string,100.0,644,0,revisar,,no,qa
+data/output/wordpress/milu_wp_pending_review.json,644,qa_revision_estado,string,100.0,644,0,pendiente,,no,qa
+data/output/wordpress/milu_wp_pending_review.json,644,qa_summary_json,string,100.0,644,0,"{""total_rows"":2,""count_ok_importar"":0,""count_ok_eliminar"":0,""count_pending"":2,""count_review_action"":2,""count_other"":2} ; {""total_rows"":1,""count_ok_importar"":0,""count_ok_eliminar"":0,""count_pending"":1,""count_review_action"":1,""count_other"":1} ; {""total_rows"":7,""count_ok_importar"":0,""count_ok_eliminar"":0,""count_pending"":7,""count_review_action"":7,""count_other"":7} ; {""total_rows"":8,""count_ok_importar"":0,""count_ok_eliminar"":0,""count_pending"":8,""count_review_action"":8,""count_other"":8}",,no,qa
+data/output/wordpress/milu_wp_pending_review.json,644,qa_validated,boolean,100.0,644,0,false,,no,qa
+data/output/wordpress/milu_wp_pending_review.json,644,reason,string,100.0,644,0,qa_pending_or_review_found,,no,
+data/output/wordpress/milu_wp_pending_review.json,644,sku,string,100.0,644,0,5 5621531140 ; 10 5240981407 ; 10 5275305512 ; 10 5275308412,,no,
+data/output/wordpress/milu_wp_pending_review.json,644,source_ids,string,100.0,644,0,"1202622, 1205782 ; 1801271, 1804877 ; 1302328, 1305099 ; 1302308, 1305079",,no,
+data/output/wordpress/milu_wp_pending_review.json,644,source_pages,string,100.0,644,0,"311, 674 ; 1279, 1656 ; 370, 839 ; 364, 833",,no,
+data/output/wordpress/milu_wp_pending_review.json,644,sust_superseded_list,string,100.0,644,634,"0009895420, 2.201045, 40126, 40127, Z=2.201 045-2 ; 700500000755 ; 0002033183 ; 05102651, 23503825M, DDE 23503825",,no,sust
+data/output/wordpress/milu_wp_pending_review.json,644,total_occurrences_global,number,100.0,644,0,2 ; 1 ; 7 ; 8,,no,
+data/output/wordpress/milu_wp_pending_review.json,644,weight_final,string,100.0,644,340,"4-04 ; 53.000 g ; 1,400 g ; 260.300 g",,no,
+data/output/wordpress/milu_wp_superseded.json,1890,apariciones,number,100.0,1890,0,6 ; 16 ; 3 ; 13,,no,
+data/output/wordpress/milu_wp_superseded.json,1890,decision,string,100.0,1890,0,import,,no,import
+data/output/wordpress/milu_wp_superseded.json,1890,designation_final,string,100.0,1890,0,STRAP 75 X20 ; NUT ADEC ; GASKET ; SWITCH,,no,
+data/output/wordpress/milu_wp_superseded.json,1890,engines,string,100.0,1890,0,"12V4000M53, 16V4000M73 ; 12V4000M53, 12V4000M70, 20V4000M93 ; 20V4000M93 ; 12V4000M40A, 12V4000M70, 16V4000M61, 16V4000M73L",,no,
+data/output/wordpress/milu_wp_superseded.json,1890,import_decision,string,100.0,1890,0,import,,no,import
+data/output/wordpress/milu_wp_superseded.json,1890,import_reason,string,100.0,1890,0,qa_ok_importar_found,,no,import
+data/output/wordpress/milu_wp_superseded.json,1890,measure_final,string,100.0,1890,926,"M 16 X 1,5 ; 25- 40X12-SW8-W3 ; 35- 50X12-SW8-W3 ; 40- 60X12-SW8-W3",,no,
+data/output/wordpress/milu_wp_superseded.json,1890,measurement_final,string,100.0,1890,926,"M 16 X 1,5 ; 25- 40X12-SW8-W3 ; 35- 50X12-SW8-W3 ; 40- 60X12-SW8-W3",,no,
+data/output/wordpress/milu_wp_superseded.json,1890,motores,string,100.0,1890,0,"12V4000M53, 16V4000M73 ; 12V4000M53, 12V4000M70, 20V4000M93 ; 20V4000M93 ; 12V4000M40A, 12V4000M70, 16V4000M61, 16V4000M73L",,no,
+data/output/wordpress/milu_wp_superseded.json,1890,occurrences,number,100.0,1890,0,6 ; 16 ; 3 ; 13,,no,
+data/output/wordpress/milu_wp_superseded.json,1890,pn,string,100.0,1890,0,135M55009/1 ; 000000000403 ; 535D01023/1 ; 635H22706/2,,no,
+data/output/wordpress/milu_wp_superseded.json,1890,pn_new,string,100.0,1890,0,136M55056/1 ; 000000000403 ; 535D01023/1 ; X00E50213730,,no,
+data/output/wordpress/milu_wp_superseded.json,1890,qa_revision_accion,string,100.0,1890,0,importar,,no,qa
+data/output/wordpress/milu_wp_superseded.json,1890,qa_revision_estado,string,100.0,1890,0,ok,,no,qa
+data/output/wordpress/milu_wp_superseded.json,1890,qa_summary_json,string,100.0,1890,0,"{""total_rows"":6,""count_ok_importar"":6,""count_ok_eliminar"":0,""count_pending"":0,""count_review_action"":0,""count_other"":0} ; {""total_rows"":16,""count_ok_importar"":16,""count_ok_eliminar"":0,""count_pending"":0,""count_review_action"":0,""count_other"":0} ; {""total_rows"":3,""count_ok_importar"":3,""count_ok_eliminar"":0,""count_pending"":0,""count_review_action"":0,""count_other"":0} ; {""total_rows"":13,""count_ok_importar"":13,""count_ok_eliminar"":0,""count_pending"":0,""count_review_action"":0,""count_other"":0}",,no,qa
+data/output/wordpress/milu_wp_superseded.json,1890,qa_validated,boolean,100.0,1890,0,true,,no,qa
+data/output/wordpress/milu_wp_superseded.json,1890,reason,string,100.0,1890,0,qa_ok_importar_found,,no,
+data/output/wordpress/milu_wp_superseded.json,1890,sku,string,100.0,1890,0,135M55009/1 ; 000000000403 ; 535D01023/1 ; 635H22706/2,,no,
+data/output/wordpress/milu_wp_superseded.json,1890,source_ids,string,100.0,1890,0,"1200710, 1203849, 1400791, 1403960, 1407129, 1410307 ; 1200523, 1200529, 1203666, 1203671, 1900450, 1900456, 1902890, 1902896, 1700531, 1700537, 1704281, 1704286, 1708021, 1708026, 1711761, 17117 ; 1702919, 1706659, 1710399 ; 1102423, 1902363, 1902364, 1904750, 1904751, 1302007, 1302008, 1304778, 1304779, 1502316, 1505353, 1507846, 1510335",,no,
+data/output/wordpress/milu_wp_superseded.json,1890,source_pages,string,100.0,1890,0,"111, 466, 131, 485, 839, 1194 ; 89, 90, 444, 445, 92, 93, 431, 432, 94, 489, 490, 885, 886, 1281, 1282 ; 318, 714, 1110 ; 346, 334, 671, 338, 807, 337, 799, 1142, 1477",,no,
+data/output/wordpress/milu_wp_superseded.json,1890,sust_superseded_list,string,100.0,1890,632,"200439016200 ; 635D01023/1 ; 0009976290, 0069970490, 700433024000, 916017025000, 916018025000, 916026025000, 916026028000 ; 916017032000",,no,sust
+data/output/wordpress/milu_wp_superseded.json,1890,total_occurrences_global,number,100.0,1890,0,6 ; 16 ; 3 ; 13,,no,
+data/output/wordpress/milu_wp_superseded.json,1890,weight_final,string,100.0,1890,178,"0.06 KGM ; 0.018 KGM ; 0.007 KGM ; 148,900 g",,no,
+engine_12V4000M40A.json,2759,atributo2,null|string,100.0,2759,1,null ; Actualizados,,no,
+engine_12V4000M40A.json,2759,BOM-No.,string,100.0,2759,0,000.00897 ; 010.00475 ; 5260101605 ; 010.00021,BOM_no|bom_no,no,
+engine_12V4000M40A.json,2759,bom_error,number,100.0,2759,0,0,,no,qa
+engine_12V4000M40A.json,2759,bom_pdf,null|string,97.83,2699,1,null ; 010.00475 ; 5260101605 ; 010.00021,,yes,
+engine_12V4000M40A.json,2759,book_set,null|string,100.0,2759,1,null ; 12V4000M40A,,no,
+engine_12V4000M40A.json,2759,categoria,null|string,100.0,2759,1,null ; 12VM40A-11 ; 12VM40A-14 ; 12VM40A-15,,no,
+engine_12V4000M40A.json,2759,Cause,null|string,100.0,2759,1449,null ; 9002 ; 9001 ; 9012,,no,
+engine_12V4000M40A.json,2759,criterio_pn,null|string,100.0,2759,1,null ; EMPTY ; MATCH_CATALOGO ; BEST_MATCH,,no,
+engine_12V4000M40A.json,2759,Date,null|string,100.0,2759,1343,null ; 2022-01-10,,no,
+engine_12V4000M40A.json,2759,DD/DTNA,null,100.0,2759,2759,null,,no,
+engine_12V4000M40A.json,2759,Denomination (New Part Number),null|string,100.0,2759,1343,null ; VALVE DRAIN ; WASHER ; BOLT HEX SOC HD,,no,
+engine_12V4000M40A.json,2759,Denomination(Cause),null|string,100.0,2759,2536,null ; Attention !! Technical clarifying with MTU F necessary,,no,
+engine_12V4000M40A.json,2759,depuracion_ts,null|string,100.0,2759,1,null ; 2026-04-27T00:11:37Z,,no,
+engine_12V4000M40A.json,2759,DESIGNATION,null|string,100.0,2759,10,PLATE ; CRANKCASE ; VALVE DRAIN ; WASHER,designation,no,
+engine_12V4000M40A.json,2759,designation_error,number,100.0,2759,0,0 ; 1,,no,qa
+engine_12V4000M40A.json,2759,designation_final,string,100.0,2759,0,PLATE ; CRANKCASE ; VALVE DRAIN ; WASHER,,no,
+engine_12V4000M40A.json,2759,designation_gesa,null|string,100.0,2759,519,null ; VALVE DRAIN ; WASHER ; BOLT HEX SOC HD,,no,gesa
+engine_12V4000M40A.json,2759,designation_pdf,null|string,98.15,2708,1,null ; VALVE DRAIN ; WASHER ; BOLT HEX SOC HD,,yes,
+engine_12V4000M40A.json,2759,detalle_cambio,null|string,100.0,2759,49,null ; match: 0049976736 ; match: 000125010524 ; match: 000912008115,,no,
+engine_12V4000M40A.json,2759,dimensions_gesa,null|string,100.0,2759,1205,null ; 10 ; M 8 X 16 ; M 10 X 90,,no,gesa
+engine_12V4000M40A.json,2759,engine,null|string,100.0,2759,1,null ; 4000,,no,
+engine_12V4000M40A.json,2759,engine_model,string,100.0,2759,0,12V4000M40A,,no,
+engine_12V4000M40A.json,2759,esquemas,null|string,100.0,2759,13,"null ; 12V4000M40A-0012-01.png , 12V4000M40A-0012-02.png ; 12V4000M40A-0014-01.png ; 12V4000M40A-0015-01.png",,no,media
+engine_12V4000M40A.json,2759,esquemas_circulos,null|string,100.0,2759,173,null ; 12V4000M40A-0012-01-50.webp ; 12V4000M40A-0012-01-80.webp ; 12V4000M40A-0012-01-145.webp,,no,media
+engine_12V4000M40A.json,2759,esquemas_circulos_all,null|string,100.0,2759,15,"null ; 12V4000M40A-0012-01-50.webp , 12V4000M40A-0012-02-50.webp ; 12V4000M40A-0012-01-80.webp , 12V4000M40A-0012-02-80.webp ; 12V4000M40A-0012-01-145.webp , 12V4000M40A-0012-02-145.webp",,no,media
+engine_12V4000M40A.json,2759,existeix_gesa,boolean|null,100.0,2759,1,null ; false ; true,,no,gesa
+engine_12V4000M40A.json,2759,existeix_sust_new,boolean|null,100.0,2759,1,null ; false ; true,,no,sust
+engine_12V4000M40A.json,2759,existeix_sust_old,boolean|null,100.0,2759,1,null ; false ; true,,no,sust
+engine_12V4000M40A.json,2759,exp_imagenes,null|string,100.0,2759,1,"null ; https://milu-naval.mystagingwebsite.com/wp-content/uploads/2026/02/12V4000M40A-0012-01-50.webp ; https://milu-naval.mystagingwebsite.com/wp-content/uploads/2026/01/0049976736.jpeg, https://milu-naval.mystagingwebsite.com/wp-content/uploa ; https://milu-naval.mystagingwebsite.com/wp-content/uploads/2026/02/12V4000M40A-0012-01-145.webp",,no,media
+engine_12V4000M40A.json,2759,FG/FGS,null|string,100.0,2759,1,null ; 011-05 ; 011-30 ; 011-40,fg_fgs,no,
+engine_12V4000M40A.json,2759,fg_code,null|number,100.0,2759,1,null ; 11 ; 14 ; 15,,no,
+engine_12V4000M40A.json,2759,fg_fgs_raw,null|string,100.0,2759,1,null ; 011-05 ; 011-30 ; 011-40,,no,
+engine_12V4000M40A.json,2759,fgs_code_description,null|string,100.0,2759,1,null ; 11 CRANKCASE ; 14 OIL PAN ; 15 ENGINE MOUNTING,,no,
+engine_12V4000M40A.json,2759,fgs_description,null|string,100.0,2759,1,null ; CRANKCASE ; OIL PAN ; ENGINE MOUNTING,,no,
+engine_12V4000M40A.json,2759,filename_foto,null|string,100.0,2759,2715,null ; 0049976736.jpeg ; 5240114210.jpeg ; 5240510110.jpeg,,no,media
+engine_12V4000M40A.json,2759,FN,null|string,100.0,2759,2299,EM ; null ; MN EM ; MN,,no,
+engine_12V4000M40A.json,2759,fn_pdf,null|string,15.48,427,1,null ; EM ; MN EM ; MN,,yes,
+engine_12V4000M40A.json,2759,gesa,null|string,100.0,2759,1,null ; NO ; SI,,no,gesa
+engine_12V4000M40A.json,2759,gesa_pdf,null|string,16.96,468,1,null ; No,,yes,gesa
+engine_12V4000M40A.json,2759,has_error,boolean,100.0,2759,0,false ; true,,no,qa
+engine_12V4000M40A.json,2759,Hierarchie,null|string,100.0,2759,1343,null ; New ; Superseded,,no,sust
+engine_12V4000M40A.json,2759,ID,string,100.0,2759,0,1102759 ; 1100001 ; 1100400 ; 1100501,Id,no,
+engine_12V4000M40A.json,2759,libro_pag,null|string,100.0,2759,1,null ; 12V4000M40A-0013 ; 12V4000M40A-0014 ; 12V4000M40A-0015,,no,
+engine_12V4000M40A.json,2759,measure_final,null|string,100.0,2759,1137,04.13 ; null ; 10 ; M 8 X 16,,no,
+engine_12V4000M40A.json,2759,measure_pdf,null|string,51.03,1408,1,null ; 10 ; M 8 X 16 ; M 10 X 90,,yes,
+engine_12V4000M40A.json,2759,measure_raw,null|string,100.0,2759,2379,null ; M 8 X 45 ; M 10 X 25 ; 12 X 5,,no,
+engine_12V4000M40A.json,2759,MEASUREMENT / STANDARD,null|string,100.0,2759,2378,04.13 ; null ; M 8 X 45 ; M 10 X 25,,no,
+engine_12V4000M40A.json,2759,measurement_error,number,100.0,2759,0,0,,no,qa
+engine_12V4000M40A.json,2759,model,null|string,100.0,2759,1,null ; 12VM40A,,no,
+engine_12V4000M40A.json,2759,MODEL/TYPE,null|string,100.0,2759,2093,null ; 4000 ; BR 4000 ; BR4000,model_type,no,
+engine_12V4000M40A.json,2759,MODEL/TYPE_final,null|string,100.0,2759,2092,null ; 4000 ; BR 4000 ; BR4000,,no,
+engine_12V4000M40A.json,2759,model_final,null|string,100.0,2759,2092,null ; 4000 ; BR 4000 ; BR4000,,no,
+engine_12V4000M40A.json,2759,model_type_pdf,null|string,22.44,619,1,null ; 4000 ; BR 4000 ; BR4000,,yes,
+engine_12V4000M40A.json,2759,MSTAE,null|number,100.0,2759,1343,null ; 60 ; 99 ; 66,,no,
+engine_12V4000M40A.json,2759,MTART,null|string,100.0,2759,1343,null ; YKFT ; YNOR ; YHT,,no,
+engine_12V4000M40A.json,2759,MTU,null|string,100.0,2759,1343,null ; x,,no,
+engine_12V4000M40A.json,2759,New Part Number,null|string,100.0,2759,1343,null ; 0049976736 ; 000125010524 ; 000912008115,,no,
+engine_12V4000M40A.json,2759,norma,null|string,100.0,2759,1547,MMN425 ; null ; ISO7089 ; DIN912,,no,gesa
+engine_12V4000M40A.json,2759,norma_error,number,100.0,2759,0,0,,no,qa|gesa
+engine_12V4000M40A.json,2759,norma_final,null|string,100.0,2759,1547,MMN425 ; null ; ISO7089 ; DIN912,,no,gesa
+engine_12V4000M40A.json,2759,norma_pdf,null|string,35.09,968,1,null ; DIN912 ; DIN931 ; DIN933,,yes,gesa
+engine_12V4000M40A.json,2759,norma_raw,null|string,100.0,2759,1720,null ; DIN125 ; DIN912 ; DIN931,,no,gesa
+engine_12V4000M40A.json,2759,normalizado,null|string,100.0,2759,1,null ; NO ; SI,,no,gesa
+engine_12V4000M40A.json,2759,normalizado_pdf,null|string,56.29,1553,1,null ; No,,yes,gesa
+engine_12V4000M40A.json,2759,nsn,null|string,100.0,2759,780,null ; 4820123372715 ; 5310121565471 ; 5305121696486,,no,
+engine_12V4000M40A.json,2759,page4,null|string,100.0,2759,1,null ; 0013 ; 0014 ; 0015,,no,
+engine_12V4000M40A.json,2759,pages,null|string,100.0,2759,1,null ; 12V4000M40A-0013 ; 12V4000M40A-0014 ; 12V4000M40A-0015,,no,
+engine_12V4000M40A.json,2759,PART NO.,null|string,100.0,2759,48,70042500158 ; null ; 0049976736 ; 000125010524,,no,
+engine_12V4000M40A.json,2759,pn_error,number,100.0,2759,0,0 ; 2,,no,qa
+engine_12V4000M40A.json,2759,pn_final,null|string,100.0,2759,53,70042500158 ; 0049976736 ; 000125010524 ; 000912008115,,no,
+engine_12V4000M40A.json,2759,pn_new,null|string,100.0,2759,1343,null ; 0049976736 ; 000125010524 ; 000912008115,,no,
+engine_12V4000M40A.json,2759,pn_pdf,null|string,98.15,2708,1,null ; 0049976736 ; 000125010524 ; 000912008115,,yes,
+engine_12V4000M40A.json,2759,pn_raw,null|string,100.0,2759,48,70042500158 ; null ; 0049976736 ; 000125010524,,no,
+engine_12V4000M40A.json,2759,pn_recomendado,null|string,100.0,2759,64,null ; 0049976736 ; 000125010524 ; 000912008115,,no,
+engine_12V4000M40A.json,2759,POS,null|string,100.0,2759,2,10 ; 50 ; 80 ; 145,pos,no,
+engine_12V4000M40A.json,2759,pos_error,number,100.0,2759,0,0,,no,qa
+engine_12V4000M40A.json,2759,pos_final,number|string,100.0,2759,0,10 ; 50 ; 80 ; 145,,no,
+engine_12V4000M40A.json,2759,pos_pdf,null|string,98.15,2708,1,null ; 80 ; 145 ; 70,,yes,
+engine_12V4000M40A.json,2759,precio,null|number,100.0,2759,1,null ; 0,,no,
+engine_12V4000M40A.json,2759,Product Hierarchy,null|string,100.0,2759,1343,null ; P40 ; Q06 ; P42,,no,sust|wordpress
+engine_12V4000M40A.json,2759,qa_revision_accion,string,100.0,2759,0,importar ; eliminar ; revisar ; mantener,,no,qa
+engine_12V4000M40A.json,2759,qa_revision_confianza,number,87.71,2420,0,1 ; 0.95,,no,qa
+engine_12V4000M40A.json,2759,qa_revision_estado,string,100.0,2759,0,ok ; pendiente ; revisado,,no,qa
+engine_12V4000M40A.json,2759,qa_revision_fecha,string,87.71,2420,0,2026-05-04T15:25:56.305Z ; 2026-05-04T15:33:39.441Z,,no,qa
+engine_12V4000M40A.json,2759,qa_revision_motivo,string,87.71,2420,0,PN encontrado en GESA ; PN encontrado en SUST,,no,qa
+engine_12V4000M40A.json,2759,qa_revision_origen,string,87.71,2420,0,auto,,no,qa
+engine_12V4000M40A.json,2759,qa_revision_regla_aplicada,string,87.71,2420,0,C|D,,no,qa
+engine_12V4000M40A.json,2759,qa_revision_updated_at,string,1.49,41,0,2026-05-03T23:28:42.942Z ; 2026-05-03T19:06:22.069Z ; 2026-05-03T19:45:48.233Z ; 2026-05-03T19:45:56.319Z,,no,qa
+engine_12V4000M40A.json,2759,QTY,null|string,100.0,2759,253,1 ; 2 ; 25 ; 19,qty,no,
+engine_12V4000M40A.json,2759,qty_final,null|string,100.0,2759,254,null ; 1 ; 2 ; 25,,no,
+engine_12V4000M40A.json,2759,qty_pdf,null|string,88.73,2448,1,null ; 2 ; 25 ; 1,,yes,
+engine_12V4000M40A.json,2759,qty_units_final,null|string,100.0,2759,113,"null ; PC ; PC 1,500 G ; PC 11,900 G",,no,
+engine_12V4000M40A.json,2759,Replacement Type,null|string,100.0,2759,1449,null ; F ; I,,no,
+engine_12V4000M40A.json,2759,ruta_esquemas_pos,null|string,100.0,2759,173,null ; https://milu-naval.mystagingwebsite.com/wp-content/uploads/2026/02/12V4000M40A-0012-01-50.webp ; https://milu-naval.mystagingwebsite.com/wp-content/uploads/2026/02/12V4000M40A-0012-01-80.webp ; https://milu-naval.mystagingwebsite.com/wp-content/uploads/2026/02/12V4000M40A-0012-01-145.webp,,no,media
+engine_12V4000M40A.json,2759,ruta_foto,null|string,100.0,2759,2715,null ; https://milu-naval.mystagingwebsite.com/wp-content/uploads/2026/01/0049976736.jpeg ; https://milu-naval.mystagingwebsite.com/wp-content/uploads/2026/01/5240114210.jpeg ; https://milu-naval.mystagingwebsite.com/wp-content/uploads/2026/01/5240510110.jpeg,,no,media
+engine_12V4000M40A.json,2759,Seq no,null|string,100.0,2759,1343,null ; 0006 ; 0007 ; 0005,,no,
+engine_12V4000M40A.json,2759,Source Page,number|string,100.0,2759,0,5 ; 13 ; 14 ; 15,source_page,no,
+engine_12V4000M40A.json,2759,source_file,null|string,100.0,2759,1,null ; 12V4000M40A.xlsx,,no,
+engine_12V4000M40A.json,2759,source_sheet,null|string,100.0,2759,1,null ; 1,,no,
+engine_12V4000M40A.json,2759,status,null|string,100.0,2759,1,null ; EMPTY ; OK_GESA ; OK_SUST_OLD,,no,
+engine_12V4000M40A.json,2759,Superseded Part Number,null|string,100.0,2759,1343,null ; 0049976736 ; 000125010524 ; 000912008115,,no,sust
+engine_12V4000M40A.json,2759,sust_hierarchie,null|string,100.0,2759,1327,null ; New ; Superseded,,yes,sust
+engine_12V4000M40A.json,2759,sust_new_part_number,null|string,100.0,2759,1327,null ; 0049976736 ; 000125010524 ; 000912008115,,no,sust
+engine_12V4000M40A.json,2759,sust_new_part_number_pdf,null|string,42.62,1176,1,null ; 0049976736 ; 000125010524 ; 000912008115,,yes,sust
+engine_12V4000M40A.json,2759,sust_status,null|string,100.0,2759,1327,null ; SI,,no,sust
+engine_12V4000M40A.json,2759,sust_superseded_list,null|string,100.0,2759,1618,"null ; 0009970436, 06.93160-0120, 071401018200, 111L37701/1, 5509970036 ; 000125010500, 000125010513, 000125010517, 000125010518, 000125010521, 06.15010-0212 ; 000912008005, 000912008085, 000912008143, 06.02093-0405",,no,sust
+engine_12V4000M40A.json,2759,sust_superseded_list_pdf,null|string,0.4,11,1,null ; XP53517300055 ; X00004360 ; X00004694,,yes,sust
+engine_12V4000M40A.json,2759,total_error,number,100.0,2759,0,0 ; 2 ; 1,,no,qa
+engine_12V4000M40A.json,2759,UNITS,null|string,100.0,2759,112,"PC ; PC 1,500 G ; PC 11,900 G ; PC 44,250 G",units,no,
+engine_12V4000M40A.json,2759,units,null|string,100.0,2759,519,null ; KGM,UNITS,no,
+engine_12V4000M40A.json,2759,units_pdf,null|string,93.95,2592,1,"null ; PC ; PC 1,500 G ; PC 11,900 G",,yes,
+engine_12V4000M40A.json,2759,Valid From Date,null|string,100.0,2759,1446,null ; 1996-04-01 ; 1994-03-01 ; 1997-10-01,,no,
+engine_12V4000M40A.json,2759,WEIGHT,null|string,100.0,2759,919,"15 G ; 1.707 TO ; null ; 3,100 G",weight,no,
+engine_12V4000M40A.json,2759,weight_error,number,100.0,2759,0,0,,no,qa
+engine_12V4000M40A.json,2759,weight_final,null|string,100.0,2759,323,15 G ; 1.707 TO ; 0.125 KGM ; 0.003 KGM,,no,
+engine_12V4000M40A.json,2759,weight_gesa,null|number,100.0,2759,519,null ; 0.125 ; 0.003 ; 0.011,,no,gesa
+engine_12V4000M40A.json,2759,weight_pdf,null|string,65.93,1819,1,"null ; 3,100 G ; 12 G ; 64 G",,yes,
+engine_12V4000M53.json,6580,atributo2,string,100.0,6580,0,Actualizados,,no,
+engine_12V4000M53.json,6580,BOM-No.,string,100.0,6580,0,000.00899 ; XS524000.00019 ; XS524000.00097 ; XS524000.00104,BOM_no|bom_no,no,
+engine_12V4000M53.json,6580,bom_error,number,100.0,6580,0,0,,no,qa
+engine_12V4000M53.json,6580,bom_pdf,string,98.36,6472,0,000.00899 ; XS524000.00019 ; XS524000.00097 ; XS524000.00104,,yes,
+engine_12V4000M53.json,6580,book_set,string,100.0,6580,0,12V4000M53,,no,
+engine_12V4000M53.json,6580,categoria,string,100.0,6580,0,12VM53-4 ; 12VM53-11 ; 12VM53-14 ; 12VM53-15,,no,
+engine_12V4000M53.json,6580,Cause,null|string,100.0,6580,3759,null ; 9001 ; 9002 ; 9012,,no,
+engine_12V4000M53.json,6580,criterio_pn,string,100.0,6580,0,MATCH_CATALOGO ; BEST_MATCH ; C_NOISE_FOOTER ; EMPTY,,no,
+engine_12V4000M53.json,6580,Date,null|string,100.0,6580,3536,null ; 2022-01-10,,no,
+engine_12V4000M53.json,6580,DD/DTNA,null,100.0,6580,6580,null,,no,
+engine_12V4000M53.json,6580,Denomination (New Part Number),null|string,100.0,6580,3536,null ; IDENTIFICATION PLATE SELF-ADHESIVE ; PLATE ; BOLT HEX SOC HD,,no,
+engine_12V4000M53.json,6580,Denomination(Cause),null|string,100.0,6580,6121,null ; Attention !! Technical clarifying with MTU F necessary,,no,
+engine_12V4000M53.json,6580,depuracion_ts,string,100.0,6580,0,2026-04-27T00:11:37Z,,no,
+engine_12V4000M53.json,6580,DESIGNATION,null|string,100.0,6580,220,PLATE ; EMI-LABEL NON-EPA ; NAMEPLATE FOR DIESEL ENGINE ; BOLT HEX SOC HD,designation,no,
+engine_12V4000M53.json,6580,designation_error,number,100.0,6580,0,0 ; 2 ; 1,,no,qa
+engine_12V4000M53.json,6580,designation_final,null|string,100.0,6580,207,LABEL ; EMI-LABEL NON-EPA ; NAMEPLATE FOR DIESEL ENGINE ; PLATE,,no,
+engine_12V4000M53.json,6580,designation_gesa,null|string,100.0,6580,751,LABEL ; null ; PLATE ; BOLT HEX SOC HD,,no,gesa
+engine_12V4000M53.json,6580,designation_pdf,string,98.36,6472,0,PLATE ; EMI-LABEL NON-EPA ; NAMEPLATE FOR DIESEL ENGINE ; BOLT HEX SOC HD,,yes,
+engine_12V4000M53.json,6580,detalle_cambio,null|string,100.0,6580,61,match: 700425000155 ; 700425000182 ; 700425000219 ; match: 700425000039,,no,
+engine_12V4000M53.json,6580,dimensions_gesa,null|string,100.0,6580,2200,70 ; null ; 36 ; 47.2,,no,gesa
+engine_12V4000M53.json,6580,engine,string,100.0,6580,0,4000,,no,
+engine_12V4000M53.json,6580,engine_model,string,100.0,6580,0,12V4000M53,,no,
+engine_12V4000M53.json,6580,esquemas,string,100.0,6580,899,12V4000M53-0015-01.png ; 12V4000M53-0016-01.png ; 12V4000M53-0017-01.png ; 12V4000M53-0018-01.png,,no,media
+engine_12V4000M53.json,6580,esquemas_circulos,null|string,100.0,6580,1262,null ; 12V4000M53-0023-01-10.webp ; 12V4000M53-0023-01-110.webp ; 12V4000M53-0023-01-130.webp,,no,media
+engine_12V4000M53.json,6580,esquemas_circulos_all,null|string,100.0,6580,914,12V4000M53-0015-01-10.webp ; 12V4000M53-0016-01-100.webp ; 12V4000M53-0017-01-20.webp ; 12V4000M53-0018-01-150.webp,,no,media
+engine_12V4000M53.json,6580,existeix_gesa,boolean,100.0,6580,0,true ; false,,no,gesa
+engine_12V4000M53.json,6580,existeix_sust_new,boolean,100.0,6580,0,false ; true,,no,sust
+engine_12V4000M53.json,6580,existeix_sust_old,boolean,100.0,6580,0,false ; true,,no,sust
+engine_12V4000M53.json,6580,exp_imagenes,string,100.0,6580,0,https://milu-naval.mystagingwebsite.com/wp-content/uploads/2026/01/sin_imagen.jpeg ; https://milu-naval.mystagingwebsite.com/wp-content/uploads/2026/01/0049976736.jpeg ; https://milu-naval.mystagingwebsite.com/wp-content/uploads/2026/01/5240111380.jpeg ; https://milu-naval.mystagingwebsite.com/wp-content/uploads/2026/02/12V4000M53-0023-01-10.webp,,no,media
+engine_12V4000M53.json,6580,FG/FGS,string,100.0,6580,0,004-05 ; 011-05 ; 011-30 ; 011-40,fg_fgs,no,
+engine_12V4000M53.json,6580,fg_code,number,100.0,6580,0,4 ; 11 ; 14 ; 15,,no,
+engine_12V4000M53.json,6580,fg_fgs_pdf,string,0.15,10,0,202,,yes,
+engine_12V4000M53.json,6580,fg_fgs_raw,string,100.0,6580,0,004-05 ; 011-05 ; 011-30 ; 011-40,,no,
+engine_12V4000M53.json,6580,fgs_code_description,string,100.0,6580,0,4 LABELS AND AUXILIARY MATERIALS ; 11 CRANKCASE ; 14 OIL PAN ; 15 ENGINE MOUNTING,,no,
+engine_12V4000M53.json,6580,fgs_description,string,100.0,6580,0,LABELS AND AUXILIARY MATERIALS ; CRANKCASE ; OIL PAN ; ENGINE MOUNTING,,no,
+engine_12V4000M53.json,6580,filename_foto,null|string,100.0,6580,6470,null ; 0049976736.jpeg ; 5240111380.jpeg ; X00027830.jpeg,,no,media
+engine_12V4000M53.json,6580,FN,null|string,100.0,6580,6396,null ; MN EM ; EM ; SB,,no,
+engine_12V4000M53.json,6580,fn_final,string,0.03,2,0,EM ; xxxxx,,no,
+engine_12V4000M53.json,6580,fn_pdf,string,2.6,171,0,MN EM ; EM ; SB ; SB EM,,yes,
+engine_12V4000M53.json,6580,gesa,string,100.0,6580,0,SI ; NO,,no,gesa
+engine_12V4000M53.json,6580,gesa_pdf,string,9.77,643,0,No,,yes,gesa
+engine_12V4000M53.json,6580,has_error,boolean,100.0,6580,0,false ; true,,no,qa
+engine_12V4000M53.json,6580,Hierarchie,null|string,100.0,6580,3536,null ; Superseded ; New,,no,sust
+engine_12V4000M53.json,6580,ID,string,100.0,6580,0,1200001 ; 1200002 ; 1200003 ; 1200004,Id,no,
+engine_12V4000M53.json,6580,libro_pag,string,100.0,6580,0,12V4000M53-0015 ; 12V4000M53-0016 ; 12V4000M53-0017 ; 12V4000M53-0018,,no,
+engine_12V4000M53.json,6580,measure_final,null|string,100.0,6580,2126,70 ; null ; 36 ; 47.2,,no,
+engine_12V4000M53.json,6580,measure_pdf,string,58.01,3817,0,70 ; 36 ; 47.2 ; M 8 X 16,,yes,
+engine_12V4000M53.json,6580,measure_raw,null|string,100.0,6580,6173,null ; N15007 ; MBN15005 ; N15006,,no,
+engine_12V4000M53.json,6580,MEASUREMENT / STANDARD,null|string,100.0,6580,6173,null ; N15007 ; MBN15005 ; N15006,,no,
+engine_12V4000M53.json,6580,measurement_error,number,100.0,6580,0,0,,no,qa
+engine_12V4000M53.json,6580,model,string,100.0,6580,0,12VM53,,no,
+engine_12V4000M53.json,6580,MODEL/TYPE,null|string,100.0,6580,5518,null ; NG RING ; 0/16 ; WASHER,model_type,no,
+engine_12V4000M53.json,6580,MODEL/TYPE_final,null|string,100.0,6580,5517,null ; NG RING ; 0/16 ; WASHER,,no,
+engine_12V4000M53.json,6580,model_final,null|string,100.0,6580,5517,null ; NG RING ; 0/16 ; WASHER,,no,
+engine_12V4000M53.json,6580,model_type_pdf,string,11.63,765,0,WASHER ; RIGHT ; LEFT ; INDICATR,,yes,
+engine_12V4000M53.json,6580,MSTAE,null|number,100.0,6580,3536,null ; 60 ; 66 ; 99,,no,
+engine_12V4000M53.json,6580,MTART,null|string,100.0,6580,3536,null ; YHT ; YNOR ; YKFT,,no,
+engine_12V4000M53.json,6580,MTU,null|string,100.0,6580,3538,null ; x,,no,
+engine_12V4000M53.json,6580,New Part Number,null|string,100.0,6580,3536,null ; X53100400002 ; 700425000112 ; 000912008115,,no,
+engine_12V4000M53.json,6580,norma,null|string,100.0,6580,3169,MMN425 ; null ; DIN912 ; ISO4017,,no,gesa
+engine_12V4000M53.json,6580,norma_error,number,100.0,6580,0,0,,no,qa|gesa
+engine_12V4000M53.json,6580,norma_final,null|string,100.0,6580,3170,MMN425 ; null ; DIN912 ; ISO4017,,no,gesa
+engine_12V4000M53.json,6580,norma_pdf,string,41.87,2755,0,MMN425 ; DIN912 ; ISO4017 ; DIN835,,yes,gesa
+engine_12V4000M53.json,6580,norma_raw,null|string,100.0,6580,4649,null ; DIN912 ; ISO4017 ; DIN835,,no,gesa
+engine_12V4000M53.json,6580,normalizado,string,100.0,6580,0,SI ; NO,,no,gesa
+engine_12V4000M53.json,6580,normalizado_pdf,string,47.43,3121,0,No,,yes,gesa
+engine_12V4000M53.json,6580,nsn,null|string,100.0,6580,1129,null ; 9905123605605 ; 9905123785703 ; 5305121696486,,no,
+engine_12V4000M53.json,6580,page4,string,100.0,6580,0,0015 ; 0016 ; 0017 ; 0018,,no,
+engine_12V4000M53.json,6580,pages,string,100.0,6580,0,12V4000M53-0015 ; 12V4000M53-0016 ; 12V4000M53-0017 ; 12V4000M53-0018,,no,
+engine_12V4000M53.json,6580,PART NO.,null|string,100.0,6580,61,700425000155 ; 700425000182 ; 700425000219 ; 700425000039,,no,
+engine_12V4000M53.json,6580,pn_error,number,100.0,6580,0,0 ; 2 ; 1,,no,qa
+engine_12V4000M53.json,6580,pn_final,null|string,100.0,6580,102,700425000155 ; 700425000182 ; 700425000219 ; 700425000039,,no,
+engine_12V4000M53.json,6580,pn_new,null|string,100.0,6580,3536,null ; X53100400002 ; 700425000112 ; 000912008115,,no,
+engine_12V4000M53.json,6580,pn_pdf,string,98.36,6472,0,700425000155 ; 700425000182 ; 700425000219 ; 700425000039,,yes,
+engine_12V4000M53.json,6580,pn_raw,null|string,100.0,6580,61,700425000155 ; 700425000182 ; 700425000219 ; 700425000039,,no,
+engine_12V4000M53.json,6580,pn_recomendado,null|string,100.0,6580,109,700425000155 ; X53100400002 ; 700425000219 ; 700425000039,,no,
+engine_12V4000M53.json,6580,POS,null|string,100.0,6580,18,10 ; 100 ; 20 ; 150,pos,no,
+engine_12V4000M53.json,6580,pos_error,number,100.0,6580,0,0 ; 2,,no,qa
+engine_12V4000M53.json,6580,pos_final,null|string,100.0,6580,14,10 ; 100 ; 20 ; 150,,no,
+engine_12V4000M53.json,6580,pos_pdf,string,97.54,6418,0,10 ; 100 ; 20 ; 150,,yes,
+engine_12V4000M53.json,6580,precio,number,100.0,6580,0,0,,no,
+engine_12V4000M53.json,6580,Product Hierarchy,null|string,100.0,6580,3536,null ; P20 ; Q06 ; P40,,no,sust|wordpress
+engine_12V4000M53.json,6580,qa_revision_accion,string,100.0,6580,0,importar ; eliminar ; revisar,,no,qa
+engine_12V4000M53.json,6580,qa_revision_confianza,number,0.91,60,0,1 ; 0.95,,no,qa
+engine_12V4000M53.json,6580,qa_revision_estado,string,100.0,6580,0,ok ; pendiente,,no,qa
+engine_12V4000M53.json,6580,qa_revision_fecha,string,0.91,60,0,2026-05-04T15:33:39.441Z,,no,qa
+engine_12V4000M53.json,6580,qa_revision_motivo,string,0.91,60,0,PN encontrado en GESA ; PN encontrado en SUST,,no,qa
+engine_12V4000M53.json,6580,qa_revision_origen,string,0.91,60,0,auto,,no,qa
+engine_12V4000M53.json,6580,qa_revision_regla_aplicada,string,0.91,60,0,C|D,,no,qa
+engine_12V4000M53.json,6580,qa_revision_updated_at,string,0.23,15,0,2026-05-03T22:58:29.223Z ; 2026-05-04T13:01:05.427Z ; 2026-05-03T22:58:54.909Z ; 2026-05-04T18:00:14.425Z,,no,qa
+engine_12V4000M53.json,6580,QTY,null|string,100.0,6580,801,null ; 4 ; 2 ; 1,qty,no,
+engine_12V4000M53.json,6580,qty_final,null|string,100.0,6580,800,null ; 4 ; 2 ; 1,,no,
+engine_12V4000M53.json,6580,qty_pdf,string,86.87,5716,0,4 ; 2 ; 1 ; 8,,yes,
+engine_12V4000M53.json,6580,qty_units_final,null|string,100.0,6580,576,null ; PC ; pc ; 910 2014,,no,
+engine_12V4000M53.json,6580,Replacement Type,null|string,100.0,6580,3759,null ; F ; I,,no,
+engine_12V4000M53.json,6580,ruta_esquemas_pos,null|string,100.0,6580,1262,null ; https://milu-naval.mystagingwebsite.com/wp-content/uploads/2026/02/12V4000M53-0023-01-10.webp ; https://milu-naval.mystagingwebsite.com/wp-content/uploads/2026/02/12V4000M53-0023-01-110.webp ; https://milu-naval.mystagingwebsite.com/wp-content/uploads/2026/02/12V4000M53-0023-01-130.webp,,no,media
+engine_12V4000M53.json,6580,ruta_foto,null|string,100.0,6580,6470,null ; https://milu-naval.mystagingwebsite.com/wp-content/uploads/2026/01/0049976736.jpeg ; https://milu-naval.mystagingwebsite.com/wp-content/uploads/2026/01/5240111380.jpeg ; https://milu-naval.mystagingwebsite.com/wp-content/uploads/2026/01/X00027830.jpeg,,no,media
+engine_12V4000M53.json,6580,Seq no,null|string,100.0,6580,3536,null ; 0009 ; 0003 ; 0005,,no,
+engine_12V4000M53.json,6580,Source Page,string,100.0,6580,0,15 ; 16 ; 17 ; 18,source_page,no,
+engine_12V4000M53.json,6580,source_file,string,100.0,6580,0,12V4000M53.xlsx,,no,
+engine_12V4000M53.json,6580,source_sheet,string,100.0,6580,0,1,,no,
+engine_12V4000M53.json,6580,status,string,100.0,6580,0,OK_GESA ; OK_SUST_OLD ; REVISAR ; NOISE,,no,
+engine_12V4000M53.json,6580,Superseded Part Number,null|string,100.0,6580,3536,null ; 700425000182 ; 700425000112 ; 000912008115,,no,sust
+engine_12V4000M53.json,6580,sust_hierarchie,null|string,100.0,6580,3607,null ; Superseded ; New,,yes,sust
+engine_12V4000M53.json,6580,sust_new_part_number,null|string,100.0,6580,3607,null ; X53100400002 ; 700425000112 ; 000912008115,,no,sust
+engine_12V4000M53.json,6580,sust_new_part_number_pdf,string,40.62,2673,0,700425000112 ; 000912008115 ; 0049976736 ; 5501871280,,yes,sust
+engine_12V4000M53.json,6580,sust_status,string,100.0,6580,3607,SI,,no,sust
+engine_12V4000M53.json,6580,sust_superseded_list,null|string,100.0,6580,3973,"null ; 700425000068, 700425000098 ; 000912008005, 000912008085, 000912008143, 06.02093-0405 ; 0009970436, 06.93160-0120, 071401018200, 111L37701/1, 5509970036",,no,sust
+engine_12V4000M53.json,6580,sust_superseded_list_pdf,string,0.62,41,0,X59410100104 ; X59410100105 ; X59511400012/31 ; X00004796,,yes,sust
+engine_12V4000M53.json,6580,total_error,number,100.0,6580,0,0 ; 4 ; 2 ; 1,,no,qa
+engine_12V4000M53.json,6580,UNITS,null|string,100.0,6580,577,null ; PC ; pc ; 910 2014,units,no,
+engine_12V4000M53.json,6580,units,null|string,100.0,6580,751,KGM ; null,UNITS,no,
+engine_12V4000M53.json,6580,units_pdf,string,89.62,5897,0,"pc ; PC ; pc 1,800 kg ; pc 24,900 g",,yes,
+engine_12V4000M53.json,6580,Valid From Date,null|string,100.0,6580,3759,null ; 2011-05-01 ; 1996-06-01 ; 1997-10-01,,no,
+engine_12V4000M53.json,6580,WEIGHT,null|string,100.0,6580,2429,"null ; 2,300 g 36 MMN425 ; 125,000 g ; 1,100 g",weight,no,
+engine_12V4000M53.json,6580,weight_error,number,100.0,6580,0,0 ; 1,,no,qa
+engine_12V4000M53.json,6580,weight_final,null|string,100.0,6580,466,0.002 KGM ; null ; 0.011 KGM ; 0.125 KGM,,no,
+engine_12V4000M53.json,6580,weight_gesa,null|number,100.0,6580,751,0.002 ; null ; 0.011 ; 0.125,,no,gesa
+engine_12V4000M53.json,6580,weight_pdf,string,61.05,4017,0,"2,300 g 36 MMN425 ; 125,000 g ; 1,100 g ; 22,800 g",,yes,
+engine_12V4000M70.json,5358,atributo2,string,100.0,5358,0,Actualizados,,no,
+engine_12V4000M70.json,5358,BOM-No.,string,100.0,5358,0,XS524000.00097 ; 010.00475 ; 5260101605 ; 010.00021,BOM_no|bom_no,no,
+engine_12V4000M70.json,5358,bom_error,number,100.0,5358,0,0,,no,qa
+engine_12V4000M70.json,5358,bom_pdf,string,91.92,4925,0,XS524000.00097 ; 010.00475 ; 5260101605 ; 010.00021,,yes,
+engine_12V4000M70.json,5358,book_set,string,100.0,5358,0,12V4000M70,,no,
+engine_12V4000M70.json,5358,categoria,string,100.0,5358,0,12VM70-4 ; 12VM70-11 ; 12VM70-14 ; 12VM70-15,,no,
+engine_12V4000M70.json,5358,Cause,null|string,100.0,5358,2789,null ; 9002 ; 9001 ; 9012,,no,
+engine_12V4000M70.json,5358,criterio_pn,string,100.0,5358,0,BEST_MATCH ; MATCH_CATALOGO ; EMPTY ; C_NOISE_FOOTER,,no,
+engine_12V4000M70.json,5358,Date,null|string,100.0,5358,2617,null ; 2022-01-10,,no,
+engine_12V4000M70.json,5358,DD/DTNA,null,100.0,5358,5358,null,,no,
+engine_12V4000M70.json,5358,Denomination (New Part Number),null|string,100.0,5358,2617,null ; PLUG ; HEX SCREW ; O-RING,,no,
+engine_12V4000M70.json,5358,Denomination(Cause),null|string,100.0,5358,4938,null ; Attention !! Technical clarifying with MTU F necessary,,no,
+engine_12V4000M70.json,5358,depuracion_ts,string,100.0,5358,0,2026-04-27T00:11:37Z,,no,
+engine_12V4000M70.json,5358,DESIGNATION,null|string,100.0,5358,74,nan ; PLUG ; BOLT HEX S2000/4000 ; O-RING,designation,no,
+engine_12V4000M70.json,5358,designation_error,number,100.0,5358,0,0 ; 2 ; 1,,no,qa
+engine_12V4000M70.json,5358,designation_final,null|string,100.0,5358,73,NAMEPLATE FOR DIESEL ENGINE ; PLUG ; HEX SCREW ; O-RING,,no,
+engine_12V4000M70.json,5358,designation_gesa,null|string,100.0,5358,1160,null ; PLUG ; HEX SCREW ; O-RING,,no,gesa
+engine_12V4000M70.json,5358,designation_pdf,string,91.92,4925,0,NAMEPLATE FOR DIESEL ENGINE ; PLUG ; BOLT HEX S2000/4000 ; O-RING,,yes,
+engine_12V4000M70.json,5358,detalle_cambio,null|string,100.0,5358,26,700425000219 ; match: 735084050000 ; match: 000933010089 ; match: 700429042000,,no,
+engine_12V4000M70.json,5358,dimensions_gesa,null|string,100.0,5358,2504,null ; 50 ; M 10 X 20 ; A 42 X 5,,no,gesa
+engine_12V4000M70.json,5358,engine,string,100.0,5358,0,4000,,no,
+engine_12V4000M70.json,5358,engine_model,string,100.0,5358,0,12V4000M70,,no,
+engine_12V4000M70.json,5358,esquemas,null,100.0,5358,5358,null,,no,media
+engine_12V4000M70.json,5358,esquemas_circulos,null,100.0,5358,5358,null,,no,media
+engine_12V4000M70.json,5358,esquemas_circulos_all,null,100.0,5358,5358,null,,no,media
+engine_12V4000M70.json,5358,existeix_gesa,boolean,100.0,5358,0,false ; true,,no,gesa
+engine_12V4000M70.json,5358,existeix_sust_new,boolean,100.0,5358,0,false ; true,,no,sust
+engine_12V4000M70.json,5358,existeix_sust_old,boolean,100.0,5358,0,false ; true,,no,sust
+engine_12V4000M70.json,5358,exp_imagenes,string,100.0,5358,0,https://milu-naval.mystagingwebsite.com/wp-content/uploads/2026/01/sin_imagen.jpeg ; https://milu-naval.mystagingwebsite.com/wp-content/uploads/2026/01/0049976736.jpeg ; https://milu-naval.mystagingwebsite.com/wp-content/uploads/2026/01/5240510110.jpeg ; https://milu-naval.mystagingwebsite.com/wp-content/uploads/2026/01/5240114210.jpeg,,no,media
+engine_12V4000M70.json,5358,FG/FGS,string,100.0,5358,0,004-05 ; 011-05 ; 011-30 ; 011-40,fg_fgs,no,
+engine_12V4000M70.json,5358,fg_code,number,100.0,5358,0,4 ; 11 ; 14 ; 15,,no,
+engine_12V4000M70.json,5358,fg_fgs_raw,string,100.0,5358,0,004-05 ; 011-05 ; 011-30 ; 011-40,,no,
+engine_12V4000M70.json,5358,fgs_code_description,null|string,100.0,5358,96,4 LABELS AND AUXILIARY MATERIALS ; 11 CRANKCASE ; 14 OIL PAN ; 15 ENGINE MOUNTING,,no,
+engine_12V4000M70.json,5358,fgs_description,null|string,100.0,5358,96,LABELS AND AUXILIARY MATERIALS ; CRANKCASE ; OIL PAN ; ENGINE MOUNTING,,no,
+engine_12V4000M70.json,5358,filename_foto,null|string,100.0,5358,5250,null ; 0049976736.jpeg ; 5240510110.jpeg ; 5240114210.jpeg,,no,media
+engine_12V4000M70.json,5358,FN,null|string,100.0,5358,1990,nan ; null ; EM ; MN,,no,
+engine_12V4000M70.json,5358,fn_final,string,0.04,2,1,EM,,no,
+engine_12V4000M70.json,5358,fn_pdf,string,10.58,567,0,EM ; MN ; MN EM ; SB,,yes,
+engine_12V4000M70.json,5358,gesa,string,100.0,5358,0,NO ; SI,,no,gesa
+engine_12V4000M70.json,5358,gesa_pdf,string,13.57,727,0,No,,yes,gesa
+engine_12V4000M70.json,5358,has_error,boolean,100.0,5358,0,true ; false,,no,qa
+engine_12V4000M70.json,5358,Hierarchie,null|string,100.0,5358,2617,null ; New ; Superseded,,no,sust
+engine_12V4000M70.json,5358,ID,number,100.0,5358,0,1900000 ; 1900001 ; 1900002 ; 1900003,Id,no,
+engine_12V4000M70.json,5358,libro_pag,string,100.0,5358,0,12V4000M70-0017 ; 12V4000M70-0024 ; 12V4000M70-0025 ; 12V4000M70-0026,,no,
+engine_12V4000M70.json,5358,measure_final,null|string,100.0,5358,1367,04.21 ; 50 ; M 10 X 20 ; A 42 X 5,,no,
+engine_12V4000M70.json,5358,measure_pdf,string,46.55,2494,0,04.21 ; 50 ; M 10 X 20 ; 1057X5,,yes,
+engine_12V4000M70.json,5358,measure_raw,null|string,100.0,5358,3502,nan ; null ; N15013 ; MBN15005,,no,
+engine_12V4000M70.json,5358,MEASUREMENT / STANDARD,null|string,100.0,5358,3502,nan ; null ; N15013 ; MBN15005,,no,
+engine_12V4000M70.json,5358,measurement_error,number,100.0,5358,0,0 ; 1,,no,qa
+engine_12V4000M70.json,5358,model,string,100.0,5358,0,12VM70,,no,
+engine_12V4000M70.json,5358,MODEL/TYPE,null|string,100.0,5358,1946,nan ; null ; 4000 ; BR 4000,model_type,no,
+engine_12V4000M70.json,5358,MODEL/TYPE_final,null|string,100.0,5358,1946,nan ; null ; 4000 ; BR 4000,,no,
+engine_12V4000M70.json,5358,model_final,null|string,100.0,5358,1946,nan ; null ; 4000 ; BR 4000,,no,
+engine_12V4000M70.json,5358,model_type_pdf,string,21.48,1151,0,4000 ; BR 4000 ; 8 ; 2,,yes,
+engine_12V4000M70.json,5358,MSTAE,null|number,100.0,5358,2617,null ; 60 ; 66 ; 95,,no,
+engine_12V4000M70.json,5358,MTART,null|string,100.0,5358,2617,null ; YNOR ; YFRE ; YHT,,no,
+engine_12V4000M70.json,5358,MTU,null|string,100.0,5358,2617,null ; x,,no,
+engine_12V4000M70.json,5358,New Part Number,null|string,100.0,5358,2617,null ; 735084050000 ; 000933010089 ; 700429042000,,no,
+engine_12V4000M70.json,5358,norma,null|string,100.0,5358,3004,null ; MTN5084 ; DIN933 ; MTN5342,,no,gesa
+engine_12V4000M70.json,5358,norma_error,number,100.0,5358,0,1 ; 0,,no,qa|gesa
+engine_12V4000M70.json,5358,norma_final,null|string,100.0,5358,3003,MMN425 ; MTN5084 ; DIN933 ; MTN5342,,no,gesa
+engine_12V4000M70.json,5358,norma_pdf,string,31.86,1707,0,MTN5084 ; DIN933 ; DIN931 ; DIN912,,yes,gesa
+engine_12V4000M70.json,5358,norma_raw,null|string,100.0,5358,3398,null ; MTN5084 ; DIN933 ; MMN429,,no,gesa
+engine_12V4000M70.json,5358,normalizado,string,100.0,5358,0,NO ; SI,,no,gesa
+engine_12V4000M70.json,5358,normalizado_pdf,string,52.31,2803,0,No,,yes,gesa
+engine_12V4000M70.json,5358,nsn,null|string,100.0,5358,1607,null ; 5340123640046 ; 5305121419888 ; 5331123096351,,no,
+engine_12V4000M70.json,5358,page4,string,100.0,5358,0,0017 ; 0024 ; 0025 ; 0026,,no,
+engine_12V4000M70.json,5358,pages,string,100.0,5358,0,12V4000M70-0017 ; 12V4000M70-0024 ; 12V4000M70-0025 ; 12V4000M70-0026,,no,
+engine_12V4000M70.json,5358,PART NO.,null|string,100.0,5358,26,700425000219 ; 735084050000 ; 000933010089 ; 700429042000,,no,
+engine_12V4000M70.json,5358,pn_error,number,100.0,5358,0,0 ; 2,,no,qa
+engine_12V4000M70.json,5358,pn_final,null|string,100.0,5358,357,700425000219 ; 735084050000 ; 000933010089 ; 700429042000,,no,
+engine_12V4000M70.json,5358,pn_new,null|string,100.0,5358,2617,null ; 735084050000 ; 000933010089 ; 700429042000,,no,
+engine_12V4000M70.json,5358,pn_pdf,string,91.92,4925,0,700425000219 ; 735084050000 ; 000933010089 ; 700429042000,,yes,
+engine_12V4000M70.json,5358,pn_raw,null|string,100.0,5358,26,700425000219 ; 735084050000 ; 000933010089 ; 700429042000,,no,
+engine_12V4000M70.json,5358,pn_recomendado,null|string,100.0,5358,357,700425000219 ; 735084050000 ; 000933010089 ; 700429042000,,no,
+engine_12V4000M70.json,5358,POS,null|string,100.0,5358,2,nan ; 105 ; 110 ; 115,pos,no,
+engine_12V4000M70.json,5358,pos_error,number,100.0,5358,0,0 ; 2,,no,qa
+engine_12V4000M70.json,5358,pos_final,null|string,100.0,5358,2,20 ; 105 ; 110 ; 115,,no,
+engine_12V4000M70.json,5358,pos_pdf,string,89.49,4795,0,20 ; 105 ; 110 ; 115,,yes,
+engine_12V4000M70.json,5358,precio,number,100.0,5358,0,0,,no,
+engine_12V4000M70.json,5358,Product Hierarchy,null|string,100.0,5358,2617,null ; Q06 ; P44 ; P42,,no,sust|wordpress
+engine_12V4000M70.json,5358,qa_revision_accion,string,100.0,5358,0,importar ; revisar ; eliminar,,no,qa
+engine_12V4000M70.json,5358,qa_revision_estado,string,100.0,5358,0,ok ; pendiente,,no,qa
+engine_12V4000M70.json,5358,qa_revision_updated_at,string,0.93,50,0,2026-05-04T13:01:05.427Z ; 2026-05-04T13:02:26.097Z ; 2026-05-04T13:06:57.310Z ; 2026-05-03T16:38:05.184Z,,no,qa
+engine_12V4000M70.json,5358,QTY,null|string,100.0,5358,20,nan ; 1 ; 2 ; 19,qty,no,
+engine_12V4000M70.json,5358,qty_final,null|string,100.0,5358,20,1 ; 2 ; 19 ; 25,,no,
+engine_12V4000M70.json,5358,qty_pdf,string,77.88,4173,0,1 ; 2 ; 19 ; 25,,yes,
+engine_12V4000M70.json,5358,qty_units_final,null|string,100.0,5358,2,"nan ; pc ; pc 110,000 g ; pc 25,000 g",,no,
+engine_12V4000M70.json,5358,Replacement Type,null|string,100.0,5358,2789,null ; F ; I,,no,
+engine_12V4000M70.json,5358,ruta_esquemas_pos,null,100.0,5358,5358,null,,no,media
+engine_12V4000M70.json,5358,ruta_foto,null|string,100.0,5358,5250,null ; https://milu-naval.mystagingwebsite.com/wp-content/uploads/2026/01/0049976736.jpeg ; https://milu-naval.mystagingwebsite.com/wp-content/uploads/2026/01/5240510110.jpeg ; https://milu-naval.mystagingwebsite.com/wp-content/uploads/2026/01/5240114210.jpeg,,no,media
+engine_12V4000M70.json,5358,Seq no,null|string,100.0,5358,2617,null ; 0002 ; 0007 ; 0003,,no,
+engine_12V4000M70.json,5358,Source Page,string,100.0,5358,0,17 ; 24 ; 25 ; 26,source_page,no,
+engine_12V4000M70.json,5358,source_file,string,100.0,5358,0,12V4000M70.xlsx,,no,
+engine_12V4000M70.json,5358,source_sheet,string,100.0,5358,0,1,,no,
+engine_12V4000M70.json,5358,status,string,100.0,5358,0,REVISAR ; OK_GESA ; OK_SUST_OLD ; EMPTY,,no,
+engine_12V4000M70.json,5358,Superseded Part Number,null|string,100.0,5358,2617,null ; 735084050000 ; 000933010089 ; 700429042000,,no,sust
+engine_12V4000M70.json,5358,sust_hierarchie,null|string,100.0,5358,2697,null ; New ; Superseded,,yes,sust
+engine_12V4000M70.json,5358,sust_new_part_number,null|string,100.0,5358,2697,null ; 735084050000 ; 000933010089 ; 700429042000,,no,sust
+engine_12V4000M70.json,5358,sust_new_part_number_pdf,string,43.84,2349,0,735084050000 ; 000933010089 ; 700429042000 ; 000933010093,,yes,sust
+engine_12V4000M70.json,5358,sust_status,string,100.0,5358,2697,SI,,no,sust
+engine_12V4000M70.json,5358,sust_superseded_list,null|string,100.0,5358,3081,"null ; 5240111432 ; 000933010016, 000933010128, 06.01013-1227, 06.01283-1213, 06.01283-3213, 06012833213 ; 0079975145, 0109974845",,no,sust
+engine_12V4000M70.json,5358,sust_superseded_list_pdf,string,0.47,25,0,X00004798 ; X00014661 ; X00004797 ; X00005424,,yes,sust
+engine_12V4000M70.json,5358,total_error,number,100.0,5358,0,2 ; 0 ; 1,,no,qa
+engine_12V4000M70.json,5358,UNITS,null|string,100.0,5358,2,"nan ; pc ; pc 110,000 g ; pc 25,000 g",units,no,
+engine_12V4000M70.json,5358,units,null|string,100.0,5358,1160,null ; KGM,UNITS,no,
+engine_12V4000M70.json,5358,units_pdf,string,84.58,4532,0,"pc ; pc 110,000 g ; pc 25,000 g ; pc 23,900 g M 10 X 25",,yes,
+engine_12V4000M70.json,5358,Valid From Date,null|string,100.0,5358,2791,null ; 2004-03-01 ; 1992-05-01 ; 1985-03-01,,no,
+engine_12V4000M70.json,5358,WEIGHT,null|string,100.0,5358,180,"nan ; 103,900 g ; 21,100 g ; 6,200 g",weight,no,
+engine_12V4000M70.json,5358,weight_error,number,100.0,5358,0,1 ; 0,,no,qa
+engine_12V4000M70.json,5358,weight_final,null|string,100.0,5358,149,6.700 g ; 0.103 KGM ; 0.021 KGM ; 0.005 KGM,,no,
+engine_12V4000M70.json,5358,weight_gesa,null|number,100.0,5358,1160,null ; 0.103 ; 0.021 ; 0.005,,no,gesa
+engine_12V4000M70.json,5358,weight_pdf,string,66.26,3550,0,"103,900 g ; 21,100 g ; 6,200 g ; 70,100 g",,yes,
+engine_16V4000M61.json,4987,atributo2,string,100.0,4987,0,Actualizados,,no,
+engine_16V4000M61.json,4987,BOM-No.,string,100.0,4987,0,000.00897 ; 000.00899 ; XS524000.00019 ; 010.00476,BOM_no|bom_no,no,
+engine_16V4000M61.json,4987,bom_error,number,100.0,4987,0,0,,no,qa
+engine_16V4000M61.json,4987,bom_pdf,string,95.99,4787,0,000.00897 ; 000.00899 ; XS524000.00019 ; 010.00476,,yes,
+engine_16V4000M61.json,4987,book_set,string,100.0,4987,0,16V4000M61,,no,
+engine_16V4000M61.json,4987,categoria,string,100.0,4987,0,16VM61-4 ; 16VM61-11 ; 16VM61-14 ; 16VM61-15,,no,
+engine_16V4000M61.json,4987,Cause,null|string,100.0,4987,2732,null ; 9001 ; 9002 ; 9012,,no,
+engine_16V4000M61.json,4987,criterio_pn,string,100.0,4987,0,BEST_MATCH ; MATCH_CATALOGO ; EMPTY ; Z_NO_TOUCH,,no,
+engine_16V4000M61.json,4987,Date,null|string,100.0,4987,2535,2022-01-10 ; null,,no,
+engine_16V4000M61.json,4987,DD/DTNA,null,100.0,4987,4987,null,,no,
+engine_16V4000M61.json,4987,Denomination (New Part Number),null|string,100.0,4987,2535,PLATE ; null ; IDENTIFICATION PLATE SELF-ADHESIVE ; PLUG,,no,
+engine_16V4000M61.json,4987,Denomination(Cause),null|string,100.0,4987,4612,null ; Attention !! Technical clarifying with MTU F necessary,,no,
+engine_16V4000M61.json,4987,depuracion_ts,string,100.0,4987,0,2026-04-27T00:11:37Z,,no,
+engine_16V4000M61.json,4987,DESIGNATION,null|string,100.0,4987,19,PLATE ; EMI-LABEL NON-EPA ; PLUG ; BOLT HEX S2000/4000,designation,no,
+engine_16V4000M61.json,4987,designation_error,number,100.0,4987,0,0 ; 1 ; 2,,no,qa
+engine_16V4000M61.json,4987,designation_final,null|string,100.0,4987,14,PLATE ; LABEL ; EMI-LABEL NON-EPA ; PLUG,,no,
+engine_16V4000M61.json,4987,designation_gesa,null|string,100.0,4987,866,null ; LABEL ; PLUG ; HEX SCREW,,no,gesa
+engine_16V4000M61.json,4987,designation_pdf,string,96.31,4803,0,PLATE ; EMI-LABEL NON-EPA ; PLUG ; HEX SCREW,,yes,
+engine_16V4000M61.json,4987,detalle_cambio,null|string,100.0,4987,157,700425000158 ; match: 700425000155 ; 700425000182 ; match: 735084050000,,no,
+engine_16V4000M61.json,4987,dimensions_gesa,null|string,100.0,4987,2102,null ; 70 ; 50 ; M 10 X 20,,no,gesa
+engine_16V4000M61.json,4987,engine,string,100.0,4987,0,4000,,no,
+engine_16V4000M61.json,4987,engine_model,string,100.0,4987,0,16V4000M61,,no,
+engine_16V4000M61.json,4987,esquemas,string,100.0,4987,341,"16V4000M61-0006-01.png ; 16V4000M61-0007-01.png ; 16V4000M61-0008-01.png ; 16V4000M61-0011-01.png , 16V4000M61-0011-02.png",,no,media
+engine_16V4000M61.json,4987,esquemas_circulos,null|string,100.0,4987,417,null ; 16V4000M61-0011-01-110.webp ; 16V4000M61-0011-01-115.webp ; 16V4000M61-0011-01-120.webp,,no,media
+engine_16V4000M61.json,4987,esquemas_circulos_all,null|string,100.0,4987,363,"16V4000M61-0006-01-10.webp ; 16V4000M61-0007-01-10.webp ; 16V4000M61-0008-01-100.webp ; 16V4000M61-0011-01-110.webp , 16V4000M61-0011-02-110.webp",,no,media
+engine_16V4000M61.json,4987,existeix_gesa,boolean,100.0,4987,0,false ; true,,no,gesa
+engine_16V4000M61.json,4987,existeix_sust_new,boolean,100.0,4987,0,true ; false,,no,sust
+engine_16V4000M61.json,4987,existeix_sust_old,boolean,100.0,4987,0,true ; false,,no,sust
+engine_16V4000M61.json,4987,exp_imagenes,string,100.0,4987,0,https://milu-naval.mystagingwebsite.com/wp-content/uploads/2026/01/sin_imagen.jpeg ; https://milu-naval.mystagingwebsite.com/wp-content/uploads/2026/02/16V4000M61-0011-01-110.webp ; https://milu-naval.mystagingwebsite.com/wp-content/uploads/2026/02/16V4000M61-0011-01-115.webp ; https://milu-naval.mystagingwebsite.com/wp-content/uploads/2026/02/16V4000M61-0011-01-120.webp,,no,media
+engine_16V4000M61.json,4987,FG/FGS,string,100.0,4987,0,004-05 ; 011-05 ; 011-30 ; 011-40,fg_fgs,no,
+engine_16V4000M61.json,4987,fg_code,number,100.0,4987,0,4 ; 11 ; 14 ; 15,,no,
+engine_16V4000M61.json,4987,fg_fgs_raw,string,100.0,4987,0,004-05 ; 011-05 ; 011-30 ; 011-40,,no,
+engine_16V4000M61.json,4987,fgs_code_description,string,100.0,4987,0,4 LABELS AND AUXILIARY MATERIALS ; 11 CRANKCASE ; 14 OIL PAN ; 15 ENGINE MOUNTING,,no,
+engine_16V4000M61.json,4987,fgs_description,string,100.0,4987,0,LABELS AND AUXILIARY MATERIALS ; CRANKCASE ; OIL PAN ; ENGINE MOUNTING,,no,
+engine_16V4000M61.json,4987,filename_foto,null|string,100.0,4987,4901,null ; 0049976736.jpeg ; 5240510110.jpeg ; 5240114210.jpeg,,no,media
+engine_16V4000M61.json,4987,FN,null|string,100.0,4987,4689,null ; MN EM ; EM ; SB,,no,
+engine_16V4000M61.json,4987,fn_pdf,string,4.63,231,0,MN EM ; EM ; SB ; M,,yes,
+engine_16V4000M61.json,4987,gesa,string,100.0,4987,0,NO ; SI,,no,gesa
+engine_16V4000M61.json,4987,gesa_pdf,string,13.72,684,0,NO,,yes,gesa
+engine_16V4000M61.json,4987,has_error,boolean,100.0,4987,0,false ; true,,no,qa
+engine_16V4000M61.json,4987,Hierarchie,null|string,100.0,4987,2535,New ; null ; Superseded,,no,sust
+engine_16V4000M61.json,4987,ID,string,100.0,4987,0,1300001 ; 1300002 ; 1300003 ; 1300004,Id,no,
+engine_16V4000M61.json,4987,libro_pag,string,100.0,4987,0,16V4000M61-0006 ; 16V4000M61-0007 ; 16V4000M61-0008 ; 16V4000M61-0012,,no,
+engine_16V4000M61.json,4987,measure_final,null|string,100.0,4987,1972,null ; 70 ; 50 ; M 10 X 20,,no,
+engine_16V4000M61.json,4987,measure_pdf,string,51.29,2558,0,70 ; 50 ; M 10 X 20 ; 42 X 5,,yes,
+engine_16V4000M61.json,4987,measure_raw,null|string,100.0,4987,4201,null ; 50 ; M 10 X 20 ; 42 X 5,,no,
+engine_16V4000M61.json,4987,MEASUREMENT / STANDARD,null|string,100.0,4987,4201,null ; 50 ; M 10 X 20 ; 42 X 5,,no,
+engine_16V4000M61.json,4987,measurement_error,number,100.0,4987,0,0,,no,qa
+engine_16V4000M61.json,4987,model,string,100.0,4987,0,16VM61,,no,
+engine_16V4000M61.json,4987,MODEL/TYPE,null,100.0,4987,4987,null,model_type,no,
+engine_16V4000M61.json,4987,MODEL/TYPE_final,null,100.0,4987,4987,null,,no,
+engine_16V4000M61.json,4987,model_final,null,100.0,4987,4987,null,,no,
+engine_16V4000M61.json,4987,MSTAE,null|number,100.0,4987,2535,66 ; null ; 60 ; 99,,no,
+engine_16V4000M61.json,4987,MTART,null|string,100.0,4987,2535,YNOR ; null ; YHT ; YFRE,,no,
+engine_16V4000M61.json,4987,MTU,null|string,100.0,4987,2535,x ; null,,no,
+engine_16V4000M61.json,4987,New Part Number,null|string,100.0,4987,2535,700425000158 ; null ; X53100400002 ; 735084050000,,no,
+engine_16V4000M61.json,4987,norma,null|string,100.0,4987,3058,null ; MMN425 ; MTN5084 ; DIN933,,no,gesa
+engine_16V4000M61.json,4987,norma_error,number,100.0,4987,0,0,,no,qa|gesa
+engine_16V4000M61.json,4987,norma_final,null|string,100.0,4987,3058,null ; MMN425 ; MTN5084 ; DIN933,,no,gesa
+engine_16V4000M61.json,4987,norma_pdf,string,0.32,16,0,DIN439 ; ISO4017 ; DIN 7985 ; ISOLIERT,,yes,gesa
+engine_16V4000M61.json,4987,norma_raw,null|string,100.0,4987,4966,null ; ISO40 ; DIN 7985 ; ISOLIERT,,no,gesa
+engine_16V4000M61.json,4987,normalizado,string,100.0,4987,0,NO ; SI,,no,gesa
+engine_16V4000M61.json,4987,normalizado_pdf,string,58.09,2897,0,NO,,yes,gesa
+engine_16V4000M61.json,4987,nsn,null|string,100.0,4987,1361,null ; 5340123640046 ; 5305121419888 ; 5331123096351,,no,
+engine_16V4000M61.json,4987,page4,string,100.0,4987,0,0006 ; 0007 ; 0008 ; 0012,,no,
+engine_16V4000M61.json,4987,pages,string,100.0,4987,0,16V4000M61-0006 ; 16V4000M61-0007 ; 16V4000M61-0008 ; 16V4000M61-0012,,no,
+engine_16V4000M61.json,4987,PART NO.,null|string,100.0,4987,157,700425000158 ; 700425000155 ; 700425000182 ; 735084050000,,no,
+engine_16V4000M61.json,4987,pn_error,number,100.0,4987,0,0 ; 2,,no,qa
+engine_16V4000M61.json,4987,pn_final,null|string,100.0,4987,173,700425000158 ; 700425000155 ; 700425000182 ; 735084050000,,no,
+engine_16V4000M61.json,4987,pn_new,null|string,100.0,4987,2535,700425000158 ; null ; X53100400002 ; 735084050000,,no,
+engine_16V4000M61.json,4987,pn_pdf,string,96.35,4805,0,700425000158 ; 700425000155 ; 700425000182 ; 735084050000,,yes,
+engine_16V4000M61.json,4987,pn_raw,null|string,100.0,4987,157,700425000158 ; 700425000155 ; 700425000182 ; 735084050000,,no,
+engine_16V4000M61.json,4987,pn_recomendado,null|string,100.0,4987,173,700425000158 ; 700425000155 ; X53100400002 ; 735084050000,,no,
+engine_16V4000M61.json,4987,POS,null|string,100.0,4987,22,10 ; 100 ; 110 ; 115,pos,no,
+engine_16V4000M61.json,4987,pos_error,number,100.0,4987,0,0 ; 2,,no,qa
+engine_16V4000M61.json,4987,pos_final,null|string,100.0,4987,22,10 ; 100 ; 110 ; 115,,no,
+engine_16V4000M61.json,4987,pos_pdf,string,95.97,4786,0,10 ; 100 ; 110 ; 115,,yes,
+engine_16V4000M61.json,4987,precio,number,100.0,4987,0,0,,no,
+engine_16V4000M61.json,4987,Product Hierarchy,null|string,100.0,4987,2535,Q06 ; null ; P20 ; Q38,,no,sust|wordpress
+engine_16V4000M61.json,4987,qa_revision_accion,string,100.0,4987,0,importar ; revisar,,no,qa
+engine_16V4000M61.json,4987,qa_revision_estado,string,100.0,4987,0,ok ; pendiente,,no,qa
+engine_16V4000M61.json,4987,qa_revision_updated_at,string,0.72,36,0,2026-05-03T22:58:29.223Z ; 2026-05-03T19:59:08.652Z ; 2026-05-03T19:57:12.387Z ; 2026-05-03T20:00:38.020Z,,no,qa
+engine_16V4000M61.json,4987,QTY,null|string,100.0,4987,951,1 ; null ; 2 ; 26,qty,no,
+engine_16V4000M61.json,4987,qty_final,null|string,100.0,4987,951,1 ; null ; 2 ; 26,,no,
+engine_16V4000M61.json,4987,qty_pdf,string,79.51,3965,0,1 ; 2 ; 26 ; 27,,yes,
+engine_16V4000M61.json,4987,qty_units_final,null|string,100.0,4987,690,"PC ; null ; PC 5,570 ; PC 3,560",,no,
+engine_16V4000M61.json,4987,Replacement Type,null|string,100.0,4987,2732,null ; F ; I,,no,
+engine_16V4000M61.json,4987,ruta_esquemas_pos,null|string,100.0,4987,417,null ; https://milu-naval.mystagingwebsite.com/wp-content/uploads/2026/02/16V4000M61-0011-01-110.webp ; https://milu-naval.mystagingwebsite.com/wp-content/uploads/2026/02/16V4000M61-0011-01-115.webp ; https://milu-naval.mystagingwebsite.com/wp-content/uploads/2026/02/16V4000M61-0011-01-120.webp,,no,media
+engine_16V4000M61.json,4987,ruta_foto,null|string,100.0,4987,4901,null ; https://milu-naval.mystagingwebsite.com/wp-content/uploads/2026/01/0049976736.jpeg ; https://milu-naval.mystagingwebsite.com/wp-content/uploads/2026/01/5240510110.jpeg ; https://milu-naval.mystagingwebsite.com/wp-content/uploads/2026/01/5240114210.jpeg,,no,media
+engine_16V4000M61.json,4987,Seq no,null|string,100.0,4987,2535,0001 ; null ; 0009 ; 0002,,no,
+engine_16V4000M61.json,4987,Source Page,string,100.0,4987,0,6 ; 7 ; 8 ; 12,source_page,no,
+engine_16V4000M61.json,4987,source_file,string,100.0,4987,0,16V4000M61.xlsx,,no,
+engine_16V4000M61.json,4987,source_sheet,string,100.0,4987,0,1,,no,
+engine_16V4000M61.json,4987,status,string,100.0,4987,0,OK_SUST_NEW ; OK_GESA ; OK_SUST_OLD ; REVISAR,,no,
+engine_16V4000M61.json,4987,Superseded Part Number,null|string,100.0,4987,2535,700425000158 ; null ; 700425000182 ; 735084050000,,no,sust
+engine_16V4000M61.json,4987,sust_hierarchie,null|string,100.0,4987,2529,New ; null ; Superseded,,yes,sust
+engine_16V4000M61.json,4987,sust_new_part_number,null|string,100.0,4987,2529,700425000158 ; null ; X53100400002 ; 735084050000,,no,sust
+engine_16V4000M61.json,4987,sust_new_part_number_pdf,string,40.77,2033,0,700425000158 ; 735084050000 ; 000933010089 ; 700429042000,,yes,sust
+engine_16V4000M61.json,4987,sust_status,string,100.0,4987,2529,SI,,no,sust
+engine_16V4000M61.json,4987,sust_superseded_list,null|string,100.0,4987,3023,"null ; 5240111432 ; 000933010016, 000933010128, 06.01013-1227, 06.01283-1213, 06.01283-3213, 06012833213 ; 0079975145, 0109974845",,no,sust
+engine_16V4000M61.json,4987,sust_superseded_list_pdf,string,0.34,17,0,X00004798 ; X00014661 ; X00004797 ; X00004796,,yes,sust
+engine_16V4000M61.json,4987,total_error,number,100.0,4987,0,0 ; 2 ; 1 ; 4,,no,qa
+engine_16V4000M61.json,4987,UNITS,null|string,100.0,4987,690,"PC ; null ; PC 5,570 ; PC 3,560",units,no,
+engine_16V4000M61.json,4987,units,null|string,100.0,4987,866,null ; KGM,UNITS,no,
+engine_16V4000M61.json,4987,units_pdf,string,84.16,4197,0,"PC ; PC 5,570 ; PC 3,560 ; PC 856 G",,yes,
+engine_16V4000M61.json,4987,Valid From Date,null|string,100.0,4987,2730,2012-10-09 ; null ; 2011-05-01 ; 2004-03-01,,no,
+engine_16V4000M61.json,4987,WEIGHT,null|string,100.0,4987,2258,"null ; 103,600 G ; 21 G ; 6,400 G",weight,no,
+engine_16V4000M61.json,4987,weight_error,number,100.0,4987,0,0 ; 1,,no,qa
+engine_16V4000M61.json,4987,weight_final,null|string,100.0,4987,612,null ; 0.002 KGM ; 0.103 KGM ; 0.021 KGM,,no,
+engine_16V4000M61.json,4987,weight_gesa,null|number,100.0,4987,866,null ; 0.002 ; 0.103 ; 0.021,,no,gesa
+engine_16V4000M61.json,4987,weight_pdf,string,54.1,2698,0,"103,600 G ; 21 G ; 6,400 G ; 71 G",,yes,
+engine_16V4000M73.json,12445,atributo2,string,100.0,12445,0,Actualizados,,no,
+engine_16V4000M73.json,12445,BOM-No.,string,100.0,12445,0,000.00899 ; X00027331 ; XS524000.00019 ; XS524000.00104,BOM_no|bom_no,no,
+engine_16V4000M73.json,12445,bom_error,number,100.0,12445,0,0,,no,qa
+engine_16V4000M73.json,12445,bom_pdf,string,97.08,12082,0,000.00899 ; X00027331 ; XS524000.00019 ; XS524000.00104,,yes,
+engine_16V4000M73.json,12445,book_set,string,100.0,12445,0,16V4000M73,,no,
+engine_16V4000M73.json,12445,categoria,string,100.0,12445,0,16VM73-4 ; 16VM73-10 ; 16VM73-11 ; 16VM73-14,,no,
+engine_16V4000M73.json,12445,Cause,null|string,100.0,12445,7164,null ; 9001 ; 9002 ; 9012,,no,
+engine_16V4000M73.json,12445,criterio_pn,string,100.0,12445,0,MATCH_CATALOGO ; BEST_MATCH ; EMPTY ; C_NOISE_FOOTER,,no,
+engine_16V4000M73.json,12445,Date,null|string,100.0,12445,6627,null ; 2022-01-10,,no,
+engine_16V4000M73.json,12445,DD/DTNA,null,100.0,12445,12445,null,,no,
+engine_16V4000M73.json,12445,Denomination (New Part Number),null|string,100.0,12445,6627,null ; IDENTIFICATION PLATE SELF-ADHESIVE ; PLATE ; GASKET,,no,
+engine_16V4000M73.json,12445,Denomination(Cause),null|string,100.0,12445,11531,null ; Attention !! Technical clarifying with MTU F necessary,,no,
+engine_16V4000M73.json,12445,depuracion_ts,string,100.0,12445,0,2026-04-27T00:11:37Z,,no,
+engine_16V4000M73.json,12445,DESIGNATION,null|string,100.0,12445,231,PLATE ; EMI-LABEL EMI INFO ; INSPECT PORT COVER W/SAFETY VALVE ; GASKET,designation,no,
+engine_16V4000M73.json,12445,designation_error,number,100.0,12445,0,0 ; 2 ; 1,,no,qa
+engine_16V4000M73.json,12445,designation_final,null|string,100.0,12445,227,LABEL ; PLATE ; EMI-LABEL EMI INFO ; INSPECT PORT COVER W/SAFETY VALVE,,no,
+engine_16V4000M73.json,12445,designation_gesa,null|string,100.0,12445,1675,LABEL ; null ; PLATE ; INSPECT PORT COVER W/SAFETY VALVE,,no,gesa
+engine_16V4000M73.json,12445,designation_pdf,string,97.08,12082,0,PLATE ; EMI-LABEL EMI INFO ; INSPECT PORT COVER W/SAFETY VALVE ; GASKET,,yes,
+engine_16V4000M73.json,12445,detalle_cambio,null|string,100.0,12445,148,match: 700425000155 ; 700425000169 ; 700425000170 ; 700425000182,,no,
+engine_16V4000M73.json,12445,dimensions_gesa,null|string,100.0,12445,4422,70 ; null ; 36 ; 47.2,,no,gesa
+engine_16V4000M73.json,12445,engine,string,100.0,12445,0,4000,,no,
+engine_16V4000M73.json,12445,engine_model,string,100.0,12445,0,16V4000M73,,no,
+engine_16V4000M73.json,12445,esquemas,string,100.0,12445,256,16V4000M73-0015-01.png ; 16V4000M73-0016-01.png ; 16V4000M73-0017-01.png ; 16V4000M73-0018-01.png,,no,media
+engine_16V4000M73.json,12445,esquemas_circulos,null|string,100.0,12445,824,null ; 16V4000M73-0022-01-120.webp ; 16V4000M73-0022-01-140.webp ; 16V4000M73-0022-01-150.webp,,no,media
+engine_16V4000M73.json,12445,esquemas_circulos_all,null|string,100.0,12445,284,16V4000M73-0015-01-10.webp ; 16V4000M73-0016-01-100.webp ; 16V4000M73-0016-01-200.webp ; 16V4000M73-0017-01-100.webp,,no,media
+engine_16V4000M73.json,12445,existeix_gesa,boolean,100.0,12445,0,true ; false,,no,gesa
+engine_16V4000M73.json,12445,existeix_sust_new,boolean,100.0,12445,0,false ; true,,no,sust
+engine_16V4000M73.json,12445,existeix_sust_old,boolean,100.0,12445,0,false ; true,,no,sust
+engine_16V4000M73.json,12445,exp_imagenes,string,100.0,12445,0,"https://milu-naval.mystagingwebsite.com/wp-content/uploads/2026/01/sin_imagen.jpeg ; https://milu-naval.mystagingwebsite.com/wp-content/uploads/2026/02/16V4000M73-0022-01-120.webp ; https://milu-naval.mystagingwebsite.com/wp-content/uploads/2026/01/5240111380.jpeg, https://milu-naval.mystagingwebsite.com/wp-content/uploa ; https://milu-naval.mystagingwebsite.com/wp-content/uploads/2026/02/16V4000M73-0022-01-150.webp",,no,media
+engine_16V4000M73.json,12445,FG/FGS,string,100.0,12445,0,004-05 ; 010-00 ; 011-05 ; 011-30,fg_fgs,no,
+engine_16V4000M73.json,12445,fg_code,number,100.0,12445,0,4 ; 10 ; 11 ; 14,,no,
+engine_16V4000M73.json,12445,fg_fgs_pdf,string,0.13,16,0,202,,yes,
+engine_16V4000M73.json,12445,fg_fgs_raw,string,100.0,12445,0,004-05 ; 010-00 ; 011-05 ; 011-30,,no,
+engine_16V4000M73.json,12445,fgs_code_description,string,100.0,12445,0,4 LABELS AND AUXILIARY MATERIALS ; 10 CRANKCASE AND ATTACHMENTS ; 11 CRANKCASE ; 14 OIL PAN,,no,
+engine_16V4000M73.json,12445,fgs_description,string,100.0,12445,0,LABELS AND AUXILIARY MATERIALS ; CRANKCASE AND ATTACHMENTS ; CRANKCASE ; OIL PAN,,no,
+engine_16V4000M73.json,12445,filename_foto,null|string,100.0,12445,12237,null ; 5240111380.jpeg ; 0049976736.jpeg ; 5240510110.jpeg,,no,media
+engine_16V4000M73.json,12445,FN,null|string,100.0,12445,12022,null ; SB EM ; SB ; MN,,no,
+engine_16V4000M73.json,12445,fn_pdf,string,3.1,386,0,SB EM ; SB ; MN ; g SB,,yes,
+engine_16V4000M73.json,12445,gesa,string,100.0,12445,0,SI ; NO,,no,gesa
+engine_16V4000M73.json,12445,gesa_pdf,string,10.54,1312,0,No,,yes,gesa
+engine_16V4000M73.json,12445,has_error,boolean,100.0,12445,0,false ; true,,no,qa
+engine_16V4000M73.json,12445,Hierarchie,null|string,100.0,12445,6627,null ; Superseded ; New,,no,sust
+engine_16V4000M73.json,12445,ID,string,100.0,12445,0,1400001 ; 1400002 ; 1400003 ; 1400004,Id,no,
+engine_16V4000M73.json,12445,libro_pag,string,100.0,12445,0,16V4000M73-0015 ; 16V4000M73-0016 ; 16V4000M73-0017 ; 16V4000M73-0018,,no,
+engine_16V4000M73.json,12445,measure_final,null|string,100.0,12445,4385,70 ; null ; 36 ; 47.2,,no,
+engine_16V4000M73.json,12445,measure_pdf,string,57.63,7172,0,70 ; 36 ; 47.2 ; M 10 X 25,,yes,
+engine_16V4000M73.json,12445,measure_raw,null|string,100.0,12445,12036,null ; N15006 ; MBN10223 ; N15007,,no,
+engine_16V4000M73.json,12445,MEASUREMENT / STANDARD,null|string,100.0,12445,12036,null ; N15006 ; MBN10223 ; N15007,,no,
+engine_16V4000M73.json,12445,measurement_error,number,100.0,12445,0,0,,no,qa
+engine_16V4000M73.json,12445,model,string,100.0,12445,0,16VM73,,no,
+engine_16V4000M73.json,12445,MODEL/TYPE,null|string,100.0,12445,10588,null ; COVER FOR SENSOR ; TEMP. SENSOR ; HSK-M-PVDF,model_type,no,
+engine_16V4000M73.json,12445,MODEL/TYPE_final,null|string,100.0,12445,10588,null ; COVER FOR SENSOR ; TEMP. SENSOR ; HSK-M-PVDF,,no,
+engine_16V4000M73.json,12445,model_final,null|string,100.0,12445,10588,null ; COVER FOR SENSOR ; TEMP. SENSOR ; HSK-M-PVDF,,no,
+engine_16V4000M73.json,12445,model_type_pdf,string,10.47,1303,0,COVER FOR SENSOR ; TEMP. SENSOR ; 4000 ; BR 4000,,yes,
+engine_16V4000M73.json,12445,MSTAE,null|number,100.0,12445,6627,null ; 60 ; 66 ; 99,,no,
+engine_16V4000M73.json,12445,MTART,null|string,100.0,12445,6627,null ; YHT ; YNOR ; YKFT,,no,
+engine_16V4000M73.json,12445,MTU,null|string,100.0,12445,6627,null ; x,,no,
+engine_16V4000M73.json,12445,New Part Number,null|string,100.0,12445,6627,null ; X53100400002 ; 700425000112 ; 5240111380,,no,
+engine_16V4000M73.json,12445,norma,null|string,100.0,12445,5514,MMN425 ; null ; ISO4017 ; MTN5342,,no,gesa
+engine_16V4000M73.json,12445,norma_error,number,100.0,12445,0,0,,no,qa|gesa
+engine_16V4000M73.json,12445,norma_final,null|string,100.0,12445,5514,MMN425 ; null ; ISO4017 ; MTN5342,,no,gesa
+engine_16V4000M73.json,12445,norma_pdf,string,44.85,5581,0,MMN425 ; ISO4017 ; DIN912 ; DIN835,,yes,gesa
+engine_16V4000M73.json,12445,norma_raw,null|string,100.0,12445,8853,null ; ISO4017 ; MMN429 ; DIN912,,no,gesa
+engine_16V4000M73.json,12445,normalizado,string,100.0,12445,0,SI ; NO,,no,gesa
+engine_16V4000M73.json,12445,normalizado_pdf,string,41.97,5223,0,No,,yes,gesa
+engine_16V4000M73.json,12445,nsn,null|string,100.0,12445,2306,null ; 9905123605605 ; 9905123785703 ; 5340124002938,,no,
+engine_16V4000M73.json,12445,page4,string,100.0,12445,0,0015 ; 0016 ; 0017 ; 0018,,no,
+engine_16V4000M73.json,12445,pages,string,100.0,12445,0,16V4000M73-0015 ; 16V4000M73-0016 ; 16V4000M73-0017 ; 16V4000M73-0018,,no,
+engine_16V4000M73.json,12445,PART NO.,null|string,100.0,12445,148,700425000155 ; 700425000169 ; 700425000170 ; 700425000182,,no,
+engine_16V4000M73.json,12445,pn_error,number,100.0,12445,0,0 ; 2 ; 1,,no,qa
+engine_16V4000M73.json,12445,pn_final,null|string,100.0,12445,285,700425000155 ; 700425000169 ; 700425000170 ; 700425000182,,no,
+engine_16V4000M73.json,12445,pn_new,null|string,100.0,12445,6627,null ; X53100400002 ; 700425000112 ; 5240111380,,no,
+engine_16V4000M73.json,12445,pn_pdf,string,97.08,12082,0,700425000155 ; 700425000169 ; 700425000170 ; 700425000182,,yes,
+engine_16V4000M73.json,12445,pn_raw,null|string,100.0,12445,148,700425000155 ; 700425000169 ; 700425000170 ; 700425000182,,no,
+engine_16V4000M73.json,12445,pn_recomendado,null|string,100.0,12445,285,700425000155 ; 700425000169 ; 700425000170 ; X53100400002,,no,
+engine_16V4000M73.json,12445,POS,null|string,100.0,12445,28,10 ; 100 ; 200 ; 150,pos,no,
+engine_16V4000M73.json,12445,pos_error,number,100.0,12445,0,0 ; 2,,no,qa
+engine_16V4000M73.json,12445,pos_final,null|string,100.0,12445,28,10 ; 100 ; 200 ; 150,,no,
+engine_16V4000M73.json,12445,pos_pdf,string,96.73,12038,0,10 ; 100 ; 200 ; 150,,yes,
+engine_16V4000M73.json,12445,precio,number,100.0,12445,0,0,,no,
+engine_16V4000M73.json,12445,Product Hierarchy,null|string,100.0,12445,6627,null ; P20 ; Q06 ; P40,,no,sust|wordpress
+engine_16V4000M73.json,12445,qa_revision_accion,string,100.0,12445,0,importar ; revisar ; eliminar,,no,qa
+engine_16V4000M73.json,12445,qa_revision_estado,string,100.0,12445,0,ok ; pendiente,,no,qa
+engine_16V4000M73.json,12445,qa_revision_updated_at,string,0.22,27,0,2026-05-03T22:58:29.223Z ; 2026-05-03T22:58:54.909Z ; 2026-05-04T18:00:14.425Z ; 2026-05-03T19:59:08.652Z,,no,qa
+engine_16V4000M73.json,12445,QTY,null|string,100.0,12445,1710,null ; 1 ; 4 ; 7,qty,no,
+engine_16V4000M73.json,12445,qty_final,null|string,100.0,12445,1710,null ; 1 ; 4 ; 7,,no,
+engine_16V4000M73.json,12445,qty_pdf,string,85.19,10602,0,1 ; 4 ; 7 ; 5,,yes,
+engine_16V4000M73.json,12445,qty_units_final,null|string,100.0,12445,897,null ; PC ; pc ; pc 125.000,,no,
+engine_16V4000M73.json,12445,Replacement Type,null|string,100.0,12445,7164,null ; F ; I,,no,
+engine_16V4000M73.json,12445,ruta_esquemas_pos,null|string,100.0,12445,824,null ; https://milu-naval.mystagingwebsite.com/wp-content/uploads/2026/02/16V4000M73-0022-01-120.webp ; https://milu-naval.mystagingwebsite.com/wp-content/uploads/2026/02/16V4000M73-0022-01-140.webp ; https://milu-naval.mystagingwebsite.com/wp-content/uploads/2026/02/16V4000M73-0022-01-150.webp,,no,media
+engine_16V4000M73.json,12445,ruta_foto,null|string,100.0,12445,12237,null ; https://milu-naval.mystagingwebsite.com/wp-content/uploads/2026/01/5240111380.jpeg ; https://milu-naval.mystagingwebsite.com/wp-content/uploads/2026/01/0049976736.jpeg ; https://milu-naval.mystagingwebsite.com/wp-content/uploads/2026/01/5240510110.jpeg,,no,media
+engine_16V4000M73.json,12445,Seq no,null|string,100.0,12445,6627,null ; 0009 ; 0003 ; 0002,,no,
+engine_16V4000M73.json,12445,Source Page,string,100.0,12445,0,15 ; 16 ; 17 ; 18,source_page,no,
+engine_16V4000M73.json,12445,source_file,string,100.0,12445,0,16V4000M73.xlsx,,no,
+engine_16V4000M73.json,12445,source_sheet,string,100.0,12445,0,1,,no,
+engine_16V4000M73.json,12445,status,string,100.0,12445,0,OK_GESA ; REVISAR ; OK_SUST_OLD ; EMPTY,,no,
+engine_16V4000M73.json,12445,Superseded Part Number,null|string,100.0,12445,6627,null ; 700425000182 ; 700425000112 ; 5240111380,,no,sust
+engine_16V4000M73.json,12445,sust_hierarchie,null|string,100.0,12445,6695,null ; Superseded ; New,,yes,sust
+engine_16V4000M73.json,12445,sust_new_part_number,null|string,100.0,12445,6695,null ; X53100400002 ; 700425000112 ; 5240111380,,no,sust
+engine_16V4000M73.json,12445,sust_new_part_number_pdf,string,39.53,4920,0,700425000112 ; 5240111380 ; X58401100013/31 ; 304017008088,,yes,sust
+engine_16V4000M73.json,12445,sust_status,string,100.0,12445,6695,SI,,no,sust
+engine_16V4000M73.json,12445,sust_superseded_list,null|string,100.0,12445,7688,"null ; 700425000068, 700425000098 ; 5240111280 ; 0000180729/31, X52401100007/31",,no,sust
+engine_16V4000M73.json,12445,sust_superseded_list_pdf,string,0.67,84,0,X00004797 ; X00005424 ; X00004798 ; X00014661,,yes,sust
+engine_16V4000M73.json,12445,total_error,number,100.0,12445,0,0 ; 2 ; 4 ; 1,,no,qa
+engine_16V4000M73.json,12445,UNITS,null|string,100.0,12445,897,null ; PC ; pc ; pc 125.000,units,no,
+engine_16V4000M73.json,12445,units,null|string,100.0,12445,1675,KGM ; null,UNITS,no,
+engine_16V4000M73.json,12445,units_pdf,string,91.32,11365,0,pc ; pc 125.000 ; pc 46.400 g ; pc 701.500,,yes,
+engine_16V4000M73.json,12445,Valid From Date,null|string,100.0,12445,7156,null ; 2011-05-01 ; 1996-06-01 ; 1997-04-01,,no,
+engine_16V4000M73.json,12445,WEIGHT,null|string,100.0,12445,5075,null ; 2.300 g 36 MMN425 ; 25.000 g ; 22.800 g,weight,no,
+engine_16V4000M73.json,12445,weight_error,number,100.0,12445,0,0 ; 1,,no,qa
+engine_16V4000M73.json,12445,weight_final,null|string,100.0,12445,1141,0.002 KGM ; null ; 4.469 KGM ; 0.03 KGM,,no,
+engine_16V4000M73.json,12445,weight_gesa,null|number,100.0,12445,1675,0.002 ; null ; 4.469 ; 0.03,,no,gesa
+engine_16V4000M73.json,12445,weight_pdf,string,58.28,7253,0,2.300 g 36 MMN425 ; 25.000 g ; 22.800 g ; 4.330 kg,,yes,
+engine_16V4000M73L.json,11128,atributo2,string,100.0,11128,0,Actualizados,,no,
+engine_16V4000M73L.json,11128,BOM-No.,string,100.0,11128,0,000.00899 ; X00027331 ; XS524000.00019 ; XS524000.00104,BOM_no|bom_no,no,
+engine_16V4000M73L.json,11128,bom_error,number,100.0,11128,0,0,,no,qa
+engine_16V4000M73L.json,11128,bom_pdf,string,96.99,10793,0,000.00899 ; X00027331 ; XS524000.00019 ; XS524000.00104,,yes,
+engine_16V4000M73L.json,11128,book_set,string,100.0,11128,0,16V4000M73L,,no,
+engine_16V4000M73L.json,11128,categoria,string,100.0,11128,0,16VM73L-4 ; 16VM73L-10 ; 16VM73L-11 ; 16VM73L-14,,no,
+engine_16V4000M73L.json,11128,Cause,null|string,100.0,11128,6835,null ; 9001 ; 9002 ; 9012,,no,
+engine_16V4000M73L.json,11128,criterio_pn,string,100.0,11128,0,MATCH_CATALOGO ; BEST_MATCH ; EMPTY ; NO_PATTERN,,no,
+engine_16V4000M73L.json,11128,Date,null|string,100.0,11128,6329,null ; 2022-01-10,,no,
+engine_16V4000M73L.json,11128,DD/DTNA,null,100.0,11128,11128,null,,no,
+engine_16V4000M73L.json,11128,Denomination (New Part Number),null|string,100.0,11128,6329,null ; IDENTIFICATION PLATE SELF-ADHESIVE ; GASKET ; SAFETY VALVE WITH TEST CERT. 3.1,,no,
+engine_16V4000M73L.json,11128,Denomination(Cause),null|string,100.0,11128,10334,null ; Attention !! Technical clarifying with MTU F necessary,,no,
+engine_16V4000M73L.json,11128,depuracion_ts,string,100.0,11128,0,2026-04-27T00:11:37Z,,no,
+engine_16V4000M73L.json,11128,DESIGNATION,null|string,100.0,11128,18,PLATE ; EMI-LABEL NON-EPA ; INSPECT PORT COVER W/SAFETY VALVE ; GASKET,designation,no,
+engine_16V4000M73L.json,11128,designation_error,number,100.0,11128,0,0 ; 1 ; 2,,no,qa
+engine_16V4000M73L.json,11128,designation_final,null|string,100.0,11128,12,LABEL ; PLATE ; EMI-LABEL NON-EPA ; INSPECT PORT COVER W/SAFETY VALVE,,no,
+engine_16V4000M73L.json,11128,designation_gesa,null|string,100.0,11128,1621,LABEL ; null ; PLATE ; INSPECT PORT COVER W/SAFETY VALVE,,no,gesa
+engine_16V4000M73L.json,11128,designation_pdf,string,97.28,10825,0,PLATE ; EMI-LABEL NON-EPA ; INSPECT PORT COVER W/SAFETY VALVE ; GASKET,,yes,
+engine_16V4000M73L.json,11128,detalle_cambio,null|string,100.0,11128,276,match: 700425000155 ; 700425000169 ; 700425000170 ; 700425000182,,no,
+engine_16V4000M73L.json,11128,dimensions_gesa,null|string,100.0,11128,4196,70 ; null ; 36 ; M 10 X 25,,no,gesa
+engine_16V4000M73L.json,11128,engine,string,100.0,11128,0,4000,,no,
+engine_16V4000M73L.json,11128,engine_model,string,100.0,11128,0,16V4000M73L,,no,
+engine_16V4000M73L.json,11128,esquemas,string,100.0,11128,861,16V4000M73L-0006-01.png ; 16V4000M73L-0007-01.png ; 16V4000M73L-0008-01.png ; 16V4000M73L-0009-01.png,,no,media
+engine_16V4000M73L.json,11128,esquemas_circulos,null|string,100.0,11128,1395,"null ; 16V4000M73L-0011-02-120.webp ; 16V4000M73L-0011-01-20.webp ; 16V4000M73L-0011-01-40.webp , 16V4000M73L-0011-02-40.webp",,no,media
+engine_16V4000M73L.json,11128,esquemas_circulos_all,null|string,100.0,11128,944,16V4000M73L-0006-01-10.webp ; 16V4000M73L-0007-01-100.webp ; 16V4000M73L-0007-01-200.webp ; 16V4000M73L-0008-01-100.webp,,no,media
+engine_16V4000M73L.json,11128,existeix_gesa,boolean,100.0,11128,0,true ; false,,no,gesa
+engine_16V4000M73L.json,11128,existeix_sust_new,boolean,100.0,11128,0,false ; true,,no,sust
+engine_16V4000M73L.json,11128,existeix_sust_old,boolean,100.0,11128,0,false ; true,,no,sust
+engine_16V4000M73L.json,11128,exp_imagenes,string,100.0,11128,0,"https://milu-naval.mystagingwebsite.com/wp-content/uploads/2026/01/sin_imagen.jpeg ; https://milu-naval.mystagingwebsite.com/wp-content/uploads/2026/02/16V4000M73L-0011-02-120.webp ; https://milu-naval.mystagingwebsite.com/wp-content/uploads/2026/02/16V4000M73L-0011-01-20.webp ; https://milu-naval.mystagingwebsite.com/wp-content/uploads/2026/01/5240111380.jpeg, https://milu-naval.mystagingwebsite.com/wp-content/uploa",,no,media
+engine_16V4000M73L.json,11128,FG/FGS,string,100.0,11128,0,004-05 ; 010-00 ; 011-05 ; 011-30,fg_fgs,no,
+engine_16V4000M73L.json,11128,fg_code,number,100.0,11128,0,4 ; 10 ; 11 ; 14,,no,
+engine_16V4000M73L.json,11128,fg_fgs_pdf,string,0.18,20,0,202,,yes,
+engine_16V4000M73L.json,11128,fg_fgs_raw,string,100.0,11128,0,004-05 ; 010-00 ; 011-05 ; 011-30,,no,
+engine_16V4000M73L.json,11128,fgs_code_description,null|string,100.0,11128,8,4 LABELS AND AUXILIARY MATERIALS ; 10 CRANKCASE AND ATTACHMENTS ; 11 CRANKCASE ; 14 OIL PAN,,no,
+engine_16V4000M73L.json,11128,fgs_description,null|string,100.0,11128,8,LABELS AND AUXILIARY MATERIALS ; CRANKCASE AND ATTACHMENTS ; CRANKCASE ; OIL PAN,,no,
+engine_16V4000M73L.json,11128,filename_foto,null|string,100.0,11128,10963,null ; 5240111380.jpeg ; 5240510110.jpeg ; X00027830.jpeg,,no,media
+engine_16V4000M73L.json,11128,FN,null|string,100.0,11128,10546,null ; SB EM ; SB ; MN,,no,
+engine_16V4000M73L.json,11128,fn_pdf,string,4.24,472,0,SB EM ; SB ; MN ; EM,,yes,
+engine_16V4000M73L.json,11128,gesa,string,100.0,11128,0,SI ; NO,,no,gesa
+engine_16V4000M73L.json,11128,gesa_pdf,string,11.88,1322,0,No,,yes,gesa
+engine_16V4000M73L.json,11128,has_error,boolean,100.0,11128,0,false ; true,,no,qa
+engine_16V4000M73L.json,11128,Hierarchie,null|string,100.0,11128,6329,null ; Superseded ; New,,no,sust
+engine_16V4000M73L.json,11128,ID,string,100.0,11128,0,1500001 ; 1500002 ; 1500003 ; 1500005,Id,no,
+engine_16V4000M73L.json,11128,libro_pag,string,100.0,11128,0,16V4000M73L-0006 ; 16V4000M73L-0007 ; 16V4000M73L-0008 ; 16V4000M73L-0009,,no,
+engine_16V4000M73L.json,11128,measure_final,null|string,100.0,11128,3986,70 ; null ; 36 ; M 10 X 25,,no,
+engine_16V4000M73L.json,11128,measure_pdf,string,52.98,5896,0,70 ; 36 ; M 10 X 25 ; M 8 X 55,,yes,
+engine_16V4000M73L.json,11128,measure_raw,null|string,100.0,11128,9316,"null ; 20 / 16 (M30X1,5 ; 1/2 D 9 - 45 ; A 16 X 20",,no,
+engine_16V4000M73L.json,11128,MEASUREMENT / STANDARD,null|string,100.0,11128,9316,"null ; 20 / 16 (M30X1,5 ; 1/2 D 9 - 45 ; A 16 X 20",,no,
+engine_16V4000M73L.json,11128,measurement_error,number,100.0,11128,0,0,,no,qa
+engine_16V4000M73L.json,11128,model,string,100.0,11128,0,16VM73L,,no,
+engine_16V4000M73L.json,11128,MODEL/TYPE,null,100.0,11128,11128,null,model_type,no,
+engine_16V4000M73L.json,11128,MODEL/TYPE_final,null,100.0,11128,11128,null,,no,
+engine_16V4000M73L.json,11128,model_final,null,100.0,11128,11128,null,,no,
+engine_16V4000M73L.json,11128,MSTAE,null|number,100.0,11128,6329,null ; 60 ; 66 ; 99,,no,
+engine_16V4000M73L.json,11128,MTART,null|string,100.0,11128,6329,null ; YHT ; YKFT ; YNOR,,no,
+engine_16V4000M73L.json,11128,MTU,null|string,100.0,11128,6329,null ; x,,no,
+engine_16V4000M73L.json,11128,New Part Number,null|string,100.0,11128,6329,null ; X53100400002 ; 5240111380 ; X58401100013/87,,no,
+engine_16V4000M73L.json,11128,norma,null|string,100.0,11128,6203,MMN425 ; null ; ISO4017 ; MTN5342,,no,gesa
+engine_16V4000M73L.json,11128,norma_error,number,100.0,11128,0,0,,no,qa|gesa
+engine_16V4000M73L.json,11128,norma_final,null|string,100.0,11128,6203,MMN425 ; null ; ISO4017 ; MTN5342,,no,gesa
+engine_16V4000M73L.json,11128,norma_pdf,string,0.08,9,0,DIN439 ; ISOLATIONSDURCHM ; DIN 7985 ; ISOLATIONSLAENGE,,yes,gesa
+engine_16V4000M73L.json,11128,norma_raw,null|string,100.0,11128,11112,null ; DIN7500 ; DIN 7985 ; ISOLATIONS,,no,gesa
+engine_16V4000M73L.json,11128,normalizado,string,100.0,11128,0,SI ; NO,,no,gesa
+engine_16V4000M73L.json,11128,normalizado_pdf,string,53.2,5920,0,No,,yes,gesa
+engine_16V4000M73L.json,11128,nsn,null|string,100.0,11128,2445,null ; 9905123605605 ; 5340124002938 ; 5340124003165,,no,
+engine_16V4000M73L.json,11128,page4,string,100.0,11128,0,0006 ; 0007 ; 0008 ; 0009,,no,
+engine_16V4000M73L.json,11128,pages,string,100.0,11128,0,16V4000M73L-0006 ; 16V4000M73L-0007 ; 16V4000M73L-0008 ; 16V4000M73L-0009,,no,
+engine_16V4000M73L.json,11128,PART NO.,null|string,100.0,11128,276,700425000155 ; 700425000169 ; 700425000170 ; 700425000182,,no,
+engine_16V4000M73L.json,11128,pn_error,number,100.0,11128,0,0 ; 2,,no,qa
+engine_16V4000M73L.json,11128,pn_final,null|string,100.0,11128,366,700425000155 ; 700425000169 ; 700425000170 ; 700425000182,,no,
+engine_16V4000M73L.json,11128,pn_new,null|string,100.0,11128,6329,null ; X53100400002 ; 5240111380 ; X58401100013/87,,no,
+engine_16V4000M73L.json,11128,pn_pdf,string,97.31,10829,0,700425000155 ; 700425000169 ; 700425000170 ; 700425000182,,yes,
+engine_16V4000M73L.json,11128,pn_raw,null|string,100.0,11128,276,700425000155 ; 700425000169 ; 700425000170 ; 700425000182,,no,
+engine_16V4000M73L.json,11128,pn_recomendado,null|string,100.0,11128,366,700425000155 ; 700425000169 ; 700425000170 ; X53100400002,,no,
+engine_16V4000M73L.json,11128,POS,null|string,100.0,11128,91,10 ; 100 ; 200 ; 150,pos,no,
+engine_16V4000M73L.json,11128,pos_error,number,100.0,11128,0,0 ; 2,,no,qa
+engine_16V4000M73L.json,11128,pos_final,null|string,100.0,11128,91,10 ; 100 ; 200 ; 150,,no,
+engine_16V4000M73L.json,11128,pos_pdf,string,96.51,10740,0,10 ; 100 ; 200 ; 150,,yes,
+engine_16V4000M73L.json,11128,precio,number,100.0,11128,0,0,,no,
+engine_16V4000M73L.json,11128,Product Hierarchy,null|string,100.0,11128,6329,null ; P20 ; P40 ; P71,,no,sust|wordpress
+engine_16V4000M73L.json,11128,qa_revision_accion,string,100.0,11128,0,importar ; revisar ; eliminar,,no,qa
+engine_16V4000M73L.json,11128,qa_revision_estado,string,100.0,11128,0,ok ; pendiente,,no,qa
+engine_16V4000M73L.json,11128,qa_revision_updated_at,string,0.18,20,0,2026-05-03T22:58:29.223Z ; 2026-05-03T19:59:08.652Z ; 2026-05-03T20:00:38.020Z ; 2026-05-03T22:29:43.273Z,,no,qa
+engine_16V4000M73L.json,11128,QTY,null|string,100.0,11128,1528,null ; 1 ; 4 ; 7,qty,no,
+engine_16V4000M73L.json,11128,qty_final,null|string,100.0,11128,1528,null ; 1 ; 4 ; 7,,no,
+engine_16V4000M73L.json,11128,qty_pdf,string,85.24,9485,0,1 ; 4 ; 7 ; 5,,yes,
+engine_16V4000M73L.json,11128,qty_units_final,null|string,100.0,11128,1279,null ; PC ; 1 PC ; 3 PC,,no,
+engine_16V4000M73L.json,11128,Replacement Type,null|string,100.0,11128,6835,null ; F ; I,,no,
+engine_16V4000M73L.json,11128,ruta_esquemas_pos,null|string,100.0,11128,1395,"null ; https://milu-naval.mystagingwebsite.com/wp-content/uploads/2026/02/16V4000M73L-0011-02-120.webp ; https://milu-naval.mystagingwebsite.com/wp-content/uploads/2026/02/16V4000M73L-0011-01-20.webp ; https://milu-naval.mystagingwebsite.com/wp-content/uploads/2026/02/16V4000M73L-0011-01-40.webp , https://milu-naval.mystagingwebsite.com/wp-",,no,media
+engine_16V4000M73L.json,11128,ruta_foto,null|string,100.0,11128,10963,null ; https://milu-naval.mystagingwebsite.com/wp-content/uploads/2026/01/5240111380.jpeg ; https://milu-naval.mystagingwebsite.com/wp-content/uploads/2026/01/5240510110.jpeg ; https://milu-naval.mystagingwebsite.com/wp-content/uploads/2026/01/X00027830.jpeg,,no,media
+engine_16V4000M73L.json,11128,Seq no,null|string,100.0,11128,6329,null ; 0009 ; 0002 ; 0006,,no,
+engine_16V4000M73L.json,11128,Source Page,string,100.0,11128,0,6 ; 7 ; 8 ; 9,source_page,no,
+engine_16V4000M73L.json,11128,source_file,string,100.0,11128,0,16V4000M73L.xlsx,,no,
+engine_16V4000M73L.json,11128,source_sheet,string,100.0,11128,0,1,,no,
+engine_16V4000M73L.json,11128,status,string,100.0,11128,0,OK_GESA ; REVISAR ; OK_SUST_OLD ; OK_SUST_NEW,,no,
+engine_16V4000M73L.json,11128,Superseded Part Number,null|string,100.0,11128,6329,null ; 700425000182 ; 5240111380 ; X58401100013/87,,no,sust
+engine_16V4000M73L.json,11128,sust_hierarchie,null|string,100.0,11128,6313,null ; Superseded ; New,,yes,sust
+engine_16V4000M73L.json,11128,sust_new_part_number,null|string,100.0,11128,6313,null ; X53100400002 ; 5240111380 ; X58401100013/87,,no,sust
+engine_16V4000M73L.json,11128,sust_new_part_number_pdf,string,35.3,3928,0,5240111380 ; X58401100013/87 ; 304017008088 ; 000912008115,,yes,sust
+engine_16V4000M73L.json,11128,sust_status,string,100.0,11128,6313,SI,,no,sust
+engine_16V4000M73L.json,11128,sust_superseded_list,null|string,100.0,11128,7330,"null ; 5240111280 ; 0000180729, 0000180729/87, X52401100007, X52401100007/87, X58401100013 ; 000933008098, 000933008135",,no,sust
+engine_16V4000M73L.json,11128,sust_superseded_list_pdf,string,0.29,32,0,X00004798 ; X00014661 ; X00004694 ; X00007482,,yes,sust
+engine_16V4000M73L.json,11128,total_error,number,100.0,11128,0,0 ; 1 ; 2 ; 4,,no,qa
+engine_16V4000M73L.json,11128,UNITS,null|string,100.0,11128,1279,null ; PC ; 1 PC ; 3 PC,units,no,
+engine_16V4000M73L.json,11128,units,null|string,100.0,11128,1621,KGM ; null,UNITS,no,
+engine_16V4000M73L.json,11128,units_pdf,string,87.26,9710,0,PC ; 1 PC ; 3 PC ; 2 PC,,yes,
+engine_16V4000M73L.json,11128,Valid From Date,null|string,100.0,11128,6827,null ; 2011-05-01 ; 1997-04-01 ; 2010-11-01,,no,
+engine_16V4000M73L.json,11128,WEIGHT,null|string,100.0,11128,5080,"null ; 1 G EM 04.14 ; 1 G EM 04.15 ; 3,100 G 36",weight,no,
+engine_16V4000M73L.json,11128,weight_error,number,100.0,11128,0,0 ; 1,,no,qa
+engine_16V4000M73L.json,11128,weight_final,null|string,100.0,11128,1163,0.002 KGM ; 1 G EM 04.14 ; 1 G EM 04.15 ; null,,no,
+engine_16V4000M73L.json,11128,weight_gesa,null|number,100.0,11128,1621,0.002 ; null ; 4.469 ; 4.61,,no,gesa
+engine_16V4000M73L.json,11128,weight_pdf,string,54.21,6032,0,"1 G EM 04.14 ; 1 G EM 04.15 ; 3,100 G 36 ; 4,667 KG",,yes,
+engine_16V4000M90.json,2851,atributo2,string,100.0,2851,0,Actualizados,,no,
+engine_16V4000M90.json,2851,BOM-No.,string,100.0,2851,0,000.00897 ; 000.00899 ; XS524000.00019 ; 010.00476,BOM_no|bom_no,no,
+engine_16V4000M90.json,2851,bom_error,number,100.0,2851,0,0,,no,qa
+engine_16V4000M90.json,2851,bom_pdf,string,95.79,2731,0,000.00897 ; 000.00899 ; XS524000.00019 ; 010.00476,,yes,
+engine_16V4000M90.json,2851,book_set,string,100.0,2851,0,16V4000M90,,no,
+engine_16V4000M90.json,2851,categoria,string,100.0,2851,0,16VM90-4 ; 16VM90-11 ; 16VM90-14 ; 16VM90-15,,no,
+engine_16V4000M90.json,2851,Cause,null|string,100.0,2851,1454,null ; 9001 ; 9002 ; 9012,,no,
+engine_16V4000M90.json,2851,criterio_pn,string,100.0,2851,0,BEST_MATCH ; MATCH_CATALOGO ; EMPTY ; Z_NO_TOUCH,,no,
+engine_16V4000M90.json,2851,Date,null|string,100.0,2851,1316,2022-01-10 ; null,,no,
+engine_16V4000M90.json,2851,DD/DTNA,null,100.0,2851,2851,null,,no,
+engine_16V4000M90.json,2851,Denomination (New Part Number),null|string,100.0,2851,1316,PLATE ; null ; IDENTIFICATION PLATE SELF-ADHESIVE ; PLUG,,no,
+engine_16V4000M90.json,2851,Denomination(Cause),null|string,100.0,2851,2606,null ; Attention !! Technical clarifying with MTU F necessary,,no,
+engine_16V4000M90.json,2851,depuracion_ts,string,100.0,2851,0,2026-04-27T00:11:37Z,,no,
+engine_16V4000M90.json,2851,DESIGNATION,null|string,100.0,2851,60,PLATE ; EMI-LABEL EMI INFO ; PLUG ; HEX SCREW,designation,no,
+engine_16V4000M90.json,2851,designation_error,number,100.0,2851,0,0 ; 1 ; 2,,no,qa
+engine_16V4000M90.json,2851,designation_final,null|string,100.0,2851,57,PLATE ; LABEL ; EMI-LABEL EMI INFO ; PLUG,,no,
+engine_16V4000M90.json,2851,designation_gesa,null|string,100.0,2851,469,null ; LABEL ; PLUG ; HEX SCREW,,no,gesa
+engine_16V4000M90.json,2851,designation_pdf,string,96.11,2740,0,PLATE ; EMI-LABEL EMI INFO ; PLUG ; HEX SCREW,,yes,
+engine_16V4000M90.json,2851,detalle_cambio,null|string,100.0,2851,43,700425000158 ; match: 700425000155 ; 700425000182 ; match: 735084050000,,no,
+engine_16V4000M90.json,2851,dimensions_gesa,null|string,100.0,2851,1150,null ; 70 ; 50 ; M 10 X 20,,no,gesa
+engine_16V4000M90.json,2851,engine,string,100.0,2851,0,4000,,no,
+engine_16V4000M90.json,2851,engine_model,string,100.0,2851,0,16V4000M90,,no,
+engine_16V4000M90.json,2851,esquemas,string,100.0,2851,34,"16V4000M90-0012-01.png ; 16V4000M90-0013-01.png ; 16V4000M90-0014-01.png ; 16V4000M90-0016-01.png , 16V4000M90-0016-02.png",,no,media
+engine_16V4000M90.json,2851,esquemas_circulos,null|string,100.0,2851,131,null ; 16V4000M90-0016-01-110.webp ; 16V4000M90-0016-01-115.webp ; 16V4000M90-0016-01-120.webp,,no,media
+engine_16V4000M90.json,2851,esquemas_circulos_all,null|string,100.0,2851,44,"16V4000M90-0012-01-10.webp ; 16V4000M90-0013-01-10.webp ; 16V4000M90-0014-01-100.webp ; 16V4000M90-0016-01-110.webp , 16V4000M90-0016-02-110.webp",,no,media
+engine_16V4000M90.json,2851,existeix_gesa,boolean,100.0,2851,0,false ; true,,no,gesa
+engine_16V4000M90.json,2851,existeix_sust_new,boolean,100.0,2851,0,true ; false,,no,sust
+engine_16V4000M90.json,2851,existeix_sust_old,boolean,100.0,2851,0,true ; false,,no,sust
+engine_16V4000M90.json,2851,exp_imagenes,string,100.0,2851,0,https://milu-naval.mystagingwebsite.com/wp-content/uploads/2026/01/sin_imagen.jpeg ; https://milu-naval.mystagingwebsite.com/wp-content/uploads/2026/02/16V4000M90-0016-01-110.webp ; https://milu-naval.mystagingwebsite.com/wp-content/uploads/2026/02/16V4000M90-0016-01-115.webp ; https://milu-naval.mystagingwebsite.com/wp-content/uploads/2026/02/16V4000M90-0016-01-120.webp,,no,media
+engine_16V4000M90.json,2851,FG/FGS,string,100.0,2851,0,004-05 ; 011-05 ; 011-30 ; 011-40,fg_fgs,no,
+engine_16V4000M90.json,2851,fg_code,number,100.0,2851,0,4 ; 11 ; 14 ; 15,,no,
+engine_16V4000M90.json,2851,fg_fgs_raw,string,100.0,2851,0,004-05 ; 011-05 ; 011-30 ; 011-40,,no,
+engine_16V4000M90.json,2851,fgs_code_description,string,100.0,2851,0,4 LABELS AND AUXILIARY MATERIALS ; 11 CRANKCASE ; 14 OIL PAN ; 15 ENGINE MOUNTING,,no,
+engine_16V4000M90.json,2851,fgs_description,string,100.0,2851,0,LABELS AND AUXILIARY MATERIALS ; CRANKCASE ; OIL PAN ; ENGINE MOUNTING,,no,
+engine_16V4000M90.json,2851,filename_foto,null|string,100.0,2851,2804,null ; 0049976736.jpeg ; 5240510110.jpeg ; 5240114210.jpeg,,no,media
+engine_16V4000M90.json,2851,FN,null|string,100.0,2851,2788,null ; MN EM ; EM ; SB,,no,
+engine_16V4000M90.json,2851,fn_pdf,string,1.93,55,0,MN EM ; EM ; SB ; AB,,yes,
+engine_16V4000M90.json,2851,gesa,string,100.0,2851,0,NO ; SI,,no,gesa
+engine_16V4000M90.json,2851,gesa_pdf,string,13.47,384,0,No ; SI,,yes,gesa
+engine_16V4000M90.json,2851,has_error,boolean,100.0,2851,0,false ; true,,no,qa
+engine_16V4000M90.json,2851,Hierarchie,null|string,100.0,2851,1316,New ; null ; Superseded,,no,sust
+engine_16V4000M90.json,2851,ID,string,100.0,2851,0,1600001 ; 1600002 ; 1600003 ; 1600004,Id,no,
+engine_16V4000M90.json,2851,libro_pag,string,100.0,2851,0,16V4000M90-0012 ; 16V4000M90-0013 ; 16V4000M90-0014 ; 16V4000M90-0017,,no,
+engine_16V4000M90.json,2851,measure_final,null|string,100.0,2851,1102,null ; 70 ; 50 ; M 10 X 20,,no,
+engine_16V4000M90.json,2851,measure_pdf,string,55.1,1571,0,70 ; 50 ; M 10 X 20 ; 1357X5,,yes,
+engine_16V4000M90.json,2851,measure_raw,null|string,100.0,2851,2681,null ; N15013 ; MBN15005 ; N15001,,no,
+engine_16V4000M90.json,2851,MEASUREMENT / STANDARD,null|string,100.0,2851,2681,null ; N15013 ; MBN15005 ; N15001,,no,
+engine_16V4000M90.json,2851,measurement_error,number,100.0,2851,0,0,,no,qa
+engine_16V4000M90.json,2851,model,string,100.0,2851,0,16VM90,,no,
+engine_16V4000M90.json,2851,MODEL/TYPE,null|string,100.0,2851,2259,null ; 4000 ; 16V 4000 ; 16V4000,model_type,no,
+engine_16V4000M90.json,2851,MODEL/TYPE_final,null|string,100.0,2851,2259,null ; 4000 ; 16V 4000 ; 16V4000,,no,
+engine_16V4000M90.json,2851,model_final,null|string,100.0,2851,2259,null ; 4000 ; 16V 4000 ; 16V4000,,no,
+engine_16V4000M90.json,2851,model_type_pdf,string,16.98,484,0,4000 ; 16V 4000 ; 16V4000 ; BR 4000,,yes,
+engine_16V4000M90.json,2851,MSTAE,null|number,100.0,2851,1316,66 ; null ; 60 ; 99,,no,
+engine_16V4000M90.json,2851,MTART,null|string,100.0,2851,1316,YNOR ; null ; YHT ; YFRE,,no,
+engine_16V4000M90.json,2851,MTU,null|string,100.0,2851,1316,x ; null,,no,
+engine_16V4000M90.json,2851,New Part Number,null|string,100.0,2851,1316,700425000158 ; null ; X53100400002 ; 735084050000,,no,
+engine_16V4000M90.json,2851,norma,null|string,100.0,2851,1629,null ; MMN425 ; MTN5084 ; DIN933,,no,gesa
+engine_16V4000M90.json,2851,norma_error,number,100.0,2851,0,0,,no,qa|gesa
+engine_16V4000M90.json,2851,norma_final,null|string,100.0,2851,1629,null ; MMN425 ; MTN5084 ; DIN933,,no,gesa
+engine_16V4000M90.json,2851,norma_pdf,string,34.3,978,0,MMN425 ; MTN5084 ; DIN933 ; ISO4017,,yes,gesa
+engine_16V4000M90.json,2851,norma_raw,null|string,100.0,2851,2244,null ; MTN5084 ; DIN933 ; MMN429,,no,gesa
+engine_16V4000M90.json,2851,normalizado,string,100.0,2851,0,NO ; SI,,no,gesa
+engine_16V4000M90.json,2851,normalizado_pdf,string,54.02,1540,0,No ; SI,,yes,gesa
+engine_16V4000M90.json,2851,nsn,null|string,100.0,2851,706,null ; 5340123640046 ; 5305121419888 ; 5331123096351,,no,
+engine_16V4000M90.json,2851,page4,string,100.0,2851,0,0012 ; 0013 ; 0014 ; 0017,,no,
+engine_16V4000M90.json,2851,pages,string,100.0,2851,0,16V4000M90-0012 ; 16V4000M90-0013 ; 16V4000M90-0014 ; 16V4000M90-0017,,no,
+engine_16V4000M90.json,2851,PART NO.,null|string,100.0,2851,43,700425000158 ; 700425000155 ; 700425000182 ; 735084050000,,no,
+engine_16V4000M90.json,2851,pn_error,number,100.0,2851,0,0 ; 2 ; 1,,no,qa
+engine_16V4000M90.json,2851,pn_final,null|string,100.0,2851,63,700425000158 ; 700425000155 ; 700425000182 ; 735084050000,,no,
+engine_16V4000M90.json,2851,pn_new,null|string,100.0,2851,1316,700425000158 ; null ; X53100400002 ; 735084050000,,no,
+engine_16V4000M90.json,2851,pn_pdf,string,96.11,2740,0,700425000158 ; 700425000155 ; 700425000182 ; 735084050000,,yes,
+engine_16V4000M90.json,2851,pn_raw,null|string,100.0,2851,43,700425000158 ; 700425000155 ; 700425000182 ; 735084050000,,no,
+engine_16V4000M90.json,2851,pn_recomendado,null|string,100.0,2851,63,700425000158 ; 700425000155 ; X53100400002 ; 735084050000,,no,
+engine_16V4000M90.json,2851,POS,null|string,100.0,2851,10,10 ; 100 ; 110 ; 115,pos,no,
+engine_16V4000M90.json,2851,pos_error,number,100.0,2851,0,0 ; 2,,no,qa
+engine_16V4000M90.json,2851,pos_final,null|string,100.0,2851,10,10 ; 100 ; 110 ; 115,,no,
+engine_16V4000M90.json,2851,pos_pdf,string,95.65,2727,0,10 ; 100 ; 110 ; 115,,yes,
+engine_16V4000M90.json,2851,precio,number,100.0,2851,0,0,,no,
+engine_16V4000M90.json,2851,Product Hierarchy,null|string,100.0,2851,1316,Q06 ; null ; P20 ; Q38,,no,sust|wordpress
+engine_16V4000M90.json,2851,qa_revision_accion,string,100.0,2851,0,importar ; revisar ; eliminar,,no,qa
+engine_16V4000M90.json,2851,qa_revision_estado,string,100.0,2851,0,ok ; pendiente,,no,qa
+engine_16V4000M90.json,2851,qa_revision_updated_at,string,0.7,20,0,2026-05-03T22:58:29.223Z ; 2026-05-03T16:14:50.362Z ; 2026-05-03T19:59:08.652Z ; 2026-05-03T19:49:34.275Z,,no,qa
+engine_16V4000M90.json,2851,QTY,null|string,100.0,2851,515,1 ; null ; 2 ; 26,qty,no,
+engine_16V4000M90.json,2851,qty_final,null|string,100.0,2851,515,1 ; null ; 2 ; 26,,no,
+engine_16V4000M90.json,2851,qty_pdf,string,80.78,2303,0,1 ; 2 ; 26 ; 27,,yes,
+engine_16V4000M90.json,2851,qty_units_final,null|string,100.0,2851,488,PC ; null ; 4 PC 10.600 ; 2 PC 652.40,,no,
+engine_16V4000M90.json,2851,Replacement Type,null|string,100.0,2851,1454,null ; F ; I,,no,
+engine_16V4000M90.json,2851,ruta_esquemas_pos,null|string,100.0,2851,131,null ; https://milu-naval.mystagingwebsite.com/wp-content/uploads/2026/02/16V4000M90-0016-01-110.webp ; https://milu-naval.mystagingwebsite.com/wp-content/uploads/2026/02/16V4000M90-0016-01-115.webp ; https://milu-naval.mystagingwebsite.com/wp-content/uploads/2026/02/16V4000M90-0016-01-120.webp,,no,media
+engine_16V4000M90.json,2851,ruta_foto,null|string,100.0,2851,2804,null ; https://milu-naval.mystagingwebsite.com/wp-content/uploads/2026/01/0049976736.jpeg ; https://milu-naval.mystagingwebsite.com/wp-content/uploads/2026/01/5240510110.jpeg ; https://milu-naval.mystagingwebsite.com/wp-content/uploads/2026/01/5240114210.jpeg,,no,media
+engine_16V4000M90.json,2851,Seq no,null|string,100.0,2851,1316,0001 ; null ; 0009 ; 0002,,no,
+engine_16V4000M90.json,2851,Source Page,string,100.0,2851,0,12 ; 13 ; 14 ; 17,source_page,no,
+engine_16V4000M90.json,2851,source_file,string,100.0,2851,0,16V4000M90.xlsx,,no,
+engine_16V4000M90.json,2851,source_sheet,string,100.0,2851,0,1,,no,
+engine_16V4000M90.json,2851,status,string,100.0,2851,0,OK_SUST_NEW ; OK_GESA ; OK_SUST_OLD ; REVISAR,,no,
+engine_16V4000M90.json,2851,Superseded Part Number,null|string,100.0,2851,1316,700425000158 ; null ; 700425000182 ; 735084050000,,no,sust
+engine_16V4000M90.json,2851,sust_hierarchie,null|string,100.0,2851,1335,New ; null ; Superseded,,yes,sust
+engine_16V4000M90.json,2851,sust_new_part_number,null|string,100.0,2851,1335,700425000158 ; null ; X53100400002 ; 735084050000,,no,sust
+engine_16V4000M90.json,2851,sust_new_part_number_pdf,string,44.65,1273,0,700425000158 ; 735084050000 ; 000933010089 ; 700429042000,,yes,sust
+engine_16V4000M90.json,2851,sust_status,string,100.0,2851,1335,SI,,no,sust
+engine_16V4000M90.json,2851,sust_status_pdf,string,0.56,16,0,SI,,yes,sust
+engine_16V4000M90.json,2851,sust_superseded_list,null|string,100.0,2851,1634,"null ; 5240111432 ; 000933010016, 000933010128, 06.01013-1227, 06.01283-1213, 06.01283-3213, 06012833213 ; 0079975145, 0109974845",,no,sust
+engine_16V4000M90.json,2851,sust_superseded_list_pdf,string,0.46,13,0,X00004798 ; X00014661 ; X00004797 ; X00005424,,yes,sust
+engine_16V4000M90.json,2851,total_error,number,100.0,2851,0,0 ; 1 ; 2 ; 3,,no,qa
+engine_16V4000M90.json,2851,UNITS,null|string,100.0,2851,488,PC ; null ; 4 PC 10.600 ; 2 PC 652.40,units,no,
+engine_16V4000M90.json,2851,units,null|string,100.0,2851,469,null ; KGM,UNITS,no,
+engine_16V4000M90.json,2851,units_pdf,string,82.08,2340,0,PC ; 4 PC 10.600 ; 2 PC 75.200 ; 2 PC 19.600,,yes,
+engine_16V4000M90.json,2851,Valid From Date,null|string,100.0,2851,1452,2012-10-09 ; null ; 2011-05-01 ; 2004-03-01,,no,
+engine_16V4000M90.json,2851,WEIGHT,null|string,100.0,2851,1163,15.000 g EM 04.13 MMN425 ; null ; 103.900 g ; 21.100 g,weight,no,
+engine_16V4000M90.json,2851,weight_error,number,100.0,2851,0,0 ; 1,,no,qa
+engine_16V4000M90.json,2851,weight_final,null|string,100.0,2851,280,15.000 g EM 04.13 MMN425 ; 0.002 KGM ; null ; 0.103 KGM,,no,
+engine_16V4000M90.json,2851,weight_gesa,null|number,100.0,2851,469,null ; 0.002 ; 0.103 ; 0.021,,no,gesa
+engine_16V4000M90.json,2851,weight_pdf,string,57.91,1651,0,15.000 g EM 04.13 MMN425 ; 103.900 g ; 21.100 g ; 6.200 g,,yes,
+engine_20V4000M93.json,14643,atributo2,string,100.0,14643,0,Actualizados,,no,
+engine_20V4000M93.json,14643,BOM-No.,string,100.0,14643,0,000.00899 ; XS524000.00019 ; XS524000.00097 ; XS524000.00104,BOM_no|bom_no,no,
+engine_20V4000M93.json,14643,bom_error,number,100.0,14643,0,0,,no,qa
+engine_20V4000M93.json,14643,bom_pdf,string,95.1,13925,0,000.00899 ; XS524000.00019 ; XS524000.00097 ; XS524000.00104,,yes,
+engine_20V4000M93.json,14643,book_set,string,100.0,14643,0,20V4000M93,,no,
+engine_20V4000M93.json,14643,categoria,string,100.0,14643,0,20VM93-4 ; 20VM93-10 ; 20VM93-11 ; 20VM93-14,,no,
+engine_20V4000M93.json,14643,Cause,null|string,100.0,14643,8368,null ; 9001 ; 9002 ; 9012,,no,
+engine_20V4000M93.json,14643,criterio_pn,string,100.0,14643,0,MATCH_CATALOGO ; BEST_MATCH ; EMPTY ; C_NOISE_FOOTER,,no,
+engine_20V4000M93.json,14643,Date,null|string,100.0,14643,7777,null ; 2022-01-10,,no,
+engine_20V4000M93.json,14643,DD/DTNA,null,100.0,14643,14643,null,,no,
+engine_20V4000M93.json,14643,Denomination (New Part Number),null|string,100.0,14643,7777,null ; IDENTIFICATION PLATE SELF-ADHESIVE ; GASKET ; SAFETY VALVE CCS ACCEPTANCE,,no,
+engine_20V4000M93.json,14643,Denomination(Cause),null|string,100.0,14643,13607,null ; Attention !! Technical clarifying with MTU F necessary,,no,
+engine_20V4000M93.json,14643,depuracion_ts,string,100.0,14643,0,2026-04-27T00:11:37Z,,no,
+engine_20V4000M93.json,14643,DESIGNATION,null|string,100.0,14643,488,PLATE ; EMI-LABEL EMI INFO ; NAMEPLATE FOR DIESEL ENGINE ; INSPECT PORT COVER W/SAFETY VALVE,designation,no,
+engine_20V4000M93.json,14643,designation_error,number,100.0,14643,0,0 ; 2 ; 1,,no,qa
+engine_20V4000M93.json,14643,designation_final,null|string,100.0,14643,476,LABEL ; EMI-LABEL EMI INFO ; NAMEPLATE FOR DIESEL ENGINE ; PLATE,,no,
+engine_20V4000M93.json,14643,designation_gesa,null|string,100.0,14643,1960,LABEL ; null ; PLATE ; INSPECT PORT COVER W/SAFETY VALVE,,no,gesa
+engine_20V4000M93.json,14643,designation_pdf,string,95.1,13925,0,PLATE ; EMI-LABEL EMI INFO ; NAMEPLATE FOR DIESEL ENGINE ; INSPECT PORT COVER W/SAFETY VALVE,,yes,
+engine_20V4000M93.json,14643,detalle_cambio,null|string,100.0,14643,162,match: 700425000155 ; 700425000182 ; 700425000219 ; match: 700425000039,,no,
+engine_20V4000M93.json,14643,dimensions_gesa,null|string,100.0,14643,5352,70 ; null ; 36 ; M 10 X 25,,no,gesa
+engine_20V4000M93.json,14643,engine,string,100.0,14643,0,4000,,no,
+engine_20V4000M93.json,14643,engine_model,string,100.0,14643,0,20V4000M93,,no,
+engine_20V4000M93.json,14643,esquemas,string,100.0,14643,420,20V4000M93-0015-01.png ; 20V4000M93-0016-01.png ; 20V4000M93-0017-01.png ; 20V4000M93-0018-01.png,,no,media
+engine_20V4000M93.json,14643,esquemas_circulos,null|string,100.0,14643,11264,null ; 20V4000M93-0023-01-100.webp ; 20V4000M93-0023-01-120.webp ; 20V4000M93-0023-01-140.webp,,no,media
+engine_20V4000M93.json,14643,esquemas_circulos_all,null|string,100.0,14643,438,20V4000M93-0015-01-10.webp ; 20V4000M93-0016-01-100.webp ; 20V4000M93-0017-01-20.webp ; 20V4000M93-0018-01-150.webp,,no,media
+engine_20V4000M93.json,14643,existeix_gesa,boolean,100.0,14643,0,true ; false,,no,gesa
+engine_20V4000M93.json,14643,existeix_sust_new,boolean,100.0,14643,0,false ; true,,no,sust
+engine_20V4000M93.json,14643,existeix_sust_old,boolean,100.0,14643,0,false ; true,,no,sust
+engine_20V4000M93.json,14643,exp_imagenes,string,100.0,14643,0,"https://milu-naval.mystagingwebsite.com/wp-content/uploads/2026/01/sin_imagen.jpeg ; https://milu-naval.mystagingwebsite.com/wp-content/uploads/2026/01/5240111380.jpeg ; https://milu-naval.mystagingwebsite.com/wp-content/uploads/2026/02/20V4000M93-0023-01-100.webp ; https://milu-naval.mystagingwebsite.com/wp-content/uploads/2026/01/0049976736.jpeg, https://milu-naval.mystagingwebsite.com/wp-content/uploa",,no,media
+engine_20V4000M93.json,14643,FG/FGS,string,100.0,14643,0,004-05 ; 010-00 ; 011-05 ; 011-30,fg_fgs,no,
+engine_20V4000M93.json,14643,fg_code,number,100.0,14643,0,4 ; 10 ; 11 ; 14,,no,
+engine_20V4000M93.json,14643,fg_fgs_pdf,string,0.05,8,0,202,,yes,
+engine_20V4000M93.json,14643,fg_fgs_raw,string,100.0,14643,0,004-05 ; 010-00 ; 011-05 ; 011-30,,no,
+engine_20V4000M93.json,14643,fgs_code_description,string,100.0,14643,0,4 LABELS AND AUXILIARY MATERIALS ; 10 CRANKCASE AND ATTACHMENTS ; 11 CRANKCASE ; 14 OIL PAN,,no,
+engine_20V4000M93.json,14643,fgs_description,string,100.0,14643,0,LABELS AND AUXILIARY MATERIALS ; CRANKCASE AND ATTACHMENTS ; CRANKCASE ; OIL PAN,,no,
+engine_20V4000M93.json,14643,filename_foto,null|string,100.0,14643,14373,null ; 5240111380.jpeg ; 0049976736.jpeg ; 5240510110.jpeg,,no,media
+engine_20V4000M93.json,14643,FN,null|string,100.0,14643,14147,null ; SB EM ; SB ; EM,,no,
+engine_20V4000M93.json,14643,fn_pdf,string,3.21,470,0,SB EM ; SB ; EM ; kg EM,,yes,
+engine_20V4000M93.json,14643,gesa,string,100.0,14643,0,SI ; NO,,no,gesa
+engine_20V4000M93.json,14643,gesa_pdf,string,8.48,1242,0,No,,yes,gesa
+engine_20V4000M93.json,14643,has_error,boolean,100.0,14643,0,false ; true,,no,qa
+engine_20V4000M93.json,14643,Hierarchie,null|string,100.0,14643,7777,null ; Superseded ; New,,no,sust
+engine_20V4000M93.json,14643,ID,string,100.0,14643,0,1700001 ; 1700002 ; 1700003 ; 1700004,Id,no,
+engine_20V4000M93.json,14643,libro_pag,string,100.0,14643,0,20V4000M93-0015 ; 20V4000M93-0016 ; 20V4000M93-0017 ; 20V4000M93-0018,,no,
+engine_20V4000M93.json,14643,measure_final,null|string,100.0,14643,5265,70 ; null ; 36 ; M 10 X 25,,no,
+engine_20V4000M93.json,14643,measure_pdf,string,56.89,8331,0,70 ; 36 ; M 10 X 25 ; M 8 X 55,,yes,
+engine_20V4000M93.json,14643,measure_raw,null|string,100.0,14643,13883,null ; MBN10223 ; N15007 ; N16016,,no,
+engine_20V4000M93.json,14643,MEASUREMENT / STANDARD,null|string,100.0,14643,13883,null ; MBN10223 ; N15007 ; N16016,,no,
+engine_20V4000M93.json,14643,measurement_error,number,100.0,14643,0,0,,no,qa
+engine_20V4000M93.json,14643,model,string,100.0,14643,0,20VM93,,no,
+engine_20V4000M93.json,14643,MODEL/TYPE,null|string,100.0,14643,12401,null ; 20V4000 ; 20V4000M93L ; V4000M93L 1,model_type,no,
+engine_20V4000M93.json,14643,MODEL/TYPE_final,null|string,100.0,14643,12401,null ; 20V4000 ; 20V4000M93L ; V4000M93L 1,,no,
+engine_20V4000M93.json,14643,model_final,null|string,100.0,14643,12401,null ; 20V4000 ; 20V4000M93L ; V4000M93L 1,,no,
+engine_20V4000M93.json,14643,model_type_pdf,string,8.67,1269,0,20V4000 ; FOR SENSOR ; HSK-M-PVDF ; 4000,,yes,
+engine_20V4000M93.json,14643,MSTAE,null|number,100.0,14643,7777,null ; 60 ; 66 ; 99,,no,
+engine_20V4000M93.json,14643,MTART,null|string,100.0,14643,7777,null ; YHT ; YKFT ; YNOR,,no,
+engine_20V4000M93.json,14643,MTU,null|string,100.0,14643,7777,null ; x,,no,
+engine_20V4000M93.json,14643,New Part Number,null|string,100.0,14643,7777,null ; X53100400002 ; 5240111380 ; X58401100013/24,,no,
+engine_20V4000M93.json,14643,norma,null|string,100.0,14643,6735,MMN425 ; null ; ISO4017 ; MTN5342,,no,gesa
+engine_20V4000M93.json,14643,norma_error,number,100.0,14643,0,0,,no,qa|gesa
+engine_20V4000M93.json,14643,norma_final,null|string,100.0,14643,6735,MMN425 ; null ; ISO4017 ; MTN5342,,no,gesa
+engine_20V4000M93.json,14643,norma_pdf,string,42.64,6244,0,MMN425 ; ISO4017 ; DIN912 ; DIN835,,yes,gesa
+engine_20V4000M93.json,14643,norma_raw,null|string,100.0,14643,9725,null ; ISO4017 ; MMN429 ; DIN7603,,no,gesa
+engine_20V4000M93.json,14643,normalizado,string,100.0,14643,0,SI ; NO,,no,gesa
+engine_20V4000M93.json,14643,normalizado_pdf,string,42.03,6154,0,No,,yes,gesa
+engine_20V4000M93.json,14643,nsn,null|string,100.0,14643,3036,null ; 9905123605605 ; 5340124003165 ; 5340124002938,,no,
+engine_20V4000M93.json,14643,page4,string,100.0,14643,0,0015 ; 0016 ; 0017 ; 0018,,no,
+engine_20V4000M93.json,14643,pages,string,100.0,14643,0,20V4000M93-0015 ; 20V4000M93-0016 ; 20V4000M93-0017 ; 20V4000M93-0018,,no,
+engine_20V4000M93.json,14643,PART NO.,null|string,100.0,14643,162,700425000155 ; 700425000182 ; 700425000219 ; 700425000039,,no,
+engine_20V4000M93.json,14643,pn_error,number,100.0,14643,0,0 ; 1 ; 2,,no,qa
+engine_20V4000M93.json,14643,pn_final,null|string,100.0,14643,361,700425000155 ; 700425000182 ; 700425000219 ; 700425000039,,no,
+engine_20V4000M93.json,14643,pn_new,null|string,100.0,14643,7777,null ; X53100400002 ; 5240111380 ; X58401100013/24,,no,
+engine_20V4000M93.json,14643,pn_pdf,string,95.1,13925,0,700425000155 ; 700425000182 ; 700425000219 ; 700425000039,,yes,
+engine_20V4000M93.json,14643,pn_raw,null|string,100.0,14643,162,700425000155 ; 700425000182 ; 700425000219 ; 700425000039,,no,
+engine_20V4000M93.json,14643,pn_recomendado,null|string,100.0,14643,361,700425000155 ; X53100400002 ; 700425000219 ; 700425000039,,no,
+engine_20V4000M93.json,14643,POS,null|string,100.0,14643,18,10 ; 100 ; 20 ; 150,pos,no,
+engine_20V4000M93.json,14643,pos_error,number,100.0,14643,0,0 ; 2,,no,qa
+engine_20V4000M93.json,14643,pos_final,null|string,100.0,14643,18,10 ; 100 ; 20 ; 150,,no,
+engine_20V4000M93.json,14643,pos_pdf,string,94.73,13871,0,10 ; 100 ; 20 ; 150,,yes,
+engine_20V4000M93.json,14643,precio,number,100.0,14643,0,0,,no,
+engine_20V4000M93.json,14643,Product Hierarchy,null|string,100.0,14643,7777,null ; P20 ; P40 ; P02,,no,sust|wordpress
+engine_20V4000M93.json,14643,qa_revision_accion,string,100.0,14643,0,importar ; revisar ; eliminar,,no,qa
+engine_20V4000M93.json,14643,qa_revision_estado,string,100.0,14643,0,ok ; pendiente,,no,qa
+engine_20V4000M93.json,14643,qa_revision_updated_at,string,0.14,21,0,2026-05-03T22:58:29.223Z ; 2026-05-04T13:01:05.427Z ; 2026-05-03T22:58:54.909Z ; 2026-05-04T18:00:14.425Z,,no,qa
+engine_20V4000M93.json,14643,QTY,null|string,100.0,14643,2065,null ; 4 ; 1 ; 7,qty,no,
+engine_20V4000M93.json,14643,qty_final,null|string,100.0,14643,2065,null ; 4 ; 1 ; 7,,no,
+engine_20V4000M93.json,14643,qty_pdf,string,83.93,12290,0,4 ; 1 ; 7 ; 2,,yes,
+engine_20V4000M93.json,14643,qty_units_final,null|string,100.0,14643,1281,null ; PC ; pc ; 262 201,,no,
+engine_20V4000M93.json,14643,Replacement Type,null|string,100.0,14643,8368,null ; F ; I,,no,
+engine_20V4000M93.json,14643,ruta_esquemas_pos,null|string,100.0,14643,11264,null ; https://milu-naval.mystagingwebsite.com/wp-content/uploads/2026/02/20V4000M93-0023-01-100.webp ; https://milu-naval.mystagingwebsite.com/wp-content/uploads/2026/02/20V4000M93-0023-01-120.webp ; https://milu-naval.mystagingwebsite.com/wp-content/uploads/2026/02/20V4000M93-0023-01-140.webp,,no,media
+engine_20V4000M93.json,14643,ruta_foto,null|string,100.0,14643,14373,null ; https://milu-naval.mystagingwebsite.com/wp-content/uploads/2026/01/5240111380.jpeg ; https://milu-naval.mystagingwebsite.com/wp-content/uploads/2026/01/0049976736.jpeg ; https://milu-naval.mystagingwebsite.com/wp-content/uploads/2026/01/5240510110.jpeg,,no,media
+engine_20V4000M93.json,14643,Seq no,null|string,100.0,14643,7777,null ; 0009 ; 0002 ; 0003,,no,
+engine_20V4000M93.json,14643,Source Page,string,100.0,14643,0,15 ; 16 ; 17 ; 18,source_page,no,
+engine_20V4000M93.json,14643,source_file,string,100.0,14643,0,20V4000M93.xlsx,,no,
+engine_20V4000M93.json,14643,source_sheet,string,100.0,14643,0,1,,no,
+engine_20V4000M93.json,14643,status,string,100.0,14643,0,OK_GESA ; OK_SUST_OLD ; REVISAR ; EMPTY,,no,
+engine_20V4000M93.json,14643,Superseded Part Number,null|string,100.0,14643,7777,null ; 700425000182 ; 5240111380 ; X58401100013/24,,no,sust
+engine_20V4000M93.json,14643,sust_hierarchie,null|string,100.0,14643,7906,null ; Superseded ; New,,yes,sust
+engine_20V4000M93.json,14643,sust_new_part_number,null|string,100.0,14643,7906,null ; X53100400002 ; 5240111380 ; X58401100013/24,,no,sust
+engine_20V4000M93.json,14643,sust_new_part_number_pdf,string,40.91,5990,0,5240111380 ; X58401100013/24 ; 304017008088 ; 000912008115,,yes,sust
+engine_20V4000M93.json,14643,sust_status,string,100.0,14643,7906,SI,,no,sust
+engine_20V4000M93.json,14643,sust_superseded_list,null|string,100.0,14643,8857,"null ; 5240111280 ; 0000180729/24, X52401100007/24 ; 000933008098, 000933008135",,no,sust
+engine_20V4000M93.json,14643,sust_superseded_list_pdf,string,0.52,76,0,X59601100009 ; X00004694 ; X00004360 ; X00006699,,yes,sust
+engine_20V4000M93.json,14643,total_error,number,100.0,14643,0,0 ; 3 ; 2 ; 1,,no,qa
+engine_20V4000M93.json,14643,UNITS,null|string,100.0,14643,1281,null ; PC ; pc ; 262 201,units,no,
+engine_20V4000M93.json,14643,units,null|string,100.0,14643,1960,KGM ; null,UNITS,no,
+engine_20V4000M93.json,14643,units_pdf,string,88.72,12992,0,pc ; m ; 1 pc ; 4 pc,,yes,
+engine_20V4000M93.json,14643,Valid From Date,null|string,100.0,14643,8340,null ; 2011-05-01 ; 1997-04-01 ; 2010-02-01,,no,
+engine_20V4000M93.json,14643,WEIGHT,null|string,100.0,14643,4306,null ; 2.300 g 36 MMN425 ; 25.000 g ; 22.800 g,weight,no,
+engine_20V4000M93.json,14643,weight_error,number,100.0,14643,0,0 ; 1,,no,qa
+engine_20V4000M93.json,14643,weight_final,null|string,100.0,14643,1307,0.002 KGM ; null ; 4.61 KGM ; 4.469 KGM,,no,
+engine_20V4000M93.json,14643,weight_gesa,null|number,100.0,14643,1960,0.002 ; null ; 4.61 ; 4.469,,no,gesa
+engine_20V4000M93.json,14643,weight_pdf,string,69.66,10201,0,2.300 g 36 MMN425 ; 25.000 g ; 22.800 g ; 4.123 kg,,yes,
+engine_20V4000M93L.json,7132,atributo2,string,100.0,7132,0,Actualizados,,no,
+engine_20V4000M93L.json,7132,BOM-No.,string,100.0,7132,0,000.00899 ; X00027331 ; XS524000.00019 ; XS596010.00020,BOM_no|bom_no,no,
+engine_20V4000M93L.json,7132,bom_error,number,100.0,7132,0,0,,no,qa
+engine_20V4000M93L.json,7132,bom_pdf,string,96.1,6854,0,000.00899 ; X00027331 ; XS524000.00019 ; XS596010.00020,,yes,
+engine_20V4000M93L.json,7132,book_set,string,100.0,7132,0,20V4000M93L,,no,
+engine_20V4000M93L.json,7132,categoria,string,100.0,7132,0,20VM93L-4 ; 20VM93L-10 ; 20VM93L-11 ; 20VM93L-14,,no,
+engine_20V4000M93L.json,7132,Cause,null|string,100.0,7132,4166,null ; 9001 ; 9002 ; 9012,,no,
+engine_20V4000M93L.json,7132,criterio_pn,string,100.0,7132,0,MATCH_CATALOGO ; BEST_MATCH ; EMPTY ; C_NOISE_FOOTER,,no,
+engine_20V4000M93L.json,7132,Date,null|string,100.0,7132,3682,null ; 2022-01-10,,no,
+engine_20V4000M93L.json,7132,DD/DTNA,null,100.0,7132,7132,null,,no,
+engine_20V4000M93L.json,7132,Denomination (New Part Number),null|string,100.0,7132,3682,null ; IDENTIFICATION PLATE SELF-ADHESIVE ; WASHER ; GASKET,,no,
+engine_20V4000M93L.json,7132,Denomination(Cause),null|string,100.0,7132,6608,null ; Attention !! Technical clarifying with MTU F necessary,,no,
+engine_20V4000M93L.json,7132,depuracion_ts,string,100.0,7132,0,2026-04-27T00:11:37Z,,no,
+engine_20V4000M93L.json,7132,DESIGNATION,null|string,100.0,7132,165,PLATE ; EMI-LABEL EMI INFO ; INSPECT PORT COVER W /SAFETY VALVE ; WASHER,designation,no,
+engine_20V4000M93L.json,7132,designation_error,number,100.0,7132,0,1 ; 0 ; 2,,no,qa
+engine_20V4000M93L.json,7132,designation_final,null|string,100.0,7132,161,LABELaaa ; PLATE ; EMI-LABEL EMI INFO ; INSPECT PORT COVER W/SAFETY VALVE,,no,
+engine_20V4000M93L.json,7132,designation_gesa,null|string,100.0,7132,1298,LABEL ; null ; INSPECT PORT COVER W/SAFETY VALVE ; WASHER,,no,gesa
+engine_20V4000M93L.json,7132,designation_pdf,string,96.35,6872,0,PLATE ; EMI-LABEL EMI INFO ; INSPECT PORT COVER W/SAFETY VALVE ; WASHER,,yes,
+engine_20V4000M93L.json,7132,detalle_cambio,null|string,100.0,7132,104,match: 700425000155 ; 700425000169 ; 700425000170 ; 700425000182,,no,
+engine_20V4000M93L.json,7132,dimensions_gesa,null|string,100.0,7132,2762,70 ; null ; 8 ; M 10 X 25,,no,gesa
+engine_20V4000M93L.json,7132,engine,string,100.0,7132,0,4000,,no,
+engine_20V4000M93L.json,7132,engine_model,string,100.0,7132,0,20V4000M93L,,no,
+engine_20V4000M93L.json,7132,esquemas,string,100.0,7132,152,"20V4000M93L-1118-01.png ; 20V4000M93L-1119-01.png ; 20V4000M93L-1120-01.png ; 20V4000M93L-1122-01.png , 20V4000M93L-1122-02.png , 20V4000M93L-1123-01.png",,no,media
+engine_20V4000M93L.json,7132,esquemas_circulos,null|string,100.0,7132,412,20V4000M93L-1118-01-10.webp ; 20V4000M93L-1119-01-100.webp ; 20V4000M93L-1119-01-200.webp ; 20V4000M93L-1120-01-100.webp,,no,media
+engine_20V4000M93L.json,7132,esquemas_circulos_all,null|string,100.0,7132,190,20V4000M93L-1118-01-10.webp ; 20V4000M93L-1119-01-100.webp ; 20V4000M93L-1119-01-200.webp ; 20V4000M93L-1120-01-100.webp,,no,media
+engine_20V4000M93L.json,7132,existeix_gesa,boolean,100.0,7132,0,true ; false,,no,gesa
+engine_20V4000M93L.json,7132,existeix_sust_new,boolean,100.0,7132,0,false ; true,,no,sust
+engine_20V4000M93L.json,7132,existeix_sust_old,boolean,100.0,7132,0,false ; true,,no,sust
+engine_20V4000M93L.json,7132,exp_imagenes,string,100.0,7132,0,https://milu-naval.mystagingwebsite.com/wp-content/uploads/2026/02/20V4000M93L-1118-01-10.webp ; https://milu-naval.mystagingwebsite.com/wp-content/uploads/2026/02/20V4000M93L-1119-01-100.webp ; https://milu-naval.mystagingwebsite.com/wp-content/uploads/2026/02/20V4000M93L-1119-01-200.webp ; https://milu-naval.mystagingwebsite.com/wp-content/uploads/2026/02/20V4000M93L-1120-01-100.webp,,no,media
+engine_20V4000M93L.json,7132,FG/FGS,string,100.0,7132,0,004-05 ; 010-00 ; 011-05 ; 011-30,fg_fgs,no,
+engine_20V4000M93L.json,7132,fg_code,number,100.0,7132,0,4 ; 10 ; 11 ; 14,,no,
+engine_20V4000M93L.json,7132,fg_fgs_raw,string,100.0,7132,0,004-05 ; 010-00 ; 011-05 ; 011-30,,no,
+engine_20V4000M93L.json,7132,fgs_code_description,null|string,100.0,7132,32,4 LABELS AND AUXILIARY MATERIALS ; 10 CRANKCASE AND ATTACHMENTS ; 11 CRANKCASE ; 14 OIL PAN,,no,
+engine_20V4000M93L.json,7132,fgs_description,null|string,100.0,7132,32,LABELS AND AUXILIARY MATERIALS ; CRANKCASE AND ATTACHMENTS ; CRANKCASE ; OIL PAN,,no,
+engine_20V4000M93L.json,7132,filename_foto,null|string,100.0,7132,7038,null ; 5240111380.jpeg ; 0049976736.jpeg ; 5240510110.jpeg,,no,media
+engine_20V4000M93L.json,7132,FN,null|string,100.0,7132,6886,null ; SB EM ; SB ; EM,,no,
+engine_20V4000M93L.json,7132,fn_pdf,string,3.34,238,0,SB EM ; SB ; EM ; MN,,yes,
+engine_20V4000M93L.json,7132,gesa,string,100.0,7132,0,SI ; NO,,no,gesa
+engine_20V4000M93L.json,7132,gesa_pdf,string,14.55,1038,0,No,,yes,gesa
+engine_20V4000M93L.json,7132,has_error,boolean,100.0,7132,0,true ; false,,no,qa
+engine_20V4000M93L.json,7132,Hierarchie,null|string,100.0,7132,3682,null ; Superseded ; New,,no,sust
+engine_20V4000M93L.json,7132,ID,string,100.0,7132,0,1800001 ; 1800002 ; 1800003 ; 1800004,Id,no,
+engine_20V4000M93L.json,7132,libro_pag,string,100.0,7132,0,20V4000M93L-1118 ; 20V4000M93L-1119 ; 20V4000M93L-1120 ; 20V4000M93L-1123,,no,
+engine_20V4000M93L.json,7132,measure_final,null|string,100.0,7132,2716,70 ; null ; 8 ; M 10 X 25,,no,
+engine_20V4000M93L.json,7132,measure_pdf,string,54.5,3887,0,70 ; 8 ; M 10 X 25 ; M 8 X 50,,yes,
+engine_20V4000M93L.json,7132,measure_raw,null|string,100.0,7132,6847,null ; e: 930 / 1 ; N15007 ; MBN15005,,no,
+engine_20V4000M93L.json,7132,MEASUREMENT / STANDARD,null|string,100.0,7132,6847,null ; e: 930 / 1 ; N15007 ; MBN15005,,no,
+engine_20V4000M93L.json,7132,measurement_error,number,100.0,7132,0,0,,no,qa
+engine_20V4000M93L.json,7132,model,string,100.0,7132,0,20VM93L,,no,
+engine_20V4000M93L.json,7132,MODEL/TYPE,null|string,100.0,7132,6181,null ; 20V4000 ; 20V4000M93L ; H,model_type,no,
+engine_20V4000M93L.json,7132,MODEL/TYPE_final,null|string,100.0,7132,6181,null ; 20V4000 ; 20V4000M93L ; H,,no,
+engine_20V4000M93L.json,7132,model_final,null|string,100.0,7132,6181,null ; 20V4000 ; 20V4000M93L ; H,,no,
+engine_20V4000M93L.json,7132,model_type_pdf,string,8.95,638,0,20V4000 ; COVER FOR SENSOR ; TEMP. SENSOR ; HSK-M-PVDF,,yes,
+engine_20V4000M93L.json,7132,MSTAE,null|number,100.0,7132,3682,null ; 60 ; 99 ; 66,,no,
+engine_20V4000M93L.json,7132,MTART,null|string,100.0,7132,3682,null ; YHT ; YNOR ; YKFT,,no,
+engine_20V4000M93L.json,7132,MTU,null|string,100.0,7132,3686,null ; x,,no,
+engine_20V4000M93L.json,7132,New Part Number,null|string,100.0,7132,3682,null ; X53100400002 ; 000125008427 ; 5240111380,,no,
+engine_20V4000M93L.json,7132,norma,null|string,100.0,7132,3284,MMN425 ; null ; ISO7089 ; ISO4017,,no,gesa
+engine_20V4000M93L.json,7132,norma_error,number,100.0,7132,0,0,,no,qa|gesa
+engine_20V4000M93L.json,7132,norma_final,null|string,100.0,7132,3284,MMN425 ; null ; ISO7089 ; ISO4017,,no,gesa
+engine_20V4000M93L.json,7132,norma_pdf,string,43.42,3097,0,MMN425 ; ISO4017 ; DIN912 ; DIN835,,yes,gesa
+engine_20V4000M93L.json,7132,norma_raw,null|string,100.0,7132,4796,null ; ISO4017 ; DIN7603 ; DIN6796,,no,gesa
+engine_20V4000M93L.json,7132,normalizado,string,100.0,7132,0,SI ; NO,,no,gesa
+engine_20V4000M93L.json,7132,normalizado_pdf,string,43.62,3111,0,No,,yes,gesa
+engine_20V4000M93L.json,7132,nsn,null|string,100.0,7132,1798,null ; 5340124003165 ; 5310121494353 ; 5340124002938,,no,
+engine_20V4000M93L.json,7132,page4,string,100.0,7132,0,1118 ; 1119 ; 1120 ; 1123,,no,
+engine_20V4000M93L.json,7132,pages,string,100.0,7132,0,20V4000M93L-1118 ; 20V4000M93L-1119 ; 20V4000M93L-1120 ; 20V4000M93L-1123,,no,
+engine_20V4000M93L.json,7132,PART NO.,null|string,100.0,7132,104,700425000155 ; 700425000169 ; 700425000170 ; 700425000182,,no,
+engine_20V4000M93L.json,7132,pn_error,number,100.0,7132,0,0 ; 2 ; 1,,no,qa
+engine_20V4000M93L.json,7132,pn_final,null|string,100.0,7132,222,700425000155 ; 700425000169 ; 700425000170 ; 700425000182,,no,
+engine_20V4000M93L.json,7132,pn_new,null|string,100.0,7132,3682,null ; X53100400002 ; 000125008427 ; 5240111380,,no,
+engine_20V4000M93L.json,7132,pn_pdf,string,96.35,6872,0,700425000155 ; 700425000169 ; 700425000170 ; 700425000182,,yes,
+engine_20V4000M93L.json,7132,pn_raw,null|string,100.0,7132,104,700425000155 ; 700425000169 ; 700425000170 ; 700425000182,,no,
+engine_20V4000M93L.json,7132,pn_recomendado,null|string,100.0,7132,222,700425000155 ; 700425000169 ; 700425000170 ; X53100400002,,no,
+engine_20V4000M93L.json,7132,POS,null|string,100.0,7132,41,10 ; 100 ; 200 ; 1000,pos,no,
+engine_20V4000M93L.json,7132,pos_error,number,100.0,7132,0,0 ; 2,,no,qa
+engine_20V4000M93L.json,7132,pos_final,null|string,100.0,7132,41,10 ; 100 ; 200 ; 1000,,no,
+engine_20V4000M93L.json,7132,pos_pdf,string,95.5,6811,0,10 ; 100 ; 200 ; 1000,,yes,
+engine_20V4000M93L.json,7132,precio,number,100.0,7132,0,0,,no,
+engine_20V4000M93L.json,7132,Product Hierarchy,null|string,100.0,7132,3682,null ; P20 ; Q06 ; P40,,no,sust|wordpress
+engine_20V4000M93L.json,7132,qa_revision_accion,string,100.0,7132,0,importar ; revisar ; eliminar,,no,qa
+engine_20V4000M93L.json,7132,qa_revision_estado,string,100.0,7132,0,ok ; pendiente,,no,qa
+engine_20V4000M93L.json,7132,qa_revision_updated_at,string,0.36,26,0,2026-05-03T22:58:29.223Z ; 2026-05-04T18:00:14.425Z ; 2026-05-03T19:49:34.275Z ; 2026-05-03T19:59:08.652Z,,no,qa
+engine_20V4000M93L.json,7132,QTY,null|string,100.0,7132,589,null ; 1 ; 4 ; 7,qty,no,
+engine_20V4000M93L.json,7132,qty_final,null|string,100.0,7132,589,null ; 1 ; 4 ; 7,,no,
+engine_20V4000M93L.json,7132,qty_pdf,string,90.16,6430,0,1 ; 4 ; 7 ; 2,,yes,
+engine_20V4000M93L.json,7132,qty_units_final,null|string,100.0,7132,596,null ; PC ; pc ; 2015-07,,no,
+engine_20V4000M93L.json,7132,Replacement Type,null|string,100.0,7132,4166,null ; F ; I,,no,
+engine_20V4000M93L.json,7132,ruta_esquemas_pos,null|string,100.0,7132,412,https://milu-naval.mystagingwebsite.com/wp-content/uploads/2026/02/20V4000M93L-1118-01-10.webp ; https://milu-naval.mystagingwebsite.com/wp-content/uploads/2026/02/20V4000M93L-1119-01-100.webp ; https://milu-naval.mystagingwebsite.com/wp-content/uploads/2026/02/20V4000M93L-1119-01-200.webp ; https://milu-naval.mystagingwebsite.com/wp-content/uploads/2026/02/20V4000M93L-1120-01-100.webp,,no,media
+engine_20V4000M93L.json,7132,ruta_foto,null|string,100.0,7132,7038,null ; https://milu-naval.mystagingwebsite.com/wp-content/uploads/2026/01/5240111380.jpeg ; https://milu-naval.mystagingwebsite.com/wp-content/uploads/2026/01/0049976736.jpeg ; https://milu-naval.mystagingwebsite.com/wp-content/uploads/2026/01/5240510110.jpeg,,no,media
+engine_20V4000M93L.json,7132,Seq no,null|string,100.0,7132,3682,null ; 0009 ; 0011 ; 0002,,no,
+engine_20V4000M93L.json,7132,Source Page,string,100.0,7132,0,1118 ; 1119 ; 1120 ; 1123,source_page,no,
+engine_20V4000M93L.json,7132,source_file,string,100.0,7132,0,20V4000M93L.xlsx,,no,
+engine_20V4000M93L.json,7132,source_sheet,string,100.0,7132,0,1,,no,
+engine_20V4000M93L.json,7132,status,string,100.0,7132,0,OK_GESA ; REVISAR ; OK_SUST_OLD ; EMPTY,,no,
+engine_20V4000M93L.json,7132,Superseded Part Number,null|string,100.0,7132,3682,null ; 700425000182 ; 000125008427 ; 5240111380,,no,sust
+engine_20V4000M93L.json,7132,sust_hierarchie,null|string,100.0,7132,3696,null ; Superseded ; New,,yes,sust
+engine_20V4000M93L.json,7132,sust_new_part_number,null|string,100.0,7132,3696,null ; X53100400002 ; 000125008427 ; 5240111380,,no,sust
+engine_20V4000M93L.json,7132,sust_new_part_number_pdf,string,38.81,2768,0,000125008427 ; 5240111380 ; 304017008087 ; 000912008115,,yes,sust
+engine_20V4000M93L.json,7132,sust_status,string,100.0,7132,3696,SI,,no,sust
+engine_20V4000M93L.json,7132,sust_superseded_list,null|string,100.0,7132,4463,"null ; 000125008413, 000125008417, 000125008418, 000125008423, 000N06195/1, 000N13194/1, 00125008427, 06.15010-0211, 125008427, 5620980576 ; 5240111280 ; 000931008085, 000931008217, 000931008246, 000933008096, 000933008161, 000933008170, SUA304017008087",,no,sust
+engine_20V4000M93L.json,7132,sust_superseded_list_pdf,string,0.81,58,0,X00004694 ; X00004360 ; X00006699 ; X00004798,,yes,sust
+engine_20V4000M93L.json,7132,total_error,number,100.0,7132,0,1 ; 0 ; 2 ; 3,,no,qa
+engine_20V4000M93L.json,7132,UNITS,null|string,100.0,7132,596,null ; PC ; pc ; 2015-07,units,no,
+engine_20V4000M93L.json,7132,units,null|string,100.0,7132,1298,KGM ; null,UNITS,no,
+engine_20V4000M93L.json,7132,units_pdf,string,89.69,6397,0,pc ; pc 4.900 ; pc 4.300 ; pc 72.400,,yes,
+engine_20V4000M93L.json,7132,Valid From Date,null|string,100.0,7132,4152,null ; 2011-05-01 ; 2006-07-01 ; 1997-04-01,,no,
+engine_20V4000M93L.json,7132,WEIGHT,null|string,100.0,7132,2447,"null ; 1.500 g A 8,4 DIN125 ; 22.800 g M 10 X 25 ISO4017 ; 13.800 g 95 X 5 MMN429",weight,no,
+engine_20V4000M93L.json,7132,weight_error,number,100.0,7132,0,0 ; 1,,no,qa
+engine_20V4000M93L.json,7132,weight_final,null|string,100.0,7132,768,0.002 KGM ; null ; 4.61 KGM ; 0.001 KGM,,no,
+engine_20V4000M93L.json,7132,weight_gesa,null|number,100.0,7132,1298,0.002 ; null ; 4.61 ; 0.001,,no,gesa
+engine_20V4000M93L.json,7132,weight_pdf,string,64.5,4600,0,"1.500 g A 8,4 DIN125 ; 22.800 g M 10 X 25 ISO4017 ; 13.800 g 95 X 5 MMN429 ; 21.300 g M 8 X 50 ISO4017",,yes,
+qa_synthetic_new.json,5123,atributo,string,100.0,5123,0,"12VM40A-11, 12VM40A-143, 12VM40A-202, 12VM53-11, 12VM53-202, 16VM61-11, 16VM61-202, 16VM73-11, 16VM73-202, 16VM73L-202, 16VM90-11, 16VM90-14 ; 12VM40A-101, 12VM40A-11, 12VM40A-124, 12VM40A-126, 12VM40A-128, 12VM40A-142, 12VM40A-145, 12VM40A-18, 12VM40A-183, 12VM40A-189, 12VM40A-202, ; 12VM40A-11, 12VM53-11, 16VM61-11, 16VM73-11, 16VM73L-11, 16VM90-11, 20VM93-11, 20VM93L-11 ; 12VM40A-11, 16VM61-11, 16VM90-11",,no,
+qa_synthetic_new.json,5123,BOM_no,string,100.0,5123,0,010.00475 ; 5260101605 ; 010.00021 ; XS526010.00022,BOM-No.|bom_no,no,
+qa_synthetic_new.json,5123,designation,string,100.0,5123,386,VALVE DRAIN ; WASHER ; BOLT HEX SOC HD ; BOLT HEX,DESIGNATION,no,
+qa_synthetic_new.json,5123,EN_EXCEL_SUSTITUCION,string,100.0,5123,3851,SI,,no,sust
+qa_synthetic_new.json,5123,engine,string,100.0,5123,0,4000,,no,
+qa_synthetic_new.json,5123,esquema_general,string,100.0,5123,5123,,,no,media
+qa_synthetic_new.json,5123,exp_categorias,string,100.0,5123,0,"12VM40A-11, 12VM40A-143, 12VM40A-202, 12VM53-11, 12VM53-202, 16VM61-11, 16VM61-202, 16VM73-11, 16VM73-202, 16VM73L-202, 16VM90-11, 16VM90-14 ; 12VM40A-101, 12VM40A-11, 12VM40A-124, 12VM40A-126, 12VM40A-128, 12VM40A-142, 12VM40A-145, 12VM40A-18, 12VM40A-183, 12VM40A-189, 12VM40A-202, ; 12VM40A-11, 12VM53-11, 16VM61-11, 16VM73-11, 16VM73L-11, 16VM90-11, 20VM93-11, 20VM93L-11 ; 12VM40A-11, 16VM61-11, 16VM90-11",,no,
+qa_synthetic_new.json,5123,exp_imagenes,string,100.0,5123,0,"https://milu-naval.mystagingwebsite.com/wp-content/uploads/2026/01/0049976736.jpeg, https://milu-naval.mystagingwebsite.com/wp-content/uploa ; https://milu-naval.mystagingwebsite.com/wp-content/uploads/2026/02/12V4000M40A-0012-01-145.webp ; https://milu-naval.mystagingwebsite.com/wp-content/uploads/2026/02/12V4000M40A-0012-01-70.webp ; https://milu-naval.mystagingwebsite.com/wp-content/uploads/2026/02/12V4000M40A-0012-01-140.webp",,no,media
+qa_synthetic_new.json,5123,exp_motor,string,100.0,5123,0,"12V4000M40A, 12V4000M53, 16V4000M61, 16V4000M73, 16V4000M73L, 16V4000M90, 20V4000M93, 20V4000M93L ; 12V4000M40A, 16V4000M61, 16V4000M90 ; 12V4000M40A, 16V4000M61, 16V4000M73, 16V4000M73L, 16V4000M90, 20V4000M93, 20V4000M93L ; 12V4000M40A",,no,
+qa_synthetic_new.json,5123,fecha_version,string,100.0,5123,0,20260415.0222,,no,
+qa_synthetic_new.json,5123,fg_code,number,100.0,5123,0,11 ; 14 ; 16 ; 18,,no,
+qa_synthetic_new.json,5123,fg_code_description,string,100.0,5123,19,"11 CRANKCASE ; 14 OIL PAN ; 16 END HOUSING, DRIVING END AND FREE END ; 18 CRANKCASE BREATHER",,no,
+qa_synthetic_new.json,5123,fg_description,string,100.0,5123,19,"CRANKCASE ; OIL PAN ; END HOUSING, DRIVING END AND FREE END ; CRANKCASE BREATHER",,no,
+qa_synthetic_new.json,5123,GESA_NORM,string,100.0,5123,4002,ISO7089 ; DIN912 ; DIN931 ; DIN933,,no,gesa
+qa_synthetic_new.json,5123,GESA_NORMALIZADO,string,100.0,5123,0,NO ; SI,,no,gesa
+qa_synthetic_new.json,5123,measurement,string,100.0,5123,2875,10 ; M 8 X 16 ; M 10 X 90 ; M 10 X 20,,no,
+qa_synthetic_new.json,5123,model_type,string,100.0,5123,0,"12VM40A, 12VM53, 16VM61, 16VM73, 16VM73L, 16VM90, 20VM93, 20VM93L ; 12VM40A, 16VM61, 16VM90 ; 12VM40A, 16VM61, 16VM73, 16VM73L, 16VM90, 20VM93, 20VM93L ; 12VM40A",MODEL/TYPE,no,
+qa_synthetic_new.json,5123,new_pn_relacionado,null|string,100.0,5123,3851,0049976736 ; 000125010524 ; 000912008115 ; 000931010237,,no,
+qa_synthetic_new.json,5123,nsn,string,100.0,5123,2251,4820123372715 ; 5310121565471 ; 5305121696486 ; 5305121428231,,no,
+qa_synthetic_new.json,5123,old_pn_relacionados,null|string,100.0,5123,3916,"0009970436, 06.93160-0120, 071401018200, 111L37701/1, 5509970036 ; 000125010500, 000125010513, 000125010517, 000125010518, 000125010521, 06.15010-0212 ; 000912008005, 000912008085, 000912008143, 06.02093-0405 ; 000931010141, 197Y00007/1",,no,
+qa_synthetic_new.json,5123,PAG,string,100.0,5123,0,"12V4000M40A-0013, 12V4000M40A-0157, 12V4000M40A-0246, 12V4000M53-0022, 12V4000M53-0247, 12V4000M53-0377, 12V4000M53-0602, 16V4000M61-0012, 1 ; 12V4000M40A-0013, 12V4000M40A-0029, 12V4000M40A-0080, 12V4000M40A-0098, 12V4000M40A-0120, 12V4000M40A-0126, 12V4000M40A-0143, 12V4000M40A-01 ; 12V4000M40A-0013, 12V4000M53-0022, 12V4000M53-0377, 16V4000M61-0012, 16V4000M61-0519, 16V4000M73-0026, 16V4000M73-0380, 16V4000M73-0734, 16V ; 12V4000M40A-0013, 16V4000M61-0012, 16V4000M61-0519, 16V4000M90-0017",,no,
+qa_synthetic_new.json,5123,pn,string,100.0,5123,0,0049976736 ; 000125010524 ; 000912008115 ; 000931010237,,no,
+qa_synthetic_new.json,5123,ruta_foto,null|string,100.0,5123,5063,https://milu-naval.mystagingwebsite.com/wp-content/uploads/2026/01/0049976736.jpeg ; null ; https://milu-naval.mystagingwebsite.com/wp-content/uploads/2026/01/5240114210.jpeg ; https://milu-naval.mystagingwebsite.com/wp-content/uploads/2026/01/5240510110.jpeg,,no,media
+qa_synthetic_new.json,5123,SUST_TIPO,string,100.0,5123,3851,New,,no,sust
+qa_synthetic_new.json,5123,TIPOARTICULO,string,100.0,5123,0,piezas,,no,
+qa_synthetic_new.json,5123,type,string,100.0,5123,5123,,,no,
+qa_synthetic_new.json,5123,weight,number,100.0,5123,0,0.125 ; 0.003 ; 0.011 ; 0.061,WEIGHT,no,
+qa_synthetic_new.json,5123,weight_txt,string,100.0,5123,0,0.125 KGM ; 0.003 KGM ; 0.011 KGM ; 0.061 KGM,,no,
+qa_synthetic_superseded.json,638,atributo,string,100.0,638,0,"12VM40A-11, 16VM61-11, 16VM90-11 ; 12VM40A-11 ; 12VM40A-14 ; 12VM40A-111, 12VM40A-124, 12VM40A-126, 12VM40A-14, 12VM40A-143, 12VM40A-202, 12VM40A-206, 12VM53-14, 12VM53-203, 12VM53-206, 16VM61-120, 16V",,no,
+qa_synthetic_superseded.json,638,BOM_no,string,100.0,638,0,010.00475 ; 5260101605 ; 010.00002 ; 010.00061,BOM-No.|bom_no,no,
+qa_synthetic_superseded.json,638,designation,string,100.0,638,5,FILLER PIECE STRIP ; CRANKCASE ; CYLINDER LINER ; OIL FILLER NECK,DESIGNATION,no,
+qa_synthetic_superseded.json,638,EN_EXCEL_SUSTITUCION,string,100.0,638,0,SI,,no,sust
+qa_synthetic_superseded.json,638,engine,string,100.0,638,0,4000,,no,
+qa_synthetic_superseded.json,638,esquema_general,string,100.0,638,638,,,no,media
+qa_synthetic_superseded.json,638,exp_categorias,string,100.0,638,0,"12VM40A-11, 16VM61-11, 16VM90-11 ; 12VM40A-11 ; 12VM40A-14 ; 12VM40A-111, 12VM40A-124, 12VM40A-126, 12VM40A-14, 12VM40A-143, 12VM40A-202, 12VM40A-206, 12VM53-14, 12VM53-203, 12VM53-206, 16VM61-120, 16V",,no,
+qa_synthetic_superseded.json,638,exp_imagenes,string,100.0,638,0,https://milu-naval.mystagingwebsite.com/wp-content/uploads/2026/02/12V4000M40A-0012-01-60.webp ; https://milu-naval.mystagingwebsite.com/wp-content/uploads/2026/02/12V4000M40A-0012-01-168.webp ; https://milu-naval.mystagingwebsite.com/wp-content/uploads/2026/02/12V4000M40A-0014-01-80.webp ; https://milu-naval.mystagingwebsite.com/wp-content/uploads/2026/02/12V4000M40A-0014-01-90.webp,,no,media
+qa_synthetic_superseded.json,638,exp_motor,string,100.0,638,0,"12V4000M40A, 16V4000M61, 16V4000M90 ; 12V4000M40A ; 12V4000M40A, 12V4000M53, 16V4000M61, 16V4000M73, 16V4000M73L, 16V4000M90, 20V4000M93, 20V4000M93L ; 12V4000M40A, 16V4000M61, 16V4000M73, 16V4000M73L, 16V4000M90, 20V4000M93L",,no,
+qa_synthetic_superseded.json,638,fecha_version,string,100.0,638,0,20260415.0222,,no,
+qa_synthetic_superseded.json,638,fg_code,number,100.0,638,0,11 ; 14 ; 15 ; 16,,no,
+qa_synthetic_superseded.json,638,fg_code_description,string,100.0,638,7,"11 CRANKCASE ; 14 OIL PAN ; 15 ENGINE MOUNTING ; 16 END HOUSING, DRIVING END AND FREE END",,no,
+qa_synthetic_superseded.json,638,fg_description,string,100.0,638,7,"CRANKCASE ; OIL PAN ; ENGINE MOUNTING ; END HOUSING, DRIVING END AND FREE END",,no,
+qa_synthetic_superseded.json,638,GESA_NORM,string,100.0,638,611,MTN5342 ; DIN472 ; MTN5038 ; ISO4017,,no,gesa
+qa_synthetic_superseded.json,638,GESA_NORMALIZADO,string,100.0,638,0,NO ; SI,,no,gesa
+qa_synthetic_superseded.json,638,measurement,string,100.0,638,542,A 70 X 5 ; A 33 X 5 ; A 83 X 5 ; EM,,no,
+qa_synthetic_superseded.json,638,model_type,string,100.0,638,0,"12VM40A, 16VM61, 16VM90 ; 12VM40A ; 12VM40A, 12VM53, 16VM61, 16VM73, 16VM73L, 16VM90, 20VM93, 20VM93L ; 12VM40A, 16VM61, 16VM73, 16VM73L, 16VM90, 20VM93L",MODEL/TYPE,no,
+qa_synthetic_superseded.json,638,new_pn_relacionado,string,100.0,638,0,X52401100023 ; EX52601100091 ; X52401300016 ; X52401300017,,no,
+qa_synthetic_superseded.json,638,nsn,string,100.0,638,573,5331121629994 ; 5331123109312 ; 2815123785012 ; 5330123843223,,no,
+qa_synthetic_superseded.json,638,old_pn_relacionados,null,100.0,638,638,null,,no,
+qa_synthetic_superseded.json,638,PAG,string,100.0,638,0,"12V4000M40A-0013, 16V4000M61-0012, 16V4000M61-0519, 16V4000M90-0017 ; 12V4000M40A-0013 ; 12V4000M40A-0014, 16V4000M61-0013, 16V4000M61-0520, 16V4000M90-0018 ; 12V4000M40A-0017",,no,
+qa_synthetic_superseded.json,638,pn,string,100.0,638,0,5240110440 ; E5260101605 ; 5240114410 ; 5240114510,,no,
+qa_synthetic_superseded.json,638,ruta_foto,null|string,100.0,638,634,null ; https://milu-naval.mystagingwebsite.com/wp-content/uploads/2026/01/X00008369.jpeg ; https://milu-naval.mystagingwebsite.com/wp-content/uploads/2026/01/5240530120.jpeg ; https://milu-naval.mystagingwebsite.com/wp-content/uploads/2026/01/5110850960.jpeg,,no,media
+qa_synthetic_superseded.json,638,SUST_TIPO,string,100.0,638,0,Superseded,,no,sust
+qa_synthetic_superseded.json,638,TIPOARTICULO,string,100.0,638,0,piezas,,no,
+qa_synthetic_superseded.json,638,type,string,100.0,638,638,,,no,
+qa_synthetic_superseded.json,638,vinculo,string,100.0,638,0,milu-naval.mystagingwebsite.com/producto/X52401100023 ; milu-naval.mystagingwebsite.com/producto/EX52601100091 ; milu-naval.mystagingwebsite.com/producto/X52401300016 ; milu-naval.mystagingwebsite.com/producto/X52401300017,,no,
+qa_synthetic_superseded.json,638,weight,number,100.0,638,0,0 ; 0.01 ; 0.004 ; 1.347,WEIGHT,no,
+qa_synthetic_superseded.json,638,weight_txt,string,100.0,638,0,0.000 KGM ; 0.010 KGM ; 0.004 KGM ; 1.347 KGM,,no,
+zz_old/df_116_bom.json,63914,atributo2,string,100.0,63914,0,Actualizados,,no,
+zz_old/df_116_bom.json,63914,BOM-No.,string,100.0,63914,0,010.00475 ; 5260101605 ; 010.00021 ; XS526010.00022,BOM_no|bom_no,no,
+zz_old/df_116_bom.json,63914,categoria,string,100.0,63914,0,12VM40A-11 ; 12VM40A-14 ; 12VM40A-15 ; 12VM40A-16,,no,
+zz_old/df_116_bom.json,63914,Cause,null|string,100.0,63914,37296,null ; 9002 ; 9001 ; 9012,,no,
+zz_old/df_116_bom.json,63914,criterio_pn,string,100.0,63914,0,EMPTY ; MATCH_CATALOGO ; BEST_MATCH ; Z_NO_TOUCH,,no,
+zz_old/df_116_bom.json,63914,Date,null|string,100.0,63914,34512,null ; 2022-01-10,,no,
+zz_old/df_116_bom.json,63914,DD/DTNA,null,100.0,63914,63914,null,,no,
+zz_old/df_116_bom.json,63914,Denomination (New Part Number),null|string,100.0,63914,34512,null ; VALVE DRAIN ; WASHER ; BOLT HEX SOC HD,,no,
+zz_old/df_116_bom.json,63914,Denomination(Cause),null|string,100.0,63914,59336,null ; Attention !!  Technical clarifying with MTU F necessary,,no,
+zz_old/df_116_bom.json,63914,DESIGNATION,null|string,100.0,63914,1213,CRANKCASE ; VALVE DRAIN ; WASHER ; BOLT HEX SOC HD,designation,no,
+zz_old/df_116_bom.json,63914,designation_gesa,null|string,100.0,63914,10525,null ; VALVE DRAIN ; WASHER ; BOLT HEX SOC HD,,no,gesa
+zz_old/df_116_bom.json,63914,detalle_cambio,null|string,100.0,63914,1013,null ; match: 0049976736 ; match: 000125010524 ; match: 000912008115,,no,
+zz_old/df_116_bom.json,63914,dimensions_gesa,null|string,100.0,63914,24766,null ; 10 ; M  8  X 16 ; M 10  X 90,,no,gesa
+zz_old/df_116_bom.json,63914,engine,string,100.0,63914,0,4000,,no,
+zz_old/df_116_bom.json,63914,engine_model,string,100.0,63914,0,12V4000M40A ; 12V4000M53 ; 16V4000M61 ; 16V4000M73,,no,
+zz_old/df_116_bom.json,63914,esquemas,string,100.0,63914,3007,"12V4000M40A-0012-01.png , 12V4000M40A-0012-02.png ; 12V4000M40A-0014-01.png ; 12V4000M40A-0015-01.png ; 12V4000M40A-0016-01.png",,no,media
+zz_old/df_116_bom.json,63914,esquemas_circulos,null|string,100.0,63914,17267,12V4000M40A-0012-01-50.webp ; 12V4000M40A-0012-01-80.webp ; 12V4000M40A-0012-01-145.webp ; 12V4000M40A-0012-01-70.webp,,no,media
+zz_old/df_116_bom.json,63914,esquemas_circulos_all,null|string,100.0,63914,3273,"12V4000M40A-0012-01-50.webp , 12V4000M40A-0012-02-50.webp ; 12V4000M40A-0012-01-80.webp , 12V4000M40A-0012-02-80.webp ; 12V4000M40A-0012-01-145.webp , 12V4000M40A-0012-02-145.webp ; 12V4000M40A-0012-01-70.webp , 12V4000M40A-0012-02-70.webp",,no,media
+zz_old/df_116_bom.json,63914,existeix_gesa,boolean,100.0,63914,0,false ; true,,no,gesa
+zz_old/df_116_bom.json,63914,existeix_sust_new,boolean,100.0,63914,0,false ; true,,no,sust
+zz_old/df_116_bom.json,63914,existeix_sust_old,boolean,100.0,63914,0,false ; true,,no,sust
+zz_old/df_116_bom.json,63914,FG/FGS,string,100.0,63914,0,011-05 ; 011-30 ; 011-40 ; 014-05,fg_fgs,no,
+zz_old/df_116_bom.json,63914,fg_code,number,100.0,63914,0,11 ; 14 ; 15 ; 16,,no,
+zz_old/df_116_bom.json,63914,fg_fgs_raw,string,100.0,63914,0,011-05 ; 011-30 ; 011-40 ; 014-05,,no,
+zz_old/df_116_bom.json,63914,fgs_code_description,null|string,100.0,63914,41,"11 CRANKCASE ; 14 OIL PAN ; 15 ENGINE MOUNTING ; 16 END HOUSING, DRIVING END AND FREE END",,no,
+zz_old/df_116_bom.json,63914,fgs_description,null|string,100.0,63914,41,"CRANKCASE ; OIL PAN ; ENGINE MOUNTING ; END HOUSING, DRIVING END AND FREE END",,no,
+zz_old/df_116_bom.json,63914,filename_foto,null|string,100.0,63914,62890,null ; 0049976736.jpeg ; 5240114210.jpeg ; 5240510110.jpeg,,no,media
+zz_old/df_116_bom.json,63914,FN,null|string,100.0,63914,61129,EM ; null ; MN EM ; MN,,no,
+zz_old/df_116_bom.json,63914,gesa,string,100.0,63914,0,NO ; SI,,no,gesa
+zz_old/df_116_bom.json,63914,Hierarchie,null|string,100.0,63914,34512,null ; New ; Superseded,,no,sust
+zz_old/df_116_bom.json,63914,ID,string,100.0,63914,0,1100001 ; 1100400 ; 1100501 ; 1100646,Id,no,
+zz_old/df_116_bom.json,63914,libro_pag,string,100.0,63914,0,12V4000M40A-0013 ; 12V4000M40A-0014 ; 12V4000M40A-0015 ; 12V4000M40A-0016,,no,
+zz_old/df_116_bom.json,63914,MEASUREMENT / STANDARD,null|string,100.0,63914,43633,null ; DIN125 ; DIN912 ; DIN931,,no,
+zz_old/df_116_bom.json,63914,model,string,100.0,63914,0,12VM40A ; 12VM53 ; 16VM61 ; 16VM73,,no,
+zz_old/df_116_bom.json,63914,MODEL/TYPE,null|string,100.0,63914,56341,null ; 4000 ; BR 4000 ; BR4000,model_type,no,
+zz_old/df_116_bom.json,63914,MSTAE,null|number,100.0,63914,34512,null ; 60 ; 99 ; 66,,no,
+zz_old/df_116_bom.json,63914,MTART,null|string,100.0,63914,34512,null ; YKFT ; YNOR ; YHT,,no,
+zz_old/df_116_bom.json,63914,MTU,null|string,100.0,63914,34518,null ; x,,no,
+zz_old/df_116_bom.json,63914,New Part Number,null|string,100.0,63914,34512,null ; 0049976736 ; 000125010524 ; 000912008115,,no,
+zz_old/df_116_bom.json,63914,norma,null|string,100.0,63914,32978,null ; ISO7089 ; DIN912 ; DIN931,,no,gesa
+zz_old/df_116_bom.json,63914,normalizado,string,100.0,63914,0,NO ; SI,,no,gesa
+zz_old/df_116_bom.json,63914,nsn,null|string,100.0,63914,14927,null ; 4820123372715 ; 5310121565471 ; 5305121696486,,no,
+zz_old/df_116_bom.json,63914,PART NO.,null|string,100.0,63914,1013,null ; 0049976736 ; 000125010524 ; 000912008115,,no,
+zz_old/df_116_bom.json,63914,pn_final,null|string,100.0,63914,2992,null ; 0049976736 ; 000125010524 ; 000912008115,,no,
+zz_old/df_116_bom.json,63914,pn_new,null|string,100.0,63914,34512,null ; 0049976736 ; 000125010524 ; 000912008115,,no,
+zz_old/df_116_bom.json,63914,pn_raw,null|string,100.0,63914,1013,null ; 0049976736 ; 000125010524 ; 000912008115,,no,
+zz_old/df_116_bom.json,63914,pn_recomendado,null|string,100.0,63914,2992,null ; 0049976736 ; 000125010524 ; 000912008115,,no,
+zz_old/df_116_bom.json,63914,POS,null|string,100.0,63914,281,50 ; 80 ; 145 ; 70,pos,no,
+zz_old/df_116_bom.json,63914,precio,number,100.0,63914,0,0,,no,
+zz_old/df_116_bom.json,63914,Product Hierarchy,null|string,100.0,63914,34512,null ; P40 ; Q06 ; P42,,no,sust|wordpress
+zz_old/df_116_bom.json,63914,QTY,null|string,100.0,63914,9149,1 ; 2 ; 25 ; 19,qty,no,
+zz_old/df_116_bom.json,63914,Replacement Type,null|string,100.0,63914,37296,null ; F ; I,,no,
+zz_old/df_116_bom.json,63914,ruta_esquemas_pos,null|string,100.0,63914,17267,https://milu-naval.mystagingwebsite.com/wp-content/uploads/2026/02/12V4000M40A-0012-01-50.webp ; https://milu-naval.mystagingwebsite.com/wp-content/uploads/2026/02/12V4000M40A-0012-01-80.webp ; https://milu-naval.mystagingwebsite.com/wp-content/uploads/2026/02/12V4000M40A-0012-01-145.webp ; https://milu-naval.mystagingwebsite.com/wp-content/uploads/2026/02/12V4000M40A-0012-01-70.webp,,no,media
+zz_old/df_116_bom.json,63914,ruta_foto,null|string,100.0,63914,62890,null ; https://milu-naval.mystagingwebsite.com/wp-content/uploads/2026/01/0049976736.jpeg ; https://milu-naval.mystagingwebsite.com/wp-content/uploads/2026/01/5240114210.jpeg ; https://milu-naval.mystagingwebsite.com/wp-content/uploads/2026/01/5240510110.jpeg,,no,media
+zz_old/df_116_bom.json,63914,Seq no,null|string,100.0,63914,34512,null ; 0006 ; 0007 ; 0005,,no,
+zz_old/df_116_bom.json,63914,Source Page,string,100.0,63914,0,13 ; 14 ; 15 ; 16,source_page,no,
+zz_old/df_116_bom.json,63914,source_file,string,100.0,63914,0,12V4000M40A.xlsx ; 12V4000M53.xlsx ; 16V4000M61.xlsx ; 16V4000M73.xlsx,,no,
+zz_old/df_116_bom.json,63914,source_sheet,string,100.0,63914,0,1,,no,
+zz_old/df_116_bom.json,63914,status,string,100.0,63914,0,EMPTY ; OK_GESA ; OK_SUST_OLD ; REVISAR,,no,
+zz_old/df_116_bom.json,63914,Superseded Part Number,null|string,100.0,63914,34512,null ; 0049976736 ; 000125010524 ; 000912008115,,no,sust
+zz_old/df_116_bom.json,63914,sust_hierarchie,null|string,100.0,63914,34776,null ; New ; Superseded,,yes,sust
+zz_old/df_116_bom.json,63914,sust_new_part_number,null|string,100.0,63914,34776,null ; 0049976736 ; 000125010524 ; 000912008115,,no,sust
+zz_old/df_116_bom.json,63914,sust_status,string,100.0,63914,34776,SI,,no,sust
+zz_old/df_116_bom.json,63914,sust_superseded_list,null|string,100.0,63914,39968,"null ; 0009970436, 06.93160-0120, 071401018200, 111L37701/1, 5509970036 ; 000125010500, 000125010513, 000125010517, 000125010518, 000125010521, 06.15010-0212 ; 000912008005, 000912008085, 000912008143, 06.02093-0405",,no,sust
+zz_old/df_116_bom.json,63914,UNITS,null|string,100.0,63914,6510,"PC ; PC 1,500 G ; PC 11,900 G ; PC 44,250 G",units,no,
+zz_old/df_116_bom.json,63914,units,null|string,100.0,63914,10525,null ; KGM,UNITS,no,
+zz_old/df_116_bom.json,63914,Valid From Date,null|string,100.0,63914,37231,null ; 1996-04-01 ; 1994-03-01 ; 1997-10-01,,no,
+zz_old/df_116_bom.json,63914,WEIGHT,null|string,100.0,63914,24597,"1.707 TO ; null ; 3,100 G ; 12 G",weight,no,
+zz_old/df_116_bom.json,63914,weight_gesa,null|number,100.0,63914,10525,null ; 0.125 ; 0.003 ; 0.011,,no,gesa
+zz_old/qa_index.json,63914,atributo2,string,100.0,63914,0,Actualizados,,no,
+zz_old/qa_index.json,63914,bom_no,string,100.0,63914,0,010.00475 ; 5260101605 ; 010.00021 ; XS526010.00022,BOM-No.|BOM_no,no,
+zz_old/qa_index.json,63914,book,string,100.0,63914,0,12V4000M40A ; 12V4000M53 ; 16V4000M61 ; 16V4000M73,,no,
+zz_old/qa_index.json,63914,book_set,string,100.0,63914,0,12V4000M40A ; 12V4000M53 ; 16V4000M61 ; 16V4000M73,,no,
+zz_old/qa_index.json,63914,categoria,string,100.0,63914,0,12VM40A-11 ; 12VM40A-14 ; 12VM40A-15 ; 12VM40A-16,,no,
+zz_old/qa_index.json,63914,designation,null|string,100.0,63914,1213,CRANKCASE ; VALVE DRAIN ; WASHER ; BOLT HEX SOC HD,DESIGNATION,no,
+zz_old/qa_index.json,63914,designation_gesa,null|string,100.0,63914,10525,null ; VALVE DRAIN ; WASHER ; BOLT HEX SOC HD,,no,gesa
+zz_old/qa_index.json,63914,dimensions_final,null|string,100.0,63914,24766,null ; 10 ; M 8 X 16 ; M 10 X 90,,no,
+zz_old/qa_index.json,63914,dimensions_gesa,null|string,100.0,63914,24766,null ; 10 ; M 8 X 16 ; M 10 X 90,,no,gesa
+zz_old/qa_index.json,63914,engine,string,100.0,63914,0,4000,,no,
+zz_old/qa_index.json,63914,engine_model,string,100.0,63914,0,12V4000M40A ; 12V4000M53 ; 16V4000M61 ; 16V4000M73,,no,
+zz_old/qa_index.json,63914,esq_circ_raw,null|string,100.0,63914,17267,12V4000M40A-0012-01-50.webp ; 12V4000M40A-0012-01-80.webp ; 12V4000M40A-0012-01-145.webp ; 12V4000M40A-0012-01-70.webp,,no,
+zz_old/qa_index.json,63914,esq_raw,null|string,100.0,63914,3007,"12V4000M40A-0012-01.png , 12V4000M40A-0012-02.png ; 12V4000M40A-0014-01.png ; 12V4000M40A-0015-01.png ; 12V4000M40A-0016-01.png",,no,
+zz_old/qa_index.json,63914,fecha_version,string,100.0,63914,0,20260215.0335,,no,
+zz_old/qa_index.json,63914,fg_code,string,100.0,63914,0,11 ; 14 ; 15 ; 16,,no,
+zz_old/qa_index.json,63914,fg_fgs,string,100.0,63914,0,011-05 ; 011-30 ; 011-40 ; 014-05,FG/FGS,no,
+zz_old/qa_index.json,63914,fg_fgs_raw,string,100.0,63914,0,011-05 ; 011-30 ; 011-40 ; 014-05,,no,
+zz_old/qa_index.json,63914,fgs_code_description,null|string,100.0,63914,41,"11 CRANKCASE ; 14 OIL PAN ; 15 ENGINE MOUNTING ; 16 END HOUSING, DRIVING END AND FREE END",,no,
+zz_old/qa_index.json,63914,fgs_description,null|string,100.0,63914,41,"CRANKCASE ; OIL PAN ; ENGINE MOUNTING ; END HOUSING, DRIVING END AND FREE END",,no,
+zz_old/qa_index.json,63914,FN,null|string,100.0,63914,61129,EM ; null ; MN EM ; MN,,no,
+zz_old/qa_index.json,63914,foto_raw,null,100.0,63914,63914,null,,no,media
+zz_old/qa_index.json,63914,gesa,string,100.0,63914,0,NO ; SI,,no,gesa
+zz_old/qa_index.json,63914,has_img,boolean,100.0,63914,0,true ; false,,no,media
+zz_old/qa_index.json,63914,has_schema,boolean,100.0,63914,0,true ; false,,no,media
+zz_old/qa_index.json,63914,Id,number,100.0,63914,0,1 ; 2 ; 3 ; 4,ID,no,
+zz_old/qa_index.json,63914,img_count,number,100.0,63914,0,1 ; 2 ; 0 ; 3,,no,media
+zz_old/qa_index.json,63914,img_urls,array|string,100.0,63914,17032,"https://milu-naval.mystagingwebsite.com/wp-content/uploads/2026/02/12V4000M40A-0012-01-50.webp ; [""https://milu-naval.mystagingwebsite.com/wp-content/uploads/2026/01/0049976736.jpeg"",""https://milu-naval.mystagingwebsite.com/wp-content/up ; https://milu-naval.mystagingwebsite.com/wp-content/uploads/2026/02/12V4000M40A-0012-01-145.webp ; https://milu-naval.mystagingwebsite.com/wp-content/uploads/2026/02/12V4000M40A-0012-01-70.webp",,yes,media
+zz_old/qa_index.json,63914,is_multi,boolean,100.0,63914,0,false ; true,,no,
+zz_old/qa_index.json,63914,is_placeholder,boolean,100.0,63914,0,false,,no,
+zz_old/qa_index.json,63914,is_superseded,boolean,100.0,63914,0,false ; true,,no,sust
+zz_old/qa_index.json,63914,libro_pag,string,100.0,63914,0,12V4000M40A-0013 ; 12V4000M40A-0014 ; 12V4000M40A-0015 ; 12V4000M40A-0016,,no,
+zz_old/qa_index.json,63914,measurement,null|string,100.0,63914,43633,null ; DIN125 ; DIN912 ; DIN931,,no,
+zz_old/qa_index.json,63914,model,string,100.0,63914,0,12VM40A ; 12VM53 ; 16VM61 ; 16VM73,,no,
+zz_old/qa_index.json,63914,model_type,null|string,100.0,63914,56341,null ; 4000 ; BR 4000 ; BR4000,MODEL/TYPE,no,
+zz_old/qa_index.json,63914,norma_final,null|string,100.0,63914,30347,EM ; null ; ISO7089 ; DIN912,,no,gesa
+zz_old/qa_index.json,63914,norma_raw,null|string,100.0,63914,32978,null ; ISO7089 ; DIN912 ; DIN931,,no,gesa
+zz_old/qa_index.json,63914,normalizado,string,100.0,63914,0,NO ; SI,,no,gesa
+zz_old/qa_index.json,63914,nsn,null|string,100.0,63914,14927,null ; 4820123372715 ; 5310121565471 ; 5305121696486,,no,
+zz_old/qa_index.json,63914,page,string,100.0,63914,0,0013 ; 0014 ; 0015 ; 0016,,no,
+zz_old/qa_index.json,63914,pages,string,100.0,63914,0,12V4000M40A-0013 ; 12V4000M40A-0014 ; 12V4000M40A-0015 ; 12V4000M40A-0016,,no,
+zz_old/qa_index.json,63914,pn,null|string,100.0,63914,1013,null ; 0049976736 ; 000125010524 ; 000912008115,,no,
+zz_old/qa_index.json,63914,pos,null|string,100.0,63914,281,50 ; 80 ; 145 ; 70,POS,no,
+zz_old/qa_index.json,63914,precio,string,100.0,63914,0,0,,no,
+zz_old/qa_index.json,63914,qty,null|string,100.0,63914,9149,1 ; 2 ; 25 ; 19,QTY,no,
+zz_old/qa_index.json,63914,ruta_esquemas_pos,null|string,100.0,63914,17267,https://milu-naval.mystagingwebsite.com/wp-content/uploads/2026/02/12V4000M40A-0012-01-50.webp ; https://milu-naval.mystagingwebsite.com/wp-content/uploads/2026/02/12V4000M40A-0012-01-80.webp ; https://milu-naval.mystagingwebsite.com/wp-content/uploads/2026/02/12V4000M40A-0012-01-145.webp ; https://milu-naval.mystagingwebsite.com/wp-content/uploads/2026/02/12V4000M40A-0012-01-70.webp,,no,media
+zz_old/qa_index.json,63914,ruta_foto,null|string,100.0,63914,62890,null ; https://milu-naval.mystagingwebsite.com/wp-content/uploads/2026/01/0049976736.jpeg ; https://milu-naval.mystagingwebsite.com/wp-content/uploads/2026/01/5240114210.jpeg ; https://milu-naval.mystagingwebsite.com/wp-content/uploads/2026/01/5240510110.jpeg,,no,media
+zz_old/qa_index.json,63914,schema_count,number,100.0,63914,0,2 ; 1 ; 4 ; 5,,no,media
+zz_old/qa_index.json,63914,schema_urls,array|string,100.0,63914,3007,"[""https://milu-naval.mystagingwebsite.com/wp-content/uploads/2026/02/12V4000M40A-0012-01.png"",""https://milu-naval.mystagingwebsite.com/wp-co ; https://milu-naval.mystagingwebsite.com/wp-content/uploads/2026/02/12V4000M40A-0014-01.png ; https://milu-naval.mystagingwebsite.com/wp-content/uploads/2026/02/12V4000M40A-0015-01.png ; https://milu-naval.mystagingwebsite.com/wp-content/uploads/2026/02/12V4000M40A-0016-01.png",,yes,media
+zz_old/qa_index.json,63914,source_file,string,100.0,63914,0,12V4000M40A.xlsx ; 12V4000M53.xlsx ; 16V4000M61.xlsx ; 16V4000M73.xlsx,,no,
+zz_old/qa_index.json,63914,source_page,number,100.0,63914,0,13 ; 14 ; 15 ; 16,Source Page,no,
+zz_old/qa_index.json,63914,source_sheet,string,100.0,63914,0,1,,no,
+zz_old/qa_index.json,63914,sust_hierarchie,null|string,100.0,63914,34776,null ; New ; Superseded,,yes,sust
+zz_old/qa_index.json,63914,sust_new_part_number,null|string,100.0,63914,34776,null ; 0049976736 ; 000125010524 ; 000912008115,,no,sust
+zz_old/qa_index.json,63914,sust_new_pn_list,array|string,100.0,63914,34776,[] ; 0049976736 ; 000125010524 ; 000912008115,,no,sust
+zz_old/qa_index.json,63914,sust_status,null|string,100.0,63914,34776,null ; SI,,no,sust
+zz_old/qa_index.json,63914,sust_superseded_list,null|string,100.0,63914,39968,"null ; 0009970436, 06.93160-0120, 071401018200, 111L37701/1, 5509970036 ; 000125010500, 000125010513, 000125010517, 000125010518, 000125010521, 06.15010-0212 ; 000912008005, 000912008085, 000912008143, 06.02093-0405",,no,sust
+zz_old/qa_index.json,63914,sust_superseded_vec,array|string,100.0,63914,39968,"[] ; [""0009970436"",""06.93160-0120"",""071401018200"",""111L37701/1"",""5509970036""] ; [""000125010500"",""000125010513"",""000125010517"",""000125010518"",""000125010521"",""06.15010-0212""] ; [""000912008005"",""000912008085"",""000912008143"",""06.02093-0405""]",,no,sust
+zz_old/qa_index.json,63914,units,null|string,100.0,63914,6510,"PC ; PC 1,500 G ; PC 11,900 G ; PC 44,250 G",UNITS,no,
+zz_old/qa_index.json,63914,units_gesa_or_alt,null|string,100.0,63914,10525,null ; KGM,,no,gesa
+zz_old/qa_index.json,63914,WEIGHT,null|string,100.0,63914,24597,"1.707 TO ; null ; 3,100 G ; 12 G",weight,no,
+zz_old/qa_index.json,63914,weight_final,null|string,100.0,63914,6983,1.707 TO ; 0.125 ; 0.003 ; 0.011,,no,
+zz_old/qa_index.json,63914,weight_gesa,null|string,100.0,63914,10525,null ; 0.125 ; 0.003 ; 0.011,,no,gesa

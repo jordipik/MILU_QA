@@ -280,9 +280,9 @@ body.a2-resizing * {
 
 .a2-toolbar-bottom {
     display: grid;
-    grid-template-columns: minmax(230px, 1fr) minmax(230px, 1fr) minmax(230px, 1fr) minmax(170px, 210px) minmax(170px, 210px);
+    grid-template-columns: repeat(5, minmax(0, 1fr));
     gap: 10px;
-    align-items: center;
+    align-items: stretch;
 }
 
 .a2-toolbar input,
@@ -342,10 +342,12 @@ body.a2-resizing * {
 .a2-search-nav {
     display: inline-flex;
     align-items: center;
+    justify-content: space-between;
     gap: 8px;
-    height: 42px;
-    padding: 0 10px;
-    border-radius: 14px;
+    width: 100%;
+    min-height: 62px;
+    padding: 10px;
+    border-radius: 12px;
 }
 
 .a2-search-nav.is-record {
@@ -358,25 +360,42 @@ body.a2-resizing * {
     background: #fff2f1;
 }
 
+.a2-search-nav.is-review {
+    border: 1px solid #d9c7f4;
+    background: #f5efff;
+}
+
 .a2-search-nav.is-pending {
-    border: 1px solid #e5d4ad;
-    background: #fff8e8;
+    border: 1px solid #d7dee7;
+    background: linear-gradient(180deg, #ffffff, #f5f8fb);
+}
+
+.a2-recompute-top-group {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 8px;
+    align-items: center;
+    min-height: 62px;
+    padding: 10px;
+    border: 1px solid #b7e0c8;
+    border-radius: 12px;
+    background: linear-gradient(180deg, #f6fffa, #e8f8ef);
 }
 
 .a2-toolbar #openRecomputeModalBtn {
-    height: 42px;
-    border-radius: 14px;
-    border-color: #a9c6ef;
-    background: #eef5ff;
-    color: #1f65c9;
+    height: 38px;
+    border-radius: 10px;
+    border-color: #9bcab0;
+    background: #f0fbf4;
+    color: #195d35;
 }
 
 .a2-toolbar #recomputeAllBtn {
-    height: 42px;
-    border-radius: 14px;
-    background: #edf8f1;
-    color: #1f6a3a;
-    border-color: #9fd4b1;
+    height: 38px;
+    border-radius: 10px;
+    background: #e1f5e9;
+    color: #134c2e;
+    border-color: #83c29d;
 }
 
 .a2-toolbar #recomputeAllBtn:hover {
@@ -409,8 +428,12 @@ body.a2-resizing * {
     color: #9f2f23;
 }
 
+.a2-search-nav.is-review .a2-search-nav-center {
+    color: #6a38b3;
+}
+
 .a2-search-nav.is-pending .a2-search-nav-center {
-    color: #8a6518;
+    color: #5c6d80;
 }
 
 .a2-btn-nav {
@@ -461,21 +484,41 @@ body.a2-resizing * {
 
 #prevPendingBtn,
 #nextPendingBtn {
-    color: #8a6518;
-    background: #fff3d2;
-    border-color: #d8c9a2;
+    color: #5c6d80;
+    background: #ffffff;
+    border-color: #c4d0dd;
+}
+
+#prevReviewBtn,
+#nextReviewBtn {
+    color: #6a38b3;
+    background: #efe4ff;
+    border-color: #cbb0ee;
 }
 
 #prevPendingBtn:hover,
 #nextPendingBtn:hover {
-    color: #6e4f0c;
-    background: #ffe9b7;
-    border-color: #c9b27f;
+    color: #425365;
+    background: #edf3f9;
+    border-color: #aebfd1;
+}
+
+#prevReviewBtn:hover,
+#nextReviewBtn:hover {
+    color: #562896;
+    background: #e5d5ff;
+    border-color: #b792e5;
 }
 
 #prevPendingBtn:focus-visible,
 #nextPendingBtn:focus-visible {
-    outline: 2px solid #b3881f;
+    outline: 2px solid #7290ad;
+    outline-offset: 1px;
+}
+
+#prevReviewBtn:focus-visible,
+#nextReviewBtn:focus-visible {
+    outline: 2px solid #7b45c9;
     outline-offset: 1px;
 }
 
@@ -550,8 +593,8 @@ body.a2-resizing * {
 }
 
 .a2-stat-card.is-review {
-    border-color: #efd39a;
-    background: linear-gradient(180deg, #fffaf0, #fff1d7);
+    border-color: #d9c7f4;
+    background: linear-gradient(180deg, #f7f2ff, #ece1ff);
 }
 
 .a2-stat-card.is-ko {
@@ -1065,18 +1108,28 @@ body.a2-resizing * {
     align-items: center;
     justify-content: space-between;
     gap: 12px;
+    flex-wrap: wrap;
 }
 
 .a2-review-status-group {
     display: inline-flex;
     align-items: center;
     gap: 12px;
+    flex-wrap: wrap;
 }
 
 .a2-review-action-group {
     display: inline-flex;
     align-items: center;
     gap: 12px;
+    flex-wrap: wrap;
+}
+
+.a2-review-quick-buttons {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    flex-wrap: wrap;
 }
 
 .a2-review-select-wrap {
@@ -1143,8 +1196,8 @@ body.a2-resizing * {
 .a2-review-btn {
     border: 2px solid transparent;
     border-radius: 12px;
-    min-width: 130px;
-    height: 48px;
+    min-width: 108px;
+    height: 42px;
     font-size: 14px;
     font-weight: 900;
     letter-spacing: 0.02em;
@@ -1177,16 +1230,16 @@ body.a2-resizing * {
 }
 
 .a2-review-btn.is-review {
-    background: #fff5e5;
-    border-color: #e5b366;
-    color: #7a4604;
+    background: #f1e8ff;
+    border-color: #b996eb;
+    color: #5f2fa9;
 }
 
 .a2-review-btn.is-review.is-active {
-    background: #ffe8c6;
-    border-color: #c9902f;
-    color: #5c3304;
-    box-shadow: 0 6px 16px rgba(201, 144, 47, 0.25);
+    background: #e3d2ff;
+    border-color: #8546d1;
+    color: #411d78;
+    box-shadow: 0 6px 16px rgba(133, 70, 209, 0.3);
 }
 
 .a2-review-btn.is-ko {
@@ -1203,16 +1256,16 @@ body.a2-resizing * {
 }
 
 .a2-review-btn.is-pending {
-    background: #ffe9e6;
-    border-color: #e08078;
-    color: #832017;
+    background: #fff5e5;
+    border-color: #e5b366;
+    color: #7a4604;
 }
 
 .a2-review-btn.is-pending.is-active {
-    background: #ffd4cc;
-    border-color: #c63c2c;
-    color: #5f1a12;
-    box-shadow: 0 6px 16px rgba(198, 60, 44, 0.28);
+    background: #ffe8c6;
+    border-color: #c9902f;
+    color: #5c3304;
+    box-shadow: 0 6px 16px rgba(201, 144, 47, 0.25);
 }
 
 .a2-review-btn.is-reviewed {

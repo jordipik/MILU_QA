@@ -76,6 +76,8 @@ let currentRow = null;
 let currentProcessIndex = 0;
 let comparisonRenderToken = 0;
 let isApplyingPdfAutoDesignation = false;
+let isApplyingPdfAutoPn = false;
+let isApplyingPdfAutoPos = false;
 const pdfDocumentPromiseCache = new Map();
 const pdfPageTextCache = new Map();
 const PDF_CLUSTER_GAP_MAX = 24;
@@ -393,6 +395,35 @@ function getQueueRows() {
 
 function getRevisionKey(row) {
     return String(row?.__qa_revision_key ?? '').trim();
+}
+
+function syncCurrentRowRevisionIntoQueue(partial = {}) {
+    if (!currentRow || !partial || typeof partial !== 'object') return;
+
+    const rowKey = getRevisionKey(currentRow);
+    const rowId = String(currentRow?.ID ?? '').trim();
+    const hasEstado = Object.prototype.hasOwnProperty.call(partial, 'qa_revision_estado');
+    const hasAccion = Object.prototype.hasOwnProperty.call(partial, 'qa_revision_accion');
+    if (!hasEstado && !hasAccion) return;
+
+    const applyToRow = (row) => {
+        if (!row) return;
+        if (hasEstado) row.qa_revision_estado = partial.qa_revision_estado;
+        if (hasAccion) row.qa_revision_accion = partial.qa_revision_accion;
+    };
+
+    applyToRow(currentRow);
+
+    const allRows = Array.isArray(state.allData) ? state.allData : [];
+    const linkedRow = allRows.find((row) => {
+        if (rowKey && getRevisionKey(row) === rowKey) return true;
+        if (!rowKey && rowId && String(row?.ID ?? '').trim() === rowId) return true;
+        return false;
+    });
+
+    if (linkedRow && linkedRow !== currentRow) {
+        applyToRow(linkedRow);
+    }
 }
 
 function getDisplayPn(row) {
@@ -1072,6 +1103,20 @@ function initComparisonEditTriggers() {
             return;
         }
 
+        const pdfAutoCopyPnCell = target.closest('td[data-copy-pdf-auto-pn="true"]');
+        if (pdfAutoCopyPnCell && currentRow) {
+            event.preventDefault();
+            await copyPdfAutoPnToFinalAndRecompute();
+            return;
+        }
+
+        const pdfAutoCopyPosCell = target.closest('td[data-copy-pdf-auto-pos="true"]');
+        if (pdfAutoCopyPosCell && currentRow) {
+            event.preventDefault();
+            await copyPdfAutoPosToFinalAndRecompute();
+            return;
+        }
+
         const editableCell = target.closest('td[data-open-edit-record-modal="true"]');
         if (!editableCell || !currentRow) return;
 
@@ -1125,6 +1170,97 @@ async function copyPdfAutoDesignationToFinalAndRecompute() {
         setRecomputeStatus(`Error aplicando DESIGNATION desde PDF_AUTO: ${String(error?.message || error)}`, 'error');
     } finally {
         isApplyingPdfAutoDesignation = false;
+    }
+}
+
+async function copyPdfAutoPnToFinalAndRecompute() {
+    if (!currentRow || isApplyingPdfAutoPn) return;
+
+    const engineFile = resolveEngineFile(currentRow);
+    const id = txt(currentRow?.ID, '');
+    if (!engineFile || !id) {
+        alert('No se pudo resolver archivo engine o ID para aplicar PART NO. desde PDF_AUTO.');
+        return;
+    }
+
+    const pdfAutoPn = normalizeString(getStoredPdfAutoValue(currentRow, 'PART NO.'));
+    if (!pdfAutoPn) {
+        setRecomputeStatus('No hay valor PDF_AUTO en PART NO. para copiar.', 'error');
+        return;
+    }
+
+    const currentPnFinal = normalizeString(currentRow?.pn_final);
+    const changed = normalizeCompareValue(pdfAutoPn) !== normalizeCompareValue(currentPnFinal);
+
+    isApplyingPdfAutoPn = true;
+    try {
+        setRecomputeStatus(`Aplicando PART NO. PDF_AUTO en ID ${id} y recalculando...`, '');
+
+        if (changed) {
+            await saveCellToServer(engineFile, id, 'pn_final', pdfAutoPn);
+            currentRow.pn_final = pdfAutoPn;
+
+            const editPnInput = $('editRecordPnFinal');
+            if (editPnInput instanceof HTMLInputElement) {
+                editPnInput.value = pdfAutoPn;
+            }
+        }
+
+        await autoRecomputeEditedRecord(engineFile, id);
+        await reloadEditedRecord(engineFile, id);
+        renderReviewStateButtons(currentRow);
+        renderReviewStats();
+        notifyPdfDataChangedFromAnalista(currentRow);
+
+        const actionLabel = changed ? 'copiado a FINAL' : 'ya coincide con FINAL';
+        setRecomputeStatus(`Registro ID ${id}: PART NO. ${actionLabel}. Recalculo completo aplicado.`, 'ok');
+    } catch (error) {
+        setRecomputeStatus(`Error aplicando PART NO. desde PDF_AUTO: ${String(error?.message || error)}`, 'error');
+    } finally {
+        isApplyingPdfAutoPn = false;
+    }
+}
+
+async function copyPdfAutoPosToFinalAndRecompute() {
+    if (!currentRow || isApplyingPdfAutoPos) return;
+
+    const engineFile = resolveEngineFile(currentRow);
+    const id = txt(currentRow?.ID, '');
+    if (!engineFile || !id) {
+        alert('No se pudo resolver archivo engine o ID para aplicar POS desde PDF_AUTO.');
+        return;
+    }
+
+    const pdfAutoPos = normalizeString(getStoredPdfAutoValue(currentRow, 'POS'));
+    if (!pdfAutoPos) {
+        setRecomputeStatus('No hay valor PDF_AUTO en POS para copiar.', 'error');
+        return;
+    }
+
+    const currentPosFinal = normalizeString(currentRow?.pos_final);
+    const changed = normalizeCompareValue(pdfAutoPos) !== normalizeCompareValue(currentPosFinal);
+
+    isApplyingPdfAutoPos = true;
+    try {
+        setRecomputeStatus(`Aplicando POS PDF_AUTO en ID ${id} y recalculando...`, '');
+
+        if (changed) {
+            await saveCellToServer(engineFile, id, 'pos_final', pdfAutoPos);
+            currentRow.pos_final = pdfAutoPos;
+        }
+
+        await autoRecomputeEditedRecord(engineFile, id);
+        await reloadEditedRecord(engineFile, id);
+        renderReviewStateButtons(currentRow);
+        renderReviewStats();
+        notifyPdfDataChangedFromAnalista(currentRow);
+
+        const actionLabel = changed ? 'copiado a FINAL' : 'ya coincide con FINAL';
+        setRecomputeStatus(`Registro ID ${id}: POS ${actionLabel}. Recalculo completo aplicado.`, 'ok');
+    } catch (error) {
+        setRecomputeStatus(`Error aplicando POS desde PDF_AUTO: ${String(error?.message || error)}`, 'error');
+    } finally {
+        isApplyingPdfAutoPos = false;
     }
 }
 
@@ -2056,11 +2192,14 @@ function renderReviewStats(rows = getQueueRows(), row = currentRow) {
     // Update nav button labels with counts
     const queue = rows;
     const errorCount = queue.filter(r => rowHasErrors(r)).length;
+    const reviewCount = queue.filter(r => rowHasReviewAction(r)).length;
     const pendingCount = queue.filter(r => rowIsPending(r)).length;
     const errorNavSpan = document.querySelector('.a2-search-nav.is-error .a2-search-nav-center');
+    const reviewNavSpan = document.querySelector('.a2-search-nav.is-review .a2-search-nav-center');
     const pendingNavSpan = document.querySelector('.a2-search-nav.is-pending .a2-search-nav-center');
     if (errorNavSpan instanceof HTMLElement) errorNavSpan.textContent = `Error (${errorCount})`;
-    if (pendingNavSpan instanceof HTMLElement) pendingNavSpan.textContent = `Pendiente (${pendingCount})`;
+    if (reviewNavSpan instanceof HTMLElement) reviewNavSpan.textContent = 'Revisar';
+    if (pendingNavSpan instanceof HTMLElement) pendingNavSpan.textContent = 'Pendiente';
 }
 
 function renderReviewStateButtons(row) {
@@ -2070,6 +2209,12 @@ function renderReviewStateButtons(row) {
         return;
     }
 
+    const estadoOkBtn = $('statusEstadoOkBtn');
+    const estadoPendingBtn = $('statusEstadoPendingBtn');
+    const accionImportarBtn = $('statusAccionImportarBtn');
+    const accionRevisarBtn = $('statusAccionRevisarBtn');
+    const accionEliminarBtn = $('statusAccionEliminarBtn');
+
     const estado = normalizeEstadoToNew(row?.qa_revision_estado);
     const accion = normalizeAccionToNew(row?.qa_revision_accion);
 
@@ -2077,6 +2222,22 @@ function renderReviewStateButtons(row) {
     if (accion === 'revisar') accionSelect.value = 'revisar';
     else if (accion === 'eliminar') accionSelect.value = 'eliminar';
     else accionSelect.value = 'importar';
+
+    if (estadoOkBtn instanceof HTMLElement) {
+        estadoOkBtn.classList.toggle('is-active', estado === 'ok');
+    }
+    if (estadoPendingBtn instanceof HTMLElement) {
+        estadoPendingBtn.classList.toggle('is-active', estado !== 'ok');
+    }
+    if (accionImportarBtn instanceof HTMLElement) {
+        accionImportarBtn.classList.toggle('is-active', accion === 'importar');
+    }
+    if (accionRevisarBtn instanceof HTMLElement) {
+        accionRevisarBtn.classList.toggle('is-active', accion === 'revisar');
+    }
+    if (accionEliminarBtn instanceof HTMLElement) {
+        accionEliminarBtn.classList.toggle('is-active', accion === 'eliminar');
+    }
 }
 
 function updateRecordSearchSuggestions() {
@@ -2289,7 +2450,11 @@ async function renderComparisonTable(row) {
         const pdfAutoValue = getStoredPdfAutoValue(row, entry.field);
         const pdfAutoActionAttrs = entry.field === 'DESIGNATION'
             ? ' data-copy-pdf-auto-designation="true" title="Doble clic para copiar PDF_AUTO a DESIGNATION_FINAL y recalcular"'
-            : '';
+            : entry.field === 'PART NO.'
+                ? ' data-copy-pdf-auto-pn="true" title="Doble clic para copiar PDF_AUTO a PN_FINAL y recalcular"'
+                : entry.field === 'POS'
+                    ? ' data-copy-pdf-auto-pos="true" title="Doble clic para copiar PDF_AUTO a POS_FINAL y recalcular"'
+                    : '';
         const errCount = getStoredFieldErrorCount(row, entry.field);
         const errCellClass = errCount > 0 ? 'field-err has-errors' : 'field-err';
         const errTitle = errCount > 0 ? ` title="${escapeHtml(`Errores persistidos en JSON: ${errCount}`)}"` : '';
@@ -2324,7 +2489,11 @@ async function renderComparisonTable(row) {
         const pdfAutoValue = getStoredPdfAutoValue(row, entry.field);
         const pdfAutoActionAttrs = entry.field === 'DESIGNATION'
             ? ' data-copy-pdf-auto-designation="true" title="Doble clic para copiar PDF_AUTO a DESIGNATION_FINAL y recalcular"'
-            : '';
+            : entry.field === 'PART NO.'
+                ? ' data-copy-pdf-auto-pn="true" title="Doble clic para copiar PDF_AUTO a PN_FINAL y recalcular"'
+                : entry.field === 'POS'
+                    ? ' data-copy-pdf-auto-pos="true" title="Doble clic para copiar PDF_AUTO a POS_FINAL y recalcular"'
+                    : '';
         const cellClasses = getComparisonCellClasses(entry, pdfRead.value, pdfAutoValue);
         const rowClass = entry.separatorTop ? 'separator-top' : '';
         const errCount = getStoredFieldErrorCount(row, entry.field);
@@ -2666,15 +2835,17 @@ function rowHasErrors(row) {
     return getRowErrorCount(row) > 0;
 }
 
-function rowIsPending(row) {
-    const estado = normalizeEstadoToNew(row?.qa_revision_estado);
-    if (estado === 'pendiente') return true;
-
+function rowHasReviewAction(row) {
     const accion = normalizeAccionToNew(row?.qa_revision_accion);
     if (accion === 'revisar') return true;
 
     const rawAccion = String(row?.qa_revision_accion || '').trim().toLowerCase();
     return rawAccion === 'revision';
+}
+
+function rowIsPending(row) {
+    const estado = normalizeEstadoToNew(row?.qa_revision_estado);
+    return estado === 'pendiente';
 }
 
 async function loadRelativeError(direction) {
@@ -2725,6 +2896,30 @@ async function loadRelativePending(direction) {
     await revalidateCurrentRow();
 }
 
+async function loadRelativeReview(direction) {
+    const queue = getQueueRows();
+    if (!queue.length) return;
+
+    const startIndex = currentRow
+        ? queue.findIndex(row => getRevisionKey(row) === getRevisionKey(currentRow))
+        : -1;
+
+    let idx = startIndex;
+    while (true) {
+        idx += direction;
+        if (idx < 0 || idx >= queue.length) {
+            alert(direction > 0 ? 'No hay mas registros para revisar.' : 'No hay registros anteriores para revisar.');
+            return;
+        }
+        if (rowHasReviewAction(queue[idx])) break;
+    }
+
+    currentRow = queue[idx];
+    $('recordIdInput').value = getDisplayPnForInput(currentRow);
+    currentProcessIndex = 0;
+    await revalidateCurrentRow();
+}
+
 async function setReviewStatus(kind) {
     if (!currentRow) {
         alert('Primero debes cargar un registro.');
@@ -2748,6 +2943,7 @@ async function setReviewStatus(kind) {
     await saveCellToServer(engineFile, id, 'qa_revision_accion', denormalizeAccionFromNew(values.qa_revision_accion));
 
     currentRow.qa_revision_accion = values.qa_revision_accion;
+    syncCurrentRowRevisionIntoQueue({ qa_revision_accion: values.qa_revision_accion });
     publishRevisionSync({
         id,
         engineFile,
@@ -2782,6 +2978,7 @@ async function setManualRevisionEstado(nextEstado) {
 
     await saveCellToServer(engineFile, id, 'qa_revision_estado', denormalizeEstadoFromNew(normalizedEstado));
     currentRow.qa_revision_estado = normalizedEstado;
+    syncCurrentRowRevisionIntoQueue({ qa_revision_estado: normalizedEstado });
     publishRevisionSync({
         id,
         engineFile,
@@ -2975,6 +3172,14 @@ bindClick('nextErrorBtn', () => {
     loadRelativeError(1).catch((error) => alert(`No se pudo cargar siguiente error: ${error.message}`));
 });
 
+bindClick('prevReviewBtn', () => {
+    loadRelativeReview(-1).catch((error) => alert(`No se pudo cargar registro revisar anterior: ${error.message}`));
+});
+
+bindClick('nextReviewBtn', () => {
+    loadRelativeReview(1).catch((error) => alert(`No se pudo cargar siguiente registro revisar: ${error.message}`));
+});
+
 bindClick('prevPendingBtn', () => {
     loadRelativePending(-1).catch((error) => alert(`No se pudo cargar pendiente anterior: ${error.message}`));
 });
@@ -3007,24 +3212,24 @@ bindClick('recomputePdfRunBtn', () => {
     });
 });
 
-bindClick('statusOkBtn', () => {
-    setReviewStatus('ok').catch((error) => alert(`No se pudo guardar estado OK: ${error.message}`));
-});
-
-bindClick('statusPendingBtn', () => {
-    setManualRevisionEstado('pendiente').catch((error) => alert(`No se pudo guardar estado pendiente: ${error.message}`));
-});
-
-bindClick('statusReviewedBtn', () => {
+bindClick('statusEstadoOkBtn', () => {
     setManualRevisionEstado('ok').catch((error) => alert(`No se pudo guardar estado OK: ${error.message}`));
 });
 
-bindClick('statusReviewBtn', () => {
-    setReviewStatus('review').catch((error) => alert(`No se pudo guardar estado revisar: ${error.message}`));
+bindClick('statusEstadoPendingBtn', () => {
+    setManualRevisionEstado('pendiente').catch((error) => alert(`No se pudo guardar estado pendiente: ${error.message}`));
 });
 
-bindClick('statusKoBtn', () => {
+bindClick('statusAccionEliminarBtn', () => {
     setReviewStatus('ko').catch((error) => alert(`No se pudo guardar estado KO: ${error.message}`));
+});
+
+bindClick('statusAccionImportarBtn', () => {
+    setReviewStatus('ok').catch((error) => alert(`No se pudo guardar accion importar: ${error.message}`));
+});
+
+bindClick('statusAccionRevisarBtn', () => {
+    setReviewStatus('review').catch((error) => alert(`No se pudo guardar accion revisar: ${error.message}`));
 });
 
 const statusEstadoSelect = $('statusEstadoSelect');
@@ -3078,5 +3283,16 @@ if (engineFilterSelect instanceof HTMLSelectElement) {
         });
     });
 }
+
+document.addEventListener('keydown', (event) => {
+    if (event.key !== 'ArrowRight') return;
+    const activeEl = document.activeElement;
+    if (activeEl instanceof HTMLInputElement || activeEl instanceof HTMLTextAreaElement || activeEl instanceof HTMLSelectElement) return;
+    const editModal = $('editRecordModal');
+    const recomputeModal = $('recomputeModal');
+    if ((editModal instanceof HTMLElement && !editModal.hidden) || (recomputeModal instanceof HTMLElement && !recomputeModal.hidden)) return;
+    event.preventDefault();
+    loadRelativePending(1).catch((error) => alert(`No se pudo cargar siguiente pendiente: ${error.message}`));
+});
 
 initialize();

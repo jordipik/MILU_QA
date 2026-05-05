@@ -8,8 +8,8 @@ import { evaluateRowQaChecks } from './qa-checks.js';
 const PDF_FIT_WIDTH_MARGIN = 8;
 const PDF_FIT_HEIGHT_MARGIN = 8;
 const PDF_SELECTION_MAX_HIGHLIGHTS = 40;
-const PDF_ZOOM_PERCENTAGES = new Set([75, 100, 125, 150, 200]);
-const PDF_ZOOM_STEPS = ['fit', 'height', 75, 100, 125, 150, 200];
+const PDF_ZOOM_PERCENTAGES = new Set([50, 75, 100, 125, 150, 200]);
+const PDF_ZOOM_STEPS = ['fit', 'height', 50, 75, 100, 125, 150, 200];
 let pdfRelayoutRafId = 0;
 
 if (window.pdfjsLib) {
@@ -70,9 +70,24 @@ export function initPdfZoomControls() {
         const fitOption = zoomSelect.querySelector('option[value="fit"]');
         const option = document.createElement('option');
         option.value = 'height';
-        option.textContent = 'Altura';
+        option.textContent = 'Ajustar vertical';
         if (fitOption && fitOption.nextSibling) {
             zoomSelect.insertBefore(option, fitOption.nextSibling);
+        } else {
+            zoomSelect.appendChild(option);
+        }
+    } else {
+        const heightOption = zoomSelect.querySelector('option[value="height"]');
+        if (heightOption) heightOption.textContent = 'Ajustar vertical';
+    }
+
+    if (!zoomSelect.querySelector('option[value="50"]')) {
+        const option = document.createElement('option');
+        option.value = '50';
+        option.textContent = '50%';
+        const seventyFiveOption = zoomSelect.querySelector('option[value="75"]');
+        if (seventyFiveOption) {
+            zoomSelect.insertBefore(option, seventyFiveOption);
         } else {
             zoomSelect.appendChild(option);
         }
@@ -827,11 +842,24 @@ export async function renderPdfPage(pdfUrl, pageNum, options = {}) {
     if (requestToken !== state.currentPdfRequestToken) return;
 
     const baseViewport = page.getViewport({ scale: 1 });
-    const availableWidth = Math.max(120, (viewerInner?.clientWidth || viewer.clientWidth || baseViewport.width) - PDF_FIT_WIDTH_MARGIN);
     const innerStyles = viewerInner instanceof HTMLElement ? getComputedStyle(viewerInner) : null;
+    const innerPaddingLeft = innerStyles ? (parseFloat(innerStyles.paddingLeft) || 0) : 0;
+    const innerPaddingRight = innerStyles ? (parseFloat(innerStyles.paddingRight) || 0) : 0;
     const innerPaddingTop = innerStyles ? (parseFloat(innerStyles.paddingTop) || 0) : 0;
     const innerPaddingBottom = innerStyles ? (parseFloat(innerStyles.paddingBottom) || 0) : 0;
-    const viewerEffectiveHeight = (viewer?.clientHeight || baseViewport.height) - innerPaddingTop - innerPaddingBottom;
+    const innerContentWidth = viewerInner instanceof HTMLElement
+        ? viewerInner.clientWidth - innerPaddingLeft - innerPaddingRight
+        : 0;
+    const innerContentHeight = viewerInner instanceof HTMLElement
+        ? viewerInner.clientHeight - innerPaddingTop - innerPaddingBottom
+        : 0;
+    const viewerEffectiveWidth = innerContentWidth > 0
+        ? innerContentWidth
+        : (viewer?.clientWidth || baseViewport.width);
+    const viewerEffectiveHeight = innerContentHeight > 0
+        ? innerContentHeight
+        : (viewer?.clientHeight || baseViewport.height);
+    const availableWidth = Math.max(120, viewerEffectiveWidth - PDF_FIT_WIDTH_MARGIN);
     const availableHeight = Math.max(120, viewerEffectiveHeight - PDF_FIT_HEIGHT_MARGIN);
     const fitWidthScale = Math.max(0.1, availableWidth / baseViewport.width);
     const fitHeightScale = Math.max(0.1, availableHeight / baseViewport.height);

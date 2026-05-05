@@ -109624,7 +109624,7 @@
     "bom_error": 0,
     "total_error": 2,
     "has_error": true,
-    "qa_revision_estado": "pendiente",
+    "qa_revision_estado": "ok",
     "qa_revision_accion": "revisar"
   },
   {
@@ -109722,7 +109722,7 @@
     "bom_error": 0,
     "total_error": 2,
     "has_error": true,
-    "qa_revision_estado": "pendiente",
+    "qa_revision_estado": "ok",
     "qa_revision_accion": "revisar"
   },
   {
@@ -109820,7 +109820,7 @@
     "bom_error": 0,
     "total_error": 2,
     "has_error": true,
-    "qa_revision_estado": "pendiente",
+    "qa_revision_estado": "ok",
     "qa_revision_accion": "revisar"
   },
   {
@@ -109918,7 +109918,7 @@
     "bom_error": 0,
     "total_error": 2,
     "has_error": true,
-    "qa_revision_estado": "pendiente",
+    "qa_revision_estado": "ok",
     "qa_revision_accion": "revisar"
   },
   {
@@ -110016,7 +110016,7 @@
     "bom_error": 0,
     "total_error": 2,
     "has_error": true,
-    "qa_revision_estado": "pendiente",
+    "qa_revision_estado": "ok",
     "qa_revision_accion": "revisar"
   },
   {
@@ -110114,7 +110114,7 @@
     "bom_error": 0,
     "total_error": 2,
     "has_error": true,
-    "qa_revision_estado": "pendiente",
+    "qa_revision_estado": "ok",
     "qa_revision_accion": "revisar"
   },
   {
@@ -112266,7 +112266,7 @@
     "bom_error": 0,
     "total_error": 2,
     "has_error": true,
-    "qa_revision_estado": "pendiente",
+    "qa_revision_estado": "ok",
     "qa_revision_accion": "revisar"
   },
   {
@@ -112364,7 +112364,7 @@
     "bom_error": 0,
     "total_error": 2,
     "has_error": true,
-    "qa_revision_estado": "pendiente",
+    "qa_revision_estado": "ok",
     "qa_revision_accion": "revisar"
   },
   {
@@ -112462,7 +112462,7 @@
     "bom_error": 0,
     "total_error": 2,
     "has_error": true,
-    "qa_revision_estado": "pendiente",
+    "qa_revision_estado": "ok",
     "qa_revision_accion": "revisar"
   },
   {
@@ -112560,7 +112560,7 @@
     "bom_error": 0,
     "total_error": 2,
     "has_error": true,
-    "qa_revision_estado": "pendiente",
+    "qa_revision_estado": "ok",
     "qa_revision_accion": "revisar"
   },
   {
@@ -117096,7 +117096,7 @@
     "bom_error": 0,
     "total_error": 2,
     "has_error": true,
-    "qa_revision_estado": "pendiente",
+    "qa_revision_estado": "ok",
     "qa_revision_accion": "revisar"
   },
   {
@@ -119798,7 +119798,7 @@
     "bom_error": 0,
     "total_error": 2,
     "has_error": true,
-    "qa_revision_estado": "pendiente",
+    "qa_revision_estado": "ok",
     "qa_revision_accion": "revisar"
   },
   {
@@ -119896,7 +119896,7 @@
     "bom_error": 0,
     "total_error": 2,
     "has_error": true,
-    "qa_revision_estado": "pendiente",
+    "qa_revision_estado": "ok",
     "qa_revision_accion": "revisar"
   },
   {
@@ -119994,7 +119994,7 @@
     "bom_error": 0,
     "total_error": 2,
     "has_error": true,
-    "qa_revision_estado": "pendiente",
+    "qa_revision_estado": "ok",
     "qa_revision_accion": "revisar"
   },
   {
@@ -120092,7 +120092,7 @@
     "bom_error": 0,
     "total_error": 2,
     "has_error": true,
-    "qa_revision_estado": "pendiente",
+    "qa_revision_estado": "ok",
     "qa_revision_accion": "revisar"
   },
   {
@@ -120190,7 +120190,7 @@
     "bom_error": 0,
     "total_error": 2,
     "has_error": true,
-    "qa_revision_estado": "pendiente",
+    "qa_revision_estado": "ok",
     "qa_revision_accion": "revisar"
   },
   {
@@ -137603,7 +137603,7 @@
     "source_file": "12V4000M40A.xlsx",
     "source_sheet": "1",
     "pn_raw": "23540304",
-    "pn_final": null,
+    "pn_final": "23540304",
     "criterio_pn": "NO_PATTERN",
     "detalle_cambio": "23540304",
     "existeix_gesa": false,
@@ -137672,14 +137672,14 @@
     "depuracion_ts": "2026-04-27T00:11:37Z",
     "exp_imagenes": "https://milu-naval.mystagingwebsite.com/wp-content/uploads/2026/02/12V4000M40A-0203-01-25.webp",
     "pos_error": 0,
-    "pn_error": 2,
+    "pn_error": 0,
     "designation_error": 0,
     "weight_error": 0,
     "measurement_error": 0,
     "norma_error": 0,
     "bom_error": 0,
-    "total_error": 2,
-    "has_error": true,
+    "total_error": 0,
+    "has_error": false,
     "pos_pdf": "25",
     "pn_pdf": "23540304",
     "designation_pdf": "GASKET KIT",
@@ -137689,8 +137689,8 @@
     "bom_pdf": "0001843597",
     "gesa_pdf": "No",
     "normalizado_pdf": "No",
-    "qa_revision_estado": "pendiente",
-    "qa_revision_accion": "revisar"
+    "qa_revision_estado": "ok",
+    "qa_revision_accion": "importar"
   },
   {
     "ID": "1101687",
@@ -139221,7 +139221,7 @@
     "bom_error": 0,
     "total_error": 2,
     "has_error": true,
-    "qa_revision_estado": "pendiente",
+    "qa_revision_estado": "ok",
     "qa_revision_accion": "revisar"
   },
   {
@@ -139319,7 +139319,7 @@
     "bom_error": 0,
     "total_error": 2,
     "has_error": true,
-    "qa_revision_estado": "pendiente",
+    "qa_revision_estado": "ok",
     "qa_revision_accion": "revisar"
   },
   {
@@ -139417,7 +139417,7 @@
     "bom_error": 0,
     "total_error": 2,
     "has_error": true,
-    "qa_revision_estado": "pendiente",
+    "qa_revision_estado": "ok",
     "qa_revision_accion": "revisar"
   },
   {
@@ -156880,7 +156880,7 @@
     "bom_error": 0,
     "total_error": 2,
     "has_error": true,
-    "qa_revision_estado": "pendiente",
+    "qa_revision_estado": "ok",
     "qa_revision_accion": "revisar"
   },
   {
@@ -156978,7 +156978,7 @@
     "bom_error": 0,
     "total_error": 2,
     "has_error": true,
-    "qa_revision_estado": "pendiente",
+    "qa_revision_estado": "ok",
     "qa_revision_accion": "revisar"
   },
   {
@@ -198343,7 +198343,7 @@
     "source_file": "12V4000M40A.xlsx",
     "source_sheet": "1",
     "pn_raw": "5132155",
-    "pn_final": null,
+    "pn_final": "5132155",
     "criterio_pn": "NO_PATTERN",
     "detalle_cambio": "5132155",
     "existeix_gesa": false,
@@ -198412,14 +198412,14 @@
     "depuracion_ts": "2026-04-27T00:11:37Z",
     "exp_imagenes": "https://milu-naval.mystagingwebsite.com/wp-content/uploads/2026/02/12V4000M40A-0267-01-85.webp",
     "pos_error": 0,
-    "pn_error": 2,
+    "pn_error": 0,
     "designation_error": 0,
     "weight_error": 0,
     "measurement_error": 0,
     "norma_error": 0,
     "bom_error": 0,
-    "total_error": 2,
-    "has_error": true,
+    "total_error": 0,
+    "has_error": false,
     "pos_pdf": "85",
     "pn_pdf": "5132155",
     "designation_pdf": "SEAL RING",
@@ -198429,8 +198429,8 @@
     "bom_pdf": "200.00120",
     "gesa_pdf": "No",
     "normalizado_pdf": "No",
-    "qa_revision_estado": "pendiente",
-    "qa_revision_accion": "revisar"
+    "qa_revision_estado": "ok",
+    "qa_revision_accion": "importar"
   },
   {
     "ID": "1100404",
@@ -200089,7 +200089,7 @@
     "bom_error": 0,
     "total_error": 2,
     "has_error": true,
-    "qa_revision_estado": "pendiente",
+    "qa_revision_estado": "ok",
     "qa_revision_accion": "revisar"
   },
   {
@@ -201232,7 +201232,7 @@
     "source_file": "12V4000M40A.xlsx",
     "source_sheet": "1",
     "pn_raw": "40033",
-    "pn_final": null,
+    "pn_final": "40033",
     "criterio_pn": "NO_PATTERN",
     "detalle_cambio": "40033",
     "existeix_gesa": false,
@@ -201301,22 +201301,22 @@
     "depuracion_ts": "2026-04-27T00:11:37Z",
     "exp_imagenes": "https://milu-naval.mystagingwebsite.com/wp-content/uploads/2026/02/12V4000M40A-0271-01-50.webp",
     "pos_error": 0,
-    "pn_error": 2,
+    "pn_error": 0,
     "designation_error": 0,
     "weight_error": 0,
     "measurement_error": 0,
     "norma_error": 0,
     "bom_error": 0,
-    "total_error": 2,
-    "has_error": true,
+    "total_error": 0,
+    "has_error": false,
     "pos_pdf": "50",
     "pn_pdf": "40033",
     "designation_pdf": "SEALANT PIPE THREAD LOCTITE 586",
     "qty_pdf": "40033",
     "bom_pdf": "200.00547",
     "norma_pdf": "MMN377B",
-    "qa_revision_estado": "pendiente",
-    "qa_revision_accion": "revisar"
+    "qa_revision_estado": "ok",
+    "qa_revision_accion": "importar"
   },
   {
     "ID": "1101287",
@@ -227742,7 +227742,7 @@
     "bom_error": 0,
     "total_error": 2,
     "has_error": true,
-    "qa_revision_estado": "pendiente",
+    "qa_revision_estado": "ok",
     "qa_revision_accion": "revisar"
   },
   {
@@ -254894,7 +254894,7 @@
     "bom_error": 0,
     "total_error": 2,
     "has_error": true,
-    "qa_revision_estado": "pendiente",
+    "qa_revision_estado": "ok",
     "qa_revision_accion": "revisar"
   },
   {
@@ -260426,7 +260426,7 @@
     "bom_error": 0,
     "total_error": 2,
     "has_error": true,
-    "qa_revision_estado": "pendiente",
+    "qa_revision_estado": "ok",
     "qa_revision_accion": "revisar"
   },
   {
@@ -260524,7 +260524,7 @@
     "bom_error": 0,
     "total_error": 2,
     "has_error": true,
-    "qa_revision_estado": "pendiente",
+    "qa_revision_estado": "ok",
     "qa_revision_accion": "revisar"
   },
   {
@@ -262632,7 +262632,7 @@
     "bom_error": 0,
     "total_error": 2,
     "has_error": true,
-    "qa_revision_estado": "pendiente",
+    "qa_revision_estado": "ok",
     "qa_revision_accion": "revisar"
   },
   {
@@ -274546,7 +274546,7 @@
     "bom_error": 0,
     "total_error": 2,
     "has_error": true,
-    "qa_revision_estado": "pendiente",
+    "qa_revision_estado": "ok",
     "qa_revision_accion": "revisar"
   },
   {
@@ -276448,7 +276448,7 @@
     "bom_error": 0,
     "total_error": 2,
     "has_error": true,
-    "qa_revision_estado": "pendiente",
+    "qa_revision_estado": "ok",
     "qa_revision_accion": "revisar"
   },
   {
@@ -289951,7 +289951,7 @@
     "bom_error": 0,
     "total_error": 2,
     "has_error": true,
-    "qa_revision_estado": "pendiente",
+    "qa_revision_estado": "ok",
     "qa_revision_accion": "revisar"
   },
   {
@@ -295637,7 +295637,7 @@
     "bom_pdf": "5105302438",
     "gesa_pdf": "No",
     "normalizado_pdf": "No",
-    "qa_revision_estado": "pendiente",
+    "qa_revision_estado": "ok",
     "qa_revision_accion": "revisar"
   },
   {
@@ -295735,7 +295735,7 @@
     "bom_error": 0,
     "total_error": 2,
     "has_error": true,
-    "qa_revision_estado": "pendiente",
+    "qa_revision_estado": "ok",
     "qa_revision_accion": "revisar"
   },
   {
@@ -299083,7 +299083,7 @@
     "bom_error": 0,
     "total_error": 2,
     "has_error": true,
-    "qa_revision_estado": "pendiente",
+    "qa_revision_estado": "ok",
     "qa_revision_accion": "revisar"
   },
   {
@@ -299400,7 +299400,7 @@
     "bom_error": 0,
     "total_error": 2,
     "has_error": true,
-    "qa_revision_estado": "pendiente",
+    "qa_revision_estado": "ok",
     "qa_revision_accion": "revisar"
   },
   {
@@ -300164,7 +300164,7 @@
     "bom_error": 0,
     "total_error": 2,
     "has_error": true,
-    "qa_revision_estado": "pendiente",
+    "qa_revision_estado": "ok",
     "qa_revision_accion": "revisar"
   },
   {
@@ -300262,7 +300262,7 @@
     "bom_error": 0,
     "total_error": 2,
     "has_error": true,
-    "qa_revision_estado": "pendiente",
+    "qa_revision_estado": "ok",
     "qa_revision_accion": "revisar"
   },
   {
@@ -300589,7 +300589,7 @@
     "bom_error": 0,
     "total_error": 2,
     "has_error": true,
-    "qa_revision_estado": "pendiente",
+    "qa_revision_estado": "ok",
     "qa_revision_accion": "revisar"
   },
   {
@@ -300687,7 +300687,7 @@
     "bom_error": 0,
     "total_error": 2,
     "has_error": true,
-    "qa_revision_estado": "pendiente",
+    "qa_revision_estado": "ok",
     "qa_revision_accion": "revisar"
   },
   {
@@ -300785,7 +300785,7 @@
     "bom_error": 0,
     "total_error": 2,
     "has_error": true,
-    "qa_revision_estado": "pendiente",
+    "qa_revision_estado": "ok",
     "qa_revision_accion": "revisar"
   },
   {
@@ -300883,7 +300883,7 @@
     "bom_error": 0,
     "total_error": 2,
     "has_error": true,
-    "qa_revision_estado": "pendiente",
+    "qa_revision_estado": "ok",
     "qa_revision_accion": "revisar"
   },
   {
@@ -303103,7 +303103,7 @@
     "bom_error": 0,
     "total_error": 2,
     "has_error": true,
-    "qa_revision_estado": "pendiente",
+    "qa_revision_estado": "ok",
     "qa_revision_accion": "revisar"
   },
   {
@@ -303764,7 +303764,7 @@
     "bom_error": 0,
     "total_error": 2,
     "has_error": true,
-    "qa_revision_estado": "pendiente",
+    "qa_revision_estado": "ok",
     "qa_revision_accion": "revisar"
   },
   {
@@ -305287,7 +305287,7 @@
     "bom_error": 0,
     "total_error": 2,
     "has_error": true,
-    "qa_revision_estado": "pendiente",
+    "qa_revision_estado": "ok",
     "qa_revision_accion": "revisar"
   },
   {
@@ -305385,7 +305385,7 @@
     "bom_error": 0,
     "total_error": 2,
     "has_error": true,
-    "qa_revision_estado": "pendiente",
+    "qa_revision_estado": "ok",
     "qa_revision_accion": "revisar"
   },
   {

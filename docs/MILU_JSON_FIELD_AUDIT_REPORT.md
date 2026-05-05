@@ -1,0 +1,954 @@
+# MILU JSON Field Audit Report
+
+Generated: 2026-05-05T15:11:04.939249+00:00
+
+## Files audited
+
+- MILU_New_v506.json: rows=3875, fields=30
+- MILU_Superseded_v506.json: rows=2945, fields=30
+- data/output/wordpress/milu_wp_discarded.json: rows=8, fields=23
+- data/output/wordpress/milu_wp_import.json: rows=3573, fields=23
+- data/output/wordpress/milu_wp_pending_review.json: rows=644, fields=23
+- data/output/wordpress/milu_wp_superseded.json: rows=1890, fields=23
+- engine_12V4000M40A.json: rows=2759, fields=117
+- engine_12V4000M53.json: rows=6580, fields=119
+- engine_12V4000M70.json: rows=5358, fields=113
+- engine_16V4000M61.json: rows=4987, fields=111
+- engine_16V4000M73.json: rows=12445, fields=113
+- engine_16V4000M73L.json: rows=11128, fields=112
+- engine_16V4000M90.json: rows=2851, fields=113
+- engine_20V4000M93.json: rows=14643, fields=113
+- engine_20V4000M93L.json: rows=7132, fields=112
+- qa_synthetic_new.json: rows=5123, fields=28
+- qa_synthetic_superseded.json: rows=638, fields=29
+- zz_old/df_116_bom.json: rows=63914, fields=69
+- zz_old/qa_index.json: rows=63914, fields=62
+
+## Focus fields
+
+### MILU_New_v506.json
+- pn: pct=100.0 empty=0/3875 types=string
+- ruta_foto: pct=100.0 empty=3818/3875 types=null|string
+
+### MILU_Superseded_v506.json
+- pn: pct=100.0 empty=0/2945 types=string
+- ruta_foto: pct=100.0 empty=2867/2945 types=null|string
+
+### data/output/wordpress/milu_wp_discarded.json
+- pn: pct=100.0 empty=0/8 types=string
+- qa_revision_estado: pct=100.0 empty=0/8 types=string
+- qa_revision_accion: pct=100.0 empty=0/8 types=string
+- sust_superseded_list: pct=100.0 empty=8/8 types=string
+
+### data/output/wordpress/milu_wp_import.json
+- pn: pct=100.0 empty=0/3573 types=string
+- qa_revision_estado: pct=100.0 empty=0/3573 types=string
+- qa_revision_accion: pct=100.0 empty=0/3573 types=string
+- sust_superseded_list: pct=100.0 empty=3573/3573 types=string
+
+### data/output/wordpress/milu_wp_pending_review.json
+- pn: pct=100.0 empty=0/644 types=string
+- qa_revision_estado: pct=100.0 empty=0/644 types=string
+- qa_revision_accion: pct=100.0 empty=0/644 types=string
+- sust_superseded_list: pct=100.0 empty=634/644 types=string
+
+### data/output/wordpress/milu_wp_superseded.json
+- pn: pct=100.0 empty=0/1890 types=string
+- qa_revision_estado: pct=100.0 empty=0/1890 types=string
+- qa_revision_accion: pct=100.0 empty=0/1890 types=string
+- sust_superseded_list: pct=100.0 empty=632/1890 types=string
+
+### engine_12V4000M40A.json
+- PART NO.: pct=100.0 empty=48/2759 types=null|string
+- pn_raw: pct=100.0 empty=48/2759 types=null|string
+- pn_final: pct=100.0 empty=53/2759 types=null|string
+- esquemas: pct=100.0 empty=13/2759 types=null|string
+- esquemas_circulos: pct=100.0 empty=173/2759 types=null|string
+- ruta_esquemas_pos: pct=100.0 empty=173/2759 types=null|string
+- ruta_foto: pct=100.0 empty=2715/2759 types=null|string
+- qa_revision_estado: pct=100.0 empty=0/2759 types=string
+- qa_revision_accion: pct=100.0 empty=0/2759 types=string
+- gesa: pct=100.0 empty=1/2759 types=null|string
+- designation_gesa: pct=100.0 empty=519/2759 types=null|string
+- dimensions_gesa: pct=100.0 empty=1205/2759 types=null|string
+- weight_gesa: pct=100.0 empty=519/2759 types=null|number
+- normalizado: pct=100.0 empty=1/2759 types=null|string
+- norma: pct=100.0 empty=1547/2759 types=null|string
+- sust_status: pct=100.0 empty=1327/2759 types=null|string
+- sust_hierarchie: pct=100.0 empty=1327/2759 types=null|string
+- sust_new_part_number: pct=100.0 empty=1327/2759 types=null|string
+- sust_superseded_list: pct=100.0 empty=1618/2759 types=null|string
+
+### engine_12V4000M53.json
+- PART NO.: pct=100.0 empty=61/6580 types=null|string
+- pn_raw: pct=100.0 empty=61/6580 types=null|string
+- pn_final: pct=100.0 empty=102/6580 types=null|string
+- esquemas: pct=100.0 empty=899/6580 types=string
+- esquemas_circulos: pct=100.0 empty=1262/6580 types=null|string
+- ruta_esquemas_pos: pct=100.0 empty=1262/6580 types=null|string
+- ruta_foto: pct=100.0 empty=6470/6580 types=null|string
+- qa_revision_estado: pct=100.0 empty=0/6580 types=string
+- qa_revision_accion: pct=100.0 empty=0/6580 types=string
+- gesa: pct=100.0 empty=0/6580 types=string
+- designation_gesa: pct=100.0 empty=751/6580 types=null|string
+- dimensions_gesa: pct=100.0 empty=2200/6580 types=null|string
+- weight_gesa: pct=100.0 empty=751/6580 types=null|number
+- normalizado: pct=100.0 empty=0/6580 types=string
+- norma: pct=100.0 empty=3169/6580 types=null|string
+- sust_status: pct=100.0 empty=3607/6580 types=string
+- sust_hierarchie: pct=100.0 empty=3607/6580 types=null|string
+- sust_new_part_number: pct=100.0 empty=3607/6580 types=null|string
+- sust_superseded_list: pct=100.0 empty=3973/6580 types=null|string
+
+### engine_12V4000M70.json
+- PART NO.: pct=100.0 empty=26/5358 types=null|string
+- pn_raw: pct=100.0 empty=26/5358 types=null|string
+- pn_final: pct=100.0 empty=357/5358 types=null|string
+- esquemas: pct=100.0 empty=5358/5358 types=null
+- esquemas_circulos: pct=100.0 empty=5358/5358 types=null
+- ruta_esquemas_pos: pct=100.0 empty=5358/5358 types=null
+- ruta_foto: pct=100.0 empty=5250/5358 types=null|string
+- qa_revision_estado: pct=100.0 empty=0/5358 types=string
+- qa_revision_accion: pct=100.0 empty=0/5358 types=string
+- gesa: pct=100.0 empty=0/5358 types=string
+- designation_gesa: pct=100.0 empty=1160/5358 types=null|string
+- dimensions_gesa: pct=100.0 empty=2504/5358 types=null|string
+- weight_gesa: pct=100.0 empty=1160/5358 types=null|number
+- normalizado: pct=100.0 empty=0/5358 types=string
+- norma: pct=100.0 empty=3004/5358 types=null|string
+- sust_status: pct=100.0 empty=2697/5358 types=string
+- sust_hierarchie: pct=100.0 empty=2697/5358 types=null|string
+- sust_new_part_number: pct=100.0 empty=2697/5358 types=null|string
+- sust_superseded_list: pct=100.0 empty=3081/5358 types=null|string
+
+### engine_16V4000M61.json
+- PART NO.: pct=100.0 empty=157/4987 types=null|string
+- pn_raw: pct=100.0 empty=157/4987 types=null|string
+- pn_final: pct=100.0 empty=173/4987 types=null|string
+- esquemas: pct=100.0 empty=341/4987 types=string
+- esquemas_circulos: pct=100.0 empty=417/4987 types=null|string
+- ruta_esquemas_pos: pct=100.0 empty=417/4987 types=null|string
+- ruta_foto: pct=100.0 empty=4901/4987 types=null|string
+- qa_revision_estado: pct=100.0 empty=0/4987 types=string
+- qa_revision_accion: pct=100.0 empty=0/4987 types=string
+- gesa: pct=100.0 empty=0/4987 types=string
+- designation_gesa: pct=100.0 empty=866/4987 types=null|string
+- dimensions_gesa: pct=100.0 empty=2102/4987 types=null|string
+- weight_gesa: pct=100.0 empty=866/4987 types=null|number
+- normalizado: pct=100.0 empty=0/4987 types=string
+- norma: pct=100.0 empty=3058/4987 types=null|string
+- sust_status: pct=100.0 empty=2529/4987 types=string
+- sust_hierarchie: pct=100.0 empty=2529/4987 types=null|string
+- sust_new_part_number: pct=100.0 empty=2529/4987 types=null|string
+- sust_superseded_list: pct=100.0 empty=3023/4987 types=null|string
+
+### engine_16V4000M73.json
+- PART NO.: pct=100.0 empty=148/12445 types=null|string
+- pn_raw: pct=100.0 empty=148/12445 types=null|string
+- pn_final: pct=100.0 empty=285/12445 types=null|string
+- esquemas: pct=100.0 empty=256/12445 types=string
+- esquemas_circulos: pct=100.0 empty=824/12445 types=null|string
+- ruta_esquemas_pos: pct=100.0 empty=824/12445 types=null|string
+- ruta_foto: pct=100.0 empty=12237/12445 types=null|string
+- qa_revision_estado: pct=100.0 empty=0/12445 types=string
+- qa_revision_accion: pct=100.0 empty=0/12445 types=string
+- gesa: pct=100.0 empty=0/12445 types=string
+- designation_gesa: pct=100.0 empty=1675/12445 types=null|string
+- dimensions_gesa: pct=100.0 empty=4422/12445 types=null|string
+- weight_gesa: pct=100.0 empty=1675/12445 types=null|number
+- normalizado: pct=100.0 empty=0/12445 types=string
+- norma: pct=100.0 empty=5514/12445 types=null|string
+- sust_status: pct=100.0 empty=6695/12445 types=string
+- sust_hierarchie: pct=100.0 empty=6695/12445 types=null|string
+- sust_new_part_number: pct=100.0 empty=6695/12445 types=null|string
+- sust_superseded_list: pct=100.0 empty=7688/12445 types=null|string
+
+### engine_16V4000M73L.json
+- PART NO.: pct=100.0 empty=276/11128 types=null|string
+- pn_raw: pct=100.0 empty=276/11128 types=null|string
+- pn_final: pct=100.0 empty=366/11128 types=null|string
+- esquemas: pct=100.0 empty=861/11128 types=string
+- esquemas_circulos: pct=100.0 empty=1395/11128 types=null|string
+- ruta_esquemas_pos: pct=100.0 empty=1395/11128 types=null|string
+- ruta_foto: pct=100.0 empty=10963/11128 types=null|string
+- qa_revision_estado: pct=100.0 empty=0/11128 types=string
+- qa_revision_accion: pct=100.0 empty=0/11128 types=string
+- gesa: pct=100.0 empty=0/11128 types=string
+- designation_gesa: pct=100.0 empty=1621/11128 types=null|string
+- dimensions_gesa: pct=100.0 empty=4196/11128 types=null|string
+- weight_gesa: pct=100.0 empty=1621/11128 types=null|number
+- normalizado: pct=100.0 empty=0/11128 types=string
+- norma: pct=100.0 empty=6203/11128 types=null|string
+- sust_status: pct=100.0 empty=6313/11128 types=string
+- sust_hierarchie: pct=100.0 empty=6313/11128 types=null|string
+- sust_new_part_number: pct=100.0 empty=6313/11128 types=null|string
+- sust_superseded_list: pct=100.0 empty=7330/11128 types=null|string
+
+### engine_16V4000M90.json
+- PART NO.: pct=100.0 empty=43/2851 types=null|string
+- pn_raw: pct=100.0 empty=43/2851 types=null|string
+- pn_final: pct=100.0 empty=63/2851 types=null|string
+- esquemas: pct=100.0 empty=34/2851 types=string
+- esquemas_circulos: pct=100.0 empty=131/2851 types=null|string
+- ruta_esquemas_pos: pct=100.0 empty=131/2851 types=null|string
+- ruta_foto: pct=100.0 empty=2804/2851 types=null|string
+- qa_revision_estado: pct=100.0 empty=0/2851 types=string
+- qa_revision_accion: pct=100.0 empty=0/2851 types=string
+- gesa: pct=100.0 empty=0/2851 types=string
+- designation_gesa: pct=100.0 empty=469/2851 types=null|string
+- dimensions_gesa: pct=100.0 empty=1150/2851 types=null|string
+- weight_gesa: pct=100.0 empty=469/2851 types=null|number
+- normalizado: pct=100.0 empty=0/2851 types=string
+- norma: pct=100.0 empty=1629/2851 types=null|string
+- sust_status: pct=100.0 empty=1335/2851 types=string
+- sust_hierarchie: pct=100.0 empty=1335/2851 types=null|string
+- sust_new_part_number: pct=100.0 empty=1335/2851 types=null|string
+- sust_superseded_list: pct=100.0 empty=1634/2851 types=null|string
+
+### engine_20V4000M93.json
+- PART NO.: pct=100.0 empty=162/14643 types=null|string
+- pn_raw: pct=100.0 empty=162/14643 types=null|string
+- pn_final: pct=100.0 empty=361/14643 types=null|string
+- esquemas: pct=100.0 empty=420/14643 types=string
+- esquemas_circulos: pct=100.0 empty=11264/14643 types=null|string
+- ruta_esquemas_pos: pct=100.0 empty=11264/14643 types=null|string
+- ruta_foto: pct=100.0 empty=14373/14643 types=null|string
+- qa_revision_estado: pct=100.0 empty=0/14643 types=string
+- qa_revision_accion: pct=100.0 empty=0/14643 types=string
+- gesa: pct=100.0 empty=0/14643 types=string
+- designation_gesa: pct=100.0 empty=1960/14643 types=null|string
+- dimensions_gesa: pct=100.0 empty=5352/14643 types=null|string
+- weight_gesa: pct=100.0 empty=1960/14643 types=null|number
+- normalizado: pct=100.0 empty=0/14643 types=string
+- norma: pct=100.0 empty=6735/14643 types=null|string
+- sust_status: pct=100.0 empty=7906/14643 types=string
+- sust_hierarchie: pct=100.0 empty=7906/14643 types=null|string
+- sust_new_part_number: pct=100.0 empty=7906/14643 types=null|string
+- sust_superseded_list: pct=100.0 empty=8857/14643 types=null|string
+
+### engine_20V4000M93L.json
+- PART NO.: pct=100.0 empty=104/7132 types=null|string
+- pn_raw: pct=100.0 empty=104/7132 types=null|string
+- pn_final: pct=100.0 empty=222/7132 types=null|string
+- esquemas: pct=100.0 empty=152/7132 types=string
+- esquemas_circulos: pct=100.0 empty=412/7132 types=null|string
+- ruta_esquemas_pos: pct=100.0 empty=412/7132 types=null|string
+- ruta_foto: pct=100.0 empty=7038/7132 types=null|string
+- qa_revision_estado: pct=100.0 empty=0/7132 types=string
+- qa_revision_accion: pct=100.0 empty=0/7132 types=string
+- gesa: pct=100.0 empty=0/7132 types=string
+- designation_gesa: pct=100.0 empty=1298/7132 types=null|string
+- dimensions_gesa: pct=100.0 empty=2762/7132 types=null|string
+- weight_gesa: pct=100.0 empty=1298/7132 types=null|number
+- normalizado: pct=100.0 empty=0/7132 types=string
+- norma: pct=100.0 empty=3284/7132 types=null|string
+- sust_status: pct=100.0 empty=3696/7132 types=string
+- sust_hierarchie: pct=100.0 empty=3696/7132 types=null|string
+- sust_new_part_number: pct=100.0 empty=3696/7132 types=null|string
+- sust_superseded_list: pct=100.0 empty=4463/7132 types=null|string
+
+### qa_synthetic_new.json
+- pn: pct=100.0 empty=0/5123 types=string
+- ruta_foto: pct=100.0 empty=5063/5123 types=null|string
+
+### qa_synthetic_superseded.json
+- pn: pct=100.0 empty=0/638 types=string
+- ruta_foto: pct=100.0 empty=634/638 types=null|string
+
+### zz_old/df_116_bom.json
+- PART NO.: pct=100.0 empty=1013/63914 types=null|string
+- pn_raw: pct=100.0 empty=1013/63914 types=null|string
+- pn_final: pct=100.0 empty=2992/63914 types=null|string
+- esquemas: pct=100.0 empty=3007/63914 types=string
+- esquemas_circulos: pct=100.0 empty=17267/63914 types=null|string
+- ruta_esquemas_pos: pct=100.0 empty=17267/63914 types=null|string
+- ruta_foto: pct=100.0 empty=62890/63914 types=null|string
+- gesa: pct=100.0 empty=0/63914 types=string
+- designation_gesa: pct=100.0 empty=10525/63914 types=null|string
+- dimensions_gesa: pct=100.0 empty=24766/63914 types=null|string
+- weight_gesa: pct=100.0 empty=10525/63914 types=null|number
+- normalizado: pct=100.0 empty=0/63914 types=string
+- norma: pct=100.0 empty=32978/63914 types=null|string
+- sust_status: pct=100.0 empty=34776/63914 types=string
+- sust_hierarchie: pct=100.0 empty=34776/63914 types=null|string
+- sust_new_part_number: pct=100.0 empty=34776/63914 types=null|string
+- sust_superseded_list: pct=100.0 empty=39968/63914 types=null|string
+
+### zz_old/qa_index.json
+- pn: pct=100.0 empty=1013/63914 types=null|string
+- ruta_esquemas_pos: pct=100.0 empty=17267/63914 types=null|string
+- ruta_foto: pct=100.0 empty=62890/63914 types=null|string
+- img_urls: pct=100.0 empty=17032/63914 types=array|string
+- schema_urls: pct=100.0 empty=3007/63914 types=array|string
+- gesa: pct=100.0 empty=0/63914 types=string
+- designation_gesa: pct=100.0 empty=10525/63914 types=null|string
+- dimensions_gesa: pct=100.0 empty=24766/63914 types=null|string
+- weight_gesa: pct=100.0 empty=10525/63914 types=null|string
+- normalizado: pct=100.0 empty=0/63914 types=string
+- sust_status: pct=100.0 empty=34776/63914 types=null|string
+- sust_hierarchie: pct=100.0 empty=34776/63914 types=null|string
+- sust_new_part_number: pct=100.0 empty=34776/63914 types=null|string
+- sust_superseded_list: pct=100.0 empty=39968/63914 types=null|string
+
+## Potential duplicate field groups (name-based)
+
+- bomno: BOM-No., BOM_no, bom_no
+- designation: DESIGNATION, designation
+- fgfgs: FG/FGS, fg_fgs
+- id: ID, Id
+- modeltype: MODEL/TYPE, model_type
+- pos: POS, pos
+- qty: QTY, qty
+- sourcepage: Source Page, source_page
+- units: UNITS, units
+- weight: WEIGHT, weight
+
+## Mixed-type fields
+
+### MILU_New_v506.json
+- designation: null|string
+- fg_code_description: null|string
+- fg_description: null|string
+- GESA_NORM: null|string
+- new_pn_relacionado: null|string
+- nsn: null|string
+- old_pn_relacionados: null|string
+- POS: null|string
+- ruta_foto: null|string
+- SUST_TIPO: null|string
+- weight: null|number
+- weight_txt: null|string
+
+### MILU_Superseded_v506.json
+- designation: null|string
+- fg_code_description: null|string
+- fg_description: null|string
+- GESA_NORM: null|string
+- Id: null|number
+- nsn: null|string
+- POS: null|string
+- ruta_foto: null|string
+- weight: null|number
+- weight_txt: null|string
+
+### engine_12V4000M40A.json
+- atributo2: null|string
+- bom_pdf: null|string
+- book_set: null|string
+- categoria: null|string
+- Cause: null|string
+- criterio_pn: null|string
+- Date: null|string
+- Denomination (New Part Number): null|string
+- Denomination(Cause): null|string
+- depuracion_ts: null|string
+- DESIGNATION: null|string
+- designation_gesa: null|string
+- designation_pdf: null|string
+- detalle_cambio: null|string
+- dimensions_gesa: null|string
+- engine: null|string
+- esquemas: null|string
+- esquemas_circulos: null|string
+- esquemas_circulos_all: null|string
+- existeix_gesa: boolean|null
+- existeix_sust_new: boolean|null
+- existeix_sust_old: boolean|null
+- exp_imagenes: null|string
+- FG/FGS: null|string
+- fg_code: null|number
+- fg_fgs_raw: null|string
+- fgs_code_description: null|string
+- fgs_description: null|string
+- filename_foto: null|string
+- FN: null|string
+- fn_pdf: null|string
+- gesa: null|string
+- gesa_pdf: null|string
+- Hierarchie: null|string
+- libro_pag: null|string
+- measure_final: null|string
+- measure_pdf: null|string
+- measure_raw: null|string
+- MEASUREMENT / STANDARD: null|string
+- model: null|string
+- MODEL/TYPE: null|string
+- MODEL/TYPE_final: null|string
+- model_final: null|string
+- model_type_pdf: null|string
+- MSTAE: null|number
+- MTART: null|string
+- MTU: null|string
+- New Part Number: null|string
+- norma: null|string
+- norma_final: null|string
+- norma_pdf: null|string
+- norma_raw: null|string
+- normalizado: null|string
+- normalizado_pdf: null|string
+- nsn: null|string
+- page4: null|string
+- pages: null|string
+- PART NO.: null|string
+- pn_final: null|string
+- pn_new: null|string
+- pn_pdf: null|string
+- pn_raw: null|string
+- pn_recomendado: null|string
+- POS: null|string
+- pos_final: number|string
+- pos_pdf: null|string
+- precio: null|number
+- Product Hierarchy: null|string
+- QTY: null|string
+- qty_final: null|string
+- qty_pdf: null|string
+- qty_units_final: null|string
+- Replacement Type: null|string
+- ruta_esquemas_pos: null|string
+- ruta_foto: null|string
+- Seq no: null|string
+- Source Page: number|string
+- source_file: null|string
+- source_sheet: null|string
+- status: null|string
+- Superseded Part Number: null|string
+- sust_hierarchie: null|string
+- sust_new_part_number: null|string
+- sust_new_part_number_pdf: null|string
+- sust_status: null|string
+- sust_superseded_list: null|string
+- sust_superseded_list_pdf: null|string
+- UNITS: null|string
+- units: null|string
+- units_pdf: null|string
+- Valid From Date: null|string
+- WEIGHT: null|string
+- weight_final: null|string
+- weight_gesa: null|number
+- weight_pdf: null|string
+
+### engine_12V4000M53.json
+- Cause: null|string
+- Date: null|string
+- Denomination (New Part Number): null|string
+- Denomination(Cause): null|string
+- DESIGNATION: null|string
+- designation_final: null|string
+- designation_gesa: null|string
+- detalle_cambio: null|string
+- dimensions_gesa: null|string
+- esquemas_circulos: null|string
+- esquemas_circulos_all: null|string
+- filename_foto: null|string
+- FN: null|string
+- Hierarchie: null|string
+- measure_final: null|string
+- measure_raw: null|string
+- MEASUREMENT / STANDARD: null|string
+- MODEL/TYPE: null|string
+- MODEL/TYPE_final: null|string
+- model_final: null|string
+- MSTAE: null|number
+- MTART: null|string
+- MTU: null|string
+- New Part Number: null|string
+- norma: null|string
+- norma_final: null|string
+- norma_raw: null|string
+- nsn: null|string
+- PART NO.: null|string
+- pn_final: null|string
+- pn_new: null|string
+- pn_raw: null|string
+- pn_recomendado: null|string
+- POS: null|string
+- pos_final: null|string
+- Product Hierarchy: null|string
+- QTY: null|string
+- qty_final: null|string
+- qty_units_final: null|string
+- Replacement Type: null|string
+- ruta_esquemas_pos: null|string
+- ruta_foto: null|string
+- Seq no: null|string
+- Superseded Part Number: null|string
+- sust_hierarchie: null|string
+- sust_new_part_number: null|string
+- sust_superseded_list: null|string
+- UNITS: null|string
+- units: null|string
+- Valid From Date: null|string
+- WEIGHT: null|string
+- weight_final: null|string
+- weight_gesa: null|number
+
+### engine_12V4000M70.json
+- Cause: null|string
+- Date: null|string
+- Denomination (New Part Number): null|string
+- Denomination(Cause): null|string
+- DESIGNATION: null|string
+- designation_final: null|string
+- designation_gesa: null|string
+- detalle_cambio: null|string
+- dimensions_gesa: null|string
+- fgs_code_description: null|string
+- fgs_description: null|string
+- filename_foto: null|string
+- FN: null|string
+- Hierarchie: null|string
+- measure_final: null|string
+- measure_raw: null|string
+- MEASUREMENT / STANDARD: null|string
+- MODEL/TYPE: null|string
+- MODEL/TYPE_final: null|string
+- model_final: null|string
+- MSTAE: null|number
+- MTART: null|string
+- MTU: null|string
+- New Part Number: null|string
+- norma: null|string
+- norma_final: null|string
+- norma_raw: null|string
+- nsn: null|string
+- PART NO.: null|string
+- pn_final: null|string
+- pn_new: null|string
+- pn_raw: null|string
+- pn_recomendado: null|string
+- POS: null|string
+- pos_final: null|string
+- Product Hierarchy: null|string
+- QTY: null|string
+- qty_final: null|string
+- qty_units_final: null|string
+- Replacement Type: null|string
+- ruta_foto: null|string
+- Seq no: null|string
+- Superseded Part Number: null|string
+- sust_hierarchie: null|string
+- sust_new_part_number: null|string
+- sust_superseded_list: null|string
+- UNITS: null|string
+- units: null|string
+- Valid From Date: null|string
+- WEIGHT: null|string
+- weight_final: null|string
+- weight_gesa: null|number
+
+### engine_16V4000M61.json
+- Cause: null|string
+- Date: null|string
+- Denomination (New Part Number): null|string
+- Denomination(Cause): null|string
+- DESIGNATION: null|string
+- designation_final: null|string
+- designation_gesa: null|string
+- detalle_cambio: null|string
+- dimensions_gesa: null|string
+- esquemas_circulos: null|string
+- esquemas_circulos_all: null|string
+- filename_foto: null|string
+- FN: null|string
+- Hierarchie: null|string
+- measure_final: null|string
+- measure_raw: null|string
+- MEASUREMENT / STANDARD: null|string
+- MSTAE: null|number
+- MTART: null|string
+- MTU: null|string
+- New Part Number: null|string
+- norma: null|string
+- norma_final: null|string
+- norma_raw: null|string
+- nsn: null|string
+- PART NO.: null|string
+- pn_final: null|string
+- pn_new: null|string
+- pn_raw: null|string
+- pn_recomendado: null|string
+- POS: null|string
+- pos_final: null|string
+- Product Hierarchy: null|string
+- QTY: null|string
+- qty_final: null|string
+- qty_units_final: null|string
+- Replacement Type: null|string
+- ruta_esquemas_pos: null|string
+- ruta_foto: null|string
+- Seq no: null|string
+- Superseded Part Number: null|string
+- sust_hierarchie: null|string
+- sust_new_part_number: null|string
+- sust_superseded_list: null|string
+- UNITS: null|string
+- units: null|string
+- Valid From Date: null|string
+- WEIGHT: null|string
+- weight_final: null|string
+- weight_gesa: null|number
+
+### engine_16V4000M73.json
+- Cause: null|string
+- Date: null|string
+- Denomination (New Part Number): null|string
+- Denomination(Cause): null|string
+- DESIGNATION: null|string
+- designation_final: null|string
+- designation_gesa: null|string
+- detalle_cambio: null|string
+- dimensions_gesa: null|string
+- esquemas_circulos: null|string
+- esquemas_circulos_all: null|string
+- filename_foto: null|string
+- FN: null|string
+- Hierarchie: null|string
+- measure_final: null|string
+- measure_raw: null|string
+- MEASUREMENT / STANDARD: null|string
+- MODEL/TYPE: null|string
+- MODEL/TYPE_final: null|string
+- model_final: null|string
+- MSTAE: null|number
+- MTART: null|string
+- MTU: null|string
+- New Part Number: null|string
+- norma: null|string
+- norma_final: null|string
+- norma_raw: null|string
+- nsn: null|string
+- PART NO.: null|string
+- pn_final: null|string
+- pn_new: null|string
+- pn_raw: null|string
+- pn_recomendado: null|string
+- POS: null|string
+- pos_final: null|string
+- Product Hierarchy: null|string
+- QTY: null|string
+- qty_final: null|string
+- qty_units_final: null|string
+- Replacement Type: null|string
+- ruta_esquemas_pos: null|string
+- ruta_foto: null|string
+- Seq no: null|string
+- Superseded Part Number: null|string
+- sust_hierarchie: null|string
+- sust_new_part_number: null|string
+- sust_superseded_list: null|string
+- UNITS: null|string
+- units: null|string
+- Valid From Date: null|string
+- WEIGHT: null|string
+- weight_final: null|string
+- weight_gesa: null|number
+
+### engine_16V4000M73L.json
+- Cause: null|string
+- Date: null|string
+- Denomination (New Part Number): null|string
+- Denomination(Cause): null|string
+- DESIGNATION: null|string
+- designation_final: null|string
+- designation_gesa: null|string
+- detalle_cambio: null|string
+- dimensions_gesa: null|string
+- esquemas_circulos: null|string
+- esquemas_circulos_all: null|string
+- fgs_code_description: null|string
+- fgs_description: null|string
+- filename_foto: null|string
+- FN: null|string
+- Hierarchie: null|string
+- measure_final: null|string
+- measure_raw: null|string
+- MEASUREMENT / STANDARD: null|string
+- MSTAE: null|number
+- MTART: null|string
+- MTU: null|string
+- New Part Number: null|string
+- norma: null|string
+- norma_final: null|string
+- norma_raw: null|string
+- nsn: null|string
+- PART NO.: null|string
+- pn_final: null|string
+- pn_new: null|string
+- pn_raw: null|string
+- pn_recomendado: null|string
+- POS: null|string
+- pos_final: null|string
+- Product Hierarchy: null|string
+- QTY: null|string
+- qty_final: null|string
+- qty_units_final: null|string
+- Replacement Type: null|string
+- ruta_esquemas_pos: null|string
+- ruta_foto: null|string
+- Seq no: null|string
+- Superseded Part Number: null|string
+- sust_hierarchie: null|string
+- sust_new_part_number: null|string
+- sust_superseded_list: null|string
+- UNITS: null|string
+- units: null|string
+- Valid From Date: null|string
+- WEIGHT: null|string
+- weight_final: null|string
+- weight_gesa: null|number
+
+### engine_16V4000M90.json
+- Cause: null|string
+- Date: null|string
+- Denomination (New Part Number): null|string
+- Denomination(Cause): null|string
+- DESIGNATION: null|string
+- designation_final: null|string
+- designation_gesa: null|string
+- detalle_cambio: null|string
+- dimensions_gesa: null|string
+- esquemas_circulos: null|string
+- esquemas_circulos_all: null|string
+- filename_foto: null|string
+- FN: null|string
+- Hierarchie: null|string
+- measure_final: null|string
+- measure_raw: null|string
+- MEASUREMENT / STANDARD: null|string
+- MODEL/TYPE: null|string
+- MODEL/TYPE_final: null|string
+- model_final: null|string
+- MSTAE: null|number
+- MTART: null|string
+- MTU: null|string
+- New Part Number: null|string
+- norma: null|string
+- norma_final: null|string
+- norma_raw: null|string
+- nsn: null|string
+- PART NO.: null|string
+- pn_final: null|string
+- pn_new: null|string
+- pn_raw: null|string
+- pn_recomendado: null|string
+- POS: null|string
+- pos_final: null|string
+- Product Hierarchy: null|string
+- QTY: null|string
+- qty_final: null|string
+- qty_units_final: null|string
+- Replacement Type: null|string
+- ruta_esquemas_pos: null|string
+- ruta_foto: null|string
+- Seq no: null|string
+- Superseded Part Number: null|string
+- sust_hierarchie: null|string
+- sust_new_part_number: null|string
+- sust_superseded_list: null|string
+- UNITS: null|string
+- units: null|string
+- Valid From Date: null|string
+- WEIGHT: null|string
+- weight_final: null|string
+- weight_gesa: null|number
+
+### engine_20V4000M93.json
+- Cause: null|string
+- Date: null|string
+- Denomination (New Part Number): null|string
+- Denomination(Cause): null|string
+- DESIGNATION: null|string
+- designation_final: null|string
+- designation_gesa: null|string
+- detalle_cambio: null|string
+- dimensions_gesa: null|string
+- esquemas_circulos: null|string
+- esquemas_circulos_all: null|string
+- filename_foto: null|string
+- FN: null|string
+- Hierarchie: null|string
+- measure_final: null|string
+- measure_raw: null|string
+- MEASUREMENT / STANDARD: null|string
+- MODEL/TYPE: null|string
+- MODEL/TYPE_final: null|string
+- model_final: null|string
+- MSTAE: null|number
+- MTART: null|string
+- MTU: null|string
+- New Part Number: null|string
+- norma: null|string
+- norma_final: null|string
+- norma_raw: null|string
+- nsn: null|string
+- PART NO.: null|string
+- pn_final: null|string
+- pn_new: null|string
+- pn_raw: null|string
+- pn_recomendado: null|string
+- POS: null|string
+- pos_final: null|string
+- Product Hierarchy: null|string
+- QTY: null|string
+- qty_final: null|string
+- qty_units_final: null|string
+- Replacement Type: null|string
+- ruta_esquemas_pos: null|string
+- ruta_foto: null|string
+- Seq no: null|string
+- Superseded Part Number: null|string
+- sust_hierarchie: null|string
+- sust_new_part_number: null|string
+- sust_superseded_list: null|string
+- UNITS: null|string
+- units: null|string
+- Valid From Date: null|string
+- WEIGHT: null|string
+- weight_final: null|string
+- weight_gesa: null|number
+
+### engine_20V4000M93L.json
+- Cause: null|string
+- Date: null|string
+- Denomination (New Part Number): null|string
+- Denomination(Cause): null|string
+- DESIGNATION: null|string
+- designation_final: null|string
+- designation_gesa: null|string
+- detalle_cambio: null|string
+- dimensions_gesa: null|string
+- esquemas_circulos: null|string
+- esquemas_circulos_all: null|string
+- fgs_code_description: null|string
+- fgs_description: null|string
+- filename_foto: null|string
+- FN: null|string
+- Hierarchie: null|string
+- measure_final: null|string
+- measure_raw: null|string
+- MEASUREMENT / STANDARD: null|string
+- MODEL/TYPE: null|string
+- MODEL/TYPE_final: null|string
+- model_final: null|string
+- MSTAE: null|number
+- MTART: null|string
+- MTU: null|string
+- New Part Number: null|string
+- norma: null|string
+- norma_final: null|string
+- norma_raw: null|string
+- nsn: null|string
+- PART NO.: null|string
+- pn_final: null|string
+- pn_new: null|string
+- pn_raw: null|string
+- pn_recomendado: null|string
+- POS: null|string
+- pos_final: null|string
+- Product Hierarchy: null|string
+- QTY: null|string
+- qty_final: null|string
+- qty_units_final: null|string
+- Replacement Type: null|string
+- ruta_esquemas_pos: null|string
+- ruta_foto: null|string
+- Seq no: null|string
+- Superseded Part Number: null|string
+- sust_hierarchie: null|string
+- sust_new_part_number: null|string
+- sust_superseded_list: null|string
+- UNITS: null|string
+- units: null|string
+- Valid From Date: null|string
+- WEIGHT: null|string
+- weight_final: null|string
+- weight_gesa: null|number
+
+### qa_synthetic_new.json
+- new_pn_relacionado: null|string
+- old_pn_relacionados: null|string
+- ruta_foto: null|string
+
+### qa_synthetic_superseded.json
+- ruta_foto: null|string
+
+### zz_old/df_116_bom.json
+- Cause: null|string
+- Date: null|string
+- Denomination (New Part Number): null|string
+- Denomination(Cause): null|string
+- DESIGNATION: null|string
+- designation_gesa: null|string
+- detalle_cambio: null|string
+- dimensions_gesa: null|string
+- esquemas_circulos: null|string
+- esquemas_circulos_all: null|string
+- fgs_code_description: null|string
+- fgs_description: null|string
+- filename_foto: null|string
+- FN: null|string
+- Hierarchie: null|string
+- MEASUREMENT / STANDARD: null|string
+- MODEL/TYPE: null|string
+- MSTAE: null|number
+- MTART: null|string
+- MTU: null|string
+- New Part Number: null|string
+- norma: null|string
+- nsn: null|string
+- PART NO.: null|string
+- pn_final: null|string
+- pn_new: null|string
+- pn_raw: null|string
+- pn_recomendado: null|string
+- POS: null|string
+- Product Hierarchy: null|string
+- QTY: null|string
+- Replacement Type: null|string
+- ruta_esquemas_pos: null|string
+- ruta_foto: null|string
+- Seq no: null|string
+- Superseded Part Number: null|string
+- sust_hierarchie: null|string
+- sust_new_part_number: null|string
+- sust_superseded_list: null|string
+- UNITS: null|string
+- units: null|string
+- Valid From Date: null|string
+- WEIGHT: null|string
+- weight_gesa: null|number
+
+### zz_old/qa_index.json
+- designation: null|string
+- designation_gesa: null|string
+- dimensions_final: null|string
+- dimensions_gesa: null|string
+- esq_circ_raw: null|string
+- esq_raw: null|string
+- fgs_code_description: null|string
+- fgs_description: null|string
+- FN: null|string
+- img_urls: array|string
+- measurement: null|string
+- model_type: null|string
+- norma_final: null|string
+- norma_raw: null|string
+- nsn: null|string
+- pn: null|string
+- pos: null|string
+- qty: null|string
+- ruta_esquemas_pos: null|string
+- ruta_foto: null|string
+- schema_urls: array|string
+- sust_hierarchie: null|string
+- sust_new_part_number: null|string
+- sust_new_pn_list: array|string
+- sust_status: null|string
+- sust_superseded_list: null|string
+- sust_superseded_vec: array|string
+- units: null|string
+- units_gesa_or_alt: null|string
+- WEIGHT: null|string
+- weight_final: null|string
+- weight_gesa: null|string
