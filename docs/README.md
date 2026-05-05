@@ -1,6 +1,31 @@
-# MILU Docs Index
+# MILU Documentation
+
+Documentación consolidada del proyecto MILU.
+
+## Resumen Rápido
+
+- Backend local con Express en [../server.js](../server.js).
+- Frontend principal en [../qa_milu.html](../qa_milu.html).
+- Persistencia en archivos JSON del repo (no hay base de datos relacional).
+- Datos runtime cargados desde 9 archivos `engine_*.json` (ver [../js/data-loader.js](../js/data-loader.js)).
+
+## Puesta en Marcha
+
+1. Instalar dependencias:
+	- `npm install`
+2. Arrancar servidor:
+	- `node server.js`
+	- o usar [../Ejecutar localhost.bat](../Ejecutar%20localhost.bat)
+3. Abrir la app:
+	- `http://localhost:3000/qa_milu.html`
+
+## Documentación Principal
+
+- Frontend completo: [FRONTEND.md](FRONTEND.md)
+- Backend completo: [BACKEND.md](BACKEND.md)
 
 ## Start Here
+
 - Project overview: [00_overview.md](00_overview.md)
 - Folder/file map: [01_structure.md](01_structure.md)
 - Data flow: [02_data_flow.md](02_data_flow.md)
@@ -12,7 +37,7 @@
 - Plan de remediación: [10_plan_remediacion.md](10_plan_remediacion.md)
 - Progreso de remediación: [11_progreso_remediacion.md](11_progreso_remediacion.md)
 - AR-1 carga incremental: [12_ar1_carga_incremental.md](12_ar1_carga_incremental.md)
-- WordPress export (transicion): [13_wordpress_export_ai_pipeline.md](13_wordpress_export_ai_pipeline.md)
+- WordPress export (transición): [13_wordpress_export_ai_pipeline.md](13_wordpress_export_ai_pipeline.md)
 - WordPress export simplificado: [14_wordpress_export_simplified.md](14_wordpress_export_simplified.md)
 - PN Review QA-only: [14_wordpress_export_simplified.md](14_wordpress_export_simplified.md)
 - Quick AI context: [AI_QUICK_CONTEXT.md](AI_QUICK_CONTEXT.md)
@@ -35,20 +60,20 @@
 6. [modules/js_qa_table.md](modules/js_qa_table.md)
 7. [modules/js_qa_milu.md](modules/js_qa_milu.md)
 
-### C) PDF or schema image issue
+### C) PDF o issue de esquemas
 1. [AI_QUICK_CONTEXT_COMPACT.md](AI_QUICK_CONTEXT_COMPACT.md)
 2. [modules/js_pdf_viewer.md](modules/js_pdf_viewer.md)
 3. [modules/js_schemas.md](modules/js_schemas.md)
 4. [modules/js_pos_preload.md](modules/js_pos_preload.md)
 
-### D) Data normalization/export flow
+### D) Flujo de normalización/export
 1. [AI_QUICK_CONTEXT_COMPACT.md](AI_QUICK_CONTEXT_COMPACT.md)
 2. [modules/depuracion_json_py.md](modules/depuracion_json_py.md)
 3. [14_wordpress_export_simplified.md](14_wordpress_export_simplified.md)
 4. [modules/marcar_articulos_en_web_py.md](modules/marcar_articulos_en_web_py.md)
 5. [03_data_models.md](03_data_models.md)
 
-### E) Revision global por PN (QA-only)
+### E) Revisión global por PN (QA-only)
 1. [14_wordpress_export_simplified.md](14_wordpress_export_simplified.md)
 2. [11_progreso_remediacion.md](11_progreso_remediacion.md)
 3. [modules/server.md](modules/server.md)
@@ -85,6 +110,7 @@
 - [modules/app_js.md](modules/app_js.md)
 
 ## Which AI Context File To Use
+
 - Use [AI_QUICK_CONTEXT_COMPACT.md](AI_QUICK_CONTEXT_COMPACT.md) for first-pass prompts and low-token contexts.
 - Use [AI_QUICK_CONTEXT.md](AI_QUICK_CONTEXT.md) when you need more operational detail.
 - Use [04_ai_context.md](04_ai_context.md) for troubleshooting playbooks and read-order guidance.
