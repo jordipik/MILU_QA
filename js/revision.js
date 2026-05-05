@@ -105,6 +105,7 @@ export function normalizeAccionToNew(oldAccion) {
     const normalized = String(oldAccion || '').trim().toLowerCase();
     if (normalized === 'importar') return 'importar';
     if (normalized === 'mantener') return 'importar';
+    if (normalized === 'copia') return 'copia';
     if (normalized === 'revisar') return 'revisar';
     if (normalized === 'actualizar') return 'revisar';  // Campos pendientes → revisar
     if (normalized === 'sustituir') return 'revisar';     // Validación incompleta → revisar
@@ -116,6 +117,7 @@ export function denormalizeAccionFromNew(newAccion) {
     // Persistimos valores canónicos nuevos; mantenemos compatibilidad de lectura en normalizeAccionToNew.
     const normalized = String(newAccion || '').trim().toLowerCase();
     if (normalized === 'importar' || normalized === 'mantener') return 'importar';
+    if (normalized === 'copia') return 'copia';
     if (normalized === 'revisar') return 'revisar';
     if (normalized === 'eliminar') return 'eliminar';
     return 'importar';
@@ -222,9 +224,100 @@ export function getRevisionAccionClass(value) {
     const v = String(value || '').trim().toLowerCase();
     if (!v) return 'rev-empty';
     if (v === 'importar' || v === 'mantener') return 'rev-accion-mantener';
+    if (v === 'copia') return 'rev-accion-revisar';
     if (v === 'revisar' || v === 'actualizar' || v === 'sustituir') return 'rev-accion-revisar';
     if (v === 'eliminar') return 'rev-accion-eliminar';
     return 'rev-empty';
+}
+
+function normalizePartNumberKey(value) {
+    return String(value ?? '').trim().replace(/\s+/g, ' ').toLowerCase();
+}
+
+function getRowPartNumber(row) {
+    return String(row?.pn_final ?? row?.['PART NO.'] ?? row?.pn ?? '').trim();
+}
+
+function shouldTriggerGlobalCopyPropagation(estado, accion) {
+    return normalizeEstadoToNew(estado) === 'ok' && normalizeAccionToNew(accion) === 'importar';
+}
+
+function buildPatchTargetForRevisionRow(row) {
+    const revisionKey = String(getRevisionKey(row) || '').trim();
+    const engineFile = String(getEngineFileForRow(row) || '').trim();
+    const id = String(row?.ID ?? '').trim();
+    if (!revisionKey || !engineFile || !id) return null;
+    return { revisionKey, engineFile, id };
+}
+
+export function rebuildGlobalPartNumberIndex(rows = state.allData) {
+    const index = new Map();
+    const list = Array.isArray(rows) ? rows : [];
+    list.forEach((row) => {
+        const key = normalizePartNumberKey(getRowPartNumber(row));
+        if (!key) return;
+        if (!index.has(key)) index.set(key, []);
+        index.get(key).push(row);
+    });
+    state.revisionPnIndex = index;
+    return index;
+}
+
+function getRowsByNormalizedPartNumber(normalizedPn, rows = state.allData) {
+    const key = normalizePartNumberKey(normalizedPn);
+    if (!key) return [];
+
+    if (!(state.revisionPnIndex instanceof Map) || state.revisionPnIndex.size === 0) {
+        rebuildGlobalPartNumberIndex(rows);
+    }
+
+    return state.revisionPnIndex.get(key) || [];
+}
+
+export function buildGlobalPnCopyTargets(sourceRow, options = {}) {
+    const rows = Array.isArray(options?.rows) ? options.rows : state.allData;
+    if (!sourceRow || !Array.isArray(rows) || rows.length === 0) return [];
+
+    const nextEstado = options?.nextEstado ?? sourceRow?.qa_revision_estado;
+    const nextAccion = options?.nextAccion ?? sourceRow?.qa_revision_accion;
+    if (!shouldTriggerGlobalCopyPropagation(nextEstado, nextAccion)) return [];
+
+    const sourceKey = String(getRevisionKey(sourceRow) || '').trim();
+    const sourcePn = getRowPartNumber(sourceRow);
+    const normalizedPn = normalizePartNumberKey(sourcePn);
+    if (!normalizedPn) return [];
+
+    const matches = getRowsByNormalizedPartNumber(normalizedPn, rows);
+    const targets = [];
+
+    matches.forEach((row) => {
+        if (!row) return;
+        const rowKey = String(getRevisionKey(row) || '').trim();
+        if (!rowKey || rowKey === sourceKey) return;
+
+        const beforeEstado = normalizeEstadoToNew(row?.qa_revision_estado);
+        const beforeAccion = normalizeAccionToNew(row?.qa_revision_accion);
+        const afterEstado = 'ok';
+        const afterAccion = 'copia';
+        if (beforeEstado === afterEstado && beforeAccion === afterAccion) return;
+
+        const target = buildPatchTargetForRevisionRow(row);
+        if (!target) return;
+
+        const changes = {};
+        if (beforeEstado !== afterEstado) {
+            changes.qa_revision_estado = { before: beforeEstado, after: afterEstado };
+        }
+        if (beforeAccion !== afterAccion) {
+            changes.qa_revision_accion = { before: beforeAccion, after: afterAccion };
+        }
+
+        if (Object.keys(changes).length > 0) {
+            targets.push({ target, changes });
+        }
+    });
+
+    return targets;
 }
 
 export function updateRevisionSelectVisual(selectEl) {

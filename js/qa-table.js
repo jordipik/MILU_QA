@@ -708,6 +708,7 @@ function getRevisionEstadoOptionsHtml(revisionEstado) {
 function getRevisionAccionOptionsHtml(revisionAccion) {
     return [
         { value: 'importar', label: 'Importar' },
+        { value: 'copia', label: 'Copia' },
         { value: 'revisar', label: 'Revisar' },
         { value: 'eliminar', label: 'Eliminar' }
     ].map(opt => `<option value="${escapeHtml(opt.value)}" ${revisionAccion === opt.value ? 'selected' : ''}>${escapeHtml(opt.label)}</option>`).join('');

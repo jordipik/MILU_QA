@@ -17,6 +17,7 @@ export const state = {
     filters: {},
     groupedVisible: false,
     selectedRevisionRowKey: '',
+    revisionPnIndex: new Map(),
     recentRevisionKeys: [],
     leftTableReviewedOnly: true,
     displayRowCount: 0,

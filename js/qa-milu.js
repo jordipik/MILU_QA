@@ -9,11 +9,13 @@ import { checkSaveBackendConnection, fetchJsonSafe, loadPartitionedEngineData, s
 import {
     applyRevisionDataToRows,
     assignRevisionKeys,
+    buildGlobalPnCopyTargets,
     denormalizeAccionFromNew,
     denormalizeEstadoFromNew,
     getRevisionKey,
     normalizeAccionToNew,
     normalizeEstadoToNew,
+    rebuildGlobalPartNumberIndex,
     updateRevisionSelectVisual
 } from './revision.js';
 import { subscribeRevisionSync } from './revision-sync.js';
@@ -336,6 +338,55 @@ function collectRowChanges(row, nextValues, nextEstado, nextAccion) {
     }
 
     return changes;
+}
+
+function buildRowPatchEntryWithPnCopyPropagation(row, changes, meta = {}) {
+    rebuildGlobalPartNumberIndex(state.allData);
+
+    const primaryTarget = buildPatchTargetForRow(row);
+    const primaryPatch = { target: primaryTarget, changes };
+
+    const nextEstado = Object.prototype.hasOwnProperty.call(changes, 'qa_revision_estado')
+        ? changes.qa_revision_estado.after
+        : normalizeEstadoToNew(row?.qa_revision_estado);
+    const nextAccion = Object.prototype.hasOwnProperty.call(changes, 'qa_revision_accion')
+        ? changes.qa_revision_accion.after
+        : normalizeAccionToNew(row?.qa_revision_accion);
+
+    const copyTargets = buildGlobalPnCopyTargets(row, {
+        rows: state.allData,
+        nextEstado,
+        nextAccion
+    });
+
+    if (!copyTargets.length) {
+        return {
+            type: QA_ROW_PATCH_CHANGE_TYPE,
+            module: 'qa_milu',
+            action: meta.action || 'save-row',
+            description: meta.description || `Guardar fila ID ${row?.ID}`,
+            target: { revisionKey: primaryTarget.revisionKey },
+            data: {
+                target: primaryTarget,
+                changes
+            }
+        };
+    }
+
+    return {
+        type: QA_BULK_ROW_PATCH_CHANGE_TYPE,
+        module: 'qa_milu',
+        action: meta.action || 'save-row-with-global-pn-copy',
+        description: meta.description || `Guardar fila ID ${row?.ID} y propagar copias PN`,
+        target: {
+            revisionKey: primaryTarget.revisionKey,
+            size: copyTargets.length + 1,
+            reason: 'global-pn-copy'
+        },
+        data: {
+            targets: [primaryPatch, ...copyTargets]
+        }
+    };
 }
 
 async function undoLastQaChange() {
@@ -1041,6 +1092,7 @@ async function refreshDataFromShellUpdate(request = {}) {
     state.allData = freshData;
     assignRevisionKeys(state.allData);
     applyRevisionDataToRows(state.allData);
+    rebuildGlobalPartNumberIndex(state.allData);
 
     state.currentPage = currentPageBefore;
     renderTable();
@@ -2242,17 +2294,10 @@ async function handleRecordModalSubmit(event) {
             return;
         }
 
-        await changeControl.applyAndRecord({
-            type: QA_ROW_PATCH_CHANGE_TYPE,
-            module: 'qa_milu',
+        await changeControl.applyAndRecord(buildRowPatchEntryWithPnCopyPropagation(row, changes, {
             action: 'save-record-modal',
-            description: `Guardar ficha modal ID ${row.ID}`,
-            target: { revisionKey },
-            data: {
-                target: buildPatchTargetForRow(row),
-                changes
-            }
-        });
+            description: `Guardar ficha modal ID ${row.ID}`
+        }));
 
         closeRecordModal();
         restoreModalUiState(revisionKey);
@@ -2301,17 +2346,10 @@ async function handleSideRecordSubmit(event) {
             return;
         }
 
-        await changeControl.applyAndRecord({
-            type: QA_ROW_PATCH_CHANGE_TYPE,
-            module: 'qa_milu',
+        await changeControl.applyAndRecord(buildRowPatchEntryWithPnCopyPropagation(row, changes, {
             action: 'save-side-form',
-            description: `Guardar ficha lateral ID ${row.ID}`,
-            target: { revisionKey },
-            data: {
-                target: buildPatchTargetForRow(row),
-                changes
-            }
-        });
+            description: `Guardar ficha lateral ID ${row.ID}`
+        }));
 
         if (status) status.textContent = 'Cambios guardados.';
         updateUndoButtonState();
@@ -2557,6 +2595,7 @@ async function loadLazyEnginesAndRefresh(fileNames, options = {}) {
     state.allData = mergedRows;
     assignRevisionKeys(state.allData);
     applyRevisionDataToRows(state.allData);
+    rebuildGlobalPartNumberIndex(state.allData);
 
     if (previousSelectedRevisionKey) {
         const selectedExists = state.allData.some(item => getRevisionKey(item) === previousSelectedRevisionKey);
@@ -3264,6 +3303,7 @@ async function loadData() {
 
         assignRevisionKeys(state.allData);
         applyRevisionDataToRows(state.allData);
+        rebuildGlobalPartNumberIndex(state.allData);
         loadColumnWidths();
 
         refreshBookFilterCatalog({ keepCurrentSelection: false });
@@ -3823,17 +3863,10 @@ function attachGlobalEvents() {
             return;
         }
 
-        changeControl.applyAndRecord({
-            type: QA_ROW_PATCH_CHANGE_TYPE,
-            module: 'qa_milu',
+        changeControl.applyAndRecord(buildRowPatchEntryWithPnCopyPropagation(row, changes, {
             action: `inline-${revisionField}`,
-            description: `Cambio rapido ${revisionField} ID ${row.ID}`,
-            target: { revisionKey },
-            data: {
-                target: buildPatchTargetForRow(row),
-                changes
-            }
-        }).catch((error) => {
+            description: `Cambio rapido ${revisionField} ID ${row.ID}`
+        })).catch((error) => {
             console.error('No se pudo guardar cambio rapido:', error);
             alert(`No se pudo guardar el cambio rapido: ${error.message}`);
             refreshVisibleRowByRevisionKey(revisionKey);
@@ -3924,17 +3957,10 @@ function attachGlobalEvents() {
             return;
         }
 
-        changeControl.applyAndRecord({
-            type: QA_ROW_PATCH_CHANGE_TYPE,
-            module: 'qa_milu',
+        changeControl.applyAndRecord(buildRowPatchEntryWithPnCopyPropagation(row, changes, {
             action: `inline-error-view-${revisionField}`,
-            description: `Cambio rapido vista errores ${revisionField} ID ${row.ID}`,
-            target: { revisionKey },
-            data: {
-                target: buildPatchTargetForRow(row),
-                changes
-            }
-        }).catch((error) => {
+            description: `Cambio rapido vista errores ${revisionField} ID ${row.ID}`
+        })).catch((error) => {
             console.error('No se pudo guardar cambio rapido en vista errores:', error);
             alert(`No se pudo guardar el cambio rapido: ${error.message}`);
             refreshVisibleRowByRevisionKey(revisionKey);
