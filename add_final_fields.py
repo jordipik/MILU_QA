@@ -44,6 +44,8 @@ BLOCKED_ARTICLE_FRAGMENTS = [
     "edrichshafen gm",
 ]
 
+NAN_LIKE_TOKENS = {"nan", "none", "null", "nat"}
+
 
 def normalize_compare_value(value):
     """
@@ -178,7 +180,12 @@ def collapse_spaces_in_structure(value):
     Normaliza espacios en cualquier string dentro de una estructura anidada.
     """
     if isinstance(value, str):
-        return " ".join(value.split())
+        cleaned = " ".join(value.split())
+        if not cleaned:
+            return None
+        if cleaned.lower() in NAN_LIKE_TOKENS:
+            return None
+        return cleaned
     if isinstance(value, list):
         return [collapse_spaces_in_structure(item) for item in value]
     if isinstance(value, dict):
@@ -248,6 +255,8 @@ def add_final_fields(record):
             return None
         text = str(value).strip()
         if not text:
+            return None
+        if text.lower() in NAN_LIKE_TOKENS:
             return None
         return " ".join(text.split())
 

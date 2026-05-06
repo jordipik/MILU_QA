@@ -74,6 +74,8 @@ SYNONYMS = {
     "F/N": "FN"
 }
 
+NAN_LIKE_TOKENS = {"nan", "none", "null", "nat"}
+
 # --- Validadores ---
 PARTNO_RX = re.compile(r'^[A-Z]?\d{8,13}$')
 def looks_like_part_no(s: str) -> bool:
@@ -89,6 +91,23 @@ def normalize_header(cell):
     c = re.sub(r"\s+"," ",c)
     c = c.replace("N°","NO").replace("Nº","NO").replace("№","NO")
     return SYNONYMS.get(c, c)
+
+
+def sanitize_cell_value(cell):
+    if cell is None:
+        return None
+    try:
+        if pd.isna(cell):
+            return None
+    except Exception:
+        pass
+
+    text = str(cell).strip()
+    if not text:
+        return None
+    if text.lower() in NAN_LIKE_TOKENS:
+        return None
+    return text
 
 def strip_footers(text, footer_patterns):
     if not text: return text
@@ -273,7 +292,7 @@ def process_region(page, bbox, strategies, min_hits, footer_patterns, fg_val, bo
                 rec={"FG/FGS":fg_val,"BOM-No.":bom_val}
                 for idx,cell in enumerate(r):
                     key = mapping.get(idx, f"C{idx+1}")
-                    rec[key] = None if cell is None else str(cell).strip()
+                    rec[key] = sanitize_cell_value(cell)
                 if "POS" not in rec or rec.get("POS","")== "":
                     c1 = rec.get("C1","")
                     if re.fullmatch(r"\d+[A-Z]?", c1): rec["POS"]=c1

@@ -167,6 +167,9 @@
                         <button id="propagateHermanosBtn" class="a2-review-btn" type="button"
                             title="Propagar revisión OK+Importar a todos los hermanos con el mismo PN">⬇
                             Hermanos</button>
+                        <button id="propagateHermanosBookBtn" class="a2-review-btn" type="button"
+                            title="Recorrer el libro actual y propagar hermanos para todos los registros en OK+Importar">⬇⬇
+                            Hermanos libro</button>
                     </div>
                 </div>
             </div>
@@ -300,6 +303,39 @@
                     </div>
                     <div id="recomputePdfDetailBody" class="recompute-result-body"></div>
                 </section>
+            </div>
+        </div>
+    </div>
+
+    <div id="hermanosProgressModal" class="hermanos-progress-modal" hidden aria-modal="true" role="dialog"
+        aria-labelledby="hermanosProgressTitle">
+        <div class="hermanos-progress-backdrop"></div>
+        <div class="hermanos-progress-panel">
+            <header class="hermanos-progress-header">
+                <div>
+                    <h2 id="hermanosProgressTitle">Actualizando Hermanos</h2>
+                    <p class="hermanos-progress-subtitle">Proceso automático de propagación OK + Copia por libro.</p>
+                </div>
+                <button id="hermanosProgressCloseBtn" class="hermanos-progress-close" type="button"
+                    aria-label="Cerrar">&times;</button>
+            </header>
+            <div class="hermanos-progress-body">
+                <div class="hermanos-progress-track" role="progressbar" aria-valuemin="0" aria-valuemax="100"
+                    aria-valuenow="0" aria-label="Progreso de actualización de hermanos">
+                    <div id="hermanosProgressBar" class="hermanos-progress-fill" style="width:0%"></div>
+                </div>
+                <div class="hermanos-progress-meta">
+                    <span id="hermanosProgressCurrent">Iniciando...</span>
+                    <span id="hermanosProgressPercent">0%</span>
+                </div>
+                <div id="hermanosProgressStats" class="hermanos-progress-stats">
+                    Filas OK+Importar: 0 · PN únicos: 0 · PN procesados: 0 · Hermanos actualizados: 0
+                </div>
+                <div id="hermanosProgressLog" class="hermanos-progress-log" aria-live="polite"></div>
+                <div class="hermanos-progress-actions">
+                    <button id="hermanosProgressCancelBtn" type="button" class="hermanos-progress-cancel">Cancelar
+                        proceso</button>
+                </div>
             </div>
         </div>
     </div>
