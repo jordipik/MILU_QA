@@ -789,6 +789,127 @@ function initRecomputeModal() {
     });
 }
 
+const hermanosProgressUiState = {
+    running: false,
+    cancelRequested: false,
+    bulkInFlight: false,
+    maxLogItems: 80
+};
+
+function setHermanosCancelButtonState({ disabled, label, title = '' } = {}) {
+    const cancelBtn = $('hermanosProgressCancelBtn');
+    if (!(cancelBtn instanceof HTMLButtonElement)) return;
+    if (typeof disabled === 'boolean') cancelBtn.disabled = disabled;
+    if (typeof label === 'string' && label.length > 0) cancelBtn.textContent = label;
+    cancelBtn.title = title;
+}
+
+function initHermanosProgressModal() {
+    const modal = $('hermanosProgressModal');
+    const closeBtn = $('hermanosProgressCloseBtn');
+    const cancelBtn = $('hermanosProgressCancelBtn');
+    const backdrop = modal?.querySelector('.hermanos-progress-backdrop');
+
+    if (!(modal instanceof HTMLElement)) return;
+
+    const closeModal = () => {
+        if (hermanosProgressUiState.running) return;
+        modal.hidden = true;
+    };
+
+    closeBtn?.addEventListener('click', closeModal);
+    backdrop?.addEventListener('click', closeModal);
+    cancelBtn?.addEventListener('click', () => {
+        if (!hermanosProgressUiState.running) return;
+        if (hermanosProgressUiState.bulkInFlight) {
+            appendHermanosProgressLog('Cancelación temporalmente deshabilitada durante la fase bulk en servidor.', 'error');
+            return;
+        }
+        if (hermanosProgressUiState.cancelRequested) return;
+        hermanosProgressUiState.cancelRequested = true;
+        setHermanosCancelButtonState({ disabled: true, label: 'Cancelando...' });
+        appendHermanosProgressLog('Cancelación solicitada por usuario. Finalizando tareas en curso...', 'error');
+    });
+
+    document.addEventListener('keydown', (event) => {
+        if (!modal.hidden && event.key === 'Escape') closeModal();
+    });
+}
+
+function openHermanosProgressModal() {
+    const modal = $('hermanosProgressModal');
+    const closeBtn = $('hermanosProgressCloseBtn');
+    if (modal instanceof HTMLElement) modal.hidden = false;
+    if (closeBtn instanceof HTMLButtonElement) closeBtn.disabled = true;
+    setHermanosCancelButtonState({ disabled: false, label: 'Cancelar proceso', title: '' });
+    hermanosProgressUiState.running = true;
+    hermanosProgressUiState.cancelRequested = false;
+    hermanosProgressUiState.bulkInFlight = false;
+}
+
+function closeHermanosProgressModal() {
+    const modal = $('hermanosProgressModal');
+    if (modal instanceof HTMLElement) modal.hidden = true;
+}
+
+function finishHermanosProgressModal() {
+    const closeBtn = $('hermanosProgressCloseBtn');
+    if (closeBtn instanceof HTMLButtonElement) closeBtn.disabled = false;
+    setHermanosCancelButtonState({ disabled: true, label: 'Cancelar proceso', title: '' });
+    hermanosProgressUiState.running = false;
+    hermanosProgressUiState.bulkInFlight = false;
+}
+
+function resetHermanosProgressLog() {
+    const log = $('hermanosProgressLog');
+    if (log instanceof HTMLElement) log.innerHTML = '';
+}
+
+function appendHermanosProgressLog(message, status = '') {
+    const log = $('hermanosProgressLog');
+    if (!(log instanceof HTMLElement)) return;
+
+    const line = document.createElement('div');
+    line.className = `hermanos-progress-log-item${status ? ` is-${status}` : ''}`;
+    line.textContent = message;
+    log.appendChild(line);
+
+    while (log.childElementCount > hermanosProgressUiState.maxLogItems) {
+        log.removeChild(log.firstElementChild);
+    }
+
+    log.scrollTop = log.scrollHeight;
+}
+
+function renderHermanosProgress(state) {
+    const {
+        currentLabel = 'Iniciando...',
+        processedPn = 0,
+        totalPn = 0,
+        scannedRows = 0,
+        propagatedRows = 0,
+        pnsWithPropagation = 0
+    } = state || {};
+
+    const percent = totalPn > 0
+        ? Math.max(0, Math.min(100, Math.round((processedPn / totalPn) * 100)))
+        : 0;
+
+    const bar = $('hermanosProgressBar');
+    const track = $('hermanosProgressModal')?.querySelector('.hermanos-progress-track');
+    const current = $('hermanosProgressCurrent');
+    const percentEl = $('hermanosProgressPercent');
+    const stats = $('hermanosProgressStats');
+
+    if (bar instanceof HTMLElement) bar.style.width = `${percent}%`;
+    if (track instanceof HTMLElement) track.setAttribute('aria-valuenow', String(percent));
+    if (current instanceof HTMLElement) current.textContent = currentLabel;
+    if (percentEl instanceof HTMLElement) percentEl.textContent = `${percent}%`;
+    if (stats instanceof HTMLElement) {
+        stats.textContent = `Filas OK+Importar: ${scannedRows} · PN únicos: ${totalPn} · PN procesados: ${processedPn} · PN con cambios: ${pnsWithPropagation} · Hermanos actualizados: ${propagatedRows}`;
+    }
+}
+
 function initEditRecordModal() {
     const modal = $('editRecordModal');
     const closeBtn = $('editRecordModalClose');
@@ -2940,33 +3061,84 @@ async function loadRelativeReview(direction) {
 }
 
 async function applyPnCopyPropagationFromCurrent() {
-    if (!currentRow) {
-        alert('Primero debes cargar un registro.');
-        return;
+    const result = await applyPnCopyPropagationFromRow(currentRow, {
+        showAlerts: true,
+        refreshPnReview: true,
+        requireOkImportar: true,
+        silentIfNoSiblings: false
+    });
+    if (result?.fatalError) return;
+}
+
+function getRowPn(row) {
+    // Debe coincidir con server.js#getRowPn para consultar /pn-review/:sku/sources.
+    return String(row?.pn_final ?? row?.['PART NO.'] ?? row?.pn ?? '').trim();
+}
+
+function normalizeEngineFileKey(value) {
+    return String(value ?? '')
+        .trim()
+        .replace(/^engine_/i, '')
+        .replace(/\.json$/i, '')
+        .toLowerCase();
+}
+
+function resolveCanonicalEngineFileName(value) {
+    const raw = String(value ?? '').trim();
+    if (!raw) return '';
+
+    const withJson = /\.json$/i.test(raw) ? raw : `${raw}.json`;
+    return /^engine_/i.test(withJson) ? withJson : `engine_${withJson}`;
+}
+
+async function applyPnCopyPropagationFromRow(row, options = {}) {
+    const {
+        showAlerts = false,
+        refreshPnReview = false,
+        requireOkImportar = true,
+        silentIfNoSiblings = false,
+        cancelSignal = null,
+        updateInMemory = true
+    } = options;
+
+    if (!row) {
+        if (showAlerts) alert('Primero debes cargar un registro.');
+        return { fatalError: true, reason: 'missing-row' };
     }
 
-    const currentEstado = normalizeEstadoToNew(currentRow?.qa_revision_estado);
-    const currentAccion = normalizeAccionToNew(currentRow?.qa_revision_accion);
+    const currentEstado = normalizeEstadoToNew(row?.qa_revision_estado);
+    const currentAccion = normalizeAccionToNew(row?.qa_revision_accion);
+    const pn = getRowPn(row);
 
-    if (currentEstado !== 'ok' || currentAccion !== 'importar') {
-        const pn = String(currentRow?.pn_final ?? currentRow?.['PART NO.'] ?? '').trim();
-        alert(`El registro debe tener estado OK + Importar para propagar hermanos (PN: ${pn || '—'}).`);
-        return;
+    if (requireOkImportar && (currentEstado !== 'ok' || currentAccion !== 'importar')) {
+        if (showAlerts) {
+            alert(`El registro debe tener estado OK + Importar para propagar hermanos (PN: ${pn || '—'}).`);
+        }
+        return { skipped: true, reason: 'not-ok-importar', pn };
     }
 
-    const pn = String(currentRow?.pn_final ?? currentRow?.['PART NO.'] ?? '').trim();
     if (!pn) {
-        alert('El registro activo no tiene Part Number.');
-        return;
+        if (showAlerts) alert('El registro activo no tiene Part Number.');
+        return { skipped: true, reason: 'missing-pn', pn: '' };
     }
 
-    const shouldRefreshPnReview = state.rightPanelTab === 'pn-review';
+    const shouldRefreshPnReview = !!refreshPnReview && state.rightPanelTab === 'pn-review';
     if (shouldRefreshPnReview) {
         PnReviewEmbedded.showBusy(`Actualizando hermanos para PN ${pn}...`);
     }
 
     try {
-        // Obtener todas las apariciones del PN desde el servidor (incluye todos los motores)
+        if (cancelSignal?.requested) {
+            return {
+                canceled: true,
+                pn,
+                propagated: 0,
+                scannedSources: 0,
+                targetSiblings: 0,
+                errors: []
+            };
+        }
+
         let sourcesResp;
         const res = await fetch(`/pn-review/${encodeURIComponent(pn)}/sources`);
         if (!res.ok) throw new Error(`HTTP ${res.status}`);
@@ -2975,60 +3147,429 @@ async function applyPnCopyPropagationFromCurrent() {
             ? sourcesResp.rows
             : (Array.isArray(sourcesResp?.sources) ? sourcesResp.sources : []);
 
-        const currentId = String(currentRow?.ID ?? '').trim();
-        const currentEngine = resolveEngineFile(currentRow);
+        const currentId = String(row?.ID ?? '').trim();
+        const currentEngineNorm = normalizeEngineFileKey(resolveEngineFile(row));
 
-        // Filtrar: excluir el registro actual y los que ya son ok+copia
         const siblings = allSources.filter(src => {
             const srcId = String(src?.ID ?? '').trim();
             const srcFile = String(src?.source_file ?? src?.engine_file ?? '').trim();
-            const srcFileNorm = srcFile.replace(/^engine_/i, '').replace(/\.json$/i, '').toLowerCase();
-            const currentEngineNorm = currentEngine.replace(/^engine_/i, '').replace(/\.json$/i, '').toLowerCase();
+            const srcFileNorm = normalizeEngineFileKey(srcFile);
             if (srcId === currentId && srcFileNorm === currentEngineNorm) return false;
             const estado = normalizeEstadoToNew(src?.qa_revision_estado);
             const accion = normalizeAccionToNew(src?.qa_revision_accion);
             return !(estado === 'ok' && accion === 'copia');
         });
 
-        console.log('[Hermanos] Registro actual:', currentId, currentEngine);
-        console.log('[Hermanos] Total apariciones:', allSources.length, '| A propagar:', siblings.length);
-        siblings.forEach(s => console.log('  ->', s.ID, s.source_file, s.qa_revision_estado, s.qa_revision_accion));
-
         if (siblings.length === 0) {
-            alert(`No hay hermanos para propagar (PN: ${pn}). Todos ya tienen OK + Copia o no hay más apariciones.`);
-            return;
+            if (showAlerts && !silentIfNoSiblings) {
+                alert(`No hay hermanos para propagar (PN: ${pn}). Todos ya tienen OK + Copia o no hay más apariciones.`);
+            }
+            return { success: true, pn, propagated: 0, scannedSources: allSources.length, targetSiblings: 0, errors: [] };
         }
 
         const errors = [];
+        let propagated = 0;
+
         for (const src of siblings) {
+            if (cancelSignal?.requested) {
+                return {
+                    canceled: true,
+                    pn,
+                    propagated,
+                    scannedSources: allSources.length,
+                    targetSiblings: siblings.length,
+                    errors
+                };
+            }
+
             const srcId = String(src?.ID ?? '').trim();
             const srcFile = String(src?.source_file ?? src?.engine_file ?? '').trim();
-            if (!srcId || !srcFile) continue;
-            console.log('[Hermanos] Guardando:', srcFile, srcId);
+            const srcFileNorm = normalizeEngineFileKey(srcFile);
+            if (!srcId || !srcFileNorm) continue;
+
+            const targetEngineFile = resolveCanonicalEngineFileName(srcFile);
+            if (!targetEngineFile) continue;
+
             try {
-                await saveCellToServer(srcFile, srcId, 'qa_revision_estado', denormalizeEstadoFromNew('ok'));
-                await saveCellToServer(srcFile, srcId, 'qa_revision_accion', denormalizeAccionFromNew('copia'));
-                // Actualizar en memoria si está en el engine cargado actualmente
-                const inMemRow = state.allData.find(r => String(r?.ID ?? '') === srcId);
-                if (inMemRow) {
-                    inMemRow.qa_revision_estado = 'ok';
-                    inMemRow.qa_revision_accion = 'copia';
+                await saveCellToServer(targetEngineFile, srcId, 'qa_revision_estado', denormalizeEstadoFromNew('ok'));
+                await saveCellToServer(targetEngineFile, srcId, 'qa_revision_accion', denormalizeAccionFromNew('copia'));
+
+                if (updateInMemory) {
+                    const inMemRow = (Array.isArray(state.allData) ? state.allData : []).find((candidate) => {
+                        const candidateId = String(candidate?.ID ?? '').trim();
+                        const candidateEngineNorm = normalizeEngineFileKey(resolveEngineFile(candidate));
+                        return candidateId === srcId && candidateEngineNorm === srcFileNorm;
+                    });
+
+                    if (inMemRow) {
+                        inMemRow.qa_revision_estado = 'ok';
+                        inMemRow.qa_revision_accion = 'copia';
+                    }
                 }
+
+                propagated += 1;
             } catch (err) {
-                errors.push(`ID ${srcId} (${srcFile}): ${err.message}`);
+                errors.push(`ID ${srcId} (${targetEngineFile}): ${err.message}`);
             }
         }
 
-        if (errors.length > 0) {
-            alert(`Propagación parcial (PN: ${pn}). Errores:\n${errors.join('\n')}`);
-        } else {
-            alert(`Propagados ${siblings.length} hermano(s) con PN "${pn}" → OK + Copia.`);
+        if (showAlerts) {
+            if (errors.length > 0) {
+                alert(`Propagación parcial (PN: ${pn}). Errores:\n${errors.join('\n')}`);
+            } else {
+                alert(`Propagados ${propagated} hermano(s) con PN "${pn}" → OK + Copia.`);
+            }
+        }
+
+        return {
+            success: errors.length === 0,
+            pn,
+            propagated,
+            scannedSources: allSources.length,
+            targetSiblings: siblings.length,
+            errors
+        };
+    } catch (err) {
+        if (showAlerts) {
+            alert(`Error al obtener o propagar hermanos: ${err.message}`);
+        }
+        return { fatalError: true, pn, error: String(err?.message || err) };
+    } finally {
+        if (shouldRefreshPnReview) {
+            refreshPnReviewIfVisible();
+        }
+    }
+}
+
+async function applyPnCopyPropagationForCurrentBook() {
+    const queue = getQueueRows();
+    if (!Array.isArray(queue) || queue.length === 0) {
+        alert('No hay registros cargados para el libro actual.');
+        return;
+    }
+
+    const candidates = queue.filter((row) => {
+        const estado = normalizeEstadoToNew(row?.qa_revision_estado);
+        const accion = normalizeAccionToNew(row?.qa_revision_accion);
+        return estado === 'ok' && accion === 'importar';
+    });
+
+    if (candidates.length === 0) {
+        alert('No hay registros en estado OK + Importar en el libro actual.');
+        return;
+    }
+
+    const uniquePnRows = new Map();
+    for (const row of candidates) {
+        const pn = getRowPn(row);
+        if (!pn) continue;
+        if (!uniquePnRows.has(pn)) uniquePnRows.set(pn, row);
+    }
+
+    if (uniquePnRows.size === 0) {
+        alert('No hay Part Numbers válidos en los registros OK + Importar del libro actual.');
+        return;
+    }
+
+    const confirmed = window.confirm(
+        `Se revisarán ${candidates.length} registros OK+Importar (${uniquePnRows.size} PN únicos) para propagar hermanos. ¿Continuar?`
+    );
+    if (!confirmed) return;
+
+    const triggerBtn = $('propagateHermanosBookBtn');
+    if (triggerBtn instanceof HTMLButtonElement) {
+        triggerBtn.disabled = true;
+        triggerBtn.title = 'Proceso en ejecución...';
+    }
+
+    openHermanosProgressModal();
+    resetHermanosProgressLog();
+    renderHermanosProgress({
+        currentLabel: 'Preparando proceso...',
+        processedPn: 0,
+        totalPn: uniquePnRows.size,
+        scannedRows: candidates.length,
+        propagatedRows: 0,
+        pnsWithPropagation: 0
+    });
+    appendHermanosProgressLog(`Inicio: ${candidates.length} filas OK+Importar, ${uniquePnRows.size} PN únicos.`, 'ok');
+
+    const shouldRefreshPnReview = state.rightPanelTab === 'pn-review';
+    if (shouldRefreshPnReview) {
+        PnReviewEmbedded.showBusy('Actualizando hermanos para todo el libro...');
+    }
+
+    const summary = {
+        scannedRows: candidates.length,
+        scannedUniquePn: uniquePnRows.size,
+        propagatedRows: 0,
+        pnsWithPropagation: 0,
+        noSiblingPn: 0,
+        canceled: false,
+        fatalErrors: []
+    };
+
+    try {
+        let bulkApplied = false;
+
+        try {
+            if (!hermanosProgressUiState.cancelRequested) {
+                const bulkItems = Array.from(uniquePnRows.values()).map((row) => ({
+                    pn: getRowPn(row),
+                    current_id: String(row?.ID ?? '').trim(),
+                    current_engine_file: resolveEngineFile(row)
+                })).filter((entry) => entry.pn);
+
+                if (bulkItems.length > 0) {
+                    hermanosProgressUiState.bulkInFlight = true;
+                    setHermanosCancelButtonState({
+                        disabled: true,
+                        label: 'Bulk en servidor...',
+                        title: 'Cancelación deshabilitada durante petición bulk al backend.'
+                    });
+                    renderHermanosProgress({
+                        currentLabel: `Bulk en servidor: procesando ${bulkItems.length} PN...`,
+                        processedPn: Math.max(1, Math.floor(summary.scannedUniquePn * 0.15)),
+                        totalPn: summary.scannedUniquePn,
+                        scannedRows: summary.scannedRows,
+                        propagatedRows: summary.propagatedRows,
+                        pnsWithPropagation: summary.pnsWithPropagation
+                    });
+                    appendHermanosProgressLog('Ejecutando modo rápido backend (bulk)...', 'ok');
+
+                    const response = await fetch('/pn-review/apply-siblings-bulk', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ items: bulkItems })
+                    });
+
+                    const payload = await response.json().catch(() => ({}));
+                    if (!response.ok || !payload?.result) {
+                        throw new Error(String(payload?.error || `HTTP ${response.status}`));
+                    }
+
+                    const result = payload.result;
+                    summary.pnsWithPropagation = Number(result?.pns_with_changes || 0);
+                    summary.propagatedRows = Number(result?.rows_updated || 0);
+                    summary.noSiblingPn = Array.isArray(result?.item_results)
+                        ? result.item_results.filter((item) => Number(item?.target_siblings || 0) === 0).length
+                        : 0;
+                    summary.fatalErrors = Array.isArray(result?.errors)
+                        ? result.errors.map((entry) => `${entry.file || 'bulk'}: ${entry.error || 'Error desconocido'}`)
+                        : [];
+
+                    renderReviewStats();
+                    renderHermanosProgress({
+                        currentLabel: summary.fatalErrors.length > 0 ? 'Bulk finalizado con incidencias.' : 'Bulk completado.',
+                        processedPn: summary.scannedUniquePn,
+                        totalPn: summary.scannedUniquePn,
+                        scannedRows: summary.scannedRows,
+                        propagatedRows: summary.propagatedRows,
+                        pnsWithPropagation: summary.pnsWithPropagation
+                    });
+
+                    appendHermanosProgressLog(
+                        `Bulk aplicado: PN con cambios ${summary.pnsWithPropagation}, hermanos actualizados ${summary.propagatedRows}.`,
+                        summary.fatalErrors.length > 0 ? 'error' : 'ok'
+                    );
+                    if (summary.noSiblingPn > 0) {
+                        appendHermanosProgressLog(`Total PN sin hermanos pendientes: ${summary.noSiblingPn}.`, '');
+                    }
+
+                    bulkApplied = true;
+                }
+            }
+        } catch (bulkError) {
+            appendHermanosProgressLog(
+                `Bulk no disponible (${String(bulkError?.message || bulkError)}). Se usa modo compatible por PN...`,
+                'error'
+            );
+        } finally {
+            hermanosProgressUiState.bulkInFlight = false;
+            if (!hermanosProgressUiState.cancelRequested) {
+                setHermanosCancelButtonState({
+                    disabled: false,
+                    label: 'Cancelar proceso',
+                    title: ''
+                });
+            }
+        }
+
+        if (bulkApplied) {
+            if (summary.fatalErrors.length > 0) {
+                alert(
+                    `Proceso bulk terminado con incidencias.\n`
+                    + `Filas OK+Importar revisadas: ${summary.scannedRows}\n`
+                    + `PN únicos revisados: ${summary.scannedUniquePn}\n`
+                    + `PN con hermanos actualizados: ${summary.pnsWithPropagation}\n`
+                    + `Hermanos actualizados: ${summary.propagatedRows}\n\n`
+                    + `Errores:\n${summary.fatalErrors.join('\n')}`
+                );
+            } else {
+                alert(
+                    `Proceso bulk completado.\n`
+                    + `Filas OK+Importar revisadas: ${summary.scannedRows}\n`
+                    + `PN únicos revisados: ${summary.scannedUniquePn}\n`
+                    + `PN con hermanos actualizados: ${summary.pnsWithPropagation}\n`
+                    + `Hermanos actualizados: ${summary.propagatedRows}`
+                );
+            }
+            return;
+        }
+
+        let processedPn = 0;
+        for (const row of uniquePnRows.values()) {
+            if (hermanosProgressUiState.cancelRequested) {
+                summary.canceled = true;
+                appendHermanosProgressLog('Proceso cancelado por usuario.', 'error');
+                break;
+            }
+
+            const pn = getRowPn(row);
+            renderHermanosProgress({
+                currentLabel: `Procesando PN ${pn || '—'} (${processedPn + 1}/${summary.scannedUniquePn})...`,
+                processedPn,
+                totalPn: summary.scannedUniquePn,
+                scannedRows: summary.scannedRows,
+                propagatedRows: summary.propagatedRows,
+                pnsWithPropagation: summary.pnsWithPropagation
+            });
+
+            const result = await applyPnCopyPropagationFromRow(row, {
+                showAlerts: false,
+                refreshPnReview: false,
+                requireOkImportar: true,
+                silentIfNoSiblings: true,
+                cancelSignal: { get requested() { return hermanosProgressUiState.cancelRequested; } },
+                updateInMemory: false
+            });
+
+            if (result?.canceled) {
+                summary.canceled = true;
+                summary.propagatedRows += Number(result?.propagated || 0);
+                if (Number(result?.propagated || 0) > 0) {
+                    summary.pnsWithPropagation += 1;
+                }
+                processedPn += 1;
+                renderHermanosProgress({
+                    currentLabel: `Cancelado durante PN ${result?.pn || pn || '—'}.`,
+                    processedPn,
+                    totalPn: summary.scannedUniquePn,
+                    scannedRows: summary.scannedRows,
+                    propagatedRows: summary.propagatedRows,
+                    pnsWithPropagation: summary.pnsWithPropagation
+                });
+                appendHermanosProgressLog(`Cancelado durante PN ${result?.pn || pn || '—'}.`, 'error');
+                break;
+            }
+
+            if (result?.fatalError) {
+                summary.fatalErrors.push(`${result.pn || getRowPn(row) || '—'}: ${result.error || result.reason || 'Error desconocido'}`);
+                appendHermanosProgressLog(
+                    `Error PN ${result.pn || pn || '—'}: ${result.error || result.reason || 'Error desconocido'}`,
+                    'error'
+                );
+                processedPn += 1;
+                renderHermanosProgress({
+                    currentLabel: `Procesando PN ${pn || '—'} (${processedPn}/${summary.scannedUniquePn})...`,
+                    processedPn,
+                    totalPn: summary.scannedUniquePn,
+                    scannedRows: summary.scannedRows,
+                    propagatedRows: summary.propagatedRows,
+                    pnsWithPropagation: summary.pnsWithPropagation
+                });
+                continue;
+            }
+
+            const propagated = Number(result?.propagated || 0);
+            if (propagated > 0) {
+                summary.propagatedRows += propagated;
+                summary.pnsWithPropagation += 1;
+                appendHermanosProgressLog(
+                    `PN ${result?.pn || pn || '—'}: ${propagated} hermano(s) actualizado(s).`,
+                    'ok'
+                );
+            } else {
+                summary.noSiblingPn += 1;
+                // Evita cientos/miles de repintados de log en procesos largos.
+                if (summary.noSiblingPn % 50 === 0) {
+                    appendHermanosProgressLog(
+                        `Sin hermanos pendientes en ${summary.noSiblingPn} PN procesados.`,
+                        ''
+                    );
+                }
+            }
+
+            processedPn += 1;
+            renderHermanosProgress({
+                currentLabel: `Procesados ${processedPn}/${summary.scannedUniquePn} PN...`,
+                processedPn,
+                totalPn: summary.scannedUniquePn,
+                scannedRows: summary.scannedRows,
+                propagatedRows: summary.propagatedRows,
+                pnsWithPropagation: summary.pnsWithPropagation
+            });
         }
 
         renderReviewStats();
-    } catch (err) {
-        alert(`Error al obtener o propagar hermanos: ${err.message}`);
+
+        appendHermanosProgressLog(
+            summary.canceled
+                ? `Fin parcial por cancelación: PN con cambios ${summary.pnsWithPropagation}, hermanos actualizados ${summary.propagatedRows}.`
+                : `Fin: PN con cambios ${summary.pnsWithPropagation}, hermanos actualizados ${summary.propagatedRows}.`,
+            (summary.fatalErrors.length > 0 || summary.canceled) ? 'error' : 'ok'
+        );
+
+        if (summary.noSiblingPn > 0) {
+            appendHermanosProgressLog(`Total PN sin hermanos pendientes: ${summary.noSiblingPn}.`, '');
+        }
+        renderHermanosProgress({
+            currentLabel: summary.canceled
+                ? 'Proceso cancelado por usuario.'
+                : (summary.fatalErrors.length > 0 ? 'Finalizado con incidencias.' : 'Proceso completado.'),
+            processedPn,
+            totalPn: summary.scannedUniquePn,
+            scannedRows: summary.scannedRows,
+            propagatedRows: summary.propagatedRows,
+            pnsWithPropagation: summary.pnsWithPropagation
+        });
+
+        if (summary.canceled) {
+            alert(
+                `Proceso cancelado por usuario.\n`
+                + `Filas OK+Importar revisadas: ${summary.scannedRows}\n`
+                + `PN únicos totales: ${summary.scannedUniquePn}\n`
+                + `PN con hermanos actualizados: ${summary.pnsWithPropagation}\n`
+                + `Hermanos actualizados: ${summary.propagatedRows}`
+            );
+            return;
+        }
+
+        if (summary.fatalErrors.length > 0) {
+            alert(
+                `Proceso terminado con incidencias.\n`
+                + `Filas OK+Importar revisadas: ${summary.scannedRows}\n`
+                + `PN únicos revisados: ${summary.scannedUniquePn}\n`
+                + `PN con hermanos actualizados: ${summary.pnsWithPropagation}\n`
+                + `Hermanos actualizados: ${summary.propagatedRows}\n\n`
+                + `Errores:\n${summary.fatalErrors.join('\n')}`
+            );
+            return;
+        }
+
+        alert(
+            `Proceso completado.\n`
+            + `Filas OK+Importar revisadas: ${summary.scannedRows}\n`
+            + `PN únicos revisados: ${summary.scannedUniquePn}\n`
+            + `PN con hermanos actualizados: ${summary.pnsWithPropagation}\n`
+            + `Hermanos actualizados: ${summary.propagatedRows}`
+        );
     } finally {
+        finishHermanosProgressModal();
+        if (triggerBtn instanceof HTMLButtonElement) {
+            triggerBtn.disabled = false;
+            triggerBtn.title = 'Recorrer el libro actual y propagar hermanos para todos los registros en OK+Importar';
+        }
         if (shouldRefreshPnReview) {
             refreshPnReviewIfVisible();
         }
@@ -3234,6 +3775,7 @@ async function initialize() {
 
         initChecksModal();
         initRecomputeModal();
+        initHermanosProgressModal();
         initEditRecordModal();
         initComparisonEditTriggers();
         initHorizontalSplitter();
@@ -3352,6 +3894,10 @@ bindClick('statusAccionRevisarBtn', () => {
 
 bindClick('propagateHermanosBtn', () => {
     applyPnCopyPropagationFromCurrent().catch((error) => alert(`Error al propagar hermanos: ${error.message}`));
+});
+
+bindClick('propagateHermanosBookBtn', () => {
+    applyPnCopyPropagationForCurrentBook().catch((error) => alert(`Error al propagar hermanos del libro: ${error.message}`));
 });
 
 const statusEstadoSelect = $('statusEstadoSelect');

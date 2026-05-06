@@ -109,7 +109,8 @@ function pickMostFrequent(values) {
 }
 
 function getRowPn(row) {
-    return normalizeText(row?.['PART NO.'] || row?.pn || row?.pn_final);
+    // Prioriza pn_final (valor depurado) para evitar partir grupos por PART NO. contaminado.
+    return normalizeText(row?.pn_final || row?.['PART NO.'] || row?.pn);
 }
 
 function getRowDesignation(row) {
@@ -885,6 +886,10 @@ function normalizeEngineFileName(value) {
     return `engine_${raw}.json`;
 }
 
+function engineFileKey(value) {
+    return lowerKey(String(value || '').replace(/^engine_/i, '').replace(/\.json$/i, ''));
+}
+
 function resolveEngineFileCandidates(engineModelOrFile) {
     const normalized = normalizeEngineFileName(engineModelOrFile);
     const candidates = [];
@@ -1015,6 +1020,159 @@ app.get('/pn-review/:sku/sources', async (req, res) => {
             sku: detail.sku,
             count: detail.source_rows_all.length,
             rows: detail.source_rows_all
+        });
+    } catch (error) {
+        return res.status(500).json({ ok: false, error: String(error?.message || error) });
+    }
+});
+
+app.post('/pn-review/apply-siblings-bulk', async (req, res) => {
+    const itemsRaw = Array.isArray(req.body?.items) ? req.body.items : [];
+    if (!itemsRaw.length) {
+        return res.status(400).json({ ok: false, error: 'items requerido (array no vacío).' });
+    }
+
+    try {
+        const data = ensurePnReviewQaDataLoaded();
+        const nowIso = new Date().toISOString();
+        const updatesByFile = new Map();
+        const itemResults = [];
+        const errors = [];
+
+        for (const item of itemsRaw) {
+            const pn = normalizeText(item?.pn);
+            const key = pnKey(pn);
+            const currentId = normalizeText(item?.current_id);
+            const currentEngineFile = normalizeEngineFileName(item?.current_engine_file || item?.current_engine || '');
+            const currentEngineKey = engineFileKey(currentEngineFile);
+
+            if (!pn || !key) {
+                itemResults.push({
+                    pn,
+                    current_id: currentId,
+                    found_sources: 0,
+                    target_siblings: 0,
+                    planned_updates: 0,
+                    skipped: true,
+                    reason: 'missing-pn'
+                });
+                continue;
+            }
+
+            const detail = data.index.get(key);
+            if (!detail) {
+                itemResults.push({
+                    pn,
+                    current_id: currentId,
+                    found_sources: 0,
+                    target_siblings: 0,
+                    planned_updates: 0,
+                    skipped: true,
+                    reason: 'pn-not-found'
+                });
+                continue;
+            }
+
+            const allSources = Array.isArray(detail.source_rows_all) ? detail.source_rows_all : [];
+            let targetSiblings = 0;
+            let plannedUpdates = 0;
+
+            for (const src of allSources) {
+                const srcId = normalizeText(src?.ID);
+                const srcFile = normalizeEngineFileName(src?.source_file || src?.engine_file || '');
+                const srcFileKey = engineFileKey(srcFile);
+                if (!srcId || !srcFile || !ENGINE_JSON_FILES.includes(srcFile)) continue;
+
+                if (srcId === currentId && srcFileKey === currentEngineKey) {
+                    continue;
+                }
+
+                const estado = lowerKey(src?.qa_revision_estado);
+                const accion = lowerKey(src?.qa_revision_accion);
+                if (estado === 'ok' && accion === 'copia') {
+                    continue;
+                }
+
+                targetSiblings += 1;
+
+                let ids = updatesByFile.get(srcFile);
+                if (!ids) {
+                    ids = new Set();
+                    updatesByFile.set(srcFile, ids);
+                }
+
+                const beforeSize = ids.size;
+                ids.add(String(srcId));
+                if (ids.size > beforeSize) {
+                    plannedUpdates += 1;
+                }
+            }
+
+            itemResults.push({
+                pn,
+                current_id: currentId,
+                found_sources: allSources.length,
+                target_siblings: targetSiblings,
+                planned_updates: plannedUpdates,
+                skipped: false
+            });
+        }
+
+        const filesTouched = [];
+        let rowsUpdated = 0;
+
+        for (const [file, idSet] of updatesByFile.entries()) {
+            if (!ENGINE_JSON_FILES.includes(file)) {
+                errors.push({ file, error: 'Archivo no permitido' });
+                continue;
+            }
+
+            const filePath = path.join(__dirname, file);
+            try {
+                await withSaveJsonFileLock(file, async () => {
+                    const raw = await fs.promises.readFile(filePath, 'utf8');
+                    const json = JSON.parse(raw);
+                    if (!Array.isArray(json)) {
+                        throw new Error('Contenido JSON invalido: se esperaba array.');
+                    }
+
+                    let touched = false;
+                    for (const row of json) {
+                        const rowId = normalizeText(row?.ID);
+                        if (!rowId || !idSet.has(String(rowId))) continue;
+                        row.qa_revision_estado = 'ok';
+                        row.qa_revision_accion = 'copia';
+                        row.qa_revision_updated_at = nowIso;
+                        rowsUpdated += 1;
+                        touched = true;
+                    }
+
+                    if (touched) {
+                        await writeJsonAtomic(filePath, json);
+                        filesTouched.push(file);
+                    }
+                });
+            } catch (error) {
+                errors.push({ file, error: String(error?.message || error) });
+            }
+        }
+
+        invalidatePnReviewQaCache();
+
+        const plannedUpdates = itemResults.reduce((acc, item) => acc + Number(item?.planned_updates || 0), 0);
+        const pnsWithChanges = itemResults.filter((item) => Number(item?.planned_updates || 0) > 0).length;
+
+        return res.json({
+            ok: errors.length === 0,
+            result: {
+                scanned_items: itemResults.length,
+                pns_with_changes: pnsWithChanges,
+                planned_updates: plannedUpdates,
+                rows_updated: rowsUpdated,
+                files_touched: filesTouched,
+                item_results: itemResults,
+                errors
+            }
         });
     } catch (error) {
         return res.status(500).json({ ok: false, error: String(error?.message || error) });
