@@ -13,7 +13,6 @@
         rel="stylesheet">
     <link rel="stylesheet" href="styles/pdf_shared.css" />
     <link rel="stylesheet" href="styles/analista_02.css" />
-    <link rel="stylesheet" href="styles/pn-review-embedded.css" />
     <script>
         (function () {
             var saved = Number(localStorage.getItem('analista02:right-panel-width'));
@@ -206,8 +205,6 @@
             <div class="a2-right-tabs" role="tablist" aria-label="Panel derecho">
                 <button class="a2-right-tab" id="tabPdf" role="tab" aria-selected="true"
                     aria-controls="tabpanelPdf">PDF</button>
-                <button class="a2-right-tab" id="tabPnReview" role="tab" aria-selected="false"
-                    aria-controls="tabpanelPnReview">PN Review</button>
             </div>
 
             <!-- Tab panel: PDF -->
@@ -242,14 +239,6 @@
 
                 <div id="pdfMeta" class="pdf-meta-foot">Documento: -</div>
                 <span id="pdfLabel" hidden>-</span>
-            </div>
-
-            <!-- Tab panel: PN Review embedded -->
-            <div id="tabpanelPnReview" role="tabpanel" aria-labelledby="tabPnReview" class="pre-panel-wrap"
-                style="display:none;">
-                <div id="pnReviewEmbeddedRoot" class="pre-panel-wrap">
-                    <div class="pre-empty-state">Selecciona un registro con PN válido para ver PN Review.</div>
-                </div>
             </div>
         </aside>
     </main>

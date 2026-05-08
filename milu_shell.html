@@ -582,7 +582,12 @@
             const links = Array.from(document.querySelectorAll('header.a2-topbar .a2-nav a[data-page]'));
             links.forEach(link => {
                 if (!(link instanceof HTMLAnchorElement)) return;
-                const view = normalizeView(link.dataset.page || '');
+                const pageKey = String(link.dataset.page || '').trim().toLowerCase();
+                if (!(pageKey in VIEW_TO_PAGE)) {
+                    return;
+                }
+
+                const view = normalizeView(pageKey);
                 link.addEventListener('click', (event) => {
                     event.preventDefault();
                     mountView(view, { updateHistory: true });

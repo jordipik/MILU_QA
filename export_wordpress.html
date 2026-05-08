@@ -4,83 +4,130 @@
 <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <title>Export WordPress | MILU</title>
+    <title>Export WordPress QA | MILU</title>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link
-        href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=IBM+Plex+Sans:wght@400;500;600&display=swap"
+        href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap"
         rel="stylesheet">
     <link rel="stylesheet" href="styles/export_wordpress.css" />
 </head>
 
 <body>
-    <div class="ewp-shell">
-        <header class="ewp-header">
-            <div>
-                <p class="ewp-eyebrow">MILU</p>
-                <h1>Export WordPress</h1>
-                <p class="ewp-subtitle">Vista QA para validar el export antes de publicar en WordPress.</p>
-                <p><a class="ewp-link" href="/qa_milu.html">Volver a QA</a> | <a class="ewp-link"
-                        href="/pn_review.html">PN Review</a></p>
+    <div class="ewx-shell">
+        <header class="ewx-hero">
+            <div class="ewx-hero-copy">
+                <p class="ewx-eyebrow">MILU · QA Export</p>
+                <h1>Comparador WordPress vs MILU_New</h1>
+                <p class="ewx-subtitle">Nueva vista dedicada para revisar cada PN con la misma tabla vertical de la
+                    pestaña Exportacion de QA.</p>
+                <div class="ewx-links">
+                    <a href="/qa_milu.html">Volver a QA</a>
+                </div>
             </div>
-            <div class="ewp-actions" id="ewpActions">
+            <div class="ewx-hero-actions">
                 <button id="ewpRunBtn" type="button">Ejecutar export</button>
-                <button id="ewpRefreshBtn" class="secondary" type="button">Refrescar</button>
-                <button id="ewpDownloadBtn" class="secondary" type="button">Descargar CSV</button>
+                <button id="ewpRefreshBtn" type="button" class="secondary">Refrescar</button>
+                <button id="ewpDownloadBtn" type="button" class="secondary">Descargar CSV activo</button>
             </div>
         </header>
 
-        <section class="ewp-summary" id="ewpSummary">
-            <article class="ewp-card">
-                <p class="label">New</p>
-                <p class="value" id="sumNew">0</p>
+        <section class="ewx-summary" aria-label="Resumen de exportacion">
+            <article class="ewx-summary-card">
+                <span class="label">New</span>
+                <strong id="sumNew">0</strong>
             </article>
-            <article class="ewp-card">
-                <p class="label">Superseded</p>
-                <p class="value" id="sumSuperseded">0</p>
+            <article class="ewx-summary-card">
+                <span class="label">Superseded</span>
+                <strong id="sumSuperseded">0</strong>
             </article>
-            <article class="ewp-card">
-                <p class="label">Pending</p>
-                <p class="value" id="sumPending">0</p>
+            <article class="ewx-summary-card">
+                <span class="label">Pending</span>
+                <strong id="sumPending">0</strong>
             </article>
-            <article class="ewp-card">
-                <p class="label">Discarded</p>
-                <p class="value" id="sumDiscarded">0</p>
+            <article class="ewx-summary-card">
+                <span class="label">Discarded</span>
+                <strong id="sumDiscarded">0</strong>
             </article>
-            <article class="ewp-card wide">
-                <p class="label">Ultima generacion</p>
-                <p class="value" id="sumTimestamp">-</p>
+            <article class="ewx-summary-card ewx-summary-card-wide">
+                <span class="label">Ultima generacion</span>
+                <strong id="sumTimestamp">-</strong>
             </article>
         </section>
 
-        <section class="ewp-panel">
-            <div class="ewp-tabs" id="ewpTabs"></div>
+        <main class="ewx-workbench">
+            <aside class="ewx-sidebar" aria-label="Catalogo de PNs exportados">
+                <div class="ewx-panel-head">
+                    <div>
+                        <p class="eyebrow">Catalogo</p>
+                        <h2>Seleccion de codigo</h2>
+                    </div>
+                    <span id="ewpStatusText" class="ewx-status">Listo</span>
+                </div>
 
-            <div class="ewp-filters">
-                <input id="ewpSearchPn" type="search" placeholder="Buscar PN..." />
-                <select id="ewpMotorFilter">
-                    <option value="">Todos los motores</option>
-                </select>
-                <select id="ewpQaFilter">
-                    <option value="">Todos los estados QA</option>
-                </select>
-                <span id="ewpStatusText" class="ewp-status">Listo</span>
-            </div>
+                <div id="ewpTabs" class="ewx-tabs" aria-label="Tipos de exportacion"></div>
 
-            <div class="ewp-table-wrap">
-                <table class="ewp-table" id="ewpTable">
-                    <thead id="ewpTableHead"></thead>
-                    <tbody id="ewpTableBody">
-                        <tr>
-                            <td colspan="8" class="empty">Cargando datos...</td>
-                        </tr>
-                    </tbody>
-                </table>
-            </div>
-        </section>
+                <div class="ewx-filters">
+                    <input id="ewpSearchPn" type="search" placeholder="Buscar PN..." />
+                    <select id="ewpMotorFilter">
+                        <option value="">Todos los motores</option>
+                    </select>
+                    <select id="ewpQaFilter">
+                        <option value="">Todos los estados QA</option>
+                    </select>
+                </div>
+
+                <div class="ewx-sidebar-meta">
+                    <span id="ewpCurrentSource" class="ewx-source-chip">Sin fuente</span>
+                    <span id="ewpVisibleCount" class="ewx-visible-count">0 resultados</span>
+                </div>
+
+                <div id="ewpPnList" class="ewx-pn-list" role="listbox" aria-label="PNs disponibles">
+                    <div class="ewx-empty-list">Cargando datos...</div>
+                </div>
+                <nav id="ewpPagination" class="ewx-pagination" hidden aria-label="Paginacion"></nav>
+            </aside>
+
+            <section class="ewx-detail" aria-label="Comparativa de exportacion">
+                <div class="ewx-panel-head ewx-detail-head">
+                    <div>
+                        <p class="eyebrow">Detalle</p>
+                        <h2 id="ewpDetailTitle">Selecciona un PN</h2>
+                        <p id="ewpDetailMeta" class="ewx-detail-meta">La tabla replica el formato de Exportacion
+                            MILU_New para este codigo.</p>
+                    </div>
+                    <div class="ewx-detail-actions">
+                        <label class="ewx-toggle" for="ewpOnlyDiffToggle">
+                            <input id="ewpOnlyDiffToggle" type="checkbox">
+                            <span>Solo no coincidentes</span>
+                        </label>
+                    </div>
+                </div>
+
+                <div class="ewx-detail-summary">
+                    <span id="ewpDetailCount" class="ewx-detail-count">Sin seleccion</span>
+                    <div id="ewpDetailSources" class="ewx-detail-sources"></div>
+                </div>
+
+                <div class="ewx-compare-wrap">
+                    <table class="ewx-compare-table" aria-label="Comparacion QA de exportacion por PN">
+                        <thead>
+                            <tr id="ewpCompareHead">
+                                <th>Sin datos</th>
+                            </tr>
+                        </thead>
+                        <tbody id="ewpCompareBody">
+                            <tr>
+                                <td class="ewx-empty-table">Selecciona un PN del panel izquierdo.</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </section>
+        </main>
     </div>
 
-    <div id="ewpToastContainer" class="ewp-toast-container" aria-live="polite"></div>
+    <div id="ewpToastContainer" class="ewx-toast-container" aria-live="polite"></div>
 
     <script type="module" src="js/export-wordpress.js"></script>
 </body>

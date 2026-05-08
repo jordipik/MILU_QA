@@ -11,7 +11,6 @@ import {
 import { publishRevisionSync } from './revision-sync.js';
 import { initPdfZoomControls, loadPdfClear, loadPdfWithPage, requestPdfRelayout, setPdfReadTokens, setPdfSelection } from './pdf-viewer.js';
 import { evaluateQaChecksForField, evaluateRowQaChecks, getAllQaCheckCodes, getQaCheckLabel } from './qa-checks.js';
-import * as PnReviewEmbedded from './pn-review-embedded.js';
 
 const $ = (id) => document.getElementById(id);
 
@@ -2109,7 +2108,6 @@ async function setRevisionOkImportIfNoErrors() {
 
     renderReviewStateButtons(currentRow);
     renderReviewStats();
-    refreshPnReviewIfVisible();
     notifyPdfDataChangedFromAnalista(currentRow);
     return isNoiseFooter ? 'applied-eliminar' : 'applied';
 }
@@ -2767,16 +2765,6 @@ function renderRecord(row) {
     renderVerdict(processState);
     renderReviewStateButtons(row);
     syncPdfWithCurrentRow(row);
-
-    // Notify embedded PN Review if that tab is active
-    if (state.rightPanelTab === 'pn-review') {
-        PnReviewEmbedded.onRecordChange(row).catch(() => { });
-    }
-}
-
-function refreshPnReviewIfVisible() {
-    if (state.rightPanelTab !== 'pn-review') return;
-    PnReviewEmbedded.refresh().catch(() => { });
 }
 
 function syncCurrentRowReference() {
@@ -3122,11 +3110,6 @@ async function applyPnCopyPropagationFromRow(row, options = {}) {
         return { skipped: true, reason: 'missing-pn', pn: '' };
     }
 
-    const shouldRefreshPnReview = !!refreshPnReview && state.rightPanelTab === 'pn-review';
-    if (shouldRefreshPnReview) {
-        PnReviewEmbedded.showBusy(`Actualizando hermanos para PN ${pn}...`);
-    }
-
     try {
         if (cancelSignal?.requested) {
             return {
@@ -3234,10 +3217,6 @@ async function applyPnCopyPropagationFromRow(row, options = {}) {
             alert(`Error al obtener o propagar hermanos: ${err.message}`);
         }
         return { fatalError: true, pn, error: String(err?.message || err) };
-    } finally {
-        if (shouldRefreshPnReview) {
-            refreshPnReviewIfVisible();
-        }
     }
 }
 
@@ -3293,11 +3272,6 @@ async function applyPnCopyPropagationForCurrentBook() {
         pnsWithPropagation: 0
     });
     appendHermanosProgressLog(`Inicio: ${candidates.length} filas OK+Importar, ${uniquePnRows.size} PN únicos.`, 'ok');
-
-    const shouldRefreshPnReview = state.rightPanelTab === 'pn-review';
-    if (shouldRefreshPnReview) {
-        PnReviewEmbedded.showBusy('Actualizando hermanos para todo el libro...');
-    }
 
     const summary = {
         scannedRows: candidates.length,
@@ -3570,9 +3544,6 @@ async function applyPnCopyPropagationForCurrentBook() {
             triggerBtn.disabled = false;
             triggerBtn.title = 'Recorrer el libro actual y propagar hermanos para todos los registros en OK+Importar';
         }
-        if (shouldRefreshPnReview) {
-            refreshPnReviewIfVisible();
-        }
     }
 }
 
@@ -3610,7 +3581,6 @@ async function setReviewStatus(kind) {
     });
     renderReviewStateButtons(currentRow);
     renderReviewStats();
-    refreshPnReviewIfVisible();
     notifyPdfDataChangedFromAnalista(currentRow);
 }
 
@@ -3646,7 +3616,6 @@ async function setManualRevisionEstado(nextEstado) {
     });
     renderReviewStateButtons(currentRow);
     renderReviewStats();
-    refreshPnReviewIfVisible();
     notifyPdfDataChangedFromAnalista(currentRow);
 }
 
@@ -3682,96 +3651,6 @@ async function runAllProcesses() {
 async function initialize() {
     try {
         state.rightPanelTab = 'pdf';
-
-        // ── Right-panel tabs (PDF / PN Review) ────────────────────────────
-        const tabPdf = document.getElementById('tabPdf');
-        const tabPnReview = document.getElementById('tabPnReview');
-        const panelPdf = document.getElementById('tabpanelPdf');
-        const panelPnRev = document.getElementById('tabpanelPnReview');
-        const pnRevRoot = document.getElementById('pnReviewEmbeddedRoot');
-
-        function switchRightTab(tab) {
-            state.rightPanelTab = tab;
-            const isPdf = tab === 'pdf';
-            if (tabPdf) { tabPdf.setAttribute('aria-selected', String(isPdf)); }
-            if (tabPnReview) { tabPnReview.setAttribute('aria-selected', String(!isPdf)); }
-            if (panelPdf) { panelPdf.style.display = isPdf ? 'flex' : 'none'; }
-            if (panelPnRev) { panelPnRev.style.display = isPdf ? 'none' : 'flex'; }
-            if (!isPdf && currentRow && pnRevRoot) {
-                PnReviewEmbedded.onRecordChange(currentRow).catch(() => { });
-            }
-        }
-
-        if (tabPdf) tabPdf.addEventListener('click', () => switchRightTab('pdf'));
-        if (tabPnReview) tabPnReview.addEventListener('click', () => switchRightTab('pn-review'));
-
-        // Init embedded PN Review module
-        if (pnRevRoot) {
-            PnReviewEmbedded.init(pnRevRoot, {
-                onDecisionApplied: (_key, response) => {
-                    const nextEstado = String(response?.target_estado || '').trim();
-                    const nextAccion = String(response?.target_accion || '').trim();
-                    const updatedId = String(response?.target?.id || response?.id || '').trim();
-
-                    if (nextEstado && nextAccion) {
-                        const updateRow = (row) => {
-                            if (!row) return;
-                            row.qa_revision_estado = normalizeEstadoToNew(nextEstado);
-                            row.qa_revision_accion = normalizeAccionToNew(nextAccion);
-                        };
-
-                        if (updatedId) {
-                            (state.allData || []).forEach((row) => {
-                                if (String(row?.ID || '').trim() === updatedId) updateRow(row);
-                            });
-                        } else if (response?.sku) {
-                            const skuKey = String(response.sku || '').trim().toLowerCase();
-                            (state.allData || []).forEach((row) => {
-                                const rowSku = String(row?.pn_final || row?.['PART NO.'] || row?.pn || '').trim().toLowerCase();
-                                if (rowSku && rowSku === skuKey) updateRow(row);
-                            });
-                        }
-
-                        if (currentRow) {
-                            const currentId = String(currentRow?.ID || '').trim();
-                            if (!updatedId || (updatedId && currentId === updatedId)) {
-                                updateRow(currentRow);
-                            }
-                        }
-                    }
-
-                    revalidateCurrentRow().catch(() => { });
-                    renderReviewStats();
-                },
-                onValuesApplied: (_key, response, context) => {
-                    const appliedFields = response?.applied_fields || context?.fields || {};
-                    const skuKey = String(response?.sku || _key || '').trim().toLowerCase();
-                    if (!skuKey) return;
-
-                    const updateRowValues = (row) => {
-                        if (!row) return;
-                        row.pn_final = txt(appliedFields.pn_final, row?.pn_final);
-                        row.designation_final = txt(appliedFields.designation_final, row?.designation_final);
-                        row.measure_final = txt(appliedFields.measure_final, row?.measure_final ?? row?.measurement_final);
-                        row.weight_final = txt(appliedFields.weight_final, row?.weight_final);
-                        row.sust_status = txt(appliedFields.sust_status, row?.sust_status);
-                        row.sust_hierarchie = txt(appliedFields.sust_hierarchie, row?.sust_hierarchie);
-                        row.sust_new_part_number = txt(appliedFields.sust_new_part_number, row?.sust_new_part_number);
-                        row.sust_superseded_list = txt(appliedFields.sust_superseded_list, row?.sust_superseded_list);
-                    };
-
-                    (state.allData || []).forEach((row) => {
-                        const rowSku = String(row?.pn_final || row?.['PART NO.'] || row?.pn || '').trim().toLowerCase();
-                        if (rowSku && rowSku === skuKey) updateRowValues(row);
-                    });
-
-                    updateRowValues(currentRow);
-                    fillEditFields(currentRow);
-                    renderRecord(currentRow);
-                }
-            });
-        }
-        // ──────────────────────────────────────────────────────────────────
 
         initChecksModal();
         initRecomputeModal();
