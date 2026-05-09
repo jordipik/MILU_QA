@@ -21,6 +21,14 @@ function writeJson(filePath, data) {
     fs.writeFileSync(filePath, `${JSON.stringify(data, null, 2)}\n`, 'utf8');
 }
 
+function removeIfExists(filePath) {
+    try {
+        fs.unlinkSync(filePath);
+    } catch (_) {
+        // Ignore missing legacy aliases.
+    }
+}
+
 function writeCsv(filePath, rows, headers) {
     const escapeCell = (value) => {
         const text = String(value == null ? '' : value);
@@ -246,6 +254,15 @@ function isSupersededRow(row) {
 
 function run() {
     ensureDir(OUTPUT_DIR);
+    [
+        'milu_wp_new_import.csv',
+        'milu_wp_new_import.json',
+        'milu_wp_superseded_import.csv',
+        'milu_wp_superseded_import.json',
+        'milu_wp_pending_review.csv',
+        'milu_wp_pending_review.json'
+    ].forEach((name) => removeIfExists(path.join(OUTPUT_DIR, name)));
+
     const allRows = loadEngineRows();
 
     const byPn = new Map();
@@ -359,17 +376,13 @@ function run() {
     ];
 
     writeCsv(path.join(OUTPUT_DIR, 'milu_wp_import.csv'), importRows, headers);
-    writeCsv(path.join(OUTPUT_DIR, 'milu_wp_new_import.csv'), importRows, headers);
     writeCsv(path.join(OUTPUT_DIR, 'milu_wp_superseded.csv'), supersededRows, headers);
-    writeCsv(path.join(OUTPUT_DIR, 'milu_wp_superseded_import.csv'), supersededRows, headers);
-    writeCsv(path.join(OUTPUT_DIR, 'milu_wp_pending_review.csv'), pendingRows, headers);
+    writeCsv(path.join(OUTPUT_DIR, 'milu_wp_pending.csv'), pendingRows, headers);
     writeCsv(path.join(OUTPUT_DIR, 'milu_wp_discarded.csv'), discardedRows, headers);
 
     writeJson(path.join(OUTPUT_DIR, 'milu_wp_import.json'), importRows);
-    writeJson(path.join(OUTPUT_DIR, 'milu_wp_new_import.json'), importRows);
     writeJson(path.join(OUTPUT_DIR, 'milu_wp_superseded.json'), supersededRows);
-    writeJson(path.join(OUTPUT_DIR, 'milu_wp_superseded_import.json'), supersededRows);
-    writeJson(path.join(OUTPUT_DIR, 'milu_wp_pending_review.json'), pendingRows);
+    writeJson(path.join(OUTPUT_DIR, 'milu_wp_pending.json'), pendingRows);
     writeJson(path.join(OUTPUT_DIR, 'milu_wp_discarded.json'), discardedRows);
     writeJson(path.join(OUTPUT_DIR, 'milu_wp_trace.json'), traceBySku);
 
@@ -382,7 +395,7 @@ function run() {
             import: importRows.length + supersededRows.length,
             new: importRows.length,
             superseded: supersededRows.length,
-            pending_review: pendingRows.length,
+            pending: pendingRows.length,
             discard: discardedRows.length
         },
         rules: {

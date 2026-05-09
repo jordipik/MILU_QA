@@ -59,8 +59,8 @@ const TAB_CONFIG = {
     pending: {
         label: 'Pending',
         detailLabel: 'Export WordPress Pending',
-        jsonCandidates: ['milu_wp_pending_review.json'],
-        csvCandidates: ['milu_wp_pending_review.csv']
+        jsonCandidates: ['milu_wp_pending.json', 'milu_wp_pending_review.json'],
+        csvCandidates: ['milu_wp_pending.csv', 'milu_wp_pending_review.csv']
     },
     discarded: {
         label: 'Discarded',
