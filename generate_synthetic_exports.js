@@ -191,13 +191,15 @@ function buildSyntheticNewExportRow(row, matches) {
     if (!matches.length) return null;
     if (isSupersededArticle(row)) return null;
 
-    const weightValue = resolveWeightForExport(row);
-    const pageLabels = uniqueSortedValues(matches.map(normalizePageLabelForExport), true);
-    const modelTypes = uniqueSortedValues(matches.map(normalizeModelTypeForExport), true);
+    // Synthetic New output mapping (high level):
+    // - Row-level fields come from selected representative row (row).
+    // - Aggregate fields (PAG, model_type, exp_motor, categories) are built from all grouped rows (matches).
+    // - Measurement and weight use fallback chains to preserve best available normalized value.
+    const modelType = String(row?.model ?? '').trim();
     const engineModels = uniqueSortedValues(matches.map(item => String(item?.engine_model ?? '').trim()), true);
-    const categoryValues = uniqueSortedValues(matches.map(item => String(item?.categoria ?? item?.atributo ?? item?.exp_categorias ?? '').trim()));
+    const categoryValues = uniqueSortedValues(matches.map(item => String(item?.categoria ?? '').trim()));
     const imageValue = firstNonEmptyValue([row, ...matches], item => item?.exp_imagenes || '');
-    const normalizedPn = String(row?.['PART NO.'] ?? row?.pn ?? '').trim();
+    const normalizedPn = String(row?.pn_final ?? row?.['PART NO.'] ?? row?.pn ?? '').trim();
     const hierarchy = String(row?.sust_hierarchie ?? '').trim();
     const supersededList = String(row?.sust_superseded_list ?? '').trim();
     const hasSubstitution = hierarchy !== '' || supersededList !== '' || String(row?.sust_new_part_number ?? '').trim() !== '';
@@ -205,9 +207,9 @@ function buildSyntheticNewExportRow(row, matches) {
     return {
         fecha_version: formatExportVersionStamp(),
         pn: normalizedPn,
-        designation: String(getRowValueForColumn(row, 'designation_final')).trim(),
-        engine: String(row?.engine ?? '').trim() || '4000',
-        model_type: modelTypes.join(', '),
+        designation: String(row?.designation_final ?? '').trim(),
+        engine: String(row?.engine ?? '').trim(),
+        model_type: modelType,
         type: '',
         nsn: String(row?.nsn ?? '').trim(),
         GESA_NORM: String(row?.norma ?? '').trim(),
@@ -215,11 +217,11 @@ function buildSyntheticNewExportRow(row, matches) {
         fg_code: row?.fg_code ?? '',
         fg_description: String(row?.fgs_description ?? '').trim(),
         fg_code_description: String(row?.fgs_code_description ?? '').trim(),
-        weight: Number.isFinite(weightValue) ? Number(weightValue.toFixed(3)) : '',
-        weight_txt: formatWeightTextForExport(row, weightValue),
-        measurement: resolveMeasurementForExport(row),
-        TIPOARTICULO: String(row?.TIPOARTICULO ?? '').trim() || 'piezas',
-        PAG: pageLabels.join(', '),
+        weight: '',
+        weight_txt: String(row?.weight_final ?? '').trim(),
+        measurement: String(row?.measure_final ?? row?.measurement_final ?? '').trim(),
+        TIPOARTICULO: 'piezas',
+        PAG: String(row?.pages ?? '').trim(),
         BOM_no: String(row?.['BOM-No.'] ?? '').trim(),
         esquema_general: '',
         exp_motor: engineModels.join(', '),
@@ -238,26 +240,27 @@ function buildSyntheticSupersededExportRow(row, matches) {
     if (!matches.length) return null;
     if (!isSupersededArticle(row)) return null;
 
+    // Synthetic Superseded output mapping mirrors New mapping, but:
+    // - Forces substitution semantics (SUST_TIPO/New PN linkage).
+    // - Adds vinculo URL using related new PN when available.
     const hierarchy = String(row?.sust_hierarchie ?? '').trim();
     const relatedNewPn = String(row?.sust_new_part_number ?? '').trim() || String(row?.['New Part Number'] ?? '').trim();
     if (!relatedNewPn && hierarchy !== 'Superseded') return null;
 
-    const weightValue = resolveWeightForExport(row);
-    const pageLabels = uniqueSortedValues(matches.map(normalizePageLabelForExport), true);
-    const modelTypes = uniqueSortedValues(matches.map(normalizeModelTypeForExport), true);
+    const modelType = String(row?.model ?? '').trim();
     const engineModels = uniqueSortedValues(matches.map(item => String(item?.engine_model ?? '').trim()), true);
-    const categoryValues = uniqueSortedValues(matches.map(item => String(item?.categoria ?? item?.atributo ?? item?.exp_categorias ?? '').trim()));
+    const categoryValues = uniqueSortedValues(matches.map(item => String(item?.categoria ?? '').trim()));
     const imageValue = firstNonEmptyValue([row, ...matches], item => item?.exp_imagenes || '');
-    const normalizedPn = String(row?.['PART NO.'] ?? row?.pn ?? '').trim();
+    const normalizedPn = String(row?.pn_final ?? row?.['PART NO.'] ?? row?.pn ?? '').trim();
     const resolvedRelatedPn = relatedNewPn || normalizedPn;
     const hasSubstitution = hierarchy === 'Superseded' || resolvedRelatedPn !== '';
 
     return {
         fecha_version: formatExportVersionStamp(),
         pn: normalizedPn,
-        designation: String(getRowValueForColumn(row, 'designation_final')).trim(),
-        engine: String(row?.engine ?? '').trim() || '4000',
-        model_type: modelTypes.join(', '),
+        designation: String(row?.designation_final ?? '').trim(),
+        engine: String(row?.engine ?? '').trim(),
+        model_type: modelType,
         type: '',
         nsn: String(row?.nsn ?? '').trim(),
         GESA_NORM: String(row?.norma ?? '').trim(),
@@ -265,11 +268,11 @@ function buildSyntheticSupersededExportRow(row, matches) {
         fg_code: row?.fg_code ?? '',
         fg_description: String(row?.fgs_description ?? '').trim(),
         fg_code_description: String(row?.fgs_code_description ?? '').trim(),
-        weight: Number.isFinite(weightValue) ? Number(weightValue.toFixed(3)) : '',
-        weight_txt: formatWeightTextForExport(row, weightValue),
-        measurement: resolveMeasurementForExport(row),
-        TIPOARTICULO: String(row?.TIPOARTICULO ?? '').trim() || 'piezas',
-        PAG: pageLabels.join(', '),
+        weight: '',
+        weight_txt: String(row?.weight_final ?? '').trim(),
+        measurement: String(row?.measure_final ?? row?.measurement_final ?? '').trim(),
+        TIPOARTICULO: 'piezas',
+        PAG: String(row?.pages ?? '').trim(),
         BOM_no: String(row?.['BOM-No.'] ?? '').trim(),
         esquema_general: '',
         exp_motor: engineModels.join(', '),
@@ -321,10 +324,11 @@ function main() {
         : path.join(repoRoot, 'qa_synthetic_superseded.json');
 
     const allRows = loadAllRows(repoRoot);
+    // Group all engine rows by PN key before emitting unique synthetic exports.
     const byPn = new Map();
 
     allRows.forEach(row => {
-        const pn = String(row?.['PART NO.'] ?? row?.pn ?? '').trim();
+        const pn = String(row?.pn_final ?? row?.['PART NO.'] ?? row?.pn ?? '').trim();
         if (!pn) return;
         const key = norm(pn);
         if (!byPn.has(key)) byPn.set(key, []);
@@ -333,7 +337,7 @@ function main() {
 
     const pnEntries = [...byPn.entries()].map(([pnKey, rows]) => ({
         pnKey,
-        pn: String(rows?.[0]?.['PART NO.'] ?? rows?.[0]?.pn ?? '').trim(),
+        pn: String(rows?.[0]?.pn_final ?? rows?.[0]?.['PART NO.'] ?? rows?.[0]?.pn ?? '').trim(),
         rows
     }));
 

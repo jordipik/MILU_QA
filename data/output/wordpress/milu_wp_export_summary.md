@@ -1,16 +1,16 @@
 # MILU WordPress Export Summary (QA only)
 
-Generated at: 2026-05-04T12:51:38.384Z
+Generated at: 2026-05-08T18:52:37.111Z
 
 ## Totals
 - Engines processed: 9
 - Occurrences processed: 67883
-- PN unique: 6115
-- Importables (total): 5463
-- New: 3573
-- Superseded: 1890
-- Pending review: 644
-- Discarded: 8
+- PN unique: 5893
+- Importables (total): 5486
+- New: 3593
+- Superseded: 1893
+- Pending review: 368
+- Discarded: 39
 
 ## Official Rules
 - Rule 1: if PN has ok/importar rows => export as NEW or SUPERSEDED

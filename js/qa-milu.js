@@ -898,23 +898,21 @@ function openAnalisisForRow(row) {
 
     const book = String(row?.engine_model ?? '').trim();
     const id = String(row?.ID ?? '').trim();
-    const record = String(row?.pn_final ?? row?.['PART NO.'] ?? row?.pn ?? '').trim();
-    if (!record) {
-        alert('El registro no tiene PN/PART NO para abrir analisis.');
+    if (!id) {
+        alert('El registro no tiene ID para abrir analisis.');
         return;
     }
 
     const params = new URLSearchParams();
     const isEmbedded = new URLSearchParams(window.location.search || '').get('embedded') === '1';
     if (book) params.set('engine', book);
-    if (id) params.set('id', id);
-    params.set('record', record);
+    params.set('id', id);
     if (isEmbedded) {
         params.set('embedded', '1');
         try {
             const openViaShell = window.parent?.miluShellOpenAnalisisRecord;
             if (typeof openViaShell === 'function') {
-                const opened = openViaShell({ engine: book, id, record });
+                const opened = openViaShell({ engine: book, id });
                 if (opened !== false) return;
             }
         } catch (_) {

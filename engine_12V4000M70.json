@@ -5120,7 +5120,7 @@
     "gesa_pdf": "No",
     "normalizado_pdf": "No",
     "qa_revision_estado": "ok",
-    "qa_revision_accion": "importar",
+    "qa_revision_accion": "eliminar",
     "ID": 1900047
   },
   {
@@ -215588,7 +215588,7 @@
     "gesa_pdf": "No",
     "normalizado_pdf": "No",
     "qa_revision_estado": "ok",
-    "qa_revision_accion": "importar",
+    "qa_revision_accion": "eliminar",
     "ID": 1902019
   },
   {
@@ -260599,7 +260599,7 @@
     "gesa_pdf": "No",
     "normalizado_pdf": "No",
     "qa_revision_estado": "ok",
-    "qa_revision_accion": "importar",
+    "qa_revision_accion": "eliminar",
     "ID": 1902439
   },
   {
@@ -265192,7 +265192,7 @@
     "gesa_pdf": "No",
     "normalizado_pdf": "No",
     "qa_revision_estado": "ok",
-    "qa_revision_accion": "copia",
+    "qa_revision_accion": "eliminar",
     "ID": 1902482,
     "qa_revision_updated_at": "2026-05-06T00:49:22.121Z"
   },
@@ -470803,7 +470803,7 @@
     "gesa_pdf": "No",
     "normalizado_pdf": "No",
     "qa_revision_estado": "ok",
-    "qa_revision_accion": "copia",
+    "qa_revision_accion": "eliminar",
     "ID": 1904406,
     "qa_revision_updated_at": "2026-05-06T00:49:22.121Z"
   },
@@ -549443,7 +549443,7 @@
     "gesa_pdf": "No",
     "normalizado_pdf": "No",
     "qa_revision_estado": "ok",
-    "qa_revision_accion": "importar",
+    "qa_revision_accion": "eliminar",
     "ID": 1905139
   },
   {
@@ -550210,7 +550210,7 @@
     "gesa_pdf": "No",
     "normalizado_pdf": "No",
     "qa_revision_estado": "ok",
-    "qa_revision_accion": "copia",
+    "qa_revision_accion": "eliminar",
     "ID": 1905146,
     "qa_revision_updated_at": "2026-05-06T00:49:22.121Z"
   },

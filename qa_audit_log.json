@@ -310,5 +310,1071 @@
         }
       }
     }
+  },
+  {
+    "id": "1778256279556-d6quqk4y",
+    "timestamp": "2026-05-08T16:04:39.556Z",
+    "kind": "change-applied",
+    "type": "qa-row-patch",
+    "module": "qa_milu",
+    "action": "inline-accion",
+    "description": "Cambio rapido accion ID 1205782",
+    "target": {
+      "revisionKey": "id=1205782"
+    },
+    "changeId": "1778256279108-tuz5yx22",
+    "data": {
+      "target": {
+        "revisionKey": "id=1205782",
+        "engineFile": "engine_12V4000M53.json",
+        "id": "1205782"
+      },
+      "changes": {
+        "qa_revision_accion": {
+          "before": "revisar",
+          "after": "eliminar"
+        }
+      }
+    }
+  },
+  {
+    "id": "1778256281917-rc7lez21",
+    "timestamp": "2026-05-08T16:04:41.917Z",
+    "kind": "change-applied",
+    "type": "qa-row-patch",
+    "module": "qa_milu",
+    "action": "inline-estado",
+    "description": "Cambio rapido estado ID 1205782",
+    "target": {
+      "revisionKey": "id=1205782"
+    },
+    "changeId": "1778256281569-tmg57oi2",
+    "data": {
+      "target": {
+        "revisionKey": "id=1205782",
+        "engineFile": "engine_12V4000M53.json",
+        "id": "1205782"
+      },
+      "changes": {
+        "qa_revision_estado": {
+          "before": "pendiente",
+          "after": "ok"
+        }
+      }
+    }
+  },
+  {
+    "id": "1778256375094-ygmsq4u9",
+    "timestamp": "2026-05-08T16:06:15.094Z",
+    "kind": "change-applied",
+    "type": "qa-row-patch",
+    "module": "qa_milu",
+    "action": "inline-accion",
+    "description": "Cambio rapido accion ID 1904397",
+    "target": {
+      "revisionKey": "id=1904397"
+    },
+    "changeId": "1778256374744-feas516z",
+    "data": {
+      "target": {
+        "revisionKey": "id=1904397",
+        "engineFile": "engine_12V4000M70.json",
+        "id": "1904397"
+      },
+      "changes": {
+        "qa_revision_accion": {
+          "before": "copia",
+          "after": "eliminar"
+        }
+      }
+    }
+  },
+  {
+    "id": "1778256381272-xxgrtg7k",
+    "timestamp": "2026-05-08T16:06:21.272Z",
+    "kind": "change-applied",
+    "type": "qa-row-patch",
+    "module": "qa_milu",
+    "action": "inline-accion",
+    "description": "Cambio rapido accion ID 1902019",
+    "target": {
+      "revisionKey": "id=1902019"
+    },
+    "changeId": "1778256380971-kr3096l6",
+    "data": {
+      "target": {
+        "revisionKey": "id=1902019",
+        "engineFile": "engine_12V4000M70.json",
+        "id": "1902019"
+      },
+      "changes": {
+        "qa_revision_accion": {
+          "before": "importar",
+          "after": "eliminar"
+        }
+      }
+    }
+  },
+  {
+    "id": "1778256399637-i31jkjwi",
+    "timestamp": "2026-05-08T16:06:39.637Z",
+    "kind": "change-applied",
+    "type": "qa-row-patch",
+    "module": "qa_milu",
+    "action": "inline-accion",
+    "description": "Cambio rapido accion ID 1904397",
+    "target": {
+      "revisionKey": "id=1904397"
+    },
+    "changeId": "1778256399347-2vlp65ht",
+    "data": {
+      "target": {
+        "revisionKey": "id=1904397",
+        "engineFile": "engine_12V4000M70.json",
+        "id": "1904397"
+      },
+      "changes": {
+        "qa_revision_accion": {
+          "before": "eliminar",
+          "after": "copia"
+        }
+      }
+    }
+  },
+  {
+    "id": "1778256401389-qzdzddok",
+    "timestamp": "2026-05-08T16:06:41.389Z",
+    "kind": "change-applied",
+    "type": "qa-row-patch",
+    "module": "qa_milu",
+    "action": "inline-accion",
+    "description": "Cambio rapido accion ID 1904406",
+    "target": {
+      "revisionKey": "id=1904406"
+    },
+    "changeId": "1778256401124-gdssj7ln",
+    "data": {
+      "target": {
+        "revisionKey": "id=1904406",
+        "engineFile": "engine_12V4000M70.json",
+        "id": "1904406"
+      },
+      "changes": {
+        "qa_revision_accion": {
+          "before": "copia",
+          "after": "revisar"
+        }
+      }
+    }
+  },
+  {
+    "id": "1778256403697-kfxoq4pn",
+    "timestamp": "2026-05-08T16:06:43.697Z",
+    "kind": "change-applied",
+    "type": "qa-row-patch",
+    "module": "qa_milu",
+    "action": "inline-accion",
+    "description": "Cambio rapido accion ID 1904406",
+    "target": {
+      "revisionKey": "id=1904406"
+    },
+    "changeId": "1778256403410-99w0v2qr",
+    "data": {
+      "target": {
+        "revisionKey": "id=1904406",
+        "engineFile": "engine_12V4000M70.json",
+        "id": "1904406"
+      },
+      "changes": {
+        "qa_revision_accion": {
+          "before": "revisar",
+          "after": "eliminar"
+        }
+      }
+    }
+  },
+  {
+    "id": "1778256442670-2jdmdrqy",
+    "timestamp": "2026-05-08T16:07:22.670Z",
+    "kind": "change-applied",
+    "type": "qa-row-patch",
+    "module": "qa_milu",
+    "action": "inline-accion",
+    "description": "Cambio rapido accion ID 1200540",
+    "target": {
+      "revisionKey": "id=1200540"
+    },
+    "changeId": "1778256442302-pfi8inke",
+    "data": {
+      "target": {
+        "revisionKey": "id=1200540",
+        "engineFile": "engine_12V4000M53.json",
+        "id": "1200540"
+      },
+      "changes": {
+        "qa_revision_accion": {
+          "before": "importar",
+          "after": "eliminar"
+        }
+      }
+    }
+  },
+  {
+    "id": "1778256446554-28yqhnpi",
+    "timestamp": "2026-05-08T16:07:26.554Z",
+    "kind": "change-applied",
+    "type": "qa-row-patch",
+    "module": "qa_milu",
+    "action": "inline-accion",
+    "description": "Cambio rapido accion ID 1203681",
+    "target": {
+      "revisionKey": "id=1203681"
+    },
+    "changeId": "1778256446186-tv28xz3g",
+    "data": {
+      "target": {
+        "revisionKey": "id=1203681",
+        "engineFile": "engine_12V4000M53.json",
+        "id": "1203681"
+      },
+      "changes": {
+        "qa_revision_accion": {
+          "before": "revisar",
+          "after": "eliminar"
+        }
+      }
+    }
+  },
+  {
+    "id": "1778256448186-r2vzbkq5",
+    "timestamp": "2026-05-08T16:07:28.186Z",
+    "kind": "change-applied",
+    "type": "qa-row-patch",
+    "module": "qa_milu",
+    "action": "inline-estado",
+    "description": "Cambio rapido estado ID 1203681",
+    "target": {
+      "revisionKey": "id=1203681"
+    },
+    "changeId": "1778256447817-ba2fjlkd",
+    "data": {
+      "target": {
+        "revisionKey": "id=1203681",
+        "engineFile": "engine_12V4000M53.json",
+        "id": "1203681"
+      },
+      "changes": {
+        "qa_revision_estado": {
+          "before": "pendiente",
+          "after": "ok"
+        }
+      }
+    }
+  },
+  {
+    "id": "1778256472577-dlw4rafr",
+    "timestamp": "2026-05-08T16:07:52.577Z",
+    "kind": "change-applied",
+    "type": "qa-row-patch",
+    "module": "qa_milu",
+    "action": "inline-accion",
+    "description": "Cambio rapido accion ID 1900047",
+    "target": {
+      "revisionKey": "id=1900047"
+    },
+    "changeId": "1778256472177-jgi64p37",
+    "data": {
+      "target": {
+        "revisionKey": "id=1900047",
+        "engineFile": "engine_12V4000M70.json",
+        "id": "1900047"
+      },
+      "changes": {
+        "qa_revision_accion": {
+          "before": "importar",
+          "after": "eliminar"
+        }
+      }
+    }
+  },
+  {
+    "id": "1778256475984-1drueeii",
+    "timestamp": "2026-05-08T16:07:55.984Z",
+    "kind": "change-applied",
+    "type": "qa-row-patch",
+    "module": "qa_milu",
+    "action": "inline-accion",
+    "description": "Cambio rapido accion ID 1902482",
+    "target": {
+      "revisionKey": "id=1902482"
+    },
+    "changeId": "1778256475681-4p2fgxwb",
+    "data": {
+      "target": {
+        "revisionKey": "id=1902482",
+        "engineFile": "engine_12V4000M70.json",
+        "id": "1902482"
+      },
+      "changes": {
+        "qa_revision_accion": {
+          "before": "copia",
+          "after": "eliminar"
+        }
+      }
+    }
+  },
+  {
+    "id": "1778256512594-vzz4eovp",
+    "timestamp": "2026-05-08T16:08:32.594Z",
+    "kind": "change-applied",
+    "type": "qa-row-patch",
+    "module": "qa_milu",
+    "action": "inline-accion",
+    "description": "Cambio rapido accion ID 1905139",
+    "target": {
+      "revisionKey": "id=1905139"
+    },
+    "changeId": "1778256512224-g6x7k1t8",
+    "data": {
+      "target": {
+        "revisionKey": "id=1905139",
+        "engineFile": "engine_12V4000M70.json",
+        "id": "1905139"
+      },
+      "changes": {
+        "qa_revision_accion": {
+          "before": "importar",
+          "after": "eliminar"
+        }
+      }
+    }
+  },
+  {
+    "id": "1778256514154-2zew3waz",
+    "timestamp": "2026-05-08T16:08:34.154Z",
+    "kind": "change-applied",
+    "type": "qa-row-patch",
+    "module": "qa_milu",
+    "action": "inline-accion",
+    "description": "Cambio rapido accion ID 1905146",
+    "target": {
+      "revisionKey": "id=1905146"
+    },
+    "changeId": "1778256513867-gfyjhbn9",
+    "data": {
+      "target": {
+        "revisionKey": "id=1905146",
+        "engineFile": "engine_12V4000M70.json",
+        "id": "1905146"
+      },
+      "changes": {
+        "qa_revision_accion": {
+          "before": "copia",
+          "after": "eliminar"
+        }
+      }
+    }
+  },
+  {
+    "id": "1778256515688-do1rfq8v",
+    "timestamp": "2026-05-08T16:08:35.688Z",
+    "kind": "change-applied",
+    "type": "qa-row-patch",
+    "module": "qa_milu",
+    "action": "inline-accion",
+    "description": "Cambio rapido accion ID 1905168",
+    "target": {
+      "revisionKey": "id=1905168"
+    },
+    "changeId": "1778256515418-fv695vb3",
+    "data": {
+      "target": {
+        "revisionKey": "id=1905168",
+        "engineFile": "engine_12V4000M70.json",
+        "id": "1905168"
+      },
+      "changes": {
+        "qa_revision_accion": {
+          "before": "copia",
+          "after": "eliminar"
+        }
+      }
+    }
+  },
+  {
+    "id": "1778256525957-f5d8narw",
+    "timestamp": "2026-05-08T16:08:45.957Z",
+    "kind": "change-applied",
+    "type": "qa-row-patch",
+    "module": "qa_milu",
+    "action": "inline-accion",
+    "description": "Cambio rapido accion ID 1905168",
+    "target": {
+      "revisionKey": "id=1905168"
+    },
+    "changeId": "1778256525593-zd57zkj9",
+    "data": {
+      "target": {
+        "revisionKey": "id=1905168",
+        "engineFile": "engine_12V4000M70.json",
+        "id": "1905168"
+      },
+      "changes": {
+        "qa_revision_accion": {
+          "before": "eliminar",
+          "after": "copia"
+        }
+      }
+    }
+  },
+  {
+    "id": "1778256563408-c6siwwew",
+    "timestamp": "2026-05-08T16:09:23.408Z",
+    "kind": "change-applied",
+    "type": "qa-row-patch",
+    "module": "qa_milu",
+    "action": "inline-accion",
+    "description": "Cambio rapido accion ID 1902439",
+    "target": {
+      "revisionKey": "id=1902439"
+    },
+    "changeId": "1778256563087-aiffnnwx",
+    "data": {
+      "target": {
+        "revisionKey": "id=1902439",
+        "engineFile": "engine_12V4000M70.json",
+        "id": "1902439"
+      },
+      "changes": {
+        "qa_revision_accion": {
+          "before": "importar",
+          "after": "eliminar"
+        }
+      }
+    }
+  },
+  {
+    "id": "1778256570191-j1cjk4pv",
+    "timestamp": "2026-05-08T16:09:30.191Z",
+    "kind": "change-applied",
+    "type": "qa-row-patch",
+    "module": "qa_milu",
+    "action": "inline-accion",
+    "description": "Cambio rapido accion ID 1904826",
+    "target": {
+      "revisionKey": "id=1904826"
+    },
+    "changeId": "1778256569898-jlowmnqr",
+    "data": {
+      "target": {
+        "revisionKey": "id=1904826",
+        "engineFile": "engine_12V4000M70.json",
+        "id": "1904826"
+      },
+      "changes": {
+        "qa_revision_accion": {
+          "before": "copia",
+          "after": "eliminar"
+        }
+      }
+    }
+  },
+  {
+    "id": "1778256668749-vbjzv4a0",
+    "timestamp": "2026-05-08T16:11:08.749Z",
+    "kind": "undo",
+    "type": "qa-row-patch",
+    "module": "qa_milu",
+    "action": "inline-accion",
+    "description": "Cambio rapido accion ID 1904826",
+    "target": {
+      "revisionKey": "id=1904826"
+    },
+    "changeId": "1778256569898-jlowmnqr",
+    "data": {
+      "target": {
+        "revisionKey": "id=1904826",
+        "engineFile": "engine_12V4000M70.json",
+        "id": "1904826"
+      },
+      "changes": {
+        "qa_revision_accion": {
+          "before": "copia",
+          "after": "eliminar"
+        }
+      }
+    }
+  },
+  {
+    "id": "1778260885769-674wnqvo",
+    "timestamp": "2026-05-08T17:21:25.769Z",
+    "kind": "change-applied",
+    "type": "qa-row-patch",
+    "module": "qa_milu",
+    "action": "inline-accion",
+    "description": "Cambio rapido accion ID 1412704",
+    "target": {
+      "revisionKey": "id=1412704"
+    },
+    "changeId": "1778260884904-65skan1k",
+    "data": {
+      "target": {
+        "revisionKey": "id=1412704",
+        "engineFile": "engine_16V4000M73.json",
+        "id": "1412704"
+      },
+      "changes": {
+        "qa_revision_accion": {
+          "before": "importar",
+          "after": "copia"
+        }
+      }
+    }
+  },
+  {
+    "id": "1778261121978-y85qviw1",
+    "timestamp": "2026-05-08T17:25:21.978Z",
+    "kind": "change-applied",
+    "type": "qa-row-patch",
+    "module": "qa_milu",
+    "action": "inline-accion",
+    "description": "Cambio rapido accion ID 1403154",
+    "target": {
+      "revisionKey": "id=1403154"
+    },
+    "changeId": "1778261121262-977s8pnb",
+    "data": {
+      "target": {
+        "revisionKey": "id=1403154",
+        "engineFile": "engine_16V4000M73.json",
+        "id": "1403154"
+      },
+      "changes": {
+        "qa_revision_accion": {
+          "before": "copia",
+          "after": "eliminar"
+        }
+      }
+    }
+  },
+  {
+    "id": "1778261445949-9dk7z7c2",
+    "timestamp": "2026-05-08T17:30:45.949Z",
+    "kind": "change-applied",
+    "type": "qa-row-patch",
+    "module": "qa_milu",
+    "action": "inline-accion",
+    "description": "Cambio rapido accion ID 1202707",
+    "target": {
+      "revisionKey": "id=1202707"
+    },
+    "changeId": "1778261445496-yao9pnst",
+    "data": {
+      "target": {
+        "revisionKey": "id=1202707",
+        "engineFile": "engine_12V4000M53.json",
+        "id": "1202707"
+      },
+      "changes": {
+        "qa_revision_accion": {
+          "before": "importar",
+          "after": "eliminar"
+        }
+      }
+    }
+  },
+  {
+    "id": "1778261559415-g5m2283j",
+    "timestamp": "2026-05-08T17:32:39.415Z",
+    "kind": "change-applied",
+    "type": "qa-row-patch",
+    "module": "qa_milu",
+    "action": "inline-accion",
+    "description": "Cambio rapido accion ID 1205863",
+    "target": {
+      "revisionKey": "id=1205863"
+    },
+    "changeId": "1778261558960-782fkqfn",
+    "data": {
+      "target": {
+        "revisionKey": "id=1205863",
+        "engineFile": "engine_12V4000M53.json",
+        "id": "1205863"
+      },
+      "changes": {
+        "qa_revision_accion": {
+          "before": "copia",
+          "after": "eliminar"
+        }
+      }
+    }
+  },
+  {
+    "id": "1778261560900-vybptgq6",
+    "timestamp": "2026-05-08T17:32:40.900Z",
+    "kind": "change-applied",
+    "type": "qa-row-patch",
+    "module": "qa_milu",
+    "action": "inline-accion",
+    "description": "Cambio rapido accion ID 1205867",
+    "target": {
+      "revisionKey": "id=1205867"
+    },
+    "changeId": "1778261560508-4be0recx",
+    "data": {
+      "target": {
+        "revisionKey": "id=1205867",
+        "engineFile": "engine_12V4000M53.json",
+        "id": "1205867"
+      },
+      "changes": {
+        "qa_revision_accion": {
+          "before": "revisar",
+          "after": "eliminar"
+        }
+      }
+    }
+  },
+  {
+    "id": "1778261569066-7s7kiqdm",
+    "timestamp": "2026-05-08T17:32:49.066Z",
+    "kind": "change-applied",
+    "type": "qa-row-patch",
+    "module": "qa_milu",
+    "action": "inline-estado",
+    "description": "Cambio rapido estado ID 1205867",
+    "target": {
+      "revisionKey": "id=1205867"
+    },
+    "changeId": "1778261568654-8y7evgmt",
+    "data": {
+      "target": {
+        "revisionKey": "id=1205867",
+        "engineFile": "engine_12V4000M53.json",
+        "id": "1205867"
+      },
+      "changes": {
+        "qa_revision_estado": {
+          "before": "pendiente",
+          "after": "ok"
+        }
+      }
+    }
+  },
+  {
+    "id": "1778261664967-iy31u063",
+    "timestamp": "2026-05-08T17:34:24.967Z",
+    "kind": "change-applied",
+    "type": "qa-row-patch",
+    "module": "qa_milu",
+    "action": "inline-accion",
+    "description": "Cambio rapido accion ID 1202706",
+    "target": {
+      "revisionKey": "id=1202706"
+    },
+    "changeId": "1778261664554-pbjwe9ps",
+    "data": {
+      "target": {
+        "revisionKey": "id=1202706",
+        "engineFile": "engine_12V4000M53.json",
+        "id": "1202706"
+      },
+      "changes": {
+        "qa_revision_accion": {
+          "before": "importar",
+          "after": "eliminar"
+        }
+      }
+    }
+  },
+  {
+    "id": "1778261667114-xppbu4jy",
+    "timestamp": "2026-05-08T17:34:27.114Z",
+    "kind": "change-applied",
+    "type": "qa-row-patch",
+    "module": "qa_milu",
+    "action": "inline-accion",
+    "description": "Cambio rapido accion ID 1205866",
+    "target": {
+      "revisionKey": "id=1205866"
+    },
+    "changeId": "1778261666603-vgl9xjmi",
+    "data": {
+      "target": {
+        "revisionKey": "id=1205866",
+        "engineFile": "engine_12V4000M53.json",
+        "id": "1205866"
+      },
+      "changes": {
+        "qa_revision_accion": {
+          "before": "revisar",
+          "after": "eliminar"
+        }
+      }
+    }
+  },
+  {
+    "id": "1778261668877-opgbl36a",
+    "timestamp": "2026-05-08T17:34:28.877Z",
+    "kind": "change-applied",
+    "type": "qa-row-patch",
+    "module": "qa_milu",
+    "action": "inline-estado",
+    "description": "Cambio rapido estado ID 1205866",
+    "target": {
+      "revisionKey": "id=1205866"
+    },
+    "changeId": "1778261668468-vxb0flfv",
+    "data": {
+      "target": {
+        "revisionKey": "id=1205866",
+        "engineFile": "engine_12V4000M53.json",
+        "id": "1205866"
+      },
+      "changes": {
+        "qa_revision_estado": {
+          "before": "pendiente",
+          "after": "ok"
+        }
+      }
+    }
+  },
+  {
+    "id": "1778261703802-eg1hw6io",
+    "timestamp": "2026-05-08T17:35:03.802Z",
+    "kind": "change-applied",
+    "type": "qa-row-patch",
+    "module": "qa_milu",
+    "action": "inline-accion",
+    "description": "Cambio rapido accion ID 1202708",
+    "target": {
+      "revisionKey": "id=1202708"
+    },
+    "changeId": "1778261703332-q7h4p08x",
+    "data": {
+      "target": {
+        "revisionKey": "id=1202708",
+        "engineFile": "engine_12V4000M53.json",
+        "id": "1202708"
+      },
+      "changes": {
+        "qa_revision_accion": {
+          "before": "importar",
+          "after": "eliminar"
+        }
+      }
+    }
+  },
+  {
+    "id": "1778261707100-a51x8tx2",
+    "timestamp": "2026-05-08T17:35:07.100Z",
+    "kind": "change-applied",
+    "type": "qa-row-patch",
+    "module": "qa_milu",
+    "action": "inline-accion",
+    "description": "Cambio rapido accion ID 1205865",
+    "target": {
+      "revisionKey": "id=1205865"
+    },
+    "changeId": "1778261706670-n3ssibh0",
+    "data": {
+      "target": {
+        "revisionKey": "id=1205865",
+        "engineFile": "engine_12V4000M53.json",
+        "id": "1205865"
+      },
+      "changes": {
+        "qa_revision_accion": {
+          "before": "copia",
+          "after": "eliminar"
+        }
+      }
+    }
+  },
+  {
+    "id": "1778261709960-8vy0c2us",
+    "timestamp": "2026-05-08T17:35:09.960Z",
+    "kind": "change-applied",
+    "type": "qa-row-patch",
+    "module": "qa_milu",
+    "action": "inline-accion",
+    "description": "Cambio rapido accion ID 1205868",
+    "target": {
+      "revisionKey": "id=1205868"
+    },
+    "changeId": "1778261709554-a5t6abtt",
+    "data": {
+      "target": {
+        "revisionKey": "id=1205868",
+        "engineFile": "engine_12V4000M53.json",
+        "id": "1205868"
+      },
+      "changes": {
+        "qa_revision_accion": {
+          "before": "revisar",
+          "after": "eliminar"
+        }
+      }
+    }
+  },
+  {
+    "id": "1778261711729-2qfj02kb",
+    "timestamp": "2026-05-08T17:35:11.729Z",
+    "kind": "change-applied",
+    "type": "qa-row-patch",
+    "module": "qa_milu",
+    "action": "inline-estado",
+    "description": "Cambio rapido estado ID 1205868",
+    "target": {
+      "revisionKey": "id=1205868"
+    },
+    "changeId": "1778261711318-ngillaoz",
+    "data": {
+      "target": {
+        "revisionKey": "id=1205868",
+        "engineFile": "engine_12V4000M53.json",
+        "id": "1205868"
+      },
+      "changes": {
+        "qa_revision_estado": {
+          "before": "pendiente",
+          "after": "ok"
+        }
+      }
+    }
+  },
+  {
+    "id": "1778261729871-4kp633lv",
+    "timestamp": "2026-05-08T17:35:29.871Z",
+    "kind": "undo",
+    "type": "qa-row-patch",
+    "module": "qa_milu",
+    "action": "inline-estado",
+    "description": "Cambio rapido estado ID 1205868",
+    "target": {
+      "revisionKey": "id=1205868"
+    },
+    "changeId": "1778261711318-ngillaoz",
+    "data": {
+      "target": {
+        "revisionKey": "id=1205868",
+        "engineFile": "engine_12V4000M53.json",
+        "id": "1205868"
+      },
+      "changes": {
+        "qa_revision_estado": {
+          "before": "pendiente",
+          "after": "ok"
+        }
+      }
+    }
+  },
+  {
+    "id": "1778261731523-lv4uixn3",
+    "timestamp": "2026-05-08T17:35:31.523Z",
+    "kind": "undo",
+    "type": "qa-row-patch",
+    "module": "qa_milu",
+    "action": "inline-accion",
+    "description": "Cambio rapido accion ID 1205868",
+    "target": {
+      "revisionKey": "id=1205868"
+    },
+    "changeId": "1778261709554-a5t6abtt",
+    "data": {
+      "target": {
+        "revisionKey": "id=1205868",
+        "engineFile": "engine_12V4000M53.json",
+        "id": "1205868"
+      },
+      "changes": {
+        "qa_revision_accion": {
+          "before": "revisar",
+          "after": "eliminar"
+        }
+      }
+    }
+  },
+  {
+    "id": "1778261732260-o2rsuixi",
+    "timestamp": "2026-05-08T17:35:32.260Z",
+    "kind": "undo",
+    "type": "qa-row-patch",
+    "module": "qa_milu",
+    "action": "inline-accion",
+    "description": "Cambio rapido accion ID 1205865",
+    "target": {
+      "revisionKey": "id=1205865"
+    },
+    "changeId": "1778261706670-n3ssibh0",
+    "data": {
+      "target": {
+        "revisionKey": "id=1205865",
+        "engineFile": "engine_12V4000M53.json",
+        "id": "1205865"
+      },
+      "changes": {
+        "qa_revision_accion": {
+          "before": "copia",
+          "after": "eliminar"
+        }
+      }
+    }
+  },
+  {
+    "id": "1778261733081-98iyqvtr",
+    "timestamp": "2026-05-08T17:35:33.081Z",
+    "kind": "undo",
+    "type": "qa-row-patch",
+    "module": "qa_milu",
+    "action": "inline-accion",
+    "description": "Cambio rapido accion ID 1202708",
+    "target": {
+      "revisionKey": "id=1202708"
+    },
+    "changeId": "1778261703332-q7h4p08x",
+    "data": {
+      "target": {
+        "revisionKey": "id=1202708",
+        "engineFile": "engine_12V4000M53.json",
+        "id": "1202708"
+      },
+      "changes": {
+        "qa_revision_accion": {
+          "before": "importar",
+          "after": "eliminar"
+        }
+      }
+    }
+  },
+  {
+    "id": "1778261734152-ymtb10s0",
+    "timestamp": "2026-05-08T17:35:34.152Z",
+    "kind": "undo",
+    "type": "qa-row-patch",
+    "module": "qa_milu",
+    "action": "inline-estado",
+    "description": "Cambio rapido estado ID 1205866",
+    "target": {
+      "revisionKey": "id=1205866"
+    },
+    "changeId": "1778261668468-vxb0flfv",
+    "data": {
+      "target": {
+        "revisionKey": "id=1205866",
+        "engineFile": "engine_12V4000M53.json",
+        "id": "1205866"
+      },
+      "changes": {
+        "qa_revision_estado": {
+          "before": "pendiente",
+          "after": "ok"
+        }
+      }
+    }
+  },
+  {
+    "id": "1778261735943-iu91a32t",
+    "timestamp": "2026-05-08T17:35:35.943Z",
+    "kind": "undo",
+    "type": "qa-row-patch",
+    "module": "qa_milu",
+    "action": "inline-accion",
+    "description": "Cambio rapido accion ID 1205866",
+    "target": {
+      "revisionKey": "id=1205866"
+    },
+    "changeId": "1778261666603-vgl9xjmi",
+    "data": {
+      "target": {
+        "revisionKey": "id=1205866",
+        "engineFile": "engine_12V4000M53.json",
+        "id": "1205866"
+      },
+      "changes": {
+        "qa_revision_accion": {
+          "before": "revisar",
+          "after": "eliminar"
+        }
+      }
+    }
+  },
+  {
+    "id": "1778261738312-iphxa279",
+    "timestamp": "2026-05-08T17:35:38.312Z",
+    "kind": "undo",
+    "type": "qa-row-patch",
+    "module": "qa_milu",
+    "action": "inline-accion",
+    "description": "Cambio rapido accion ID 1202706",
+    "target": {
+      "revisionKey": "id=1202706"
+    },
+    "changeId": "1778261664554-pbjwe9ps",
+    "data": {
+      "target": {
+        "revisionKey": "id=1202706",
+        "engineFile": "engine_12V4000M53.json",
+        "id": "1202706"
+      },
+      "changes": {
+        "qa_revision_accion": {
+          "before": "importar",
+          "after": "eliminar"
+        }
+      }
+    }
+  },
+  {
+    "id": "1778261739517-secdtmjn",
+    "timestamp": "2026-05-08T17:35:39.517Z",
+    "kind": "undo",
+    "type": "qa-row-patch",
+    "module": "qa_milu",
+    "action": "inline-estado",
+    "description": "Cambio rapido estado ID 1205867",
+    "target": {
+      "revisionKey": "id=1205867"
+    },
+    "changeId": "1778261568654-8y7evgmt",
+    "data": {
+      "target": {
+        "revisionKey": "id=1205867",
+        "engineFile": "engine_12V4000M53.json",
+        "id": "1205867"
+      },
+      "changes": {
+        "qa_revision_estado": {
+          "before": "pendiente",
+          "after": "ok"
+        }
+      }
+    }
+  },
+  {
+    "id": "1778262163347-8wu9lauo",
+    "timestamp": "2026-05-08T17:42:43.347Z",
+    "kind": "change-applied",
+    "type": "qa-row-patch",
+    "module": "qa_milu",
+    "action": "inline-accion",
+    "description": "Cambio rapido accion ID 1205863",
+    "target": {
+      "revisionKey": "id=1205863"
+    },
+    "changeId": "1778262162996-0kp0pv1q",
+    "data": {
+      "target": {
+        "revisionKey": "id=1205863",
+        "engineFile": "engine_12V4000M53.json",
+        "id": "1205863"
+      },
+      "changes": {
+        "qa_revision_accion": {
+          "before": "eliminar",
+          "after": "copia"
+        }
+      }
+    }
   }
 ]

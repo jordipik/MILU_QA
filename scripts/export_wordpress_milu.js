@@ -79,7 +79,7 @@ function pickMostFrequent(values) {
 }
 
 function getPn(row) {
-    return t(row['PART NO.'] || row.pn || row.pn_final);
+    return t(row.pn_final || row['PART NO.'] || row.pn);
 }
 
 function getDesignation(row) {
