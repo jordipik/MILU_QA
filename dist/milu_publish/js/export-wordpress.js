@@ -24,7 +24,10 @@ function buildStaticJsonUrlCandidates(fileName) {
 function shouldUseStaticExportMode() {
     const host = String(window.location.hostname || '').toLowerCase();
     const path = String(window.location.pathname || '/');
-    return host === 'alentio.es' && /^\/milu(\/|$)/i.test(path);
+    const isMiluPath = /^\/milu(\/|$)/i.test(path);
+    const isLocalHost = host === 'localhost' || host === '127.0.0.1' || host === '';
+    const isKnownStaticHost = host === 'alentio.es' || host === 'www.alentio.es';
+    return isMiluPath && (isKnownStaticHost || !isLocalHost);
 }
 
 const API = {
@@ -202,6 +205,34 @@ function showToast(message, type = 'info') {
         toast.classList.add('is-leaving');
         window.setTimeout(() => toast.remove(), 220);
     }, 2600);
+}
+
+async function findFirstReachableUrl(candidates) {
+    for (const candidate of candidates) {
+        const url = text(candidate);
+        if (!url) continue;
+        try {
+            const headResponse = await fetch(url, {
+                method: 'HEAD',
+                cache: 'no-store'
+            });
+            if (headResponse.ok) return url;
+            if (headResponse.status !== 405) continue;
+        } catch (_) {
+            // Some static hosts do not support HEAD; fallback to GET below.
+        }
+
+        try {
+            const getResponse = await fetch(url, {
+                method: 'GET',
+                cache: 'no-store'
+            });
+            if (getResponse.ok) return url;
+        } catch (_) {
+            // Ignore and keep trying fallback candidates.
+        }
+    }
+    return '';
 }
 
 async function fetchJson(url, options) {
@@ -865,14 +896,43 @@ async function runWordpressExport() {
     }
 }
 
-function downloadCurrentCsv() {
+async function downloadCurrentCsv() {
     const config = TAB_CONFIG[state.currentTab] || TAB_CONFIG.new;
     const name = (config.csvCandidates || []).find(Boolean);
     if (!name) {
         showToast('No hay CSV configurado para esta pestana.', 'info');
         return;
     }
-    window.location.href = API.download(name);
+
+    if (shouldUseStaticExportMode()) {
+        const staticUrl = await findFirstReachableUrl(buildStaticJsonUrlCandidates(name));
+        if (!staticUrl) {
+            showToast('No se encontro el CSV en modo estatico.', 'error');
+            return;
+        }
+        window.location.href = staticUrl;
+        return;
+    }
+
+    const backendUrl = API.download(name);
+    try {
+        const probe = await fetch(backendUrl, { method: 'HEAD', cache: 'no-store' });
+        if (probe.ok) {
+            window.location.href = backendUrl;
+            return;
+        }
+    } catch (_) {
+        // Fallback handled below.
+    }
+
+    const fallbackUrl = await findFirstReachableUrl(buildStaticJsonUrlCandidates(name));
+    if (fallbackUrl) {
+        showToast('Usando descarga directa de archivo CSV.', 'info');
+        window.location.href = fallbackUrl;
+        return;
+    }
+
+    showToast('No se pudo descargar el CSV.', 'error');
 }
 
 function onTabClick(event) {
