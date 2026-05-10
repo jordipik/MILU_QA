@@ -5,6 +5,7 @@
     "version:patch": "npm version patch --no-git-tag-version",
     "version:minor": "npm version minor --no-git-tag-version",
     "version:major": "npm version major --no-git-tag-version",
+    "audit:images": "node scripts/audit_image_schema_system.js",
     "qa:recompute-errors": "node recompute_engine_errors.js",
     "qa:pdf-compare": "node scripts/qa_pdf_compare.js",
     "qa:pdf-compare:write": "node scripts/qa_pdf_compare.js --write-pdf --recompute-errors",
