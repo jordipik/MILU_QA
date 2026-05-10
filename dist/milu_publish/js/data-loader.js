@@ -277,8 +277,19 @@ export async function saveCellToServer(file, id, col, value) {
             });
 
             if (!response.ok) {
-                const data = await response.json().catch(() => ({}));
-                const message = data.error || `HTTP ${response.status}`;
+                const rawBody = await response.text().catch(() => '');
+                let data = {};
+                if (rawBody) {
+                    try {
+                        data = JSON.parse(rawBody);
+                    } catch (_) {
+                        data = {};
+                    }
+                }
+                const plainBody = String(rawBody || '').replace(/<[^>]*>/g, ' ').replace(/\s+/g, ' ').trim();
+                const message = data.error
+                    || (plainBody ? `${plainBody.slice(0, 220)}${plainBody.length > 220 ? '...' : ''}` : '')
+                    || `HTTP ${response.status}`;
                 lastError = new Error(`Guardado no disponible en ${url}: ${message}`);
                 continue;
             }
@@ -302,7 +313,7 @@ export async function saveCellToServer(file, id, col, value) {
             + 'Comprueba que la ruta de guardado este disponible (save-json.php en produccion o server.js en local).'
         );
     }
-    setSaveBackendState(false, {
+    setSaveBackendState(true, {
         url: lastTriedUrl,
         error: lastMessage
     });

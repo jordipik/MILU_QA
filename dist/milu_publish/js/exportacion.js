@@ -2,14 +2,22 @@
 (function () {
     'use strict';
 
+    function resolveApiBasePath() {
+        const pathname = String(window.location.pathname || '/');
+        return /^\/milu(\/|$)/i.test(pathname) ? '/milu' : '';
+    }
+
+    const API_BASE_PATH = resolveApiBasePath();
+    const apiUrl = (path) => `${API_BASE_PATH}${path}`;
+
     const API = {
-        health: '/health',
-        files: '/export/files',
-        wordpressDecisions: '/export/wordpress-decisions',
-        file: (folder, name) => `/export/file?folder=${encodeURIComponent(folder)}&name=${encodeURIComponent(name)}`,
-        download: (folder, name) => `/export/download?folder=${encodeURIComponent(folder)}&name=${encodeURIComponent(name)}`,
-        runWordpress: '/export/run-wordpress',
-        status: '/export/status'
+        health: apiUrl('/health'),
+        files: apiUrl('/export/files'),
+        wordpressDecisions: apiUrl('/export/wordpress-decisions'),
+        file: (folder, name) => `${apiUrl('/export/file')}?folder=${encodeURIComponent(folder)}&name=${encodeURIComponent(name)}`,
+        download: (folder, name) => `${apiUrl('/export/download')}?folder=${encodeURIComponent(folder)}&name=${encodeURIComponent(name)}`,
+        runWordpress: apiUrl('/export/run-wordpress'),
+        status: apiUrl('/export/status')
     };
 
     const state = {

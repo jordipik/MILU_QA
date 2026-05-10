@@ -9,11 +9,13 @@ import { checkSaveBackendConnection, fetchJsonSafe, loadPartitionedEngineData, s
 import {
     applyRevisionDataToRows,
     assignRevisionKeys,
+    buildGlobalPnCopyTargets,
     denormalizeAccionFromNew,
     denormalizeEstadoFromNew,
     getRevisionKey,
     normalizeAccionToNew,
     normalizeEstadoToNew,
+    rebuildGlobalPartNumberIndex,
     updateRevisionSelectVisual
 } from './revision.js';
 import { subscribeRevisionSync } from './revision-sync.js';
@@ -50,6 +52,14 @@ let filterTimeout = null;
 let resizeTimer = null;
 let backendStatusTimer = null;
 let lastReadonlyAlertAt = 0;
+
+function resolveApiBasePath() {
+    const pathname = String(window.location.pathname || '/');
+    return /^\/milu(\/|$)/i.test(pathname) ? '/milu' : '';
+}
+
+const API_BASE_PATH = resolveApiBasePath();
+const apiUrl = (pathname) => `${API_BASE_PATH}${pathname}`;
 
 const WRITE_ACTION_BUTTON_IDS = [
     'bulkRevOkBtn',
@@ -338,6 +348,55 @@ function collectRowChanges(row, nextValues, nextEstado, nextAccion) {
     return changes;
 }
 
+function buildRowPatchEntryWithPnCopyPropagation(row, changes, meta = {}) {
+    rebuildGlobalPartNumberIndex(state.allData);
+
+    const primaryTarget = buildPatchTargetForRow(row);
+    const primaryPatch = { target: primaryTarget, changes };
+
+    const nextEstado = Object.prototype.hasOwnProperty.call(changes, 'qa_revision_estado')
+        ? changes.qa_revision_estado.after
+        : normalizeEstadoToNew(row?.qa_revision_estado);
+    const nextAccion = Object.prototype.hasOwnProperty.call(changes, 'qa_revision_accion')
+        ? changes.qa_revision_accion.after
+        : normalizeAccionToNew(row?.qa_revision_accion);
+
+    const copyTargets = buildGlobalPnCopyTargets(row, {
+        rows: state.allData,
+        nextEstado,
+        nextAccion
+    });
+
+    if (!copyTargets.length) {
+        return {
+            type: QA_ROW_PATCH_CHANGE_TYPE,
+            module: 'qa_milu',
+            action: meta.action || 'save-row',
+            description: meta.description || `Guardar fila ID ${row?.ID}`,
+            target: { revisionKey: primaryTarget.revisionKey },
+            data: {
+                target: primaryTarget,
+                changes
+            }
+        };
+    }
+
+    return {
+        type: QA_BULK_ROW_PATCH_CHANGE_TYPE,
+        module: 'qa_milu',
+        action: meta.action || 'save-row-with-global-pn-copy',
+        description: meta.description || `Guardar fila ID ${row?.ID} y propagar copias PN`,
+        target: {
+            revisionKey: primaryTarget.revisionKey,
+            size: copyTargets.length + 1,
+            reason: 'global-pn-copy'
+        },
+        data: {
+            targets: [primaryPatch, ...copyTargets]
+        }
+    };
+}
+
 async function undoLastQaChange() {
     if (!ensureBackendWritable('deshacer cambios')) return;
     try {
@@ -493,7 +552,7 @@ function isExportModalOpen() {
 }
 
 function getExportEndpointUrl(pathname) {
-    return new URL(pathname, new URL('.', window.location.href)).href;
+    return apiUrl(pathname);
 }
 
 async function fetchExportJson(pathname, options = {}) {
@@ -1039,6 +1098,7 @@ async function refreshDataFromShellUpdate(request = {}) {
     state.allData = freshData;
     assignRevisionKeys(state.allData);
     applyRevisionDataToRows(state.allData);
+    rebuildGlobalPartNumberIndex(state.allData);
 
     state.currentPage = currentPageBefore;
     renderTable();
@@ -1989,9 +2049,15 @@ function openRecordModal(revisionKey) {
 function openSharedRecordEditorForRow(row) {
     if (!row || typeof row !== 'object') return false;
 
-    const shellBridge = window.parent && window.parent !== window
+    const parentBridge = window.parent && window.parent !== window
         ? window.parent.miluShellOpenSharedRecordEditor
         : null;
+    const topBridge = window.top && window.top !== window
+        ? window.top.miluShellOpenSharedRecordEditor
+        : null;
+    const shellBridge = typeof parentBridge === 'function'
+        ? parentBridge
+        : (typeof topBridge === 'function' ? topBridge : null);
     if (typeof shellBridge !== 'function') return false;
 
     const opened = shellBridge({
@@ -2002,10 +2068,11 @@ function openSharedRecordEditorForRow(row) {
         source_file: String(row?.source_file ?? '').trim(),
         source_page: String(row?.['Source Page'] ?? '').trim(),
         pos: String(row?.POS ?? '').trim(),
+        pos_final: String(row?.pos_final ?? '').trim(),
         part_no: String(row?.['PART NO.'] ?? row?.pn ?? '').trim(),
         pn_final: String(row?.pn_final ?? '').trim(),
         designation_final: String(row?.designation_final ?? '').trim(),
-        model_type: String(row?.model_type ?? '').trim(),
+        model_final: String(row?.model_final ?? row?.['MODEL/TYPE_final'] ?? '').trim(),
         qty: String(row?.QTY ?? row?.qty ?? '').trim(),
         units: String(row?.Units ?? row?.units ?? '').trim(),
         fn: String(row?.FN ?? row?.fn ?? '').trim(),
@@ -2233,17 +2300,10 @@ async function handleRecordModalSubmit(event) {
             return;
         }
 
-        await changeControl.applyAndRecord({
-            type: QA_ROW_PATCH_CHANGE_TYPE,
-            module: 'qa_milu',
+        await changeControl.applyAndRecord(buildRowPatchEntryWithPnCopyPropagation(row, changes, {
             action: 'save-record-modal',
-            description: `Guardar ficha modal ID ${row.ID}`,
-            target: { revisionKey },
-            data: {
-                target: buildPatchTargetForRow(row),
-                changes
-            }
-        });
+            description: `Guardar ficha modal ID ${row.ID}`
+        }));
 
         closeRecordModal();
         restoreModalUiState(revisionKey);
@@ -2292,17 +2352,10 @@ async function handleSideRecordSubmit(event) {
             return;
         }
 
-        await changeControl.applyAndRecord({
-            type: QA_ROW_PATCH_CHANGE_TYPE,
-            module: 'qa_milu',
+        await changeControl.applyAndRecord(buildRowPatchEntryWithPnCopyPropagation(row, changes, {
             action: 'save-side-form',
-            description: `Guardar ficha lateral ID ${row.ID}`,
-            target: { revisionKey },
-            data: {
-                target: buildPatchTargetForRow(row),
-                changes
-            }
-        });
+            description: `Guardar ficha lateral ID ${row.ID}`
+        }));
 
         if (status) status.textContent = 'Cambios guardados.';
         updateUndoButtonState();
@@ -2548,6 +2601,7 @@ async function loadLazyEnginesAndRefresh(fileNames, options = {}) {
     state.allData = mergedRows;
     assignRevisionKeys(state.allData);
     applyRevisionDataToRows(state.allData);
+    rebuildGlobalPartNumberIndex(state.allData);
 
     if (previousSelectedRevisionKey) {
         const selectedExists = state.allData.some(item => getRevisionKey(item) === previousSelectedRevisionKey);
@@ -3255,6 +3309,7 @@ async function loadData() {
 
         assignRevisionKeys(state.allData);
         applyRevisionDataToRows(state.allData);
+        rebuildGlobalPartNumberIndex(state.allData);
         loadColumnWidths();
 
         refreshBookFilterCatalog({ keepCurrentSelection: false });
@@ -3520,6 +3575,7 @@ function attachGlobalEvents() {
             alert('Selecciona un registro para abrir el modal.');
             return;
         }
+
         const row = getRowByRevisionKey(revisionKey);
         if (openSharedRecordEditorForRow(row)) return;
         openRecordModal(revisionKey);
@@ -3813,17 +3869,10 @@ function attachGlobalEvents() {
             return;
         }
 
-        changeControl.applyAndRecord({
-            type: QA_ROW_PATCH_CHANGE_TYPE,
-            module: 'qa_milu',
+        changeControl.applyAndRecord(buildRowPatchEntryWithPnCopyPropagation(row, changes, {
             action: `inline-${revisionField}`,
-            description: `Cambio rapido ${revisionField} ID ${row.ID}`,
-            target: { revisionKey },
-            data: {
-                target: buildPatchTargetForRow(row),
-                changes
-            }
-        }).catch((error) => {
+            description: `Cambio rapido ${revisionField} ID ${row.ID}`
+        })).catch((error) => {
             console.error('No se pudo guardar cambio rapido:', error);
             alert(`No se pudo guardar el cambio rapido: ${error.message}`);
             refreshVisibleRowByRevisionKey(revisionKey);
@@ -3914,17 +3963,10 @@ function attachGlobalEvents() {
             return;
         }
 
-        changeControl.applyAndRecord({
-            type: QA_ROW_PATCH_CHANGE_TYPE,
-            module: 'qa_milu',
+        changeControl.applyAndRecord(buildRowPatchEntryWithPnCopyPropagation(row, changes, {
             action: `inline-error-view-${revisionField}`,
-            description: `Cambio rapido vista errores ${revisionField} ID ${row.ID}`,
-            target: { revisionKey },
-            data: {
-                target: buildPatchTargetForRow(row),
-                changes
-            }
-        }).catch((error) => {
+            description: `Cambio rapido vista errores ${revisionField} ID ${row.ID}`
+        })).catch((error) => {
             console.error('No se pudo guardar cambio rapido en vista errores:', error);
             alert(`No se pudo guardar el cambio rapido: ${error.message}`);
             refreshVisibleRowByRevisionKey(revisionKey);

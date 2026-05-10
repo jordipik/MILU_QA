@@ -9,8 +9,8 @@ const args = new Set(process.argv.slice(2));
 const isDryRun = args.has('--dry-run');
 const isIncremental = args.has('--incremental');
 const shouldPrune = !args.has('--no-prune');
-const includeEngineJson = args.has('--with-json') && !args.has('--no-json');
-const incrementalExcludedPrefixes = [
+const includeEngineJson = !args.has('--no-json');
+const excludedPrefixes = [
     'esquemas/',
     'esquemas_pos_circulos/'
 ];
@@ -18,6 +18,8 @@ const incrementalExcludedPrefixes = [
 const requiredStaticEntries = [
     'index.html',
     'milu_shell.html',
+    'export_wordpress.html',
+    'exportacion.html',
     'qa_milu.html',
     'qa_lista_agrupada.html',
     'analista_02.html',
@@ -26,6 +28,7 @@ const requiredStaticEntries = [
     'styles.css',
     'favicon.svg',
     'version.json',
+    'data/output/wordpress',
     'qa_revision_sync.php',
     'save-json.php',
     'js',
@@ -59,10 +62,9 @@ function normalizeRelativePath(relPath) {
     return relPath.split(path.sep).join('/');
 }
 
-function isIncrementalExcludedPath(relPath) {
-    if (!isIncremental) return false;
+function isExcludedPath(relPath) {
     const normalized = normalizeRelativePath(String(relPath || ''));
-    return incrementalExcludedPrefixes.some((prefix) => normalized === prefix.slice(0, -1) || normalized.startsWith(prefix));
+    return excludedPrefixes.some((prefix) => normalized === prefix.slice(0, -1) || normalized.startsWith(prefix));
 }
 
 function walkFilesRecursively(dirPath, currentRel = '') {
@@ -104,7 +106,7 @@ function buildManagedFileList(relEntries) {
         }
     }
 
-    return managedFiles.filter((relFile) => !isIncrementalExcludedPath(relFile));
+    return managedFiles.filter((relFile) => !isExcludedPath(relFile));
 }
 
 function filesAreEqual(src, dest) {
@@ -130,7 +132,7 @@ function copyManagedFiles(managedFiles) {
     let skippedExcluded = 0;
 
     for (const relFile of managedFiles) {
-        if (isIncrementalExcludedPath(relFile)) {
+        if (isExcludedPath(relFile)) {
             skippedExcluded += 1;
             if (isDryRun) console.log(`[dry-run] skip excluded ${relFile}`);
             continue;
@@ -170,7 +172,17 @@ function pruneOutputFolder(managedFiles) {
 
     for (const relFile of currentFiles) {
         const normalized = normalizeRelativePath(relFile);
-        if (isIncrementalExcludedPath(normalized)) continue;
+        if (isExcludedPath(normalized)) {
+            pruned += 1;
+            if (isDryRun) {
+                console.log(`[dry-run] prune excluded ${normalized}`);
+                continue;
+            }
+
+            fs.rmSync(path.join(outDir, normalized), { force: true });
+            console.log(`pruned excluded ${normalized}`);
+            continue;
+        }
         if (managedSet.has(normalized)) continue;
 
         pruned += 1;
@@ -208,6 +220,29 @@ function resetOutputFolder() {
     fs.mkdirSync(outDir, { recursive: true });
 }
 
+function removeExcludedDirectoriesFromOutput() {
+    let removed = 0;
+
+    for (const prefix of excludedPrefixes) {
+        const relDir = prefix.endsWith('/') ? prefix.slice(0, -1) : prefix;
+        if (!relDir) continue;
+
+        const fullDir = path.join(outDir, relDir);
+        if (!fs.existsSync(fullDir)) continue;
+
+        removed += 1;
+        if (isDryRun) {
+            console.log(`[dry-run] remove excluded dir ${normalizeRelativePath(relDir)}`);
+            continue;
+        }
+
+        fs.rmSync(fullDir, { recursive: true, force: true });
+        console.log(`removed excluded dir ${normalizeRelativePath(relDir)}`);
+    }
+
+    return removed;
+}
+
 function main() {
     console.log('Preparing GitHub Pages dist folder...');
     if (isDryRun) {
@@ -217,9 +252,9 @@ function main() {
         console.log('Incremental mode enabled: copying only changed files.');
     }
     if (includeEngineJson) {
-        console.log('Engine JSON mode: enabled (--with-json).');
+        console.log('Engine JSON mode: enabled by default.');
     } else {
-        console.log('Engine JSON mode: disabled by default.');
+        console.log('Engine JSON mode: disabled (--no-json).');
     }
 
     const engineFiles = includeEngineJson ? listEngineJsonFiles() : [];
@@ -234,16 +269,16 @@ function main() {
 
     const { copied, skipped, skippedExcluded } = copyManagedFiles(managedFiles);
     const { pruned } = pruneOutputFolder(managedFiles);
+    const removedExcludedDirs = removeExcludedDirectoriesFromOutput();
 
     console.log('Done.');
     console.log(`Engine files included: ${engineFiles.length}`);
     console.log(`Managed files: ${managedFiles.length}`);
     console.log(`Copied files: ${copied}`);
     console.log(`Skipped unchanged: ${skipped}`);
-    if (isIncremental) {
-        console.log(`Skipped excluded (incremental): ${skippedExcluded}`);
-    }
+    console.log(`Skipped excluded: ${skippedExcluded}`);
     console.log(`Pruned files: ${pruned}`);
+    console.log(`Removed excluded dirs: ${removedExcludedDirs}`);
     console.log(`Output folder: ${path.relative(rootDir, outDir)}`);
 }
 
