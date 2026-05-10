@@ -896,43 +896,135 @@ async function runWordpressExport() {
     }
 }
 
+function toCsvCell(value) {
+    const textValue = String(value == null ? '' : value);
+    if (textValue.includes('"') || textValue.includes(';') || textValue.includes('\n') || textValue.includes('\r')) {
+        return `"${textValue.replace(/"/g, '""')}"`;
+    }
+    return textValue;
+}
+
+function createCsvProgressModal(totalRows) {
+    const safeTotal = Math.max(1, Number(totalRows) || 1);
+
+    const overlay = document.createElement('div');
+    overlay.style.position = 'fixed';
+    overlay.style.inset = '0';
+    overlay.style.background = 'rgba(8, 27, 40, 0.45)';
+    overlay.style.display = 'flex';
+    overlay.style.alignItems = 'center';
+    overlay.style.justifyContent = 'center';
+    overlay.style.zIndex = '9999';
+
+    const panel = document.createElement('div');
+    panel.style.width = 'min(560px, 92vw)';
+    panel.style.background = '#ffffff';
+    panel.style.borderRadius = '14px';
+    panel.style.boxShadow = '0 18px 40px rgba(0, 0, 0, 0.25)';
+    panel.style.padding = '18px 18px 14px';
+
+    const title = document.createElement('h3');
+    title.textContent = 'Generando CSV activo';
+    title.style.margin = '0 0 8px';
+    title.style.fontSize = '18px';
+    title.style.color = '#14394f';
+
+    const message = document.createElement('p');
+    message.textContent = 'Iniciando exportacion...';
+    message.style.margin = '0 0 10px';
+    message.style.fontSize = '13px';
+    message.style.color = '#395563';
+
+    const progressWrap = document.createElement('div');
+    progressWrap.style.width = '100%';
+    progressWrap.style.height = '10px';
+    progressWrap.style.background = '#e6edf1';
+    progressWrap.style.borderRadius = '999px';
+    progressWrap.style.overflow = 'hidden';
+
+    const progressBar = document.createElement('div');
+    progressBar.style.width = '0%';
+    progressBar.style.height = '100%';
+    progressBar.style.background = 'linear-gradient(90deg, #1c6f8c, #2ca58d)';
+    progressBar.style.transition = 'width 120ms ease';
+    progressWrap.appendChild(progressBar);
+
+    const detail = document.createElement('div');
+    detail.textContent = `0 / ${safeTotal} filas (0%)`;
+    detail.style.marginTop = '8px';
+    detail.style.fontSize = '12px';
+    detail.style.color = '#4c6572';
+
+    panel.appendChild(title);
+    panel.appendChild(message);
+    panel.appendChild(progressWrap);
+    panel.appendChild(detail);
+    overlay.appendChild(panel);
+
+    return { overlay, message, progressBar, detail, totalRows: safeTotal };
+}
+
+function updateCsvProgressModal(modal, processedRows, totalRows, message) {
+    if (!modal) return;
+    const safeTotal = Math.max(1, Number(totalRows) || modal.totalRows || 1);
+    const safeProcessed = Math.min(Math.max(0, Number(processedRows) || 0), safeTotal);
+    const percent = Math.round((safeProcessed / safeTotal) * 100);
+
+    if (typeof message === 'string' && message) {
+        modal.message.textContent = message;
+    }
+
+    modal.progressBar.style.width = `${percent}%`;
+    modal.detail.textContent = `${safeProcessed} / ${safeTotal} filas (${percent}%)`;
+}
+
 async function downloadCurrentCsv() {
-    const config = TAB_CONFIG[state.currentTab] || TAB_CONFIG.new;
-    const name = (config.csvCandidates || []).find(Boolean);
-    if (!name) {
-        showToast('No hay CSV configurado para esta pestana.', 'info');
+    const rows = getVisibleRows();
+    if (!rows.length) {
+        showToast('No hay filas visibles para exportar.', 'info');
         return;
     }
 
-    if (shouldUseStaticExportMode()) {
-        const staticUrl = await findFirstReachableUrl(buildStaticJsonUrlCandidates(name));
-        if (!staticUrl) {
-            showToast('No se encontro el CSV en modo estatico.', 'error');
-            return;
-        }
-        window.location.href = staticUrl;
-        return;
-    }
+    const progressModal = createCsvProgressModal(rows.length);
+    document.body.appendChild(progressModal.overlay);
 
-    const backendUrl = API.download(name);
+    const headers = [...QA_EXPORT_FIELDS];
+    const lines = [headers.join(';')];
+
     try {
-        const probe = await fetch(backendUrl, { method: 'HEAD', cache: 'no-store' });
-        if (probe.ok) {
-            window.location.href = backendUrl;
-            return;
+        const chunkSize = 120;
+        for (let start = 0; start < rows.length; start += chunkSize) {
+            const end = Math.min(start + chunkSize, rows.length);
+            for (let i = start; i < end; i++) {
+                const row = rows[i];
+                const syntheticRow = buildSyntheticRowForPn(row?.pn);
+                const exportRow = syntheticRow || row;
+                lines.push(headers.map((field) => toCsvCell(exportRow?.[field])).join(';'));
+            }
+
+            updateCsvProgressModal(progressModal, end, rows.length, 'Procesando filas...');
+            await new Promise((resolve) => window.setTimeout(resolve, 0));
         }
-    } catch (_) {
-        // Fallback handled below.
-    }
 
-    const fallbackUrl = await findFirstReachableUrl(buildStaticJsonUrlCandidates(name));
-    if (fallbackUrl) {
-        showToast('Usando descarga directa de archivo CSV.', 'info');
-        window.location.href = fallbackUrl;
-        return;
-    }
+        updateCsvProgressModal(progressModal, rows.length, rows.length, 'Finalizando archivo...');
 
-    showToast('No se pudo descargar el CSV.', 'error');
+        const blob = new Blob([`\uFEFF${lines.join('\n')}\n`], { type: 'text/csv;charset=utf-8' });
+        const url = URL.createObjectURL(blob);
+        const link = document.createElement('a');
+        const timestamp = new Date().toISOString().slice(0, 19).replace('T', '_').replace(/:/g, '-');
+        link.href = url;
+        link.download = `wordpress_${state.currentTab}_activo_${timestamp}.csv`;
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+        URL.revokeObjectURL(url);
+
+        showToast(`CSV activo descargado (${rows.length} filas).`, 'success');
+    } catch (error) {
+        showToast(`Error al generar CSV: ${error.message || error}`, 'error');
+    } finally {
+        progressModal.overlay.remove();
+    }
 }
 
 function onTabClick(event) {

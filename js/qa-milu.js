@@ -697,20 +697,38 @@ function downloadExportPreviewCsv() {
         return;
     }
 
+    // Columnas exactas que aparecen en pantalla (SYNTHETIC_NEW_EXPORT_COLUMNS)
     const headers = [
-        'sku',
-        'import_decision',
-        'import_reason',
-        'designation_final',
-        'measure_final',
-        'weight_final',
-        'source_engine_file',
-        'source_id',
-        'total_occurrences_global',
-        'engine_models_all',
-        'source_pages_all',
-        'source_ids_all',
-        'compacted_type'
+        'Id',
+        'fecha_version',
+        'POS',
+        'designation',
+        'engine',
+        'model_type',
+        'type',
+        'pn',
+        'nsn',
+        'GESA_NORM',
+        'GESA_NORMALIZADO',
+        'fg_code',
+        'fg_description',
+        'fg_code_description',
+        'weight',
+        'weight_txt',
+        'measurement',
+        'TIPOARTICULO',
+        'PAG',
+        'BOM_no',
+        'esquema_general',
+        'exp_motor',
+        'exp_categorias',
+        'atributo',
+        'SUST_TIPO',
+        'new_pn_relacionado',
+        'old_pn_relacionados',
+        'EN_EXCEL_SUSTITUCION',
+        'ruta_foto',
+        'exp_imagenes'
     ];
 
     const lines = [headers.join(';')];
@@ -722,7 +740,8 @@ function downloadExportPreviewCsv() {
     const url = URL.createObjectURL(blob);
     const link = document.createElement('a');
     link.href = url;
-    link.download = `wordpress_export_preview_filtered_${new Date().toISOString().slice(0, 10)}.csv`;
+    const timestamp = new Date().toISOString().slice(0, 19).replace('T', '_').replace(/:/g, '-');
+    link.download = `wordpress_export_preview_filtered_${timestamp}.csv`;
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);

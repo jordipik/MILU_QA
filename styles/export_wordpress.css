@@ -166,6 +166,101 @@ select {
     box-shadow: 0 10px 24px rgba(24, 34, 40, 0.06);
 }
 
+.ewx-status-filter {
+    cursor: pointer;
+    transition: all 0.18s ease;
+    position: relative;
+}
+
+.ewx-status-filter:hover:not([aria-pressed="true"]) {
+    transform: translateY(-2px);
+    box-shadow: 0 14px 32px rgba(24, 34, 40, 0.12);
+}
+
+/* NEW - Status filter styles */
+.ewx-status-filter[data-tab="new"] {
+    background: linear-gradient(135deg, #f0faf7, #f7fcfb);
+    border-color: #c8e0db;
+    color: #1d6b50;
+}
+
+.ewx-status-filter[data-tab="new"]:hover:not([aria-pressed="true"]) {
+    background: linear-gradient(135deg, #e8f6f2, #f2faf8);
+    border-color: #a8d4cc;
+}
+
+.ewx-status-filter[data-tab="new"][aria-pressed="true"] {
+    background: linear-gradient(135deg, #d4ece8, #e8f8f5);
+    border: 2px solid #1d6b50;
+    padding: 13px 15px;
+    box-shadow:
+        0 0 0 3px rgba(29, 107, 80, 0.1),
+        0 10px 24px rgba(29, 107, 80, 0.15);
+}
+
+/* SUPERSEDED - Status filter styles */
+.ewx-status-filter[data-tab="superseded"] {
+    background: linear-gradient(135deg, #f0f5fb, #f7fafd);
+    border-color: #c8dae6;
+    color: #315d8b;
+}
+
+.ewx-status-filter[data-tab="superseded"]:hover:not([aria-pressed="true"]) {
+    background: linear-gradient(135deg, #e8f0f8, #f2f8fc);
+    border-color: #a8c5dd;
+}
+
+.ewx-status-filter[data-tab="superseded"][aria-pressed="true"] {
+    background: linear-gradient(135deg, #d9e9f6, #ecf3fb);
+    border: 2px solid #315d8b;
+    padding: 13px 15px;
+    box-shadow:
+        0 0 0 3px rgba(49, 93, 139, 0.1),
+        0 10px 24px rgba(49, 93, 139, 0.15);
+}
+
+/* PENDING - Status filter styles */
+.ewx-status-filter[data-tab="pending"] {
+    background: linear-gradient(135deg, #fdf6f0, #fffbf7);
+    border-color: #ead5c2;
+    color: #b45c27;
+}
+
+.ewx-status-filter[data-tab="pending"]:hover:not([aria-pressed="true"]) {
+    background: linear-gradient(135deg, #fceee6, #fef9f4);
+    border-color: #dfc2ad;
+}
+
+.ewx-status-filter[data-tab="pending"][aria-pressed="true"] {
+    background: linear-gradient(135deg, #f9dcc4, #fef3eb);
+    border: 2px solid #b45c27;
+    padding: 13px 15px;
+    box-shadow:
+        0 0 0 3px rgba(180, 92, 39, 0.1),
+        0 10px 24px rgba(180, 92, 39, 0.15);
+}
+
+/* DISCARDED - Status filter styles */
+.ewx-status-filter[data-tab="discarded"] {
+    background: linear-gradient(135deg, #fef0f0, #fffafb);
+    border-color: #e8caca;
+    color: #9f2d2d;
+}
+
+.ewx-status-filter[data-tab="discarded"]:hover:not([aria-pressed="true"]) {
+    background: linear-gradient(135deg, #fce6e6, #fef4f5);
+    border-color: #deb5b5;
+}
+
+.ewx-status-filter[data-tab="discarded"][aria-pressed="true"] {
+    background: linear-gradient(135deg, #f5d5d5, #fce9e9);
+    border: 2px solid #9f2d2d;
+    padding: 13px 15px;
+    box-shadow:
+        0 0 0 3px rgba(159, 45, 45, 0.1),
+        0 10px 24px rgba(159, 45, 45, 0.15);
+}
+
 .ewx-summary-card-wide {
     grid-column: span 1;
 }
@@ -175,12 +270,30 @@ select {
     font-weight: 700;
     text-transform: uppercase;
     letter-spacing: 0.08em;
-    color: var(--muted);
+    color: inherit;
+    opacity: 0.82;
 }
 
 .ewx-summary-card strong {
     font-family: "Space Grotesk", "Segoe UI", sans-serif;
     font-size: clamp(20px, 2vw, 28px);
+    color: inherit;
+}
+
+button.ewx-summary-card {
+    border: none;
+    cursor: pointer;
+    font-family: inherit;
+    text-align: left;
+}
+
+button.ewx-summary-card:focus {
+    outline: none;
+}
+
+button.ewx-summary-card:focus-visible {
+    outline: 2px solid var(--accent);
+    outline-offset: 2px;
 }
 
 .ewx-workbench {
@@ -220,34 +333,6 @@ select {
     color: #1f6158;
     font-size: 12px;
     font-weight: 600;
-}
-
-.ewx-tabs {
-    display: flex;
-    gap: 8px;
-    flex-wrap: wrap;
-    padding: 0 18px 12px;
-}
-
-.ewx-tabs button {
-    border: 1px solid #d4ddd8;
-    background: #fafdfc;
-    color: #34534f;
-    border-radius: 999px;
-    padding: 7px 12px;
-    cursor: pointer;
-    font-size: 12px;
-    font-weight: 700;
-}
-
-.ewx-tabs button span {
-    opacity: 0.66;
-}
-
-.ewx-tabs button.active {
-    background: var(--accent-soft);
-    color: var(--accent-ink);
-    border-color: #9ec9c1;
 }
 
 .ewx-filters {
