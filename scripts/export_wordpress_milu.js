@@ -241,15 +241,17 @@ function isQaPendingOrReviewRow(row) {
     return false;
 }
 
-function isSupersededRow(row) {
-    const hierarchy = key(row?.sust_hierarchie);
-    const status = key(row?.sust_status);
-    const supersededList = t(row?.sust_superseded_list);
+// IMPORTANTE:
+// sust_status === "SI" solo indica que el PN participa en relaciones SUST.
+// La exportación como Superseded depende exclusivamente de:
+// sust_hierarchie === "Superseded"
+// No usar sust_status ni sust_superseded_list como criterio de clasificación New/Superseded.
+function getExportType(row) {
+    return String(row?.sust_hierarchie ?? '').trim() === 'Superseded' ? 'superseded' : 'new';
+}
 
-    if (hierarchy === 'old' || hierarchy === 'superseded') return true;
-    if (status.includes('supersed') || status === 'old') return true;
-    if (supersededList) return true;
-    return false;
+function isSupersededRow(row) {
+    return getExportType(row) === 'superseded';
 }
 
 function run() {

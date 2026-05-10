@@ -9,6 +9,25 @@ La decision final de exportacion depende solo de QA humana.
 - IA/reglas auxiliares pueden ayudar a explicar pendientes.
 - IA no decide automaticamente import/discard.
 
+## Clasificación New / Superseded (REGLA OBLIGATORIA)
+
+La separación entre registros **New** y **Superseded** se basa **exclusivamente** en:
+
+- **Superseded**: `sust_hierarchie === "Superseded"`
+- **New**: todos los registros que NO tengan `sust_hierarchie === "Superseded"`
+
+**IMPORTANTE:** `sust_status === "SI"` **NO** determina si un registro se exporta como Superseded.
+`sust_status` solo indica que el PN aparece en relaciones SUST (Excel de sustituciones).
+Un registro con `sust_status = "SI"` y `sust_hierarchie = "New"` va a **New**.
+
+Función canónica implementada en todos los módulos de exportación:
+
+```javascript
+function getExportType(row) {
+    return String(row?.sust_hierarchie ?? '').trim() === 'Superseded' ? 'superseded' : 'new';
+}
+```
+
 ## Entradas
 - 9 archivos `engine_*.json` del repo.
 

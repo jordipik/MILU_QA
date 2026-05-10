@@ -366,10 +366,17 @@ function synthGetMatchingRows(pn) {
     return state.allData.filter(item => synthNormPn(item?.['PART NO.'] ?? item?.pn ?? '') === normalizedPn);
 }
 
+// IMPORTANTE:
+// sust_status === "SI" solo indica que el PN participa en relaciones SUST.
+// La exportación como Superseded depende exclusivamente de:
+// sust_hierarchie === "Superseded"
+// No usar sust_status ni sust_superseded_list como criterio de clasificación New/Superseded.
+function getExportType(row) {
+    return String(row?.sust_hierarchie ?? '').trim() === 'Superseded' ? 'superseded' : 'new';
+}
+
 function synthGetHierarchyKind(row) {
-    const h = String(row?.sust_hierarchie ?? '').trim().toUpperCase().replace(/\s+/g, ' ').replace(/[._-]/g, ' ');
-    if (h === 'SUPERSEDED') return 'superseded';
-    return 'new';
+    return getExportType(row);
 }
 
 function synthPickFirst(row, keys) {

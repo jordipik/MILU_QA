@@ -22,9 +22,17 @@ function val(row, key) {
     return v != null && String(v).trim() !== '' ? v : '';
 }
 
+// IMPORTANTE:
+// sust_status === "SI" solo indica que el PN participa en relaciones SUST.
+// La exportación como Superseded depende exclusivamente de:
+// sust_hierarchie === "Superseded"
+// No usar sust_status ni sust_superseded_list como criterio de clasificación New/Superseded.
+function getExportType(row) {
+    return String(row?.sust_hierarchie ?? '').trim() === 'Superseded' ? 'superseded' : 'new';
+}
+
 function isSupersededArticle(row) {
-    const hierarchy = String(row?.sust_hierarchie ?? '').trim().toUpperCase();
-    return hierarchy.includes('SUPERSEDED');
+    return getExportType(row) === 'superseded';
 }
 
 function isGesaRow(row) {
