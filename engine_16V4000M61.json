@@ -220711,8 +220711,9 @@
     "bom_pdf": "XS527500.00011",
     "gesa_pdf": "NO",
     "normalizado_pdf": "NO",
-    "qa_revision_estado": "pendiente",
-    "qa_revision_accion": "revisar"
+    "qa_revision_estado": "ok",
+    "qa_revision_accion": "copia",
+    "qa_revision_updated_at": "2026-05-11T23:03:36.238Z"
   },
   {
     "ID": "1302126",
@@ -290719,8 +290720,9 @@
     "bom_error": 0,
     "total_error": 2,
     "has_error": true,
-    "qa_revision_estado": "pendiente",
-    "qa_revision_accion": "revisar"
+    "qa_revision_estado": "ok",
+    "qa_revision_accion": "copia",
+    "qa_revision_updated_at": "2026-05-11T23:04:01.078Z"
   },
   {
     "ID": "1302793",
@@ -509954,8 +509956,9 @@
     "bom_pdf": "XS527500.00011",
     "gesa_pdf": "NO",
     "normalizado_pdf": "NO",
-    "qa_revision_estado": "pendiente",
-    "qa_revision_accion": "revisar"
+    "qa_revision_estado": "ok",
+    "qa_revision_accion": "copia",
+    "qa_revision_updated_at": "2026-05-11T23:03:36.238Z"
   },
   {
     "ID": "1304897",

@@ -10,6 +10,8 @@ import {
 import { KPI_CONFIG, computeStats, renderKpis } from "./qa_imagenes_stats.js";
 import { createVirtualTable } from "./qa_imagenes_table.js";
 import { renderPreview } from "./qa_imagenes_preview.js";
+import { getEngineJsonFiles } from "./data-loader.js";
+import { resolveRecordMedia } from "./qa_imagenes_resolver.js";
 
 const STORAGE_KEY = "qa_imagenes_filters_v1";
 const TABS = [
@@ -65,6 +67,7 @@ const state = {
   recordsView: [],
   inventory: [],
   inventoryByFile: new Map(),
+  rawByCompositeKey: new Map(),
   missingImages: [],
   brokenReferences: [],
   unusedImages: [],
@@ -113,7 +116,9 @@ async function loadCoreData() {
     "product-export-2026-03-29-11-07.json"
   ];
 
-  const results = await Promise.allSettled([...baseTargets, ...wpTargets].map((p) => fetchJsonSafe(p)));
+  const engineTargets = getEngineJsonFiles();
+
+  const results = await Promise.allSettled([...baseTargets, ...wpTargets, ...engineTargets].map((p) => fetchJsonSafe(p)));
   const loaded = [];
   const failed = [];
 
@@ -130,36 +135,104 @@ async function loadCoreData() {
 }
 
 function getFilenameFromPath(pathOrUrl) {
-  const txt = String(pathOrUrl || "");
+  const txt = String(pathOrUrl || "").trim();
   if (!txt) return "";
   const clean = txt.split("?")[0].split("#")[0];
   const chunks = clean.replaceAll("\\", "/").split("/");
   return chunks[chunks.length - 1] || "";
 }
 
-function normalizeRecord(rec, inventoryByFile) {
-  const imageStatus = String(rec.image_status || "").toUpperCase();
-  const schemaStatus = String(rec.schema_status || "").toUpperCase();
+function parseRecordKey(recordKey) {
+  const chunks = String(recordKey || "").split("|");
+  return {
+    id: String(chunks[0] || "").trim(),
+    partNumber: String(chunks[1] || "").trim(),
+    engineModel: String(chunks[2] || "").trim(),
+    sourcePage: String(chunks[3] || "").trim(),
+    engineFile: String(chunks[4] || "").trim()
+  };
+}
+
+function buildCompositeKeyFromAudit(rec) {
+  const key = parseRecordKey(rec?.record_key);
+  if (!key.id || !key.engineFile) return "";
+  return `${key.id}|${key.engineFile}`;
+}
+
+function buildCompositeKeyFromEngineRow(row, engineFile) {
+  const id = String(row?.ID || "").trim();
+  const file = String(engineFile || "").trim();
+  if (!id || !file) return "";
+  return `${id}|${file}`;
+}
+
+function deriveLoadStatus(selectedItem, issues, kind) {
+  if (!selectedItem?.url) return "none";
+
+  const issueRegex = kind === "photo"
+    ? /broken_image_reference|missing_image/i
+    : /broken_schema_reference|missing_schema/i;
+
+  if ((issues || []).some((i) => issueRegex.test(String(i || "")))) return "error";
+  if (selectedItem.localFound) return "ok";
+  if (selectedItem.isHttp) return "unknown";
+  return "error";
+}
+
+function normalizeAuditImageStatus(rawStatus, media) {
+  const status = String(rawStatus || "").toUpperCase();
+  if (["PHOTO_AND_SCHEMA", "PHOTO_ONLY", "SCHEMA_ONLY", "ONLY_PLACEHOLDER", "NO_IMAGE"].includes(status)) {
+    return status;
+  }
+
+  if (media.hasPhotoReal && media.hasSchemaPos) return "PHOTO_AND_SCHEMA";
+  if (media.hasPhotoReal) return "PHOTO_ONLY";
+  if (media.onlyPlaceholder) return "ONLY_PLACEHOLDER";
+  if (media.hasSchemaPos || media.hasSchemas) return "SCHEMA_ONLY";
+  return "NO_IMAGE";
+}
+
+function normalizeAuditSchemaStatus(rawStatus, media, selectedPos, issues) {
+  const status = String(rawStatus || "").toUpperCase();
+  if (["OK_SCHEMA", "SCHEMA_FILENAME_BUT_NO_ROUTE", "NO_SCHEMA"].includes(status)) {
+    return status;
+  }
+
+  const hasMissing = (issues || []).some((i) => /broken_schema_reference|missing_schema/i.test(String(i || "")));
+  if (selectedPos?.url && !hasMissing) return "OK_SCHEMA";
+  if (media.hasSchemaPos || media.hasSchemas) return "SCHEMA_FILENAME_BUT_NO_ROUTE";
+  return "NO_SCHEMA";
+}
+
+function normalizeRecord(rec, rawRow, inventoryByFile, duplicatePnMap) {
+  const media = resolveRecordMedia(rec, rawRow, inventoryByFile);
   const issues = Array.isArray(rec.issues) ? rec.issues : [];
-  const rutaFoto = String(rec.ruta_foto || "");
-  const rutaSchema = String(rec.ruta_esquemas_pos || "");
+  const imageStatus = normalizeAuditImageStatus(rec.image_status, media);
+  const photoLoadStatus = deriveLoadStatus(media.selectedPhoto, issues, "photo");
+  const schemaPosLoadStatus = deriveLoadStatus(media.selectedPos, issues, "schema");
+  const schemaLoadStatus = deriveLoadStatus(media.selectedSchema, issues, "schema");
+  const schemaStatus = normalizeAuditSchemaStatus(rec.schema_status, media, media.selectedPos, issues);
 
-  const imageFilename = getFilenameFromPath(rutaFoto);
-  const schemaFilename = getFilenameFromPath(rutaSchema);
+  const finalPhotoUrl = media.selectedPhoto?.url || "";
+  const finalSchemaPosUrl = media.selectedPos?.url || "";
+  const finalSchemaUrl = media.selectedSchema?.url || "";
 
-  const invPhoto = inventoryByFile.get(imageFilename);
-  const invSchema = inventoryByFile.get(schemaFilename);
+  const localImagePath = media.selectedPhoto?.localFound
+    ? inventoryByFile.get(getFilenameFromPath(media.selectedPhoto.url))?.relative_path || ""
+    : "";
+  const localSchemaPath = media.selectedPos?.localFound
+    ? inventoryByFile.get(getFilenameFromPath(media.selectedPos.url))?.relative_path || ""
+    : "";
 
-  const hasPlaceholder = /sin_imagen|placeholder/i.test(rutaFoto) || imageStatus === "ONLY_PLACEHOLDER";
+  const localImageFound = Boolean(media.selectedPhoto?.localFound);
+  const localSchemaFound = Boolean(media.selectedPos?.localFound);
+
   const hasBrokenImage = issues.some((i) => /broken|missing_image|img_urls_empty/i.test(i));
+  const hasBrokenSchema = issues.some((i) => /broken_schema|missing_schema|schema_urls_empty/i.test(i));
+  const hasBrokenRoute = hasBrokenImage || hasBrokenSchema || photoLoadStatus === "error" || schemaPosLoadStatus === "error" || schemaLoadStatus === "error";
 
-  const localImagePath = invPhoto?.relative_path || "";
-  const localSchemaPath = invSchema?.relative_path || "";
-
-  const localImageFound = Boolean(invPhoto);
-  const localSchemaFound = Boolean(invSchema);
-
-  const wpMatch = /^https?:\/\//i.test(rutaFoto || "") || /^https?:\/\//i.test(rutaSchema || "");
+  const pn = String(rec.part_number || rawRow?.["PART NO."] || rawRow?.pn_final || rawRow?.pn_raw || "").trim();
+  const pnDuplicateCount = duplicatePnMap.get(pn) || 0;
 
   const severity = issues.some((i) => /missing|broken|no_|empty/i.test(i))
     ? "ERROR"
@@ -168,28 +241,66 @@ function normalizeRecord(rec, inventoryByFile) {
       : "OK";
 
   let recommendation = "Sin acciones pendientes";
-  if (imageStatus === "NO_IMAGE") recommendation = "Agregar imagen real o placeholder controlado";
-  else if (schemaStatus === "NO_SCHEMA") recommendation = "Completar esquema o revisar source_page";
-  else if (hasBrokenImage) recommendation = "Revisar rutas WordPress y ficheros locales";
+  if (!media.hasPhotoReal && !media.hasSchemaPos && !media.hasSchemas) recommendation = "Sin imagen util: revisar campos de origen y exportacion";
+  else if (schemaStatus === "SCHEMA_FILENAME_BUT_NO_ROUTE") recommendation = "Completar ruta_esquemas_pos final o corregir schema_pos";
+  else if (hasBrokenRoute) recommendation = "Revisar rutas WordPress/local y ficheros faltantes";
+
+  const hasAnyUsefulImage = media.hasPhotoReal || media.hasSchemaPos || media.hasSchemas;
+
+  const validationStatus = hasBrokenRoute
+    ? "URL_ERROR"
+    : hasAnyUsefulImage
+      ? "OK"
+      : "SIN_IMAGEN";
 
   return {
     ...rec,
+    raw_record: rawRow || null,
     image_status: imageStatus || "UNKNOWN",
     schema_status: schemaStatus || "UNKNOWN",
     issues,
     state_status: severity,
-    hasPlaceholder,
+    hasPlaceholder: media.hasPlaceholder,
+    onlyPlaceholder: media.onlyPlaceholder,
     hasBrokenImage,
+    hasBrokenSchema,
+    hasBrokenRoute,
     localImageFound,
     localSchemaFound,
     localImagePath,
     localSchemaPath,
-    wordpress_match: wpMatch,
+    wordpress_match: media.hasWordpressUrl,
+    hasWordpressUrl: media.hasWordpressUrl,
+    hasLocalUrl: media.hasLocalUrl,
     inventory_match: localImageFound || localSchemaFound,
     total_img_urls: Number(rec.reference_counts?.matched || 0),
     total_schema_urls: Number(rec.reference_counts?.total || 0),
-    isOrphanSchema: schemaStatus === "HAS_SCHEMA" && !rutaSchema,
-    recommendation
+    isOrphanSchema: schemaStatus === "SCHEMA_FILENAME_BUT_NO_ROUTE" && !finalSchemaPosUrl,
+    recommendation,
+    part_number: pn || rec.part_number || "",
+    pnDuplicateCount,
+    isPnDuplicated: pnDuplicateCount > 1,
+    exp_imagenes: String(rawRow?.exp_imagenes || "").trim(),
+    final_photo_url: finalPhotoUrl,
+    final_pos_url: finalSchemaPosUrl,
+    final_schema_pos_url: finalSchemaPosUrl,
+    final_schema_url: finalSchemaUrl,
+    final_photo_source: media.selectedPhoto?.sourceField || "-",
+    final_pos_source: media.selectedPos?.sourceField || "-",
+    final_schema_source: media.selectedSchema?.sourceField || "-",
+    final_photo_type: media.selectedPhoto?.isPlaceholder ? "placeholder" : media.selectedPhoto?.type || "-",
+    final_pos_type: media.selectedPos?.type || "-",
+    final_schema_type: media.selectedSchema?.type || "-",
+    photo_load_status: photoLoadStatus,
+    pos_load_status: schemaPosLoadStatus,
+    schema_load_status: schemaLoadStatus,
+    validation_status: validationStatus,
+    hasPhotoReal: media.hasPhotoReal,
+    hasSchemaPos: media.hasSchemaPos,
+    hasSchemas: media.hasSchemas,
+    hasAnyUsefulImage,
+    isExportableWordpress: (rec.export_type === "new" || rec.export_type === "superseded") && hasAnyUsefulImage,
+    media_candidates: media.allCandidates
   };
 }
 
@@ -214,8 +325,34 @@ function hydrateStateFromLoaded(loaded) {
   state.brokenReferences = Array.isArray(auditData.broken_references) ? auditData.broken_references : [];
   state.unusedImages = Array.isArray(auditData.unused_images) ? auditData.unused_images : [];
 
+  const rawByCompositeKey = new Map();
+  for (const loadedItem of loaded) {
+    if (!/^engine_.*\.json$/i.test(loadedItem.path)) continue;
+    const rows = Array.isArray(loadedItem.data) ? loadedItem.data : [];
+    for (const row of rows) {
+      const key = buildCompositeKeyFromEngineRow(row, loadedItem.path);
+      if (!key) continue;
+      rawByCompositeKey.set(key, row);
+    }
+  }
+  state.rawByCompositeKey = rawByCompositeKey;
+
   const baseRecords = Array.isArray(auditData.records) ? auditData.records : [];
-  state.recordsRaw = baseRecords.map((r) => normalizeRecord(r, inventoryByFile));
+
+  const pnMap = new Map();
+  for (const rec of baseRecords) {
+    const composite = buildCompositeKeyFromAudit(rec);
+    const raw = rawByCompositeKey.get(composite);
+    const pn = String(rec?.part_number || raw?.["PART NO."] || raw?.pn_final || raw?.pn_raw || "").trim();
+    if (!pn) continue;
+    pnMap.set(pn, (pnMap.get(pn) || 0) + 1);
+  }
+
+  state.recordsRaw = baseRecords.map((rec) => {
+    const composite = buildCompositeKeyFromAudit(rec);
+    const raw = rawByCompositeKey.get(composite) || null;
+    return normalizeRecord(rec, raw, inventoryByFile, pnMap);
+  });
 
   state.exportsLoaded = Object.fromEntries(
     loaded
@@ -344,19 +481,47 @@ function getRecordsForTab(base) {
         libro: it.libro,
         source_page: it.pagina,
         export_type: "inventory",
-        image_status: it.is_used ? "REAL_IMAGE" : "NO_IMAGE",
-        schema_status: it.possible_type?.includes("schema") ? "HAS_SCHEMA" : "NO_SCHEMA",
+        image_status: it.is_used ? "PHOTO_ONLY" : "NO_IMAGE",
+        schema_status: it.possible_type?.includes("schema") ? "OK_SCHEMA" : "NO_SCHEMA",
         ruta_foto: it.relative_path,
         ruta_esquemas_pos: "",
+        final_photo_url: it.relative_path,
+        final_pos_url: "",
+        final_schema_pos_url: "",
+        final_photo_source: "inventory",
+        final_pos_source: "-",
+        final_photo_type: "foto",
+        final_pos_type: "-",
+        final_schema_url: "",
+        final_schema_source: "-",
+        final_schema_type: "-",
+        photo_load_status: "ok",
+        pos_load_status: "none",
+        schema_load_status: "none",
+        validation_status: it.is_used ? "OK" : "SIN_IMAGEN",
         issues: it.is_used ? [] : ["orphan_image"],
         state_status: it.is_used ? "OK" : "WARNING",
         total_img_urls: 1,
         total_schema_urls: 0,
         wordpress_match: false,
+        hasWordpressUrl: false,
+        hasLocalUrl: true,
+        hasPlaceholder: false,
+        onlyPlaceholder: false,
+        hasBrokenImage: false,
+        hasBrokenSchema: false,
+        hasBrokenRoute: !it.is_used,
         localImageFound: true,
         localSchemaFound: false,
         localImagePath: it.relative_path,
         localSchemaPath: "",
+        hasPhotoReal: true,
+        hasSchemaPos: it.possible_type?.includes("schema") || false,
+        hasSchemas: it.possible_type?.includes("schema") || false,
+        hasAnyUsefulImage: true,
+        isExportableWordpress: Boolean(it.is_used),
+        exp_imagenes: "",
+        isPnDuplicated: false,
         recommendation: it.is_used ? "Sin acciones" : "Vincular a un registro o limpiar inventario"
       }));
     case "rotas":
@@ -377,15 +542,43 @@ function getRecordsForTab(base) {
         schema_status: "NO_SCHEMA",
         ruta_foto: it.relative_path || "",
         ruta_esquemas_pos: "",
+        final_photo_url: it.relative_path || "",
+        final_pos_url: "",
+        final_schema_pos_url: "",
+        final_photo_source: "inventory",
+        final_pos_source: "-",
+        final_photo_type: "foto",
+        final_pos_type: "-",
+        final_schema_url: "",
+        final_schema_source: "-",
+        final_schema_type: "-",
+        photo_load_status: "ok",
+        pos_load_status: "none",
+        schema_load_status: "none",
+        validation_status: "SIN_IMAGEN",
         issues: ["orphan_image"],
         state_status: "WARNING",
         total_img_urls: 0,
         total_schema_urls: 0,
         wordpress_match: false,
+        hasWordpressUrl: false,
+        hasLocalUrl: true,
+        hasPlaceholder: false,
+        onlyPlaceholder: false,
+        hasBrokenImage: false,
+        hasBrokenSchema: false,
+        hasBrokenRoute: false,
         localImageFound: true,
         localSchemaFound: false,
         localImagePath: it.relative_path || "",
         localSchemaPath: "",
+        hasPhotoReal: false,
+        hasSchemaPos: false,
+        hasSchemas: false,
+        hasAnyUsefulImage: false,
+        isExportableWordpress: false,
+        exp_imagenes: "",
+        isPnDuplicated: false,
         recommendation: "Vincular o depurar inventario"
       }));
     case "estadisticas":
@@ -441,8 +634,8 @@ function applyAndRenderTable() {
 
 function findInventoryRecord(record) {
   if (!record) return null;
-  const f1 = getFilename(record.ruta_foto);
-  const f2 = getFilename(record.ruta_esquemas_pos);
+  const f1 = getFilename(record.final_photo_url || record.ruta_foto);
+  const f2 = getFilename(record.final_schema_pos_url || record.ruta_esquemas_pos);
   return state.inventoryByFile.get(f1) || state.inventoryByFile.get(f2) || null;
 }
 
@@ -462,17 +655,25 @@ function exportCurrentViewCsv() {
   const cols = [
     "part_number",
     "engine_model",
-    "libro",
-    "source_page",
     "export_type",
     "image_status",
     "schema_status",
-    "ruta_foto",
-    "ruta_esquemas_pos",
+    "final_photo_source",
+    "final_photo_url",
+    "final_pos_source",
+    "final_pos_url",
+    "exp_imagenes",
+    "hasWordpressUrl",
+    "hasLocalUrl",
+    "hasPhotoReal",
+    "hasSchemaPos",
+    "hasSchemas",
+    "isPnDuplicated",
     "total_img_urls",
     "total_schema_urls",
     "issues",
-    "state_status"
+    "state_status",
+    "validation_status"
   ];
 
   const lines = [cols.join(",")];

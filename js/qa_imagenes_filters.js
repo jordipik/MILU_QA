@@ -1,47 +1,25 @@
 const QUICK_FILTERS = [
   {
-    group: "Imagenes",
-    key: "imageFlags",
-    mode: "multi",
-    items: [
-      { id: "noImage", label: "Sin imagen", fn: (r) => r.image_status === "NO_IMAGE" },
-      { id: "placeholderOnly", label: "Solo sin_imagen", fn: (r) => r.image_status === "ONLY_PLACEHOLDER" },
-      { id: "realImage", label: "Imagen real", fn: (r) => r.image_status === "REAL_IMAGE" },
-      { id: "brokenImage", label: "Imagen rota", fn: (r) => r.hasBrokenImage },
-      { id: "placeholder", label: "Placeholder", fn: (r) => r.hasPlaceholder },
-      { id: "multiImage", label: "Multiples imagenes", fn: (r) => r.total_img_urls > 1 },
-      { id: "localNotExported", label: "Imagen local no exportada", fn: (r) => r.localImageFound && !r.wordpress_match }
-    ]
-  },
-  {
-    group: "Esquemas",
-    key: "schemaFlags",
-    mode: "multi",
-    items: [
-      { id: "noSchema", label: "Sin esquema", fn: (r) => r.schema_status === "NO_SCHEMA" },
-      { id: "schemaOk", label: "Esquema OK", fn: (r) => r.schema_status === "HAS_SCHEMA" },
-      { id: "schemaNoPath", label: "Esquema sin ruta", fn: (r) => r.schema_status === "HAS_SCHEMA" && !r.ruta_esquemas_pos },
-      { id: "pathNoFile", label: "Ruta sin fichero", fn: (r) => r.schema_status === "HAS_SCHEMA" && !r.localSchemaFound },
-      { id: "schemaOrphan", label: "Schema huerfano", fn: (r) => r.isOrphanSchema }
-    ]
-  },
-  {
-    group: "Exportacion",
-    key: "exportFlags",
+    group: "Auditoria rapida",
+    key: "auditQuick",
     mode: "single",
     items: [
+      { id: "all", label: "Todos", fn: () => true },
+      { id: "withPhoto", label: "Con foto real", fn: (r) => r.hasPhotoReal },
+      { id: "withoutPhoto", label: "Sin foto", fn: (r) => !r.hasPhotoReal },
+      { id: "placeholderOnly", label: "Solo sin_imagen", fn: (r) => r.onlyPlaceholder },
+      { id: "withSchemaPos", label: "Con esquema_pos", fn: (r) => r.hasSchemaPos },
+      { id: "withoutSchemaPos", label: "Sin esquema_pos", fn: (r) => !r.hasSchemaPos },
+      { id: "schemaPosMissing", label: "Esquema_pos missing", fn: (r) => r.schema_status === "SCHEMA_FILENAME_BUT_NO_ROUTE" || r.pos_load_status === "error" },
+      { id: "withSchemas", label: "Con esquemas", fn: (r) => r.hasSchemas },
+      { id: "withoutSchemas", label: "Sin esquemas", fn: (r) => !r.hasSchemas },
+      { id: "broken", label: "Rutas rotas", fn: (r) => r.hasBrokenRoute },
+      { id: "wordpress", label: "URLs WordPress", fn: (r) => r.hasWordpressUrl },
+      { id: "local", label: "Rutas locales", fn: (r) => r.hasLocalUrl },
+      { id: "duplicatePn", label: "Duplicados por PN", fn: (r) => r.isPnDuplicated },
+      { id: "exportableWp", label: "Registros exportables WordPress", fn: (r) => r.isExportableWordpress },
       { id: "new", label: "New", fn: (r) => r.export_type === "new" },
       { id: "superseded", label: "Superseded", fn: (r) => r.export_type === "superseded" }
-    ]
-  },
-  {
-    group: "Estado",
-    key: "stateFlags",
-    mode: "single",
-    items: [
-      { id: "ok", label: "OK", fn: (r) => r.state_status === "OK" },
-      { id: "warning", label: "Warning", fn: (r) => r.state_status === "WARNING" },
-      { id: "error", label: "Error", fn: (r) => r.state_status === "ERROR" }
     ]
   }
 ];
@@ -65,10 +43,7 @@ export function defaultFilterState() {
     libro: "",
     source_page: "",
     part_number: "",
-    imageFlags: new Set(),
-    schemaFlags: new Set(),
-    exportFlags: new Set(),
-    stateFlags: new Set()
+    auditQuick: new Set()
   };
 }
 
@@ -79,10 +54,7 @@ export function serializeFilterState(filters) {
     libro: filters.libro,
     source_page: filters.source_page,
     part_number: filters.part_number,
-    imageFlags: Array.from(filters.imageFlags),
-    schemaFlags: Array.from(filters.schemaFlags),
-    exportFlags: Array.from(filters.exportFlags),
-    stateFlags: Array.from(filters.stateFlags)
+    auditQuick: Array.from(filters.auditQuick)
   };
 }
 
@@ -94,10 +66,7 @@ export function deserializeFilterState(raw) {
   base.libro = String(raw.libro || "");
   base.source_page = String(raw.source_page || "");
   base.part_number = String(raw.part_number || "");
-  base.imageFlags = new Set(raw.imageFlags || []);
-  base.schemaFlags = new Set(raw.schemaFlags || []);
-  base.exportFlags = new Set(raw.exportFlags || []);
-  base.stateFlags = new Set(raw.stateFlags || []);
+  base.auditQuick = new Set(raw.auditQuick || []);
   return base;
 }
 
@@ -144,11 +113,6 @@ export function applyFilters(records, filters) {
     for (const group of QUICK_FILTERS) {
       const active = filters[group.key];
       if (!matchQuickFilterGroup(r, group, active)) return false;
-    }
-
-    const extraState = groupsByKey.get("stateFlags");
-    if (extraState && filters.stateFlags && filters.stateFlags.size) {
-      if (!matchQuickFilterGroup(r, extraState, filters.stateFlags)) return false;
     }
 
     return true;

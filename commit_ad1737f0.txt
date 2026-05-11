@@ -1,0 +1,15 @@
+﻿commit ad1737f043286155abc9b19d57d455f9a7bafc9b
+Author: jordipik <jordipiquero@gmail.com>
+Date:   Mon May 11 23:30:51 2026 +0200
+
+    QA: add ESQ_POS column with local file index and fix MISS detection
+
+ js/column-view.js  |  2 +-
+ js/qa-milu.js      | 19 +++++++++++++-
+ js/qa-table.js     | 73 ++++++++++++++++++++++++++++++++++++++++++++++++++++--
+ js/schemas.js      |  3 +++
+ js/state.js        |  3 +++
+ qa_milu.html       |  8 ++++++
+ server.js          | 30 ++++++++++++++++++++++
+ styles/qa_milu.css | 40 ++++++++++++++++++++++++++++++
+ 8 files changed, 174 insertions(+), 4 deletions(-)

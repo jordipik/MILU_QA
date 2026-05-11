@@ -1,0 +1,20 @@
+﻿commit 549c682a2999c12479bdfacc2b4341cb27eea8be
+Author: jordipik <jordipiquero@gmail.com>
+Date:   Sun May 10 12:33:30 2026 +0200
+
+    chore: auditoria completa de imagenes y esquemas
+
+ data/output/image_inventory.csv                    | 55621 +++++++++++++++++++
+ .../pdf/12V4000M40A.pdf                            |   Bin 0 -> 13121204 bytes
+ .../pdf/12V4000M53.pdf                             |   Bin 0 -> 29758394 bytes
+ .../pdf/12V4000M70.pdf                             |   Bin 0 -> 24141662 bytes
+ .../pdf/16V4000M61.pdf                             |   Bin 0 -> 33034790 bytes
+ .../pdf/16V4000M73.pdf                             |   Bin 0 -> 18153939 bytes
+ .../pdf/16V4000M73L.pdf                            |   Bin 0 -> 34646683 bytes
+ .../pdf/16V4000M90.pdf                             |   Bin 0 -> 32538356 bytes
+ .../pdf/20V4000M93.pdf                             |   Bin 0 -> 33943262 bytes
+ .../pdf/20V4000M93L.pdf                            |   Bin 0 -> 63267171 bytes
+ docs/AUDITORIA_IMAGENES_ESQUEMAS_MILU.md           |    74 +
+ package.json                                       |     3 +-
+ scripts/audit_image_schema_system.js               |   892 +
+ 13 files changed, 56589 insertions(+), 1 deletion(-)

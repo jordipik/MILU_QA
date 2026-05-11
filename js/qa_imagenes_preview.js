@@ -8,9 +8,9 @@ function esc(v) {
 }
 
 function asBadge(status) {
-  if (status === "REAL_IMAGE" || status === "HAS_SCHEMA") return "ok";
-  if (status === "ONLY_PLACEHOLDER") return "warn";
-  if (status === "NO_IMAGE" || status === "NO_SCHEMA") return "err";
+  if (status === "OK" || status === "ok") return "ok";
+  if (status === "unknown") return "warn";
+  if (status === "URL_ERROR" || status === "error" || status === "SIN_IMAGEN") return "err";
   return "neu";
 }
 
@@ -41,27 +41,54 @@ export function renderPreview(el, record, inventoryInfo) {
     ? `<ul class="preview-list">${record.issues.map((it) => `<li>${esc(it)}</li>`).join("")}</ul>`
     : "<div class='preview-empty'>Sin issues detectados</div>";
 
+  const badgeRow = `
+    <div class="preview-row"><span class="k">Badges</span><span class="v">
+      <span class="badge ${record.hasPhotoReal ? "ok" : "err"}">${record.hasPhotoReal ? "FOTO OK" : "SIN FOTO"}</span>
+      ${record.onlyPlaceholder ? '<span class="badge warn">PLACEHOLDER</span>' : ""}
+      <span class="badge ${record.hasSchemaPos && record.pos_load_status !== "error" ? "ok" : "err"}">${record.hasSchemaPos && record.pos_load_status !== "error" ? "POS OK" : "POS MISS"}</span>
+      ${record.hasSchemas ? '<span class="badge info">ESQUEMA OK</span>' : ""}
+      ${record.hasBrokenRoute ? '<span class="badge err">URL ERROR</span>' : ""}
+    </span></div>
+  `;
+
   const productBody = `
-    ${maybeImage(record.ruta_foto, record.part_number)}
+    ${maybeImage(record.final_photo_url, record.part_number)}
     <div class="preview-list">
       <div class="preview-row"><span class="k">PN</span><span class="v">${esc(record.part_number)}</span></div>
-      <div class="preview-row"><span class="k">Image status</span><span class="badge ${asBadge(record.image_status)}">${esc(record.image_status)}</span></div>
+      <div class="preview-row"><span class="k">Tipo</span><span class="v">${esc(record.final_photo_type || "-")}</span></div>
+      <div class="preview-row"><span class="k">Origen campo</span><span class="v">${esc(record.final_photo_source || "-")}</span></div>
+      <div class="preview-row"><span class="k">URL final usada</span><span class="v">${esc(record.final_photo_url || "-")}</span></div>
+      <div class="preview-row"><span class="k">Carga</span><span class="badge ${asBadge(record.photo_load_status)}">${esc(record.photo_load_status || "none")}</span></div>
     </div>
   `;
 
   const schemaBody = `
-    ${maybeImage(record.ruta_esquemas_pos, `${record.part_number} esquema`)}
+    ${maybeImage(record.final_schema_pos_url, `${record.part_number} esquema_pos`)}
     <div class="preview-list">
-      <div class="preview-row"><span class="k">Schema status</span><span class="badge ${asBadge(record.schema_status)}">${esc(record.schema_status)}</span></div>
-      <div class="preview-row"><span class="k">Ruta esquema POS</span><span class="v">${esc(record.ruta_esquemas_pos || "-")}</span></div>
+      <div class="preview-row"><span class="k">Tipo</span><span class="v">${esc(record.final_pos_type || "-")}</span></div>
+      <div class="preview-row"><span class="k">Origen campo</span><span class="v">${esc(record.final_pos_source || "-")}</span></div>
+      <div class="preview-row"><span class="k">URL final usada</span><span class="v">${esc(record.final_schema_pos_url || "-")}</span></div>
+      <div class="preview-row"><span class="k">Carga</span><span class="badge ${asBadge(record.pos_load_status)}">${esc(record.pos_load_status || "none")}</span></div>
+      <div class="preview-row"><span class="k">Estado schema_pos</span><span class="badge ${asBadge(record.schema_status)}">${esc(record.schema_status || "-")}</span></div>
+    </div>
+  `;
+
+  const schemaGeneralBody = `
+    ${maybeImage(record.final_schema_url, `${record.part_number} esquema`)}
+    <div class="preview-list">
+      <div class="preview-row"><span class="k">Tipo</span><span class="v">${esc(record.final_schema_type || "-")}</span></div>
+      <div class="preview-row"><span class="k">Origen campo</span><span class="v">${esc(record.final_schema_source || "-")}</span></div>
+      <div class="preview-row"><span class="k">URL final usada</span><span class="v">${esc(record.final_schema_url || "-")}</span></div>
+      <div class="preview-row"><span class="k">Carga</span><span class="badge ${asBadge(record.schema_load_status)}">${esc(record.schema_load_status || "none")}</span></div>
     </div>
   `;
 
   const wpBody = `
     <div class="preview-list">
-      <div class="preview-row"><span class="k">Ruta foto WP</span><span class="v">${esc(record.ruta_foto || "-")}</span></div>
-      <div class="preview-row"><span class="k">Valida URL</span><span class="badge ${record.wordpress_match ? "ok" : "warn"}">${record.wordpress_match ? "OK" : "No valida"}</span></div>
-      <div class="preview-row"><span class="k">Abrir</span><span class="v">${maybeLink(record.ruta_foto)}</span></div>
+      <div class="preview-row"><span class="k">URL WordPress detectada</span><span class="badge ${record.hasWordpressUrl ? "ok" : "warn"}">${record.hasWordpressUrl ? "SI" : "NO"}</span></div>
+      <div class="preview-row"><span class="k">Rutas locales detectadas</span><span class="badge ${record.hasLocalUrl ? "ok" : "warn"}">${record.hasLocalUrl ? "SI" : "NO"}</span></div>
+      <div class="preview-row"><span class="k">Abrir foto</span><span class="v">${maybeLink(record.final_photo_url)}</span></div>
+      <div class="preview-row"><span class="k">Abrir esquema_pos</span><span class="v">${maybeLink(record.final_schema_pos_url)}</span></div>
     </div>
   `;
 
@@ -71,6 +98,8 @@ export function renderPreview(el, record, inventoryInfo) {
       <div class="preview-row"><span class="k">Local schema encontrada</span><span class="badge ${record.localSchemaFound ? "ok" : "warn"}">${record.localSchemaFound ? "SI" : "NO"}</span></div>
       <div class="preview-row"><span class="k">Path foto</span><span class="v">${esc(record.localImagePath || "-")}</span></div>
       <div class="preview-row"><span class="k">Path esquema</span><span class="v">${esc(record.localSchemaPath || "-")}</span></div>
+      <div class="preview-row"><span class="k">exp_imagenes</span><span class="v">${esc(record.exp_imagenes || "-")}</span></div>
+      ${badgeRow}
     </div>
   `;
 
@@ -86,6 +115,7 @@ export function renderPreview(el, record, inventoryInfo) {
   const diagBody = `
     <div class="preview-list">
       <div class="preview-row"><span class="k">Estado global</span><span class="badge ${record.state_status === "OK" ? "ok" : record.state_status === "WARNING" ? "warn" : "err"}">${esc(record.state_status)}</span></div>
+      <div class="preview-row"><span class="k">Validacion final</span><span class="badge ${asBadge(record.validation_status)}">${esc(record.validation_status || "-")}</span></div>
       <div class="preview-row"><span class="k">Recomendacion</span><span class="v">${esc(record.recommendation || "Revisar manualmente")}</span></div>
     </div>
     ${issueList}
@@ -93,7 +123,8 @@ export function renderPreview(el, record, inventoryInfo) {
 
   el.innerHTML = [
     section("Producto", productBody),
-    section("Esquema", schemaBody),
+    section("Esquema POS", schemaBody),
+    section("Esquema", schemaGeneralBody),
     section("WordPress", wpBody),
     section("Local", localBody),
     section("Inventario", invBody),

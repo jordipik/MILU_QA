@@ -1,0 +1,16 @@
+﻿commit f73144dd91dee5bb21b4dc1f84a15229e3d2f4a4
+Author: jordipik <jordipiquero@gmail.com>
+Date:   Sun May 3 17:14:12 2026 +0200
+
+    feat(export): QA-first decisions and PN review UI
+
+ exportacion.html                  |  58 +++-
+ js/exportacion.js                 |  70 +++-
+ js/pn_review.js                   | 436 +++++++++++++++++++++++
+ js/topbar.js                      |   1 +
+ pn_review.html                    | 155 +++++++++
+ scripts/export_review_pipeline.js |  10 +-
+ scripts/export_wordpress_milu.js  | 703 +++++++++++---------------------------
+ server.js                         | 370 ++++++++++++++++++++
+ styles/pn_review.css              | 404 ++++++++++++++++++++++
+ 9 files changed, 1692 insertions(+), 515 deletions(-)

@@ -1,17 +1,16 @@
 const COLS = [
   { key: "sel", label: "Sel", sortable: false },
-  { key: "part_number", label: "PN", sortable: true },
+  { key: "part_number", label: "Part Number", sortable: true },
   { key: "engine_model", label: "engine_model", sortable: true },
-  { key: "libro", label: "libro", sortable: true },
-  { key: "source_page", label: "source_page", sortable: true },
-  { key: "export_type", label: "export", sortable: true },
-  { key: "image_status", label: "image_status", sortable: true },
-  { key: "schema_status", label: "schema_status", sortable: true },
-  { key: "ruta_foto", label: "ruta_foto", sortable: true },
-  { key: "ruta_esquemas_pos", label: "ruta_esquemas_pos", sortable: true },
-  { key: "total_img_urls", label: "img", sortable: true },
-  { key: "total_schema_urls", label: "schema", sortable: true },
-  { key: "issues", label: "issues", sortable: false }
+  { key: "export_type", label: "Estado", sortable: true },
+  { key: "badges", label: "Badges", sortable: false },
+  { key: "final_photo_source", label: "Origen foto", sortable: true },
+  { key: "final_pos_source", label: "Origen esquema_pos", sortable: true },
+  { key: "final_photo_url", label: "Ruta usada foto", sortable: true },
+  { key: "final_pos_url", label: "Ruta usada esquema_pos", sortable: true },
+  { key: "exp_imagenes", label: "exp_imagenes", sortable: true },
+  { key: "validation_status", label: "Validacion", sortable: true },
+  { key: "preview", label: "Preview", sortable: false }
 ];
 
 function compareValue(a, b) {
@@ -22,9 +21,9 @@ function compareValue(a, b) {
 }
 
 function statusBadge(status) {
-  if (status === "REAL_IMAGE" || status === "HAS_SCHEMA") return ["ok", status];
-  if (status === "ONLY_PLACEHOLDER") return ["warn", status];
-  if (status === "NO_IMAGE" || status === "NO_SCHEMA") return ["err", status];
+  if (status === "URL_ERROR") return ["err", status];
+  if (status === "OK") return ["ok", status];
+  if (status === "SIN_IMAGEN") return ["warn", status];
   return ["neu", status || "-"];
 }
 
@@ -44,6 +43,34 @@ function esc(v) {
     .replaceAll("'", "&#39;");
 }
 
+function clip(v, max = 64) {
+  const txt = String(v || "");
+  if (txt.length <= max) return txt;
+  return `${txt.slice(0, max - 1)}...`;
+}
+
+function renderAuditBadges(row) {
+  const badges = [];
+  if (row.hasPhotoReal) badges.push(`<span class="badge ok">FOTO OK</span>`);
+  else badges.push(`<span class="badge err">SIN FOTO</span>`);
+
+  if (row.onlyPlaceholder) badges.push(`<span class="badge warn">PLACEHOLDER</span>`);
+
+  if (row.hasSchemaPos && row.pos_load_status !== "error") badges.push(`<span class="badge ok">POS OK</span>`);
+  else badges.push(`<span class="badge err">POS MISS</span>`);
+
+  if (row.hasSchemas) badges.push(`<span class="badge info">ESQUEMA OK</span>`);
+
+  if (row.hasBrokenRoute) badges.push(`<span class="badge err">URL ERROR</span>`);
+
+  return badges.join(" ");
+}
+
+function renderThumb(url, alt) {
+  if (!url) return `<span class="badge neu">-</span>`;
+  return `<img class="table-thumb" loading="lazy" src="${esc(url)}" alt="${esc(alt)}"/>`;
+}
+
 export function createVirtualTable({ headEl, viewportEl, innerEl, onSelectRow, onSortChange, onToggleSelect }) {
   const state = {
     rows: [],
@@ -51,7 +78,7 @@ export function createVirtualTable({ headEl, viewportEl, innerEl, onSelectRow, o
     sortKey: "part_number",
     sortDir: "asc",
     selectedKeys: new Set(),
-    rowHeight: 42,
+    rowHeight: 56,
     overscan: 12,
     selectedRowKey: ""
   };
@@ -107,9 +134,18 @@ export function createVirtualTable({ headEl, viewportEl, innerEl, onSelectRow, o
       return `<span class="badge ${stateBadge(row.state_status)}" title="${esc((row.issues || []).join(" | "))}">${count}</span>`;
     }
 
-    if (col.key === "image_status" || col.key === "schema_status") {
-      const [kind, label] = statusBadge(row[col.key]);
+    if (col.key === "validation_status") {
+      const [kind, label] = statusBadge(row.validation_status);
       return `<span class="badge ${kind}">${esc(label)}</span>`;
+    }
+
+    if (col.key === "badges") {
+      return `<div class="table-badges">${renderAuditBadges(row)}</div>`;
+    }
+
+    if (col.key === "preview") {
+      const url = row.final_photo_url || row.final_pos_url || row.final_schema_url;
+      return renderThumb(url, row.part_number || "preview");
     }
 
     if (col.key === "export_type") {
@@ -117,10 +153,16 @@ export function createVirtualTable({ headEl, viewportEl, innerEl, onSelectRow, o
       return `<span class="badge ${tone}">${esc(row.export_type || "-")}</span>`;
     }
 
-    if (col.key === "ruta_foto" || col.key === "ruta_esquemas_pos") {
+    if (col.key === "final_photo_url" || col.key === "final_pos_url") {
       const value = row[col.key] || "";
       if (!value) return "<span class='badge neu'>-</span>";
-      return `<span title="${esc(value)}">${esc(value)}</span>`;
+      return `<span title="${esc(value)}">${esc(clip(value, 78))}</span>`;
+    }
+
+    if (col.key === "exp_imagenes") {
+      const value = row.exp_imagenes || "";
+      if (!value) return "<span class='badge neu'>-</span>";
+      return `<span title="${esc(value)}">${esc(clip(value, 78))}</span>`;
     }
 
     return esc(row[col.key]);

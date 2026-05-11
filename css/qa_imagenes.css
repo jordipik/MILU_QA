@@ -370,7 +370,7 @@ body {
 .vtable-head,
 .vrow {
   display: grid;
-  grid-template-columns: 48px 120px 120px 90px 80px 82px 96px 96px minmax(160px, 2fr) minmax(140px, 2fr) 75px 75px minmax(170px, 2fr);
+  grid-template-columns: 48px 140px 140px 100px minmax(220px, 1.6fr) 140px 160px minmax(260px, 2fr) minmax(260px, 2fr) minmax(220px, 2fr) 110px 96px;
 }
 
 .vtable-head {
@@ -471,6 +471,21 @@ body {
   background: var(--neu-soft);
   color: var(--neu);
   border-color: color-mix(in srgb, var(--neu) 30%, transparent);
+}
+
+.table-badges {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+}
+
+.table-thumb {
+  width: 72px;
+  height: 40px;
+  object-fit: contain;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--panel-soft);
 }
 
 .preview-card {
@@ -584,7 +599,7 @@ a.inline-link:hover {
 
   .vtable-head,
   .vrow {
-    grid-template-columns: 44px 120px 110px 88px 80px 80px 86px 86px minmax(130px, 2fr) minmax(120px, 2fr) 70px 70px minmax(150px, 2fr);
+    grid-template-columns: 44px 130px 130px 92px minmax(200px, 1.4fr) 130px 140px minmax(220px, 1.8fr) minmax(220px, 1.8fr) minmax(200px, 1.8fr) 100px 90px;
   }
 }
 

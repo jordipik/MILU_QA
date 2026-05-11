@@ -1,0 +1,41 @@
+﻿diff --git a/server.js b/server.js
+index dff7d57d..07fd32d0 100644
+--- a/server.js
++++ b/server.js
+@@ -1904,6 +1904,36 @@ app.get('/save-json.php', (_req, res) => {
+     res.json({ ok: true, service: 'milu-save-backend', route: '/save-json.php' });
+ });
+ 
++// ├ìndice de archivos existentes en esquemas_pos_circulos/.
++// Devuelve un array plano de basenames (sin ruta) para que el frontend pueda
++// construir un Set y comprobar existencia sin hacer fetch por cada fila.
++// Cacheado en memoria: se recalcula en cada arranque del servidor.
++let _esquemasPosIndexCache = null;
++app.get('/api/esquemas-pos-index', async (_req, res) => {
++    try {
++        if (!_esquemasPosIndexCache) {
++            const baseDir = path.join(__dirname, 'esquemas_pos_circulos');
++            const folders = await fs.promises.readdir(baseDir);
++            const allFiles = [];
++            for (const folder of folders) {
++                const folderPath = path.join(baseDir, folder);
++                let stat;
++                try { stat = await fs.promises.stat(folderPath); } catch { continue; }
++                if (!stat.isDirectory()) continue;
++                const files = await fs.promises.readdir(folderPath);
++                for (const file of files) {
++                    allFiles.push(file.toLowerCase());
++                }
++            }
++            _esquemasPosIndexCache = allFiles;
++        }
++        res.json({ ok: true, files: _esquemasPosIndexCache });
++    } catch (err) {
++        console.error('[esquemas-pos-index] Error:', err.message);
++        res.json({ ok: false, files: [], error: String(err.message) });
++    }
++});
++
+ app.use(express.static(__dirname));
+ 
+ app.get('/', (req, res) => {
