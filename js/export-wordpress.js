@@ -436,19 +436,28 @@ function synthFirstNonEmpty(rows, getter) {
     return null;
 }
 
-function synthMergeImages(primary, secondary) {
+function synthCollectImagesFromRows(rows) {
     const merged = [];
     const seen = new Set();
+
     const addValue = (value) => {
-        String(value ?? '').split(',').map(p => p.trim()).filter(Boolean).forEach(part => {
-            const key = synthNormPn(part);
-            if (seen.has(key)) return;
-            seen.add(key);
-            merged.push(part);
-        });
+        String(value ?? '')
+            .split(',')
+            .map((part) => part.trim())
+            .filter(Boolean)
+            .forEach((part) => {
+                const normalized = synthNormPn(part);
+                if (!normalized || seen.has(normalized)) return;
+                seen.add(normalized);
+                merged.push(part);
+            });
     };
-    addValue(primary);
-    addValue(secondary);
+
+    for (const row of rows) {
+        addValue(row?.exp_imagenes);
+        addValue(row?.ruta_foto);
+    }
+
     return merged.join(', ');
 }
 
@@ -467,9 +476,8 @@ function buildSyntheticRowForPn(pn) {
     const modelTypes = synthUniqueSorted(matches.map(item => synthNormalizeModelType(item)), true);
     const engineModels = synthUniqueSorted(matches.map(item => String(item?.engine_model ?? '').trim()), true);
     const categoryValues = synthUniqueSorted(matches.map(item => String(item?.categoria ?? item?.atributo ?? item?.exp_categorias ?? '').trim()));
-    const imageValue = synthFirstNonEmpty([row, ...matches], item => item?.exp_imagenes || item?.ruta_foto || '');
     const routeFotoValue = synthFirstNonEmpty([row, ...matches], item => item?.ruta_foto || '');
-    const exportImagesValue = synthMergeImages(routeFotoValue, imageValue);
+    const exportImagesValue = synthCollectImagesFromRows(matches);
     const normalizedPn = String(row?.['PART NO.'] ?? row?.pn ?? '').trim();
     const hierarchy = String(row?.sust_hierarchie ?? '').trim();
     const supersededList = String(row?.sust_superseded_list ?? '').trim();
