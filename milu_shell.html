@@ -333,7 +333,9 @@
 
         const VIEW_TO_PAGE = {
             pdf: 'qa_milu.html',
-            analisis: 'analista_02.html'
+            analisis: 'analista_02.html',
+            imagenes: 'qa_imagenes.html',
+            exportwp: 'export_wordpress.html'
         };
 
         if (ENABLE_EXPORT_VIEW) {
@@ -343,7 +345,9 @@
         const TITLES = {
             pdf: 'MILU • PDF',
             export: 'MILU • EXPORT',
-            analisis: 'MILU • ANALISIS'
+            analisis: 'MILU • ANALISIS',
+            imagenes: 'MILU • IMAGENES',
+            exportwp: 'MILU • EXPORT'
         };
         const frameByView = new Map();
         let sharedEditorContext = null;
@@ -492,7 +496,7 @@
 
         function normalizeView(value) {
             const raw = String(value || '').trim().toLowerCase();
-            if (raw === 'pdf' || raw === 'analisis') return raw;
+            if (raw === 'pdf' || raw === 'analisis' || raw === 'imagenes' || raw === 'exportwp') return raw;
             if (ENABLE_EXPORT_VIEW && raw === 'export') return raw;
             return 'pdf';
         }

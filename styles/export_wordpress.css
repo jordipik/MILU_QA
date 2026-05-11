@@ -43,8 +43,9 @@ select {
 }
 
 .ewx-shell {
-    max-width: 1840px;
-    margin: 0 auto;
+    max-width: none;
+    width: 100%;
+    margin: 0;
     padding: 18px clamp(14px, 2vw, 28px) 22px;
 }
 
@@ -150,9 +151,44 @@ select {
 
 .ewx-summary {
     display: grid;
-    grid-template-columns: repeat(5, minmax(0, 1fr));
+    grid-template-columns: repeat(6, minmax(0, 1fr));
     gap: 12px;
-    margin-top: 14px;
+    margin-top: 6px;
+}
+
+.ewx-summary-card-actions {
+    display: flex;
+    align-items: center;
+    justify-content: flex-end;
+}
+
+.ewx-card-actions {
+    width: 100%;
+    display: flex;
+    gap: 10px;
+    justify-content: flex-end;
+    flex-wrap: wrap;
+}
+
+.ewx-card-actions button {
+    height: 42px;
+    padding: 0 14px;
+    border-radius: 12px;
+    border: 1px solid #d7e4e1;
+    cursor: pointer;
+    font-weight: 600;
+    background: linear-gradient(135deg, #dcefe9, #f5fffd);
+    color: #0a342e;
+}
+
+.ewx-card-actions button.secondary {
+    background: #f6fbfa;
+    color: #163b36;
+    border-color: #c8ddd9;
+}
+
+.ewx-card-actions button:hover {
+    transform: translateY(-1px);
 }
 
 .ewx-summary-card {
@@ -301,7 +337,7 @@ button.ewx-summary-card:focus-visible {
     grid-template-columns: minmax(300px, 420px) minmax(0, 1fr);
     gap: 14px;
     margin-top: 14px;
-    min-height: calc(100vh - 250px);
+    min-height: calc(100vh - 180px);
 }
 
 .ewx-sidebar,
@@ -623,20 +659,16 @@ button.ewx-summary-card:focus-visible {
 }
 
 @media (max-width: 720px) {
-    .ewx-hero {
-        grid-template-columns: 1fr;
-    }
-
     .ewx-summary {
         grid-template-columns: 1fr;
     }
 
     .ewx-detail-actions,
-    .ewx-hero-actions {
+    .ewx-card-actions {
         justify-content: stretch;
     }
 
-    .ewx-hero-actions button,
+    .ewx-card-actions button,
     .ewx-detail-actions button,
     .ewx-toggle {
         width: 100%;

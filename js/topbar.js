@@ -25,8 +25,8 @@ function isEmbeddedMode() {
 
 function getNavTargetHref(pageKey) {
     const allowedViews = ENABLE_EXPORT_VIEW
-        ? ['pdf', 'export', 'analisis']
-        : ['pdf', 'analisis'];
+        ? ['pdf', 'export', 'analisis', 'imagenes', 'exportwp']
+        : ['pdf', 'analisis', 'imagenes', 'exportwp'];
     const view = allowedViews.includes(pageKey) ? pageKey : 'pdf';
     return `${appUrl('/milu_shell.html')}?view=${encodeURIComponent(view)}`;
 }
@@ -148,6 +148,16 @@ export function createTopbar(page) {
             title: 'Analista de registro 02',
             subtitle: 'De registro_raw a registro_ok o registro_ko, proceso por proceso.',
             active: 'ANALISIS'
+        },
+        imagenes: {
+            title: 'QA Imagenes y Esquemas',
+            subtitle: 'Auditoria visual de exportacion multimedia.',
+            active: 'IMAGENES'
+        },
+        exportwp: {
+            title: 'Exportacion WordPress',
+            subtitle: 'Revision y exportacion para publicacion web.',
+            active: 'EXPORT'
         }
     };
 
@@ -175,7 +185,8 @@ export function createTopbar(page) {
         <nav class="a2-nav" aria-label="Navegacion">
             <a href="${getNavTargetHref('pdf')}" data-page="pdf" class="${pageConfig.active === 'PDF' ? 'active' : ''}">PDF</a>
             <a href="${getNavTargetHref('analisis')}" data-page="analisis" class="${pageConfig.active === 'ANALISIS' ? 'active' : ''}">ANALISIS</a>
-            <a href="${appUrl('/export_wordpress.html')}" data-page="export-wordpress" target="_blank" rel="noopener">EXPORT</a>
+            <a href="${getNavTargetHref('imagenes')}" data-page="imagenes" class="${pageConfig.active === 'IMAGENES' ? 'active' : ''}">IMAGENES</a>
+            <a href="${getNavTargetHref('exportwp')}" data-page="exportwp" class="${pageConfig.active === 'EXPORT' ? 'active' : ''}">EXPORT</a>
             ${ENABLE_EXPORT_VIEW ? `<a href="${getNavTargetHref('export')}" data-page="export" class="${pageConfig.active === 'EXPORT' ? 'active' : ''}">EXPORT</a>` : ''}
         </nav>
         <div id="backendStatus" class="backend-status checking" aria-live="polite" title="Estado del backend de guardado">
