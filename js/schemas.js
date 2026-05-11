@@ -223,6 +223,9 @@ export function getPosSchemasForRow(row) {
         candidates.forEach(path => { if (!existing.has(path)) { existing.add(path); item.candidates.push(path); } });
     };
     splitSchemaTokens(row?.ruta_esquemas_pos).forEach(r => mergeItem(r, r));
+    // exp_imagenes suele contener la URL final publicada; se valida tambien
+    // contra la carpeta local esquemas_pos_circulos/<BOOK>-POS/ por basename.
+    splitSchemaTokens(row?.exp_imagenes).forEach(r => mergeItem(r, r));
     splitSchemaTokens(row?.esquemas_circulos).forEach(t => mergeItem(t));
     return [...itemsByLabel.values()]
         .filter(item => item.candidates.length > 0)

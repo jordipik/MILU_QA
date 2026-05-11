@@ -140,6 +140,8 @@
                                 <th style="width:36px" data-sort="gesa" class="status-head">G</th>
                                 <th style="width:36px" data-sort="normalizado" class="status-head">N</th>
                                 <th style="width:44px" data-sort="sust_hierarchie" class="status-head">H</th>
+                                <th style="width:44px" data-sort="has_esquema_pos" class="status-head"
+                                    title="Esquema POS: OK=archivo encontrado / MISS=falta / —=sin ruta">P</th>
                                 <th style="width:36px" data-sort="has_img" class="status-head">F</th>
                                 <th style="width:36px" data-sort="has_error" class="status-head">E</th>
                                 <th style="width:70px" data-sort="EN_WEB">W</th>
@@ -206,6 +208,12 @@
                                         <option value="New">New</option>
                                         <option value="Old">Old</option>
                                         <option value="empty">(Vacío)</option>
+                                    </select></th>
+                                <th><select class="filter-select" data-filter="has_esquema_pos">
+                                        <option value="">Todos</option>
+                                        <option value="ok">OK (existe)</option>
+                                        <option value="missing">MISS (falta)</option>
+                                        <option value="empty">Sin ruta</option>
                                     </select></th>
                                 <th><select class="filter-select" data-filter="has_img">
                                         <option value="">Todos</option>

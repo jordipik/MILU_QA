@@ -13,7 +13,7 @@ import {
 } from './revision.js';
 import { applyColumnView } from './column-view.js';
 import { scheduleVisiblePosCirclePreload } from './pos-preload.js';
-import { renderSelectedRowPosPanel, renderSelectedRowPosTop } from './schemas.js';
+import { getPosSchemasForRow, renderSelectedRowPosPanel, renderSelectedRowPosTop } from './schemas.js';
 
 const qaErrorMetaCache = {
     signature: '',
@@ -347,6 +347,16 @@ export function sortData(data, key, asc) {
         });
     }
 
+    if (key === 'has_esquema_pos') {
+        // Ordena: ok (0) → missing (1) → empty (2)
+        const order = { ok: 0, missing: 1, empty: 2 };
+        return [...data].sort((a, b) => {
+            const va = order[getEsquemaPosStatus(a)] ?? 3;
+            const vb = order[getEsquemaPosStatus(b)] ?? 3;
+            return asc ? va - vb : vb - va;
+        });
+    }
+
     if (key === 'book_page_pos') {
         const direction = asc ? 1 : -1;
         return [...data].sort((a, b) => {
@@ -389,6 +399,12 @@ export function applyFilters(data) {
                 case 'has_img': {
                     const imgValue = (row.filename_foto || row.ruta_foto || '').toString().trim();
                     rowValue = imgValue ? 'true' : 'false';
+                    break;
+                }
+                case 'has_esquema_pos': {
+                    // Valores posibles del filtro: 'ok' | 'missing' | 'empty'
+                    // Compara contra el estado derivado de ruta_esquemas_pos + índice local
+                    rowValue = getEsquemaPosStatus(row);
                     break;
                 }
                 case 'has_error': {
@@ -728,6 +744,56 @@ function getRevisionAccionOptionsHtml(revisionAccion) {
     ].map(opt => `<option value="${escapeHtml(opt.value)}" ${revisionAccion === opt.value ? 'selected' : ''}>${escapeHtml(opt.label)}</option>`).join('');
 }
 
+// --- Helpers para columna ESQ_POS ---
+// Normaliza una URL/ruta a basename en minúsculas para comparar contra
+// el índice de archivos existentes (state.esquemasPosFileSet).
+function normalizePath(value) {
+    const raw = String(value || '').trim();
+    if (!raw) return '';
+    try {
+        const parsed = new URL(raw);
+        const name = decodeURIComponent(parsed.pathname.split('/').pop() || '').trim();
+        return name.toLowerCase();
+    } catch (_) {
+        const clean = decodeURIComponent(raw.replace(/\\/g, '/').split('/').pop() || '').trim();
+        return clean.toLowerCase();
+    }
+}
+
+function basename(value) {
+    return normalizePath(value);
+}
+
+// Devuelve el estado del esquema pos para la fila:
+//   'empty'   — no hay referencias en ruta_esquemas_pos / exp_imagenes / esquemas_circulos
+//   'ok'      — existe al menos un candidato en state.esquemasPosFileSet
+//   'missing' — hay referencias pero no se encuentra archivo local
+function getEsquemaPosStatus(row) {
+    // Mismo criterio que usa la UI de esquemas para resolver imágenes:
+    // combina ruta_esquemas_pos + esquemas_circulos y evalúa sus candidatos.
+    const posItems = getPosSchemasForRow(row);
+    if (!Array.isArray(posItems) || posItems.length === 0) return 'empty';
+
+    const exists = posItems.some(item =>
+        Array.isArray(item?.candidates)
+        && item.candidates.some(candidate => state.esquemasPosFileSet.has(basename(candidate)))
+    );
+
+    return exists ? 'ok' : 'missing';
+}
+
+// Genera el HTML del badge de la columna ESQ_POS para una fila dada.
+function renderEsquemaPosCell(row) {
+    const status = getEsquemaPosStatus(row);
+    const ruta = String(row.ruta_esquemas_pos || '').trim();
+    if (status === 'ok') {
+        return `<span class="badge-pos-ok" title="Archivo encontrado">OK</span>`;
+    } else if (status === 'missing') {
+        return `<span class="badge-pos-missing" title="Archivo no encontrado${ruta ? `: ${escapeHtml(ruta)}` : ''}">MISS</span>`;
+    }
+    return `<span class="badge-pos-empty" title="Sin esquema_pos">FALTA</span>`;
+}
+
 function renderRow(row) {
     const id = val(row, 'ID');
     const enWeb = row.EN_WEB === true || row.EN_WEB === 'true' ? '✔️' : '';
@@ -777,6 +843,7 @@ function renderRow(row) {
       <td class="status-col" title="GESA: ${isGesa ? 'SI' : 'NO'}">${gesaIcon}</td>
       <td class="status-col" title="Normalizado: ${isNormalizado ? 'SI' : 'NO'}">${normalizadoIcon}</td>
       <td class="status-col" title="sust_hierarchie: ${escapeHtml(sustHierarchyLabel)}">${hierarchyIcon}</td>
+      <td class="status-col">${renderEsquemaPosCell(row)}</td>
       <td class="status-col" title="Foto: ${hasImg ? 'SI' : 'NO'}">${fotoIcon}</td>
     <td class="status-col" title="Errores: ${totalError}">${errorIcon}</td>
       <td class="status-col" title="En Web">${enWeb}</td>
@@ -846,7 +913,7 @@ function getRowErrorSet(row) {
 }
 
 function getErrorViewColumnCount() {
-    const pdfViewColumns = 8;  // gesa, normalizado, sust_hierarchie, has_img, has_error, EN_WEB, estado, accion
+    const pdfViewColumns = 9;  // gesa, normalizado, sust_hierarchie, has_esquema_pos, has_img, has_error, EN_WEB, estado, accion
     const baseColumns = 6;      // Libro, Pagina, POS, PN, Designation Final, #Errores
     return pdfViewColumns + baseColumns + getErrorViewDefinitions().length;
 }
@@ -860,6 +927,7 @@ function renderErrorViewHeader(definitions) {
         <th style="width:36px" class="status-head">G</th>
         <th style="width:36px" class="status-head">N</th>
         <th style="width:44px" class="status-head">H</th>
+        <th style="width:44px" class="status-head" title="Esquema POS">P</th>
         <th style="width:36px" class="status-head">F</th>
         <th style="width:36px" class="status-head">E</th>
         <th style="width:70px">W</th>
@@ -925,6 +993,7 @@ function renderErrorViewRow(row, definitions) {
         <td class="status-col" title="GESA: ${isGesa ? 'SI' : 'NO'}">${gesaIcon}</td>
         <td class="status-col" title="Normalizado: ${isNormalizado ? 'SI' : 'NO'}">${normalizadoIcon}</td>
         <td class="status-col" title="sust_hierarchie: ${escapeHtml(sustHierarchyLabel)}">${hierarchyIcon}</td>
+        <td class="status-col">${renderEsquemaPosCell(row)}</td>
         <td class="status-col" title="Foto: ${hasImg ? 'SI' : 'NO'}">${fotoIcon}</td>
         <td class="status-col" title="Error persistido: ${hasPersistedError ? 'SI' : 'NO'}">${errorIcon}</td>
         <td class="status-col" title="En Web">${enWeb}</td>

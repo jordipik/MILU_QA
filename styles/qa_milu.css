@@ -2039,6 +2039,46 @@
             cursor: pointer;
         }
 
+        /* Badges columna ESQ_POS (P): indican existencia del archivo en esquemas_pos_circulos/ */
+        .badge-pos-ok,
+        .badge-pos-missing,
+        .badge-pos-empty {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            height: 18px;
+            border-radius: 999px;
+            font-size: 9px;
+            font-weight: 800;
+            line-height: 1;
+            border: 1px solid transparent;
+        }
+
+        .badge-pos-ok {
+            min-width: 28px;
+            padding: 0 5px;
+            color: #166534;
+            background: rgba(34, 197, 94, 0.16);
+            border-color: rgba(34, 197, 94, 0.45);
+        }
+
+        .badge-pos-missing {
+            min-width: 32px;
+            padding: 0 5px;
+            color: #9f1239;
+            background: rgba(225, 29, 72, 0.16);
+            border-color: rgba(225, 29, 72, 0.45);
+        }
+
+        .badge-pos-empty {
+            min-width: 42px;
+            padding: 0 6px;
+            color: #9f1239;
+            background: rgba(225, 29, 72, 0.14);
+            border-color: rgba(225, 29, 72, 0.42);
+            font-size: 9px;
+        }
+
         .revision-select {
             width: 100%;
             min-width: 0;

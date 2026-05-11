@@ -2401,7 +2401,24 @@ async function tryLoadFirstJson(candidates) {
 const ENABLE_OPTIONAL_CATALOGS = false;
 
 async function loadOptionalCatalogsInBackground() {
-    if (!ENABLE_OPTIONAL_CATALOGS) return;
+    // El índice de esquemas_pos debe cargarse siempre (aunque catálogos opcionales estén desactivados)
+    // porque la columna ESQ_POS depende de este Set para evitar falsos MISS.
+    try {
+        const posIndexResponse = await fetch(apiUrl('/api/esquemas-pos-index'));
+        if (posIndexResponse.ok) {
+            const posIndexData = await posIndexResponse.json();
+            if (posIndexData.ok && Array.isArray(posIndexData.files)) {
+                state.esquemasPosFileSet = new Set(posIndexData.files);
+            }
+        }
+    } catch (e) {
+        console.warn('[loadOptionalCatalogsInBackground] No se pudo cargar índice esquemas_pos:', e);
+    }
+
+    if (!ENABLE_OPTIONAL_CATALOGS) {
+        renderTable();
+        return;
+    }
 
     const [newData, supersededData, productExportData] = await Promise.all([
         tryLoadFirstJson(['MILU_New_v506.json', 'MILU_New_v507.json']),
