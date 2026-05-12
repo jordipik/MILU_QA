@@ -625,6 +625,23 @@ function legacyQaPipelineDisabled(res) {
 app.use(cors());
 app.use(bodyParser.json({ limit: '10mb' }));
 
+// Fase G — Capa analítica SQLite espejo (read-only). Se monta ANTES de /db
+// para que /db/analytics/* no caiga en el catch-all 405 del router de Fase F.
+try {
+    const dbAnalyticsRouter = require('./server/routers/db-analytics-router');
+    app.use('/db/analytics', dbAnalyticsRouter);
+} catch (err) {
+    console.warn('[db-analytics] router no montado:', err && err.message);
+}
+
+// Fase F — Capa de lectura SQLite espejo (read-only). No interfiere con endpoints existentes.
+try {
+    const dbReadRouter = require('./server/routers/db-read-router');
+    app.use('/db', dbReadRouter);
+} catch (err) {
+    console.warn('[db-read] router no montado:', err && err.message);
+}
+
 app.post('/recompute-qa-errors', async (req, res) => {
     const file = String(req.body?.file ?? '').trim();
     const id = String(req.body?.id ?? '').trim();

@@ -30,12 +30,24 @@
     "release:folder:dry": "node scripts/build-release-folder.js --dry-run",
     "release:folder:no-bump": "node scripts/build-release-folder.js --no-bump",
     "release:folder:no-cleanup": "node scripts/build-release-folder.js --no-cleanup",
-    "release:folder:keep10": "node scripts/build-release-folder.js --keep-last=10"
+    "release:folder:keep10": "node scripts/build-release-folder.js --keep-last=10",
+    "test:smoke": "node --test tests/smoke/http-smoke.test.js",
+    "validate:engines": "node scripts/validate_engine_contracts.js",
+    "db:import": "node scripts/db/import_engines_to_sqlite.js",
+    "db:validate": "node scripts/db/validate_sqlite_mirror.js",
+    "db:queries": "node scripts/db/sqlite_sample_queries.js",
+    "db:index": "node scripts/db/create_sqlite_indexes.js",
+    "test:db-read": "node --test tests/smoke/db-read-smoke.test.js",
+    "test:db-analytics": "node --test tests/smoke/db-analytics-smoke.test.js",
+    "test:all-smoke": "npm run test:smoke && npm run test:db-read && npm run test:db-analytics"
   },
   "dependencies": {
     "body-parser": "^2.2.2",
     "cors": "^2.8.6",
     "express": "^5.2.1",
     "pdfjs-dist": "^4.10.38"
+  },
+  "devDependencies": {
+    "better-sqlite3": "^12.10.0"
   }
 }

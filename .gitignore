@@ -10,5 +10,10 @@ fotos_articulos/
 fotos_motores/
 node_modules/
 
+# BD espejo SQLite (Fase E): regenerable desde JSON con `npm run db:import`.
+data/db/
+# Informes de validación generados (Fase D y E).
+data/output/validation/
+
 # Evitar versionar cambios de datos JSON locales.
 *.json

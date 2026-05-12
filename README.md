@@ -43,6 +43,18 @@ Toda la documentación vive en [docs/](docs/README.md). Documentos canónicos (f
 - Imágenes y esquemas: [docs/IMAGENES_ESQUEMAS_MILU.md](docs/IMAGENES_ESQUEMAS_MILU.md)
 - Plan de trabajo: [docs/PLAN_TRABAJO_MILU.md](docs/PLAN_TRABAJO_MILU.md)
 
+**Contratos técnicos (v1, fase actual)**: [docs/contracts/](docs/contracts/README.md) — modelo JSON, revisión QA, export, imágenes, endpoints + validación contra código.
+
+**Tests y validadores (Fase D)**: [docs/contracts/TESTS_Y_VALIDADORES.md](docs/contracts/TESTS_Y_VALIDADORES.md) — `npm run test:smoke` (HTTP) y `npm run validate:engines` (datos).
+
+**Base de datos espejo SQLite (Fase E)**: [docs/database/README.md](docs/database/README.md) — `npm run db:import` / `db:validate` / `db:queries`. **Espejo regenerable; no reemplaza los JSON.**
+
+**Capa de lectura HTTP `/db/*` (Fase F)**: [docs/database/DB_READ_LAYER.md](docs/database/DB_READ_LAYER.md) — endpoints read-only sobre el espejo SQLite. Smoke: `npm run test:db-read` (o `npm run test:all-smoke`).
+
+**Capa analytics + dashboards diagnóstico (Fase G)**: [docs/database/DB_ANALYTICS_LAYER.md](docs/database/DB_ANALYTICS_LAYER.md) — endpoints `/db/analytics/*` y páginas `analytics_*.html`, todo read-only y aislado de `qa_milu.html`. Smoke: `npm run test:db-analytics`.
+
+**Fase H — performance + drilldown**: índices SQLite auxiliares (`npm run db:index`), cache TTL en memoria (30 s), drilldowns por motor/PN/QA/imágenes/export, búsqueda global `/db/analytics/search`, export CSV dinámico (`/db/analytics/export-csv/:view`) y 3 páginas nuevas (`analytics_search.html`, `analytics_pn_detail.html`, `analytics_engine_detail.html`). Informe: [data/output/validation/db_analytics_phase_h_report.md](data/output/validation/db_analytics_phase_h_report.md).
+
 Subcarpetas en `docs/`:
 
 - `archived/` — superseded / históricos (con banner ARCHIVADO).

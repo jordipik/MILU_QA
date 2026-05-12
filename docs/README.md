@@ -15,6 +15,8 @@ Fuente única de verdad por tema:
 
 ## Subcarpetas
 
+- `contracts/` — **contratos técnicos v1** (modelo JSON, revisión QA, export, imágenes, endpoints) + informe de validación contra código. Ver [contracts/README.md](contracts/README.md).
+- `database/` — **base de datos espejo SQLite** (Fase E). Diseño, importador, validador, queries. Ver [database/README.md](database/README.md).
 - `archived/` — documentos superseded o duplicados, conservados por trazabilidad.
 - `auditoria/` — auditorías históricas, matrices, snapshots.
 - `proposals/` — propuestas no implementadas («PENDIENTE DE VALIDAR»).

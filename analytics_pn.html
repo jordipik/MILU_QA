@@ -1,0 +1,54 @@
+<!DOCTYPE html>
+<html lang="es">
+
+<head>
+    <meta charset="UTF-8">
+    <title>MILU · Analytics PN</title>
+    <link rel="stylesheet" href="styles/analytics.css">
+</head>
+
+<body class="analytics">
+    <nav class="analytics-nav">
+        <span class="brand">MILU · Analytics</span>
+        <a href="analytics_dashboard.html">Dashboard</a>
+        <a href="analytics_images.html">Imágenes</a>
+        <a href="analytics_qa.html">QA</a>
+        <a href="analytics_pn.html" class="active">PN</a>
+        <a href="analytics_export.html">Export</a>
+        <a href="analytics_search.html">Buscar</a>
+        <span class="right">read-only · sqlite_mirror</span>
+    </nav>
+    <main class="analytics-main">
+        <h1>Conflictos de Part Numbers <span id="status" class="analytics-status"></span></h1>
+        <p class="lead">PN con variantes de hierarchie, designación, medida o peso. Top 100 por categoría.</p>
+
+        <div id="kpis" class="kpi-grid"></div>
+
+        <h2>PN presentes en varios motores</h2>
+        <div id="multi-engine" class="analytics-block"></div>
+
+        <div class="two-col">
+            <div>
+                <h2>PN con varias <code>sust_hierarchie</code></h2>
+                <div id="multi-sust" class="analytics-block"></div>
+            </div>
+            <div>
+                <h2>PN con varias <code>designation_final</code></h2>
+                <div id="multi-designation" class="analytics-block"></div>
+            </div>
+        </div>
+        <div class="two-col">
+            <div>
+                <h2>PN con varias <code>measure_final</code></h2>
+                <div id="multi-measure" class="analytics-block"></div>
+            </div>
+            <div>
+                <h2>PN con varias <code>weight_final</code></h2>
+                <div id="multi-weight" class="analytics-block"></div>
+            </div>
+        </div>
+    </main>
+    <script type="module" src="js/analytics/analytics-pn.js"></script>
+</body>
+
+</html>
