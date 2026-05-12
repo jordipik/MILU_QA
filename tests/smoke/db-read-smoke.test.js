@@ -3,31 +3,19 @@
 
 'use strict';
 
-const { test, describe, before } = require('node:test');
+const { test, describe } = require('node:test');
 const assert = require('node:assert/strict');
 
-const BASE_URL = (process.env.MILU_BASE_URL || 'http://localhost:3000').replace(/\/+$/, '');
-const TIMEOUT_MS = Number(process.env.MILU_SMOKE_TIMEOUT_MS || 10000);
+const { BASE_URL, getTimeout } = require('../helpers/smoke-config');
+const { getJson } = require('../helpers/fetch-json');
 
-async function getJson(path) {
-    const ctrl = new AbortController();
-    const t = setTimeout(() => ctrl.abort(), TIMEOUT_MS);
-    try {
-        const res = await fetch(`${BASE_URL}${path}`, { signal: ctrl.signal });
-        const text = await res.text();
-        let body = null;
-        try { body = JSON.parse(text); } catch { /* keep null */ }
-        return { status: res.status, body, text, headers: res.headers };
-    } finally {
-        clearTimeout(t);
-    }
-}
+const TIMEOUT_MS = getTimeout(10000);
 
 describe('MILU /db read layer', () => {
     let pnSample = null;
 
     test('GET /db/status -> 200 ok source=sqlite_mirror', async () => {
-        const r = await getJson('/db/status');
+        const r = await getJson('/db/status', TIMEOUT_MS);
         assert.equal(r.status, 200, `Status inesperado: ${r.status} body=${r.text.slice(0, 200)}`);
         assert.ok(r.body, 'No JSON');
         assert.equal(r.body.ok, true);
@@ -37,7 +25,7 @@ describe('MILU /db read layer', () => {
     });
 
     test('GET /db/summary -> total_rows > 0 y unique_pn > 0', async () => {
-        const r = await getJson('/db/summary');
+        const r = await getJson('/db/summary', TIMEOUT_MS);
         assert.equal(r.status, 200);
         assert.equal(r.body.ok, true);
         assert.ok(r.body.total_rows > 0, `total_rows=${r.body.total_rows}`);
@@ -46,7 +34,7 @@ describe('MILU /db read layer', () => {
     });
 
     test('GET /db/engines -> 9 engines', async () => {
-        const r = await getJson('/db/engines');
+        const r = await getJson('/db/engines', TIMEOUT_MS);
         assert.equal(r.status, 200);
         assert.equal(r.body.ok, true);
         assert.equal(r.body.count, 9, `engines.count=${r.body.count}`);
@@ -55,7 +43,7 @@ describe('MILU /db read layer', () => {
     });
 
     test('GET /db/qa-summary -> by_estado y by_accion arrays', async () => {
-        const r = await getJson('/db/qa-summary');
+        const r = await getJson('/db/qa-summary', TIMEOUT_MS);
         assert.equal(r.status, 200);
         assert.equal(r.body.ok, true);
         assert.ok(Array.isArray(r.body.by_estado));
@@ -65,7 +53,7 @@ describe('MILU /db read layer', () => {
     });
 
     test('GET /db/images-summary -> totals con rows_with_image', async () => {
-        const r = await getJson('/db/images-summary');
+        const r = await getJson('/db/images-summary', TIMEOUT_MS);
         assert.equal(r.status, 200);
         assert.equal(r.body.ok, true);
         assert.ok(r.body.totals);
@@ -75,7 +63,7 @@ describe('MILU /db read layer', () => {
     });
 
     test('GET /db/export-candidates-summary -> ok', async () => {
-        const r = await getJson('/db/export-candidates-summary');
+        const r = await getJson('/db/export-candidates-summary', TIMEOUT_MS);
         assert.equal(r.status, 200);
         assert.equal(r.body.ok, true);
         assert.ok(Array.isArray(r.body.by_export_type));
@@ -85,7 +73,7 @@ describe('MILU /db read layer', () => {
 
     test('GET /db/search?q=... -> rows[]', async () => {
         // Buscar prefijo común numérico que casi seguro existe en MTU.
-        const r = await getJson('/db/search?q=05&limit=10');
+        const r = await getJson('/db/search?q=05&limit=10', TIMEOUT_MS);
         assert.equal(r.status, 200);
         assert.equal(r.body.ok, true);
         assert.ok(Array.isArray(r.body.rows));
@@ -98,14 +86,14 @@ describe('MILU /db read layer', () => {
     test('GET /db/pn/:sku -> detalle de un PN encontrado en /db/search', async () => {
         if (!pnSample) {
             // fallback: tomar uno cualquiera del summary del primer engine via /db/search amplio
-            const r2 = await getJson('/db/search?q=0&limit=1');
+            const r2 = await getJson('/db/search?q=0&limit=1', TIMEOUT_MS);
             if (r2.body && r2.body.rows && r2.body.rows[0]) {
                 pnSample = r2.body.rows[0].pn_final;
             }
         }
         assert.ok(pnSample, 'No se obtuvo un PN de muestra');
         const enc = encodeURIComponent(pnSample);
-        const r = await getJson(`/db/pn/${enc}`);
+        const r = await getJson(`/db/pn/${enc}`, TIMEOUT_MS);
         assert.equal(r.status, 200);
         assert.equal(r.body.ok, true);
         assert.equal(r.body.pn_final, pnSample);
@@ -114,7 +102,7 @@ describe('MILU /db read layer', () => {
     });
 
     test('GET /db/search con q corto -> 400', async () => {
-        const r = await getJson('/db/search?q=a');
+        const r = await getJson('/db/search?q=a', TIMEOUT_MS);
         assert.equal(r.status, 400);
         assert.equal(r.body.ok, false);
         assert.equal(r.body.error, 'QUERY_TOO_SHORT');

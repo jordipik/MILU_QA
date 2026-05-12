@@ -30,9 +30,11 @@ Leyenda:
 - Impacto: detección temprana de bugs (vars no usadas, shadowing).
 - Dificultad: S · Prioridad: 🟡 · Depende de: nada.
 
-### QW-5. Añadir `npm test` con un smoke test HTTP
-- Acción: usar `node --test` (nativo, sin deps) para validar `/health`, `/save-json`, `/qa_revision_sync.php`, `/apply-revision-to-engines`.
-- Impacto: línea base para refactor seguro.
+### QW-5. Consolidar `npm test` + smoke tests oficiales ✅ HECHO
+- Estado: consolidado con `npm test` apuntando a `test:all-smoke`.
+- Acción: `node --test` (nativo, sin deps) para suites HTTP runtime, `/db` read y `/db/analytics`.
+- Cobertura y guía: `docs/testing/README.md`, `docs/testing/SMOKE_TEST_MATRIX.md`, `docs/testing/QW5_CIERRE.md`.
+- Impacto: línea base estable para refactor seguro y futura CI.
 - Dificultad: S · Prioridad: 🔴 · Depende de: nada.
 
 ### QW-6. Suprimir `alert()` en flujos no críticos
@@ -172,7 +174,7 @@ Leyenda:
 | 🔴 | QW-1 Eliminar duplicados `/recompute-pdf-auto` | ✅ |
 | 🔴 | QW-2 Endpoints revisión en Express | ✅ |
 | 🔴 | QW-3 Sincronizar docs | ✅ |
-| 🔴 | QW-5 Smoke tests HTTP | Pendiente |
+| 🔴 | QW-5 Smoke tests oficiales | ✅ |
 | 🔴 | BK-1 Validación de payloads | Pendiente |
 | 🔴 | DT-1 Path configurable en pipeline | Pendiente |
 | 🔴 | UX-1 Vista compacta por defecto | Pendiente |

@@ -40,6 +40,7 @@ Fuente única de verdad por tema:
 - AR-1 carga incremental: [12_ar1_carga_incremental.md](12_ar1_carga_incremental.md)
 - WordPress export (oficial): [14_wordpress_export_simplified.md](14_wordpress_export_simplified.md)
 - QA Imágenes: [15_qa_imagenes.md](15_qa_imagenes.md)
+- Testing smoke (oficial): [testing/README.md](testing/README.md), [testing/SMOKE_TEST_MATRIX.md](testing/SMOKE_TEST_MATRIX.md), [testing/QW5_CIERRE.md](testing/QW5_CIERRE.md)
 - Auditoría imágenes/esquemas: [AUDITORIA_IMAGENES_ESQUEMAS_MILU.md](AUDITORIA_IMAGENES_ESQUEMAS_MILU.md)
 - Backend: [BACKEND.md](BACKEND.md) · Frontend: [FRONTEND.md](FRONTEND.md) · Resumen: [MILU_FRONTEND_BACKEND.md](MILU_FRONTEND_BACKEND.md)
 - Lógica estados/acciones: [MILU_LOGICA_ESTADOS_ACCIONES.md](MILU_LOGICA_ESTADOS_ACCIONES.md)

@@ -206,3 +206,40 @@ Cuando se cierre cada una, añadir aquí un bloque "Commit `<sha>` — `<resumen
 - Enlace a PN Review añadido desde:
    - `qa_milu.html`
    - `exportacion.html`
+
+---
+
+## Cambio actual - Cierre formal QW-5 (smoke tests oficiales)
+
+### Objetivo aplicado
+- Consolidar un entrypoint oficial de tests smoke con documentacion de cobertura y criterios de uso.
+
+### Cambios principales
+- `package.json`
+   - Se añade `npm test` apuntando a `npm run test:all-smoke`.
+- Estructura de tests
+   - Se mantiene `tests/smoke/` con suites:
+      - `http-smoke.test.js`
+      - `db-read-smoke.test.js`
+      - `db-analytics-smoke.test.js`
+   - Se crea `tests/helpers/` para reducir duplicacion minima:
+      - `smoke-config.js`
+      - `fetch-json.js`
+      - `assert-json-response.js`
+- Documentacion oficial
+   - `docs/testing/README.md`
+   - `docs/testing/SMOKE_TEST_MATRIX.md`
+   - `docs/testing/QW5_CIERRE.md`
+   - Actualizacion de `docs/10_plan_remediacion.md` y `docs/README.md`.
+
+### Verificacion
+- `npm test` -> OK
+- `npm run test:all-smoke` -> OK
+- Resultado: 41/41 tests en verde (11 runtime + 10 db-read + 20 analytics).
+
+### Alcance y restricciones cumplidas
+- Sin cambios de runtime.
+- Sin cambios en `engine_*.json`.
+- Sin cambios en logica QA.
+- Sin cambios en export WordPress.
+- Sin endpoints nuevos.

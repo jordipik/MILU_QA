@@ -6,33 +6,17 @@
 const { test, describe } = require('node:test');
 const assert = require('node:assert/strict');
 
-const BASE_URL = (process.env.MILU_BASE_URL || 'http://localhost:3000').replace(/\/+$/, '');
-const TIMEOUT_MS = Number(process.env.MILU_SMOKE_TIMEOUT_MS || 15000);
+const { BASE_URL, getTimeout } = require('../helpers/smoke-config');
+const { getJson } = require('../helpers/fetch-json');
+const { assertOkEnvelope } = require('../helpers/assert-json-response');
 
-async function getJson(path) {
-    const ctrl = new AbortController();
-    const t = setTimeout(() => ctrl.abort(), TIMEOUT_MS);
-    try {
-        const res = await fetch(`${BASE_URL}${path}`, { signal: ctrl.signal });
-        const text = await res.text();
-        let body = null;
-        try { body = JSON.parse(text); } catch { /* keep null */ }
-        return { status: res.status, body, text };
-    } finally { clearTimeout(t); }
-}
-
-function assertEnvelope(r, path) {
-    assert.equal(r.status, 200, `${path} -> ${r.status} body=${r.text.slice(0, 200)}`);
-    assert.ok(r.body, `${path} sin JSON`);
-    assert.equal(r.body.ok, true, `${path} ok=${r.body.ok}`);
-    assert.equal(r.body.source, 'sqlite_mirror');
-}
+const TIMEOUT_MS = getTimeout(15000);
 
 describe('MILU /db/analytics smoke', () => {
 
     test('GET /db/analytics/overview -> KPIs coherentes', async () => {
         const r = await getJson('/db/analytics/overview');
-        assertEnvelope(r, '/db/analytics/overview');
+        assertOkEnvelope(r, '/db/analytics/overview', 'sqlite_mirror');
         const b = r.body;
         assert.ok(b.total_rows > 0, 'total_rows>0');
         assert.ok(b.unique_pn > 0, 'unique_pn>0');
@@ -52,7 +36,7 @@ describe('MILU /db/analytics smoke', () => {
 
     test('GET /db/analytics/engines -> array engines', async () => {
         const r = await getJson('/db/analytics/engines');
-        assertEnvelope(r, '/db/analytics/engines');
+        assertOkEnvelope(r, '/db/analytics/engines', 'sqlite_mirror');
         assert.ok(Array.isArray(r.body.engines));
         assert.ok(r.body.count > 0);
         assert.equal(r.body.engines.length, r.body.count);
@@ -65,7 +49,7 @@ describe('MILU /db/analytics smoke', () => {
 
     test('GET /db/analytics/images -> totales y rankings', async () => {
         const r = await getJson('/db/analytics/images');
-        assertEnvelope(r, '/db/analytics/images');
+        assertOkEnvelope(r, '/db/analytics/images', 'sqlite_mirror');
         const b = r.body;
         for (const k of ['total_image_refs', 'placeholders', 'real_images',
             'rows_with_ruta_foto', 'rows_with_ruta_esquemas_pos', 'rows_without_any_image']) {
@@ -80,7 +64,7 @@ describe('MILU /db/analytics smoke', () => {
 
     test('GET /db/analytics/qa -> distribuciones y ambiguos', async () => {
         const r = await getJson('/db/analytics/qa');
-        assertEnvelope(r, '/db/analytics/qa');
+        assertOkEnvelope(r, '/db/analytics/qa', 'sqlite_mirror');
         const b = r.body;
         assert.ok(Array.isArray(b.by_estado));
         assert.ok(Array.isArray(b.by_accion));
@@ -100,7 +84,7 @@ describe('MILU /db/analytics smoke', () => {
 
     test('GET /db/analytics/pn-conflicts -> summary + listas ≤100', async () => {
         const r = await getJson('/db/analytics/pn-conflicts');
-        assertEnvelope(r, '/db/analytics/pn-conflicts');
+        assertOkEnvelope(r, '/db/analytics/pn-conflicts', 'sqlite_mirror');
         const b = r.body;
         assert.ok(b.summary && typeof b.summary === 'object');
         for (const k of ['multi_engine', 'multi_sust', 'multi_designation', 'multi_measure', 'multi_weight']) {
@@ -115,7 +99,7 @@ describe('MILU /db/analytics smoke', () => {
 
     test('GET /db/analytics/export -> contadores y rankings', async () => {
         const r = await getJson('/db/analytics/export');
-        assertEnvelope(r, '/db/analytics/export');
+        assertOkEnvelope(r, '/db/analytics/export', 'sqlite_mirror');
         const b = r.body;
         for (const k of ['import_candidates', 'discard_candidates', 'pending_review',
             'new_count', 'superseded_count', 'mixed_count']) {
@@ -147,9 +131,9 @@ describe('MILU /db/analytics smoke', () => {
 
     test('Cache TTL — 2ª llamada cached=true', async () => {
         const r1 = await getJson('/db/analytics/overview');
-        assertEnvelope(r1, '/db/analytics/overview#1');
+        assertOkEnvelope(r1, '/db/analytics/overview#1', 'sqlite_mirror');
         const r2 = await getJson('/db/analytics/overview');
-        assertEnvelope(r2, '/db/analytics/overview#2');
+        assertOkEnvelope(r2, '/db/analytics/overview#2', 'sqlite_mirror');
         assert.equal(r2.body.cached, true, `2ª llamada debe ser cached=true. body.cached=${r2.body.cached}`);
         assert.equal(typeof r2.body.cache_age_ms, 'number');
         assert.equal(typeof r2.body.cache_ttl_ms, 'number');
