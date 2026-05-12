@@ -105,12 +105,19 @@ Para persistencia: servidor levantado â†’ respuesta HTTP â†’ payload del fronten
 - **R3**: Algunos endpoints PN-review dependen de un Ã­ndice en memoria cacheado al arranque. Si los `engine_*.json` cambian fuera del servidor, el cache queda obsoleto.
 - **R4**: `/audit-log` DELETE no requiere confirmaciÃ³n.
 
+## 9.1. Fase I - Payload validation + write safety
+
+- La fase I introduce validacion explicita de payloads de escritura sin cambiar el runtime ni migrar persistencia.
+- `/save-json` queda restringido por whitelist de campos y normalizacion legacy controlada.
+- Los endpoints PN Review siguen aceptando compatibilidad historica (`descartar`, `measurement_final`) mientras se bloquean campos peligrosos.
+- Ver tambien: [../security/PAYLOAD_VALIDATION.md](../security/PAYLOAD_VALIDATION.md) y [../security/WRITE_ENDPOINTS_AUDIT.md](../security/WRITE_ENDPOINTS_AUDIT.md).
+
 ## 10. Capa de lectura /db/* (Fase F)
 
 Read-only sobre el espejo SQLite. No toca engine_*.json. Detalle completo: [../database/DB_READ_LAYER.md](../database/DB_READ_LAYER.md).
 
 - GET /db/status, /db/summary, /db/engines, /db/qa-summary, /db/images-summary, /db/export-candidates-summary, /db/search, /db/pn/:sku.
-- Cualquier método != GET o ruta no listada bajo /db ? 405 METHOD_NOT_ALLOWED.
+- Cualquier mï¿½todo != GET o ruta no listada bajo /db ? 405 METHOD_NOT_ALLOWED.
 - Errores: DB_NOT_FOUND / DRIVER_NOT_AVAILABLE ? 503; INVALID_SKU / QUERY_TOO_SHORT ? 400; resto ? 500.
 - Smoke: 
 pm run test:db-read.
@@ -129,7 +136,7 @@ pm run test:all-smoke ejecuta los 29 tests del proyecto).
 
 
 
-## 12. Fase H — Performance + Drilldown analytics
+## 12. Fase H ï¿½ Performance + Drilldown analytics
 
 Extiende la Fase G manteniendo el contrato existente. Detalle:
 [../database/DB_ANALYTICS_LAYER.md](../database/DB_ANALYTICS_LAYER.md) e informe
@@ -137,8 +144,8 @@ Extiende la Fase G manteniendo el contrato existente. Detalle:
 
 - Nuevos GET: `/db/analytics/engine/:engine`, `/pn/:sku`, `/qa/pending`, `/images/missing`, `/images/placeholders`, `/export/pending`, `/search`, `/cache`, `/export-csv/:view`.
 - Cache TTL 30 s (configurable con `MILU_ANALYTICS_CACHE_TTL_MS`) sobre los 6 agregados de Fase G. Respuesta cacheada incluye `cached`, `generated_at`, `cache_age_ms`, `cache_ttl_ms`. Drilldowns y search no se cachean.
-- Paginación: `limit` default 100, máximo 500.
+- Paginaciï¿½n: `limit` default 100, mï¿½ximo 500.
 - Errores: `INVALID_PARAM` ? 400; `UNKNOWN_VIEW` ? 404; `DB_NOT_FOUND`/`DRIVER_NOT_AVAILABLE` ? 503; `METHOD_NOT_ALLOWED` ? 405.
 - Smoke: `npm run test:db-analytics` ejecuta 20 tests; `npm run test:all-smoke` cubre los 41 del proyecto.
-- Scripts nuevos: `npm run db:index` recrea los índices auxiliares en `data/db/milu_mirror.sqlite`.
-- UI: páginas nuevas independientes (`analytics_search.html`, `analytics_pn_detail.html`, `analytics_engine_detail.html`). NO modifican `qa_milu.html`.
+- Scripts nuevos: `npm run db:index` recrea los ï¿½ndices auxiliares en `data/db/milu_mirror.sqlite`.
+- UI: pï¿½ginas nuevas independientes (`analytics_search.html`, `analytics_pn_detail.html`, `analytics_engine_detail.html`). NO modifican `qa_milu.html`.

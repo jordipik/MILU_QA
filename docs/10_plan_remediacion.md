@@ -182,6 +182,16 @@ Leyenda:
 | 🟡 | QW-4 Lint, QW-6 Toasts, BK-2/3, DT-2/3/4/5/6, UX-2/3/4, AR-2/3/4 | Pendiente |
 | 🟢 | BK-4/5, UX-5/6, AR-5 | Pendiente |
 
+## Estado fase I - Payload Validation + Write Safety
+
+- Estado: en curso (I.1-I.10 implementado en rama local, pendiente validacion funcional manual UI completa).
+- Entregables base:
+	- `server/validation/*`
+	- `tests/security/write-validation.test.js`
+	- `docs/security/PAYLOAD_VALIDATION.md`
+	- `docs/security/WRITE_ENDPOINTS_AUDIT.md`
+	- `data/output/validation/payload_validation_report.md`
+
 ---
 
 ## Criterios de aceptación globales

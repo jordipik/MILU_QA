@@ -10,6 +10,35 @@ const { recomputeEngineErrors } = require('./recompute_engine_errors');
 const { runComparison } = require('./scripts/qa_pdf_compare');
 const { applyRevisionPayload } = require('./apply_revision_to_engines');
 const { buildQaSummary: buildQaSummaryFromExport, decideByQa } = require('./scripts/export_wordpress_milu');
+const {
+    sendValidationError,
+    validationError,
+    isValidationError
+} = require('./server/validation/payload-errors');
+const {
+    assertNonEmptyObject,
+    assertPayloadSize,
+    assertPlainObject,
+    assertString,
+    assertBooleanLike
+} = require('./server/validation/validators');
+const {
+    isAllowedSaveJsonField,
+    canonicalFieldName,
+    normalizeEditableFieldValue,
+} = require('./server/validation/allowed-fields');
+const {
+    validateSaveJsonPayload,
+    validateEngineFilePayload,
+    validateRevisionApplyPayload,
+    validateAuditLogPayload,
+    validatePnReviewApplyDecisionPayload,
+    validatePnReviewApplyValuesPayload,
+    validateSiblingBulkPayload,
+    validateWriteTargetInvariants,
+    normalizeRevisionEstado,
+    normalizeRevisionAccion,
+} = require('./server/validation/qa-validation');
 
 const app = express();
 const PORT = 3000;
@@ -643,23 +672,28 @@ try {
 }
 
 app.post('/recompute-qa-errors', async (req, res) => {
-    const file = String(req.body?.file ?? '').trim();
-    const id = String(req.body?.id ?? '').trim();
-    const dryRun = Boolean(req.body?.dryRun);
-    const updateRevision = req.body?.updateRevision === true;
-    const forceRevision = req.body?.forceRevision === true;
-    const backup = req.body?.backup !== false;
+    let file;
+    let id;
+    let dryRun;
+    let updateRevision;
+    let forceRevision;
+    let backup;
 
-    if (!file) {
-        return res.status(400).json({ ok: false, error: 'Falta parametro requerido: file' });
-    }
-
-    if (!ENGINE_JSON_FILES.includes(file)) {
-        return res.status(400).json({
-            ok: false,
-            error: 'Archivo no permitido',
-            allowedFiles: ENGINE_JSON_FILES
-        });
+    try {
+        const validated = validateEngineFilePayload(req.body, { maxBytes: 12288 });
+        file = validated.file;
+        if (!ENGINE_JSON_FILES.includes(file)) {
+            throw validationError({ code: 'FILE_NOT_ALLOWED', field: 'file', message: 'Archivo no permitido' });
+        }
+        id = assertString(req.body?.id ?? '', { field: 'id', allowEmpty: true, maxLength: 128 });
+        dryRun = assertBooleanLike(req.body?.dryRun ?? false, 'dryRun');
+        updateRevision = assertBooleanLike(req.body?.updateRevision ?? false, 'updateRevision');
+        forceRevision = assertBooleanLike(req.body?.forceRevision ?? false, 'forceRevision');
+        backup = req.body?.backup === false ? false : true;
+    } catch (error) {
+        return isValidationError(error)
+            ? sendValidationError(res, error, { endpoint: '/recompute-qa-errors' })
+            : res.status(400).json({ ok: false, error: String(error?.message || error) });
     }
 
     try {
@@ -681,21 +715,24 @@ app.post('/recompute-qa-errors', async (req, res) => {
 });
 
 app.post('/recompute-pdf-auto', async (req, res) => {
-    const file = String(req.body?.file ?? '').trim();
-    const id = String(req.body?.id ?? '').trim();
-    const dryRun = Boolean(req.body?.dryRun);
-    const backup = req.body?.backup !== false;
+    let file;
+    let id;
+    let dryRun;
+    let backup;
 
-    if (!file) {
-        return res.status(400).json({ ok: false, error: 'Falta parametro requerido: file' });
-    }
-
-    if (!ENGINE_JSON_FILES.includes(file)) {
-        return res.status(400).json({
-            ok: false,
-            error: 'Archivo no permitido',
-            allowedFiles: ENGINE_JSON_FILES
-        });
+    try {
+        const validated = validateEngineFilePayload(req.body, { maxBytes: 12288 });
+        file = validated.file;
+        if (!ENGINE_JSON_FILES.includes(file)) {
+            throw validationError({ code: 'FILE_NOT_ALLOWED', field: 'file', message: 'Archivo no permitido' });
+        }
+        id = assertString(req.body?.id ?? '', { field: 'id', allowEmpty: true, maxLength: 128 });
+        dryRun = assertBooleanLike(req.body?.dryRun ?? false, 'dryRun');
+        backup = req.body?.backup === false ? false : true;
+    } catch (error) {
+        return isValidationError(error)
+            ? sendValidationError(res, error, { endpoint: '/recompute-pdf-auto' })
+            : res.status(400).json({ ok: false, error: String(error?.message || error) });
     }
 
     try {
@@ -740,26 +777,26 @@ app.get('/qa_revision_sync.php', async (_req, res) => {
 
 app.post('/qa_revision_sync.php', async (req, res) => {
     const payload = req.body;
-    if (!payload || typeof payload !== 'object') {
-        return res.status(400).json({ ok: false, error: 'JSON no valido.' });
-    }
 
     try {
+        assertNonEmptyObject(payload, 'payload');
+        assertPayloadSize(payload, 32768, 'payload');
         const normalized = normalizeRevisionSyncPayload(payload);
         await writeRevisionSyncPayload(normalized);
         return res.json({ ok: true, saved_rows: Number(normalized?.meta?.rows) || 0 });
     } catch (error) {
+        if (isValidationError(error)) {
+            return sendValidationError(res, error, { endpoint: '/qa_revision_sync.php' });
+        }
         return res.status(400).json({ ok: false, error: String(error?.message || error) });
     }
 });
 
 app.post('/apply-revision-to-engines', async (req, res) => {
     const payload = req.body;
-    if (!payload || typeof payload !== 'object') {
-        return res.status(400).json({ ok: false, error: 'JSON no valido.' });
-    }
 
     try {
+        validateRevisionApplyPayload(payload);
         const result = await applyRevisionPayload(payload, {
             repoRoot: __dirname,
             sourceName: 'api:/apply-revision-to-engines'
@@ -767,6 +804,9 @@ app.post('/apply-revision-to-engines', async (req, res) => {
         invalidatePnReviewQaCache();
         return res.json({ ok: true, result });
     } catch (error) {
+        if (isValidationError(error)) {
+            return sendValidationError(res, error, { endpoint: '/apply-revision-to-engines' });
+        }
         return res.status(500).json({ ok: false, error: String(error?.message || error) });
     }
 });
@@ -1053,9 +1093,13 @@ app.get('/pn-review/:sku/sources', async (req, res) => {
 });
 
 app.post('/pn-review/apply-siblings-bulk', async (req, res) => {
-    const itemsRaw = Array.isArray(req.body?.items) ? req.body.items : [];
-    if (!itemsRaw.length) {
-        return res.status(400).json({ ok: false, error: 'items requerido (array no vacío).' });
+    let itemsRaw;
+    try {
+        itemsRaw = validateSiblingBulkPayload(req.body);
+    } catch (error) {
+        return isValidationError(error)
+            ? sendValidationError(res, error, { endpoint: '/pn-review/apply-siblings-bulk' })
+            : res.status(400).json({ ok: false, error: String(error?.message || error) });
     }
 
     try {
@@ -1208,9 +1252,9 @@ app.post('/pn-review/apply-siblings-bulk', async (req, res) => {
 app.post('/pn-review/:sku/apply-decision', async (req, res) => {
     const sku = normalizeText(req.params?.sku);
     const skuNormalized = pnKey(sku);
-    const action = lowerKey(req.body?.action);
-    const estadoRaw = lowerKey(req.body?.estado);
-    const accionRaw = lowerKey(req.body?.accion);
+    let action;
+    let estadoRaw;
+    let accionRaw;
 
     const decisionMap = {
         validar: { estado: 'ok', accion: 'importar' },
@@ -1226,6 +1270,14 @@ app.post('/pn-review/:sku/apply-decision', async (req, res) => {
 
     if (!sku || !skuNormalized) {
         return res.status(400).json({ ok: false, error: 'SKU requerido.' });
+    }
+
+    try {
+        ({ action, estado: estadoRaw, accion: accionRaw } = validatePnReviewApplyDecisionPayload(req.body));
+    } catch (error) {
+        return isValidationError(error)
+            ? sendValidationError(res, error, { endpoint: '/pn-review/:sku/apply-decision' })
+            : res.status(400).json({ ok: false, error: String(error?.message || error) });
     }
 
     let decisionApplied = '';
@@ -1317,10 +1369,19 @@ app.post('/pn-review/:sku/apply-decision', async (req, res) => {
 app.post('/pn-review/:sku/apply-values', async (req, res) => {
     const sku = normalizeText(req.params?.sku);
     const skuNormalized = pnKey(sku);
-    const fields = buildPnPropagationFields(req.body?.fields || req.body || {});
+    let fields;
 
     if (!sku || !skuNormalized) {
         return res.status(400).json({ ok: false, error: 'SKU requerido.' });
+    }
+
+    try {
+        const fieldsInput = validatePnReviewApplyValuesPayload(req.body || {});
+        fields = buildPnPropagationFields(fieldsInput);
+    } catch (error) {
+        return isValidationError(error)
+            ? sendValidationError(res, error, { endpoint: '/pn-review/:sku/apply-values' })
+            : res.status(400).json({ ok: false, error: String(error?.message || error) });
     }
 
     const hasAnyField = Object.values(fields).some((value) => normalizeText(value));
@@ -1392,14 +1453,14 @@ app.post('/pn-review/:sku/apply-values', async (req, res) => {
 
 app.post('/pn-review/by-id/:id/apply-decision', async (req, res) => {
     const rowId = normalizeText(req.params?.id);
-    const action = lowerKey(req.body?.action);
+    let action;
     const engineModel = normalizeText(req.body?.engine_model);
     const sourceFile = normalizeText(req.body?.source_file);
     const sourcePage = normalizeText(req.body?.source_page);
     const sourcePos = normalizeText(req.body?.pos);
     const sourcePartNo = normalizeText(req.body?.part_no);
-    const estadoRaw = lowerKey(req.body?.estado);
-    const accionRaw = lowerKey(req.body?.accion);
+    let estadoRaw;
+    let accionRaw;
 
     const decisionMap = {
         validar: { estado: 'ok', accion: 'importar' },
@@ -1415,6 +1476,14 @@ app.post('/pn-review/by-id/:id/apply-decision', async (req, res) => {
 
     if (!rowId) {
         return res.status(400).json({ ok: false, error: 'ID requerido.' });
+    }
+
+    try {
+        ({ action, estado: estadoRaw, accion: accionRaw } = validatePnReviewApplyDecisionPayload(req.body));
+    } catch (error) {
+        return isValidationError(error)
+            ? sendValidationError(res, error, { endpoint: '/pn-review/by-id/:id/apply-decision' })
+            : res.status(400).json({ ok: false, error: String(error?.message || error) });
     }
 
     let decisionApplied = '';
@@ -1883,17 +1952,18 @@ app.get('/audit-log', async (req, res) => {
 
 app.post('/audit-log', async (req, res) => {
     const payload = req.body;
-    if (!payload || typeof payload !== 'object') {
-        return res.status(400).json({ ok: false, error: 'Payload de auditoria invalido' });
-    }
 
     try {
+        validateAuditLogPayload(payload);
         const entries = await readAuditLogFile();
         const entry = sanitizeAuditEntry(payload);
         entries.push(entry);
         await writeAuditLogFile(entries);
         return res.json({ ok: true, entry });
     } catch (error) {
+        if (isValidationError(error)) {
+            return sendValidationError(res, error, { endpoint: '/audit-log' });
+        }
         return res.status(500).json({ ok: false, error: `No se pudo guardar auditoria: ${error.message}` });
     }
 });
@@ -2040,18 +2110,21 @@ async function withSaveJsonFileLock(file, task) {
 }
 
 async function handleSaveJson(req, res) {
-    const { file, id, col, value } = req.body;
-    if (!file || !id || !col) {
-        return res.status(400).json({ error: 'Faltan parámetros requeridos' });
-    }
-    // Solo permitir archivos válidos
-    const allowedFiles = ENGINE_JSON_FILES;
-    if (!allowedFiles.includes(file)) {
-        return res.status(400).json({ error: 'Archivo no permitido' });
-    }
-    const filePath = path.join(__dirname, file);
+    let payload;
     try {
-        await withSaveJsonFileLock(file, async () => {
+        payload = validateSaveJsonPayload(req.body);
+        if (!ENGINE_JSON_FILES.includes(payload.file)) {
+            throw validationError({ code: 'FILE_NOT_ALLOWED', field: 'file', message: 'Archivo no permitido' });
+        }
+    } catch (error) {
+        return isValidationError(error)
+            ? sendValidationError(res, error, { endpoint: '/save-json' })
+            : res.status(400).json({ ok: false, error: String(error?.message || error) });
+    }
+
+    const filePath = path.join(__dirname, payload.file);
+    try {
+        await withSaveJsonFileLock(payload.file, async () => {
             const data = await fs.promises.readFile(filePath, 'utf8');
             let json;
             try {
@@ -2061,13 +2134,13 @@ async function handleSaveJson(req, res) {
                 parseError.status = 500;
                 throw parseError;
             }
-            const row = json.find(r => String(r.ID) === String(id));
+            const row = json.find(r => String(r.ID) === String(payload.id));
             if (!row) {
                 const notFoundError = new Error('Registro no encontrado');
                 notFoundError.status = 404;
                 throw notFoundError;
             }
-            row[col] = value;
+            row[payload.field] = payload.value;
             stripLegacyQaFields(json);
             await fs.promises.writeFile(filePath, `${JSON.stringify(json, null, 2)}\n`, 'utf8');
             invalidatePnReviewQaCache();

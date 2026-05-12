@@ -243,3 +243,42 @@ Cuando se cierre cada una, añadir aquí un bloque "Commit `<sha>` — `<resumen
 - Sin cambios en logica QA.
 - Sin cambios en export WordPress.
 - Sin endpoints nuevos.
+
+---
+
+## Cambio actual - Fase I payload validation + write safety
+
+### Objetivo aplicado
+- Endurecer validaciones de payload en endpoints de escritura manteniendo compatibilidad legacy y sin cambiar flujo operativo.
+
+### Cambios principales
+- Nueva capa reusable: `server/validation/`
+   - `validators.js`
+   - `qa-validation.js`
+   - `payload-errors.js`
+   - `allowed-fields.js`
+- Endpoints con validacion explicita:
+   - `/save-json` y `/save-json.php`
+   - `/apply-revision-to-engines`
+   - `/pn-review/:sku/apply-decision`
+   - `/pn-review/:sku/apply-values`
+   - `/pn-review/apply-siblings-bulk`
+   - `/pn-review/by-id/:id/apply-decision`
+   - `/recompute-qa-errors`
+   - `/recompute-pdf-auto`
+   - `/qa_revision_sync.php`
+   - `/audit-log`
+- Error shape de validacion estandarizado:
+   - `{ ok:false, error:'VALIDATION_ERROR', code, field, message }`
+- Compatibilidad legacy conservada:
+   - `descartar -> eliminar`
+   - `measurement_final -> measure_final`
+
+### Verificacion
+- `npm run test:security` -> 9/9 OK
+- `npm test` -> 41/41 smoke OK
+
+### Entregables documentales
+- `docs/security/WRITE_ENDPOINTS_AUDIT.md`
+- `docs/security/PAYLOAD_VALIDATION.md`
+- `data/output/validation/payload_validation_report.md`

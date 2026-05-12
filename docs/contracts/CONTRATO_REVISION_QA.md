@@ -129,3 +129,9 @@ Cualquier otro endpoint que necesite modificar revisión debe documentarse en es
 - **R1**: La UI muestra "descartar"; cualquier comparación literal en código debe usar `accion === 'eliminar'`, no `'descartar'`.
 - **R2**: Migración pendiente de filas legacy con `accion === 'descartar'`. Se normalizan en lectura pero no se reescriben masivamente.
 - **R3**: Algunas reglas de export tratan `estado` con strings antiguos (`"en revision"`, `"en revisión"`). Mantener compatibilidad hasta limpiar.
+
+## 11. Fase I - compatibilidad controlada en escritura
+
+- Las escrituras seguras de la fase I deben aceptar `descartar` en entrada y persistir `eliminar`.
+- `measurement_final` puede seguir entrando como alias de `measure_final` en payloads legacy.
+- `qa_revision_estado` queda restringido a `ok|pendiente` en las nuevas validaciones de escritura.

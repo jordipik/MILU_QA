@@ -33,6 +33,7 @@
     "release:folder:keep10": "node scripts/build-release-folder.js --keep-last=10",
     "test": "npm run test:all-smoke",
     "test:smoke": "node --test tests/smoke/http-smoke.test.js",
+    "test:security": "node --test tests/security/write-validation.test.js",
     "validate:engines": "node scripts/validate_engine_contracts.js",
     "db:import": "node scripts/db/import_engines_to_sqlite.js",
     "db:validate": "node scripts/db/validate_sqlite_mirror.js",

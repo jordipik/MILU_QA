@@ -6,6 +6,7 @@ Esta capa protege MILU de regresiones a través de dos artefactos independientes
 
 1. **Smoke tests HTTP** (`npm run test:smoke`) — verifican que los endpoints críticos del backend Express responden con el contrato esperado.
 2. **Validador de contratos de datos** (`npm run validate:engines`) — recorre los 9 `engine_*.json` y emite un informe sobre cumplimiento de los contratos formales.
+3. **Tests de seguridad de escritura** (`tests/security/write-validation.test.js`) — validan que los payloads peligrosos se bloquean antes de escribir.
 
 Ninguno modifica datos ni código. Solo leen y generan informes.
 
@@ -158,6 +159,7 @@ No requiere servidor levantado. Solo lee los 9 `engine_*.json` del root del repo
 - Validador cruzado contra `qa_revision_server_data.json`.
 - Validador de imágenes físicas en `fotos_articulos/` y `esquemas/`.
 - Integración CI (GitHub Actions) ejecutando `validate:engines` en cada PR.
+- Fase I: ampliar cobertura de `tests/security/write-validation.test.js` con matrices de compatibilidad legacy.
 
 ---
 
