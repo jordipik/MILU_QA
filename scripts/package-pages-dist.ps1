@@ -21,7 +21,6 @@ function Invoke-CheckedCommand {
 
 $repoRoot = (Resolve-Path (Join-Path $PSScriptRoot "..")).Path
 $distDir = Join-Path $repoRoot "dist\milu_publish"
-$zipPath = Join-Path $repoRoot $Output
 
 Push-Location $repoRoot
 try {
@@ -34,30 +33,9 @@ try {
         throw "Missing dist folder: $distDir"
     }
 
-    if (Test-Path -Path $zipPath) {
-        Remove-Item -Path $zipPath -Force
-    }
-
-    $zipDir = Split-Path -Parent $zipPath
-    if (-not [string]::IsNullOrWhiteSpace($zipDir)) {
-        New-Item -ItemType Directory -Path $zipDir -Force | Out-Null
-    }
-
-    $tarArgs = @("-a", "-c", "-f", $zipPath)
-    if ($NoPdf) {
-        Write-Host "Packing ZIP without pdf/ folder..."
-        $tarArgs += @("--exclude=./pdf", "--exclude=./pdf/*")
-    }
-    else {
-        Write-Host "Packing ZIP with full dist content..."
-    }
-    $tarArgs += @("-C", $distDir, ".")
-
-    Invoke-CheckedCommand -Command "tar.exe" -Arguments $tarArgs
-
-    $zipInfo = Get-Item -Path $zipPath
-    Write-Host "ZIP ready: $($zipInfo.FullName)"
-    Write-Host "Size (bytes): $($zipInfo.Length)"
+    Write-Host "ZIP packaging disabled by project preference."
+    Write-Host "Publish folder ready: $distDir"
+    Write-Host "No ZIP file was generated (Output argument ignored: $Output)."
 }
 finally {
     Pop-Location

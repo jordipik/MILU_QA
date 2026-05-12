@@ -4,6 +4,7 @@ const { ENGINE_JSON_FILES } = require('../engine_files');
 
 const rootDir = path.resolve(__dirname, '..');
 const outDir = path.join(rootDir, 'dist', 'milu_publish');
+const distRootDir = path.join(rootDir, 'dist');
 
 const args = new Set(process.argv.slice(2));
 const isDryRun = args.has('--dry-run');
@@ -126,6 +127,20 @@ function filesAreEqual(src, dest) {
 function ensureOutputFolder() {
     if (isDryRun) return;
     fs.mkdirSync(outDir, { recursive: true });
+}
+
+function syncDistRootVersionFile() {
+    const src = ensureExists('version.json');
+    const dest = path.join(distRootDir, 'version.json');
+
+    if (isDryRun) {
+        console.log('[dry-run] copy dist/version.json');
+        return;
+    }
+
+    fs.mkdirSync(distRootDir, { recursive: true });
+    fs.copyFileSync(src, dest);
+    console.log('copied dist/version.json');
 }
 
 function copyManagedFiles(managedFiles) {
@@ -272,6 +287,7 @@ function main() {
     const { copied, skipped, skippedExcluded } = copyManagedFiles(managedFiles);
     const { pruned } = pruneOutputFolder(managedFiles);
     const removedExcludedDirs = removeExcludedDirectoriesFromOutput();
+    syncDistRootVersionFile();
 
     console.log('Done.');
     console.log(`Engine files included: ${engineFiles.length}`);
