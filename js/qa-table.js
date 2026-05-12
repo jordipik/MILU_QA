@@ -20,6 +20,189 @@ const qaErrorMetaCache = {
     entries: new WeakMap()
 };
 
+const VIRTUAL_MIN_ROWS = 120;
+const VIRTUAL_OVERSCAN_ROWS = 10;
+
+const virtualTableState = {
+    main: {
+        active: false,
+        rows: [],
+        wrapId: 'mainTableWrap',
+        tbodyId: 'tbody',
+        columnCount: 53,
+        rowHeight: 34,
+        renderRowFn: null,
+        frameRequested: false
+    },
+    errors: {
+        active: false,
+        rows: [],
+        wrapId: 'errorViewWrap',
+        tbodyId: 'errorViewTbody',
+        columnCount: 15,
+        rowHeight: 34,
+        renderRowFn: null,
+        frameRequested: false
+    }
+};
+
+let virtualScrollListenersBound = false;
+
+function isVirtualDebugEnabled() {
+    try {
+        const params = new URLSearchParams(window.location.search || '');
+        if (params.get('virtualDebug') === '1') return true;
+    } catch (_) {
+        // ignore
+    }
+    try {
+        return window.localStorage?.getItem('miluVirtualDebug') === '1';
+    } catch (_) {
+        return false;
+    }
+}
+
+function getVirtualModeKey(errorsMode) {
+    return errorsMode ? 'errors' : 'main';
+}
+
+function getVirtualState(errorsMode) {
+    return virtualTableState[getVirtualModeKey(errorsMode)];
+}
+
+function isVirtualizationEnabledForRows(rows) {
+    return !state.paginationEnabled && Array.isArray(rows) && rows.length > VIRTUAL_MIN_ROWS;
+}
+
+function buildVirtualSpacerRow(heightPx, colCount) {
+    const safeHeight = Math.max(0, Math.round(Number(heightPx) || 0));
+    if (safeHeight <= 0) return '';
+    return `<tr class="virtual-spacer" aria-hidden="true"><td colspan="${colCount}" style="padding:0;border:0;height:${safeHeight}px;min-height:${safeHeight}px"></td></tr>`;
+}
+
+function updateVirtualDebugStats({ totalRows, renderedRows, startIndex, endIndex, elapsedMs }) {
+    if (!isVirtualDebugEnabled()) return;
+    const stats = document.getElementById('stats');
+    if (!(stats instanceof HTMLElement)) return;
+    const debugText = `VIRT ${renderedRows}/${totalRows} filas · idx ${startIndex}-${Math.max(startIndex, endIndex - 1)} · ${elapsedMs.toFixed(1)}ms`;
+    let badge = stats.querySelector('[data-virtual-debug="1"]');
+    if (!(badge instanceof HTMLElement)) {
+        badge = document.createElement('span');
+        badge.setAttribute('data-virtual-debug', '1');
+        badge.className = 'stat';
+        badge.style.marginLeft = 'auto';
+        badge.style.color = '#64748b';
+        badge.style.fontSize = '11px';
+        stats.appendChild(badge);
+    }
+    badge.textContent = debugText;
+}
+
+function ensureVirtualScrollListeners() {
+    if (virtualScrollListenersBound) return;
+    virtualScrollListenersBound = true;
+
+    const bind = (modeKey) => {
+        const virtualState = virtualTableState[modeKey];
+        const wrap = document.getElementById(virtualState.wrapId);
+        if (!(wrap instanceof HTMLElement)) return;
+        wrap.addEventListener('scroll', () => {
+            if (!virtualState.active) return;
+            if (virtualState.frameRequested) return;
+            virtualState.frameRequested = true;
+            requestAnimationFrame(() => {
+                virtualState.frameRequested = false;
+                renderVirtualWindow(modeKey === 'errors');
+            });
+        }, { passive: true });
+    };
+
+    bind('main');
+    bind('errors');
+}
+
+function ensureVirtualRowVisible(errorsMode, revisionKey) {
+    const key = String(revisionKey || '').trim();
+    if (!key) return;
+
+    const virtualState = getVirtualState(errorsMode);
+    if (!virtualState.active) return;
+
+    const targetIndex = virtualState.rows.findIndex((row) => getRevisionKey(row) === key);
+    if (targetIndex < 0) return;
+
+    const wrap = document.getElementById(virtualState.wrapId);
+    if (!(wrap instanceof HTMLElement)) return;
+
+    const rowHeight = Math.max(22, Number(virtualState.rowHeight) || 34);
+    const top = targetIndex * rowHeight;
+    const bottom = top + rowHeight;
+    const viewTop = wrap.scrollTop;
+    const viewBottom = viewTop + wrap.clientHeight;
+
+    if (top >= viewTop && bottom <= viewBottom) return;
+
+    const nextScrollTop = Math.max(0, top - Math.floor(Math.max(0, wrap.clientHeight - rowHeight) / 2));
+    wrap.scrollTop = nextScrollTop;
+    renderVirtualWindow(errorsMode);
+}
+
+function renderVirtualWindow(errorsMode) {
+    const virtualState = getVirtualState(errorsMode);
+    if (!virtualState.active) return;
+
+    const wrap = document.getElementById(virtualState.wrapId);
+    const tbody = document.getElementById(virtualState.tbodyId);
+    if (!(wrap instanceof HTMLElement) || !(tbody instanceof HTMLElement)) return;
+
+    const totalRows = virtualState.rows.length;
+    if (!totalRows) {
+        tbody.innerHTML = '';
+        return;
+    }
+
+    const startedAt = performance.now();
+    const rowHeight = Math.max(22, Number(virtualState.rowHeight) || 34);
+    const viewportHeight = Math.max(rowHeight, wrap.clientHeight || 0);
+    const visibleCount = Math.max(1, Math.ceil(viewportHeight / rowHeight));
+    const firstVisible = Math.max(0, Math.floor((wrap.scrollTop || 0) / rowHeight));
+    const start = Math.max(0, firstVisible - VIRTUAL_OVERSCAN_ROWS);
+    const end = Math.min(totalRows, start + visibleCount + (VIRTUAL_OVERSCAN_ROWS * 2));
+    const topSpacerHeight = start * rowHeight;
+    const bottomSpacerHeight = Math.max(0, (totalRows - end) * rowHeight);
+
+    const windowRows = virtualState.rows.slice(start, end);
+    const rowsHtml = windowRows.map(virtualState.renderRowFn).join('');
+    tbody.innerHTML = `${buildVirtualSpacerRow(topSpacerHeight, virtualState.columnCount)}${rowsHtml}${buildVirtualSpacerRow(bottomSpacerHeight, virtualState.columnCount)}`;
+
+    refreshSelectedRowVisual();
+    if (!errorsMode) {
+        applyColumnView();
+    }
+
+    updateVirtualDebugStats({
+        totalRows,
+        renderedRows: windowRows.length,
+        startIndex: start,
+        endIndex: end,
+        elapsedMs: performance.now() - startedAt
+    });
+}
+
+function setVirtualState(errorsMode, rows, renderRowFn, columnCount) {
+    const virtualState = getVirtualState(errorsMode);
+    virtualState.active = isVirtualizationEnabledForRows(rows);
+    virtualState.rows = Array.isArray(rows) ? rows : [];
+    virtualState.renderRowFn = renderRowFn;
+    virtualState.columnCount = Math.max(1, Number(columnCount) || 1);
+
+    if (!virtualState.active) return;
+
+    const measuredHeight = Math.max(getBodyRowHeight(), 22);
+    virtualState.rowHeight = measuredHeight;
+    ensureVirtualScrollListeners();
+}
+
 function parseBooleanLike(value) {
     if (typeof value === 'boolean') return value;
     const normalized = String(value ?? '').trim().toLowerCase();
@@ -644,6 +827,34 @@ export function selectVisibleRowByIndex(index) {
 }
 
 export function moveSelectionBy(delta) {
+    if (!state.paginationEnabled) {
+        const errorsMode = state.tableMode === 'errors';
+        const virtualState = getVirtualState(errorsMode);
+        const rows = virtualState.active
+            ? virtualState.rows
+            : (errorsMode
+                ? sortData(applyFilters(state.allData).filter(row => getPersistedHasError(row)), state.sortKey, state.sortAsc)
+                : getCurrentFilteredSortedRows());
+
+        if (!rows.length) return;
+
+        let currentIndex = rows.findIndex(row => getRevisionKey(row) === state.selectedRevisionRowKey);
+        if (currentIndex === -1) currentIndex = 0;
+        const boundedIndex = Math.min(Math.max(0, currentIndex + delta), rows.length - 1);
+        const targetRow = rows[boundedIndex];
+        if (!targetRow) return;
+
+        const targetKey = getRevisionKey(targetRow);
+        state.selectedRevisionRowKey = targetKey;
+        refreshSelectedRowVisual();
+        renderSelectedRowPosPanel(targetRow);
+        renderSelectedRowPosTop(targetRow);
+        dispatchSelectionChanged(targetKey);
+
+        ensureVirtualRowVisible(errorsMode, targetKey);
+        return;
+    }
+
     if (state.tableMode === 'qa' && state.leftTableReviewedOnly) {
         const rows = getCurrentFilteredSortedRows();
         if (!rows.length) return;
@@ -1180,15 +1391,27 @@ export function renderTable() {
         const definitions = getErrorViewDefinitions();
         renderErrorViewHeader(definitions);
         renderErrorTableStats(state.filteredData, definitions);
-        errorViewTbody.innerHTML = pageData.map(row => renderErrorViewRow(row, definitions)).join('');
+        setVirtualState(true, pageData, (row) => renderErrorViewRow(row, definitions), getErrorViewColumnCount());
+        if (getVirtualState(true).active) {
+            errorViewTbody.innerHTML = '';
+            renderVirtualWindow(true);
+        } else {
+            errorViewTbody.innerHTML = pageData.map(row => renderErrorViewRow(row, definitions)).join('');
+        }
         tbody.innerHTML = '';
         renderReviewStatsSummary(stats, state.filteredData, pageData, totalBookRowsNoFilters);
     } else {
         renderReviewStatsSummary(stats, state.filteredData, pageData, totalBookRowsNoFilters);
 
-        tbody.innerHTML = pageData.length
-            ? pageData.map(renderRow).join('')
-            : `<tr><td colspan="${getCurrentColumnCount()}" class="error">Aun no hay registros en estado OK en esta sesion.</td></tr>`;
+        setVirtualState(false, pageData, renderRow, getCurrentColumnCount());
+        if (getVirtualState(false).active) {
+            tbody.innerHTML = '';
+            renderVirtualWindow(false);
+        } else {
+            tbody.innerHTML = pageData.length
+                ? pageData.map(renderRow).join('')
+                : `<tr><td colspan="${getCurrentColumnCount()}" class="error">Aun no hay registros en estado OK en esta sesion.</td></tr>`;
+        }
         errorViewTbody.innerHTML = '';
     }
 
@@ -1200,7 +1423,10 @@ export function renderTable() {
     renderSelectedRowPosPanel(selectedRow || null);
     renderSelectedRowPosTop(selectedRow || null);
     dispatchSelectionChanged(state.selectedRevisionRowKey);
-    scheduleVisiblePosCirclePreload(pageData);
+    const preloadRows = getVirtualState(false).active
+        ? getVirtualState(false).rows.slice(0, Math.min(getVirtualState(false).rows.length, Math.max(50, VIRTUAL_OVERSCAN_ROWS * 4)))
+        : pageData;
+    scheduleVisiblePosCirclePreload(preloadRows);
 
     if (!errorsMode) {
         applyColumnView();
@@ -1235,6 +1461,8 @@ export function focusRevisionRowInMainTable(revisionKey) {
 
     renderTable();
     renderPagination();
+
+    ensureVirtualRowVisible(false, targetKey);
 
     const safeKey = targetKey.replace(/"/g, '\\"');
     const visibleRow = document.querySelector(`#tbody tr[data-revision-key="${safeKey}"]`);

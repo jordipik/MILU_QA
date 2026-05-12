@@ -1,21 +1,13 @@
 import argparse
-import json
+import os
 import subprocess
 import sys
 import time
 from pathlib import Path
 
-ENGINE_FILES = [
-    "engine_12V4000M40A.json",
-    "engine_12V4000M53.json",
-    "engine_12V4000M70.json",
-    "engine_16V4000M61.json",
-    "engine_16V4000M73.json",
-    "engine_16V4000M73L.json",
-    "engine_16V4000M90.json",
-    "engine_20V4000M93.json",
-    "engine_20V4000M93L.json",
-]
+from python_lib.repo_paths import resolve_repo_dir
+from python_lib.engine_constants import ENGINE_FILES
+from python_lib.json_io import load_json, save_json
 
 PDF_KEYS = [
     "pos_pdf",
@@ -71,14 +63,12 @@ def reimport_from_qa(base_dir):
         if not qa_path.exists():
             raise RuntimeError(f"No existe QA de origen para {engine_filename}: {qa_path}")
 
-        with open(qa_path, "r", encoding="utf-8-sig") as f:
-            qa_data = json.load(f)
+        qa_data = load_json(qa_path)
 
         if not isinstance(qa_data, list):
             raise RuntimeError(f"El QA origen no es un array para {engine_filename}: {qa_path}")
 
-        with open(engine_path, "w", encoding="utf-8") as f:
-            json.dump(qa_data, f, ensure_ascii=False, indent=2)
+        save_json(engine_path, qa_data)
 
         files_reimported += 1
         total_rows += len(qa_data)
@@ -98,8 +88,7 @@ def reset_pdf_fields(base_dir):
             print(f"- Omitido (no existe): {filename}")
             continue
 
-        with open(file_path, "r", encoding="utf-8-sig") as f:
-            data = json.load(f)
+        data = load_json(file_path)
 
         if not isinstance(data, list):
             print(f"- Omitido (no es array): {filename}")
@@ -120,8 +109,7 @@ def reset_pdf_fields(base_dir):
             if row_changed:
                 changed_in_file += 1
 
-        with open(file_path, "w", encoding="utf-8") as f:
-            json.dump(data, f, ensure_ascii=False, indent=2)
+        save_json(file_path, data)
 
         files_updated += 1
         rows_updated += changed_in_file
@@ -147,8 +135,7 @@ def fix_pn_final_suffix(base_dir):
             print(f"- Omitido (no existe): {filename}")
             continue
 
-        with open(file_path, "r", encoding="utf-8-sig") as f:
-            data = json.load(f)
+        data = load_json(file_path)
 
         if not isinstance(data, list):
             continue
@@ -186,8 +173,7 @@ def fix_pn_final_suffix(base_dir):
                 changed_in_file += 1
 
         if changed_in_file:
-            with open(file_path, "w", encoding="utf-8") as f:
-                json.dump(data, f, ensure_ascii=False, indent=2)
+            save_json(file_path, data)
             files_updated += 1
             rows_fixed += changed_in_file
             print(f"- {filename}: {changed_in_file} filas corregidas")
@@ -234,11 +220,13 @@ def main():
     )
     args = parser.parse_args()
 
-    base_dir = Path(__file__).resolve().parent
+    base_dir = resolve_repo_dir(__file__)
     started_at = time.time()
 
     print("Iniciando importar_json")
     print(f"Directorio: {base_dir}")
+    if os.getenv("MILU_REPO_DEBUG", "").strip().lower() in {"1", "true", "yes", "on", "debug"}:
+        print("[importar_json] resolucion de repo via MILU_REPO_DIR/env + fallback por __file__")
 
     reimport_from_qa(base_dir)
     fix_pn_final_suffix(base_dir)

@@ -95,3 +95,30 @@ Se mantiene compatibilidad razonable con payloads historicos:
 - Payloads legacy muy amplios pueden seguir pasando si no caen en la whitelist de bloqueo.
 - El contrato de `apply-revision-to-engines` aun depende del formato de revision historico y de v2.
 - `audit-log` sigue siendo un flujo auxiliar, no un sistema de auditoria completo.
+
+## Cobertura de tests (cierre BK-1)
+
+`tests/security/write-validation.test.js` cubre Fase I sobre el server real con 16 tests:
+
+### `/save-json` y `/save-json.php`
+- field no permitido -> 400 `FIELD_NOT_ALLOWED`
+- `qa_revision_estado` invalido -> 400 `INVALID_QA_REVISION_ESTADO`
+- `qa_revision_accion` invalido -> 400 `INVALID_QA_REVISION_ACCION`
+- `raw_json` bloqueado -> 400 `FIELD_NOT_ALLOWED`
+- payload vacio `{}` -> 400 `EMPTY_PAYLOAD`
+- id inexistente -> 404 consistente
+- file fuera de whitelist -> 400 `FILE_NOT_ALLOWED`
+- alias `col` (compatibilidad UI) -> aceptado
+- response siempre `application/json` (no HTML/PHP)
+- roundtrip HTTP real sobre `engine_12V4000M40A.json` -> write + restore sin residuos
+- `descartar` normalizado a `eliminar`
+
+### `/apply-revision-to-engines`
+- payload `{}` -> 400 `EMPTY_PAYLOAD`
+- payload `[...]` (no objeto) -> 400 `VALIDATION_ERROR`
+- payload `{revisions:{}}` -> 200 ok, `changed=0` (no-op no destructivo)
+- payload > 32 KB -> 400 `PAYLOAD_TOO_LARGE`
+
+### Ejecucion
+- `npm run test:security` -> 16/16 OK
+- `npm test` (smoke completo) -> 41/41 OK

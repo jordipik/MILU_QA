@@ -484,6 +484,15 @@
             transition: all 0.2s ease;
         }
 
+        tr.virtual-spacer:hover {
+            background: transparent;
+        }
+
+        tr.virtual-spacer td {
+            padding: 0 !important;
+            border: 0 !important;
+        }
+
         tbody tr.row-selected {
             outline: 2px solid var(--acc);
             outline-offset: -2px;

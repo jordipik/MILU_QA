@@ -37,6 +37,14 @@ describe('MILU smoke HTTP', () => {
             assert.ok(typeof body.version === 'string' || typeof body.appVersion === 'string',
                 `Falta version en /version: ${JSON.stringify(body)}`);
         });
+
+        test('GET /qa_milu.html -> selector de vista compacta disponible', async () => {
+            const res = await requestText('/qa_milu.html', { method: 'GET' }, TIMEOUT_MS);
+            assert.equal(res.status, 200);
+            assert.ok(/id=["']columnViewSelect["']/.test(res.text), 'Falta #columnViewSelect en qa_milu.html');
+            assert.ok(/<option\s+value=["']pdf["'][^>]*>\s*Vista compacta\s*<\/option>/i.test(res.text),
+                'Falta opcion compacta (value="pdf") en qa_milu.html');
+        });
     });
 
     describe('Catálogo de engines', () => {

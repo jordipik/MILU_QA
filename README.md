@@ -17,6 +17,22 @@ Después abre `http://localhost:3000/qa_milu.html` (o ejecuta [Ejecutar localhos
 
 Comprobación de salud: `GET /health`.
 
+## Calidad mínima (QW-4)
+
+- `npm run lint`: validación ligera de sintaxis JS (`node --check`) sobre backend crítico (`server.js`), frontend principal de QA y tests JS.
+- `npm test`: smoke tests oficiales.
+- `npm run check`: ejecuta `lint` + `test`.
+
+Este lint es intencionalmente no intrusivo: no fuerza estilo ni formato, solo detecta errores de sintaxis en archivos críticos.
+
+## CI mínima (AR-4)
+
+- Workflow: `.github/workflows/ci.yml`
+- Se ejecuta en:
+	- `push` a `main`
+	- `pull_request`
+- Usa Node.js 20 y corre `npm run check`.
+
 ## Estructura del repositorio
 
 ```

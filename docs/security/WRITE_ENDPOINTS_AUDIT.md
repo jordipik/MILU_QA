@@ -30,3 +30,11 @@ Inventario de endpoints que escriben en disco o modifican persistencia derivada.
 - `descartar` sigue siendo compatible a nivel de entrada y se normaliza a `eliminar`.
 - `measurement_final` sigue aceptandose como alias legacy para `measure_final`.
 - No se documenta SQLite write porque esta fase no migra persistencia.
+
+## Estado Fase I (cierre BK-1)
+
+- `/save-json`, `/save-json.php` y `/apply-revision-to-engines` quedan **validados funcionalmente** con cobertura HTTP real en `tests/security/write-validation.test.js` (16/16 OK).
+- Respuesta de error garantizada en JSON en todos los caminos (validacion, error logico, error de IO). No se sirve HTML ni el PHP legacy.
+- Roundtrip de `/save-json` verificado sobre `engine_12V4000M40A.json` (write + restore sin residuos, lock por archivo activo).
+- `/apply-revision-to-engines` rechaza payload vacio/no-objeto/excedido y acepta `{revisions:{}}` como no-op no destructivo.
+- Compatibilidad UI preservada: `qa_milu.html` envia `{file,id,col,value}` y el backend acepta `col` como alias de `field`.

@@ -1,49 +1,31 @@
-import os
-import json
-from glob import glob
+from pathlib import Path
 
-# Configuración de patrones de archivos
-ENGINE_PATTERN = 'engine_*.json'
-PRODUCT_PATTERN = 'product-export-*.json'
+from python_lib.repo_paths import resolve_repo_dir, should_log_repo_resolution
+from python_lib.engine_constants import ENGINE_PATTERN, PRODUCT_PATTERN, ENGINE_KEY, PRODUCT_KEY
+from python_lib.json_io import load_unique_keys_from_json
 
-# Campos clave
-ENGINE_KEY = 'PART NO.'
-PRODUCT_KEY = 'post_name'
+# Buscar archivos desde el repo resuelto (no depende de cwd)
+repo_dir = resolve_repo_dir(__file__)
+if should_log_repo_resolution():
+    print(f"[estadisticas_articulos] repo_dir={repo_dir}")
 
-# Función para cargar artículos únicos de un archivo JSON
-
-def load_unique_keys_from_json(filepath, key):
-    with open(filepath, 'r', encoding='utf-8') as f:
-        data = json.load(f)
-    # Si el archivo es una lista de dicts
-    if isinstance(data, list):
-        return set(item.get(key) for item in data if key in item)
-    # Si el archivo es un dict con una lista dentro
-    elif isinstance(data, dict):
-        # Buscar la primera lista de dicts
-        for v in data.values():
-            if isinstance(v, list):
-                return set(item.get(key) for item in v if key in item)
-    return set()
-
-# Buscar archivos
-engine_files = glob(ENGINE_PATTERN)
-product_files = glob(PRODUCT_PATTERN)
+engine_files = sorted(repo_dir.glob(ENGINE_PATTERN))
+product_files = sorted(repo_dir.glob(PRODUCT_PATTERN))
 
 # Estadísticas por libro (engine)
 engine_stats = {}
 all_engine_keys = set()
 for ef in engine_files:
-    keys = load_unique_keys_from_json(ef, ENGINE_KEY)
-    engine_stats[ef] = keys
+    _, keys = load_unique_keys_from_json(ef, ENGINE_KEY)
+    engine_stats[ef.name] = keys
     all_engine_keys.update(keys)
 
 # Estadísticas web (product-export)
 product_stats = {}
 all_product_keys = set()
 for pf in product_files:
-    keys = load_unique_keys_from_json(pf, PRODUCT_KEY)
-    product_stats[pf] = keys
+    _, keys = load_unique_keys_from_json(pf, PRODUCT_KEY)
+    product_stats[pf.name] = keys
     all_product_keys.update(keys)
 
 # Cálculos

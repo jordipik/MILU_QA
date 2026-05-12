@@ -31,6 +31,11 @@
     "release:folder:no-bump": "node scripts/build-release-folder.js --no-bump",
     "release:folder:no-cleanup": "node scripts/build-release-folder.js --no-cleanup",
     "release:folder:keep10": "node scripts/build-release-folder.js --keep-last=10",
+    "lint": "node scripts/lint-critical.js",
+    "validate:schema": "node scripts/validate-engine-schema.js --summary",
+    "data:snapshot": "node scripts/create-data-snapshot.js",
+    "data:snapshot:compare": "node scripts/compare-data-snapshot.js",
+    "check": "npm run lint && npm test",
     "test": "npm run test:all-smoke",
     "test:smoke": "node --test tests/smoke/http-smoke.test.js",
     "test:security": "node --test tests/security/write-validation.test.js",
@@ -41,7 +46,7 @@
     "db:index": "node scripts/db/create_sqlite_indexes.js",
     "test:db-read": "node --test tests/smoke/db-read-smoke.test.js",
     "test:db-analytics": "node --test tests/smoke/db-analytics-smoke.test.js",
-    "test:all-smoke": "npm run test:smoke && npm run test:db-read && npm run test:db-analytics"
+    "test:all-smoke": "npm run test:smoke && npm run test:db-read && npm run test:db-analytics && node --test tests/smoke/engine-schema.test.js && node --test tests/smoke/python-lib.test.js"
   },
   "dependencies": {
     "body-parser": "^2.2.2",

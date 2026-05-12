@@ -164,4 +164,86 @@ describe('MILU write validation', () => {
         assert.equal(normalized.field, 'designation_final');
         assert.equal(normalized.value, 'VALIDATION_TEST');
     });
+
+    test('/save-json roundtrip HTTP: guarda y restaura designation_final', async () => {
+        const fs = require('node:fs');
+        const path = require('node:path');
+        const file = 'engine_12V4000M40A.json';
+        const filePath = path.join(process.cwd(), file);
+        const arr = JSON.parse(fs.readFileSync(filePath, 'utf8'));
+        const row = arr[0];
+        const id = String(row.ID);
+        const originalValue = row.designation_final ?? '';
+        const probe = `__VALIDATION_PROBE__${Date.now()}`;
+        try {
+            const ok = await requestJson('/save-json', { file, id, field: 'designation_final', value: probe });
+            assert.equal(ok.status, 200);
+            assert.equal(ok.json?.ok, true);
+            const afterWrite = JSON.parse(fs.readFileSync(filePath, 'utf8'));
+            assert.equal(afterWrite[0].designation_final, probe);
+        } finally {
+            await requestJson('/save-json', { file, id, field: 'designation_final', value: originalValue });
+        }
+    });
+
+    test('/save-json field=col alias sigue aceptandose', async () => {
+        const res = await fetch(`${BASE_URL}/save-json`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ file: 'engine_12V4000M40A.json', id: '999999999999', col: 'designation_final', value: 'x' })
+        });
+        // Debe validar col como alias y devolver 404 (id inexistente), no 400 FIELD_REQUIRED
+        assert.ok([200, 404].includes(res.status), `status inesperado: ${res.status}`);
+    });
+
+    test('/save-json siempre responde JSON (nunca HTML)', async () => {
+        const res = await fetch(`${BASE_URL}/save-json`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ file: 'no.json', id: '1', field: 'designation_final', value: 'x' })
+        });
+        const contentType = res.headers.get('content-type') || '';
+        assert.ok(contentType.includes('application/json'), `content-type inesperado: ${contentType}`);
+    });
+
+    test('/apply-revision-to-engines payload vacio -> 400 VALIDATION_ERROR', async () => {
+        const res = await requestJson('/apply-revision-to-engines', {});
+        assert.equal(res.status, 400);
+        assert.equal(res.json?.error, 'VALIDATION_ERROR');
+        assert.equal(res.json?.code, 'EMPTY_PAYLOAD');
+    });
+
+    test('/apply-revision-to-engines payload no-objeto -> 400', async () => {
+        const res = await fetch(`${BASE_URL}/apply-revision-to-engines`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify([1, 2, 3])
+        });
+        const json = await res.json().catch(() => null);
+        assert.equal(res.status, 400);
+        assert.equal(json?.error, 'VALIDATION_ERROR');
+    });
+
+    test('/apply-revision-to-engines revisiones vacias -> 200 ok no-op', async () => {
+        const res = await requestJson('/apply-revision-to-engines', { revisions: {} });
+        assert.equal(res.status, 200);
+        assert.equal(res.json?.ok, true);
+        assert.ok(res.json?.result && typeof res.json.result === 'object');
+        assert.ok(res.json.result.appliedByFile && typeof res.json.result.appliedByFile === 'object');
+        // No debe haber escrito cambios reales
+        for (const stats of Object.values(res.json.result.appliedByFile)) {
+            assert.equal(stats?.changed ?? 0, 0);
+        }
+    });
+
+    test('/apply-revision-to-engines payload demasiado grande -> 400 PAYLOAD_TOO_LARGE', async () => {
+        // Generamos un objeto que supere los 32768 bytes permitidos
+        const huge = {};
+        for (let i = 0; i < 2000; i++) {
+            huge[`idx=${i}`] = { estado: 'ok', accion: 'importar', updated_at: '2026-05-13T00:00:00Z' };
+        }
+        const res = await requestJson('/apply-revision-to-engines', huge);
+        assert.equal(res.status, 400);
+        assert.equal(res.json?.code, 'PAYLOAD_TOO_LARGE');
+    });
 });

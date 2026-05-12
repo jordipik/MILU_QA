@@ -25,9 +25,9 @@ Leyenda:
 - Estado: este PR (8→9 motores, `measurement_final`→`measure_final`).
 - Archivos: [00_overview.md](00_overview.md), [02_data_flow.md](02_data_flow.md), [03_data_models.md](03_data_models.md), [AI_QUICK_CONTEXT_COMPACT.md](AI_QUICK_CONTEXT_COMPACT.md).
 
-### QW-4. Configurar lint mínimo
-- Acción: añadir `eslint` con preset `recommended` + `prettier`. Solo en `js/` y `*.cjs/*.mjs` del raíz.
-- Impacto: detección temprana de bugs (vars no usadas, shadowing).
+### QW-4. Configurar lint mínimo ✅ HECHO
+- Acción: `npm run lint` ligero basado en `node --check` para `server.js`, frontend crítico de `qa_milu.html` y `tests/**/*.js`.
+- Impacto: detección temprana de errores de sintaxis sin introducir fricción ni reglas estéticas agresivas.
 - Dificultad: S · Prioridad: 🟡 · Depende de: nada.
 
 ### QW-5. Consolidar `npm test` + smoke tests oficiales ✅ HECHO
@@ -46,7 +46,7 @@ Leyenda:
 
 ## Bloque 2 — Endurecimiento del backend
 
-### BK-1. Validación de payloads en `/save-json` y `/apply-revision-to-engines`
+### BK-1. Validación de payloads en `/save-json` y `/apply-revision-to-engines` ✅ HECHO
 - Acción: validar `engine_file ∈ ENGINE_JSON_FILES`, `field` en allowlist por contexto, tipos de `value`.
 - Impacto: evita escritura accidental fuera de campos esperados.
 - Dificultad: S · Prioridad: 🔴 · Depende de: definición de allowlist.
@@ -72,7 +72,7 @@ Leyenda:
 
 ## Bloque 3 — Datos y pipeline
 
-### DT-1. Configurar ruta base en `depuracion_json.py`
+### DT-1. Configurar ruta base en `depuracion_json.py` ✅ HECHO
 - Acción: usar `Path(__file__).resolve().parent` o variable de entorno `MILU_REPO_DIR`.
 - Archivos: [depuracion_json.py](../depuracion_json.py#L12), [add_final_fields.py](../add_final_fields.py).
 - Impacto: portabilidad, ejecutable en CI.
@@ -82,11 +82,23 @@ Leyenda:
 - Acción: definir `schemas/engine_row.schema.json` y validador (`ajv` en Node, `jsonschema` en Python).
 - Impacto: detecta campos huérfanos / typos antes de persistir.
 - Dificultad: M · Prioridad: 🟡 · Depende de: inventario actual de campos.
+- **Estado: ✅ IMPLEMENTADO** (2026-05-13)
+  - `schemas/engine-record.schema.json` (JSON Schema draft-07, 67 campos, 112 propiedades documentadas)
+  - `scripts/validate-engine-schema.js` (validador Node sin dependencias externas)
+  - `tests/smoke/engine-schema.test.js` (8 tests, integrado en `npm test`)
+  - `npm run validate:schema` — 67.883 registros, 0 errores
+  - `docs/modules/engine_schema.md` — documentación completa
 
 ### DT-3. Snapshots versionados de los `engine_*.json`
 - Acción: en cada `pretty_print_all_json.py` o tras `apply-revision-to-engines`, generar snapshot en `snapshots/YYYY-MM-DD/` (sólo diff o tar.gz).
 - Impacto: reversibilidad, auditoría de QA.
 - Dificultad: M · Prioridad: 🟡.
+- **Estado: ✅ IMPLEMENTADO** (2026-05-13)
+  - `scripts/create-data-snapshot.js` — copia engines + manifest con SHA-256, nº registros, schema_version, label
+  - `scripts/compare-data-snapshot.js` — compara snapshot vs estado actual (checksum, registros, añadidos/eliminados)
+  - `data/snapshots/` con `.gitkeep` (contenido excluido del repo)
+  - `npm run data:snapshot` / `npm run data:snapshot:compare`
+  - Snapshot inicial `DT-3-initial` creado: 9 engines, 67.883 registros, schema 1.0
 
 ### DT-4. Mover backups y JSON crudos fuera de la raíz
 - Acción: `engine_*.json.backup`, `*.pre_id_fix_backup` → `zz_old/backups/<fecha>/`.
@@ -114,13 +126,15 @@ Leyenda:
 
 ## Bloque 4 — UX / Frontend
 
-### UX-1. Vista compacta por defecto (≤ 12 columnas)
+### UX-1. Vista compacta por defecto (≤ 12 columnas) ✅ HECHO
 - Acción: forzar `column-view = 'compact'` en primera carga; menú "Avanzado" para abrir las 54 columnas.
 - Dificultad: S · Prioridad: 🔴 · Depende de: ya existe `column-view.js`.
 
-### UX-2. Virtualización de tabla
-- Acción: integrar `tanstack/virtual` o equivalente para renderizar sólo filas visibles.
-- Impacto: render fluido con miles de filas.
+### UX-2. Virtualización de tabla ✅ IMPLEMENTADO (validado manual)
+- Acción: virtualización nativa por ventana + overscan (sin dependencia pesada), activa al desactivar paginación y superar umbral de filas.
+- Impacto: render fluido con miles de filas al evitar inyectar todo el DOM de una sola vez.
+- Nota: incluye compatibilidad con selección por teclado y enfoque de fila seleccionada; modo debug opcional con `?virtualDebug=1` o `localStorage.miluVirtualDebug='1'`.
+- Validación: smoke manual reproducible en `docs/testing/UX2_VIRTUALIZACION_MANUAL_SMOKE.md`.
 - Dificultad: M · Prioridad: 🟡 · Depende de: UX-1 (menos columnas = menos cost por fila).
 
 ### UX-3. Sustituir `alert()` por sistema de toasts
@@ -156,9 +170,16 @@ Leyenda:
 ### AR-3. Aislar pipelines Python
 - Acción: mover scripts a `pipelines/` y publicar un único entrypoint `pipelines/run_full.py` que orqueste el flujo oficial.
 - Dificultad: M · Prioridad: 🟡.
+- **Estado: 🟡 INICIADO** (2026-05-13)
+  - `python_lib/` creado como capa común incremental (sin refactor masivo de pipelines)
+  - Módulos nuevos: `repo_paths.py`, `json_io.py`, `engine_helpers.py`, `logging_utils.py`, `schema_validation.py`, `snapshot_utils.py`, `engine_constants.py`
+  - Scripts migrados de forma segura: `depuracion_json.py`, `add_final_fields.py`, `importar_json.py`, `estadisticas_articulos.py`, `informe_estadisticas.py`
+  - Test nuevo: `tests/smoke/python-lib.test.js` (helpers Python reutilizables)
+  - Deuda restante: unificación de entrypoint/orquestación completa pendiente para fase posterior
 
-### AR-4. CI mínimo (GitHub Actions o local)
-- Acción: workflow que ejecute lint + smoke tests en push.
+### AR-4. CI mínimo (GitHub Actions o local) ✅ IMPLEMENTADO
+- Acción: workflow en `.github/workflows/ci.yml` que ejecuta `npm run check` en `push` a `main` y en `pull_request`.
+- Nota: pendiente primera validación remota en GitHub tras push/PR.
 - Dificultad: S · Prioridad: 🟡 · Depende de: QW-4, QW-5.
 
 ### AR-5. Revisar dependencia con WordPress / publicación externa
@@ -175,11 +196,15 @@ Leyenda:
 | 🔴 | QW-2 Endpoints revisión en Express | ✅ |
 | 🔴 | QW-3 Sincronizar docs | ✅ |
 | 🔴 | QW-5 Smoke tests oficiales | ✅ |
-| 🔴 | BK-1 Validación de payloads | Pendiente |
-| 🔴 | DT-1 Path configurable en pipeline | Pendiente |
-| 🔴 | UX-1 Vista compacta por defecto | Pendiente |
+| 🔴 | BK-1 Validación de payloads | ✅ |
+| 🔴 | DT-1 Path configurable en pipeline | ✅ |
+| 🔴 | UX-1 Vista compacta por defecto | ✅ |
 | 🔴 | AR-1 Carga incremental | ✅ |
-| 🟡 | QW-4 Lint, QW-6 Toasts, BK-2/3, DT-2/3/4/5/6, UX-2/3/4, AR-2/3/4 | Pendiente |
+| 🟡 | QW-6 Toasts, BK-2/3, DT-4/5/6, UX-3/4, AR-2 | Pendiente |
+| 🟡 | AR-3 Unificación progresiva pipelines Python | 🟡 INICIADO |
+| 🟡 | DT-3 Snapshots versionados engine_*.json | ✅ IMPLEMENTADO |
+| 🟡 | DT-2 Esquema JSON formal engine_*.json | ✅ IMPLEMENTADO |
+
 | 🟢 | BK-4/5, UX-5/6, AR-5 | Pendiente |
 
 ## Estado fase I - Payload Validation + Write Safety

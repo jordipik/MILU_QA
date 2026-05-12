@@ -15,6 +15,9 @@ node_modules/
 data/db/
 # Informes de validación generados (Fase D y E).
 data/output/validation/
+# Snapshots de datos (DT-3): ficheros grandes, regenerables con npm run data:snapshot.
+# Solo se versiona el directorio raíz (con .gitkeep). Los snapshots reales quedan locales.
+data/snapshots/*/
 
 # Evitar versionar cambios de datos JSON locales.
 *.json

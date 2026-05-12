@@ -1,6 +1,6 @@
 /**
- * Gestión de la vista de columnas: orden y visibilidad.
- * Tres modos: 'qa' (all), 'focus' (enfocado en PN), 'pdf' (útil para PDF).
+ * Gestion de la vista de columnas: orden y visibilidad.
+ * Tres modos: 'qa' (all), 'focus' (enfocado en PN), 'pdf' (vista compacta operativa).
  */
 
 import { state } from './state.js';
@@ -18,9 +18,19 @@ export const FOCUS_COLUMN_ORDER = [
 ];
 
 export const PDF_COLUMN_ORDER = [
-    // Sin ID. Se mantienen estados hasta "Acción" y luego columnas clave de consulta rápida.
-    'gesa', 'normalizado', 'sust_hierarchie', 'has_esquema_pos', 'has_img', 'has_error', 'EN_WEB', 'qa_revision_estado', 'qa_revision_accion',
-    'quick_actions', 'POS', 'pn_final', 'designation_final', 'MODEL/TYPE', 'QTY', 'UNITS', 'weight_final', 'measure_final', 'norma'
+    // Vista compacta por defecto (~12 columnas) para operativa QA sin perder flujo.
+    'engine_model',
+    'Source Page',
+    'POS',
+    'PART NO.',
+    'designation_final',
+    'QTY',
+    'qa_revision_estado',
+    'qa_revision_accion',
+    'measure_final',
+    'sust_status',
+    'sust_hierarchie',
+    'has_img'
 ];
 
 function syncColumnViewStateFromControl() {
@@ -166,7 +176,7 @@ export function loadColumnViewPreference() {
     try {
         const saved = localStorage.getItem(COLUMN_VIEW_STORAGE_KEY);
         if (saved === 'qa' || saved === 'focus' || saved === 'pdf') {
-            state.columnView = DEFAULT_COLUMN_VIEW;
+            state.columnView = saved;
         }
     } catch (e) { console.warn('No se pudo leer la vista de columnas:', e); }
     const viewSelect = document.getElementById('columnViewSelect');
