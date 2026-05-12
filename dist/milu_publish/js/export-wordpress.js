@@ -366,10 +366,17 @@ function synthGetMatchingRows(pn) {
     return state.allData.filter(item => synthNormPn(item?.['PART NO.'] ?? item?.pn ?? '') === normalizedPn);
 }
 
+// IMPORTANTE:
+// sust_status === "SI" solo indica que el PN participa en relaciones SUST.
+// La exportación como Superseded depende exclusivamente de:
+// sust_hierarchie === "Superseded"
+// No usar sust_status ni sust_superseded_list como criterio de clasificación New/Superseded.
+function getExportType(row) {
+    return String(row?.sust_hierarchie ?? '').trim() === 'Superseded' ? 'superseded' : 'new';
+}
+
 function synthGetHierarchyKind(row) {
-    const h = String(row?.sust_hierarchie ?? '').trim().toUpperCase().replace(/\s+/g, ' ').replace(/[._-]/g, ' ');
-    if (h === 'SUPERSEDED') return 'superseded';
-    return 'new';
+    return getExportType(row);
 }
 
 function synthPickFirst(row, keys) {
@@ -429,19 +436,28 @@ function synthFirstNonEmpty(rows, getter) {
     return null;
 }
 
-function synthMergeImages(primary, secondary) {
+function synthCollectImagesFromRows(rows) {
     const merged = [];
     const seen = new Set();
+
     const addValue = (value) => {
-        String(value ?? '').split(',').map(p => p.trim()).filter(Boolean).forEach(part => {
-            const key = synthNormPn(part);
-            if (seen.has(key)) return;
-            seen.add(key);
-            merged.push(part);
-        });
+        String(value ?? '')
+            .split(',')
+            .map((part) => part.trim())
+            .filter(Boolean)
+            .forEach((part) => {
+                const normalized = synthNormPn(part);
+                if (!normalized || seen.has(normalized)) return;
+                seen.add(normalized);
+                merged.push(part);
+            });
     };
-    addValue(primary);
-    addValue(secondary);
+
+    for (const row of rows) {
+        addValue(row?.exp_imagenes);
+        addValue(row?.ruta_foto);
+    }
+
     return merged.join(', ');
 }
 
@@ -460,9 +476,8 @@ function buildSyntheticRowForPn(pn) {
     const modelTypes = synthUniqueSorted(matches.map(item => synthNormalizeModelType(item)), true);
     const engineModels = synthUniqueSorted(matches.map(item => String(item?.engine_model ?? '').trim()), true);
     const categoryValues = synthUniqueSorted(matches.map(item => String(item?.categoria ?? item?.atributo ?? item?.exp_categorias ?? '').trim()));
-    const imageValue = synthFirstNonEmpty([row, ...matches], item => item?.exp_imagenes || item?.ruta_foto || '');
     const routeFotoValue = synthFirstNonEmpty([row, ...matches], item => item?.ruta_foto || '');
-    const exportImagesValue = synthMergeImages(routeFotoValue, imageValue);
+    const exportImagesValue = synthCollectImagesFromRows(matches);
     const normalizedPn = String(row?.['PART NO.'] ?? row?.pn ?? '').trim();
     const hierarchy = String(row?.sust_hierarchie ?? '').trim();
     const supersededList = String(row?.sust_superseded_list ?? '').trim();
@@ -611,22 +626,30 @@ function ensureValidSelection() {
 
 function updateSummary() {
     const counts = state.status?.counts || {};
-    $('sumNew').textContent = String(Number.isFinite(Number(counts.new)) ? Number(counts.new) : getTabRows('new').length);
-    $('sumSuperseded').textContent = String(Number.isFinite(Number(counts.superseded)) ? Number(counts.superseded) : getTabRows('superseded').length);
-    $('sumPending').textContent = String(Number.isFinite(Number(counts.pending)) ? Number(counts.pending) : getTabRows('pending').length);
-    $('sumDiscarded').textContent = String(Number.isFinite(Number(counts.discarded)) ? Number(counts.discarded) : getTabRows('discarded').length);
+
+    const resolveSummaryCount = (tabKey, statusKey) => {
+        const rowsLength = getTabRows(tabKey).length;
+        if (rowsLength > 0) return rowsLength;
+
+        const statusCount = Number(counts[statusKey]);
+        return Number.isFinite(statusCount) ? statusCount : 0;
+    };
+
+    $('sumNew').textContent = String(resolveSummaryCount('new', 'new'));
+    $('sumSuperseded').textContent = String(resolveSummaryCount('superseded', 'superseded'));
+    $('sumPending').textContent = String(resolveSummaryCount('pending', 'pending'));
+    $('sumDiscarded').textContent = String(resolveSummaryCount('discarded', 'discarded'));
     $('sumTimestamp').textContent = formatDate(state.status?.timestamp);
 }
 
-function renderTabs() {
-    const tabs = $('ewpTabs');
-    if (!(tabs instanceof HTMLElement)) return;
-
-    tabs.innerHTML = Object.entries(TAB_CONFIG).map(([tabKey, config]) => {
-        const activeClass = tabKey === state.currentTab ? 'active' : '';
-        const count = getTabRows(tabKey).length;
-        return `<button type="button" class="${activeClass}" data-tab="${escapeHtml(tabKey)}">${escapeHtml(config.label)} <span>${count}</span></button>`;
-    }).join('');
+function updateStatusFilters() {
+    // Update visual state of status filter buttons based on current tab
+    const buttons = document.querySelectorAll('button.ewx-status-filter');
+    buttons.forEach((btn) => {
+        const tabKey = btn.dataset.tab || '';
+        const isActive = tabKey === state.currentTab;
+        btn.setAttribute('aria-pressed', isActive ? 'true' : 'false');
+    });
 }
 
 function refreshFilterChoices() {
@@ -781,7 +804,7 @@ function renderDetail() {
 function renderAll() {
     ensureValidSelection();
     updateSummary();
-    renderTabs();
+    updateStatusFilters();
     refreshFilterChoices();
     renderPnList();
     renderDetail();
@@ -1064,7 +1087,8 @@ function onPaginationClick(event) {
 }
 
 function bindEvents() {
-    $('ewpTabs')?.addEventListener('click', onTabClick);
+    // Event listener for status filter buttons (previously small tab buttons, now summary cards)
+    document.querySelector('.ewx-summary')?.addEventListener('click', onTabClick);
     $('ewpPnList')?.addEventListener('click', onPnListClick);
     $('ewpPagination')?.addEventListener('click', onPaginationClick);
 

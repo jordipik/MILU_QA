@@ -2456,6 +2456,10 @@ function getGesaPn(row) {
 }
 
 function getSustPn(row) {
+    // sust_status === "SI" indica que el PN aparece en el Excel SUST.
+    // Este flag se usa SOLO para mostrar la columna SUST en la comparativa de analista.
+    // NO determina si un registro se exporta como New o Superseded.
+    // La clasificación de exportación depende exclusivamente de sust_hierarchie === "Superseded".
     const isSustSi = String(row?.sust_status ?? '').trim().toUpperCase() === 'SI';
     if (!isSustSi) return null;
     return String(row?.pn_final ?? '').trim() || null;

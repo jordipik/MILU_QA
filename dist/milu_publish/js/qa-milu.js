@@ -697,20 +697,38 @@ function downloadExportPreviewCsv() {
         return;
     }
 
+    // Columnas exactas que aparecen en pantalla (SYNTHETIC_NEW_EXPORT_COLUMNS)
     const headers = [
-        'sku',
-        'import_decision',
-        'import_reason',
-        'designation_final',
-        'measure_final',
-        'weight_final',
-        'source_engine_file',
-        'source_id',
-        'total_occurrences_global',
-        'engine_models_all',
-        'source_pages_all',
-        'source_ids_all',
-        'compacted_type'
+        'Id',
+        'fecha_version',
+        'POS',
+        'designation',
+        'engine',
+        'model_type',
+        'type',
+        'pn',
+        'nsn',
+        'GESA_NORM',
+        'GESA_NORMALIZADO',
+        'fg_code',
+        'fg_description',
+        'fg_code_description',
+        'weight',
+        'weight_txt',
+        'measurement',
+        'TIPOARTICULO',
+        'PAG',
+        'BOM_no',
+        'esquema_general',
+        'exp_motor',
+        'exp_categorias',
+        'atributo',
+        'SUST_TIPO',
+        'new_pn_relacionado',
+        'old_pn_relacionados',
+        'EN_EXCEL_SUSTITUCION',
+        'ruta_foto',
+        'exp_imagenes'
     ];
 
     const lines = [headers.join(';')];
@@ -2383,7 +2401,24 @@ async function tryLoadFirstJson(candidates) {
 const ENABLE_OPTIONAL_CATALOGS = false;
 
 async function loadOptionalCatalogsInBackground() {
-    if (!ENABLE_OPTIONAL_CATALOGS) return;
+    // El índice de esquemas_pos debe cargarse siempre (aunque catálogos opcionales estén desactivados)
+    // porque la columna ESQ_POS depende de este Set para evitar falsos MISS.
+    try {
+        const posIndexResponse = await fetch(apiUrl('/api/esquemas-pos-index'));
+        if (posIndexResponse.ok) {
+            const posIndexData = await posIndexResponse.json();
+            if (posIndexData.ok && Array.isArray(posIndexData.files)) {
+                state.esquemasPosFileSet = new Set(posIndexData.files);
+            }
+        }
+    } catch (e) {
+        console.warn('[loadOptionalCatalogsInBackground] No se pudo cargar índice esquemas_pos:', e);
+    }
+
+    if (!ENABLE_OPTIONAL_CATALOGS) {
+        renderTable();
+        return;
+    }
 
     const [newData, supersededData, productExportData] = await Promise.all([
         tryLoadFirstJson(['MILU_New_v506.json', 'MILU_New_v507.json']),

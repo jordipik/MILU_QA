@@ -20,6 +20,7 @@ const requiredStaticEntries = [
     'milu_shell.html',
     'export_wordpress.html',
     'exportacion.html',
+    'qa_imagenes.html',
     'qa_milu.html',
     'qa_lista_agrupada.html',
     'analista_02.html',
@@ -31,6 +32,7 @@ const requiredStaticEntries = [
     'data/output/wordpress',
     'qa_revision_sync.php',
     'save-json.php',
+    'css/qa_imagenes.css',
     'js',
     'styles',
     'pdf'

@@ -19,7 +19,7 @@ export const FOCUS_COLUMN_ORDER = [
 
 export const PDF_COLUMN_ORDER = [
     // Sin ID. Se mantienen estados hasta "Acción" y luego columnas clave de consulta rápida.
-    'gesa', 'normalizado', 'sust_hierarchie', 'has_img', 'has_error', 'EN_WEB', 'qa_revision_estado', 'qa_revision_accion',
+    'gesa', 'normalizado', 'sust_hierarchie', 'has_esquema_pos', 'has_img', 'has_error', 'EN_WEB', 'qa_revision_estado', 'qa_revision_accion',
     'quick_actions', 'POS', 'pn_final', 'designation_final', 'MODEL/TYPE', 'QTY', 'UNITS', 'weight_final', 'measure_final', 'norma'
 ];
 

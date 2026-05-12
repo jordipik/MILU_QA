@@ -1,14 +1,14 @@
 # MILU WordPress Export Summary (QA only)
 
-Generated at: 2026-05-09T16:41:36.390Z
+Generated at: 2026-05-11T14:07:02.320Z
 
 ## Totals
 - Engines processed: 9
 - Occurrences processed: 67883
 - PN unique: 5893
 - Importables (total): 5486
-- New: 3593
-- Superseded: 1893
+- New: 4850
+- Superseded: 636
 - Pending review: undefined
 - Discarded: 39
 

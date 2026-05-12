@@ -28,6 +28,9 @@ export const state = {
     miluSupersededData: [],
     publishedMap: new Map(),
     productExportPnSet: new Set(),
+    // Set de basenames (en minúsculas) de archivos presentes en esquemas_pos_circulos/
+    // Cargado en background desde /api/esquemas-pos-index al arrancar la app.
+    esquemasPosFileSet: new Set(),
     mainDataSourceLabel: 'engine_*.json',
     // AR-1: catalogo de motores y carga incremental.
     engineCatalog: [],

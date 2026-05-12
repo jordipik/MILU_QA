@@ -16,43 +16,33 @@
 
 <body>
     <div class="ewx-shell">
-        <header class="ewx-hero">
-            <div class="ewx-hero-copy">
-                <p class="ewx-eyebrow">MILU · QA Export</p>
-                <h1>Comparador WordPress vs MILU_New</h1>
-                <p class="ewx-subtitle">Nueva vista dedicada para revisar cada PN con la misma tabla vertical de la
-                    pestaña Exportacion de QA.</p>
-                <div class="ewx-links">
-                    <a href="/qa_milu.html">Volver a QA</a>
-                </div>
-            </div>
-            <div class="ewx-hero-actions">
-                <button id="ewpRunBtn" type="button">Ejecutar export</button>
-                <button id="ewpRefreshBtn" type="button" class="secondary">Refrescar</button>
-                <button id="ewpDownloadBtn" type="button" class="secondary">Descargar CSV activo</button>
-            </div>
-        </header>
-
         <section class="ewx-summary" aria-label="Resumen de exportacion">
-            <article class="ewx-summary-card">
+            <button type="button" class="ewx-summary-card ewx-status-filter" data-tab="new" aria-pressed="true">
                 <span class="label">New</span>
                 <strong id="sumNew">0</strong>
-            </article>
-            <article class="ewx-summary-card">
+            </button>
+            <button type="button" class="ewx-summary-card ewx-status-filter" data-tab="superseded" aria-pressed="false">
                 <span class="label">Superseded</span>
                 <strong id="sumSuperseded">0</strong>
-            </article>
-            <article class="ewx-summary-card">
+            </button>
+            <button type="button" class="ewx-summary-card ewx-status-filter" data-tab="pending" aria-pressed="false">
                 <span class="label">Pending</span>
                 <strong id="sumPending">0</strong>
-            </article>
-            <article class="ewx-summary-card">
+            </button>
+            <button type="button" class="ewx-summary-card ewx-status-filter" data-tab="discarded" aria-pressed="false">
                 <span class="label">Discarded</span>
                 <strong id="sumDiscarded">0</strong>
-            </article>
+            </button>
             <article class="ewx-summary-card ewx-summary-card-wide">
                 <span class="label">Ultima generacion</span>
                 <strong id="sumTimestamp">-</strong>
+            </article>
+            <article class="ewx-summary-card ewx-summary-card-actions" aria-label="Acciones de exportacion">
+                <div class="ewx-card-actions">
+                    <button id="ewpRunBtn" type="button">Ejecutar export</button>
+                    <button id="ewpRefreshBtn" type="button" class="secondary">Refrescar</button>
+                    <button id="ewpDownloadBtn" type="button" class="secondary">Descargar CSV activo</button>
+                </div>
             </article>
         </section>
 
@@ -65,8 +55,6 @@
                     </div>
                     <span id="ewpStatusText" class="ewx-status">Listo</span>
                 </div>
-
-                <div id="ewpTabs" class="ewx-tabs" aria-label="Tipos de exportacion"></div>
 
                 <div class="ewx-filters">
                     <input id="ewpSearchPn" type="search" placeholder="Buscar PN..." />
