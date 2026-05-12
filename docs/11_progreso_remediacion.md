@@ -132,7 +132,7 @@ Cuando se cierre cada una, añadir aquí un bloque "Commit `<sha>` — `<resumen
 - `legacy:ai:conflicts` (antes `ai:conflicts`)
 
 ### Documentación añadida
-- [13_wordpress_export_ai_pipeline.md](13_wordpress_export_ai_pipeline.md)
+- [archived/13_wordpress_export_ai_pipeline.md](archived/13_wordpress_export_ai_pipeline.md)
 
 ### Outputs generados
 - WordPress: `data/output/wordpress/` (CSV/JSON/reportes para NEW, SUPERSEDED, PENDING, DISCARDED)

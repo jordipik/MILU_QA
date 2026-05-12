@@ -1376,5 +1376,31 @@
         }
       }
     }
+  },
+  {
+    "id": "1778602229357-huiomswi",
+    "timestamp": "2026-05-12T16:10:29.357Z",
+    "kind": "change-applied",
+    "type": "qa-row-patch",
+    "module": "qa_milu",
+    "action": "inline-accion",
+    "description": "Cambio rapido accion ID 1100658",
+    "target": {
+      "revisionKey": "id=1100658"
+    },
+    "changeId": "1778602228981-rusia9en",
+    "data": {
+      "target": {
+        "revisionKey": "id=1100658",
+        "engineFile": "engine_12V4000M40A.json",
+        "id": "1100658"
+      },
+      "changes": {
+        "qa_revision_accion": {
+          "before": "importar",
+          "after": "revisar"
+        }
+      }
+    }
   }
 ]

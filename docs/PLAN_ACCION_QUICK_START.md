@@ -271,10 +271,10 @@ code docs/METRICAS_BASELINE.md
 ## RECURSOS Y REFERENCIAS
 
 - Plan detallado: [PLAN_ACCION_EJECUCION_DETALLADA.md](PLAN_ACCION_EJECUCION_DETALLADA.md)
-- Auditoria completa: [MILU_AUDITORIA_TECNICA.md](MILU_AUDITORIA_TECNICA.md)
-- Estructura recomendada: [MILU_ESTRUCTURA_CARPETAS.md](MILU_ESTRUCTURA_CARPETAS.md)
+- Auditoria completa: [09_auditoria_2026.md](09_auditoria_2026.md) (consolidada) · históricas en [archived/](archived/)
+- Estructura recomendada: [01_structure.md](01_structure.md) · histórica en [archived/MILU_ESTRUCTURA_CARPETAS.md](archived/MILU_ESTRUCTURA_CARPETAS.md)
+- Pipeline actual: [02_data_flow.md](02_data_flow.md) · histórica en [archived/MILU_PIPELINE_COMPLETO.md](archived/MILU_PIPELINE_COMPLETO.md)
 - Inventario scripts: [MILU_INVENTARIO_SCRIPTS.md](MILU_INVENTARIO_SCRIPTS.md)
-- Pipeline actual: [MILU_PIPELINE_COMPLETO.md](MILU_PIPELINE_COMPLETO.md)
 
 ---
 

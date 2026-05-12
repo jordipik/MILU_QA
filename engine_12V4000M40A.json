@@ -4222,7 +4222,7 @@
     "bom_pdf": "XS526010.00022",
     "norma_pdf": "DIN931",
     "qa_revision_estado": "ok",
-    "qa_revision_accion": "importar",
+    "qa_revision_accion": "revisar",
     "pos_pdf": "40",
     "qa_revision_motivo": "PN encontrado en GESA",
     "qa_revision_confianza": 1,
@@ -301569,7 +301569,7 @@
     "total_error": 2,
     "has_error": true,
     "qa_revision_estado": "ok",
-    "qa_revision_accion": "revisar"
+    "qa_revision_accion": "eliminar"
   },
   {
     "ID": "1100044",
@@ -303888,7 +303888,7 @@
     "total_error": 2,
     "has_error": true,
     "qa_revision_estado": "ok",
-    "qa_revision_accion": "revisar"
+    "qa_revision_accion": "eliminar"
   },
   {
     "ID": "1101435",
@@ -304550,7 +304550,7 @@
     "total_error": 2,
     "has_error": true,
     "qa_revision_estado": "ok",
-    "qa_revision_accion": "revisar"
+    "qa_revision_accion": "eliminar"
   },
   {
     "ID": "1100177",
@@ -306082,7 +306082,7 @@
     "total_error": 2,
     "has_error": true,
     "qa_revision_estado": "ok",
-    "qa_revision_accion": "revisar"
+    "qa_revision_accion": "eliminar"
   },
   {
     "ID": "1100048",
@@ -306180,7 +306180,7 @@
     "total_error": 2,
     "has_error": true,
     "qa_revision_estado": "ok",
-    "qa_revision_accion": "revisar"
+    "qa_revision_accion": "eliminar"
   },
   {
     "ID": "1101426",
