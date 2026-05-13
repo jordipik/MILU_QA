@@ -1192,3 +1192,41 @@ Se añaden 7 tests nuevos sobre el server real:
 - **Implementado localmente.**
 - **Pendiente validacion remota en GitHub** (primera ejecucion tras push/PR).
 
+---
+
+## Punto de reanudacion de la mejora (2026-05-13)
+
+### Estado de corte
+- El proyecto queda en **beta tecnica / beta interna parcial**.
+- Backend, persistencia QA, schema, snapshots, pipeline Python y tests estan consolidados.
+- La deuda que sigue bloqueando la salida operativa completa esta concentrada en el bloque multimedia y export WordPress.
+
+### Lo que queda cerrado y estable
+- `server.js` y servicios asociados de revision / PN review.
+- Escritura atomica, locks y validacion de payloads en endpoints de escritura.
+- `npm test` y la suite de seguridad en verde.
+- Schema de `engine_*.json` validado sobre los 9 motores.
+- `python_lib/` y scripts criticos migrados.
+- UX de revision ya endurecida con toasts, confirmaciones tipadas y virtualizacion.
+
+### Lo que queda pendiente de verdad
+- Rutas de imagen rotas y referencias multimedia inconsistentes.
+- `qa_index` ausente en la auditoria de imagenes.
+- `image_url` ausente en el export WordPress.
+- Completitud insuficiente de `measure_final` para salida final con calidad operativa.
+
+### Bloque de retoma recomendado
+1. Diagnosticar el origen de las 14.249 rutas rotas de imagen.
+2. Hacer que `npm run audit:images` genere un indice utilizable para `qa_imagenes.html`.
+3. Incorporar `image_url` al export WordPress o fijar una estrategia explicita y trazable.
+4. Revisar los motores mas debiles por completitud antes de un import real.
+
+### Criterio para volver al trabajo
+- No tocar contratos JSON ni endpoints HTTP.
+- No reabrir refactors grandes.
+- No abrir un frente nuevo hasta cerrar el bloque multimedia.
+- Retomar con foco en estabilidad, trazabilidad y validacion operativa.
+
+### Indicador de avance hacia beta operativa
+- Cuando el export WordPress tenga imagen real trazable y `qa_imagenes.html` pueda auditarse con datos consistentes, MILU puede pasar de beta tecnica a beta operativa.
+
