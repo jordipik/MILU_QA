@@ -10,6 +10,7 @@ const { recomputeEngineErrors } = require('./recompute_engine_errors');
 const { runComparison } = require('./scripts/qa_pdf_compare');
 const { createRevisionSyncService } = require('./server/services/revision-sync');
 const { createRevisionApplyService } = require('./server/services/revision-apply');
+const { createPnReviewQaCacheService } = require('./server/services/pn-review-qa-cache');
 const { buildQaSummary: buildQaSummaryFromExport, decideByQa } = require('./scripts/export_wordpress_milu');
 const {
     sendValidationError,
@@ -46,22 +47,24 @@ const PORT = 3000;
 const AUDIT_LOG_FILE = path.join(__dirname, 'qa_audit_log.json');
 const AUDIT_LOG_MAX_ENTRIES = 10000;
 const WORDPRESS_OUTPUT_DIR = path.join(__dirname, 'data', 'output', 'wordpress');
+
+const pnReviewQaCacheService = createPnReviewQaCacheService({
+    repoRoot: __dirname,
+    buildQaSummaryFromExport,
+    decideByQa,
+    engineJsonFiles: ENGINE_JSON_FILES
+});
+
 const revisionSyncService = createRevisionSyncService(path.join(__dirname, 'qa_revision_server_data.json'));
 const revisionApplyService = createRevisionApplyService({
     repoRoot: __dirname,
-    onApplied: () => invalidatePnReviewQaCache()
+    onApplied: () => pnReviewQaCacheService.invalidate()
 });
 const {
     normalizeRevisionSyncPayload,
     readRevisionSyncPayload,
     writeRevisionSyncPayload,
 } = revisionSyncService;
-
-const pnReviewQaCache = {
-    loadedAt: null,
-    engineFingerprints: {},
-    payload: null
-};
 
 function readJsonFileSafe(filePath, fallback = null) {
     try {
@@ -372,98 +375,6 @@ function fingerprintsByFileEqual(a, b) {
         if (!fingerprintsEqual(a?.[key], b?.[key])) return false;
     }
     return true;
-}
-
-function ensurePnReviewQaDataLoaded() {
-    const fingerprints = getEngineFingerprints();
-    const upToDate = pnReviewQaCache.payload && fingerprintsByFileEqual(pnReviewQaCache.engineFingerprints, fingerprints);
-
-    if (upToDate) {
-        return pnReviewQaCache.payload;
-    }
-
-    const index = new Map();
-    const list = [];
-
-    for (const file of ENGINE_JSON_FILES) {
-        const filePath = path.join(__dirname, file);
-        const rows = readJsonFileSafe(filePath, []);
-        if (!Array.isArray(rows)) continue;
-
-        const engineModel = String(file).replace(/^engine_/, '').replace(/\.json$/i, '');
-        for (const row of rows) {
-            const sku = getRowPn(row);
-            if (!sku) continue;
-            const key = pnKey(sku);
-            if (!index.has(key)) {
-                index.set(key, { sku, rows: [] });
-            }
-            index.get(key).rows.push({ ...row, __engine_file: file, __engine_model: engineModel });
-        }
-    }
-
-    for (const group of index.values()) {
-        const rows = group.rows;
-        const qaSummaryRaw = buildQaSummaryFromExport(rows);
-        const qaSummary = normalizeQaSummary(qaSummaryRaw);
-        const decisionMeta = decideByQa(rows, qaSummaryRaw);
-        const mergedFields = buildMergedFields(rows);
-        const validation = buildPnValidation(group.sku, rows, mergedFields);
-        const engineModels = uniq(rows.map((row) => normalizeText(row?.__engine_model || row?.engine_model || row?.model || row?.engine)).filter(Boolean));
-        const sourcePages = uniq(rows.map((row) => normalizeText(row?.['Source Page'])).filter(Boolean));
-        const sourceRows = rows.map((row) => buildMappedSourceRow(row));
-
-        const detail = {
-            sku: group.sku,
-            decision: decisionMeta.decision,
-            reason: decisionMeta.reason,
-            export_row: {
-                sku: group.sku,
-                designation_final: mergedFields.designation_final,
-                measure_final: mergedFields.measure_final,
-                weight_final: mergedFields.weight_final,
-                decision: decisionMeta.decision,
-                reason: decisionMeta.reason,
-                occurrences: rows.length,
-                engine_models: engineModels
-            },
-            qa_summary: qaSummary,
-            validation,
-            merged_fields: mergedFields,
-            source_rows_preview: sourceRows.slice(0, 120),
-            source_row_ids: uniq(sourceRows.map((row) => row.ID).filter(Boolean)),
-            engine_models_all: engineModels,
-            source_pages_all: sourcePages,
-            images_all: mergedFields.images,
-            sust_summary: buildSustSummary(rows),
-            conflict_summary: buildConflictSummary(rows, validation),
-            source_rows_all: sourceRows
-        };
-
-        list.push({
-            sku: group.sku,
-            decision: decisionMeta.decision,
-            reason: decisionMeta.reason,
-            designation_final: mergedFields.designation_final,
-            measure_final: mergedFields.measure_final,
-            weight_final: mergedFields.weight_final,
-            occurrences: rows.length,
-            engine_models: engineModels,
-            source_pages_count: sourcePages.length,
-            images_count: mergedFields.images.length,
-            qa_summary: qaSummary,
-            validation
-        });
-
-        index.set(pnKey(group.sku), detail);
-    }
-
-    list.sort((a, b) => String(a.sku).localeCompare(String(b.sku), 'es', { numeric: true, sensitivity: 'base' }));
-
-    pnReviewQaCache.engineFingerprints = fingerprints;
-    pnReviewQaCache.loadedAt = new Date().toISOString();
-    pnReviewQaCache.payload = { list, index };
-    return pnReviewQaCache.payload;
 }
 
 function runNodeScript(scriptRelativePath, args = []) {
@@ -835,12 +746,6 @@ app.get('/export/trace/:sku', async (req, res) => {
     }
 });
 
-function invalidatePnReviewQaCache() {
-    pnReviewQaCache.loadedAt = null;
-    pnReviewQaCache.engineFingerprints = {};
-    pnReviewQaCache.payload = null;
-}
-
 async function writeJsonAtomic(filePath, payload) {
     const tmpPath = `${filePath}.tmp`;
     await fs.promises.writeFile(tmpPath, `${JSON.stringify(payload, null, 2)}\n`, 'utf8');
@@ -904,7 +809,7 @@ function idsEquivalent(a, b) {
 
 app.get('/pn-review/list', async (req, res) => {
     try {
-        const data = ensurePnReviewQaDataLoaded();
+        const data = pnReviewQaCacheService.load();
         const decision = lowerKey(req.query?.decision);
         const q = lowerKey(req.query?.q);
         const offsetRaw = Number(req.query?.offset);
@@ -929,7 +834,7 @@ app.get('/pn-review/list', async (req, res) => {
             ok: true,
             rows: pagedRows,
             total: rows.length,
-            loaded_at: pnReviewQaCache.loadedAt
+            loaded_at: pnReviewQaCacheService.getLoadedAt()
         });
     } catch (error) {
         return res.status(500).json({ ok: false, error: String(error?.message || error) });
@@ -943,7 +848,7 @@ app.get('/pn-review/:sku', async (req, res) => {
     }
 
     try {
-        const data = ensurePnReviewQaDataLoaded();
+        const data = pnReviewQaCacheService.load();
         const detail = data.index.get(pnKey(sku));
         if (!detail) {
             return res.status(404).json({ ok: false, error: `PN no encontrado: ${sku}` });
@@ -1006,7 +911,7 @@ app.post('/pn-review/apply-siblings-bulk', async (req, res) => {
     }
 
     try {
-        const data = ensurePnReviewQaDataLoaded();
+        const data = pnReviewQaCacheService.load();
         const nowIso = new Date().toISOString();
         const updatesByFile = new Map();
         const itemResults = [];
@@ -1130,7 +1035,7 @@ app.post('/pn-review/apply-siblings-bulk', async (req, res) => {
             }
         }
 
-        invalidatePnReviewQaCache();
+        pnReviewQaCacheService.invalidate();
 
         const plannedUpdates = itemResults.reduce((acc, item) => acc + Number(item?.planned_updates || 0), 0);
         const pnsWithChanges = itemResults.filter((item) => Number(item?.planned_updates || 0) > 0).length;
@@ -1248,7 +1153,7 @@ app.post('/pn-review/:sku/apply-decision', async (req, res) => {
         });
     }
 
-    invalidatePnReviewQaCache();
+    pnReviewQaCacheService.invalidate();
 
     console.info('[PN Review] decision applied by SKU', {
         sku,
@@ -1335,7 +1240,7 @@ app.post('/pn-review/:sku/apply-values', async (req, res) => {
         });
     }
 
-    invalidatePnReviewQaCache();
+    pnReviewQaCacheService.invalidate();
 
     console.info('[PN Review] values propagated by SKU', {
         sku,
@@ -1475,7 +1380,7 @@ app.post('/pn-review/by-id/:id/apply-decision', async (req, res) => {
         });
     }
 
-    invalidatePnReviewQaCache();
+    pnReviewQaCacheService.invalidate();
 
     console.info('[PN Review] decision applied by ID', {
         id: rowId,
@@ -2046,7 +1951,7 @@ async function handleSaveJson(req, res) {
             row[payload.field] = payload.value;
             stripLegacyQaFields(json);
             await fs.promises.writeFile(filePath, `${JSON.stringify(json, null, 2)}\n`, 'utf8');
-            invalidatePnReviewQaCache();
+            pnReviewQaCacheService.invalidate();
         });
         return res.json({ ok: true });
     } catch (error) {
