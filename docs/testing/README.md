@@ -13,8 +13,11 @@ Validar de forma rapida que el backend local sigue operativo en las capas critic
 - `npm run test:smoke` (HTTP runtime)
 - `npm run test:db-read` (lectura SQLite mirror)
 - `npm run test:db-analytics` (analytics SQLite mirror)
+- `node --test tests/smoke/python-lib.test.js` (helpers Python reutilizables)
+- `node --test tests/smoke/python-exporters-smoke.test.js` (smoke de exportadores Python con ficheros temporales)
 
 `npm test` es el entrypoint oficial y ejecuta `test:all-smoke`.
+Dentro de ese circuito oficial se incluyen tambien los smoke tests Python de `python_lib` y de exportadores Python.
 
 ## Requisitos previos
 
@@ -49,6 +52,8 @@ Resumen por capa:
 - `runtime`: salud, version, catalogo engines, sincronizacion QA, export status/files, legacy 410.
 - `db-read`: estado DB, resumenes, busqueda, detalle por PN y contratos read-only.
 - `analytics`: overview, rankings, conflictos, drilldowns, cache y export CSV de vistas permitidas.
+- `python-lib`: importabilidad y helpers comunes de `python_lib`.
+- `python-exporters`: smoke no destructivo sobre exportadores Python concretos.
 
 ## Lo que SI cubren los smoke tests
 

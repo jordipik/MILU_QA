@@ -1,31 +1,24 @@
 ﻿import pandas as pd
-import os
+from python_lib.engine_constants import ENGINE_FILES
+from python_lib.json_io import load_engine_json
+from python_lib.repo_paths import resolve_repo_dir
 
-files = [
-    'engine_12V4000M40A.json',
-    'engine_12V4000M53.json',
-    'engine_12V4000M70.json',
-    'engine_16V4000M61.json',
-    'engine_16V4000M73.json',
-    'engine_16V4000M73L.json',
-    'engine_16V4000M90.json',
-    'engine_20V4000M93.json',
-    'engine_20V4000M93L.json'
-]
+repo_dir = resolve_repo_dir(__file__)
 
-for f in files:
+for f in ENGINE_FILES:
     try:
-        if not os.path.exists(f):
+        input_path = repo_dir / f
+        if not input_path.exists():
             print(f'{f}: Not found')
             continue
-        df = pd.read_json(f)
+        df = pd.DataFrame(load_engine_json(input_path))
         for col in df.columns:
             if hasattr(df[col], 'dt') and hasattr(df[col].dt, 'tz_localize'):
                 try:
                     df[col] = df[col].dt.tz_localize(None)
                 except:
                     pass
-        out = f.replace('.json', '.xlsx')
+        out = str(input_path.with_suffix('.xlsx'))
         df.to_excel(out, index=False)
         print(f'{f}: Success')
     except Exception as e:

@@ -7,10 +7,10 @@ Bitácora de cambios efectivos en la rama de remediación. Cada entrada referenc
 
 ---
 
-## Cambio actual - Inicio AR-3 (capa común Python incremental)
+## Cambio actual - Cierre AR-3 (capa común Python incremental)
 
 ### Objetivo aplicado
-- Iniciar AR-3 sin refactor masivo: reducir duplicación crítica en scripts Python y preparar base reutilizable para automatización/CI.
+- Cerrar formalmente AR-3 sin refactor masivo: dar por consolidado el conjunto crítico ya migrado y validado, dejando fuera de alcance el legacy auditado no bloqueante.
 
 ### Módulos creados (`python_lib/`)
 - `python_lib/repo_paths.py`: wrapper común para resolución portable de raíz del repo (`resolve_repo_dir`, `should_log_repo_resolution`).
@@ -27,20 +27,52 @@ Bitácora de cambios efectivos en la rama de remediación. Cada entrada referenc
 - `importar_json.py`: usa `python_lib.repo_paths`, `python_lib.json_io` y `python_lib.engine_constants`.
 - `estadisticas_articulos.py`: usa `python_lib.repo_paths`, `python_lib.json_io` y constantes compartidas.
 - `informe_estadisticas.py`: usa `python_lib.repo_paths`, `python_lib.json_io` y constantes compartidas.
+- `convert_engine_to_excel.py`: usa `python_lib.repo_paths` y `python_lib.json_io` para cargar `engine_*.json` sin rutas frágiles.
+- `convert_engines.py`: usa `python_lib.repo_paths`, `python_lib.json_io` y la lista canónica `ENGINE_FILES`.
+- `convert_excel_to_json.py`: usa `python_lib.repo_paths` y `python_lib.json_io` para persistencia JSON uniforme.
+
+### Auditoría de exportadores/auxiliares restantes
+- `extraccion_de_pdf_a_excel/milu_export_paginas_v1.py`: exportador de páginas PDF a PNG; no comparte IO JSON ni lista de engines.
+- `extraccion_de_pdf_a_excel/milu_export_esquemas_v6_2.py`: exportador/cropper de esquemas PDF; especializado en CSV/imagen, fuera de la capa común actual.
+- `extraccion_de_pdf_a_excel/milu_export_datos_v6_2.py`: extractor batch PDF→Excel/CSV; depende de librerías y reglas propias, no candidato a refactor incremental de bajo riesgo en esta fase.
+- `compare_measurements.py`: utilidad de diagnóstico; sigue con IO legacy y además presenta codificación/normalización pendiente.
+- `validate_engine_jsons.py`: validador legacy redundante frente a `scripts/validate-engine-schema.js` y `python_lib.schema_validation`.
+- `pretty_print_all_json.py`: utilidad de formateo masivo no crítica para export.
+- `marcar_articulos_en_web.py`: utilidad puntual de escritura masiva sobre engines, no incluida en el flujo crítico AR-3.
+
+### Pendientes no bloqueantes
+- Mantener fuera del cierre AR-3 los exportadores PDF legacy de `extraccion_de_pdf_a_excel/` salvo que pasen a formar parte del flujo oficial.
+- Decidir si `compare_measurements.py`, `validate_engine_jsons.py` y `pretty_print_all_json.py` se migran, se archivan o se reemplazan por wrappers de `python_lib` en una fase posterior.
+- Definir en fase posterior si conviene entrypoint único (`pipelines/run_full.py`) sin romper flujos actuales.
+
+### Deuda técnica restante
+- No existe aún un entrypoint Python único para orquestar el pipeline oficial.
+- Quedan utilidades legacy dispersas en raíz con responsabilidades mixtas (diagnóstico, formateo, extracción PDF).
+- La carpeta `extraccion_de_pdf_a_excel/` mantiene dependencias y contratos propios fuera de `python_lib`.
 
 ### Tests y validación
 - Nuevo test: `tests/smoke/python-lib.test.js` (16 pruebas, 16/16 OK).
-- `python -m py_compile` OK para módulos `python_lib/` y scripts migrados.
-- `npm run validate:schema` OK (validación de esquema sigue operativa).
-- `npm run data:snapshot:compare` OK (snapshots siguen operativos).
+- Nuevo test: `tests/smoke/python-exporters-smoke.test.js` (2 pruebas, 2/2 OK) para `convert_engine_to_excel.py` y `convert_excel_to_json.py` sobre ficheros temporales.
+- `python -m py_compile` OK para módulos `python_lib/` y scripts migrados, incluyendo exportadores críticos.
+- `npm run validate:schema` OK (9 engines, 67.883 registros, 0 errores).
+- `npm run data:snapshot:compare` OK (9/9 UNCHANGED, Δ registros = 0).
 - `npm run check` OK tras integrar test AR-3 en `test:all-smoke`.
+- No hubo cambios en backend, UI ni estructura JSON durante este cierre; el alcance quedó limitado a scripts Python críticos, smoke tests y documentación.
+
+### Criterio formal de cierre AR-3
+- Scripts críticos migrados a `python_lib` para IO/path/helpers comunes: `depuracion_json.py`, `add_final_fields.py`, `importar_json.py`, `estadisticas_articulos.py`, `informe_estadisticas.py`, `convert_engine_to_excel.py`, `convert_engines.py`, `convert_excel_to_json.py`.
+- `python -m py_compile` OK sobre `python_lib/` y scripts críticos migrados.
+- `npm run validate:schema` OK (0 errores).
+- `npm run data:snapshot:compare` OK (sin cambios).
+- `npm run check` OK.
 
 ### Estado AR-3
-🟡 INICIADO — 2026-05-13
+✅ CERRADO — 2026-05-13
 
-### Deuda restante AR-3
-- Mantener migración incremental de utilidades menores en exportadores Python restantes.
-- Definir en fase posterior si conviene entrypoint único (`pipelines/run_full.py`) sin romper flujos actuales.
+### Conclusión operativa
+- AR-3 se cierra sobre el conjunto crítico migrado y validado.
+- `extraccion_de_pdf_a_excel/*` y utilidades legacy auditadas quedan explícitamente fuera de alcance en esta fase y pasan a deuda técnica futura no bloqueante.
+- La deuda de orquestación/entrypoint único sigue documentada, pero no impide el cierre formal del objetivo incremental definido para AR-3.
 
 ---
 

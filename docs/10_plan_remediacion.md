@@ -170,12 +170,20 @@ Leyenda:
 ### AR-3. Aislar pipelines Python
 - Acción: mover scripts a `pipelines/` y publicar un único entrypoint `pipelines/run_full.py` que orqueste el flujo oficial.
 - Dificultad: M · Prioridad: 🟡.
-- **Estado: 🟡 INICIADO** (2026-05-13)
+- **Estado: ✅ CERRADO** (2026-05-13)
   - `python_lib/` creado como capa común incremental (sin refactor masivo de pipelines)
   - Módulos nuevos: `repo_paths.py`, `json_io.py`, `engine_helpers.py`, `logging_utils.py`, `schema_validation.py`, `snapshot_utils.py`, `engine_constants.py`
-  - Scripts migrados de forma segura: `depuracion_json.py`, `add_final_fields.py`, `importar_json.py`, `estadisticas_articulos.py`, `informe_estadisticas.py`
-  - Test nuevo: `tests/smoke/python-lib.test.js` (helpers Python reutilizables)
-  - Deuda restante: unificación de entrypoint/orquestación completa pendiente para fase posterior
+  - Scripts criticos migrados de forma segura: `depuracion_json.py`, `add_final_fields.py`, `importar_json.py`, `estadisticas_articulos.py`, `informe_estadisticas.py`, `convert_engine_to_excel.py`, `convert_engines.py`, `convert_excel_to_json.py`
+  - Tests nuevos: `tests/smoke/python-lib.test.js` (helpers Python reutilizables) y `tests/smoke/python-exporters-smoke.test.js` (smoke de exportadores concretos)
+  - El cierre aplica al conjunto crítico migrado de scripts Python que comparten IO/path/helpers comunes.
+  - Quedan fuera del alcance de cierre AR-3: `extraccion_de_pdf_a_excel/*` y utilidades legacy auditadas (`compare_measurements.py`, `validate_engine_jsons.py`, `pretty_print_all_json.py`, `marcar_articulos_en_web.py`). Se documentan como deuda técnica futura, no como bloqueo.
+  - Deuda restante: entrypoint/orquestación única (`pipelines/run_full.py`) y eventual migración de utilidades legacy fuera del flujo crítico
+  - Criterio formal de cierre AR-3:
+    - scripts críticos migrados a `python_lib` para IO/path/helpers comunes
+    - `python -m py_compile` OK sobre `python_lib/` y exportadores críticos migrados
+    - `npm run validate:schema` OK (0 errores)
+    - `npm run data:snapshot:compare` OK (sin cambios)
+    - `npm run check` OK
 
 ### AR-4. CI mínimo (GitHub Actions o local) ✅ IMPLEMENTADO
 - Acción: workflow en `.github/workflows/ci.yml` que ejecuta `npm run check` en `push` a `main` y en `pull_request`.
@@ -201,7 +209,7 @@ Leyenda:
 | 🔴 | UX-1 Vista compacta por defecto | ✅ |
 | 🔴 | AR-1 Carga incremental | ✅ |
 | 🟡 | QW-6 Toasts, BK-2/3, DT-4/5/6, UX-3/4, AR-2 | Pendiente |
-| 🟡 | AR-3 Unificación progresiva pipelines Python | 🟡 INICIADO |
+| 🟡 | AR-3 Unificación progresiva pipelines Python | ✅ CERRADO |
 | 🟡 | DT-3 Snapshots versionados engine_*.json | ✅ IMPLEMENTADO |
 | 🟡 | DT-2 Esquema JSON formal engine_*.json | ✅ IMPLEMENTADO |
 
