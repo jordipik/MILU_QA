@@ -484,7 +484,8 @@
         }
 
         const confirmMessage = buildDecisionConfirmation(detail, actionMeta);
-        const confirmed = await showConfirmDialog(`Confirmar: ${actionMeta.label}`, confirmMessage);
+        const expectedText = action === 'descartar' ? 'DESCARTAR' : 'APLICAR';
+        const confirmed = await showConfirmDialog(`Confirmar: ${actionMeta.label}`, confirmMessage, { expectedText });
         if (!confirmed) return;
 
         try {
@@ -522,16 +523,61 @@
         }, 4000);
     }
 
-    function showConfirmDialog(title, msg) {
+    function showConfirmDialog(title, msg, opts = {}) {
         return new Promise((resolve) => {
             const dlg = document.getElementById('confirmDialog');
             const titleEl = document.getElementById('confirmDialogTitle');
             const msgEl = document.getElementById('confirmDialogMsg');
             const okBtn = document.getElementById('confirmDialogOk');
             const cancelBtn = document.getElementById('confirmDialogCancel');
-            if (!dlg) { resolve(window.confirm(msg)); return; }
+            const expectedText = String(opts.expectedText || '').trim();
+
+            if (!dlg) {
+                if (!expectedText) {
+                    resolve(window.confirm(msg));
+                    return;
+                }
+                const typed = window.prompt(`${msg}\n\nEscribe exactamente: ${expectedText}`, '');
+                resolve(String(typed || '').trim() === expectedText);
+                return;
+            }
+
             titleEl.textContent = title;
-            msgEl.textContent = msg;
+            msgEl.textContent = '';
+
+            const textNode = document.createElement('p');
+            textNode.textContent = msg;
+            textNode.style.margin = '0 0 10px';
+            msgEl.appendChild(textNode);
+
+            let typedInput = null;
+            if (expectedText) {
+                const label = document.createElement('label');
+                label.textContent = `Escribe exactamente: ${expectedText}`;
+                label.style.display = 'block';
+                label.style.fontWeight = '700';
+                label.style.marginBottom = '6px';
+
+                typedInput = document.createElement('input');
+                typedInput.type = 'text';
+                typedInput.autocomplete = 'off';
+                typedInput.spellcheck = false;
+                typedInput.style.width = '100%';
+                typedInput.style.padding = '8px 10px';
+                typedInput.style.borderRadius = '8px';
+                typedInput.style.border = '1px solid #cbd5e1';
+
+                msgEl.appendChild(label);
+                msgEl.appendChild(typedInput);
+                okBtn.disabled = true;
+
+                typedInput.addEventListener('input', () => {
+                    okBtn.disabled = String(typedInput.value || '').trim() !== expectedText;
+                });
+            } else {
+                okBtn.disabled = false;
+            }
+
             const onClose = () => {
                 dlg.removeEventListener('close', onClose);
                 resolve(dlg.returnValue === 'ok');
@@ -540,6 +586,7 @@
             okBtn.value = 'ok';
             cancelBtn.value = 'cancel';
             dlg.showModal();
+            if (typedInput) typedInput.focus();
         });
     }
 

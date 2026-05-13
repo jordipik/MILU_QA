@@ -3,8 +3,21 @@ import { checkSaveBackendConnection, loadPartitionedEngineData, saveCellToServer
 import { assignRevisionKeys, applyRevisionDataToRows, normalizeEstadoToNew } from './revision.js';
 import { initPdfZoomControls, loadPdfClear, loadPdfWithPage, setPdfSelection } from './pdf-viewer.js';
 import { evaluateRowQaChecks, getAllQaCheckCodes, getQaCheckDefinitions, getQaCheckLabel } from './qa-checks.js';
+import { showToast } from './toast.js';
 
 const $ = (id) => document.getElementById(id);
+
+function legacyAlertType(message) {
+    const text = String(message || '').toLowerCase();
+    if (text.startsWith('no se pudo') || text.includes('error')) return 'error';
+    if (text.includes('primero debes') || text.includes('no se encontro') || text.includes('ya estas')) return 'warning';
+    if (text.includes('solo lectura')) return 'info';
+    return 'warning';
+}
+
+function alert(message) {
+    showToast(String(message || ''), legacyAlertType(message));
+}
 
 const CRITICAL_CODES = new Set(getAllQaCheckCodes());
 const QA_PROCESS_DEFINITIONS = getQaCheckDefinitions();

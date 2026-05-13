@@ -1,3 +1,5 @@
+import { confirmTypedAction } from './confirm-typed-action.js';
+
 function getAuditBackendCandidateUrls() {
     const currentOrigin = window.location.origin && window.location.origin !== 'null'
         ? window.location.origin
@@ -218,7 +220,14 @@ ui.refreshBtn?.addEventListener('click', () => {
 });
 
 ui.clearBtn?.addEventListener('click', async () => {
-    const confirmed = window.confirm('Se borrara toda la auditoria en servidor. Esta accion no se puede deshacer.');
+    const confirmed = await confirmTypedAction({
+        title: 'Confirmar borrado de auditoria',
+        message: 'Se borrara toda la auditoria en servidor. Esta accion no se puede deshacer.',
+        expectedText: 'BORRAR',
+        confirmLabel: 'Borrar auditoria',
+        cancelLabel: 'Cancelar',
+        dangerLevel: 'high'
+    });
     if (!confirmed) return;
     try {
         await clearAuditEntries();

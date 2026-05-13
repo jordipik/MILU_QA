@@ -4,6 +4,7 @@
 
 import { state } from './state.js';
 import { escapeHtml, getRowErrors, getRowErrorType, getRowValueForColumn, val } from './helpers.js';
+import { showToast } from './toast.js';
 import { evaluateRowQaChecks, getQaActiveSignature } from './qa-checks.js';
 import { checkSaveBackendConnection, fetchJsonSafe, loadPartitionedEngineData, saveCellToServer, fetchEngineCatalog, loadEnginesByFileNames } from './data-loader.js';
 import {
@@ -20,6 +21,7 @@ import {
 } from './revision.js';
 import { subscribeRevisionSync } from './revision-sync.js';
 import { createChangeControl } from './change-control.js';
+import { confirmTypedAction } from './confirm-typed-action.js';
 import {
     applyColumnView,
     initColumnResize,
@@ -52,6 +54,18 @@ let filterTimeout = null;
 let resizeTimer = null;
 let backendStatusTimer = null;
 let lastReadonlyAlertAt = 0;
+
+function legacyAlertType(message) {
+    const text = String(message || '').toLowerCase();
+    if (text.startsWith('no se pudo') || text.includes('error')) return 'error';
+    if (text.includes('no hay ') || text.includes('selecciona ') || text.includes('sin cambios')) return 'warning';
+    if (text.includes('solo lectura') || text.includes('modo solo lectura')) return 'info';
+    return 'warning';
+}
+
+function alert(message) {
+    showToast(String(message || ''), legacyAlertType(message));
+}
 
 function resolveApiBasePath() {
     const pathname = String(window.location.pathname || '/');
@@ -3219,7 +3233,22 @@ async function applyBulkQuickMode(quickMode) {
     }
 
     const scopeText = scope === 'visible' ? 'registros visibles en pantalla' : 'registros filtrados';
-    const confirmed = window.confirm(`Se aplicará ${targetValues.label} masiva a ${targetRows.length} ${scopeText}. ¿Continuar?`);
+    const expectedByMode = {
+        revok: 'APLICAR',
+        revempty: 'RESET',
+        validate: 'APLICAR',
+        review: 'APLICAR',
+        discard: 'DESCARTAR'
+    };
+    const expectedText = expectedByMode[quickMode] || 'APLICAR';
+    const confirmed = await confirmTypedAction({
+        title: 'Confirmar cambio masivo',
+        message: `Se aplicara ${targetValues.label} masiva a ${targetRows.length} ${scopeText}.`,
+        expectedText,
+        confirmLabel: 'Aplicar cambios',
+        cancelLabel: 'Cancelar',
+        dangerLevel: 'high'
+    });
     if (!confirmed) return;
 
     const targets = [];

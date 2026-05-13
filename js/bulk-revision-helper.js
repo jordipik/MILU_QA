@@ -5,6 +5,7 @@
 
 import { state } from './state.js';
 import { applyRevisionToMatchingPartNumbers } from './revision.js';
+import { showToast } from './toast.js';
 
 export const qaRevisionBulk = {
     /**
@@ -17,7 +18,7 @@ export const qaRevisionBulk = {
             // Obtener fila seleccionada por su índice en allData
             const selectedKey = state.selectedRevisionRowKey;
             if (!selectedKey) {
-                alert('Por favor selecciona un registro de la tabla primero.');
+                showToast('Por favor selecciona un registro de la tabla primero.', 'warning');
                 return;
             }
 
@@ -30,7 +31,7 @@ export const qaRevisionBulk = {
             });
 
             if (!selectedRow) {
-                alert('No se encontró el registro seleccionado en los datos.');
+                showToast('No se encontro el registro seleccionado en los datos.', 'warning');
                 return;
             }
 
@@ -41,7 +42,7 @@ export const qaRevisionBulk = {
                 console.warn('Hubo errores durante la actualización:', result.errors);
             }
 
-            alert(result.message);
+            showToast(result.message, result.success ? 'success' : 'error');
             console.log('Resultado de la operación:', result);
 
             // Re-render tabla si es necesario (disparar evento personalizado)
@@ -51,7 +52,7 @@ export const qaRevisionBulk = {
 
         } catch (error) {
             console.error('Error en applySelectedToMatches:', error);
-            alert(`Error: ${error.message}`);
+            showToast(`Error: ${error.message}`, 'error');
         }
     },
 

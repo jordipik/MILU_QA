@@ -295,7 +295,8 @@ async function applyDecision(action) {
     const occurrences = inPnMode ? (_sources.length || Number(_detail?.export_row?.occurrences || 0)) : 1;
     const msg = `Vas a marcar ${targetLabel} como ${actionLabel}.\nAfectara a ${occurrences} registro(s). ¿Continuar?`;
 
-    const confirmed = await showConfirmDialog(`Confirmar: ${action}`, msg);
+    const expectedText = action === 'descartar' ? 'DESCARTAR' : 'APLICAR';
+    const confirmed = await showConfirmDialog(`Confirmar: ${action}`, msg, { expectedText });
     if (!confirmed) return;
 
     try {
@@ -558,21 +559,60 @@ function setButtonsLoading(loading) {
     });
 }
 
-function showConfirmDialog(title, msg) {
+function showConfirmDialog(title, msg, opts = {}) {
     return new Promise((resolve) => {
         const dlg = _container.querySelector('#preConfirmDialog');
+        const expectedText = String(opts.expectedText || '').trim();
         if (!dlg) {
-            resolve(window.confirm(msg));
+            if (!expectedText) {
+                resolve(window.confirm(msg));
+                return;
+            }
+            const typed = window.prompt(`${msg}\n\nEscribe exactamente: ${expectedText}`, '');
+            resolve(String(typed || '').trim() === expectedText);
             return;
         }
 
         _container.querySelector('#preConfirmTitle').textContent = title;
-        _container.querySelector('#preConfirmMsg').textContent = msg;
+        const msgNode = _container.querySelector('#preConfirmMsg');
+        msgNode.textContent = '';
+        const textNode = document.createElement('p');
+        textNode.textContent = msg;
+        textNode.style.margin = '0 0 10px';
+        msgNode.appendChild(textNode);
 
         const okBtn = _container.querySelector('#preConfirmOk');
         const cancelBtn = _container.querySelector('#preConfirmCancel');
         okBtn.value = 'ok';
         cancelBtn.value = 'cancel';
+
+        let typedInput = null;
+        if (expectedText) {
+            const label = document.createElement('label');
+            label.textContent = `Escribe exactamente: ${expectedText}`;
+            label.style.display = 'block';
+            label.style.fontWeight = '700';
+            label.style.marginBottom = '6px';
+
+            typedInput = document.createElement('input');
+            typedInput.type = 'text';
+            typedInput.autocomplete = 'off';
+            typedInput.spellcheck = false;
+            typedInput.style.width = '100%';
+            typedInput.style.padding = '8px 10px';
+            typedInput.style.borderRadius = '8px';
+            typedInput.style.border = '1px solid #cbd5e1';
+
+            msgNode.appendChild(label);
+            msgNode.appendChild(typedInput);
+            okBtn.disabled = true;
+
+            typedInput.addEventListener('input', () => {
+                okBtn.disabled = String(typedInput.value || '').trim() !== expectedText;
+            });
+        } else {
+            okBtn.disabled = false;
+        }
 
         const onClose = () => {
             dlg.removeEventListener('close', onClose);
@@ -581,6 +621,7 @@ function showConfirmDialog(title, msg) {
 
         dlg.addEventListener('close', onClose);
         dlg.showModal();
+        if (typedInput) typedInput.focus();
     });
 }
 

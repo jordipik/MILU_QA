@@ -11,8 +11,22 @@ import {
 import { publishRevisionSync } from './revision-sync.js';
 import { initPdfZoomControls, loadPdfClear, loadPdfWithPage, requestPdfRelayout, setPdfReadTokens, setPdfSelection } from './pdf-viewer.js';
 import { evaluateQaChecksForField, evaluateRowQaChecks, getAllQaCheckCodes, getQaCheckLabel } from './qa-checks.js';
+import { confirmTypedAction } from './confirm-typed-action.js';
+import { showToast } from './toast.js';
 
 const $ = (id) => document.getElementById(id);
+
+function legacyAlertType(message) {
+    const text = String(message || '').toLowerCase();
+    if (text.startsWith('no se pudo') || text.includes('error') || text.includes('propagación parcial')) return 'error';
+    if (text.includes('propagados ') || text.includes('proceso bulk completado')) return 'success';
+    if (text.includes('primero debes') || text.includes('ya estas') || text.includes('no hay ')) return 'warning';
+    return 'info';
+}
+
+function alert(message) {
+    showToast(String(message || ''), legacyAlertType(message));
+}
 
 const FIELD_TO_ERROR_KEY = {
     'POS': 'pos_error',
@@ -2122,7 +2136,14 @@ async function runQuickRecomputeForFullBook() {
         return;
     }
 
-    const confirmed = window.confirm(`Se recalcularan ERRORES y PDF_AUTO para TODO el libro ${selectedModel}. ¿Continuar?`);
+    const confirmed = await confirmTypedAction({
+        title: 'Confirmar recálculo completo',
+        message: `Se recalcularan ERRORES y PDF_AUTO para todo el libro ${selectedModel}. Esta accion afecta a multiples registros.`,
+        expectedText: 'APLICAR',
+        confirmLabel: 'Recalcular',
+        cancelLabel: 'Cancelar',
+        dangerLevel: 'high'
+    });
     if (!confirmed) return;
 
     if (!isBackendEndpointAllowed('recompute-qa-errors') || !isBackendEndpointAllowed('recompute-pdf-auto')) {
@@ -3254,9 +3275,14 @@ async function applyPnCopyPropagationForCurrentBook() {
         return;
     }
 
-    const confirmed = window.confirm(
-        `Se revisarán ${candidates.length} registros OK+Importar (${uniquePnRows.size} PN únicos) para propagar hermanos. ¿Continuar?`
-    );
+    const confirmed = await confirmTypedAction({
+        title: 'Confirmar propagacion masiva',
+        message: `Se revisaran ${candidates.length} registros OK+Importar (${uniquePnRows.size} PN unicos) para propagar hermanos en bloque.`,
+        expectedText: 'APLICAR',
+        confirmLabel: 'Iniciar proceso',
+        cancelLabel: 'Cancelar',
+        dangerLevel: 'high'
+    });
     if (!confirmed) return;
 
     const triggerBtn = $('propagateHermanosBookBtn');

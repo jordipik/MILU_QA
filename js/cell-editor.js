@@ -6,6 +6,7 @@
 import { state } from './state.js';
 import { escapeHtml, getEngineJsonForRow } from './helpers.js';
 import { saveCellToServer } from './data-loader.js';
+import { showToast } from './toast.js';
 
 const EDITABLE_COLUMNS = new Set();
 let activeEditor = null;
@@ -58,7 +59,7 @@ async function commitInlineEdit() {
     if (!engineFile) {
         restoreCell(td, originalDisplayValue, originalTitleValue);
         activeEditor = null;
-        alert('No se pudo determinar el archivo engine_*.json para esta fila.');
+        showToast('No se pudo determinar el archivo engine_*.json para esta fila.', 'error');
         return;
     }
 
@@ -71,7 +72,7 @@ async function commitInlineEdit() {
     } catch (error) {
         console.error('Error guardando edición inline:', error);
         restoreCell(td, originalDisplayValue, originalTitleValue);
-        alert(`No se pudo guardar el cambio: ${error.message}`);
+        showToast(`No se pudo guardar el cambio: ${error.message}`, 'error');
     } finally {
         td.classList.remove('cell-saving');
         activeEditor = null;
@@ -81,7 +82,7 @@ async function commitInlineEdit() {
 export function startInlineEdit(td) {
     if (!(td instanceof HTMLTableCellElement)) return;
     if (state.backendWritable === false) {
-        alert('Modo solo lectura: backend sin conexion. No se pueden editar celdas.');
+        showToast('Modo solo lectura: backend sin conexion. No se pueden editar celdas.', 'info');
         return;
     }
     if (activeEditor) cancelInlineEdit();

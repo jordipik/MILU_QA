@@ -5,6 +5,7 @@
 
 import { state } from './state.js';
 import { saveCellToServer } from './data-loader.js';
+import { showToast } from './toast.js';
 
 // ─── Claves de revisión ──────────────────────────────────────────────────────
 
@@ -205,7 +206,7 @@ export function setRowRevision(row, estado, accion) {
             }));
         }
         console.warn('No se pudo guardar revisión en engine JSON:', error);
-        alert(`No se pudo guardar la revisión en servidor: ${error.message}`);
+        showToast(`No se pudo guardar la revision en servidor: ${error.message}`, 'error');
     });
 }
 
