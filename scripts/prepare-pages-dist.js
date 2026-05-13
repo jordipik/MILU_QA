@@ -42,6 +42,12 @@ const requiredStaticEntries = [
 function ensureExists(relPath) {
     const fullPath = path.join(rootDir, relPath);
     if (!fs.existsSync(fullPath)) {
+        if (relPath === 'qa_revision_sync.php' || relPath === 'save-json.php') {
+            const legacyPhpPath = path.join(rootDir, 'legacy', 'php', relPath);
+            if (fs.existsSync(legacyPhpPath)) {
+                return legacyPhpPath;
+            }
+        }
         throw new Error(`Missing required path: ${relPath}`);
     }
     return fullPath;
