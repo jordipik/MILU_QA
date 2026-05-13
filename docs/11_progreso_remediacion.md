@@ -40,6 +40,42 @@ Bitácora de cambios efectivos en la rama de remediación. Cada entrada referenc
 
 ## Cambio actual - Cierre AR-3 (capa común Python incremental)
 
+## Cambio aplicado - AR-2 fase 3 (cache service de PN review QA)
+
+### Objetivo aplicado
+- Completar tercera iteración AR-2: encapsular el estado/cache de PN review QA (`pnReviewQaCache`) junto con toda la lógica de construcción de índice (helper functions) en un servicio factory reutilizable.
+
+### Cambios principales
+- Nuevo módulo: `server/services/pn-review-qa-cache.js`.
+   - Factory `createPnReviewQaCacheService(options)` que exporta `load()`, `invalidate()`, `getLoadedAt()`.
+   - Encapsula estado interno: `loadedAt`, `engineFingerprints`, `payload` con lógica de fingerprinting/detección de cambios.
+   - Contiene helper functions internas: normalización de texto, construcción de merged_fields, validación de PN, mapeo de filas, etc.
+   - Recibe como dependencias: `repoRoot`, `buildQaSummaryFromExport`, `decideByQa`, `engineJsonFiles`.
+- `server.js` refactorizado:
+   - Instancia `pnReviewQaCacheService` con opciones.
+   - Reemplaza `ensurePnReviewQaDataLoaded()` con `pnReviewQaCacheService.load()`.
+   - Reemplaza `invalidatePnReviewQaCache()` con `pnReviewQaCacheService.invalidate()`.
+   - Reemplaza `pnReviewQaCache.loadedAt` con `pnReviewQaCacheService.getLoadedAt()`.
+   - Elimina ~95 líneas de lógica de cache y helpers (movidas al servicio).
+
+### Alcance y no-cambios
+- Sin cambios en UI.
+- Sin cambios en estructura JSON.
+- Sin cambios en contratos HTTP de `/pn-review/*`.
+- Sin cambios en backend no relacionado con PN review cache.
+
+### Verificación ejecutada
+- `npm run test:smoke` 12/12 ✅ OK (incluyendo `GET /pn-review/list`).
+- `node --test tests/security/write-validation.test.js` 16/16 ✅ OK (incluyendo cache invalidation en endpoints de escritura).
+- `node -c server.js` ✅ OK (sintaxis válida).
+- `node -c server/services/pn-review-qa-cache.js` ✅ OK.
+
+### Estado AR-2
+- 🟡 INICIADO — fases 1, 2, 3 completadas.
+- Commit: 92ab4071 (fases 1-2) + 48468220 (fase 3).
+
+## Cambio actual - Cierre AR-3 (capa común Python incremental)
+
 ### Objetivo aplicado
 - Cerrar formalmente AR-3 sin refactor masivo: dar por consolidado el conjunto crítico ya migrado y validado, dejando fuera de alcance el legacy auditado no bloqueante.
 

@@ -169,10 +169,12 @@ Leyenda:
 - **Estado: 🟡 INICIADO** (2026-05-13)
   - Fase 1 aplicada: extraída la lógica de normalización/persistencia de `qa_revision_sync.php` a `server/services/revision-sync.js`.
   - Fase 2 aplicada: extraída la orquestación de aplicación de revisiones a `server/services/revision-apply.js`.
-  - `server.js` mantiene rutas y contratos HTTP; Express queda más fino en el flujo de revisión QA.
-  - Alcance actual deliberadamente limitado: no se toca backend no relacionado, ni la UI, ni la persistencia de `engine_*.json`.
-  - Validación focalizada actual: `npm run test:smoke` OK y `node --test tests/security/write-validation.test.js` OK.
-  - Siguiente corte recomendado: encapsular el estado/cache de PN review QA y seguir reduciendo helpers transversales dentro de `server.js` sin alterar contratos HTTP.
+  - Fase 3 aplicada: encapsulado el estado/cache de PN review QA a `server/services/pn-review-qa-cache.js` (contiene toda la lógica de construcción de índice con helper functions internas).
+  - `server.js` mantiene rutas y contratos HTTP; Express queda más fino en todos los flujos.
+  - Alcance deliberadamente limitado en las 3 fases: no se toca backend no relacionado, ni la UI, ni la persistencia de `engine_*.json`.
+  - Validación focalizada: `npm run test:smoke` 12/12 OK y `node --test tests/security/write-validation.test.js` 16/16 OK.
+  - Commits: 92ab4071 (fases 1-2) + 48468220 (fase 3).
+  - Siguiente corte recomendado: extraer audit-log helpers o analytics-cache (ambas son pequeñas); decidir si hacer una fase 4 menor o cerrar AR-2 después.
 
 ### AR-3. Aislar pipelines Python
 - Acción: mover scripts a `pipelines/` y publicar un único entrypoint `pipelines/run_full.py` que orqueste el flujo oficial.
