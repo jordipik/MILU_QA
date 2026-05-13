@@ -166,6 +166,13 @@ Leyenda:
 ### AR-2. Separar capas
 - Acción: introducir `domain/`, `services/`, `infra/` en backend; mover lógica de revisión y de aplicación masiva fuera de `server.js`.
 - Dificultad: M · Prioridad: 🟡.
+- **Estado: 🟡 INICIADO** (2026-05-13)
+  - Fase 1 aplicada: extraída la lógica de normalización/persistencia de `qa_revision_sync.php` a `server/services/revision-sync.js`.
+  - Fase 2 aplicada: extraída la orquestación de aplicación de revisiones a `server/services/revision-apply.js`.
+  - `server.js` mantiene rutas y contratos HTTP; Express queda más fino en el flujo de revisión QA.
+  - Alcance actual deliberadamente limitado: no se toca backend no relacionado, ni la UI, ni la persistencia de `engine_*.json`.
+  - Validación focalizada actual: `npm run test:smoke` OK y `node --test tests/security/write-validation.test.js` OK.
+  - Siguiente corte recomendado: encapsular el estado/cache de PN review QA y seguir reduciendo helpers transversales dentro de `server.js` sin alterar contratos HTTP.
 
 ### AR-3. Aislar pipelines Python
 - Acción: mover scripts a `pipelines/` y publicar un único entrypoint `pipelines/run_full.py` que orqueste el flujo oficial.

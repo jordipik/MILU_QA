@@ -7,6 +7,37 @@ Bitácora de cambios efectivos en la rama de remediación. Cada entrada referenc
 
 ---
 
+## Cambio actual - AR-2 fase 1-2 (servicios de revision QA)
+
+### Objetivo aplicado
+- Continuar AR-2 con dos cortes pequenos sobre backend QA: separar de `server.js` la logica de sincronizacion de revisiones y la orquestacion de aplicacion de revisiones, manteniendo los contratos HTTP intactos.
+
+### Cambios principales
+- Nuevo modulo: `server/services/revision-sync.js`.
+   - Extrae `normalizeRevisionSyncPayload`, `ensureRevisionSyncFile`, `readRevisionSyncPayload` y `writeRevisionSyncPayload`.
+- Nuevo modulo: `server/services/revision-apply.js`.
+   - Centraliza la orquestacion de `applyRevisionPayload(...)` para el endpoint `POST /apply-revision-to-engines`.
+- `server.js` conserva validacion, respuesta HTTP y wiring, pero deja de contener inline esa logica de revision QA.
+
+### Alcance y no-cambios
+- Sin cambios en UI.
+- Sin cambios en estructura JSON.
+- Sin cambios en contratos de `GET/POST /qa_revision_sync.php`.
+- Sin cambios en contrato de `POST /apply-revision-to-engines`.
+- Sin cambios en backend no relacionado con revision QA.
+
+### Verificacion ejecutada
+- `npm run test:smoke` OK.
+- `node --test tests/security/write-validation.test.js` OK.
+   - `/apply-revision-to-engines payload vacio -> 400 VALIDATION_ERROR`.
+   - `/apply-revision-to-engines revisiones vacias -> 200 ok no-op`.
+- `node --check server.js` OK.
+- `node --check server/services/revision-sync.js` OK.
+- `node --check server/services/revision-apply.js` OK.
+
+### Estado AR-2
+- 🟡 INICIADO — fase 1 y fase 2 completadas.
+
 ## Cambio actual - Cierre AR-3 (capa común Python incremental)
 
 ### Objetivo aplicado
