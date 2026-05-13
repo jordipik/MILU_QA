@@ -96,6 +96,10 @@ Para persistencia: servidor levantado → respuesta HTTP → payload del fronten
 ## Convenciones
 
 - Backend: CommonJS. Frontend: módulos ES.
+- Los PHP legacy (`qa_revision_sync.php`, `save-json.php`) viven en `legacy/php/`; en local, sus rutas `.php` las atiende Express.
+- UX-4 activo: acciones críticas de borrado/descartado/aplicación masiva requieren confirmación tipada (`BORRAR`, `DESCARTAR`, `RESET`, `APLICAR`).
+- UX-3 completado (fase 1 + fase 2): `showToast(...)` activo en módulos QA; sin alertas directas pendientes fuera de adaptadores/fallback documentados.
+- Backend write-safety: `/save-json` usa escritura atómica; `pn-review` `apply-decision` usa lock por fichero durante read-modify-write.
 - No editar carpetas generadas/datos: `dist/`, `esquemas/`, `esquemas_pos_circulos/`, `json_originales/`, `zz_old/`, `fotos_articulos/`, `fotos_motores/`.
 - Paso a JSON definitivos: ejecutar [depuracion_json.py](depuracion_json.py) sobre los 9 `engine_*.json`.
 - `measurement_final`: prioriza `dimensions_gesa`; fallback `MEASUREMENT / STANDARD`. Espacios múltiples se colapsan.

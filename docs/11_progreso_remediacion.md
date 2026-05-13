@@ -7,6 +7,461 @@ Bitácora de cambios efectivos en la rama de remediación. Cada entrada referenc
 
 ---
 
+## ✅ D3 — `/save-json` con escritura atómica (2026-05-13)
+
+### Objetivo aplicado
+Eliminar la escritura directa vulnerable en `handleSaveJson` sin alterar contrato HTTP, payload, formato JSON ni ruta de persistencia.
+
+### Implementación
+- Archivo modificado: `server.js`
+- Cambio puntual:
+   - antes: `fs.promises.writeFile(filePath, JSON.stringify(...))`
+   - ahora: `writeJsonAtomic(filePath, json)`
+- Alcance deliberadamente mínimo: solo el punto de escritura final dentro de `handleSaveJson`.
+
+### Contrato preservado
+- misma ruta: `POST /save-json` y alias `POST /save-json.php`
+- mismo JSON persistido con pretty-print y salto final
+- mismos códigos HTTP y envelopes de error/éxito
+
+### Validación ejecutada
+- `node --test tests/security/write-validation.test.js` ✅
+- `npm test` ✅
+- `npm run test:all-smoke` ✅
+- `npm run test:security` ✅
+
+### Resultado
+- `/save-json` queda alineado con el patrón atómico ya usado en otros endpoints de escritura.
+
+### Rollback
+- Revertir el cambio puntual en `handleSaveJson` dentro de `server.js`.
+
+---
+
+## ✅ D4 — Locks de escritura en `apply-decision` (2026-05-13)
+
+### Objetivo aplicado
+Reducir el riesgo de carrera entre escrituras concurrentes sobre los mismos `engine_*.json` al aplicar decisiones de PN review por SKU y por ID.
+
+### Endpoints protegidos
+- `POST /pn-review/:sku/apply-decision`
+- `POST /pn-review/by-id/:id/apply-decision`
+
+### Patrón aplicado
+- lock por fichero con `withSaveJsonFileLock(file, async () => { ... })`
+- alcance del lock limitado a la sección crítica read-modify-write
+- sin locks en endpoints de solo lectura
+- sin locks anidados añadidos
+
+### Cobertura añadida
+- `tests/security/write-validation.test.js`
+- Nuevo test: roundtrip HTTP de `POST /pn-review/by-id/:id/apply-decision`
+   - localiza un registro reversible desde `GET /pn-review/list` + `GET /pn-review/:sku/sources`
+   - aplica una decisión distinta
+   - restaura el estado original con el mismo endpoint
+   - no deja mutaciones persistentes
+
+### Validación ejecutada
+- `node -c server.js` ✅
+- `node --test tests/security/write-validation.test.js` ✅
+- `npm test` ✅
+- `npm run test:all-smoke` ✅
+- `npm run test:security` ✅
+
+### Resultado
+- `apply-decision` por SKU y por ID quedan serializados por fichero.
+- La suite de seguridad pasa de 16 a 17 tests.
+
+### Rollback
+- Revertir los bloques `withSaveJsonFileLock(...)` añadidos en `server.js`.
+- Revertir el test de roundtrip en `tests/security/write-validation.test.js`.
+
+### Deuda residual relacionada
+- No hay prueba específica de concurrencia real multi-request; el lock queda validado funcionalmente, no bajo estrés paralelo.
+
+---
+
+## ✅ D7 — Cobertura smoke para `/pn-review/:sku/sources` (2026-05-13)
+
+### Objetivo aplicado
+Blindar con smoke test el endpoint `GET /pn-review/:sku/sources`, que había fallado previamente por un `ReferenceError` tras la extracción a servicios en AR-2.
+
+### Implementación
+- Archivo modificado: `tests/smoke/http-smoke.test.js`
+- Estrategia:
+   - obtener un SKU real y estable desde `GET /pn-review/list?limit=1`
+   - consultar después `GET /pn-review/:sku/sources`
+   - validar `200`, `Content-Type` JSON, ausencia de `ReferenceError` en el body y estructura mínima (`ok`, `sku`, `count`, `rows`)
+- Decisión deliberada: sin fixtures artificiales ni dependencia de estado de escritura; solo lectura sobre datos ya indexados por el backend.
+
+### Bug previo cubierto
+- Endpoint protegido: `GET /pn-review/:sku/sources`
+- Regresión cubierta: uso de función eliminada (`ensurePnReviewQaDataLoaded`) que provocaba `ReferenceError` en runtime.
+
+### Validación ejecutada
+- `node --test tests/smoke/http-smoke.test.js` ✅
+- `npm test` ✅
+- `npm run test:all-smoke` ✅
+- `npm run test:security` ✅
+
+### Resultado
+- Smoke HTTP pasa de 12 a 13 tests.
+- El endpoint queda cubierto dentro de la suite oficial sin cambiar contratos HTTP.
+
+### Rollback
+- Revertir el test añadido en `tests/smoke/http-smoke.test.js`.
+
+---
+
+## ✅ UX-3 — Cierre fase 2 (migración de 8 alertas directas) (2026-05-13)
+
+### Objetivo aplicado
+Completar UX-3 en el runtime frontend migrando las alertas directas pendientes fuera del lote inicial, sin tocar confirmaciones UX-4, prompts funcionales ni lógica de negocio.
+
+### Inventario antes/después
+- Antes de fase 2:
+   - `alert(` runtime aprox: 109
+   - deuda residual directa: 8 (`bulk-revision-helper.js`: 4, `cell-editor.js`: 3, `revision.js`: 1)
+- Después de fase 2:
+   - `alert(` runtime aprox: 101
+   - alertas directas fuera de adaptadores/fallback: 0
+   - `confirm(` runtime: 2 (sin cambios)
+   - `prompt(` runtime: 2 (sin cambios)
+
+### Clasificación aplicada (8/8)
+- `js/bulk-revision-helper.js`
+   - 2 avisos de precondición -> `warning`
+   - 1 resultado de operación -> `success` si `result.success`, `error` en caso contrario
+   - 1 excepción capturada -> `error`
+- `js/cell-editor.js`
+   - 2 fallos operativos recuperables -> `error`
+   - 1 modo solo lectura -> `info`
+- `js/revision.js`
+   - 1 fallo de persistencia asíncrona -> `error`
+
+### Cambios de implementación
+- Imports explícitos de `showToast` añadidos para evitar dependencias implícitas por página:
+   - `js/bulk-revision-helper.js`
+   - `js/cell-editor.js`
+   - `js/revision.js`
+- Sustitución completa de `alert(...)` por `showToast(...)` en los tres módulos.
+
+### Compatibilidad
+- No se requirió tocar HTML: los módulos consumen `toast.js` por import ES directo.
+- Resultado: sin riesgo de `ReferenceError` por `showToast` al cargar estos scripts.
+
+### Validación ejecutada
+- `npm test` ✅
+- `npm run test:all-smoke` ✅
+- `npm run test:security` ✅
+- `get_errors` en archivos tocados: sin errores ✅
+- Búsqueda en alcance UX-3 fase 2:
+   - `alert(` en `bulk-revision-helper.js`/`cell-editor.js`/`revision.js`: 0 ✅
+
+### Resultado de UX-3
+✅ UX-3 queda **COMPLETADO** (fase 1 + fase 2).
+
+### Rollback UX-3 fase 2
+- Revertir cambios en:
+   - `js/bulk-revision-helper.js`
+   - `js/cell-editor.js`
+   - `js/revision.js`
+- Si se requiere rollback total UX-3: además revertir adaptadores de fase 1 y eliminar `js/toast.js`.
+
+### Deuda residual UX-3
+- No quedan alertas directas pendientes fuera de adaptadores/fallback.
+- Deuda menor: consolidar en lote futuro los adaptadores locales `alert(...)` de fase 1 en una API de notificación común para reducir duplicación heurística.
+
+---
+
+## 🟡 UX-3 — Sistema de toasts central (fase inicial) (2026-05-13)
+
+### Objetivo aplicado
+Introducir notificaciones no bloqueantes para alertas informativas, de éxito y errores no destructivos, manteniendo UX-4 intacto para acciones críticas.
+
+### Inventario frontend (aprox.)
+- Conteo runtime (sin `docs/`, `tests/`, `dist/`, `node_modules/`):
+   - `alert(`: ~109
+   - `confirm(`: ~2
+   - `prompt(`: ~2
+- Alcance inicial priorizado:
+   - `js/qa-milu.js`
+   - `js/analista-02.js`
+   - `js/qa-analista-registro.js`
+
+### Helper creado
+- `js/toast.js`
+- API: `showToast(message, type, options)`
+- Tipos soportados: `success`, `error`, `warning`, `info`.
+- Capacidades incluidas:
+   - contenedor único en esquina superior derecha
+   - cierre automático configurable (`duration`)
+   - botón de cierre manual
+   - deduplicación temporal (`dedupeWindowMs`)
+   - `aria-live` y `role=alert/status`
+   - no bloquea interacción
+
+### Migración incremental aplicada
+- En los 3 archivos objetivo se adaptaron las `alert()` legacy hacia `showToast(...)` mediante adaptador local (sin alterar lógica de negocio ni flujo de control).
+- Cobertura migrada en este lote: ~98 llamadas `alert()` de los tres módulos.
+
+### Casos no migrados en esta fase y motivo
+- Confirmaciones críticas (`confirm`) protegidas por UX-4: se mantienen.
+- Prompts funcionales: se mantienen.
+- Alertas fuera del alcance inicial (`bulk-revision-helper.js`, `cell-editor.js`, `revision.js`, etc.): diferidas al siguiente lote UX-3.
+
+### Validación ejecutada
+- `npm test` ✅
+- `npm run test:all-smoke` ✅
+- `npm run test:security` ✅
+- Validación de errores/sintaxis en archivos tocados ✅
+
+### Checklist manual recomendado (UX-3)
+- aparece toast `success`
+- aparece toast `error`
+- aparece toast `warning/info`
+- botón cerrar funciona
+- autocierre funciona
+- no tapa controles críticos
+- no se duplican toasts de forma absurda
+- confirmaciones UX-4 siguen funcionando
+- acciones peligrosas siguen exigiendo palabra tipada
+
+### Riesgos y deuda residual
+- Persisten `alert()` en módulos fuera del alcance de este lote.
+- El conteo bruto de `alert(` puede variar por adaptadores locales, aunque la UX ya es no bloqueante en los 3 archivos migrados.
+
+### Rollback UX-3 (fase inicial)
+- Revertir import/adaptador en:
+   - `js/qa-milu.js`
+   - `js/analista-02.js`
+   - `js/qa-analista-registro.js`
+- Eliminar `js/toast.js` si se revierte completamente UX-3.
+
+---
+
+## ✅ UX-4 — Confirmación tipada para acciones críticas (2026-05-13)
+
+### Objetivo aplicado
+Reducir errores de operación en acciones irreversibles o de impacto masivo, sin cambiar lógica de negocio ni contratos HTTP.
+
+### Inventario de acciones peligrosas (frontend)
+- Barrido ejecutado sobre HTML/JS runtime: `confirm(`, `alert(`, `prompt(`, `fetch POST/DELETE` y acciones `bulk/apply/reset/discard/save/sync`.
+- Resultado bruto: 788 coincidencias en 84 ficheros (incluye informativas/debug/no críticas).
+- Ficheros con mayor concentración operativa: `js/qa-milu.js`, `js/analista-02.js`, `js/qa-auditoria.js`, `js/pn-review.js`, `js/pn-review-embedded.js`.
+
+### Criterio UX-4 aplicado
+- Confirmación tipada solo para acciones críticas:
+   - multi-registro / multi-motor
+   - borrar/descartar/resetear/recalcular/aplicar en bloque
+- Se mantienen fuera de UX-4:
+   - `alert()` informativos y de error no destructivo (migración diferida a UX-3)
+   - acciones unitarias reversibles
+
+### Helper creado
+- `js/confirm-typed-action.js`
+- API: `confirmTypedAction({ title, message, expectedText, confirmLabel, cancelLabel, dangerLevel })`
+- Propiedades:
+   - modal ligero sin librerías externas
+   - cancelación sin efectos secundarios
+   - ejecución bloqueada hasta coincidencia exacta del texto
+   - accesibilidad mínima: foco inicial, Escape cierra, Enter solo confirma con texto válido
+   - fallback seguro si hay más de una confirmación activa (no confirma)
+
+### Acciones protegidas con confirmación tipada
+- `js/qa-milu.js`
+   - `applyBulkQuickMode(...)` (cambios masivos en filtrados/visibles)
+   - palabras: `APLICAR`, `RESET`, `DESCARTAR` según acción
+- `js/analista-02.js`
+   - `runQuickRecomputeForFullBook()`
+   - `applyPnCopyPropagationForCurrentBook()`
+   - palabra: `APLICAR`
+- `js/qa-auditoria.js`
+   - borrado total de auditoría (`DELETE /audit-log`)
+   - palabra: `BORRAR`
+- `js/pn-review.js`
+   - aplicación de decisión por PN (`/pn-review/:sku/apply-decision`)
+   - palabras: `APLICAR` o `DESCARTAR`
+- `js/pn-review-embedded.js`
+   - aplicación de decisión por PN/ID (`/pn-review/:sku/apply-decision`, `/pn-review/by-id/:id/apply-decision`)
+   - palabras: `APLICAR` o `DESCARTAR`
+
+### Acciones no protegidas en esta fase y motivo
+- `alert()` de feedback y navegación en `qa_milu`, `analista-02`, `qa-analista-registro`.
+- Motivo: pertenecen a UX-3 (toasts), no son confirmaciones destructivas.
+
+### Validación ejecutada
+- `npm test` ✅
+- `npm run test:all-smoke` ✅
+- `npm run test:security` ✅
+- Verificación de sintaxis/errores en ficheros tocados ✅
+
+### Riesgos residuales
+- Quedan `alert()`/`confirm()` no críticos pendientes de UX-3 (experiencia de uso, no integridad de datos).
+- Los diálogos tipados en `pn-review.js` y `pn-review-embedded.js` usan fallback a `prompt` si el `<dialog>` no existe en la vista.
+
+### Rollback UX-4
+- Revertir import y llamadas a helper en:
+   - `js/qa-milu.js`
+   - `js/analista-02.js`
+   - `js/qa-auditoria.js`
+   - `js/pn-review.js`
+   - `js/pn-review-embedded.js`
+- Eliminar `js/confirm-typed-action.js` si se revierte completamente UX-4.
+
+---
+
+## ✅ BK-2 — PHP físicos movidos a legacy (2026-05-13)
+
+### Objetivo aplicado
+Reducir exposición de ficheros PHP físicos en raíz, manteniendo contratos HTTP y compatibilidad con publicación legacy.
+
+### Inventario `.php` detectado
+- `qa_revision_sync.php` (raíz)
+- `save-json.php` (raíz)
+- `Copia_seguridad_v1.01/qa_revision_sync.php`
+- `Copia_seguridad_v1.01/save-json.php`
+- `dist/milu_publish/qa_revision_sync.php`
+- `dist/milu_publish/save-json.php`
+
+### Clasificación
+- Activos (rutas HTTP): `GET|POST /qa_revision_sync.php`, `GET|POST /save-json.php` (servidos por Express).
+- Legacy necesarios para hosting sin Node: `qa_revision_sync.php`, `save-json.php` (ahora en `legacy/php/` como fuente de publicación).
+- Obsoletos: copias en `Copia_seguridad_v1.01/*`.
+- Generados/salida: `dist/milu_publish/*.php`.
+- Dudosos: ninguno bloqueante tras validación de rutas y tests.
+
+### Cambios realizados
+- `qa_revision_sync.php` -> `legacy/php/qa_revision_sync.php`
+- `save-json.php` -> `legacy/php/save-json.php`
+- `scripts/prepare-pages-dist.js` actualizado con fallback de origen para ambos `.php` desde `legacy/php/`, manteniendo el destino en raíz de `dist/milu_publish/`.
+
+### Referencias revisadas
+- Código activo mantiene referencias de compatibilidad `.php` en:
+   - `server.js` (handlers explícitos y alias)
+   - `js/data-loader.js` (candidatos remotos/locales)
+   - `scripts/prepare-pages-dist.js` (listado de publicación)
+- No se detectaron llamadas activas inesperadas a otros `.php` fuera de esos flujos.
+
+### Validación ejecutada
+- `npm test` ✅
+- `npm run test:all-smoke` ✅
+- `npm run pages:prepare:dry` ✅ (sigue incluyendo `qa_revision_sync.php` y `save-json.php` en salida)
+- Verificación HTTP manual:
+   - `GET /qa_revision_sync.php` -> `200 application/json`
+   - `GET /save-json.php` -> `200 application/json`
+
+### Resultado
+BK-2 queda cerrado sin cambios de contrato HTTP ni regresión en smoke tests.
+
+### Riesgos residuales
+- Si un despliegue legacy dependía de PHP físicos en raíz del repo (sin pasar por `pages:prepare`), debe actualizar su proceso para usar `legacy/php/` como fuente.
+- Copias en `Copia_seguridad_v1.01/` se mantienen por ahora como histórico y pueden confundir inventarios futuros.
+
+### Rollback
+- `git mv legacy/php/qa_revision_sync.php qa_revision_sync.php`
+- `git mv legacy/php/save-json.php save-json.php`
+- Revertir el fallback añadido en `scripts/prepare-pages-dist.js`.
+
+---
+
+## ✅ CIERRE FORMAL AR-2 — Separar capas backend (2026-05-13)
+
+### Resumen técnico
+AR-2 se da por cerrado tras completar 4 fases incrementales sobre el backend Express, más una auditoría final exhaustiva con corrección de bug crítico detectado.
+
+### Alcance conseguido
+- `server/services/revision-sync.js` — lógica de normalización/persistencia de `qa_revision_server_data.json` completamente extraída.
+- `server/services/revision-apply.js` — orquestación de `applyRevisionPayload` separada como servicio con callback `onApplied`.
+- `server/services/pn-review-qa-cache.js` — factory de cache/índice de PN review con todas las helper functions internas encapsuladas.
+- `server.js` queda como capa HTTP pura: wiring de rutas, validación de entrada/salida y helpers de utilidad genérica (serialización, locks de archivo, fingerprinting).
+
+### Bug crítico corregido en cierre (Fase 4)
+- **Endpoint:** `GET /pn-review/:sku/sources`
+- **Causa:** llamada a `ensurePnReviewQaDataLoaded()` (función eliminada en Fase 3, no reemplazada).
+- **Efecto:** ReferenceError en runtime al consultar fuentes de un PN; no detectado por suite de smoke tests porque el endpoint no estaba cubierto.
+- **Fix:** reemplazado por `pnReviewQaCacheService.load()` (línea 886 de `server.js`).
+- **Lección:** la cobertura se añadió en el cierre del bloque con el nuevo smoke test de `GET /pn-review/:sku/sources`.
+
+### Auditoría de deuda residual (no bloqueante)
+Los siguientes hallazgos se documentan como deuda técnica futura; **ninguno es un bug activo ni bloquea operaciones**:
+
+| # | Hallazgo | Riesgo | Acción recomendada |
+|---|----------|--------|-------------------|
+| D1 | `decisionMap`/`explicitMap` duplicados literalmente en `/pn-review/:sku/apply-decision` y `/pn-review/by-id/:id/apply-decision` | Bajo | Extraer constante de módulo en AR-2 follow-up o AR-5 |
+| D2 | Helpers `normalizeText`, `lowerKey`, `collapseSpaces`, `pnKey`, `uniq`, `pickMostFrequent` duplicados en `server.js` y `pn-review-qa-cache.js` | Bajo | Extraer a `server/utils/text-helpers.js` |
+| D3 | Resuelto | Cerrado | `handleSaveJson` ya usa `writeJsonAtomic` |
+| D4 | Resuelto | Cerrado | `apply-decision` por SKU e ID ya usa `withSaveJsonFileLock` |
+| D5 | `_esquemasPosIndexCache` no tiene mecanismo de invalidación; si se añaden archivos a `esquemas_pos_circulos/` en runtime, el índice queda obsoleto hasta reinicio | Bajo | Añadir TTL o endpoint de invalidación explícita |
+| D6 | `exportRunState.running` puede quedar `true` ante excepción no capturada fuera del bloque try/catch de `withExportLock` | Bajo | El `finally` del lock lo resetea correctamente; riesgo real solo ante `process.exit` o SIGKILL |
+| D7 | Resuelto | Cerrado | `tests/smoke/http-smoke.test.js` ya cubre `GET /pn-review/:sku/sources` con SKU derivado de `GET /pn-review/list` |
+
+### Riesgos residuales
+- El resto (D1, D2, D5, D6) son calidad de código o casos extremos.
+
+### Validación final AR-2
+- `npm test` → 69/69 ✅ (13 smoke + 10 db-read + 20 db-analytics + 8 schema + 16 python-lib + 2 python-exporters)
+- `node --test tests/security/write-validation.test.js` → 17/17 ✅
+- `node -c server.js` ✅
+- `node -c server/services/*.js` ✅
+
+### Por qué se considera cerrado con deuda residual
+AR-2 tenía como objetivo desacoplar lógica de negocio QA del handler HTTP en `server.js`. Ese objetivo se ha cumplido para los tres dominios principales (revisión-sync, revisión-apply, pn-review-cache). La deuda residual real tras el cierre queda acotada a D1, D2, D5 y D6; D3, D4 y D7 quedaron resueltos y validados en verde dentro del mismo bloque.
+
+### Estado AR-2
+✅ CERRADO — 2026-05-13
+
+---
+
+## Propuesta siguiente bloque: BLOQUE-UX (UX-3 + UX-4 + BK-2)
+
+### Evaluación de candidatos
+
+| Tarea | Impacto op. | Riesgo regresión | Dificultad | Dependencia |
+|-------|------------|-----------------|------------|-------------|
+| **UX-3** Toasts (sustituir `alert()`) | Alto — flujo QA sin interrupciones modales | Medio (152 ocurrencias, cambio transversal) | M | Ninguna |
+| **UX-4** Confirmación tipada acción irreversible | Medio — previene errores destructivos | Bajo (solo añade UI, no modifica lógica) | S | Ninguna; natural secuela de UX-3 |
+| **BK-2** Mover `.php` a `legacy/` | Bajo — archivos inactivos, riesgo estético | Muy bajo (files no ejecutados) | S | BK-1 ya OK |
+| **BK-3** Compression + Cache-Control | Bajo en localhost | Bajo | S | Ninguna |
+| **QW-6** (= UX-3) | ídem UX-3 | ídem | ídem | ídem |
+
+### Bloque óptimo recomendado: BLOQUE-UX-3/4 + BK-2
+
+**Razón:** UX-3 y UX-4 son el mayor Quick Win de UX pendiente: eliminan las interrupciones modales del flujo de revisión QA y añaden seguridad en operaciones destructivas. BK-2 es S/baja y limpia el repo sin riesgo.
+
+### Plan técnico incremental
+
+**Quick wins (S — 1 sesión):**
+1. **BK-2**: `mv qa_revision_sync.php legacy/php/ ; mv save-json.php legacy/php/`. Verificar que Express sigue respondiendo `/qa_revision_sync.php` y `/save-json.php`. Añadir comentario en `server.js` aclarando que los `.php` de la raíz son legacy inactivos.
+2. **UX-4**: modal/dialog nativo con input de confirmación tipada. Implementar en nuevo módulo `js/confirm-dialog.js`. Integrar en los flujos: "Aplicar revisión masiva", "Recalcular PDFs (todos)", "Borrar revisión completa". Test manual smoke.
+
+**Trabajo medio (M — 2-3 sesiones):**
+3. **UX-3**: crear `js/notify.js` con `notify(level, msg, [durationMs])` usando un toast container inyectado una sola vez. Sustituir `alert()` progresivamente por archivo: primero `qa_milu.html`, luego `analista_02.html`, luego el resto. El número de 152 ocurrencias incluye JS inline en HTML; hacer script de búsqueda para inventariar antes de reemplazar.
+
+### Estrategia de validación
+- Cada sustitución de `alert()` debe ir acompañada de una revisión manual del flujo afectado.
+- No hay smoke test automatizado para toasts; documentar en `docs/testing/UX3_TOASTS_MANUAL_SMOKE.md`.
+- Tras UX-3, `npm test` debe seguir en verde (cambio puramente de UI, sin tocar backend).
+- Para UX-4, verificar que el modal no bloquea operaciones no destructivas.
+
+### Estrategia de rollback
+- BK-2: reversible con `git mv` de vuelta si aparece alguna ruta inesperada que sirva el PHP físico.
+- UX-3: rollback por commit; cada archivo HTML/JS se modifica de forma atómica.
+- UX-4: módulo nuevo, sin cambios en lógica; rollback = eliminar la llamada al modal.
+
+### Smoke tests necesarios post-bloque
+- `npm test` completo (68 tests) en verde.
+- Smoke manual: flujo de revisión QA sin `alert()` bloqueante.
+- Smoke manual: intento de acción destructiva → aparece confirmación tipada.
+- Verificar `GET /qa_revision_sync.php` y `POST /save-json` siguen OK tras BK-2.
+
+### Deuda técnica a resolver en bloque posterior (no UX)
+- D1/D2: consolidación de constantes y helpers duplicados en backend.
+- D5: invalidación explícita o TTL para `_esquemasPosIndexCache`.
+- D6: reforzar manejo de `exportRunState` ante terminación abrupta de proceso.
+
+---
+
 ## Cambio actual - AR-2 fase 1-2 (servicios de revision QA)
 
 ### Objetivo aplicado

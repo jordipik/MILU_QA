@@ -85,6 +85,31 @@ describe('MILU smoke HTTP', () => {
             assert.ok(Array.isArray(body.rows) || typeof body.total === 'number',
                 'Falta rows[] o total');
         });
+
+        test('GET /pn-review/:sku/sources -> ok + rows para SKU existente', async () => {
+            const listRes = await requestText('/pn-review/list?limit=1', { method: 'GET' }, TIMEOUT_MS);
+            assert.equal(listRes.status, 200);
+            assertJsonContentType(listRes);
+            const listBody = parseJsonOrThrow(listRes);
+            assert.equal(listBody.ok, true, 'Falta ok=true en /pn-review/list');
+            assert.ok(Array.isArray(listBody.rows), 'rows debe ser array en /pn-review/list');
+            assert.ok(listBody.rows.length > 0, 'Se necesita al menos un SKU en /pn-review/list para probar /sources');
+
+            const sku = String(listBody.rows[0]?.sku || '').trim();
+            assert.ok(sku, `SKU invalido obtenido desde /pn-review/list: ${JSON.stringify(listBody.rows[0])}`);
+
+            const res = await requestText(`/pn-review/${encodeURIComponent(sku)}/sources`, { method: 'GET' }, TIMEOUT_MS);
+            assert.equal(res.status, 200, `Esperado 200 en /pn-review/${sku}/sources, recibido ${res.status} con body: ${res.text}`);
+            assertJsonContentType(res);
+            assert.ok(!/ReferenceError/i.test(res.text), 'La respuesta contiene ReferenceError');
+
+            const body = parseJsonOrThrow(res);
+            assert.equal(body.ok, true, 'Falta ok=true en /pn-review/:sku/sources');
+            assert.equal(body.sku, sku, `sku devuelto no coincide (${body.sku} !== ${sku})`);
+            assert.ok(Number.isInteger(body.count) && body.count >= 0, `count invalido: ${body.count}`);
+            assert.ok(Array.isArray(body.rows), 'rows debe ser array en /pn-review/:sku/sources');
+            assert.equal(body.rows.length, body.count, `rows.length (${body.rows.length}) debe coincidir con count (${body.count})`);
+        });
     });
 
     describe('Export — solo lectura', () => {

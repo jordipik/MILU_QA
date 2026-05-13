@@ -3,6 +3,7 @@
 const { test, describe, before, after } = require('node:test');
 const assert = require('node:assert/strict');
 const { spawn } = require('node:child_process');
+const fs = require('node:fs');
 const path = require('node:path');
 const { validateSaveJsonPayload, normalizeRevisionAccion } = require('../../server/validation/qa-validation');
 
@@ -47,6 +48,48 @@ async function requestJson(pathname, body) {
         json = null;
     }
     return { status: res.status, json, text };
+}
+
+async function requestGetJson(pathname) {
+    const res = await fetch(`${BASE_URL}${pathname}`);
+    const text = await res.text();
+    let json = null;
+    try {
+        json = JSON.parse(text);
+    } catch {
+        json = null;
+    }
+    return { status: res.status, json, text };
+}
+
+function restoreEngineRowFields(file, id, fields) {
+    const filePath = path.join(process.cwd(), file);
+    const rows = JSON.parse(fs.readFileSync(filePath, 'utf8'));
+    const row = rows.find((item) => String(item?.ID || '').trim() === String(id).trim());
+    if (!row) {
+        throw new Error(`No se pudo restaurar el registro ${id} en ${file}`);
+    }
+
+    for (const [field, value] of Object.entries(fields)) {
+        row[field] = value;
+    }
+
+    fs.writeFileSync(filePath, `${JSON.stringify(rows, null, 2)}\n`, 'utf8');
+    fs.rmSync(`${filePath}.tmp`, { force: true });
+}
+
+function readEngineRowFields(file, id) {
+    const filePath = path.join(process.cwd(), file);
+    const rows = JSON.parse(fs.readFileSync(filePath, 'utf8'));
+    const row = rows.find((item) => String(item?.ID || '').trim() === String(id).trim());
+    if (!row) {
+        throw new Error(`No se pudo leer el registro ${id} en ${file}`);
+    }
+    return {
+        qa_revision_estado: row.qa_revision_estado,
+        qa_revision_accion: row.qa_revision_accion,
+        qa_revision_updated_at: row.qa_revision_updated_at,
+    };
 }
 
 before(async () => {
@@ -166,8 +209,6 @@ describe('MILU write validation', () => {
     });
 
     test('/save-json roundtrip HTTP: guarda y restaura designation_final', async () => {
-        const fs = require('node:fs');
-        const path = require('node:path');
         const file = 'engine_12V4000M40A.json';
         const filePath = path.join(process.cwd(), file);
         const arr = JSON.parse(fs.readFileSync(filePath, 'utf8'));
@@ -245,5 +286,91 @@ describe('MILU write validation', () => {
         const res = await requestJson('/apply-revision-to-engines', huge);
         assert.equal(res.status, 400);
         assert.equal(res.json?.code, 'PAYLOAD_TOO_LARGE');
+    });
+
+    test('/pn-review/by-id/:id/apply-decision roundtrip HTTP: aplica y restaura una decision', async () => {
+        const decisionByPair = new Map([
+            ['ok|importar', 'validar'],
+            ['ok|eliminar', 'descartar'],
+            ['pendiente|revisar', 'revisar'],
+        ]);
+
+        const listRes = await requestGetJson('/pn-review/list?limit=10');
+        assert.equal(listRes.status, 200);
+        assert.equal(listRes.json?.ok, true);
+        assert.ok(Array.isArray(listRes.json?.rows), 'rows debe ser array en /pn-review/list');
+
+        let candidate = null;
+        for (const item of listRes.json.rows) {
+            const sku = String(item?.sku || '').trim();
+            if (!sku) continue;
+
+            const sourcesRes = await requestGetJson(`/pn-review/${encodeURIComponent(sku)}/sources`);
+            if (sourcesRes.status !== 200 || sourcesRes.json?.ok !== true || !Array.isArray(sourcesRes.json?.rows)) {
+                continue;
+            }
+
+            const row = sourcesRes.json.rows.find((sourceRow) => {
+                const estado = String(sourceRow?.qa_revision_estado || '').trim().toLowerCase();
+                const accion = String(sourceRow?.qa_revision_accion || '').trim().toLowerCase();
+                const pair = `${estado}|${accion}`;
+                return decisionByPair.has(pair)
+                    && String(sourceRow?.ID || '').trim()
+                    && String(sourceRow?.source_file || '').trim();
+            });
+
+            if (row) {
+                const estado = String(row.qa_revision_estado || '').trim().toLowerCase();
+                const accion = String(row.qa_revision_accion || '').trim().toLowerCase();
+                const originalFields = readEngineRowFields(String(row.source_file).trim(), String(row.ID).trim());
+                candidate = {
+                    id: String(row.ID).trim(),
+                    source_file: String(row.source_file).trim(),
+                    source_page: String(row['Source Page'] || '').trim(),
+                    pos: String(row.POS || '').trim(),
+                    part_no: String(row['PART NO.'] || '').trim(),
+                    originalAction: decisionByPair.get(`${estado}|${accion}`),
+                    originalEstado: originalFields.qa_revision_estado,
+                    originalAccion: originalFields.qa_revision_accion,
+                    originalUpdatedAt: originalFields.qa_revision_updated_at,
+                };
+                break;
+            }
+        }
+
+        assert.ok(candidate, 'No se encontro candidato reversible para probar /pn-review/by-id/:id/apply-decision');
+
+        const nextAction = candidate.originalAction === 'revisar' ? 'validar' : 'revisar';
+        const payload = {
+            action: nextAction,
+            source_file: candidate.source_file,
+            source_page: candidate.source_page,
+            pos: candidate.pos,
+            part_no: candidate.part_no,
+        };
+
+        try {
+            const applyRes = await requestJson(`/pn-review/by-id/${encodeURIComponent(candidate.id)}/apply-decision`, payload);
+            assert.equal(applyRes.status, 200, `status inesperado: ${applyRes.status} body=${applyRes.text}`);
+            assert.equal(applyRes.json?.ok, true);
+            assert.equal(applyRes.json?.id, candidate.id);
+            assert.equal(applyRes.json?.decision_applied, nextAction);
+            assert.equal(applyRes.json?.rows_updated, 1);
+            assert.ok(Array.isArray(applyRes.json?.files_touched), 'files_touched debe ser array');
+            assert.ok(applyRes.json.files_touched.length >= 1, 'Debe tocar al menos un fichero');
+        } finally {
+            const restoreRes = await requestJson(
+                `/pn-review/by-id/${encodeURIComponent(candidate.id)}/apply-decision`,
+                { ...payload, action: candidate.originalAction }
+            );
+            assert.equal(restoreRes.status, 200, `No se pudo restaurar decision original: ${restoreRes.status} body=${restoreRes.text}`);
+            assert.equal(restoreRes.json?.ok, true);
+            assert.equal(restoreRes.json?.decision_applied, candidate.originalAction);
+            restoreEngineRowFields(candidate.source_file, candidate.id, {
+                qa_revision_estado: candidate.originalEstado,
+                qa_revision_accion: candidate.originalAccion,
+                qa_revision_updated_at: candidate.originalUpdatedAt,
+            });
+        }
     });
 });

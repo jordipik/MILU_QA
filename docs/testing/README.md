@@ -86,3 +86,9 @@ Resumen por capa:
 1. Antes de cambios: `npm test`.
 2. Durante cambios de DB/analytics: ejecutar suite especifica + `npm test`.
 3. Antes de merge: `npm run test:all-smoke`.
+4. Si se tocan rutas legacy `.php`: validar manualmente `GET /qa_revision_sync.php` y `GET /save-json.php` (deben responder JSON desde Express).
+5. Si se tocan confirmaciones UX-4: validar manualmente cancelar, Escape, texto incorrecto, texto correcto y ausencia de doble ejecución.
+6. Si se tocan toasts UX-3: validar `success/error/warning/info`, cierre manual, autocierre y que UX-4 siga exigiendo texto tipado en acciones críticas.
+7. Si se cierra UX-3 fase 2: verificar por búsqueda que no quedan `alert(` directos en `js/bulk-revision-helper.js`, `js/cell-editor.js` y `js/revision.js`.
+8. Si se toca PN review backend: verificar que `tests/smoke/http-smoke.test.js` sigue cubriendo `GET /pn-review/:sku/sources` con un SKU derivado de `GET /pn-review/list`.
+9. Si se toca persistencia backend: verificar que `/save-json` sigue pasando el roundtrip HTTP y que `apply-decision` por ID sigue pasando su roundtrip restaurable en `tests/security/write-validation.test.js`.

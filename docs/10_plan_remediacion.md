@@ -54,6 +54,14 @@ Leyenda:
 ### BK-2. Eliminar archivos `.php` físicos del repo o moverlos a `legacy/`
 - Acción: ya no se ejecutan; mover a `legacy/php/` para que el static middleware nunca los exponga.
 - Dificultad: S · Prioridad: 🟡 · Depende de: BK-1 confirmado en uso.
+- **Estado: ✅ COMPLETADO** (2026-05-13)
+  - Movidos: `qa_revision_sync.php` y `save-json.php` desde raíz a `legacy/php/`.
+  - Compatibilidad mantenida: Express sigue atendiendo `GET|POST /qa_revision_sync.php` y `GET|POST /save-json.php`.
+  - Publicación legacy mantenida: `scripts/prepare-pages-dist.js` usa fallback de origen en `legacy/php/` y conserva ambos `.php` en la raíz de `dist/milu_publish/`.
+  - Validación: `npm test` y `npm run test:all-smoke` en verde.
+  - Rollback correcto:
+    - `git mv legacy/php/qa_revision_sync.php qa_revision_sync.php`
+    - `git mv legacy/php/save-json.php save-json.php`
 
 ### BK-3. Activar `compression` y caching de respuestas estáticas grandes
 - Acción: middleware `compression` + `Cache-Control: no-cache` en `engine_*.json` para que el navegador valide con `If-Modified-Since`.
@@ -140,10 +148,33 @@ Leyenda:
 ### UX-3. Sustituir `alert()` por sistema de toasts
 - Acción: componente único `notify(level, msg)`. Reemplazar las 152 ocurrencias.
 - Dificultad: M · Prioridad: 🟡.
+- **Estado: ✅ COMPLETADO (fase 1 + fase 2)** (2026-05-13)
+  - Helper central: `js/toast.js` con `showToast(message, type, options)`.
+  - Fase 1: adaptador local de alertas no destructivas en:
+    - `js/qa-milu.js`
+    - `js/analista-02.js`
+    - `js/qa-analista-registro.js`
+  - Fase 2: migradas las 8 alertas directas restantes en:
+    - `js/bulk-revision-helper.js` (4)
+    - `js/cell-editor.js` (3)
+    - `js/revision.js` (1)
+  - Resultado runtime: `alert(` aproximado de 109 -> 101, quedando solo llamadas canalizadas por adaptadores locales documentados (sin alertas directas fuera de adaptadores/fallback).
+  - Confirmaciones críticas/prompt funcionales no tocados (UX-4 intacto).
+  - Validación ejecutada: `npm test`, `npm run test:all-smoke`, `npm run test:security`.
 
 ### UX-4. Confirmación tipada para acciones irreversibles
 - Acción: para "borrar revisión" o "recalcular todos los PDFs", pedir teclear el motor o palabra clave.
 - Dificultad: S · Prioridad: 🟡.
+- **Estado: ✅ IMPLEMENTADO (fase UX-4 inicial)** (2026-05-13)
+  - Helper central: `js/confirm-typed-action.js`.
+  - Integrado en acciones críticas:
+    - cambios masivos en `qa_milu` (`applyBulkQuickMode`)
+    - recálculo de libro completo en `analista-02`
+    - propagación masiva por PN del libro en `analista-02`
+    - borrado total de auditoría en `qa-auditoria`
+    - decisiones PN review (`pn-review.js` y `pn-review-embedded.js`)
+  - Cobertura de palabras tipadas: `BORRAR`, `DESCARTAR`, `RESET`, `APLICAR`.
+  - Validación ejecutada: `npm test`, `npm run test:all-smoke`, `npm run test:security`.
 
 ### UX-5. Unificar idioma de etiquetas
 - Acción: glosario único (preferencia: español en UI, inglés en claves de datos).
@@ -166,15 +197,19 @@ Leyenda:
 ### AR-2. Separar capas
 - Acción: introducir `domain/`, `services/`, `infra/` en backend; mover lógica de revisión y de aplicación masiva fuera de `server.js`.
 - Dificultad: M · Prioridad: 🟡.
-- **Estado: 🟡 INICIADO** (2026-05-13)
-  - Fase 1 aplicada: extraída la lógica de normalización/persistencia de `qa_revision_sync.php` a `server/services/revision-sync.js`.
-  - Fase 2 aplicada: extraída la orquestación de aplicación de revisiones a `server/services/revision-apply.js`.
-  - Fase 3 aplicada: encapsulado el estado/cache de PN review QA a `server/services/pn-review-qa-cache.js` (contiene toda la lógica de construcción de índice con helper functions internas).
-  - `server.js` mantiene rutas y contratos HTTP; Express queda más fino en todos los flujos.
-  - Alcance deliberadamente limitado en las 3 fases: no se toca backend no relacionado, ni la UI, ni la persistencia de `engine_*.json`.
-  - Validación focalizada: `npm run test:smoke` 12/12 OK y `node --test tests/security/write-validation.test.js` 16/16 OK.
-  - Commits: 92ab4071 (fases 1-2) + 48468220 (fase 3).
-  - Siguiente corte recomendado: extraer audit-log helpers o analytics-cache (ambas son pequeñas); decidir si hacer una fase 4 menor o cerrar AR-2 después.
+- **Estado: ✅ CERRADO** (2026-05-13)
+  - Fase 1: `server/services/revision-sync.js` — normalización y persistencia de revisiones QA.
+  - Fase 2: `server/services/revision-apply.js` — orquestación de aplicación masiva de revisiones.
+  - Fase 3: `server/services/pn-review-qa-cache.js` — factory de cache/índice de PN review con helpers internos.
+  - Fase 4 (cierre): corrección de bug crítico (`ensurePnReviewQaDataLoaded` → `pnReviewQaCacheService.load()` en `GET /pn-review/:sku/sources`). No detectado por smoke tests previos porque el endpoint no estaba cubierto.
+  - D7 resuelto: `tests/smoke/http-smoke.test.js` ahora cubre `GET /pn-review/:sku/sources` derivando un SKU real desde `GET /pn-review/list`.
+  - D3 resuelto: `handleSaveJson` usa `writeJsonAtomic(filePath, json)` y conserva formato/contrato de `/save-json`.
+  - D4 resuelto: `/pn-review/:sku/apply-decision` y `/pn-review/by-id/:id/apply-decision` ejecutan su sección crítica bajo `withSaveJsonFileLock(file, ...)`.
+  - `server.js` conserva solo wiring HTTP y helpers de utilidad ligeros.
+  - Alcance deliberado: sin cambios en UI, contratos HTTP ni estructura JSON.
+  - Validación final: `npm test` 69/69 OK (13 smoke + 10 db-read + 20 db-analytics + 8 schema + 16 python-lib + 2 python-exporters).
+  - Deuda residual documentada (no bloqueante): `decisionMap`/`explicitMap` duplicados × 2 endpoints; helpers de normalización duplicados entre `server.js` y `pn-review-qa-cache.js`; `_esquemasPosIndexCache` sin invalidación explícita; `exportRunState` mutable sin reset ante crash.
+  - Criterio de cierre: separación de capas conseguida para los 3 dominios principales; `server.js` ~2.100 líneas (reducido desde ~2.400); 0 tests rotos; contratos HTTP intactos.
 
 ### AR-3. Aislar pipelines Python
 - Acción: mover scripts a `pipelines/` y publicar un único entrypoint `pipelines/run_full.py` que orqueste el flujo oficial.
@@ -217,7 +252,8 @@ Leyenda:
 | 🔴 | DT-1 Path configurable en pipeline | ✅ |
 | 🔴 | UX-1 Vista compacta por defecto | ✅ |
 | 🔴 | AR-1 Carga incremental | ✅ |
-| 🟡 | QW-6 Toasts, BK-2/3, DT-4/5/6, UX-3/4, AR-2 | Pendiente |
+| 🟡 | QW-6 Toasts, BK-2/3, DT-4/5/6, UX-3/4 | Pendiente |
+| 🟡 | AR-2 Separar capas backend | ✅ CERRADO |
 | 🟡 | AR-3 Unificación progresiva pipelines Python | ✅ CERRADO |
 | 🟡 | DT-3 Snapshots versionados engine_*.json | ✅ IMPLEMENTADO |
 | 🟡 | DT-2 Esquema JSON formal engine_*.json | ✅ IMPLEMENTADO |

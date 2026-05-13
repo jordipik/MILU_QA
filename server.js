@@ -883,7 +883,7 @@ app.get('/pn-review/:sku/sources', async (req, res) => {
     }
 
     try {
-        const data = ensurePnReviewQaDataLoaded();
+        const data = pnReviewQaCacheService.load();
         const detail = data.index.get(pnKey(sku));
         if (!detail) {
             return res.status(404).json({ ok: false, error: `PN no encontrado: ${sku}` });
@@ -1118,26 +1118,28 @@ app.post('/pn-review/:sku/apply-decision', async (req, res) => {
     for (const file of ENGINE_JSON_FILES) {
         const filePath = path.join(__dirname, file);
         try {
-            const raw = await fs.promises.readFile(filePath, 'utf8');
-            const json = JSON.parse(raw);
-            if (!Array.isArray(json)) {
-                throw new Error('Contenido JSON invalido: se esperaba array.');
-            }
+            await withSaveJsonFileLock(file, async () => {
+                const raw = await fs.promises.readFile(filePath, 'utf8');
+                const json = JSON.parse(raw);
+                if (!Array.isArray(json)) {
+                    throw new Error('Contenido JSON invalido: se esperaba array.');
+                }
 
-            let touched = false;
-            for (const row of json) {
-                if (pnKey(getRowPn(row)) !== skuNormalized) continue;
-                row.qa_revision_estado = targetEstado;
-                row.qa_revision_accion = targetAccion;
-                row.qa_revision_updated_at = nowIso;
-                rowsUpdated += 1;
-                touched = true;
-            }
+                let touched = false;
+                for (const row of json) {
+                    if (pnKey(getRowPn(row)) !== skuNormalized) continue;
+                    row.qa_revision_estado = targetEstado;
+                    row.qa_revision_accion = targetAccion;
+                    row.qa_revision_updated_at = nowIso;
+                    rowsUpdated += 1;
+                    touched = true;
+                }
 
-            if (touched) {
-                await writeJsonAtomic(filePath, json);
-                filesTouched.push(file);
-            }
+                if (touched) {
+                    await writeJsonAtomic(filePath, json);
+                    filesTouched.push(file);
+                }
+            });
         } catch (error) {
             errors.push({ file, error: String(error?.message || error) });
         }
@@ -1331,39 +1333,41 @@ app.post('/pn-review/by-id/:id/apply-decision', async (req, res) => {
         const filePath = path.join(__dirname, file);
 
         try {
-            const raw = await fs.promises.readFile(filePath, 'utf8');
-            const json = JSON.parse(raw);
-            if (!Array.isArray(json)) {
-                throw new Error('Contenido JSON invalido: se esperaba array.');
-            }
+            await withSaveJsonFileLock(file, async () => {
+                const raw = await fs.promises.readFile(filePath, 'utf8');
+                const json = JSON.parse(raw);
+                if (!Array.isArray(json)) {
+                    throw new Error('Contenido JSON invalido: se esperaba array.');
+                }
 
-            let idx = json.findIndex((row) => idsEquivalent(row?.ID, rowId));
-            if (idx < 0) {
-                idx = json.findIndex((row) => {
-                    if (sourcePage && normalizeText(row?.['Source Page']) !== sourcePage) return false;
-                    if (sourcePos && normalizeText(row?.POS) !== sourcePos) return false;
-                    if (sourcePartNo && normalizeText(row?.['PART NO.']) !== sourcePartNo) return false;
-                    return idsEquivalent(row?.ID, rowId);
-                });
-            }
-            if (idx < 0) continue;
+                let idx = json.findIndex((row) => idsEquivalent(row?.ID, rowId));
+                if (idx < 0) {
+                    idx = json.findIndex((row) => {
+                        if (sourcePage && normalizeText(row?.['Source Page']) !== sourcePage) return false;
+                        if (sourcePos && normalizeText(row?.POS) !== sourcePos) return false;
+                        if (sourcePartNo && normalizeText(row?.['PART NO.']) !== sourcePartNo) return false;
+                        return idsEquivalent(row?.ID, rowId);
+                    });
+                }
+                if (idx < 0) return;
 
-            json[idx].qa_revision_estado = targetEstado;
-            json[idx].qa_revision_accion = targetAccion;
-            json[idx].qa_revision_updated_at = nowIso;
+                json[idx].qa_revision_estado = targetEstado;
+                json[idx].qa_revision_accion = targetAccion;
+                json[idx].qa_revision_updated_at = nowIso;
 
-            await writeJsonAtomic(filePath, json);
+                await writeJsonAtomic(filePath, json);
 
-            found = true;
-            rowsUpdated = 1;
-            filesTouched.push(file);
-            updatedTarget = {
-                id: rowId,
-                qa_revision_estado: targetEstado,
-                qa_revision_accion: targetAccion,
-                engine_file: file,
-                engine_model: String(file).replace(/^engine_/i, '').replace(/\.json$/i, '')
-            };
+                found = true;
+                rowsUpdated = 1;
+                filesTouched.push(file);
+                updatedTarget = {
+                    id: rowId,
+                    qa_revision_estado: targetEstado,
+                    qa_revision_accion: targetAccion,
+                    engine_file: file,
+                    engine_model: String(file).replace(/^engine_/i, '').replace(/\.json$/i, '')
+                };
+            });
         } catch (error) {
             errors.push({ file, error: String(error?.message || error) });
         }
@@ -1950,7 +1954,7 @@ async function handleSaveJson(req, res) {
             }
             row[payload.field] = payload.value;
             stripLegacyQaFields(json);
-            await fs.promises.writeFile(filePath, `${JSON.stringify(json, null, 2)}\n`, 'utf8');
+            await writeJsonAtomic(filePath, json);
             pnReviewQaCacheService.invalidate();
         });
         return res.json({ ok: true });
