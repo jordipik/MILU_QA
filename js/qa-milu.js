@@ -97,7 +97,7 @@ const MODAL_FIELD_KEYS = [
     'pos_final',
     'pn_final',
     'designation_final',
-    'model_final',
+    'model_type_final',
     'qty_final',
     'qty_units_final',
     'weight_final',
@@ -770,7 +770,7 @@ function renderExportTrace(trace, sku) {
     if (!(body instanceof HTMLElement)) return;
 
     const safeSku = String(sku || '').trim();
-    if (traceSku) traceSku.textContent = safeSku || 'Sin selección';
+    if (traceSku) traceSku.textContent = safeSku || 'Sin selecciÃ³n';
 
     if (!trace || typeof trace !== 'object') {
         body.textContent = 'No hay traza para este SKU.';
@@ -799,12 +799,12 @@ function renderExportTrace(trace, sku) {
         + '</div>'
         + `<p><b>Motivo:</b> ${escapeHtml(String(preview.import_reason || '-'))}</p>`
         + `<p><b>Motores:</b> ${escapeHtml(String(compacted.engine_models_all || '-'))}</p>`
-        + `<p><b>Páginas:</b> ${escapeHtml(String(compacted.source_pages_all || '-'))}</p>`
+        + `<p><b>PÃ¡ginas:</b> ${escapeHtml(String(compacted.source_pages_all || '-'))}</p>`
         + `<p><b>IDs:</b> ${escapeHtml(String(compacted.source_ids_all || '-'))}</p>`
-        + '<p><b>Provenance (máx. 30 filas):</b></p>'
+        + '<p><b>Provenance (mÃ¡x. 30 filas):</b></p>'
         + '<div class="qa-export-trace-table-wrap">'
         + '<table class="qa-export-trace-table" aria-label="Registros fuente del SKU">'
-        + '<thead><tr><th>ID</th><th>Motor</th><th>Página</th><th>POS</th><th>Designation</th><th>Measure</th><th>Weight</th></tr></thead>'
+        + '<thead><tr><th>ID</th><th>Motor</th><th>PÃ¡gina</th><th>POS</th><th>Designation</th><th>Measure</th><th>Weight</th></tr></thead>'
         + `<tbody>${sourcePreviewRows || '<tr><td colspan="7">Sin registros fuente</td></tr>'}</tbody>`
         + '</table>'
         + '</div>';
@@ -903,7 +903,7 @@ async function runExportPipeline(endpoint, label) {
         button.disabled = true;
     });
 
-    setExportRunStatus(`${label} en ejecución...`, 'warn');
+    setExportRunStatus(`${label} en ejecuciÃ³n...`, 'warn');
     try {
         await fetchExportJson(endpoint, {
             method: 'POST',
@@ -913,7 +913,7 @@ async function runExportPipeline(endpoint, label) {
         await loadExportPreview();
         setExportRunStatus(`${label} completado`, 'ok');
     } catch (error) {
-        setExportRunStatus(`${label} falló: ${error.message}`, 'bad');
+        setExportRunStatus(`${label} fallÃ³: ${error.message}`, 'bad');
     } finally {
         actionButtons.forEach((button) => {
             button.disabled = false;
@@ -1175,7 +1175,7 @@ window.miluRefreshPdfData = async (request = {}) => {
     try {
         return await refreshDataFromShellUpdate(request);
     } catch (error) {
-        console.warn('No se pudo refrescar QA PDF tras actualización externa:', error);
+        console.warn('No se pudo refrescar QA PDF tras actualizaciÃ³n externa:', error);
         return false;
     }
 };
@@ -1560,7 +1560,7 @@ function renderRecordModalExport(row, options = {}) {
         body.innerHTML = `<tr><td colspan="${sourceLabels.length + 1}">No hay campos no coincidentes para este registro.</td></tr>`;
         if (count) {
             const comparedLabel = miluNewRow ? '2 registros comparados (v506 + synthetic)' : '1 registro (solo synthetic; sin match en v506)';
-            count.textContent = `${comparedLabel} · ${sourceMatches.length} aparicion${sourceMatches.length === 1 ? '' : 'es'} · 0 campos no coincidentes`;
+            count.textContent = `${comparedLabel} Â· ${sourceMatches.length} aparicion${sourceMatches.length === 1 ? '' : 'es'} Â· 0 campos no coincidentes`;
         }
         setModalSectionVisibility(body, true);
         return;
@@ -1589,7 +1589,7 @@ function renderRecordModalExport(row, options = {}) {
         const fieldLabel = onlyMismatchFields
             ? `${visibleFields.length} campo${visibleFields.length === 1 ? '' : 's'} no coincidente${visibleFields.length === 1 ? '' : 's'}`
             : `${fields.length} campos`;
-        count.textContent = `${comparedLabel} · ${sourceMatches.length} aparicion${sourceMatches.length === 1 ? '' : 'es'} · ${fieldLabel}`;
+        count.textContent = `${comparedLabel} Â· ${sourceMatches.length} aparicion${sourceMatches.length === 1 ? '' : 'es'} Â· ${fieldLabel}`;
     }
     setModalSectionVisibility(body, true);
 }
@@ -1624,7 +1624,7 @@ function renderRecordModalSuperseded(row, options = {}) {
         return `<tr><td>${escapeHtml(col)}</td><td title="${escapeHtml(rawValue)}">${escapeHtml(displayValue)}</td></tr>`;
     }).join('');
 
-    if (count) count.textContent = `1 registro reconstruido · ${sourceMatches.length} aparicion${sourceMatches.length === 1 ? '' : 'es'}`;
+    if (count) count.textContent = `1 registro reconstruido Â· ${sourceMatches.length} aparicion${sourceMatches.length === 1 ? '' : 'es'}`;
     setModalSectionVisibility(body, true);
 }
 
@@ -1834,7 +1834,7 @@ function fillRecordModal(row, revisionKey) {
     $('qaModalRevisionAccion').value = normalizeAccionToNew(row?.qa_revision_accion);
     $('qaModalPnFinal').value = String(row?.pn_final ?? '');
     $('qaModalDesignationFinal').value = String(row?.designation_final ?? '');
-    $('qaModalModelType').value = String(row?.model_final ?? '');
+    $('qaModalModelType').value = String(row?.model_type_final ?? '');
     $('qaModalQty').value = String(row?.qty_final ?? '');
     $('qaModalUnits').value = String(row?.qty_units_final ?? '');
     $('qaModalWeightFinal').value = String(row?.weight_final ?? '');
@@ -1870,7 +1870,7 @@ function fillSideRecordForm(row, revisionKey) {
     $('qaSideRevisionAccion').value = normalizeAccionToNew(row?.qa_revision_accion);
     $('qaSidePnFinal').value = String(row?.pn_final ?? '');
     $('qaSideDesignationFinal').value = String(row?.designation_final ?? '');
-    $('qaSideModelType').value = String(row?.model_final ?? '');
+    $('qaSideModelType').value = String(row?.model_type_final ?? '');
     $('qaSideQty').value = String(row?.qty_final ?? '');
     $('qaSideUnits').value = String(row?.qty_units_final ?? '');
     $('qaSideWeightFinal').value = String(row?.weight_final ?? '');
@@ -1880,11 +1880,11 @@ function fillSideRecordForm(row, revisionKey) {
 
     const sideLabel = $('qaSideLabel');
     if (sideLabel) {
-        sideLabel.textContent = `${String(row?.engine_model ?? '-')} • pág ${String(row?.['Source Page'] ?? '-')} • ID ${String(row?.ID ?? '-')}`;
+        sideLabel.textContent = `${String(row?.engine_model ?? '-')} â€¢ pÃ¡g ${String(row?.['Source Page'] ?? '-')} â€¢ ID ${String(row?.ID ?? '-')}`;
     }
     const exportLabel = $('qaSideExportLabel');
     if (exportLabel) {
-        exportLabel.textContent = `${String(row?.engine_model ?? '-')} • pág ${String(row?.['Source Page'] ?? '-')} • ID ${String(row?.ID ?? '-')}`;
+        exportLabel.textContent = `${String(row?.engine_model ?? '-')} â€¢ pÃ¡g ${String(row?.['Source Page'] ?? '-')} â€¢ ID ${String(row?.ID ?? '-')}`;
     }
 
     renderRecordQaErrors(row, {
@@ -1923,7 +1923,7 @@ function getRecordFormValues(scope) {
         pos_final: String($(`${prefix}Pos`)?.value || ''),
         pn_final: String($(`${prefix}PnFinal`)?.value || ''),
         designation_final: String($(`${prefix}DesignationFinal`)?.value || ''),
-        model_final: String($(`${prefix}ModelType`)?.value || ''),
+        model_type_final: String($(`${prefix}ModelType`)?.value || ''),
         qty_final: String($(`${prefix}Qty`)?.value || ''),
         qty_units_final: String($(`${prefix}Units`)?.value || ''),
         weight_final: String($(`${prefix}WeightFinal`)?.value || ''),
@@ -1956,7 +1956,7 @@ function clearSideRecordForm() {
     const sideLabel = $('qaSideLabel');
     if (sideLabel) sideLabel.textContent = 'Selecciona una fila para cargar la ficha';
     const exportLabel = $('qaSideExportLabel');
-    if (exportLabel) exportLabel.textContent = 'Sin selección';
+    if (exportLabel) exportLabel.textContent = 'Sin selecciÃ³n';
 
     $('qaSideMatchesBody').innerHTML = '<tr><td colspan="5">Sin seleccion</td></tr>';
     const sideOnlyDiffToggle = $('qaSideExportOnlyDiffToggle');
@@ -2105,7 +2105,7 @@ function openSharedRecordEditorForRow(row) {
         part_no: String(row?.['PART NO.'] ?? row?.pn ?? '').trim(),
         pn_final: String(row?.pn_final ?? '').trim(),
         designation_final: String(row?.designation_final ?? '').trim(),
-        model_final: String(row?.model_final ?? row?.['MODEL/TYPE_final'] ?? '').trim(),
+        model_type_final: String(row?.model_type_final ?? '').trim(),
         qty: String(row?.QTY ?? row?.qty ?? '').trim(),
         units: String(row?.Units ?? row?.units ?? '').trim(),
         fn: String(row?.FN ?? row?.fn ?? '').trim(),
@@ -2128,7 +2128,7 @@ function updateExportModalHeader(row) {
     const currentLabel = $('qaExportModalCurrent');
     if (pnLabel) pnLabel.textContent = String(row?.['PART NO.'] ?? row?.pn ?? '-').trim() || '-';
     if (currentLabel) {
-        currentLabel.textContent = `${String(row?.engine_model || '-')} · pag ${String(row?.['Source Page'] || '-')} · pos ${String(row?.POS || '-')}`;
+        currentLabel.textContent = `${String(row?.engine_model || '-')} Â· pag ${String(row?.['Source Page'] || '-')} Â· pos ${String(row?.POS || '-')}`;
     }
 }
 
@@ -2183,7 +2183,7 @@ function renderMatchesLargeModal(revisionKey = activeMatchesModalRevisionKey) {
     const pn = String(row?.['PART NO.'] ?? row?.pn ?? '').trim() || '-';
     if (pnLabel) pnLabel.textContent = pn;
     if (currentLabel) {
-        currentLabel.textContent = `${String(row?.engine_model || '-')} · pag ${String(row?.['Source Page'] || '-')} · pos ${String(row?.POS || '-')}`;
+        currentLabel.textContent = `${String(row?.engine_model || '-')} Â· pag ${String(row?.['Source Page'] || '-')} Â· pos ${String(row?.POS || '-')}`;
     }
 
     if (!matchesByPn.length) {
@@ -2415,7 +2415,7 @@ async function tryLoadFirstJson(candidates) {
 const ENABLE_OPTIONAL_CATALOGS = false;
 
 async function loadOptionalCatalogsInBackground() {
-    // El índice de esquemas_pos debe cargarse siempre (aunque catálogos opcionales estén desactivados)
+    // El Ã­ndice de esquemas_pos debe cargarse siempre (aunque catÃ¡logos opcionales estÃ©n desactivados)
     // porque la columna ESQ_POS depende de este Set para evitar falsos MISS.
     try {
         const posIndexResponse = await fetch(apiUrl('/api/esquemas-pos-index'));
@@ -2426,7 +2426,7 @@ async function loadOptionalCatalogsInBackground() {
             }
         }
     } catch (e) {
-        console.warn('[loadOptionalCatalogsInBackground] No se pudo cargar índice esquemas_pos:', e);
+        console.warn('[loadOptionalCatalogsInBackground] No se pudo cargar Ã­ndice esquemas_pos:', e);
     }
 
     if (!ENABLE_OPTIONAL_CATALOGS) {
@@ -2454,7 +2454,7 @@ async function loadOptionalCatalogsInBackground() {
         state.productExportPnSet = new Set(productExportData.map(item => item.pn));
     }
 
-    // Refresca vistas dependientes de estos catálogos si están habilitados.
+    // Refresca vistas dependientes de estos catÃ¡logos si estÃ¡n habilitados.
     renderTable();
 }
 
@@ -2480,7 +2480,7 @@ function populatePageFilterOptions(bookValue, selectedPage = '') {
     const hasSelectedPage = normalizedSelectedPage !== '' && pages.includes(selectedPageNumber);
     const resolvedPage = hasSelectedPage ? normalizedSelectedPage : '';
 
-    pageSelect.innerHTML = '<option value="">Todas las páginas</option>'
+    pageSelect.innerHTML = '<option value="">Todas las pÃ¡ginas</option>'
         + pages.map(page => `<option value="${page}">${page}</option>`).join('');
     pageSelect.value = resolvedPage;
 
@@ -2616,7 +2616,7 @@ function refreshBookFilterCatalog({ keepCurrentSelection = true } = {}) {
 
     const allBooks = [...new Set(state.allData
         .map(item => val(item, 'engine_model', '').toString().trim())
-        .filter(b => b && b !== '—'))].sort((a, b) => a.localeCompare(b, undefined, { numeric: true }));
+        .filter(b => b && b !== 'â€”'))].sort((a, b) => a.localeCompare(b, undefined, { numeric: true }));
 
     bookFilterSelect.innerHTML = '<option value="">Todos los libros</option>'
         + allBooks.map(book => `<option value="${escapeHtml(book)}">${escapeHtml(book)}</option>`).join('');
@@ -3014,7 +3014,7 @@ async function applyQaChecksFilter(scope = 'all') {
                 .filter(key => /^idx=\d+$/.test(key) || /^id=.+/.test(key));
             if (!revisionKeys.length) {
                 hideQaChecksProgress();
-                alert('No se pudo determinar la clave de revisión para guardar los visibles.');
+                alert('No se pudo determinar la clave de revisiÃ³n para guardar los visibles.');
                 return;
             }
             applyActiveQaErrorsToSubset(activeCodes, targetRows);
@@ -3044,7 +3044,7 @@ async function applyQaChecksFilter(scope = 'all') {
         const foundRows = buildFoundErrorRows(state.allData, activeCodes, 500);
         renderQaChecksFoundRows(foundRows, globalStats.rowsWithErrors || foundRows.length);
 
-        // Actualizar tabla después del éxito
+        // Actualizar tabla despuÃ©s del Ã©xito
         state.currentPage = 1;
         renderTable();
         renderPagination();
@@ -3063,7 +3063,7 @@ function hideQaChecksStats() {
 
     const codesList = $('qaChecksStatCodes');
     if (codesList instanceof HTMLElement) {
-        codesList.innerHTML = '<li class="qa-checks-stat-codes-empty">Aplica el cálculo para ver el detalle.</li>';
+        codesList.innerHTML = '<li class="qa-checks-stat-codes-empty">Aplica el cÃ¡lculo para ver el detalle.</li>';
     }
 
     renderQaChecksFoundRows([], 0);
@@ -3143,7 +3143,7 @@ function setOnlyErrorsFilter(enabled) {
     else delete state.filters.has_error;
 
     if (enabled) {
-        // En modo Solo errores: siempre paginación ON y sin filtro de página.
+        // En modo Solo errores: siempre paginaciÃ³n ON y sin filtro de pÃ¡gina.
         state.paginationEnabled = true;
         const pageSelect = $('pageFilterSelect');
         if (pageSelect instanceof HTMLSelectElement) {
@@ -3205,7 +3205,7 @@ function isTypingContext(target) {
 function updatePaginationToggleLabel() {
     const btn = $('togglePaginationBtn');
     if (!(btn instanceof HTMLButtonElement)) return;
-    btn.textContent = state.paginationEnabled ? 'Paginación: ON' : 'Paginación: OFF';
+    btn.textContent = state.paginationEnabled ? 'PaginaciÃ³n: ON' : 'PaginaciÃ³n: OFF';
 }
 
 async function applyBulkQuickMode(quickMode) {
@@ -3215,11 +3215,11 @@ async function applyBulkQuickMode(quickMode) {
     if (!scopeSelect) return;
 
     const quickMap = {
-        revok: { estado: 'ok', accion: null, label: 'revisión OK' },
-        revempty: { estado: 'pendiente', accion: null, label: 'revisión Pendiente' },
-        validate: { estado: null, accion: 'importar', label: 'acción Importar' },
-        review: { estado: null, accion: 'revisar', label: 'acción Revisar' },
-        discard: { estado: null, accion: 'eliminar', label: 'acción Eliminar' }
+        revok: { estado: 'ok', accion: null, label: 'revisiÃ³n OK' },
+        revempty: { estado: 'pendiente', accion: null, label: 'revisiÃ³n Pendiente' },
+        validate: { estado: null, accion: 'importar', label: 'acciÃ³n Importar' },
+        review: { estado: null, accion: 'revisar', label: 'acciÃ³n Revisar' },
+        discard: { estado: null, accion: 'eliminar', label: 'acciÃ³n Eliminar' }
     };
 
     const targetValues = quickMap[quickMode];
@@ -3228,7 +3228,7 @@ async function applyBulkQuickMode(quickMode) {
     const scope = scopeSelect.value;
     const targetRows = getRowsForBulkScope(scope);
     if (!targetRows.length) {
-        alert('No hay registros para aplicar el cambio masivo con el ámbito seleccionado.');
+        alert('No hay registros para aplicar el cambio masivo con el Ã¡mbito seleccionado.');
         return;
     }
 
@@ -3337,7 +3337,7 @@ async function loadData() {
         const isFileProtocol = window.location.protocol === 'file:';
         if (isFileProtocol) {
             const columns = 53;
-            $('tbody').innerHTML = `<tr><td colspan="${columns}" class="error">Estás abriendo el archivo directamente (file://). Intenta con servidor local.</td></tr>` +
+            $('tbody').innerHTML = `<tr><td colspan="${columns}" class="error">EstÃ¡s abriendo el archivo directamente (file://). Intenta con servidor local.</td></tr>` +
                 `<tr><td colspan="${columns}" class="error">Ejecuta un servidor local o usa Ejecutar localhost.bat para que fetch() cargue los engine_*.json.</td></tr>`;
         }
 
@@ -3347,7 +3347,7 @@ async function loadData() {
         state.allData = await loadInitialEngineData();
         if (!Array.isArray(state.allData)) throw new Error('Los datos no son un array');
 
-        // No bloquear carga principal por catálogos opcionales que pueden no existir en todos los despliegues.
+        // No bloquear carga principal por catÃ¡logos opcionales que pueden no existir en todos los despliegues.
         state.newPnSet = new Set();
         state.miluNewData = [];
         state.supersededPnSet = new Set();
@@ -3380,7 +3380,7 @@ async function loadData() {
         refreshBookFilterCatalog({ keepCurrentSelection: false });
 
         if (!state.allData.length) {
-            $('tbody').innerHTML = '<tr><td colspan="53" class="error">No se encontró información en los archivos engine_*.json</td></tr>';
+            $('tbody').innerHTML = '<tr><td colspan="53" class="error">No se encontrÃ³ informaciÃ³n en los archivos engine_*.json</td></tr>';
             $('stats').innerHTML = '<span class="stat">0 total</span>';
             $('pagination').style.display = 'none';
             return;
@@ -3392,7 +3392,7 @@ async function loadData() {
         initLazyEnginePanel();
 
         loadOptionalCatalogsInBackground().catch(error => {
-            console.warn('No se pudieron cargar los catálogos opcionales:', error);
+            console.warn('No se pudieron cargar los catÃ¡logos opcionales:', error);
         });
         applyBackendWriteMode();
         updatePaginationToggleLabel();
@@ -3439,7 +3439,7 @@ function attachGlobalEvents() {
         const selectedRevisionKey = String(state.selectedRevisionRowKey || '').trim();
         if (selectedRevisionKey === revisionKey) {
             const status = $('qaSideStatus');
-            if (status) status.textContent = 'Error guardando revisión. Revisa conexión/backend.';
+            if (status) status.textContent = 'Error guardando revisiÃ³n. Revisa conexiÃ³n/backend.';
         }
     });
 
@@ -3447,7 +3447,6 @@ function attachGlobalEvents() {
     $('prevBtn')?.addEventListener('click', () => changePage(-1));
     $('nextBtn')?.addEventListener('click', () => changePage(1));
     $('lastBtn')?.addEventListener('click', () => jumpToPage(Number.MAX_SAFE_INTEGER));
-    document.querySelector('thead')?.addEventListener('click', handleSort);
 
     ensureFilterControlNames();
 
@@ -3477,12 +3476,12 @@ function attachGlobalEvents() {
     $('closeQaChecksModalBtn')?.addEventListener('click', closeQaChecksModal);
     $('applyQaChecksAllBtn')?.addEventListener('click', async () => {
         await applyQaChecksFilter('all');
-        // No cerrar modal aún, para que usuario vea estadísticas
+        // No cerrar modal aÃºn, para que usuario vea estadÃ­sticas
     });
 
     $('applyQaChecksVisibleBtn')?.addEventListener('click', async () => {
         await applyQaChecksFilter('visible');
-        // No cerrar modal aún, para que usuario vea estadísticas
+        // No cerrar modal aÃºn, para que usuario vea estadÃ­sticas
     });
 
     // Close modal on overlay click
@@ -3518,8 +3517,8 @@ function attachGlobalEvents() {
     });
 
     $('sortBookPagePosBtn')?.addEventListener('click', () => {
-        if (state.sortKey === 'book_page_pos') state.sortAsc = !state.sortAsc;
-        else { state.sortKey = 'book_page_pos'; state.sortAsc = true; }
+        state.sortKey = 'book_page_pos';
+        state.sortAsc = true;
         state.currentPage = 1;
         renderTable();
         renderPagination();
@@ -3649,7 +3648,7 @@ function attachGlobalEvents() {
     $('qaRecordModalOpenExportBtn')?.addEventListener('click', () => {
         const revisionKey = String($('qaRecordModalForm')?.dataset.revisionKey || '');
         if (!revisionKey) {
-            alert('Selecciona un registro para abrir la exportación.');
+            alert('Selecciona un registro para abrir la exportaciÃ³n.');
             return;
         }
         openExportModal(revisionKey);

@@ -18,7 +18,7 @@ const $ = (id) => document.getElementById(id);
 
 function legacyAlertType(message) {
     const text = String(message || '').toLowerCase();
-    if (text.startsWith('no se pudo') || text.includes('error') || text.includes('propagación parcial')) return 'error';
+    if (text.startsWith('no se pudo') || text.includes('error') || text.includes('propagaciÃ³n parcial')) return 'error';
     if (text.includes('propagados ') || text.includes('proceso bulk completado')) return 'success';
     if (text.includes('primero debes') || text.includes('ya estas') || text.includes('no hay ')) return 'warning';
     return 'info';
@@ -835,13 +835,13 @@ function initHermanosProgressModal() {
     cancelBtn?.addEventListener('click', () => {
         if (!hermanosProgressUiState.running) return;
         if (hermanosProgressUiState.bulkInFlight) {
-            appendHermanosProgressLog('Cancelación temporalmente deshabilitada durante la fase bulk en servidor.', 'error');
+            appendHermanosProgressLog('CancelaciÃ³n temporalmente deshabilitada durante la fase bulk en servidor.', 'error');
             return;
         }
         if (hermanosProgressUiState.cancelRequested) return;
         hermanosProgressUiState.cancelRequested = true;
         setHermanosCancelButtonState({ disabled: true, label: 'Cancelando...' });
-        appendHermanosProgressLog('Cancelación solicitada por usuario. Finalizando tareas en curso...', 'error');
+        appendHermanosProgressLog('CancelaciÃ³n solicitada por usuario. Finalizando tareas en curso...', 'error');
     });
 
     document.addEventListener('keydown', (event) => {
@@ -919,7 +919,7 @@ function renderHermanosProgress(state) {
     if (current instanceof HTMLElement) current.textContent = currentLabel;
     if (percentEl instanceof HTMLElement) percentEl.textContent = `${percent}%`;
     if (stats instanceof HTMLElement) {
-        stats.textContent = `Filas OK+Importar: ${scannedRows} · PN únicos: ${totalPn} · PN procesados: ${processedPn} · PN con cambios: ${pnsWithPropagation} · Hermanos actualizados: ${propagatedRows}`;
+        stats.textContent = `Filas OK+Importar: ${scannedRows} Â· PN Ãºnicos: ${totalPn} Â· PN procesados: ${processedPn} Â· PN con cambios: ${pnsWithPropagation} Â· Hermanos actualizados: ${propagatedRows}`;
     }
 }
 
@@ -969,7 +969,7 @@ function openEditRecordModalForRow(row = currentRow) {
         part_no: String(row?.['PART NO.'] ?? row?.pn ?? '').trim(),
         pn_final: String(row?.pn_final ?? '').trim(),
         designation_final: String(row?.designation_final ?? '').trim(),
-        model_final: String(row?.model_final ?? row?.['MODEL/TYPE_final'] ?? '').trim(),
+        model_type_final: String(row?.model_type_final ?? '').trim(),
         qty: String(row?.QTY ?? row?.qty ?? '').trim(),
         units: String(row?.Units ?? row?.units ?? '').trim(),
         fn: String(row?.FN ?? row?.fn ?? '').trim(),
@@ -1106,7 +1106,7 @@ async function saveEditRecordForm() {
     try {
         const id = String($('editRecordId')?.value || '').trim();
         if (!id) {
-            setEditRecordStatus('ID no válido.', 'error');
+            setEditRecordStatus('ID no vÃ¡lido.', 'error');
             return;
         }
 
@@ -1134,7 +1134,7 @@ async function saveEditRecordForm() {
         let saved = false;
         const changedFields = new Set();
 
-        // Guardar cada campo que cambió (incluso si es vacío)
+        // Guardar cada campo que cambiÃ³ (incluso si es vacÃ­o)
         for (const [key, value] of Object.entries(updates)) {
             if (currentRow[key] !== value) {
                 await saveCellToServer(engineFile, id, key, value);
@@ -1183,7 +1183,7 @@ async function saveEditRecordForm() {
 
             notifyPdfDataChangedFromAnalista(currentRow);
 
-            // Cerrar modal después de 800ms
+            // Cerrar modal despuÃ©s de 800ms
             setTimeout(() => {
                 const modal = $('editRecordModal');
                 if (modal instanceof HTMLElement) modal.hidden = true;
@@ -1604,7 +1604,7 @@ function renderRecomputePdfDetail(detailRow, result, pdfAutoBefore = {}) {
     }
 
     const foundEntries = detailRow.comparisons.filter((entry) => normalizeCompareValue(entry?.pdf) !== '');
-    title.textContent = `Detalle PDF_AUTO · ID ${txt(detailRow.ID, '')}`;
+    title.textContent = `Detalle PDF_AUTO Â· ID ${txt(detailRow.ID, '')}`;
     meta.textContent = `Libro=${txt(detailRow.engine_model, '')} | Page=${txt(detailRow.source_page, '')} | PN=${txt(detailRow.pn, '')} | Anchor=${txt(detailRow.pnAnchorLine, '')}`;
 
     const summaryCards = [
@@ -1626,7 +1626,7 @@ function renderRecomputePdfDetail(detailRow, result, pdfAutoBefore = {}) {
     `;
 
     if (foundEntries.length === 0) {
-        body.innerHTML = `${summaryHtml}<p class="recompute-result-empty">No se encontró ningun valor PDF_AUTO util para este registro.</p>`;
+        body.innerHTML = `${summaryHtml}<p class="recompute-result-empty">No se encontrÃ³ ningun valor PDF_AUTO util para este registro.</p>`;
         panel.hidden = false;
         return;
     }
@@ -1729,7 +1729,7 @@ async function runBackendRecompute() {
     const forceRevision = recomputeForceRevisionInput instanceof HTMLInputElement ? recomputeForceRevisionInput.checked : false;
 
     if (!file) {
-        alert('No se pudo resolver el archivo engine para el recálculo.');
+        alert('No se pudo resolver el archivo engine para el recÃ¡lculo.');
         return;
     }
 
@@ -1749,7 +1749,7 @@ async function runBackendRecompute() {
 
     recomputeRunBtn.disabled = true;
     if (recomputePdfRunBtn instanceof HTMLButtonElement) recomputePdfRunBtn.disabled = true;
-    setRecomputeStatus('Ejecutando recálculo en backend...', '');
+    setRecomputeStatus('Ejecutando recÃ¡lculo en backend...', '');
 
     const urls = getBackendCandidateUrls('recompute-qa-errors');
     let lastError = '';
@@ -1820,7 +1820,7 @@ async function runBackendRecompute() {
             ? ` Verifica si el ID ${id} existe en ${selectedModel} o deja el ID vacio para recalcular el libro completo.`
             : '';
         setRecomputeStatus(
-            `Error: ${lastError || `No se pudo ejecutar el recálculo (ultimo endpoint: ${lastTriedUrl || 'sin URL'}). Comprueba que server.js este activo en http://localhost:3000 y responde en /health.`}${idHint}`,
+            `Error: ${lastError || `No se pudo ejecutar el recÃ¡lculo (ultimo endpoint: ${lastTriedUrl || 'sin URL'}). Comprueba que server.js este activo en http://localhost:3000 y responde en /health.`}${idHint}`,
             'error'
         );
         return;
@@ -2009,7 +2009,7 @@ function setQuickRecomputeBusyUi(busy) {
         }
 
         quickRecomputeBtn.textContent = busy
-            ? `⌛ ${quickRecomputeBtn.dataset.defaultLabel}`
+            ? `âŒ› ${quickRecomputeBtn.dataset.defaultLabel}`
             : quickRecomputeBtn.dataset.defaultLabel;
         quickRecomputeBtn.style.cursor = busy ? 'wait' : '';
         quickRecomputeBtn.setAttribute('aria-busy', busy ? 'true' : 'false');
@@ -2137,7 +2137,7 @@ async function runQuickRecomputeForFullBook() {
     }
 
     const confirmed = await confirmTypedAction({
-        title: 'Confirmar recálculo completo',
+        title: 'Confirmar recÃ¡lculo completo',
         message: `Se recalcularan ERRORES y PDF_AUTO para todo el libro ${selectedModel}. Esta accion afecta a multiples registros.`,
         expectedText: 'APLICAR',
         confirmLabel: 'Recalcular',
@@ -2330,17 +2330,17 @@ function renderReviewStats(rows = getQueueRows(), row = currentRow) {
 
     if (totalEl instanceof HTMLElement) totalEl.textContent = String(stats.total);
     if (currentEl instanceof HTMLElement) currentEl.textContent = String(currentIndex);
-    if (totalUniqueEl instanceof HTMLElement) totalUniqueEl.textContent = `· ${uniqueStats.total.size} únicos`;
+    if (totalUniqueEl instanceof HTMLElement) totalUniqueEl.textContent = `Â· ${uniqueStats.total.size} Ãºnicos`;
     if (importOkEl instanceof HTMLElement) importOkEl.textContent = String(stats.importOk);
-    if (importOkUniqueEl instanceof HTMLElement) importOkUniqueEl.textContent = `· ${uniqueStats.importOk.size} únicos`;
+    if (importOkUniqueEl instanceof HTMLElement) importOkUniqueEl.textContent = `Â· ${uniqueStats.importOk.size} Ãºnicos`;
     if (copyOkEl instanceof HTMLElement) copyOkEl.textContent = String(stats.copyOk);
-    if (copyOkUniqueEl instanceof HTMLElement) copyOkUniqueEl.textContent = `· ${uniqueStats.copyOk.size} únicos`;
+    if (copyOkUniqueEl instanceof HTMLElement) copyOkUniqueEl.textContent = `Â· ${uniqueStats.copyOk.size} Ãºnicos`;
     if (reviewOkEl instanceof HTMLElement) reviewOkEl.textContent = String(stats.reviewOk);
-    if (reviewOkUniqueEl instanceof HTMLElement) reviewOkUniqueEl.textContent = `· ${uniqueStats.reviewOk.size} únicos`;
+    if (reviewOkUniqueEl instanceof HTMLElement) reviewOkUniqueEl.textContent = `Â· ${uniqueStats.reviewOk.size} Ãºnicos`;
     if (deleteOkEl instanceof HTMLElement) deleteOkEl.textContent = String(stats.deleteOk);
-    if (deleteOkUniqueEl instanceof HTMLElement) deleteOkUniqueEl.textContent = `· ${uniqueStats.deleteOk.size} únicos`;
+    if (deleteOkUniqueEl instanceof HTMLElement) deleteOkUniqueEl.textContent = `Â· ${uniqueStats.deleteOk.size} Ãºnicos`;
     if (pendingEl instanceof HTMLElement) pendingEl.textContent = String(stats.pending);
-    if (pendingUniqueEl instanceof HTMLElement) pendingUniqueEl.textContent = `· ${uniqueStats.pending.size} únicos`;
+    if (pendingUniqueEl instanceof HTMLElement) pendingUniqueEl.textContent = `Â· ${uniqueStats.pending.size} Ãºnicos`;
 
     // Update nav button labels with counts
     const queue = rows;
@@ -2480,7 +2480,7 @@ function getSustPn(row) {
     // sust_status === "SI" indica que el PN aparece en el Excel SUST.
     // Este flag se usa SOLO para mostrar la columna SUST en la comparativa de analista.
     // NO determina si un registro se exporta como New o Superseded.
-    // La clasificación de exportación depende exclusivamente de sust_hierarchie === "Superseded".
+    // La clasificaciÃ³n de exportaciÃ³n depende exclusivamente de sust_hierarchie === "Superseded".
     const isSustSi = String(row?.sust_status ?? '').trim().toUpperCase() === 'SI';
     if (!isSustSi) return null;
     return String(row?.pn_final ?? '').trim() || null;
@@ -2500,7 +2500,7 @@ function buildComparisonRows(row) {
         { field: 'POS', raw: row?.POS, gesa: null, sust: null, final: row?.pos_final, errFields: ['POS'] },
         { field: 'PART NO.', raw: row?.['PART NO.'], gesa: getGesaPn(row), sust: getSustPn(row), final: row?.pn_final, errFields: ['PART NO.', 'pn_final'] },
         { field: 'DESIGNATION', raw: row?.DESIGNATION, gesa: row?.designation_gesa, sust: null, final: row?.designation_final, errFields: ['designation_final'] },
-        { field: 'MODEL/TYPE', raw: row?.['MODEL/TYPE'], gesa: null, sust: null, final: row?.model_final ?? row?.['MODEL/TYPE'], errFields: [] },
+        { field: 'MODEL/TYPE', raw: row?.['MODEL/TYPE'], gesa: null, sust: null, final: row?.model_type_final ?? row?.['MODEL/TYPE'], errFields: [] },
         { field: 'QTY', raw: row?.QTY, gesa: null, sust: null, final: row?.qty_final, errFields: [] },
         { field: 'UNITS', raw: row?.UNITS, gesa: null, sust: null, final: row?.UNITS, errFields: [] },
         { field: 'WEIGHT', raw: row?.WEIGHT, gesa: getGesaWeightWithUnits(row), sust: null, final: row?.weight_final, errFields: [] },
@@ -3125,7 +3125,7 @@ async function applyPnCopyPropagationFromRow(row, options = {}) {
 
     if (requireOkImportar && (currentEstado !== 'ok' || currentAccion !== 'importar')) {
         if (showAlerts) {
-            alert(`El registro debe tener estado OK + Importar para propagar hermanos (PN: ${pn || '—'}).`);
+            alert(`El registro debe tener estado OK + Importar para propagar hermanos (PN: ${pn || 'â€”'}).`);
         }
         return { skipped: true, reason: 'not-ok-importar', pn };
     }
@@ -3170,7 +3170,7 @@ async function applyPnCopyPropagationFromRow(row, options = {}) {
 
         if (siblings.length === 0) {
             if (showAlerts && !silentIfNoSiblings) {
-                alert(`No hay hermanos para propagar (PN: ${pn}). Todos ya tienen OK + Copia o no hay más apariciones.`);
+                alert(`No hay hermanos para propagar (PN: ${pn}). Todos ya tienen OK + Copia o no hay mÃ¡s apariciones.`);
             }
             return { success: true, pn, propagated: 0, scannedSources: allSources.length, targetSiblings: 0, errors: [] };
         }
@@ -3223,9 +3223,9 @@ async function applyPnCopyPropagationFromRow(row, options = {}) {
 
         if (showAlerts) {
             if (errors.length > 0) {
-                alert(`Propagación parcial (PN: ${pn}). Errores:\n${errors.join('\n')}`);
+                alert(`PropagaciÃ³n parcial (PN: ${pn}). Errores:\n${errors.join('\n')}`);
             } else {
-                alert(`Propagados ${propagated} hermano(s) con PN "${pn}" → OK + Copia.`);
+                alert(`Propagados ${propagated} hermano(s) con PN "${pn}" â†’ OK + Copia.`);
             }
         }
 
@@ -3271,7 +3271,7 @@ async function applyPnCopyPropagationForCurrentBook() {
     }
 
     if (uniquePnRows.size === 0) {
-        alert('No hay Part Numbers válidos en los registros OK + Importar del libro actual.');
+        alert('No hay Part Numbers vÃ¡lidos en los registros OK + Importar del libro actual.');
         return;
     }
 
@@ -3288,7 +3288,7 @@ async function applyPnCopyPropagationForCurrentBook() {
     const triggerBtn = $('propagateHermanosBookBtn');
     if (triggerBtn instanceof HTMLButtonElement) {
         triggerBtn.disabled = true;
-        triggerBtn.title = 'Proceso en ejecución...';
+        triggerBtn.title = 'Proceso en ejecuciÃ³n...';
     }
 
     openHermanosProgressModal();
@@ -3301,7 +3301,7 @@ async function applyPnCopyPropagationForCurrentBook() {
         propagatedRows: 0,
         pnsWithPropagation: 0
     });
-    appendHermanosProgressLog(`Inicio: ${candidates.length} filas OK+Importar, ${uniquePnRows.size} PN únicos.`, 'ok');
+    appendHermanosProgressLog(`Inicio: ${candidates.length} filas OK+Importar, ${uniquePnRows.size} PN Ãºnicos.`, 'ok');
 
     const summary = {
         scannedRows: candidates.length,
@@ -3329,7 +3329,7 @@ async function applyPnCopyPropagationForCurrentBook() {
                     setHermanosCancelButtonState({
                         disabled: true,
                         label: 'Bulk en servidor...',
-                        title: 'Cancelación deshabilitada durante petición bulk al backend.'
+                        title: 'CancelaciÃ³n deshabilitada durante peticiÃ³n bulk al backend.'
                     });
                     renderHermanosProgress({
                         currentLabel: `Bulk en servidor: procesando ${bulkItems.length} PN...`,
@@ -3339,7 +3339,7 @@ async function applyPnCopyPropagationForCurrentBook() {
                         propagatedRows: summary.propagatedRows,
                         pnsWithPropagation: summary.pnsWithPropagation
                     });
-                    appendHermanosProgressLog('Ejecutando modo rápido backend (bulk)...', 'ok');
+                    appendHermanosProgressLog('Ejecutando modo rÃ¡pido backend (bulk)...', 'ok');
 
                     const response = await fetch('/pn-review/apply-siblings-bulk', {
                         method: 'POST',
@@ -3404,7 +3404,7 @@ async function applyPnCopyPropagationForCurrentBook() {
                 alert(
                     `Proceso bulk terminado con incidencias.\n`
                     + `Filas OK+Importar revisadas: ${summary.scannedRows}\n`
-                    + `PN únicos revisados: ${summary.scannedUniquePn}\n`
+                    + `PN Ãºnicos revisados: ${summary.scannedUniquePn}\n`
                     + `PN con hermanos actualizados: ${summary.pnsWithPropagation}\n`
                     + `Hermanos actualizados: ${summary.propagatedRows}\n\n`
                     + `Errores:\n${summary.fatalErrors.join('\n')}`
@@ -3413,7 +3413,7 @@ async function applyPnCopyPropagationForCurrentBook() {
                 alert(
                     `Proceso bulk completado.\n`
                     + `Filas OK+Importar revisadas: ${summary.scannedRows}\n`
-                    + `PN únicos revisados: ${summary.scannedUniquePn}\n`
+                    + `PN Ãºnicos revisados: ${summary.scannedUniquePn}\n`
                     + `PN con hermanos actualizados: ${summary.pnsWithPropagation}\n`
                     + `Hermanos actualizados: ${summary.propagatedRows}`
                 );
@@ -3431,7 +3431,7 @@ async function applyPnCopyPropagationForCurrentBook() {
 
             const pn = getRowPn(row);
             renderHermanosProgress({
-                currentLabel: `Procesando PN ${pn || '—'} (${processedPn + 1}/${summary.scannedUniquePn})...`,
+                currentLabel: `Procesando PN ${pn || 'â€”'} (${processedPn + 1}/${summary.scannedUniquePn})...`,
                 processedPn,
                 totalPn: summary.scannedUniquePn,
                 scannedRows: summary.scannedRows,
@@ -3456,26 +3456,26 @@ async function applyPnCopyPropagationForCurrentBook() {
                 }
                 processedPn += 1;
                 renderHermanosProgress({
-                    currentLabel: `Cancelado durante PN ${result?.pn || pn || '—'}.`,
+                    currentLabel: `Cancelado durante PN ${result?.pn || pn || 'â€”'}.`,
                     processedPn,
                     totalPn: summary.scannedUniquePn,
                     scannedRows: summary.scannedRows,
                     propagatedRows: summary.propagatedRows,
                     pnsWithPropagation: summary.pnsWithPropagation
                 });
-                appendHermanosProgressLog(`Cancelado durante PN ${result?.pn || pn || '—'}.`, 'error');
+                appendHermanosProgressLog(`Cancelado durante PN ${result?.pn || pn || 'â€”'}.`, 'error');
                 break;
             }
 
             if (result?.fatalError) {
-                summary.fatalErrors.push(`${result.pn || getRowPn(row) || '—'}: ${result.error || result.reason || 'Error desconocido'}`);
+                summary.fatalErrors.push(`${result.pn || getRowPn(row) || 'â€”'}: ${result.error || result.reason || 'Error desconocido'}`);
                 appendHermanosProgressLog(
-                    `Error PN ${result.pn || pn || '—'}: ${result.error || result.reason || 'Error desconocido'}`,
+                    `Error PN ${result.pn || pn || 'â€”'}: ${result.error || result.reason || 'Error desconocido'}`,
                     'error'
                 );
                 processedPn += 1;
                 renderHermanosProgress({
-                    currentLabel: `Procesando PN ${pn || '—'} (${processedPn}/${summary.scannedUniquePn})...`,
+                    currentLabel: `Procesando PN ${pn || 'â€”'} (${processedPn}/${summary.scannedUniquePn})...`,
                     processedPn,
                     totalPn: summary.scannedUniquePn,
                     scannedRows: summary.scannedRows,
@@ -3490,7 +3490,7 @@ async function applyPnCopyPropagationForCurrentBook() {
                 summary.propagatedRows += propagated;
                 summary.pnsWithPropagation += 1;
                 appendHermanosProgressLog(
-                    `PN ${result?.pn || pn || '—'}: ${propagated} hermano(s) actualizado(s).`,
+                    `PN ${result?.pn || pn || 'â€”'}: ${propagated} hermano(s) actualizado(s).`,
                     'ok'
                 );
             } else {
@@ -3519,7 +3519,7 @@ async function applyPnCopyPropagationForCurrentBook() {
 
         appendHermanosProgressLog(
             summary.canceled
-                ? `Fin parcial por cancelación: PN con cambios ${summary.pnsWithPropagation}, hermanos actualizados ${summary.propagatedRows}.`
+                ? `Fin parcial por cancelaciÃ³n: PN con cambios ${summary.pnsWithPropagation}, hermanos actualizados ${summary.propagatedRows}.`
                 : `Fin: PN con cambios ${summary.pnsWithPropagation}, hermanos actualizados ${summary.propagatedRows}.`,
             (summary.fatalErrors.length > 0 || summary.canceled) ? 'error' : 'ok'
         );
@@ -3542,7 +3542,7 @@ async function applyPnCopyPropagationForCurrentBook() {
             alert(
                 `Proceso cancelado por usuario.\n`
                 + `Filas OK+Importar revisadas: ${summary.scannedRows}\n`
-                + `PN únicos totales: ${summary.scannedUniquePn}\n`
+                + `PN Ãºnicos totales: ${summary.scannedUniquePn}\n`
                 + `PN con hermanos actualizados: ${summary.pnsWithPropagation}\n`
                 + `Hermanos actualizados: ${summary.propagatedRows}`
             );
@@ -3553,7 +3553,7 @@ async function applyPnCopyPropagationForCurrentBook() {
             alert(
                 `Proceso terminado con incidencias.\n`
                 + `Filas OK+Importar revisadas: ${summary.scannedRows}\n`
-                + `PN únicos revisados: ${summary.scannedUniquePn}\n`
+                + `PN Ãºnicos revisados: ${summary.scannedUniquePn}\n`
                 + `PN con hermanos actualizados: ${summary.pnsWithPropagation}\n`
                 + `Hermanos actualizados: ${summary.propagatedRows}\n\n`
                 + `Errores:\n${summary.fatalErrors.join('\n')}`
@@ -3564,7 +3564,7 @@ async function applyPnCopyPropagationForCurrentBook() {
         alert(
             `Proceso completado.\n`
             + `Filas OK+Importar revisadas: ${summary.scannedRows}\n`
-            + `PN únicos revisados: ${summary.scannedUniquePn}\n`
+            + `PN Ãºnicos revisados: ${summary.scannedUniquePn}\n`
             + `PN con hermanos actualizados: ${summary.pnsWithPropagation}\n`
             + `Hermanos actualizados: ${summary.propagatedRows}`
         );
@@ -3828,7 +3828,7 @@ if (statusAccionSelect instanceof HTMLSelectElement) {
             : (nextAccion === 'revisar' ? 'review'
                 : (nextAccion === 'copia' ? 'copia' : 'ok'));
         setReviewStatus(kind).catch((error) => {
-            alert(`No se pudo guardar acción: ${error.message}`);
+            alert(`No se pudo guardar acciÃ³n: ${error.message}`);
             renderReviewStateButtons(currentRow);
         });
     });

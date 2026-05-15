@@ -18,13 +18,13 @@ from python_lib.engine_helpers import (
     split_measurement_and_standard,
 )
 
-# Timestamp de la ejecución actual (ISO 8601 UTC)
+# Timestamp de la ejecuciÃ³n actual (ISO 8601 UTC)
 RUN_TIMESTAMP = datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
 
 # Directorio principal (portable)
 base_dir = resolve_repo_dir(__file__)
 
-# engine_files: alias local para compatibilidad con código existente en este script
+# engine_files: alias local para compatibilidad con cÃ³digo existente en este script
 engine_files = ENGINE_FILES
 
 
@@ -50,7 +50,7 @@ def should_drop_record(record):
 
 def add_final_fields(record):
     """
-    Agrega los campos finales a cada registro con criterio específico.
+    Agrega los campos finales a cada registro con criterio especÃ­fico.
     """
     def normalize_spaces(value):
         if value is None:
@@ -65,11 +65,11 @@ def add_final_fields(record):
     # Normaliza espacios en todos los campos string del registro.
     record = collapse_spaces_in_structure(record)
 
-    # Limpia espacios duplicados en dimensions_gesa para dejar una sola separación.
+    # Limpia espacios duplicados en dimensions_gesa para dejar una sola separaciÃ³n.
     cleaned_dimensions = normalize_spaces(record.get("dimensions_gesa"))
     record["dimensions_gesa"] = cleaned_dimensions
 
-    # Limpia también MEASUREMENT / STANDARD y separa medida y norma cuando vengan mezcladas.
+    # Limpia tambiÃ©n MEASUREMENT / STANDARD y separa medida y norma cuando vengan mezcladas.
     cleaned_measurement_standard = normalize_spaces(record.get("MEASUREMENT / STANDARD"))
     cleaned_measure_raw, extracted_norma_raw = split_measurement_and_standard(cleaned_measurement_standard)
 
@@ -122,8 +122,8 @@ def add_final_fields(record):
                 record["pn_final"] = base_pn
 
     model_type_source = normalize_spaces(record.get("MODEL/TYPE"))
-    record["model_final"] = model_type_source
-    record["MODEL/TYPE_final"] = model_type_source
+    record["model_type_final"] = model_type_source
+    record.pop("MODEL/TYPE_final", None)
 
     qty_source = normalize_spaces(record.get("QTY"))
     qty_final = normalize_spaces(record.get("qty_final"))
@@ -197,7 +197,7 @@ def add_final_fields(record):
 
 def build_qa_lookup_for_engine_file(engine_file_path):
     """
-    Crea un índice por ID desde json_originales/qa_<modelo>.json para sincronizar campos.
+    Crea un Ã­ndice por ID desde json_originales/qa_<modelo>.json para sincronizar campos.
     """
     engine_name = engine_file_path.name
     model_name = engine_name.replace("engine_", "", 1)
@@ -279,11 +279,11 @@ def process_file(file_path):
         # Guardar el archivo modificado
         save_json(file_path, data)
         
-        print(f"  ✓ Completado: {updated_count} registros actualizados")
+        print(f"  âœ“ Completado: {updated_count} registros actualizados")
         return True
     
     except Exception as e:
-        print(f"  ✗ Error: {e}")
+        print(f"  âœ— Error: {e}")
         return False
 
 def main():
@@ -291,7 +291,7 @@ def main():
         print(f"[depuracion_json] repo_dir={base_dir}")
 
     # Procesar archivos en el directorio raiz
-    print("Procesando archivos engine*.json en el directorio raíz:\n")
+    print("Procesando archivos engine*.json en el directorio raÃ­z:\n")
     for filename in engine_files:
         file_path = base_dir / filename
         if file_path.exists():
@@ -299,7 +299,7 @@ def main():
         else:
             print(f"Archivo no encontrado: {file_path}")
 
-    print("\n✓ Proceso completado")
+    print("\nâœ“ Proceso completado")
 
 
 if __name__ == "__main__":

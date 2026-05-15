@@ -184,12 +184,12 @@ function renderPdfSelectionBadge(selection, isSamePage) {
     const badge = document.createElement('div');
     badge.className = 'pdfstatus';
 
-    const pos = selection.pos || '—';
-    const pn = selection.pn || '—';
-    const id = selection.id || '—';
+    const pos = selection.pos || 'â€”';
+    const pn = selection.pn || 'â€”';
+    const id = selection.id || 'â€”';
     badge.textContent = isSamePage
-        ? `Seleccionado: POS ${pos} · PN ${pn} · ID ${id}`
-        : `Fila seleccionada: POS ${pos} · PN ${pn} · ID ${id}`;
+        ? `Seleccionado: POS ${pos} Â· PN ${pn} Â· ID ${id}`
+        : `Fila seleccionada: POS ${pos} Â· PN ${pn} Â· ID ${id}`;
 
     layer.appendChild(badge);
     layer.classList.add('is-active');
@@ -317,12 +317,12 @@ function tokenMatches(itemText, tokenValue, allowContains) {
 
     if (!allowContains) return false;
 
-    // Si permitimos contains, buscar respetando límites de palabras (word boundaries)
+    // Si permitimos contains, buscar respetando lÃ­mites de palabras (word boundaries)
     // Esto evita que "GEAR PUMP F" coincida dentro de "GEAR PUMP F - TYPE XYZ"
     // buscando que la coincidencia sea:
     // 1. Al inicio de la cadena
-    // 2. Después de un espacio, guión u otro separador
-    // 3. Seguida de espacio, guión u otro separador (o final de cadena)
+    // 2. DespuÃ©s de un espacio, guiÃ³n u otro separador
+    // 3. Seguida de espacio, guiÃ³n u otro separador (o final de cadena)
 
     const separatorRegex = /[\s\-\,\.\;\/\(\)]/;
     let searchIndex = itemText.indexOf(tokenValue);
@@ -746,7 +746,7 @@ export function setPdfSelection(row) {
         qty: String(row?.qty_final ?? row?.QTY ?? '').trim(),
         measurement: String(row?.measure_final ?? row?.measurement_final ?? row?.['MEASUREMENT / STANDARD'] ?? '').trim(),
         weight: String(row?.weight_final ?? row?.WEIGHT ?? '').trim(),
-        model: String(row?.model_final ?? row?.['MODEL/TYPE'] ?? '').trim(),
+        model: String(row?.model_type_final ?? row?.['MODEL/TYPE'] ?? '').trim(),
         fieldErrors: {
             pn: fieldHasError('pn_final', 'PART NO.', 'pn'),
             pos: fieldHasError('pos_final', 'POS'),
@@ -754,7 +754,7 @@ export function setPdfSelection(row) {
             qty: fieldHasError('qty_final', 'QTY'),
             measurement: fieldHasError('measurement_final', 'MEASUREMENT / STANDARD'),
             weight: fieldHasError('weight_final', 'WEIGHT'),
-            model: fieldHasError('model_final', 'MODEL/TYPE')
+            model: fieldHasError('model_type_final', 'MODEL/TYPE')
         },
         book: String(row?.engine_model ?? '').trim(),
         page: String(row?.['Source Page'] ?? '').trim(),
@@ -803,7 +803,7 @@ function restoreViewerViewport(viewer, snapshot) {
 }
 
 export async function renderPdfPage(pdfUrl, pageNum, options = {}) {
-    if (!window.pdfjsLib) throw new Error('PDF.js no está disponible');
+    if (!window.pdfjsLib) throw new Error('PDF.js no estÃ¡ disponible');
 
     const preserveViewport = options?.preserveViewport === true;
     const resetScroll = options?.resetScroll === true;
@@ -835,7 +835,7 @@ export async function renderPdfPage(pdfUrl, pageNum, options = {}) {
     if (requestToken !== state.currentPdfRequestToken) return;
 
     if (pageNum < 1 || pageNum > state.currentPdfDocument.numPages) {
-        throw new Error(`La página ${pageNum} no existe en el PDF`);
+        throw new Error(`La pÃ¡gina ${pageNum} no existe en el PDF`);
     }
 
     const page = await state.currentPdfDocument.getPage(pageNum);
@@ -925,7 +925,7 @@ export async function loadPdfWithPage(book, page) {
 
     const bookClean = String(book).trim();
     const pageClean = String(page).trim();
-    if (!bookClean || bookClean === '—' || !pageClean || pageClean === '—') {
+    if (!bookClean || bookClean === 'â€”' || !pageClean || pageClean === 'â€”') {
         loadPdfClear();
         return;
     }
@@ -937,7 +937,7 @@ export async function loadPdfWithPage(book, page) {
     }
 
     const pdfUrl = new URL(`pdf/${encodeURIComponent(bookClean)}.pdf`, new URL('.', window.location.href)).href;
-    pdfLabel.textContent = `${bookClean} • pág ${pageClean}`;
+    pdfLabel.textContent = `${bookClean} â€¢ pÃ¡g ${pageClean}`;
     if (pdfMeta) pdfMeta.textContent = `${bookClean}-${pageClean}`;
     state.currentPdfPageNumber = pageNum;
 
@@ -964,8 +964,8 @@ export function loadPdfClear() {
         state.currentPdfRenderTask = null;
     }
 
-    if (pdfLabel) pdfLabel.textContent = '—';
-    if (pdfMeta) pdfMeta.textContent = 'Selecciona libro y página para ver el PDF';
+    if (pdfLabel) pdfLabel.textContent = 'â€”';
+    if (pdfMeta) pdfMeta.textContent = 'Selecciona libro y pÃ¡gina para ver el PDF';
     state.currentPdfPageNumber = 0;
     state.currentPdfSelectionRects = [];
     clearPdfSelectionLayer();
@@ -979,7 +979,7 @@ export function loadPdfClear() {
         canvas.style.height = '0';
     }
 
-    setPdfStatus('Selecciona libro y página para ver el PDF', true);
+    setPdfStatus('Selecciona libro y pÃ¡gina para ver el PDF', true);
 }
 
 export function setPdfReadTokens(tokens) {

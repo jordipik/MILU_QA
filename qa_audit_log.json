@@ -1402,5 +1402,31 @@
         }
       }
     }
+  },
+  {
+    "id": "1778690617613-er0akznr",
+    "timestamp": "2026-05-13T16:43:37.613Z",
+    "kind": "change-applied",
+    "type": "qa-row-patch",
+    "module": "qa_milu",
+    "action": "inline-accion",
+    "description": "Cambio rapido accion ID 1199999",
+    "target": {
+      "revisionKey": "id=1199999"
+    },
+    "changeId": "1778690617415-s4lb76m2",
+    "data": {
+      "target": {
+        "revisionKey": "id=1199999",
+        "engineFile": "engine_12V4000M40A.json",
+        "id": "1199999"
+      },
+      "changes": {
+        "qa_revision_accion": {
+          "before": "importar",
+          "after": "revisar"
+        }
+      }
+    }
   }
 ]

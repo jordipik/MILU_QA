@@ -18,19 +18,9 @@ export const FOCUS_COLUMN_ORDER = [
 ];
 
 export const PDF_COLUMN_ORDER = [
-    // Vista compacta por defecto (~12 columnas) para operativa QA sin perder flujo.
-    'engine_model',
-    'Source Page',
-    'POS',
-    'PART NO.',
-    'designation_final',
-    'QTY',
-    'qa_revision_estado',
-    'qa_revision_accion',
-    'measure_final',
-    'sust_status',
-    'sust_hierarchie',
-    'has_img'
+    // Sin ID. Se mantienen estados hasta "Accion" y luego columnas clave de consulta rapida.
+    'gesa', 'normalizado', 'sust_hierarchie', 'has_esquema_pos', 'has_img', 'has_error', 'EN_WEB', 'qa_revision_estado', 'qa_revision_accion',
+    'quick_actions', 'ruta_esquemas_pos', 'POS', 'pn_final', 'designation_final', 'MODEL/TYPE', 'QTY', 'UNITS', 'weight_final', 'measure_final', 'norma'
 ];
 
 function syncColumnViewStateFromControl() {

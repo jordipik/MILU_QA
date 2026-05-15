@@ -59,14 +59,18 @@ body {
     display: inline-flex;
     justify-content: center;
     align-items: center;
-    width: 52px;
-    height: 52px;
-    border-radius: 14px;
-    background: linear-gradient(145deg, #0a4f8f, #1a78c5);
-    color: #ffffff;
-    font-weight: 800;
-    letter-spacing: 0.04em;
-    box-shadow: 0 8px 18px rgba(10, 79, 143, 0.3);
+    width: 170px;
+    height: 58px;
+    border-radius: 16px 0 16px 16px;
+    overflow: hidden;
+    box-shadow: 0 8px 18px rgba(249, 115, 22, 0.24);
+    flex: 0 0 auto;
+}
+
+.a2-chip svg {
+    display: block;
+    width: 100%;
+    height: 100%;
 }
 
 .a2-title {
@@ -137,6 +141,15 @@ body {
     justify-self: end;
 }
 
+.backend-status-wrap {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-end;
+    justify-self: end;
+    margin-left: auto;
+    gap: 5px;
+}
+
 .a2-version {
     font-size: 11px;
     font-family: ui-monospace, monospace;
@@ -148,6 +161,11 @@ body {
     padding: 2px 7px;
     align-self: center;
     white-space: nowrap;
+}
+
+.a2-version--backend {
+    align-self: flex-end;
+    margin-right: 0;
 }
 
 .backend-status-dot {
@@ -2002,8 +2020,13 @@ body.a2-resizing * {
     }
 
     .a2-nav,
-    .backend-status {
+    .backend-status,
+    .backend-status-wrap {
         justify-self: start;
+    }
+
+    .backend-status-wrap {
+        align-items: flex-start;
     }
 
     .a2-toolbar-top {

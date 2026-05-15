@@ -5,7 +5,7 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <link rel="icon" type="image/svg+xml" href="favicon.svg" />
-    <title>MILU • Workspace</title>
+    <title>MILU â€¢ Workspace</title>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@500;600;700;800&display=swap" rel="stylesheet">
@@ -343,11 +343,11 @@
         }
 
         const TITLES = {
-            pdf: 'MILU • PDF',
-            export: 'MILU • EXPORT',
-            analisis: 'MILU • ANALISIS',
-            imagenes: 'MILU • IMAGENES',
-            exportwp: 'MILU • EXPORT'
+            pdf: 'MILU â€¢ PDF',
+            export: 'MILU â€¢ EXPORT',
+            analisis: 'MILU â€¢ ANALISIS',
+            imagenes: 'MILU â€¢ IMAGENES',
+            exportwp: 'MILU â€¢ EXPORT'
         };
         const frameByView = new Map();
         let sharedEditorContext = null;
@@ -356,7 +356,7 @@
             'pos_final',
             'pn_final',
             'designation_final',
-            'model_final',
+            'model_type_final',
             'qty_final',
             'qty_units_final',
             'weight_final',
@@ -608,7 +608,7 @@
             setActiveFrame(normalizedView);
             prewarmOtherViews(normalizedView);
 
-            document.title = TITLES[normalizedView] || 'MILU • Workspace';
+            document.title = TITLES[normalizedView] || 'MILU â€¢ Workspace';
 
             if (updateHistory) {
                 updateUrl(normalizedView, false);
@@ -681,7 +681,7 @@
                     pos_final: txt(payload.pos_final || payload.pos || payload.POS),
                     pn_final: txt(payload.pn_final),
                     designation_final: txt(payload.designation_final),
-                    model_final: txt(payload.model_final || payload['MODEL/TYPE_final'] || payload.model_type_final || payload.model_type || payload.ModelType),
+                    model_type_final: txt(payload.model_type_final || payload['MODEL/TYPE_final'] || payload.model_type_final || payload.model_type || payload.ModelType),
                     qty_final: txt(payload.qty_final || payload.qty || payload.QTY),
                     qty_units_final: txt(payload.qty_units_final || payload.units || payload.Units || payload.UNITS),
                     weight_final: txt(payload.weight_final),
@@ -709,7 +709,7 @@
             if (pos instanceof HTMLInputElement) pos.value = sharedEditorContext.values.pos_final;
             if (pnFinal instanceof HTMLInputElement) pnFinal.value = sharedEditorContext.values.pn_final;
             if (designationFinal instanceof HTMLInputElement) designationFinal.value = sharedEditorContext.values.designation_final;
-            if (modelType instanceof HTMLInputElement) modelType.value = sharedEditorContext.values['model_final'];
+            if (modelType instanceof HTMLInputElement) modelType.value = sharedEditorContext.values['model_type_final'];
             if (qty instanceof HTMLInputElement) qty.value = sharedEditorContext.values.qty_final;
             if (units instanceof HTMLInputElement) units.value = sharedEditorContext.values.qty_units_final;
             if (weightFinal instanceof HTMLInputElement) weightFinal.value = sharedEditorContext.values.weight_final;
@@ -762,7 +762,7 @@
                 pos_final: txt(pos instanceof HTMLInputElement ? pos.value : ''),
                 pn_final: txt(pnFinal instanceof HTMLInputElement ? pnFinal.value : ''),
                 designation_final: txt(designationFinal instanceof HTMLInputElement ? designationFinal.value : ''),
-                model_final: txt(modelType instanceof HTMLInputElement ? modelType.value : ''),
+                model_type_final: txt(modelType instanceof HTMLInputElement ? modelType.value : ''),
                 qty_final: txt(qty instanceof HTMLInputElement ? qty.value : ''),
                 qty_units_final: txt(units instanceof HTMLInputElement ? units.value : ''),
                 weight_final: txt(weightFinal instanceof HTMLInputElement ? weightFinal.value : ''),

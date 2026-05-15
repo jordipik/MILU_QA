@@ -1833,7 +1833,20 @@ app.get('/api/esquemas-pos-index', async (_req, res) => {
     }
 });
 
-app.use(express.static(__dirname));
+// Configurar express.static con tipos MIME correctos incluyendo charset
+const staticOptions = {
+    setHeaders: (res, path) => {
+        if (path.endsWith('.html')) {
+            res.setHeader('Content-Type', 'text/html; charset=utf-8');
+        } else if (path.endsWith('.css')) {
+            res.setHeader('Content-Type', 'text/css; charset=utf-8');
+        } else if (path.endsWith('.js')) {
+            res.setHeader('Content-Type', 'application/javascript; charset=utf-8');
+        }
+    }
+};
+
+app.use(express.static(__dirname, staticOptions));
 
 app.get('/', (req, res) => {
     res.redirect('/qa_milu.html');

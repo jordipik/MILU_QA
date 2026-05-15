@@ -227,9 +227,14 @@ function normalizeRecord(rec, rawRow, inventoryByFile, duplicatePnMap) {
   const localImageFound = Boolean(media.selectedPhoto?.localFound);
   const localSchemaFound = Boolean(media.selectedPos?.localFound);
 
-  const hasBrokenImage = issues.some((i) => /broken|missing_image|img_urls_empty/i.test(i));
-  const hasBrokenSchema = issues.some((i) => /broken_schema|missing_schema|schema_urls_empty/i.test(i));
-  const hasBrokenRoute = hasBrokenImage || hasBrokenSchema || photoLoadStatus === "error" || schemaPosLoadStatus === "error" || schemaLoadStatus === "error";
+  const hasBrokenImage =
+    issues.some((i) => /broken_image_reference|missing_image/i.test(String(i || ""))) ||
+    (Boolean(media.selectedPhoto?.url) && photoLoadStatus === "error");
+  const hasBrokenSchema =
+    issues.some((i) => /broken_schema_reference|missing_schema/i.test(String(i || ""))) ||
+    ((Boolean(media.selectedPos?.url) && schemaPosLoadStatus === "error") ||
+      (Boolean(media.selectedSchema?.url) && schemaLoadStatus === "error"));
+  const hasBrokenRoute = hasBrokenImage || hasBrokenSchema;
 
   const pn = String(rec.part_number || rawRow?.["PART NO."] || rawRow?.pn_final || rawRow?.pn_raw || "").trim();
   const pnDuplicateCount = duplicatePnMap.get(pn) || 0;

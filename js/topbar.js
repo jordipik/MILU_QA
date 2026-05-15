@@ -175,12 +175,22 @@ export function createTopbar(page) {
     topbar.className = 'a2-topbar';
     topbar.innerHTML = `
         <div class="a2-brand">
-            <span class="a2-chip">MILU</span>
+            <span class="a2-chip a2-chip--alentio" aria-label="Alentio">
+                <svg viewBox="0 0 280 112" role="img" aria-hidden="true" focusable="false">
+                    <defs>
+                        <linearGradient id="alentioGrad" x1="0" y1="0" x2="1" y2="1">
+                            <stop offset="0%" stop-color="#ff8a00" />
+                            <stop offset="100%" stop-color="#f97316" />
+                        </linearGradient>
+                    </defs>
+                    <path d="M0 0 H260 L280 20 V112 H0 Z" fill="url(#alentioGrad)" />
+                    <text x="14" y="78" fill="#ffffff" font-family="Manrope, Arial, sans-serif" font-size="60" font-weight="800" letter-spacing="0.5">ALENTIO</text>
+                </svg>
+            </span>
             <div class="a2-brand-text">
                 <p class="a2-title">${pageConfig.title}</p>
                 <p class="a2-sub">${pageConfig.subtitle}</p>
             </div>
-            <span id="appVersion" class="a2-version" title="Versión de la aplicación"></span>
         </div>
         <nav class="a2-nav" aria-label="Navegacion">
             <a href="${getNavTargetHref('pdf')}" data-page="pdf" class="${pageConfig.active === 'PDF' ? 'active' : ''}">PDF</a>
@@ -189,10 +199,13 @@ export function createTopbar(page) {
             <a href="${getNavTargetHref('exportwp')}" data-page="exportwp" class="${pageConfig.active === 'EXPORT' ? 'active' : ''}">EXPORT</a>
             ${ENABLE_EXPORT_VIEW ? `<a href="${getNavTargetHref('export')}" data-page="export" class="${pageConfig.active === 'EXPORT' ? 'active' : ''}">EXPORT</a>` : ''}
         </nav>
-        <div id="backendStatus" class="backend-status checking" aria-live="polite" title="Estado del backend de guardado">
-            <span class="backend-status-dot" aria-hidden="true"></span>
-            <span id="backendStatusText">Backend: comprobando...</span>
-            <button id="backendStatusRetryBtn" type="button">Reintentar</button>
+        <div class="backend-status-wrap">
+            <div id="backendStatus" class="backend-status checking" aria-live="polite" title="Estado del backend de guardado">
+                <span class="backend-status-dot" aria-hidden="true"></span>
+                <span id="backendStatusText">Backend: comprobando...</span>
+                <button id="backendStatusRetryBtn" type="button">Reintentar</button>
+            </div>
+            <span id="appVersion" class="a2-version a2-version--backend" title="Versión de la aplicación"></span>
         </div>
     `;
 

@@ -324,8 +324,12 @@ function valuesMatch(left, right) {
     return normalizedLeft !== '' && normalizedRight !== '' && normalizedLeft === normalizedRight;
 }
 
+function getQaPosValue(row) {
+    return String(row?.pos_final ?? '').trim();
+}
+
 function getRowComparisonMeta(row) {
-    const pdfPos = row?.POS;
+    const pdfPos = getQaPosValue(row);
     const pdfPn = row?.['PART NO.'];
     const finalPn = row?.pn_final;
     const gesaPn = row?.pn_raw;
@@ -549,9 +553,19 @@ export function sortData(data, key, asc) {
             const pageA = Number(String(val(a, 'Source Page', '')).replace(/\D/g, '')) || 0;
             const pageB = Number(String(val(b, 'Source Page', '')).replace(/\D/g, '')) || 0;
             if (pageA !== pageB) return direction * (pageA - pageB);
-            const posA = Number(String(val(a, 'POS', '')).replace(/\D/g, '')) || 0;
-            const posB = Number(String(val(b, 'POS', '')).replace(/\D/g, '')) || 0;
+            const posA = Number(getQaPosValue(a).replace(/\D/g, '')) || 0;
+            const posB = Number(getQaPosValue(b).replace(/\D/g, '')) || 0;
             return direction * (posA - posB);
+        });
+    }
+
+    if (key === 'POS') {
+        return [...data].sort((a, b) => {
+            const aVal = getQaPosValue(a).toLowerCase();
+            const bVal = getQaPosValue(b).toLowerCase();
+            return asc
+                ? aVal.localeCompare(bVal, undefined, { numeric: true })
+                : bVal.localeCompare(aVal, undefined, { numeric: true });
         });
     }
 
@@ -646,6 +660,9 @@ export function applyFilters(data) {
                 case 'measure_final':
                 case 'weight_final':
                     rowValue = getRowValueForColumn(row, key, '').toString().toLowerCase();
+                    break;
+                case 'POS':
+                    rowValue = getQaPosValue(row).toLowerCase();
                     break;
                 default:
                     rowValue = getRowValueForColumn(row, key, '').toString().toLowerCase();
@@ -747,7 +764,7 @@ function buildGroupedByPn(data) {
     });
     return [...groups.entries()].map(([pn, rows]) => {
         const summary = summarizeFields(rows);
-        const posList = rows.map(r => String(r?.POS ?? '').trim()).filter(Boolean).slice(0, 8);
+        const posList = rows.map(getQaPosValue).filter(Boolean).slice(0, 8);
         return {
             pn: pn || '—',
             count: rows.length,
@@ -1065,7 +1082,7 @@ function renderRow(row) {
           <select class="revision-select" data-revision-field="accion" data-revision-key="${escapeHtml(revisionKey)}">${revisionAccionOptions}</select>
       </td>
     <td class="${withCellClasses('', 'PART NO.', getComparisonClasses({ pdfMatch: comparisonMeta.pn.pdfMatch }))}" title="${escapeHtml(val(row, 'PART NO.'))}">${escapeHtml(val(row, 'PART NO.'))}</td>
-        <td class="${withCellClasses('', 'pos_final', getComparisonClasses({ missing: comparisonMeta.pos.missing }))}" title="${escapeHtml(getRowValueForColumn(row, 'POS'))}">${escapeHtml(getRowValueForColumn(row, 'POS'))}</td>
+        <td class="${withCellClasses('', 'pos_final', getComparisonClasses({ missing: comparisonMeta.pos.missing }))}" title="${escapeHtml(getQaPosValue(row))}">${escapeHtml(getQaPosValue(row))}</td>
     <td${editableAttr('pn_final')} title="${escapeHtml(val(row, 'pn_final'))}" class="${withCellClasses('cell-inline-editable', 'pn_final', getComparisonClasses(comparisonMeta.pn))}">${escapeHtml(val(row, 'pn_final'))}</td>
     <td class="${withCellClasses('', 'designation_final', getComparisonClasses(comparisonMeta.designation))}" title="${escapeHtml(getRowValueForColumn(row, 'designation_final'))}">${escapeHtml(getRowValueForColumn(row, 'designation_final'))}</td>
             <td class="${withCellClasses('', 'pn_raw', getComparisonClasses({ gesaMatch: comparisonMeta.pn.gesaMatch }))}" title="${escapeHtml(val(row, 'pn_raw'))}">${escapeHtml(val(row, 'pn_raw'))}</td>
@@ -1216,7 +1233,7 @@ function renderErrorViewRow(row, definitions) {
         </td>
         <td title="${escapeHtml(val(row, 'engine_model'))}">${escapeHtml(val(row, 'engine_model'))}</td>
         <td title="${escapeHtml(val(row, 'Source Page'))}">${escapeHtml(val(row, 'Source Page'))}</td>
-        <td title="${escapeHtml(val(row, 'POS'))}">${escapeHtml(val(row, 'POS'))}</td>
+        <td title="${escapeHtml(getQaPosValue(row))}">${escapeHtml(getQaPosValue(row))}</td>
         <td title="${escapeHtml(val(row, 'PART NO.'))}">${escapeHtml(val(row, 'PART NO.'))}</td>
         <td title="${escapeHtml(getRowValueForColumn(row, 'designation_final'))}">${escapeHtml(getRowValueForColumn(row, 'designation_final'))}</td>
         <td class="error-total-cell" title="${totalError}">${totalError}</td>

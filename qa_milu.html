@@ -5,7 +5,7 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <link rel="icon" type="image/svg+xml" href="favicon.svg" />
-    <title>MILU • Lista QA 02 (df_116_bom)</title>
+    <title>MILU â€¢ Lista QA 02 (df_116_bom)</title>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@500;600;700;800&display=swap" rel="stylesheet">
@@ -21,7 +21,7 @@
         })();
     </script>
     <style>
-        /* Personalización de colores para qa_milu */
+        /* PersonalizaciÃ³n de colores para qa_milu */
         .a2-chip {
             background: linear-gradient(145deg, #0ea5e9, #0284c7) !important;
             box-shadow: 0 8px 18px rgba(14, 165, 233, 0.2) !important;
@@ -32,7 +32,7 @@
 </head>
 
 <body>
-    <!-- Topbar generado dinámicamente por js/topbar.js -->
+    <!-- Topbar generado dinÃ¡micamente por js/topbar.js -->
 
     <div class="content">
         <div class="main">
@@ -40,7 +40,7 @@
                 <div class="clear-filters modern-control-deck">
                     <div class="deck-head">
                         <p class="deck-title">Centro de control</p>
-                        <p class="deck-subtitle">Navegación, contexto visual y acciones masivas</p>
+                        <p class="deck-subtitle">NavegaciÃ³n, contexto visual y acciones masivas</p>
                     </div>
                     <div class="toolbar-primary">
                         <div class="toolbar-pane toolbar-pane-book">
@@ -52,25 +52,25 @@
                                     </select>
                                 </div>
                                 <div class="book-pane-right-bottom">
-                                    <button id="prevBookPageBtn" class="page-nav-btn" title="Página anterior del libro"
-                                        aria-label="Página anterior">&#9664;</button>
+                                    <button id="prevBookPageBtn" class="page-nav-btn" title="PÃ¡gina anterior del libro"
+                                        aria-label="PÃ¡gina anterior">&#9664;</button>
                                     <select id="pageFilterSelect" class="filter-select page-main-select"
-                                        data-filter="page" title="Filtrar por página o ver todas las páginas del libro">
-                                        <option value="">Todas las páginas</option>
+                                        data-filter="page" title="Filtrar por pÃ¡gina o ver todas las pÃ¡ginas del libro">
+                                        <option value="">Todas las pÃ¡ginas</option>
                                     </select>
-                                    <button id="nextBookPageBtn" class="page-nav-btn" title="Página siguiente del libro"
-                                        aria-label="Página siguiente">&#9654;</button>
+                                    <button id="nextBookPageBtn" class="page-nav-btn" title="PÃ¡gina siguiente del libro"
+                                        aria-label="PÃ¡gina siguiente">&#9654;</button>
                                 </div>
                             </div>
 
                             <div class="book-pane-left">
-                                <span class="pane-label">Navegación</span>
+                                <span class="pane-label">NavegaciÃ³n</span>
                                 <div class="book-pane-actions">
                                     <button id="clearFiltersBtn">Limpiar</button>
                                     <button id="qaUndoLastChangeBtn" type="button"
-                                        title="Deshacer último cambio guardado (Ctrl+Z)">Deshacer</button>
+                                        title="Deshacer Ãºltimo cambio guardado (Ctrl+Z)">Deshacer</button>
                                     <button id="openAuditPageBtn" type="button"
-                                        title="Abrir visor de auditoría">Auditoría</button>
+                                        title="Abrir visor de auditorÃ­a">AuditorÃ­a</button>
                                     <button id="toggleOnlyErrorsBtn" type="button"
                                         title="Mostrar solo registros con errores">Solo errores: OFF</button>
                                     <div class="bulk-edit">
@@ -84,16 +84,16 @@
                                                 title="OK masivo: solo cambia Estado a OK">V</button>
                                             <button id="bulkRevEmptyBtn" type="button"
                                                 class="quick-action-btn bulk-quick-btn white"
-                                                title="Poner vacío masivo: solo cambia Revisión a vacío">P</button>
+                                                title="Poner vacÃ­o masivo: solo cambia RevisiÃ³n a vacÃ­o">P</button>
                                             <button id="bulkValidateBtn" type="button"
                                                 class="quick-action-btn bulk-quick-btn import"
-                                                title="Importar masivo: solo cambia Acción a Import">I</button>
+                                                title="Importar masivo: solo cambia AcciÃ³n a Import">I</button>
                                             <button id="bulkReviewBtn" type="button"
                                                 class="quick-action-btn bulk-quick-btn review"
-                                                title="Revisar masivo: solo cambia Acción a Revisar">R</button>
+                                                title="Revisar masivo: solo cambia AcciÃ³n a Revisar">R</button>
                                             <button id="bulkDiscardBtn" type="button"
                                                 class="quick-action-btn bulk-quick-btn discard"
-                                                title="Eliminar masivo: solo cambia Acción a Eliminar">X</button>
+                                                title="Eliminar masivo: solo cambia AcciÃ³n a Eliminar">X</button>
                                         </div>
                                     </div>
                                 </div>
@@ -101,13 +101,13 @@
                                 <div class="book-top-row">
                                     <button id="sortBookPagePosBtn">Ordenar</button>
                                     <button id="togglePaginationBtn" type="button"
-                                        title="Activar o desactivar paginación">Paginación: ON</button>
+                                        title="Activar o desactivar paginaciÃ³n">PaginaciÃ³n: ON</button>
                                     <div class="view-toggle-inline">
                                         <select id="columnViewSelect" class="filter-select column-view-select"
                                             title="Seleccionar vista de tabla">
                                             <option value="qa">Vista QA</option>
                                             <option value="focus">Vista foco PN</option>
-                                            <option value="pdf" selected>Vista compacta</option>
+                                            <option value="pdf" selected>Vista PDF</option>
                                             <option value="errors">Vista errores</option>
                                         </select>
                                     </div>
@@ -141,7 +141,7 @@
                                 <th style="width:36px" data-sort="normalizado" class="status-head">N</th>
                                 <th style="width:44px" data-sort="sust_hierarchie" class="status-head">H</th>
                                 <th style="width:44px" data-sort="has_esquema_pos" class="status-head"
-                                    title="Esquema POS: OK=archivo encontrado / MISS=falta / —=sin ruta">P</th>
+                                    title="Esquema POS: OK=archivo encontrado / MISS=falta / â€”=sin ruta">P</th>
                                 <th style="width:36px" data-sort="has_img" class="status-head">F</th>
                                 <th style="width:36px" data-sort="has_error" class="status-head">E</th>
                                 <th style="width:70px" data-sort="EN_WEB">W</th>
@@ -165,7 +165,7 @@
                                 <th style="width:120px" data-sort="dimensions_gesa">Dimensions GESA</th>
                                 <th style="width:100px" data-sort="BOM-No.">BOM-No.</th>
                                 <th style="width:60px" data-sort="model">Model</th>
-                                <th style="width:60px" data-sort="Source Page">Página</th>
+                                <th style="width:60px" data-sort="Source Page">PÃ¡gina</th>
                                 <th style="width:140px" data-sort="fgs_code_description">FGS Code Description</th>
                                 <th style="width:120px" data-sort="filename_foto">Filename Foto</th>
                                 <th style="width:100px" data-sort="nsn">NSN</th>
@@ -193,49 +193,57 @@
                             </tr>
                             <tr class="filter-row">
                                 <th><input class="filter-input" data-filter="ID" placeholder="filtrar"></th>
-                                <th><select class="filter-select" data-filter="gesa">
+                                <th><select class="filter-select compact-filter" data-filter="gesa" title="Filtro GESA">
                                         <option value="">Todos</option>
                                         <option value="SI">SI</option>
                                         <option value="NO">NO</option>
                                     </select></th>
-                                <th><select class="filter-select" data-filter="normalizado">
+                                <th><select class="filter-select compact-filter" data-filter="normalizado"
+                                        title="Filtro Normalizado">
                                         <option value="">Todos</option>
                                         <option value="SI">SI</option>
                                         <option value="NO">NO</option>
                                     </select></th>
-                                <th><select class="filter-select" data-filter="sust_hierarchie">
+                                <th><select class="filter-select compact-filter" data-filter="sust_hierarchie"
+                                        title="Filtro Sustitucion">
                                         <option value="">Todos</option>
                                         <option value="New">New</option>
                                         <option value="Old">Old</option>
-                                        <option value="empty">(Vacío)</option>
+                                        <option value="empty">(VacÃ­o)</option>
                                     </select></th>
-                                <th><select class="filter-select" data-filter="has_esquema_pos">
+                                <th><select class="filter-select compact-filter" data-filter="has_esquema_pos"
+                                        title="Filtro Esquema Pos">
                                         <option value="">Todos</option>
                                         <option value="ok">OK (existe)</option>
                                         <option value="missing">MISS (falta)</option>
                                         <option value="empty">Sin ruta</option>
                                     </select></th>
-                                <th><select class="filter-select" data-filter="has_img">
+                                <th><select class="filter-select compact-filter" data-filter="has_img"
+                                        title="Filtro Imagen">
                                         <option value="">Todos</option>
                                         <option value="true">Si</option>
                                         <option value="false">No</option>
                                     </select></th>
-                                <th><select class="filter-select" data-filter="has_error">
+                                <th><select class="filter-select compact-filter" data-filter="has_error"
+                                        title="Filtro Error">
                                         <option value="">Todos</option>
                                         <option value="true">Con error</option>
                                         <option value="false">Sin error</option>
                                     </select></th>
-                                <th><select class="filter-select" data-filter="EN_WEB">
+                                <th><select class="filter-select compact-filter" data-filter="EN_WEB"
+                                        title="Filtro En Web">
                                         <option value="">Todos</option>
-                                        <option value="true">Sí</option>
+                                        <option value="true">SÃ­</option>
                                         <option value="false">No</option>
                                     </select></th>
-                                <th><select class="filter-select" data-filter="qa_revision_estado">
+                                <th><select class="filter-select compact-filter" data-filter="qa_revision_estado"
+                                        title="Filtro Estado Revision">
                                         <option value="">Todos</option>
                                         <option value="ok">OK</option>
                                         <option value="pendiente">Pendiente</option>
                                     </select></th>
-                                <th><select class="filter-select" data-filter="qa_revision_accion">
+                                <th><select class="filter-select compact-filter" data-filter="qa_revision_accion"
+                                        title="Filtro Accion Revision">
                                         <option value="">Todos</option>
                                         <option value="importar">Importar</option>
                                         <option value="copia">Copia</option>
@@ -343,9 +351,9 @@
                 <div id="pagination" class="pagination" style="display: none;">
                     <button id="firstBtn" disabled>Primero</button>
                     <button id="prevBtn" disabled>Anterior</button>
-                    <span id="pageInfo">Página 1 de 1</span>
+                    <span id="pageInfo">PÃ¡gina 1 de 1</span>
                     <button id="nextBtn" disabled>Siguiente</button>
-                    <button id="lastBtn" disabled>Último</button>
+                    <button id="lastBtn" disabled>Ãšltimo</button>
                 </div>
 
 
@@ -387,7 +395,7 @@
                     <button id="pdfTabRecord" class="pdf-tab-btn" type="button" role="tab" aria-selected="false"
                         aria-controls="pdfTabPanelRecord" data-pdf-tab="record">Ficha QA</button>
                     <button id="pdfTabExport" class="pdf-tab-btn" type="button" role="tab" aria-selected="false"
-                        aria-controls="pdfTabPanelExport" data-pdf-tab="export">Exportación</button>
+                        aria-controls="pdfTabPanelExport" data-pdf-tab="export">ExportaciÃ³n</button>
                     <button id="pdfTabSchemas" class="pdf-tab-btn" type="button" role="tab" aria-selected="false"
                         aria-controls="pdfTabPanelSchemas" data-pdf-tab="schemas">Esquemas</button>
                 </div>
@@ -395,7 +403,7 @@
                 <div id="pdfTabPanelPdf" class="pdf-tab-panel is-active" role="tabpanel" aria-labelledby="pdfTabPdf"
                     data-pdf-panel="pdf">
                     <div class="pdfbar">
-                        <span class="pdfmeta"><b>PDF</b> <span id="pdfLabel">—</span></span>
+                        <span class="pdfmeta"><b>PDF</b> <span id="pdfLabel">â€”</span></span>
                         <label class="pdf-zoom-wrap" for="pdfZoomSelect">
                             <span class="pdfmeta"><b>Zoom</b></span>
                             <button id="pdfZoomOutBtn" class="pdf-zoom-btn" type="button"
@@ -412,11 +420,11 @@
                                 aria-label="Aumentar zoom PDF">+</button>
                         </label>
                         <span class="sp"></span>
-                        <span class="pdfmeta" id="pdfMeta">Selecciona libro y página para ver el PDF</span>
+                        <span class="pdfmeta" id="pdfMeta">Selecciona libro y pÃ¡gina para ver el PDF</span>
                     </div>
                     <div id="pdfViewer" class="pdfviewer">
                         <div class="pdfviewer-inner">
-                            <div id="pdfStatus" class="pdfstatus">Selecciona libro y página para ver el PDF</div>
+                            <div id="pdfStatus" class="pdfstatus">Selecciona libro y pÃ¡gina para ver el PDF</div>
                             <canvas id="pdfCanvas" class="pdfcanvas"></canvas>
                         </div>
                     </div>
@@ -453,7 +461,7 @@
                                         </label>
                                         <label>
                                             <span>Model Final</span>
-                                            <input id="qaSideModelType" type="text" name="model_final">
+                                            <input id="qaSideModelType" type="text" name="model_type_final">
                                         </label>
                                     </div>
 
@@ -609,13 +617,13 @@
                 <div id="pdfTabPanelExport" class="pdf-tab-panel" role="tabpanel" aria-labelledby="pdfTabExport"
                     data-pdf-panel="export" hidden>
                     <div class="pdfbar qa-side-header">
-                        <span class="pdfmeta"><b>Exportación</b> <span id="qaSideExportLabel">Sin
-                                selección</span></span>
+                        <span class="pdfmeta"><b>ExportaciÃ³n</b> <span id="qaSideExportLabel">Sin
+                                selecciÃ³n</span></span>
                     </div>
                     <div class="qa-side-body">
                         <section class="qa-modal-related qa-export-pipeline-panel">
                             <div class="qa-modal-related-head qa-export-pipeline-head">
-                                <h3>Exportación WordPress QA-only</h3>
+                                <h3>ExportaciÃ³n WordPress QA-only</h3>
                                 <span id="qaExportRunStatus" class="qa-modal-related-count">Sin ejecutar</span>
                             </div>
                             <div class="qa-export-pipeline-actions">
@@ -624,7 +632,7 @@
                             </div>
                             <div class="qa-export-summary-grid">
                                 <article class="qa-export-summary-card">
-                                    <span>PN únicos</span>
+                                    <span>PN Ãºnicos</span>
                                     <strong id="qaExportSummaryTotal">0</strong>
                                 </article>
                                 <article class="qa-export-summary-card">
@@ -683,7 +691,7 @@
                             <div class="qa-export-trace-panel">
                                 <div class="qa-modal-related-head">
                                     <h3>Trace por SKU</h3>
-                                    <span id="qaExportTraceSku" class="qa-modal-related-count">Sin selección</span>
+                                    <span id="qaExportTraceSku" class="qa-modal-related-count">Sin selecciÃ³n</span>
                                 </div>
                                 <div id="qaExportTraceBody" class="qa-export-trace-body">Selecciona una fila del preview
                                     para ver la traza.</div>
@@ -750,9 +758,9 @@
                     <div class="qa-side-body qa-schemas-panel">
                         <section class="qa-modal-related qa-schemas-section">
                             <div class="qa-modal-related-head">
-                                <h3>Esquemas del libro (página activa)</h3>
+                                <h3>Esquemas del libro (pÃ¡gina activa)</h3>
                             </div>
-                            <div id="schemasImagesInline" class="schemas-images-inline" title="Imágenes de esquemas">
+                            <div id="schemasImagesInline" class="schemas-images-inline" title="ImÃ¡genes de esquemas">
                                 <div id="schemasImagesStrip" class="schemas-images-strip">
                                     <span class="schemas-images-empty">Sin esquemas</span>
                                 </div>
@@ -761,12 +769,12 @@
 
                         <section class="qa-modal-related qa-schemas-section">
                             <div class="selected-pos-head">
-                                <span class="selected-pos-title">Esquema círculos del artículo seleccionado</span>
+                                <span class="selected-pos-title">Esquema cÃ­rculos del artÃ­culo seleccionado</span>
                                 <span id="selectedPosMeta" class="selected-pos-meta">Selecciona un registro de la
                                     tabla</span>
                             </div>
                             <div id="selectedPosStrip" class="schemas-images-strip">
-                                <span class="schemas-images-empty">Sin selección</span>
+                                <span class="schemas-images-empty">Sin selecciÃ³n</span>
                             </div>
                         </section>
                     </div>
@@ -882,8 +890,8 @@
                                 <input id="qaModalDesignationFinal" type="text" name="designation_final">
                             </label>
                             <label>
-                                <span>Model Final (model_final)</span>
-                                <input id="qaModalModelType" type="text" name="model_final">
+                                <span>Model Final (model_type_final)</span>
+                                <input id="qaModalModelType" type="text" name="model_type_final">
                             </label>
                         </div>
 
@@ -1037,7 +1045,7 @@
             aria-labelledby="qaExportModalTitle">
             <div class="qa-modal-header">
                 <div>
-                    <p class="qa-modal-kicker">Exportación del registro</p>
+                    <p class="qa-modal-kicker">ExportaciÃ³n del registro</p>
                     <h2 id="qaExportModalTitle">MILU New / Superseded</h2>
                 </div>
                 <button id="qaExportModalCloseBtn" class="qa-modal-close-btn" type="button"
@@ -1117,41 +1125,41 @@
             </div>
             <div class="qa-checks-modal-body">
                 <div class="qa-checks-modal-desc-wrap">
-                    <p class="qa-checks-modal-desc">Selecciona las tipologías de comprobación que deseas aplicar. Puedes
-                        ejecutar el cálculo para todos los artículos o solo para los visibles en pantalla.</p>
+                    <p class="qa-checks-modal-desc">Selecciona las tipologÃ­as de comprobaciÃ³n que deseas aplicar. Puedes
+                        ejecutar el cÃ¡lculo para todos los artÃ­culos o solo para los visibles en pantalla.</p>
                 </div>
                 <div id="qaChecksList" class="qa-checks-modal-list" aria-label="Seleccion de comprobaciones QA"></div>
 
-                <!-- Área de estadísticas (oculta hasta que se aplique) -->
+                <!-- Ãrea de estadÃ­sticas (oculta hasta que se aplique) -->
                 <div id="qaChecksStatsArea" class="qa-checks-stats-area" style="display: none;">
                     <h4>
-                        <span>Estadísticas de errores</span>
+                        <span>EstadÃ­sticas de errores</span>
                         <span id="qaChecksStatsScope" class="qa-checks-stats-scope">Todos los articulos</span>
                     </h4>
                     <div class="qa-checks-stats-grid">
                         <div class="qa-checks-stat-item">
                             <span class="qa-checks-stat-label">Total registros</span>
-                            <span id="qaChecksStat_total" class="qa-checks-stat-value">—</span>
+                            <span id="qaChecksStat_total" class="qa-checks-stat-value">â€”</span>
                         </div>
                         <div class="qa-checks-stat-item">
                             <span class="qa-checks-stat-label">Con errores</span>
-                            <span id="qaChecksStat_errors" class="qa-checks-stat-value">—</span>
+                            <span id="qaChecksStat_errors" class="qa-checks-stat-value">â€”</span>
                         </div>
                         <div class="qa-checks-stat-item">
                             <span class="qa-checks-stat-label">Sin errores</span>
-                            <span id="qaChecksStat_ok" class="qa-checks-stat-value">—</span>
+                            <span id="qaChecksStat_ok" class="qa-checks-stat-value">â€”</span>
                         </div>
                         <div class="qa-checks-stat-item">
-                            <span class="qa-checks-stat-label">Críticos</span>
-                            <span id="qaChecksStat_critical" class="qa-checks-stat-value">—</span>
+                            <span class="qa-checks-stat-label">CrÃ­ticos</span>
+                            <span id="qaChecksStat_critical" class="qa-checks-stat-value">â€”</span>
                         </div>
                     </div>
                     <div class="qa-checks-stats-breakdown">
                         <div class="qa-checks-stats-breakdown-head">
-                            <span>Desglose por comprobación activa</span>
+                            <span>Desglose por comprobaciÃ³n activa</span>
                         </div>
                         <ul id="qaChecksStatCodes" class="qa-checks-stat-codes-list">
-                            <li class="qa-checks-stat-codes-empty">Aplica el cálculo para ver el detalle.</li>
+                            <li class="qa-checks-stat-codes-empty">Aplica el cÃ¡lculo para ver el detalle.</li>
                         </ul>
                     </div>
 
@@ -1166,7 +1174,7 @@
                                     <tr>
                                         <th>ID</th>
                                         <th>Libro</th>
-                                        <th>Página</th>
+                                        <th>PÃ¡gina</th>
                                         <th>POS</th>
                                         <th>PN</th>
                                         <th>Errores</th>
@@ -1174,7 +1182,7 @@
                                 </thead>
                                 <tbody id="qaChecksFoundRows">
                                     <tr>
-                                        <td colspan="6" class="qa-checks-found-empty">Aplica el cálculo para ver
+                                        <td colspan="6" class="qa-checks-found-empty">Aplica el cÃ¡lculo para ver
                                             registros.</td>
                                     </tr>
                                 </tbody>
@@ -1183,7 +1191,7 @@
                     </div>
                 </div>
 
-                <!-- Área de progreso (oculta hasta que se aplique) -->
+                <!-- Ãrea de progreso (oculta hasta que se aplique) -->
                 <div id="qaChecksProgressArea" class="qa-checks-progress-area" style="display: none;">
                     <p class="qa-checks-progress-text">Procesando y guardando cambios...</p>
                     <div class="qa-checks-progress-spinner"></div>
