@@ -3,6 +3,101 @@
  * Vista embebida de PN Review para el panel derecho de Analista 02.
  */
 
+import './fieldAdapter.js';
+
+const PN_REVIEW_FIELD_FALLBACKS = {
+    pn_final: ['PART NO.', 'pn'],
+    pn_excel: ['pn_excel', 'pn_raw', 'PART NO.', 'pn'],
+    pn_pdf: ['pn_pdf'],
+    designation_final: ['DESIGNATION', 'designation_gesa', 'designation_pdf'],
+    designation_pdf: ['designation_pdf', 'DESIGNATION', 'designation_gesa'],
+    pos_final: ['POS'],
+    qty_final: ['QTY'],
+    qty_units_final: ['UNITS', 'units'],
+    measure_final: ['measurement_final', 'MEASUREMENT / STANDARD', 'dimensions_gesa', 'measure_pdf'],
+    norma_final: ['norma', 'STANDARD'],
+    weight_final: ['WEIGHT', 'weight_gesa', 'weight_pdf'],
+    model_type_final: ['MODEL/TYPE', 'model'],
+    qa_revision_estado: ['qa_revision_estado'],
+    qa_revision_accion: ['qa_revision_accion'],
+    is_subst_final: ['sust_status', 'is_subst_excel'],
+    hierarchie_final: ['sust_hierarchie', 'hierarchie_excel'],
+    new_pn_final: ['sust_new_part_number', 'new_part_number', 'pn_new'],
+    subst_pnlist_final: ['sust_superseded_list'],
+    source_page: ['Source Page', 'page4'],
+    engine_model: ['engine_model', '__engine_model', 'engine'],
+    libro_pag: ['libro_pag', 'book_set', 'pages'],
+    ruta_foto: ['filename_foto'],
+    ruta_esquemas_pos: ['exp_imagenes']
+};
+
+function getPnReviewDebugEnabled() {
+    try {
+        return Boolean(globalThis?.window?.PN_REVIEW_FIELD_DEBUG);
+    } catch (_) {
+        return false;
+    }
+}
+
+function getFieldAdapterApi() {
+    try {
+        const adapter = globalThis?.window?.fieldAdapter;
+        if (adapter && typeof adapter.getField === 'function') return adapter;
+    } catch (_) {
+        // Ignore window access issues in non-browser contexts.
+    }
+    return null;
+}
+
+function logPnReviewFieldDebug(record, fieldName, source, aliasUsed) {
+    if (!getPnReviewDebugEnabled()) return;
+    const id = String(record?.ID ?? record?._idx ?? '').trim();
+    const payload = { field: fieldName, source, alias: aliasUsed || '' };
+    if (id) payload.id = id;
+    console.debug('[PN Review fieldAdapter]', payload);
+}
+
+export function getPnReviewFieldValue(record, fieldName, defaultValue = '') {
+    const row = record && typeof record === 'object' ? record : {};
+    const field = String(fieldName || '').trim();
+    if (!field) return defaultValue;
+
+    const adapter = getFieldAdapterApi();
+    if (adapter) {
+        const adapterValue = adapter.getField(row, field);
+        if (!emptyVal(adapterValue)) {
+            let aliasUsed = field;
+            if (typeof adapter.getFieldAliases === 'function') {
+                const aliases = adapter.getFieldAliases(field);
+                if (Array.isArray(aliases)) {
+                    const matched = aliases.find((alias) => Object.prototype.hasOwnProperty.call(row, alias) && !emptyVal(row[alias]));
+                    if (matched) aliasUsed = matched;
+                }
+            }
+            logPnReviewFieldDebug(row, field, 'adapter', aliasUsed);
+            return adapterValue;
+        }
+    }
+
+    const direct = row[field];
+    if (!emptyVal(direct)) {
+        logPnReviewFieldDebug(row, field, 'direct', field);
+        return direct;
+    }
+
+    const fallbackKeys = PN_REVIEW_FIELD_FALLBACKS[field] || [];
+    for (const key of fallbackKeys) {
+        const candidate = row[key];
+        if (!emptyVal(candidate)) {
+            logPnReviewFieldDebug(row, field, 'fallback', key);
+            return candidate;
+        }
+    }
+
+    logPnReviewFieldDebug(row, field, 'missing', '');
+    return defaultValue;
+}
+
 function emptyVal(v) {
     const s = String(v ?? '').trim();
     return s === '' || s === '-' || s === 'null' || s === 'undefined';
@@ -44,29 +139,40 @@ function firstNonEmpty(...values) {
 
 function buildSourceRow(row = {}, idx = 0) {
     const sourceFile = String(row.source_file || row.__engine_file || '').trim();
-    const engineModel = String(row.engine_model || row.__engine_model || row.model || row.engine || '').trim();
+    const engineModel = String(getPnReviewFieldValue(row, 'engine_model', '') || '').trim();
     return {
         _idx: idx,
         ID: String(row.ID ?? '').trim(),
         source_file: sourceFile,
         engine_model: engineModel,
-        'Source Page': String(row['Source Page'] ?? '').trim(),
-        POS: firstNonEmpty(row.POS, row.pos_final),
-        'PART NO.': firstNonEmpty(row['PART NO.'], row.pn_final, row.pn),
-        designation_final: firstNonEmpty(row.designation_final, row.DESIGNATION, row.designation_gesa, row.designation_pdf),
-        measure_final: firstNonEmpty(row.measure_final, row.measurement_final, row['MEASUREMENT / STANDARD'], row.dimensions_gesa, row.measure_pdf),
-        weight_final: firstNonEmpty(row.weight_final, row.WEIGHT, row.weight_gesa, row.weight_pdf),
-        sust_status: firstNonEmpty(row.sust_status),
-        sust_hierarchie: firstNonEmpty(row.sust_hierarchie),
-        new_part_number: firstNonEmpty(row.sust_new_part_number, row.pn_new, row.new_part_number),
-        qa_revision_estado: firstNonEmpty(row.qa_revision_estado, 'pendiente'),
-        qa_revision_accion: firstNonEmpty(row.qa_revision_accion, '-'),
+        'Source Page': String(getPnReviewFieldValue(row, 'source_page', '') || '').trim(),
+        POS: firstNonEmpty(getPnReviewFieldValue(row, 'pos_final', '')),
+        'PART NO.': firstNonEmpty(getPnReviewFieldValue(row, 'pn_final', '')),
+        designation_final: firstNonEmpty(getPnReviewFieldValue(row, 'designation_final', '')),
+        designation_pdf: firstNonEmpty(getPnReviewFieldValue(row, 'designation_pdf', '')),
+        measure_final: firstNonEmpty(getPnReviewFieldValue(row, 'measure_final', '')),
+        norma_final: firstNonEmpty(getPnReviewFieldValue(row, 'norma_final', '')),
+        weight_final: firstNonEmpty(getPnReviewFieldValue(row, 'weight_final', '')),
+        model_type_final: firstNonEmpty(getPnReviewFieldValue(row, 'model_type_final', '')),
+        sust_status: firstNonEmpty(getPnReviewFieldValue(row, 'is_subst_final', '')),
+        sust_hierarchie: firstNonEmpty(getPnReviewFieldValue(row, 'hierarchie_final', '')),
+        new_part_number: firstNonEmpty(getPnReviewFieldValue(row, 'new_pn_final', '')),
+        subst_pnlist_final: firstNonEmpty(getPnReviewFieldValue(row, 'subst_pnlist_final', '')),
+        qa_revision_estado: firstNonEmpty(getPnReviewFieldValue(row, 'qa_revision_estado', ''), 'pendiente'),
+        qa_revision_accion: firstNonEmpty(getPnReviewFieldValue(row, 'qa_revision_accion', ''), '-'),
+        ruta_foto: firstNonEmpty(getPnReviewFieldValue(row, 'ruta_foto', '')),
+        ruta_esquemas_pos: firstNonEmpty(getPnReviewFieldValue(row, 'ruta_esquemas_pos', '')),
+        libro_pag: firstNonEmpty(getPnReviewFieldValue(row, 'libro_pag', '')),
+        pn_excel: firstNonEmpty(getPnReviewFieldValue(row, 'pn_excel', '')),
+        pn_pdf: firstNonEmpty(getPnReviewFieldValue(row, 'pn_pdf', '')),
+        qty_final: firstNonEmpty(getPnReviewFieldValue(row, 'qty_final', '')),
+        qty_units_final: firstNonEmpty(getPnReviewFieldValue(row, 'qty_units_final', '')),
     };
 }
 
 function deriveDecisionFromQa(row) {
-    const estado = String(row?.qa_revision_estado || '').trim().toLowerCase();
-    const accion = String(row?.qa_revision_accion || '').trim().toLowerCase();
+    const estado = String(getPnReviewFieldValue(row, 'qa_revision_estado', '') || '').trim().toLowerCase();
+    const accion = String(getPnReviewFieldValue(row, 'qa_revision_accion', '') || '').trim().toLowerCase();
     if (estado === 'ok' && accion === 'importar') return 'import';
     if (estado === 'ok' && accion === 'eliminar') return 'discard';
     return 'pending_review';
@@ -134,14 +240,14 @@ export function init(container, { onDecisionApplied, onValuesApplied } = {}) {
 
 function buildPropagationFieldsFromCurrentRow() {
     return {
-        pn_final: firstNonEmpty(_currentRow?.pn_final, _currentRow?.['PART NO.'], _currentRow?.pn),
-        designation_final: firstNonEmpty(_currentRow?.designation_final, _currentRow?.DESIGNATION, _currentRow?.designation_gesa, _currentRow?.designation_pdf),
-        measure_final: firstNonEmpty(_currentRow?.measure_final, _currentRow?.measurement_final, _currentRow?.['MEASUREMENT / STANDARD'], _currentRow?.dimensions_gesa, _currentRow?.measure_pdf),
-        weight_final: firstNonEmpty(_currentRow?.weight_final, _currentRow?.WEIGHT, _currentRow?.weight_gesa, _currentRow?.weight_pdf),
-        sust_status: firstNonEmpty(_currentRow?.sust_status),
-        sust_hierarchie: firstNonEmpty(_currentRow?.sust_hierarchie),
-        sust_new_part_number: firstNonEmpty(_currentRow?.sust_new_part_number),
-        sust_superseded_list: firstNonEmpty(_currentRow?.sust_superseded_list)
+        pn_final: firstNonEmpty(getPnReviewFieldValue(_currentRow, 'pn_final', '')),
+        designation_final: firstNonEmpty(getPnReviewFieldValue(_currentRow, 'designation_final', '')),
+        measure_final: firstNonEmpty(getPnReviewFieldValue(_currentRow, 'measure_final', '')),
+        weight_final: firstNonEmpty(getPnReviewFieldValue(_currentRow, 'weight_final', '')),
+        sust_status: firstNonEmpty(getPnReviewFieldValue(_currentRow, 'is_subst_final', '')),
+        sust_hierarchie: firstNonEmpty(getPnReviewFieldValue(_currentRow, 'hierarchie_final', '')),
+        sust_new_part_number: firstNonEmpty(getPnReviewFieldValue(_currentRow, 'new_pn_final', '')),
+        sust_superseded_list: firstNonEmpty(getPnReviewFieldValue(_currentRow, 'subst_pnlist_final', ''))
     };
 }
 
@@ -160,7 +266,7 @@ export async function onRecordChange(row, options = {}) {
         return;
     }
 
-    const sku = String(row.pn_final || row['PART NO.'] || row.pn || '').trim();
+    const sku = String(getPnReviewFieldValue(row, 'pn_final', '') || '').trim();
     if (!sku) {
         _currentSku = '';
         _isNoPnMode = true;
@@ -383,7 +489,7 @@ function renderPanel() {
 
     const exportRow = _detail?.export_row || {};
     const sku = _currentSku;
-    const designation = exportRow.designation_final || firstNonEmpty(_currentRow?.designation_final, _currentRow?.DESIGNATION);
+    const designation = exportRow.designation_final || firstNonEmpty(getPnReviewFieldValue(_currentRow, 'designation_final', ''));
     const decision = exportRow.decision || deriveDecisionFromQa(_currentRow || {});
     const engines = Array.isArray(exportRow.engine_models)
         ? exportRow.engine_models
@@ -463,8 +569,8 @@ function renderLoading(sku) {
 function buildQaSummaryHtml(qa, sources = []) {
     const copyFromSources = Array.isArray(sources)
         ? sources.filter((row) => {
-            const estado = String(row?.qa_revision_estado || '').trim().toLowerCase();
-            const accion = String(row?.qa_revision_accion || '').trim().toLowerCase();
+            const estado = String(getPnReviewFieldValue(row, 'qa_revision_estado', '') || '').trim().toLowerCase();
+            const accion = String(getPnReviewFieldValue(row, 'qa_revision_accion', '') || '').trim().toLowerCase();
             return estado === 'ok' && accion === 'copia';
         }).length
         : 0;

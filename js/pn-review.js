@@ -1,4 +1,30 @@
 (function () {
+    const PN_REVIEW_FIELD_FALLBACKS = {
+        pn_final: ['PART NO.', 'pn'],
+        pn_excel: ['pn_excel', 'pn_raw', 'PART NO.', 'pn'],
+        pn_pdf: ['pn_pdf'],
+        designation_final: ['DESIGNATION', 'designation_gesa', 'designation_pdf'],
+        designation_pdf: ['designation_pdf', 'DESIGNATION', 'designation_gesa'],
+        pos_final: ['POS'],
+        qty_final: ['QTY'],
+        qty_units_final: ['UNITS', 'units'],
+        measure_final: ['measurement_final', 'MEASUREMENT / STANDARD', 'dimensions_gesa', 'measure_pdf'],
+        norma_final: ['norma', 'STANDARD'],
+        weight_final: ['WEIGHT', 'weight_gesa', 'weight_pdf'],
+        model_type_final: ['MODEL/TYPE', 'model'],
+        qa_revision_estado: ['qa_revision_estado'],
+        qa_revision_accion: ['qa_revision_accion'],
+        is_subst_final: ['sust_status', 'is_subst_excel'],
+        hierarchie_final: ['sust_hierarchie', 'hierarchie_excel'],
+        new_pn_final: ['sust_new_part_number', 'new_part_number', 'pn_new'],
+        subst_pnlist_final: ['sust_superseded_list'],
+        source_page: ['Source Page', 'page4'],
+        engine_model: ['engine_model', '__engine_model', 'engine'],
+        libro_pag: ['libro_pag', 'book_set', 'pages'],
+        ruta_foto: ['filename_foto'],
+        ruta_esquemas_pos: ['exp_imagenes']
+    };
+
     const state = {
         rows: [],
         filtered: [],
@@ -68,6 +94,77 @@
 
     function normalizeLower(value) {
         return normalize(value).toLowerCase();
+    }
+
+    function getPnReviewDebugEnabled() {
+        try {
+            return Boolean(window?.PN_REVIEW_FIELD_DEBUG);
+        } catch (_) {
+            return false;
+        }
+    }
+
+    function getFieldAdapterApi() {
+        try {
+            const adapter = window?.fieldAdapter;
+            if (adapter && typeof adapter.getField === 'function') return adapter;
+        } catch (_) {
+            // Ignore window access issues.
+        }
+        return null;
+    }
+
+    function logPnReviewFieldDebug(record, fieldName, source, aliasUsed) {
+        if (!getPnReviewDebugEnabled()) return;
+        const id = String(record?.ID ?? record?._idx ?? '').trim();
+        const payload = { field: fieldName, source, alias: aliasUsed || '' };
+        if (id) payload.id = id;
+        console.debug('[PN Review fieldAdapter]', payload);
+    }
+
+    function isEmptyPnReviewValue(value) {
+        return normalize(value) === '' || normalize(value) === '-' || normalize(value) === 'null' || normalize(value) === 'undefined';
+    }
+
+    function getPnReviewFieldValue(record, fieldName, defaultValue = '') {
+        const row = record && typeof record === 'object' ? record : {};
+        const field = normalize(fieldName);
+        if (!field) return defaultValue;
+
+        const adapter = getFieldAdapterApi();
+        if (adapter) {
+            const adapterValue = adapter.getField(row, field);
+            if (!isEmptyPnReviewValue(adapterValue)) {
+                let aliasUsed = field;
+                if (typeof adapter.getFieldAliases === 'function') {
+                    const aliases = adapter.getFieldAliases(field);
+                    if (Array.isArray(aliases)) {
+                        const matched = aliases.find((alias) => Object.prototype.hasOwnProperty.call(row, alias) && !isEmptyPnReviewValue(row[alias]));
+                        if (matched) aliasUsed = matched;
+                    }
+                }
+                logPnReviewFieldDebug(row, field, 'adapter', aliasUsed);
+                return adapterValue;
+            }
+        }
+
+        const direct = row[field];
+        if (!isEmptyPnReviewValue(direct)) {
+            logPnReviewFieldDebug(row, field, 'direct', field);
+            return direct;
+        }
+
+        const fallbackKeys = PN_REVIEW_FIELD_FALLBACKS[field] || [];
+        for (const key of fallbackKeys) {
+            const candidate = row[key];
+            if (!isEmptyPnReviewValue(candidate)) {
+                logPnReviewFieldDebug(row, field, 'fallback', key);
+                return candidate;
+            }
+        }
+
+        logPnReviewFieldDebug(row, field, 'missing', '');
+        return defaultValue;
     }
 
     function formatDateTime(value) {
@@ -410,12 +507,12 @@
     function renderSourcesTable(sources) {
         const sorted = sortSources(sources);
         ui.sourcesTableBody.innerHTML = sorted.map((row) => {
-            const pnPack = `${normalize(row['PART NO.'])} / ${normalize(row.pn_final)}`;
-            const dPack = `${normalize(row.DESIGNATION)} / ${normalize(row.designation_final)} / ${normalize(row.designation_gesa)} / ${normalize(row.designation_pdf)}`;
-            const mPack = `${normalize(row.measure_final)} / ${normalize(row.dimensions_gesa)} / ${normalize(row.measure_pdf)}`;
-            const wPack = `${normalize(row.weight_final)} / ${normalize(row.weight_gesa)} / ${normalize(row.weight_pdf)}`;
-            const sPack = `${normalize(row.sust_status)} / ${normalize(row.sust_new_part_number)} / ${normalize(row.sust_superseded_list)}`;
-            const qaPack = `${normalize(row.qa_revision_estado)} / ${normalize(row.qa_revision_accion)}`;
+            const pnPack = `${normalize(getPnReviewFieldValue(row, 'pn_excel', ''))} / ${normalize(getPnReviewFieldValue(row, 'pn_final', ''))}`;
+            const dPack = `${normalize(getPnReviewFieldValue(row, 'designation_pdf', ''))} / ${normalize(getPnReviewFieldValue(row, 'designation_final', ''))} / ${normalize(row.designation_gesa)}`;
+            const mPack = `${normalize(getPnReviewFieldValue(row, 'measure_final', ''))} / ${normalize(row.dimensions_gesa)} / ${normalize(row.measure_pdf)}`;
+            const wPack = `${normalize(getPnReviewFieldValue(row, 'weight_final', ''))} / ${normalize(row.weight_gesa)} / ${normalize(row.weight_pdf)}`;
+            const sPack = `${normalize(getPnReviewFieldValue(row, 'is_subst_final', ''))} / ${normalize(getPnReviewFieldValue(row, 'new_pn_final', ''))} / ${normalize(getPnReviewFieldValue(row, 'subst_pnlist_final', ''))}`;
+            const qaPack = `${normalize(getPnReviewFieldValue(row, 'qa_revision_estado', ''))} / ${normalize(getPnReviewFieldValue(row, 'qa_revision_accion', ''))}`;
 
             const designationBadge = sourceCellBadges(sorted, row, 'designation_final', (v) => normalizeLower(v));
             const measureBadge = sourceCellBadges(sorted, row, 'measure_final', (v) => normalizeLower(v));
@@ -425,9 +522,9 @@
             return `
                 <tr>
                     <td class="mono">${esc(row.ID || '-')}</td>
-                    <td>${esc(row.engine_model || '-')}</td>
-                    <td>${esc(row['Source Page'] || '-')}</td>
-                    <td>${esc(row.POS || '-')}</td>
+                    <td>${esc(getPnReviewFieldValue(row, 'engine_model', '-'))}</td>
+                    <td>${esc(getPnReviewFieldValue(row, 'source_page', '-'))}</td>
+                    <td>${esc(getPnReviewFieldValue(row, 'pos_final', '-'))}</td>
                     <td>${esc(pnPack)}</td>
                     <td>${esc(dPack)} ${designationBadge}</td>
                     <td>${esc(mPack)} ${measureBadge}</td>

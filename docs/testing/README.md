@@ -92,3 +92,17 @@ Resumen por capa:
 7. Si se cierra UX-3 fase 2: verificar por búsqueda que no quedan `alert(` directos en `js/bulk-revision-helper.js`, `js/cell-editor.js` y `js/revision.js`.
 8. Si se toca PN review backend: verificar que `tests/smoke/http-smoke.test.js` sigue cubriendo `GET /pn-review/:sku/sources` con un SKU derivado de `GET /pn-review/list`.
 9. Si se toca persistencia backend: verificar que `/save-json` sigue pasando el roundtrip HTTP y que `apply-decision` por ID sigue pasando su roundtrip restaurable en `tests/security/write-validation.test.js`.
+
+## Comandos de la fase field-registry
+
+- `npm run test:field-registry`
+  - Cuándo usarlo: al tocar `fieldAdapter`, la normalizacion de campos o lecturas compatibles nuevo/legacy en UI.
+  - Qué valida: tests de migracion JSON y compatibilidad de lectura de campos.
+
+- `npm run compare:normalized`
+  - Cuándo usarlo: despues de cambios en reglas de normalizacion, comparador o aliases que afecten equivalencia funcional.
+  - Qué valida: consistencia funcional entre `engine_*.json` y `data/normalized/*.normalized.json` con resumen OK/CHECK.
+
+- `npm run refactor:json:dry`
+  - Cuándo usarlo: antes de ejecutar una normalizacion real, para revisar impacto sin escribir archivos de salida.
+  - Qué valida: que el pipeline de refactor puede procesar todos los engines sin modificar datos en disco.

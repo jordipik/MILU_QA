@@ -4,6 +4,7 @@
 
 import { state } from './state.js';
 import { escapeHtml, getPnKey, getRowValueForColumn, val, getRowErrorFields, getRowErrorType, getRowErrors } from './helpers.js';
+import './fieldAdapter.js';
 import {
     getRevisionAccionClass,
     getRevisionEstadoClass,
@@ -22,6 +23,20 @@ const qaErrorMetaCache = {
 
 const VIRTUAL_MIN_ROWS = 120;
 const VIRTUAL_OVERSCAN_ROWS = 10;
+
+const COMPACT_FIELD_FALLBACKS = {
+    source_page: ['Source Page', 'page4'],
+    pos_final: ['POS'],
+    pn_final: ['PART NO.', 'pn'],
+    designation_final: ['DESIGNATION'],
+    qty_final: ['QTY'],
+    qty_units_final: ['UNITS'],
+    weight_final: ['WEIGHT', 'weight_gesa'],
+    measure_final: ['measurement_final', 'MEASUREMENT / STANDARD'],
+    norma_final: ['norma', 'STANDARD'],
+    ruta_foto: ['filename_foto'],
+    ruta_esquemas_pos: ['exp_imagenes']
+};
 
 const virtualTableState = {
     main: {
@@ -212,6 +227,39 @@ function parseBooleanLike(value) {
     return null;
 }
 
+function getFieldAdapterApi() {
+    try {
+        const adapter = globalThis?.window?.fieldAdapter;
+        if (adapter && typeof adapter.getField === 'function') return adapter;
+    } catch (_) {
+        // Ignore window access issues in non-browser contexts.
+    }
+    return null;
+}
+
+export function getCompactFieldValue(row, fieldName, defaultValue = '') {
+    const record = row && typeof row === 'object' ? row : {};
+    const field = String(fieldName || '').trim();
+    if (!field) return defaultValue;
+
+    const adapter = getFieldAdapterApi();
+    if (adapter) {
+        const adapterValue = adapter.getField(record, field);
+        if (adapterValue != null && String(adapterValue).trim() !== '') return adapterValue;
+    }
+
+    const direct = record[field];
+    if (direct != null && String(direct).trim() !== '') return direct;
+
+    const fallbackKeys = COMPACT_FIELD_FALLBACKS[field] || [];
+    for (const key of fallbackKeys) {
+        const candidate = record[key];
+        if (candidate != null && String(candidate).trim() !== '') return candidate;
+    }
+
+    return defaultValue;
+}
+
 function toFiniteNumber(value) {
     const n = Number(value);
     return Number.isFinite(n) ? n : NaN;
@@ -324,20 +372,20 @@ function valuesMatch(left, right) {
     return normalizedLeft !== '' && normalizedRight !== '' && normalizedLeft === normalizedRight;
 }
 
-function getQaPosValue(row) {
-    return String(row?.pos_final ?? '').trim();
+export function getQaPosValue(row) {
+    return String(getCompactFieldValue(row, 'pos_final', '')).trim();
 }
 
 function getRowComparisonMeta(row) {
     const pdfPos = getQaPosValue(row);
     const pdfPn = row?.['PART NO.'];
-    const finalPn = row?.pn_final;
+    const finalPn = getCompactFieldValue(row, 'pn_final', '');
     const gesaPn = row?.pn_raw;
     const pdfDesignation = row?.DESIGNATION;
-    const finalDesignation = row?.designation_final;
+    const finalDesignation = getCompactFieldValue(row, 'designation_final', '');
     const gesaDesignation = row?.designation_gesa;
     const pdfMeasurement = row?.['MEASUREMENT / STANDARD'];
-    const finalMeasurement = row?.measure_final ?? row?.measurement_final;
+    const finalMeasurement = getCompactFieldValue(row, 'measure_final', '');
     const gesaMeasurement = row?.dimensions_gesa;
 
     return {
@@ -550,8 +598,8 @@ export function sortData(data, key, asc) {
             const bookA = val(a, 'engine_model', '').toString().toLowerCase();
             const bookB = val(b, 'engine_model', '').toString().toLowerCase();
             if (bookA !== bookB) return direction * bookA.localeCompare(bookB, undefined, { numeric: true });
-            const pageA = Number(String(val(a, 'Source Page', '')).replace(/\D/g, '')) || 0;
-            const pageB = Number(String(val(b, 'Source Page', '')).replace(/\D/g, '')) || 0;
+            const pageA = Number(String(getCompactFieldValue(a, 'source_page', '')).replace(/\D/g, '')) || 0;
+            const pageB = Number(String(getCompactFieldValue(b, 'source_page', '')).replace(/\D/g, '')) || 0;
             if (pageA !== pageB) return direction * (pageA - pageB);
             const posA = Number(getQaPosValue(a).replace(/\D/g, '')) || 0;
             const posB = Number(getQaPosValue(b).replace(/\D/g, '')) || 0;
@@ -571,8 +619,8 @@ export function sortData(data, key, asc) {
 
     if (key === 'Source Page') {
         return [...data].sort((a, b) => {
-            const pageA = Number(String(val(a, 'Source Page', '')).replace(/[^0-9]/g, '')) || 0;
-            const pageB = Number(String(val(b, 'Source Page', '')).replace(/[^0-9]/g, '')) || 0;
+            const pageA = Number(String(getCompactFieldValue(a, 'source_page', '')).replace(/[^0-9]/g, '')) || 0;
+            const pageB = Number(String(getCompactFieldValue(b, 'source_page', '')).replace(/[^0-9]/g, '')) || 0;
             return asc ? pageA - pageB : pageB - pageA;
         });
     }
@@ -617,13 +665,13 @@ export function applyFilters(data) {
                     break;
                 case 'qa_revision_estado':
                     rowValue = filterValue === 'empty'
-                        ? (String(row.qa_revision_estado || '').trim() === '' ? 'empty' : 'nonempty')
-                        : normalizeEstadoToNew(row.qa_revision_estado);
+                        ? (String(getCompactFieldValue(row, 'qa_revision_estado', '') || '').trim() === '' ? 'empty' : 'nonempty')
+                        : normalizeEstadoToNew(getCompactFieldValue(row, 'qa_revision_estado', ''));
                     break;
                 case 'qa_revision_accion':
                     rowValue = filterValue === 'empty'
-                        ? (String(row.qa_revision_accion || '').trim() === '' ? 'empty' : 'nonempty')
-                        : normalizeAccionToNew(row.qa_revision_accion);
+                        ? (String(getCompactFieldValue(row, 'qa_revision_accion', '') || '').trim() === '' ? 'empty' : 'nonempty')
+                        : normalizeAccionToNew(getCompactFieldValue(row, 'qa_revision_accion', ''));
                     break;
                 case 'in_new':
                     rowValue = state.newPnSet.has(row['PART NO.'] || row.pn) ? 'true' : 'false';
@@ -648,12 +696,12 @@ export function applyFilters(data) {
                     break;
                 case 'page': {
                     const filterPage = Number(String(filterValue).replace(/[^0-9]/g, ''));
-                    const rowPage = Number(val(row, 'Source Page', '').toString().replace(/[^0-9]/g, ''));
+                    const rowPage = Number(String(getCompactFieldValue(row, 'source_page', '')).replace(/[^0-9]/g, ''));
                     if (!Number.isNaN(filterPage) && !Number.isNaN(rowPage)) {
                         if (rowPage !== filterPage) return false;
                         continue;
                     }
-                    rowValue = val(row, 'Source Page', '').toString().toLowerCase();
+                    rowValue = String(getCompactFieldValue(row, 'source_page', '')).toLowerCase();
                     break;
                 }
                 case 'designation_final':
@@ -999,7 +1047,11 @@ function basename(value) {
 function getEsquemaPosStatus(row) {
     // Mismo criterio que usa la UI de esquemas para resolver imágenes:
     // combina ruta_esquemas_pos + esquemas_circulos y evalúa sus candidatos.
-    const posItems = getPosSchemasForRow(row);
+    const rowForSchemas = {
+        ...row,
+        ruta_esquemas_pos: getCompactFieldValue(row, 'ruta_esquemas_pos', '')
+    };
+    const posItems = getPosSchemasForRow(rowForSchemas);
     if (!Array.isArray(posItems) || posItems.length === 0) return 'empty';
 
     const exists = posItems.some(item =>
@@ -1013,7 +1065,7 @@ function getEsquemaPosStatus(row) {
 // Genera el HTML del badge de la columna ESQ_POS para una fila dada.
 function renderEsquemaPosCell(row) {
     const status = getEsquemaPosStatus(row);
-    const ruta = String(row.ruta_esquemas_pos || '').trim();
+    const ruta = String(getCompactFieldValue(row, 'ruta_esquemas_pos', '') || '').trim();
     if (status === 'ok') {
         return `<span class="badge-pos-ok" title="Archivo encontrado">OK</span>`;
     } else if (status === 'missing') {
@@ -1031,11 +1083,11 @@ function renderRow(row) {
     const isNormalizado = String(row.normalizado || '').toUpperCase() === 'SI';
     const isHierarchyNew = sustHierarchyRaw === 'New';
     const isHierarchySuperseded = sustHierarchyRaw.toUpperCase().includes('SUPERSEDED');
-    const hasImg = (row.filename_foto || row.ruta_foto || '').toString().trim() !== '';
+    const hasImg = String(getCompactFieldValue(row, 'ruta_foto', '') || '').trim() !== '';
     const errorMeta = getRowErrorMeta(row);
     const totalError = getPersistedErrorCount(row);
-    const revisionEstado = normalizeEstadoToNew(row.qa_revision_estado);
-    const revisionAccion = normalizeAccionToNew(row.qa_revision_accion);
+    const revisionEstado = normalizeEstadoToNew(getCompactFieldValue(row, 'qa_revision_estado', ''));
+    const revisionAccion = normalizeAccionToNew(getCompactFieldValue(row, 'qa_revision_accion', ''));
     const revisionKey = getRevisionKey(row);
     const errorFields = errorMeta.errorFields;
     const comparisonMeta = getRowComparisonMeta(row);
@@ -1083,27 +1135,27 @@ function renderRow(row) {
       </td>
     <td class="${withCellClasses('', 'PART NO.', getComparisonClasses({ pdfMatch: comparisonMeta.pn.pdfMatch }))}" title="${escapeHtml(val(row, 'PART NO.'))}">${escapeHtml(val(row, 'PART NO.'))}</td>
         <td class="${withCellClasses('', 'pos_final', getComparisonClasses({ missing: comparisonMeta.pos.missing }))}" title="${escapeHtml(getQaPosValue(row))}">${escapeHtml(getQaPosValue(row))}</td>
-    <td${editableAttr('pn_final')} title="${escapeHtml(val(row, 'pn_final'))}" class="${withCellClasses('cell-inline-editable', 'pn_final', getComparisonClasses(comparisonMeta.pn))}">${escapeHtml(val(row, 'pn_final'))}</td>
-    <td class="${withCellClasses('', 'designation_final', getComparisonClasses(comparisonMeta.designation))}" title="${escapeHtml(getRowValueForColumn(row, 'designation_final'))}">${escapeHtml(getRowValueForColumn(row, 'designation_final'))}</td>
+    <td${editableAttr('pn_final')} title="${escapeHtml(getCompactFieldValue(row, 'pn_final', '—'))}" class="${withCellClasses('cell-inline-editable', 'pn_final', getComparisonClasses(comparisonMeta.pn))}">${escapeHtml(getCompactFieldValue(row, 'pn_final', '—'))}</td>
+    <td class="${withCellClasses('', 'designation_final', getComparisonClasses(comparisonMeta.designation))}" title="${escapeHtml(getCompactFieldValue(row, 'designation_final', '—'))}">${escapeHtml(getCompactFieldValue(row, 'designation_final', '—'))}</td>
             <td class="${withCellClasses('', 'pn_raw', getComparisonClasses({ gesaMatch: comparisonMeta.pn.gesaMatch }))}" title="${escapeHtml(val(row, 'pn_raw'))}">${escapeHtml(val(row, 'pn_raw'))}</td>
         <td title="${escapeHtml(val(row, 'criterio_pn'))}">${escapeHtml(val(row, 'criterio_pn'))}</td>
     <td title="${escapeHtml(val(row, 'designation_gesa'))}" class="${withCellClasses(classGesa, 'designation_gesa', getComparisonClasses({ gesaMatch: comparisonMeta.designation.gesaMatch }))}">${escapeHtml(val(row, 'designation_gesa'))}</td>
     <td class="separator-after" title="${escapeHtml(getRowValueForColumn(row, 'MODEL/TYPE'))}">${escapeHtml(getRowValueForColumn(row, 'MODEL/TYPE'))}</td>
-    <td title="${escapeHtml(getRowValueForColumn(row, 'QTY'))}">${escapeHtml(getRowValueForColumn(row, 'QTY'))}</td>
-        <td class="${withCellClasses(classGesa, 'weight_final')}" title="${escapeHtml(getRowValueForColumn(row, 'weight_final'))}">${escapeHtml(getRowValueForColumn(row, 'weight_final'))}</td>
-            <td class="${withCellClasses('', 'qty_units_final')}" title="${escapeHtml(getRowValueForColumn(row, 'UNITS'))}">${escapeHtml(getRowValueForColumn(row, 'UNITS'))}</td>
+    <td title="${escapeHtml(getCompactFieldValue(row, 'qty_final', '—'))}">${escapeHtml(getCompactFieldValue(row, 'qty_final', '—'))}</td>
+        <td class="${withCellClasses(classGesa, 'weight_final')}" title="${escapeHtml(getCompactFieldValue(row, 'weight_final', '—'))}">${escapeHtml(getCompactFieldValue(row, 'weight_final', '—'))}</td>
+            <td class="${withCellClasses('', 'qty_units_final')}" title="${escapeHtml(getCompactFieldValue(row, 'qty_units_final', '—'))}">${escapeHtml(getCompactFieldValue(row, 'qty_units_final', '—'))}</td>
             <td class="${withCellClasses(classGesa, 'weight_gesa')}" title="${escapeHtml(val(row, 'weight_gesa'))}">${escapeHtml(val(row, 'weight_gesa'))}</td>
             <td class="${withCellClasses(`separator-after ${classGesa}`, 'units')}" title="${escapeHtml(val(row, 'units'))}">${escapeHtml(val(row, 'units'))}</td>
       <td title="${escapeHtml(val(row, 'FG/FGS'))}">${escapeHtml(val(row, 'FG/FGS'))}</td>
-        <td class="${withCellClasses(classGesa, 'measure_final', getComparisonClasses(comparisonMeta.measurement))}" title="${escapeHtml(getRowValueForColumn(row, 'measure_final'))}">${escapeHtml(getRowValueForColumn(row, 'measure_final'))}</td>
+        <td class="${withCellClasses(classGesa, 'measure_final', getComparisonClasses(comparisonMeta.measurement))}" title="${escapeHtml(getCompactFieldValue(row, 'measure_final', '—'))}">${escapeHtml(getCompactFieldValue(row, 'measure_final', '—'))}</td>
             <td class="${withCellClasses(classGesa, 'dimensions_gesa', getComparisonClasses({ gesaMatch: comparisonMeta.measurement.gesaMatch }))}" title="${escapeHtml(val(row, 'dimensions_gesa'))}">${escapeHtml(val(row, 'dimensions_gesa'))}</td>
       <td title="${escapeHtml(val(row, 'BOM-No.'))}">${escapeHtml(val(row, 'BOM-No.'))}</td>
       <td title="${escapeHtml(val(row, 'model'))}">${escapeHtml(val(row, 'model'))}</td>
-    <td class="${withCellClasses('', 'Source Page')}" title="${escapeHtml(val(row, 'Source Page'))}">${escapeHtml(val(row, 'Source Page'))}</td>
+    <td class="${withCellClasses('', 'Source Page')}" title="${escapeHtml(getCompactFieldValue(row, 'source_page', '—'))}">${escapeHtml(getCompactFieldValue(row, 'source_page', '—'))}</td>
       <td title="${escapeHtml(val(row, 'fgs_code_description'))}">${escapeHtml(val(row, 'fgs_code_description'))}</td>
       <td title="${escapeHtml(val(row, 'filename_foto'))}">${escapeHtml(val(row, 'filename_foto'))}</td>
       <td title="${escapeHtml(val(row, 'nsn'))}">${escapeHtml(val(row, 'nsn'))}</td>
-    <td${editableAttr('norma_final')} title="${escapeHtml(getRowValueForColumn(row, 'norma'))}" class="cell-inline-editable">${escapeHtml(getRowValueForColumn(row, 'norma'))}</td>
+    <td${editableAttr('norma_final')} title="${escapeHtml(getCompactFieldValue(row, 'norma_final', '—'))}" class="cell-inline-editable">${escapeHtml(getCompactFieldValue(row, 'norma_final', '—'))}</td>
       <td title="${escapeHtml(val(row, 'sust_status'))}">${escapeHtml(val(row, 'sust_status'))}</td>
       <td title="${escapeHtml(val(row, 'sust_new_part_number'))}">${escapeHtml(val(row, 'sust_new_part_number'))}</td>
       <td title="${escapeHtml(val(row, 'sust_superseded_list'))}">${escapeHtml(val(row, 'sust_superseded_list'))}</td>
@@ -1120,10 +1172,10 @@ function renderRow(row) {
       <td title="${escapeHtml(val(row, 'fg_code'))}">${escapeHtml(val(row, 'fg_code'))}</td>
       <td title="${escapeHtml(val(row, 'fgs_description'))}">${escapeHtml(val(row, 'fgs_description'))}</td>
       <td title="${escapeHtml(val(row, 'atributo2'))}">${escapeHtml(val(row, 'atributo2'))}</td>
-      <td title="${escapeHtml(val(row, 'ruta_foto'))}">${escapeHtml(val(row, 'ruta_foto'))}</td>
+    <td title="${escapeHtml(getCompactFieldValue(row, 'ruta_foto', '—'))}">${escapeHtml(getCompactFieldValue(row, 'ruta_foto', '—'))}</td>
       <td title="${escapeHtml(val(row, 'esquemas_circulos'))}">${escapeHtml(val(row, 'esquemas_circulos'))}</td>
-      <td title="${escapeHtml(val(row, 'ruta_esquemas_pos'))}">${escapeHtml(val(row, 'ruta_esquemas_pos'))}</td>
-        <td${editableAttr('designation_final')} class="${withCellClasses(`${classGesa} cell-inline-editable`.trim(), 'designation_final', getComparisonClasses(comparisonMeta.designation))}" title="${escapeHtml(getRowValueForColumn(row, 'designation_final'))}">${escapeHtml(getRowValueForColumn(row, 'designation_final'))}</td>
+            <td title="${escapeHtml(getCompactFieldValue(row, 'ruta_esquemas_pos', '—'))}">${escapeHtml(getCompactFieldValue(row, 'ruta_esquemas_pos', '—'))}</td>
+                <td${editableAttr('designation_final')} class="${withCellClasses(`${classGesa} cell-inline-editable`.trim(), 'designation_final', getComparisonClasses(comparisonMeta.designation))}" title="${escapeHtml(getCompactFieldValue(row, 'designation_final', '—'))}">${escapeHtml(getCompactFieldValue(row, 'designation_final', '—'))}</td>
     </tr>`;
 }
 
@@ -1198,9 +1250,9 @@ function renderErrorViewRow(row, definitions) {
     const isNormalizado = String(row.normalizado || '').toUpperCase() === 'SI';
     const isHierarchyNew = sustHierarchyRaw === 'New';
     const isHierarchySuperseded = sustHierarchyRaw.toUpperCase().includes('SUPERSEDED');
-    const hasImg = (row.filename_foto || row.ruta_foto || '').toString().trim() !== '';
-    const revisionEstado = normalizeEstadoToNew(row.qa_revision_estado);
-    const revisionAccion = normalizeAccionToNew(row.qa_revision_accion);
+    const hasImg = String(getCompactFieldValue(row, 'ruta_foto', '') || '').trim() !== '';
+    const revisionEstado = normalizeEstadoToNew(getCompactFieldValue(row, 'qa_revision_estado', ''));
+    const revisionAccion = normalizeAccionToNew(getCompactFieldValue(row, 'qa_revision_accion', ''));
 
     const gesaIcon = isGesa ? '<span class="status-icon yes" aria-label="GESA SI">G</span>' : '<span class="status-icon no" aria-label="GESA NO">-</span>';
     const normalizadoIcon = isNormalizado ? '<span class="status-icon yes" aria-label="Normalizado SI">N</span>' : '<span class="status-icon no" aria-label="Normalizado NO">-</span>';
@@ -1232,10 +1284,10 @@ function renderErrorViewRow(row, definitions) {
             <select class="revision-select" data-revision-field="accion" data-revision-key="${escapeHtml(revisionKey)}">${revisionAccionOptions}</select>
         </td>
         <td title="${escapeHtml(val(row, 'engine_model'))}">${escapeHtml(val(row, 'engine_model'))}</td>
-        <td title="${escapeHtml(val(row, 'Source Page'))}">${escapeHtml(val(row, 'Source Page'))}</td>
+        <td title="${escapeHtml(getCompactFieldValue(row, 'source_page', '—'))}">${escapeHtml(getCompactFieldValue(row, 'source_page', '—'))}</td>
         <td title="${escapeHtml(getQaPosValue(row))}">${escapeHtml(getQaPosValue(row))}</td>
         <td title="${escapeHtml(val(row, 'PART NO.'))}">${escapeHtml(val(row, 'PART NO.'))}</td>
-        <td title="${escapeHtml(getRowValueForColumn(row, 'designation_final'))}">${escapeHtml(getRowValueForColumn(row, 'designation_final'))}</td>
+        <td title="${escapeHtml(getCompactFieldValue(row, 'designation_final', '—'))}">${escapeHtml(getCompactFieldValue(row, 'designation_final', '—'))}</td>
         <td class="error-total-cell" title="${totalError}">${totalError}</td>
         ${checkCells}
     </tr>`;

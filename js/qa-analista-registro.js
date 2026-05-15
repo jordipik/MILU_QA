@@ -3,6 +3,7 @@ import { checkSaveBackendConnection, loadPartitionedEngineData, saveCellToServer
 import { assignRevisionKeys, applyRevisionDataToRows, normalizeEstadoToNew } from './revision.js';
 import { initPdfZoomControls, loadPdfClear, loadPdfWithPage, setPdfSelection } from './pdf-viewer.js';
 import { evaluateRowQaChecks, getAllQaCheckCodes, getQaCheckDefinitions, getQaCheckLabel } from './qa-checks.js';
+import { getQaArticulosFieldValue } from './qa-articulos-fields.js';
 import { showToast } from './toast.js';
 
 const $ = (id) => document.getElementById(id);
@@ -57,6 +58,10 @@ function normalizeString(value) {
     return String(value ?? '').trim().replace(/\s+/g, ' ');
 }
 
+function qaField(row, fieldName, fallback = '') {
+    return getQaArticulosFieldValue(row, fieldName, fallback);
+}
+
 function getPageSortValue(value) {
     const digits = String(value ?? '').replace(/[^0-9]/g, '');
     const parsed = Number(digits);
@@ -71,15 +76,15 @@ function getPosSortValue(value) {
 
 function sortRowsByBookPagePos(rows) {
     return [...rows].sort((a, b) => {
-        const bookA = String(a?.engine_model ?? '').trim();
-        const bookB = String(b?.engine_model ?? '').trim();
+        const bookA = String(qaField(a, 'engine_model', '') ?? '').trim();
+        const bookB = String(qaField(b, 'engine_model', '') ?? '').trim();
         const byBook = bookA.localeCompare(bookB, 'es', { numeric: true, sensitivity: 'base' });
         if (byBook !== 0) return byBook;
 
-        const byPage = getPageSortValue(a?.['Source Page']) - getPageSortValue(b?.['Source Page']);
+        const byPage = getPageSortValue(qaField(a, 'source_page', '')) - getPageSortValue(qaField(b, 'source_page', ''));
         if (byPage !== 0) return byPage;
 
-        const byPos = getPosSortValue(a?.POS) - getPosSortValue(b?.POS);
+        const byPos = getPosSortValue(qaField(a, 'pos_final', '')) - getPosSortValue(qaField(b, 'pos_final', ''));
         if (byPos !== 0) return byPos;
 
         return String(a?.ID ?? '').localeCompare(String(b?.ID ?? ''), 'es', { numeric: true, sensitivity: 'base' });
@@ -89,7 +94,7 @@ function sortRowsByBookPagePos(rows) {
 function getQueueRows() {
     const engineFilter = String($('engineFilterSelect')?.value ?? '').trim();
     const sourceRows = engineFilter
-        ? state.allData.filter((row) => String(row?.engine_model ?? '').trim() === engineFilter)
+        ? state.allData.filter((row) => String(qaField(row, 'engine_model', '') ?? '').trim() === engineFilter)
         : state.allData;
     return sortRowsByBookPagePos(sourceRows);
 }
@@ -101,12 +106,12 @@ function getSidebarSearchTerm() {
 function rowMatchesSidebarSearch(row, term) {
     if (!term) return true;
     const haystack = [
-        row?.engine_model,
-        row?.['Source Page'],
-        row?.POS,
-        row?.['PART NO.'],
-        row?.pn_final,
-        row?.designation_final,
+        qaField(row, 'engine_model', ''),
+        qaField(row, 'source_page', ''),
+        qaField(row, 'pos_final', ''),
+        qaField(row, 'pn_excel', ''),
+        qaField(row, 'pn_final', ''),
+        qaField(row, 'designation_final', ''),
         row?.ID
     ].map(value => String(value ?? '').toLowerCase());
     return haystack.some(text => text.includes(term));
@@ -190,7 +195,7 @@ function buildEngineOptions() {
 
     const engineModels = [...new Set(
         state.allData
-            .map((row) => String(row?.engine_model ?? '').trim())
+            .map((row) => String(qaField(row, 'engine_model', '') ?? '').trim())
             .filter(Boolean)
     )].sort((a, b) => a.localeCompare(b, 'es', { numeric: true, sensitivity: 'base' }));
 
@@ -222,10 +227,10 @@ function renderSelectedContext(row) {
         return;
     }
 
-    const pn = txt(row?.pn_final, txt(row?.['PART NO.']));
-    const book = txt(row?.engine_model);
-    const page = txt(row?.['Source Page']);
-    const pos = txt(row?.POS);
+    const pn = txt(qaField(row, 'pn_final', ''));
+    const book = txt(qaField(row, 'engine_model', ''));
+    const page = txt(qaField(row, 'source_page', ''));
+    const pos = txt(qaField(row, 'pos_final', ''));
 
     target.innerHTML = [
         `PN: ${escapeHtml(pn)}`,
@@ -241,10 +246,10 @@ function buildHistoryEntry(row) {
     return {
         revisionKey: getRevisionKey(row),
         id: txt(row?.ID, ''),
-        book: formatBookCompact(row?.engine_model),
-        page: txt(row?.['Source Page'], ''),
-        pos: txt(row?.POS, ''),
-        pn: txt(row?.pn_final, txt(row?.['PART NO.'], '')),
+        book: formatBookCompact(qaField(row, 'engine_model', '')),
+        page: txt(qaField(row, 'source_page', ''), ''),
+        pos: txt(qaField(row, 'pos_final', ''), ''),
+        pn: txt(qaField(row, 'pn_final', ''), ''),
         failedChecks,
         passedChecks: Math.max(TOTAL_PROCESS_CHECKS - failedChecks, 0),
         outcome: getRowQuickOutcome(row)
@@ -285,99 +290,107 @@ function renderReviewedHistory() {
         const statusClass = statusOk ? 'ok' : 'ko';
 
         return `<tr class="left-row ${isSelected ? 'selected' : ''}" data-revision-key="${escapeHtml(revisionKey)}" aria-selected="${isSelected ? 'true' : 'false'}">
-            <td title="${escapeHtml(String(row?.engine_model ?? '-'))}">${escapeHtml(String(row?.engine_model ?? '-'))}</td>
-            <td title="${escapeHtml(String(row?.['Source Page'] ?? '-'))}">${escapeHtml(String(row?.['Source Page'] ?? '-'))}</td>
-            <td title="${escapeHtml(String(row?.POS ?? '-'))}">${escapeHtml(String(row?.POS ?? '-'))}</td>
-            <td class="pn" title="${escapeHtml(String(row?.pn_final ?? row?.['PART NO.'] ?? '-'))}">${escapeHtml(String(row?.pn_final ?? row?.['PART NO.'] ?? '-'))}</td>
+            <td title="${escapeHtml(String(qaField(row, 'engine_model', '-') ?? '-'))}">${escapeHtml(String(qaField(row, 'engine_model', '-') ?? '-'))}</td>
+            <td title="${escapeHtml(String(qaField(row, 'source_page', '-') ?? '-'))}">${escapeHtml(String(qaField(row, 'source_page', '-') ?? '-'))}</td>
+            <td title="${escapeHtml(String(qaField(row, 'pos_final', '-') ?? '-'))}">${escapeHtml(String(qaField(row, 'pos_final', '-') ?? '-'))}</td>
+            <td class="pn" title="${escapeHtml(String(qaField(row, 'pn_final', '-') ?? '-'))}">${escapeHtml(String(qaField(row, 'pn_final', '-') ?? '-'))}</td>
             <td><span class="row-status ${statusClass}">${statusLabel}</span></td>
         </tr>`;
     }).join('');
 }
 
 function buildCorrelationRows(row) {
-    const qtyUnits = [txt(row?.QTY, ''), txt(row?.UNITS, '')].filter(Boolean).join(' / ');
-    const finalQtyUnits = [txt(row?.QTY, ''), txt(row?.UNITS, '')].filter(Boolean).join(' / ');
+    const qtyUnits = [txt(qaField(row, 'qty_excel', ''), ''), txt(qaField(row, 'qty_units_excel', ''), '')].filter(Boolean).join(' / ');
+    const finalQtyUnits = [txt(qaField(row, 'qty_final', ''), ''), txt(qaField(row, 'qty_units_final', ''), '')].filter(Boolean).join(' / ');
 
     return [
         {
             field: 'Designation',
-            raw: txt(row?.DESIGNATION),
-            gesa: txt(row?.designation_gesa),
-            sust: txt(row?.sust_hierarchie),
-            final: txt(row?.designation_final),
-            pdf: txt(row?.designation_final)
+            raw: txt(qaField(row, 'designation_excel', '')),
+            gesa: txt(qaField(row, 'designation_gesa', '')),
+            sust: txt(qaField(row, 'hierarchie_final', '')),
+            final: txt(qaField(row, 'designation_final', '')),
+            pdf: txt(qaField(row, 'designation_pdf', ''))
         },
         {
             field: 'Part Number',
-            raw: txt(row?.['PART NO.']),
-            gesa: txt(row?.pn_raw),
-            sust: txt(row?.sust_new_part_number),
-            final: txt(row?.pn_final),
-            pdf: txt(row?.pn_final)
+            raw: txt(qaField(row, 'pn_excel', '')),
+            gesa: txt(qaField(row, 'pn_excel', '')),
+            sust: txt(qaField(row, 'new_pn_final', '')),
+            final: txt(qaField(row, 'pn_final', '')),
+            pdf: txt(qaField(row, 'pn_pdf', ''))
         },
         {
             field: 'PN criterio',
-            raw: txt(row?.['PART NO.']),
+            raw: txt(qaField(row, 'pn_excel', '')),
             gesa: txt(row?.criterio_pn),
-            sust: txt(row?.sust_hierarchie),
-            final: txt(row?.pn_final),
-            pdf: txt(row?.pn_final)
+            sust: txt(qaField(row, 'hierarchie_final', '')),
+            final: txt(qaField(row, 'pn_final', '')),
+            pdf: txt(qaField(row, 'pn_pdf', ''))
         },
         {
             field: 'Weight',
-            raw: txt(row?.WEIGHT),
-            gesa: txt(row?.weight_gesa),
+            raw: txt(qaField(row, 'weight_excel', '')),
+            gesa: txt(qaField(row, 'weight_number_gesa', '')),
             sust: '-',
-            final: txt(row?.weight_final),
-            pdf: txt(row?.weight_final)
+            final: txt(qaField(row, 'weight_final', '')),
+            pdf: txt(qaField(row, 'weight_pdf', ''))
         },
         {
             field: 'Measurement',
-            raw: txt(row?.['MEASUREMENT / STANDARD']),
-            gesa: txt(row?.dimensions_gesa),
+            raw: txt(qaField(row, 'measure_excel', '')),
+            gesa: txt(qaField(row, 'measure_number_gesa', '')),
             sust: '-',
-            final: txt(row?.measure_final ?? row?.measurement_final),
-            pdf: txt(row?.measure_final ?? row?.measurement_final)
+            final: txt(qaField(row, 'measure_final', '')),
+            pdf: txt(qaField(row, 'measure_pdf', ''))
         },
         {
             field: 'FG / FGS',
-            raw: txt(row?.['FG/FGS']),
+            raw: txt(qaField(row, 'fg_fgs_excel', '')),
             gesa: txt(row?.fg_code),
             sust: '-',
-            final: txt(row?.fgs_code_description),
-            pdf: txt(row?.fgs_code_description)
+            final: txt(qaField(row, 'fg_fgs_final', '')),
+            pdf: txt(qaField(row, 'fg_fgs_pdf', ''))
         },
         {
             field: 'Model / Type',
-            raw: txt(row?.['MODEL/TYPE']),
+            raw: txt(qaField(row, 'model_type_final', '')),
             gesa: txt(row?.model),
             sust: '-',
-            final: txt(row?.engine_model),
-            pdf: txt(row?.engine_model)
+            final: txt(qaField(row, 'engine_model', '')),
+            pdf: txt(qaField(row, 'engine_model', ''))
         },
         {
             field: 'Qty / Units',
             raw: qtyUnits || '-',
-            gesa: txt(row?.units),
+            gesa: txt(qaField(row, 'weight_units_gesa', '')),
             sust: '-',
             final: finalQtyUnits || '-',
             pdf: finalQtyUnits || '-'
         },
         {
             field: 'Norma',
-            raw: txt(row?.['MEASUREMENT / STANDARD']),
-            gesa: txt(row?.norma),
+            raw: txt(qaField(row, 'norma_excel', '')),
+            gesa: txt(qaField(row, 'norma_gesa', '')),
             sust: '-',
-            final: txt(row?.norma),
-            pdf: txt(row?.norma)
+            final: txt(qaField(row, 'norma_final', '')),
+            pdf: txt(qaField(row, 'norma_pdf', ''))
         },
         {
             field: 'Sustitucion',
             raw: '-',
-            gesa: txt(row?.sust_hierarchie),
-            sust: txt(row?.sust_hierarchie),
-            final: txt(row?.sust_new_part_number),
-            pdf: txt(row?.sust_new_part_number)
+            gesa: txt(qaField(row, 'hierarchie_final', '')),
+            sust: txt(qaField(row, 'is_subst_final', '')),
+            final: txt(qaField(row, 'new_pn_final', '')),
+            pdf: txt(qaField(row, 'new_pn_final', ''))
+        },
+        {
+            field: 'Imagenes / Esquemas',
+            raw: txt(qaField(row, 'ruta_foto', '')),
+            gesa: txt(qaField(row, 'ruta_esquemas_pos', '')),
+            sust: txt(qaField(row, 'esquemas', '')),
+            final: txt(qaField(row, 'esquemas_circulos', '')),
+            pdf: txt(qaField(row, 'esquemas_circulos_all', ''))
         }
     ];
 }
@@ -420,9 +433,9 @@ function renderHeaderStrip(row) {
         return;
     }
 
-    posTarget.textContent = txt(row?.POS);
-    pnTarget.textContent = txt(row?.pn_final, txt(row?.['PART NO.']));
-    designationTarget.textContent = txt(row?.designation_final);
+    posTarget.textContent = txt(qaField(row, 'pos_final', ''));
+    pnTarget.textContent = txt(qaField(row, 'pn_final', ''));
+    designationTarget.textContent = txt(qaField(row, 'designation_final', ''));
 }
 
 function syncPdfWithCurrentRow(row) {
@@ -433,8 +446,8 @@ function syncPdfWithCurrentRow(row) {
     }
 
     setPdfSelection(row);
-    const book = String(row?.engine_model ?? '').trim();
-    const page = String(row?.['Source Page'] ?? '').trim();
+    const book = String(qaField(row, 'engine_model', '') ?? '').trim();
+    const page = String(qaField(row, 'source_page', '') ?? '').trim();
 
     if (book && page) {
         loadPdfWithPage(book, page).catch((error) => {
@@ -473,15 +486,15 @@ function splitCodes(codes) {
 
 function buildConsistencyWarnings(row) {
     const warnings = [];
-    const designationRaw = normalizeString(row?.DESIGNATION);
-    const designationFinal = normalizeString(row?.designation_final);
-    const hasGesa = normalizeString(row?.gesa).toUpperCase() === 'SI';
+    const designationRaw = normalizeString(qaField(row, 'designation_excel', ''));
+    const designationFinal = normalizeString(qaField(row, 'designation_final', ''));
+    const hasGesa = normalizeString(qaField(row, 'is_gesa_gesa', '')).toUpperCase() === 'SI';
 
     if (designationRaw && designationFinal && designationRaw.toLowerCase() !== designationFinal.toLowerCase()) {
         warnings.push('La designation raw y designation_final no coinciden exactamente.');
     }
 
-    if (!hasGesa && normalizeString(row?.dimensions_gesa)) {
+    if (!hasGesa && normalizeString(qaField(row, 'measure_number_gesa', ''))) {
         warnings.push('Hay dimensions_gesa aunque el flag gessa no esta en SI.');
     }
 
@@ -558,8 +571,8 @@ function renderEvidence(row, verdict) {
 
     const pieces = [];
     pieces.push(`<li class="${verdict.status === 'ok' ? 'ok' : 'ko'}">Veredicto propuesto: ${verdict.title}</li>`);
-    pieces.push(`<li>engine_model: ${txt(row?.engine_model)} · Source Page: ${txt(row?.['Source Page'])}</li>`);
-    pieces.push(`<li>ID: ${txt(row?.ID)} · PART NO.: ${txt(row?.['PART NO.'])} · POS: ${txt(row?.POS)}</li>`);
+    pieces.push(`<li>engine_model: ${txt(qaField(row, 'engine_model', ''))} · Source Page: ${txt(qaField(row, 'source_page', ''))}</li>`);
+    pieces.push(`<li>ID: ${txt(row?.ID)} · PART NO.: ${txt(qaField(row, 'pn_excel', ''))} · POS: ${txt(qaField(row, 'pos_final', ''))}</li>`);
 
     const allCodes = [...verdict.critical, ...verdict.major];
     if (allCodes.length > 0) {
@@ -583,7 +596,7 @@ function renderHeader(row, verdict) {
     const statusText = $('statusText');
     if (!(meta instanceof HTMLElement) || !(globalVerdict instanceof HTMLElement) || !(statusText instanceof HTMLElement)) return;
 
-    meta.textContent = `ID=${txt(row?.ID, '')} | PN=${txt(row?.['PART NO.'])} | POS=${txt(row?.POS)} | Libro=${txt(row?.engine_model)} | Pagina=${txt(row?.['Source Page'])}`;
+    meta.textContent = `ID=${txt(row?.ID, '')} | PN=${txt(qaField(row, 'pn_final', ''))} | POS=${txt(qaField(row, 'pos_final', ''))} | Libro=${txt(qaField(row, 'engine_model', ''))} | Pagina=${txt(qaField(row, 'source_page', ''))}`;
 
     globalVerdict.classList.remove('status-raw', 'status-ok', 'status-ko');
     globalVerdict.classList.add(verdict.status === 'ok' ? 'status-ok' : 'status-ko');
@@ -601,18 +614,18 @@ function syncOutcomeButtons(row) {
     okBtn.classList.remove('is-selected');
     koBtn.classList.remove('is-selected');
 
-    const estado = normalizeEstadoToNew(row?.qa_revision_estado);
+    const estado = normalizeEstadoToNew(qaField(row, 'qa_revision_estado', ''));
     if (estado === 'ok') okBtn.classList.add('is-selected');
     if (estado === 'pendiente') koBtn.classList.add('is-selected');
 }
 
 function fillEditForm(row) {
-    $('editPnFinal').value = txt(row?.pn_final, '');
-    $('editDesignationFinal').value = txt(row?.designation_final, '');
-    $('editWeightFinal').value = txt(row?.weight_final, '');
-    $('editMeasurementFinal').value = txt(row?.measure_final ?? row?.measurement_final, '');
-    $('editRevisionEstado').value = normalizeEstadoToNew(row?.qa_revision_estado);
-    $('editRevisionAccion').value = txt(row?.qa_revision_accion, '');
+    $('editPnFinal').value = txt(qaField(row, 'pn_final', ''), '');
+    $('editDesignationFinal').value = txt(qaField(row, 'designation_final', ''), '');
+    $('editWeightFinal').value = txt(qaField(row, 'weight_final', ''), '');
+    $('editMeasurementFinal').value = txt(qaField(row, 'measure_final', ''), '');
+    $('editRevisionEstado').value = normalizeEstadoToNew(qaField(row, 'qa_revision_estado', ''));
+    $('editRevisionAccion').value = txt(qaField(row, 'qa_revision_accion', ''), '');
 }
 
 function renderRecord(row) {
@@ -660,7 +673,7 @@ function resolveEngineFile(row) {
         if (base) return `engine_${base}.json`;
     }
 
-    const engineModel = String(row?.engine_model ?? '').trim();
+    const engineModel = String(qaField(row, 'engine_model', '') ?? '').trim();
     if (!engineModel) return '';
     if (/^engine_/i.test(engineModel)) return `${engineModel}.json`;
     return `engine_${engineModel}.json`;
@@ -838,7 +851,7 @@ $('engineFilterSelect').addEventListener('change', () => {
     renderReviewedHistory();
     if (!currentEngineFilter || !currentRow) return;
 
-    const rowEngine = String(currentRow?.engine_model ?? '').trim();
+    const rowEngine = String(qaField(currentRow, 'engine_model', '') ?? '').trim();
     if (rowEngine !== currentEngineFilter) {
         const nextInEngine = getQueueRows()[0] || null;
         if (nextInEngine) {

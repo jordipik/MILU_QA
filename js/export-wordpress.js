@@ -1,3 +1,5 @@
+import { getExportPreviewFieldValue, getExportPreviewType } from './export-preview-fields.js';
+
 function resolveApiBasePath() {
     const pathname = String(window.location.pathname || '/');
     return /^\/milu(\/|$)/i.test(pathname) ? '/milu' : '';
@@ -145,6 +147,10 @@ function escapeHtml(value) {
 
 function text(value) {
     return String(value == null ? '' : value).trim();
+}
+
+function expField(row, fieldName, fallback = '') {
+    return getExportPreviewFieldValue(row, fieldName, fallback);
 }
 
 function pick(...values) {
@@ -345,16 +351,16 @@ function synthFormatVersionStamp(date = new Date()) {
 }
 
 function synthNormalizeModelType(row) {
-    const rawModel = String(row?.model ?? '').trim();
+    const rawModel = String(expField(row, 'model_type_final', '') || '').trim();
     if (rawModel) return rawModel;
-    const engineModel = String(row?.engine_model ?? '').trim();
+    const engineModel = String(expField(row, 'engine_model', '') || '').trim();
     if (!engineModel) return '';
     return engineModel.replace('4000', '').trim();
 }
 
 function synthNormalizePageLabel(row) {
-    const book = String(row?.engine_model ?? '').trim();
-    const pageRaw = String(row?.['Source Page'] ?? '').trim();
+    const book = String(expField(row, 'engine_model', '') || '').trim();
+    const pageRaw = String(expField(row, 'source_page', '') || '').trim();
     if (!book || !pageRaw) return '';
     const digits = pageRaw.replace(/[^0-9]/g, '');
     const page = digits ? digits.padStart(4, '0') : pageRaw;
@@ -363,7 +369,7 @@ function synthNormalizePageLabel(row) {
 
 function synthGetMatchingRows(pn) {
     const normalizedPn = synthNormPn(pn);
-    return state.allData.filter(item => synthNormPn(item?.['PART NO.'] ?? item?.pn ?? '') === normalizedPn);
+    return state.allData.filter(item => synthNormPn(expField(item, 'pn_final', '')) === normalizedPn);
 }
 
 // IMPORTANTE:
@@ -372,7 +378,7 @@ function synthGetMatchingRows(pn) {
 // sust_hierarchie === "Superseded"
 // No usar sust_status ni sust_superseded_list como criterio de clasificación New/Superseded.
 function getExportType(row) {
-    return String(row?.sust_hierarchie ?? '').trim() === 'Superseded' ? 'superseded' : 'new';
+    return getExportPreviewType(row);
 }
 
 function synthGetHierarchyKind(row) {
@@ -401,31 +407,31 @@ function synthParseWeight(value) {
 }
 
 function synthResolveWeight(row) {
-    const gesaWeight = Number(row?.weight_gesa);
+    const gesaWeight = Number(expField(row, 'weight_number_gesa', ''));
     if (Number.isFinite(gesaWeight)) return gesaWeight;
-    const fw = synthParseWeight(synthPickFirst(row, ['weight_final', 'weight_raw', 'WEIGHT']));
+    const fw = synthParseWeight(expField(row, 'weight_final', ''));
     if (Number.isFinite(fw)) return fw;
-    return synthParseWeight(row?.WEIGHT);
+    return synthParseWeight(expField(row, 'weight_final', ''));
 }
 
 function synthFormatWeightText(row, weightValue) {
     if (!Number.isFinite(weightValue)) {
-        return String(synthPickFirst(row, ['weight_final', 'weight_raw', 'WEIGHT']) || '').trim();
+        return String(expField(row, 'weight_final', '') || '').trim();
     }
-    const unit = String(row?.units || 'KGM').trim() || 'KGM';
+    const unit = String(expField(row, 'weight_units_gesa', '') || 'KGM').trim() || 'KGM';
     return `${weightValue.toFixed(3)} ${unit}`;
 }
 
 function synthResolveMeasurement(row) {
-    const gesaField = String(row?.dimensions_gesa ?? row?.measure_gesa ?? '').trim().replace(/\s{2,}/g, ' ');
+    const gesaField = String(expField(row, 'measure_number_gesa', '') || '').trim().replace(/\s{2,}/g, ' ');
     if (gesaField) return gesaField;
-    let raw = String(row?.['MEASUREMENT / STANDARD'] ?? row?.measure_raw ?? row?.measure_final ?? '').trim().replace(/\s{2,}/g, ' ');
-    const norma = String(row?.norma ?? row?.norma_final ?? '').trim();
+    let raw = String(expField(row, 'measure_final', '') || '').trim().replace(/\s{2,}/g, ' ');
+    const norma = String(expField(row, 'norma_final', '') || '').trim();
     if (raw && norma) {
         raw = raw.replace(new RegExp(`\\b${synthEscapeRegExp(norma)}\\b`, 'ig'), '').trim();
     }
     if (raw) return raw;
-    return String(row?.measure_final ?? row?.measurement_final ?? '').trim().replace(/\s{2,}/g, ' ');
+    return String(expField(row, 'measure_final', '') || '').trim().replace(/\s{2,}/g, ' ');
 }
 
 function synthFirstNonEmpty(rows, getter) {
@@ -454,15 +460,15 @@ function synthCollectImagesFromRows(rows) {
     };
 
     for (const row of rows) {
-        addValue(row?.exp_imagenes);
-        addValue(row?.ruta_foto);
+        addValue(expField(row, 'ruta_esquemas_pos', ''));
+        addValue(expField(row, 'ruta_foto', ''));
     }
 
     return merged.join(', ');
 }
 
 function synthDesignation(row) {
-    return synthPickFirst(row, ['designation_final', 'designation_pdf', 'designation_gesa', 'designation_raw', 'DESIGNATION']);
+    return expField(row, 'designation_final', '');
 }
 
 function buildSyntheticRowForPn(pn) {
@@ -476,12 +482,12 @@ function buildSyntheticRowForPn(pn) {
     const modelTypes = synthUniqueSorted(matches.map(item => synthNormalizeModelType(item)), true);
     const engineModels = synthUniqueSorted(matches.map(item => String(item?.engine_model ?? '').trim()), true);
     const categoryValues = synthUniqueSorted(matches.map(item => String(item?.categoria ?? item?.atributo ?? item?.exp_categorias ?? '').trim()));
-    const routeFotoValue = synthFirstNonEmpty([row, ...matches], item => item?.ruta_foto || '');
+    const routeFotoValue = synthFirstNonEmpty([row, ...matches], item => expField(item, 'ruta_foto', ''));
     const exportImagesValue = synthCollectImagesFromRows(matches);
-    const normalizedPn = String(row?.['PART NO.'] ?? row?.pn ?? '').trim();
-    const hierarchy = String(row?.sust_hierarchie ?? '').trim();
-    const supersededList = String(row?.sust_superseded_list ?? '').trim();
-    const relatedNewPn = String(row?.sust_new_part_number ?? '').trim() || String(row?.['New Part Number'] ?? '').trim();
+    const normalizedPn = String(expField(row, 'pn_final', '') || '').trim();
+    const hierarchy = String(expField(row, 'hierarchie_final', '') || '').trim();
+    const supersededList = String(expField(row, 'subst_pnlist_final', '') || '').trim();
+    const relatedNewPn = String(expField(row, 'new_pn_final', '') || '').trim();
     const hasSubstitution = isSuperseded
         ? (hierarchy === 'Superseded' || relatedNewPn !== '')
         : (hierarchy !== '' || supersededList !== '' || relatedNewPn !== '');
@@ -489,28 +495,28 @@ function buildSyntheticRowForPn(pn) {
     return {
         Id: String(row?.ID ?? '').trim(),
         fecha_version: synthFormatVersionStamp(),
-        POS: String(row?.POS ?? '').trim(),
+        POS: String(expField(row, 'pos_final', '') || '').trim(),
         designation: String(synthDesignation(row)).trim(),
         engine: String(row?.engine ?? '').trim() || '4000',
         model_type: modelTypes.join(', '),
         type: '',
         pn: normalizedPn,
-        nsn: String(row?.nsn ?? '').trim(),
-        GESA_NORM: String(row?.norma ?? row?.norma_final ?? '').trim(),
-        GESA_NORMALIZADO: String(row?.normalizado ?? '').trim(),
-        fg_code: row?.fg_code ?? '',
+        nsn: String(expField(row, 'nsn_gesa', '') || '').trim(),
+        GESA_NORM: String(expField(row, 'norma_gesa', '') || '').trim(),
+        GESA_NORMALIZADO: String(expField(row, 'is_gesa_final', '') || '').trim(),
+        fg_code: expField(row, 'fg_fgs_excel', ''),
         fg_description: String(row?.fgs_description ?? '').trim(),
-        fg_code_description: String(row?.fgs_code_description ?? '').trim(),
+        fg_code_description: String(expField(row, 'fg_fgs_final', '') || '').trim(),
         weight: Number.isFinite(weightValue) ? Number(weightValue.toFixed(3)) : '',
         weight_txt: synthFormatWeightText(row, weightValue),
         measurement: synthResolveMeasurement(row),
         TIPOARTICULO: String(row?.TIPOARTICULO ?? '').trim() || 'piezas',
         PAG: pageLabels.join(', '),
-        BOM_no: String(row?.['BOM-No.'] ?? '').trim(),
+        BOM_no: String(row?.['BOM-No.'] ?? row?.BOM_no ?? '').trim(),
         esquema_general: '',
-        exp_motor: engineModels.join(', '),
-        exp_categorias: categoryValues.join(', '),
-        atributo: categoryValues.join(', '),
+        exp_motor: engineModels.join(', ') || String(expField(row, 'engine_model', '') || '').trim(),
+        exp_categorias: categoryValues.join(', ') || String(expField(row, 'categoria', '') || '').trim(),
+        atributo: categoryValues.join(', ') || String(expField(row, 'categoria', '') || '').trim(),
         SUST_TIPO: isSuperseded ? (hierarchy || 'Superseded') : (hierarchy || null),
         new_pn_relacionado: isSuperseded
             ? (relatedNewPn || normalizedPn || null)
@@ -518,7 +524,7 @@ function buildSyntheticRowForPn(pn) {
         old_pn_relacionados: isSuperseded ? null : (supersededList || null),
         EN_EXCEL_SUSTITUCION: hasSubstitution ? 'SI' : '',
         ruta_foto: routeFotoValue,
-        exp_imagenes: exportImagesValue
+        exp_imagenes: exportImagesValue || String(expField(row, 'ruta_esquemas_pos', '') || '').trim()
     };
 }
 
@@ -533,42 +539,42 @@ function normalizeRow(raw = {}) {
     return {
         Id: pick(raw.Id, raw.id),
         fecha_version: pick(raw.fecha_version, raw.timestamp, raw.updated_at),
-        POS: pick(raw.POS, raw.pos),
+        POS: pick(expField(raw, 'pos_final', ''), raw.POS, raw.pos),
         designation: designationValue,
-        engine: pick(raw.engine, raw.exp_motor, raw.engines, raw.motores),
-        model_type: pick(raw.model_type, raw.model, raw['MODEL/TYPE']),
+        engine: pick(expField(raw, 'engine_model', ''), raw.engine, raw.exp_motor, raw.engines, raw.motores),
+        model_type: pick(expField(raw, 'model_type_final', ''), raw.model_type, raw.model, raw['MODEL/TYPE']),
         type: pick(raw.type),
-        pn: pick(raw.pn, raw.sku),
-        nsn: pick(raw.nsn),
-        GESA_NORM: pick(raw.GESA_NORM, raw.norma, raw.norma_final),
-        GESA_NORMALIZADO: pick(raw.GESA_NORMALIZADO, raw.normalizado),
-        fg_code: pick(raw.fg_code),
+        pn: pick(expField(raw, 'pn_final', ''), raw.pn, raw.sku),
+        nsn: pick(expField(raw, 'nsn_gesa', ''), raw.nsn),
+        GESA_NORM: pick(expField(raw, 'norma_gesa', ''), raw.GESA_NORM, raw.norma, raw.norma_final),
+        GESA_NORMALIZADO: pick(expField(raw, 'is_gesa_final', ''), raw.GESA_NORMALIZADO, raw.normalizado),
+        fg_code: pick(expField(raw, 'fg_fgs_excel', ''), raw.fg_code),
         fg_description: pick(raw.fg_description, raw.fgs_description),
-        fg_code_description: pick(raw.fg_code_description, raw.fgs_code_description),
+        fg_code_description: pick(expField(raw, 'fg_fgs_final', ''), raw.fg_code_description, raw.fgs_code_description),
         weight: pick(raw.weight, raw.weight_final),
         weight_txt: weightValue,
         measurement: measureValue,
         TIPOARTICULO: pick(raw.TIPOARTICULO, raw.tipo_articulo),
-        PAG: pick(raw.PAG, raw.source_pages),
+        PAG: pick(expField(raw, 'source_page', ''), raw.PAG, raw.source_pages),
         BOM_no: pick(raw.BOM_no, raw['BOM-No.']),
         esquema_general: pick(raw.esquema_general),
-        exp_motor: motoresValue,
-        exp_categorias: pick(raw.exp_categorias, raw.categoria),
-        atributo: pick(raw.atributo, raw.exp_categorias, raw.categoria),
-        SUST_TIPO: pick(raw.SUST_TIPO, raw.sust_hierarchie),
-        new_pn_relacionado: pick(raw.new_pn_relacionado, raw.pn_new, raw.sust_new_part_number),
-        old_pn_relacionados: pick(raw.old_pn_relacionados, raw.sust_superseded_list, raw.source_ids),
+        exp_motor: pick(expField(raw, 'engine_model', ''), motoresValue),
+        exp_categorias: pick(expField(raw, 'categoria', ''), raw.exp_categorias, raw.categoria),
+        atributo: pick(expField(raw, 'categoria', ''), raw.atributo, raw.exp_categorias, raw.categoria),
+        SUST_TIPO: pick(expField(raw, 'hierarchie_final', ''), raw.SUST_TIPO, raw.sust_hierarchie),
+        new_pn_relacionado: pick(expField(raw, 'new_pn_final', ''), raw.new_pn_relacionado, raw.pn_new, raw.sust_new_part_number),
+        old_pn_relacionados: pick(expField(raw, 'subst_pnlist_final', ''), raw.old_pn_relacionados, raw.sust_superseded_list, raw.source_ids),
         EN_EXCEL_SUSTITUCION: pick(raw.EN_EXCEL_SUSTITUCION),
-        ruta_foto: pick(raw.ruta_foto),
-        exp_imagenes: pick(raw.exp_imagenes),
+        ruta_foto: pick(expField(raw, 'ruta_foto', ''), raw.ruta_foto),
+        exp_imagenes: pick(expField(raw, 'ruta_esquemas_pos', ''), raw.exp_imagenes),
 
         designation_final: designationValue,
         measure_final: measureValue,
         weight_final: weightValue,
         motores: motoresValue,
         apariciones: Number(raw.apariciones || raw.occurrences || raw.total_occurrences_global || 0) || 0,
-        qa_revision_estado: pick(raw.qa_revision_estado),
-        qa_revision_accion: pick(raw.qa_revision_accion),
+        qa_revision_estado: pick(expField(raw, 'qa_revision_estado', ''), raw.qa_revision_estado),
+        qa_revision_accion: pick(expField(raw, 'qa_revision_accion', ''), raw.qa_revision_accion),
         source: raw
     };
 }
@@ -595,7 +601,7 @@ function getVisibleRows() {
                 const motors = splitCsv(row.exp_motor || row.motores).map(normKey);
                 if (!motors.includes(normKey(state.filters.motor))) return false;
             }
-            if (state.filters.qaEstado && normKey(row.qa_revision_estado) !== normKey(state.filters.qaEstado)) return false;
+            if (state.filters.qaEstado && normKey(expField(row, 'qa_revision_estado', '')) !== normKey(state.filters.qaEstado)) return false;
             return true;
         })
         .sort((a, b) => String(a.pn || '').localeCompare(String(b.pn || ''), 'es', { numeric: true, sensitivity: 'base' }));
@@ -655,7 +661,7 @@ function updateStatusFilters() {
 function refreshFilterChoices() {
     const allRows = Object.keys(TAB_CONFIG).flatMap((tabKey) => getTabRows(tabKey));
     const motors = [...new Set(allRows.flatMap((row) => splitCsv(row.exp_motor || row.motores)))].sort((a, b) => a.localeCompare(b, 'es', { sensitivity: 'base' }));
-    const qaEstados = [...new Set(allRows.map((row) => text(row.qa_revision_estado)).filter(Boolean))].sort((a, b) => a.localeCompare(b, 'es', { sensitivity: 'base' }));
+    const qaEstados = [...new Set(allRows.map((row) => text(expField(row, 'qa_revision_estado', ''))).filter(Boolean))].sort((a, b) => a.localeCompare(b, 'es', { sensitivity: 'base' }));
 
     const motorSelect = $('ewpMotorFilter');
     const qaSelect = $('ewpQaFilter');
@@ -714,7 +720,7 @@ function renderPnList() {
 
     list.innerHTML = pageRows.map((row) => {
         const selectedClass = normKey(row.pn) === normKey(state.selectedPn) ? 'is-selected' : '';
-        const designation = text(row.designation || row.designation_final) || '-';
+        const designation = text(expField(row, 'designation_final', '') || row.designation || row.designation_final) || '-';
         return `<button type="button" class="ewx-pn-row ${selectedClass}" data-pn="${escapeHtml(row.pn)}" role="option" aria-selected="${selectedClass ? 'true' : 'false'}" title="${escapeHtml(designation)}">
             <span class="ewx-pn-row-pn">${escapeHtml(row.pn || '-')}</span>
             <span class="ewx-pn-row-desc">${escapeHtml(designation)}</span>

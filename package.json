@@ -46,7 +46,12 @@
     "db:index": "node scripts/db/create_sqlite_indexes.js",
     "test:db-read": "node --test tests/smoke/db-read-smoke.test.js",
     "test:db-analytics": "node --test tests/smoke/db-analytics-smoke.test.js",
-    "test:all-smoke": "npm run test:smoke && npm run test:db-read && npm run test:db-analytics && node --test tests/smoke/engine-schema.test.js && node --test tests/smoke/python-lib.test.js && node --test tests/smoke/python-exporters-smoke.test.js"
+    "test:all-smoke": "npm run test:smoke && npm run test:db-read && npm run test:db-analytics && node --test tests/smoke/engine-schema.test.js && node --test tests/smoke/python-lib.test.js && node --test tests/smoke/python-exporters-smoke.test.js",
+    "refactor:json:dry": "python scripts/refactor_json_fields.py --all-engines --dry-run --include-legacy",
+    "refactor:json": "python scripts/refactor_json_fields.py --all-engines --include-legacy",
+    "test:field-registry": "node --test tests/refactor-json-fields.test.js tests/field-adapter.test.js tests/field-adapter-compact-read.test.js tests/field-adapter-pn-review.test.js tests/field-adapter-qa-articulos.test.js tests/field-adapter-export-preview.test.js",
+    "compare:normalized": "python scripts/compare_normalized_engines.py",
+    "audit:field-adapter": "python scripts/audit_field_adapter_usage.py"
   },
   "dependencies": {
     "body-parser": "^2.2.2",

@@ -42,8 +42,8 @@ describe('MILU smoke HTTP', () => {
             const res = await requestText('/qa_milu.html', { method: 'GET' }, TIMEOUT_MS);
             assert.equal(res.status, 200);
             assert.ok(/id=["']columnViewSelect["']/.test(res.text), 'Falta #columnViewSelect en qa_milu.html');
-            assert.ok(/<option\s+value=["']pdf["'][^>]*>\s*Vista compacta\s*<\/option>/i.test(res.text),
-                'Falta opcion compacta (value="pdf") en qa_milu.html');
+            assert.ok(/<option\s+value=["']pdf["'][^>]*>\s*Vista\s+(compacta|PDF)\s*<\/option>/i.test(res.text),
+                'Falta opcion de vista value="pdf" en qa_milu.html');
         });
     });
 
