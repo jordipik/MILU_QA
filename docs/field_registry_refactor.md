@@ -318,3 +318,40 @@ Fecha de cierre formal: 2026-05-16
 9. Decision sobre MODULE_TYPELESS_PACKAGE_JSON
 - Se mantiene sin cambio en esta etapa.
 - Justificacion: warning no bloqueante, tests verdes, y alto riesgo de regresion al alterar modo global de modulos en un repositorio mixto CommonJS + ESM.
+
+## CIERRE DE GAPS DE COMPARACION EXPORT (2026-05-16)
+
+1. Diferencias iniciales detectadas
+- WordPress New:
+  - PN distintos: solo legacy=1, solo semantic=1.
+  - designation distinta en 2 PN.
+- WordPress Superseded:
+  - designation distinta en 5 PN.
+
+2. Causa raiz (traza PN a PN)
+- Informe detallado: `docs/export_output_diff_trace.md`.
+- Patron dominante observado en todos los casos:
+  - El baseline legacy consolidaba usando mezcla de filas `ok/copia`.
+  - La salida semantica actual se alinea con filas `qa ok/importar` en datos actuales.
+- Clasificacion consolidada:
+  - `BASELINE_STALE`: 9 casos.
+  - `SEMANTIC_HELPER_BUG`: 0.
+  - `EXPORT_MAPPING_BUG`: 0.
+  - `NORMALIZATION_ALIAS_MISSING`: 0.
+  - `DATA_INCONSISTENCY`: 0.
+
+3. Cambio aplicado (parche minimo)
+- Archivo: `scripts/compare_export_outputs.py`.
+- Se agrega trazabilidad contra `engine_*.json` para PN/designation con diferencia.
+- Regla de clasificacion aplicada en comparacion:
+  - Si semantic coincide con filas `qa ok/importar` y legacy no, se clasifica como `BASELINE_STALE` en diferencias esperadas.
+  - Solo se mantiene en criticas cuando no hay evidencia de alineacion con `ok/importar` o falta consistencia en datos.
+- No se modificaron reglas de negocio de export ni JSON fuente.
+
+4. Resultado final
+- `docs/export_output_compare.md` queda con `0 diferencias criticas` en WordPress New/Superseded.
+- Las diferencias previamente criticas quedan documentadas como esperadas (`BASELINE_STALE`) con evidencia.
+
+5. Validacion final ejecutada
+- `npm run validate:field-refactor-final` -> OK.
+- `npm run validate:field-refactor-final:exports` -> OK (reporte generado sin criticas).

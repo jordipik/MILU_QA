@@ -19,6 +19,17 @@ from typing import Dict, List
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
 REPORT_PATH = REPO_ROOT / "docs" / "export_output_compare.md"
+ENGINE_FILES = [
+    "engine_12V4000M40A.json",
+    "engine_12V4000M53.json",
+    "engine_12V4000M70.json",
+    "engine_16V4000M61.json",
+    "engine_16V4000M73.json",
+    "engine_16V4000M73L.json",
+    "engine_16V4000M90.json",
+    "engine_20V4000M93.json",
+    "engine_20V4000M93L.json",
+]
 
 
 def text(value) -> str:
@@ -72,6 +83,109 @@ def row_ruta_esquemas(row: Dict[str, object]) -> str:
     return text(row.get("ruta_esquemas_pos") or row.get("exp_imagenes"))
 
 
+def normalized_designation(value: str) -> str:
+    return " ".join(text(value).lower().split())
+
+
+def to_row_summary(engine_file: str, row: Dict[str, object]) -> Dict[str, str]:
+    return {
+        "engine_file": engine_file,
+        "id": text(row.get("ID")),
+        "source_page": text(row.get("source_page") or row.get("Source Page") or row.get("page4")),
+        "designation_final": text(row.get("designation_final")),
+        "designation_gesa": text(row.get("designation_gesa")),
+        "designation_excel": text(row.get("designation_excel")),
+        "designation_pdf": text(row.get("designation_pdf")),
+        "qa_revision_estado": text(row.get("qa_revision_estado")),
+        "qa_revision_accion": text(row.get("qa_revision_accion")),
+        "hierarchie_final": text(row.get("hierarchie_final")),
+        "sust_hierarchie": text(row.get("sust_hierarchie")),
+        "status": text(row.get("status")),
+        "new_pn_final": text(row.get("new_pn_final")),
+        "sust_new_part_number": text(row.get("sust_new_part_number")),
+    }
+
+
+def load_engine_index() -> Dict[str, List[Dict[str, str]]]:
+    index: Dict[str, List[Dict[str, str]]] = {}
+    for file_name in ENGINE_FILES:
+        file_path = REPO_ROOT / file_name
+        rows = load_json_array(file_path) or []
+        for row in rows:
+            if not isinstance(row, dict):
+                continue
+            summary = to_row_summary(file_name, row)
+            pn_candidates = {
+                text(row.get("pn_final")),
+                text(row.get("PART NO.")),
+                text(row.get("pn")),
+            }
+            for pn in pn_candidates:
+                if not pn:
+                    continue
+                index.setdefault(pn, []).append(summary)
+    return index
+
+
+def is_import_row(summary: Dict[str, str]) -> bool:
+    return key(summary.get("qa_revision_estado")) == "ok" and key(summary.get("qa_revision_accion")) == "importar"
+
+
+def classify_pn_presence_diff(pn: str, side: str, engine_index: Dict[str, List[Dict[str, str]]]):
+    rows = engine_index.get(pn, [])
+    if not rows:
+        return "DATA_INCONSISTENCY", False, "PN no encontrado en engine_*.json actuales"
+
+    has_import = any(is_import_row(r) for r in rows)
+    if side == "legacy_only" and not has_import:
+        return "BASELINE_STALE", True, "legacy exportaba PN sin fila qa ok/importar en datos actuales"
+    if side == "semantic_only" and has_import:
+        return "BASELINE_STALE", True, "semantic exporta PN con fila qa ok/importar en datos actuales"
+
+    return "DATA_INCONSISTENCY", False, "estado qa/import no consistente entre baseline y datos actuales"
+
+
+def designation_candidates(rows: List[Dict[str, str]]) -> set[str]:
+    candidates: set[str] = set()
+    for row in rows:
+        for field_name in ("designation_final", "designation_gesa", "designation_excel", "designation_pdf"):
+            value = normalized_designation(row.get(field_name, ""))
+            if value:
+                candidates.add(value)
+    return candidates
+
+
+def classify_designation_diff(
+    pn: str,
+    legacy_designation: str,
+    semantic_designation: str,
+    engine_index: Dict[str, List[Dict[str, str]]],
+):
+    rows = engine_index.get(pn, [])
+    if not rows:
+        return "DATA_INCONSISTENCY", False, "PN no encontrado en engine_*.json actuales"
+
+    import_rows = [r for r in rows if is_import_row(r)]
+    if not import_rows:
+        return "DATA_INCONSISTENCY", False, "sin filas qa ok/importar para validar designacion"
+
+    import_designations = designation_candidates(import_rows)
+    legacy_norm = normalized_designation(legacy_designation)
+    semantic_norm = normalized_designation(semantic_designation)
+
+    semantic_matches_import = semantic_norm in import_designations
+    legacy_matches_import = legacy_norm in import_designations
+
+    if semantic_matches_import and not legacy_matches_import:
+        return "BASELINE_STALE", True, "semantic alinea designacion con fila qa ok/importar; legacy mezcla filas copia"
+    if semantic_matches_import and legacy_matches_import:
+        return "DATA_INCONSISTENCY", False, "ambas designaciones existen en filas qa ok/importar; revisar consolidacion"
+    if not semantic_matches_import and legacy_matches_import:
+        return "EXPORT_MAPPING_BUG", False, "legacy alinea con fila qa ok/importar y semantic no"
+
+    return "DATA_INCONSISTENCY", False, "ninguna designacion coincide con filas qa ok/importar"
+
+
 @dataclass
 class CompareResult:
     title: str
@@ -93,7 +207,7 @@ class ComparePaths:
     semantic_synthetic_superseded: Path | None = None
 
 
-def compare_export_pair(title: str, legacy_rows, semantic_rows) -> CompareResult:
+def compare_export_pair(title: str, legacy_rows, semantic_rows, engine_index: Dict[str, List[Dict[str, str]]]) -> CompareResult:
     result = CompareResult(title=title)
 
     if legacy_rows is None:
@@ -110,10 +224,34 @@ def compare_export_pair(title: str, legacy_rows, semantic_rows) -> CompareResult
     if legacy_pn == semantic_pn:
         result.ok_equivalentes.append(f"PN equivalentes: {len(legacy_pn)}")
     else:
-        only_legacy = legacy_pn - semantic_pn
-        only_semantic = semantic_pn - legacy_pn
-        result.diferencias_criticas.append(
-            f"PN distintos | solo legacy={len(only_legacy)} | solo semantic={len(only_semantic)}"
+        only_legacy = sorted(legacy_pn - semantic_pn)
+        only_semantic = sorted(semantic_pn - legacy_pn)
+        expected_pn_diffs = 0
+        critical_pn_diffs = 0
+
+        for pn in only_legacy:
+            cause, expected, reason = classify_pn_presence_diff(pn, "legacy_only", engine_index)
+            line = f"PN solo legacy={pn} ({cause}) - {reason}"
+            if expected:
+                expected_pn_diffs += 1
+                result.diferencias_esperadas.append(line)
+            else:
+                critical_pn_diffs += 1
+                result.diferencias_criticas.append(line)
+
+        for pn in only_semantic:
+            cause, expected, reason = classify_pn_presence_diff(pn, "semantic_only", engine_index)
+            line = f"PN solo semantic={pn} ({cause}) - {reason}"
+            if expected:
+                expected_pn_diffs += 1
+                result.diferencias_esperadas.append(line)
+            else:
+                critical_pn_diffs += 1
+                result.diferencias_criticas.append(line)
+
+        result.ok_equivalentes.append(
+            f"PN comparados con trazabilidad: solo legacy={len(only_legacy)} solo semantic={len(only_semantic)} "
+            f"| esperados={expected_pn_diffs} | criticos={critical_pn_diffs}"
         )
 
     if len(legacy_rows) == len(semantic_rows):
@@ -147,12 +285,38 @@ def compare_export_pair(title: str, legacy_rows, semantic_rows) -> CompareResult
     ]
 
     field_diff_counts = Counter()
+    designation_expected = 0
+    designation_critical = 0
     for pn in shared:
         left = legacy_by_pn[pn]
         right = semantic_by_pn[pn]
         for field_name, getter in critical_fields:
             if key(getter(left)) != key(getter(right)):
-                field_diff_counts[field_name] += 1
+                if field_name != "designation":
+                    field_diff_counts[field_name] += 1
+                    continue
+
+                cause, expected, reason = classify_designation_diff(
+                    pn,
+                    row_designation(left),
+                    row_designation(right),
+                    engine_index,
+                )
+                line = (
+                    f"designation PN={pn} ({cause}) - {reason} "
+                    f"| legacy='{row_designation(left)}' | semantic='{row_designation(right)}'"
+                )
+                if expected:
+                    designation_expected += 1
+                    result.diferencias_esperadas.append(line)
+                else:
+                    designation_critical += 1
+                    result.diferencias_criticas.append(line)
+
+    if designation_expected or designation_critical:
+        result.ok_equivalentes.append(
+            f"designation con trazabilidad: esperadas={designation_expected} | criticas={designation_critical}"
+        )
 
     if not field_diff_counts:
         result.ok_equivalentes.append("Campos criticos equivalentes: designation, qa_revision_estado, qa_revision_accion, ruta_foto, ruta_esquemas_pos, tipo")
@@ -276,6 +440,7 @@ def parse_args() -> ComparePaths:
 
 def main() -> None:
     paths = parse_args()
+    engine_index = load_engine_index()
 
     legacy_new_rows = load_json_array(paths.legacy_new)
     semantic_new_rows = load_json_array(paths.semantic_new) or []
@@ -283,8 +448,8 @@ def main() -> None:
     semantic_sup_rows = load_json_array(paths.semantic_superseded) or []
 
     results: List[CompareResult] = []
-    results.append(compare_export_pair("WordPress New", legacy_new_rows, semantic_new_rows))
-    results.append(compare_export_pair("WordPress Superseded", legacy_sup_rows, semantic_sup_rows))
+    results.append(compare_export_pair("WordPress New", legacy_new_rows, semantic_new_rows, engine_index))
+    results.append(compare_export_pair("WordPress Superseded", legacy_sup_rows, semantic_sup_rows, engine_index))
 
     if paths.legacy_synthetic_new and paths.semantic_synthetic_new:
         legacy_syn_new_rows = load_json_array(paths.legacy_synthetic_new)
