@@ -2943,11 +2943,11 @@ export async function renderPdfPage(pdfUrl, pageNum, options = {}) {
 
         : (viewer?.clientWidth || baseViewport.width);
 
-    const viewerEffectiveHeight = innerContentHeight > 0
+    const viewerEffectiveHeight = (viewer instanceof HTMLElement && viewer.clientHeight > 0)
 
-        ? innerContentHeight
+        ? viewer.clientHeight
 
-        : (viewer?.clientHeight || baseViewport.height);
+        : (baseViewport.height);
 
     const availableWidth = Math.max(120, viewerEffectiveWidth - PDF_FIT_WIDTH_MARGIN);
 
