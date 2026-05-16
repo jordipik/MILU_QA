@@ -20,7 +20,7 @@ import {
 
 import { publishRevisionSync } from './revision-sync.js';
 
-import { clearPdfTableDebugOverlay, getPdfExperimentalBlueTexts, getPdfExperimentalColumnTexts, initPdfZoomControls, loadPdfClear, loadPdfWithPage, requestPdfRelayout, setPdfExperimentalRowHighlights, setPdfReadTokens, setPdfSelection, setPdfTableParserDebugEnabled } from './pdf-viewer.js';
+import { clearPdfTableDebugOverlay, getPdfExperimentalBlueTexts, getPdfExperimentalColumnTexts, initPdfZoomControls, loadPdfClear, loadPdfWithPage, requestPdfRelayout, setPdfExperimentalRowHighlights, setPdfReadTokens, setPdfSelection, setPdfTableParserDebugEnabled, setPdfHeaderDebugMode, getPdfHeaderDetection } from './pdf-viewer.js';
 
 import { evaluateQaChecksForField, evaluateRowQaChecks, getAllQaCheckCodes, getQaCheckLabel } from './qa-checks.js';
 
@@ -350,13 +350,19 @@ const PDF_ROW_Y_TOLERANCE = 5;
 const PDF_ROW_HIGHLIGHT_DEBUG = true;
 
 const PDF_TABLE_DEBUG_STORAGE_KEY = 'analista02:pdf-table-debug-enabled';
+const PDF_HEADER_DEBUG_MODE_KEY = 'analista02:pdf-header-debug-mode';
 
 let pdfTableDebugEnabled = true;
+let pdfHeaderDebugMode = null; // null, 'headers-only'
 
 try {
     const storedPdfTableDebug = localStorage.getItem(PDF_TABLE_DEBUG_STORAGE_KEY);
     if (storedPdfTableDebug === '0' || storedPdfTableDebug === 'false') {
         pdfTableDebugEnabled = false;
+    }
+    const storedHeaderDebugMode = localStorage.getItem(PDF_HEADER_DEBUG_MODE_KEY);
+    if (storedHeaderDebugMode === 'headers-only') {
+        pdfHeaderDebugMode = 'headers-only';
     }
 } catch (_) {
     // Ignore storage failures.
@@ -764,6 +770,14 @@ function setPdfTableDebugEnabled(enabled) {
 
 }
 
+function syncPdfHeaderDebugToggleButton() {
+    const btn = $('pdfHeaderDebugToggleBtn');
+    if (!(btn instanceof HTMLButtonElement)) return;
+
+    btn.classList.toggle('is-active', pdfHeaderDebugMode === 'headers-only');
+    btn.textContent = pdfHeaderDebugMode === 'headers-only' ? 'Headers Only ON' : 'Headers Only OFF';
+    btn.setAttribute('aria-pressed', pdfHeaderDebugMode === 'headers-only' ? 'true' : 'false');
+}
 
 
 async function getPdfPageNormalizedText(book, sourcePage) {
@@ -8477,6 +8491,32 @@ bindClick('pdfTableDebugToggleBtn', () => {
 
 });
 
+bindClick('pdfHeaderDebugToggleBtn', () => {
+
+    const newMode = pdfHeaderDebugMode === 'headers-only' ? null : 'headers-only';
+    pdfHeaderDebugMode = newMode;
+
+    // Actualizar UI
+    syncPdfHeaderDebugToggleButton();
+
+    // Guardar preferencia
+    try {
+        localStorage.setItem(PDF_HEADER_DEBUG_MODE_KEY, pdfHeaderDebugMode || '');
+    } catch (_) {
+        // Ignore storage failures.
+    }
+
+    // Activar table debug si headers-only está activo
+    if (pdfHeaderDebugMode === 'headers-only' && !pdfTableDebugEnabled) {
+        setPdfTableDebugEnabled(true);
+    }
+
+    // Notificar a pdf-viewer
+    window.setPdfHeaderDebugMode(pdfHeaderDebugMode);
+    requestPdfRelayout();
+
+});
+
 bindClick('pdfTableRecalcBtn', () => {
 
     clearPdfTableDebugOverlay();
@@ -8698,6 +8738,7 @@ document.addEventListener('keydown', (event) => {
 
 
 syncPdfTableDebugToggleButton();
+syncPdfHeaderDebugToggleButton();
 setPdfTableParserDebugEnabled(pdfTableDebugEnabled, { overlayStyle: 'advanced' });
 
 

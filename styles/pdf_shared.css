@@ -403,3 +403,78 @@
     border-color: #2196F3;
     box-shadow: 0 0 3px rgba(33, 150, 243, 0.3);
 }
+
+/* 🎯 HEADER DEBUG MODE: Headers-Only Visualization */
+
+.pdf-selection-highlight.pdf-header-debug-row-bg {
+    border: 0;
+    background: rgba(59, 130, 246, 0.08);
+    box-shadow: none;
+}
+
+.pdf-selection-highlight.pdf-header-debug-rect {
+    border: 2px solid #3b82f6;
+    background: rgba(59, 130, 246, 0.12);
+    box-shadow: inset 0 0 0 1px rgba(59, 130, 246, 0.3);
+}
+
+.pdf-selection-highlight.pdf-header-debug-label {
+    border: 0;
+    background: #3b82f6;
+    color: #ffffff;
+    box-shadow: none;
+    padding: 2px 4px;
+    font-size: 9px;
+    font-weight: 700;
+    line-height: 1.1;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    border-radius: 2px;
+    letter-spacing: 0.5px;
+}
+
+.pdf-selection-highlight.pdf-header-debug-vline {
+    border: 0;
+    background: rgba(59, 130, 246, 0.35);
+    box-shadow: none;
+    border-left: 1px dotted rgba(59, 130, 246, 0.55);
+}
+
+.pdf-selection-highlight.pdf-header-debug-stats {
+    border: 1px solid rgba(59, 130, 246, 0.3);
+    background: rgba(59, 130, 246, 0.92);
+    color: #ffffff;
+    box-shadow: none;
+    padding: 4px 6px;
+    font-size: 10px;
+    line-height: 1.3;
+    font-weight: 600;
+}
+
+/* ─── Ocultar botones legacy del panel PDF ────────────────────────────────── */
+
+/* Marcar línea PN en PDF - Legacy experimental tool */
+#markPnRowBtn {
+    display: none !important;
+}
+
+/* Debug Tabla - Herramienta antigua de debug */
+#pdfTableDebugToggleBtn {
+    display: none !important;
+}
+
+/* Recalcular Tabla - Herramienta de debug antigua */
+#pdfTableRecalcBtn {
+    display: none !important;
+}
+
+/* Selector de modo de columnas - Legacy column detection */
+.pdf-column-mode-label {
+    display: none !important;
+}
+
+/* Panel de Textos azules del PDF - Herramienta legacy completa */
+.pdf-blue-texts-panel {
+    display: none !important;
+}

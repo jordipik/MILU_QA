@@ -10,6 +10,7 @@ import { state } from './state.js';
 
 import { evaluateRowQaChecks } from './qa-checks.js';
 import { runTableParser } from './pdf-table-parser.js';
+import { detectBomTableHeaders, buildHeaderDebugOverlay } from './pdf-table-header-debug.js';
 
 
 
@@ -2345,6 +2346,18 @@ function renderPdfSelectionHighlights(highlights, viewport) {
             if (item.color) box.style.background = item.color;
         } else if (kind === 'table-debug-text-unassigned') {
             box.classList.add('pdf-table-debug-text-unassigned');
+        } else if (kind === 'header-debug-row-bg') {
+            box.classList.add('pdf-header-debug-row-bg');
+        } else if (kind === 'header-debug-rect') {
+            box.classList.add('pdf-header-debug-rect');
+        } else if (kind === 'header-debug-label') {
+            box.classList.add('pdf-header-debug-label');
+            box.textContent = String(item.text || '');
+        } else if (kind === 'header-debug-vline') {
+            box.classList.add('pdf-header-debug-vline');
+        } else if (kind === 'header-debug-stats') {
+            box.classList.add('pdf-header-debug-stats');
+            box.textContent = String(item.text || '');
         } else if (kind === 'header-left-line-initial') {
             box.classList.add('pdf-header-left-line-initial');
         } else if (kind === 'header-left-line-adjusted') {
@@ -2441,21 +2454,33 @@ async function renderPdfSelectionOverlay(page, viewport, requestToken = state.cu
         // Calcular debug overlay tabular si está activado
         if (state.pdfTableDebugEnabled) {
             try {
-                const columnDetectionMode = window.pdfColumnDetectionMode || 'header-left-lines-mark-only';
-                const tableResult = runTableParser(textContent.items || [], viewport, { columnDetectionMode });
-                state.currentPdfTableDebugOverlay = tableResult.debugOverlay || [];
-                state.currentPdfTableParseResult = tableResult;
-                if (tableResult && tableResult.geometryDebug) {
-                    debugLog('table-geometry', {
-                        headerRow: tableResult.headerRow || null,
-                        ...tableResult.geometryDebug
+                // Si está en modo headers-only, detectar solo headers
+                if (state.pdfHeaderDebugMode === 'headers-only') {
+                    const headerDetection = detectBomTableHeaders(textContent.items || [], {
+                        lineTolerance: 4,
+                        clusterGapMax: 24
                     });
+                    state.currentPdfHeaderDetection = headerDetection;
+                    state.currentPdfTableDebugOverlay = buildHeaderDebugOverlay(headerDetection, viewport.width, viewport.height);
+                    state.currentPdfTableParseResult = null;
+                } else {
+                    const columnDetectionMode = window.pdfColumnDetectionMode || 'header-left-lines-mark-only';
+                    const tableResult = runTableParser(textContent.items || [], viewport, { columnDetectionMode });
+                    state.currentPdfTableDebugOverlay = tableResult.debugOverlay || [];
+                    state.currentPdfTableParseResult = tableResult;
+                    if (tableResult && tableResult.geometryDebug) {
+                        debugLog('table-geometry', {
+                            headerRow: tableResult.headerRow || null,
+                            ...tableResult.geometryDebug
+                        });
+                    }
                 }
                 window.dispatchEvent(new CustomEvent('pdf-table-parse-updated'));
             } catch (tableErr) {
                 console.warn('[pdf-table-parser] Error calculando overlay:', tableErr);
                 state.currentPdfTableDebugOverlay = [];
                 state.currentPdfTableParseResult = null;
+                state.currentPdfHeaderDetection = null;
                 window.dispatchEvent(new CustomEvent('pdf-table-parse-updated'));
             }
         } else {
@@ -3179,6 +3204,7 @@ export function getPdfExperimentalColumnTexts({ dedupe = true } = {}) {
 
 window.getPdfExperimentalBlueTexts = getPdfExperimentalBlueTexts;
 window.getPdfExperimentalColumnTexts = getPdfExperimentalColumnTexts;
+window.setPdfHeaderDebugMode = setPdfHeaderDebugMode;
 
 // ─── Exports del parser tabular (Fase 1-3) ───────────────────────────────────
 
@@ -3225,6 +3251,25 @@ export function clearPdfTableDebugOverlay() {
     state.currentPdfTableDebugOverlay = [];
 }
 
+/**
+ * Activa o desactiva el modo de debug SOLO de headers.
+ * 'headers-only': solo muestra headers BOM detectados
+ * null: desactiva el modo
+ */
+export function setPdfHeaderDebugMode(mode) {
+    state.pdfHeaderDebugMode = mode === 'headers-only' ? 'headers-only' : null;
+    if (!mode) {
+        state.currentPdfHeaderDetection = null;
+    }
+    // Request relayout will be called by caller (analista-02.js)
+}
+
+/**
+ * Devuelve el resultado de detección de headers del último parse.
+ */
+export function getPdfHeaderDetection() {
+    return state.currentPdfHeaderDetection || null;
+}
 
 
 export function setPdfExperimentalRowHighlights(search) {
