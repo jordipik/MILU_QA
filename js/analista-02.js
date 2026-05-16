@@ -8528,7 +8528,21 @@ function renderBodyColumnHighlightPanel(result) {
             <div style="font-weight:700;margin-bottom:3px">Measurement/Standard Summary</div>
             <div>measurementRectsCount: <b>${measurementRectsCount}</b> · standardRectsCount: <b>${standardRectsCount}</b> · fnRectsCount: <b>${fnRectsCount}</b></div>
             <div>measurementStandardBoundaryWarnings: <b>${msWarnings.length}</b></div>
+            <div>fnMeasurementCorrectionsCount: <b>${result.fnMeasurementCorrectionsCount ?? 0}</b></div>
             ${warningRows}
+        </div>`;
+    }
+
+    let footerNoiseHtml = '';
+    const footerNoiseIgnoredCount = result.footerNoiseIgnoredCount ?? 0;
+    const footerNoiseExamples = result.footerNoiseIgnoredExamples || [];
+    if (footerNoiseIgnoredCount > 0 || footerNoiseExamples.length > 0) {
+        const rows = footerNoiseExamples.slice(0, 8)
+            .map((txt) => `<div style="padding:1px 0;font-size:10px;opacity:0.85">${txt}</div>`)
+            .join('');
+        footerNoiseHtml = `<div style="margin-top:6px;padding:6px;background:rgba(220,38,38,0.08);border:1px solid #dc2626;border-radius:4px;font-size:11px">
+            <div style="font-weight:700;margin-bottom:3px">Footer Noise Ignored: ${footerNoiseIgnoredCount}</div>
+            ${rows}
         </div>`;
     }
 
@@ -8546,6 +8560,8 @@ function renderBodyColumnHighlightPanel(result) {
             const splitInfo = rd.splitType
                 ? `${rd.splitType} (${rd.splitMethod || '-'}, x=${rd.splitX ?? '-'})`
                 : '-';
+            const fnFix = rd.correctedFromMeasurementToFn ? 'yes' : 'no';
+            const fnReason = rd.fnMeasurementReason || '-';
             return `<tr>
                 <td style="max-width:140px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="${rd.text}">${rd.text}</td>
                 <td style="color:${c.border};font-weight:600">${rd.column}</td>
@@ -8554,6 +8570,8 @@ function renderBodyColumnHighlightPanel(result) {
                 <td>${pnBadge}${fnBadge}${dsBadge}${mlBadge}${splitBadge}</td>
                 <td>${boundary}</td>
                 <td>${beforeAfter}</td>
+                <td>${fnFix}</td>
+                <td>${fnReason}</td>
                 <td>${rd.x0 ?? '-'}/${rd.x1 ?? '-'}</td>
                 <td>${rd.centerX ?? '-'}</td>
                 <td>${rd.overlapMeasurement ?? '-'}</td>
@@ -8575,6 +8593,8 @@ function renderBodyColumnHighlightPanel(result) {
                     <th style="text-align:left;padding:2px 4px">Flags</th>
                     <th style="text-align:left;padding:2px 4px">boundaryCase</th>
                     <th style="text-align:left;padding:2px 4px">before→after</th>
+                    <th style="text-align:left;padding:2px 4px">corr M→FN</th>
+                    <th style="text-align:left;padding:2px 4px">fnReason</th>
                     <th style="text-align:left;padding:2px 4px">x0/x1</th>
                     <th style="text-align:left;padding:2px 4px">centerX</th>
                     <th style="text-align:left;padding:2px 4px">ovlMeasure</th>
@@ -8589,7 +8609,7 @@ function renderBodyColumnHighlightPanel(result) {
         </details>`;
     }
 
-    body.innerHTML = columnsHtml + decorativeHtml + splitPnDesignationHtml + measurementStandardSummaryHtml + multilineHtml + rectDebugHtml + warningsHtml;
+    body.innerHTML = columnsHtml + decorativeHtml + splitPnDesignationHtml + measurementStandardSummaryHtml + footerNoiseHtml + multilineHtml + rectDebugHtml + warningsHtml;
     panel.hidden = false;
 }
 

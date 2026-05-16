@@ -3716,14 +3716,81 @@ function isLikelyDesignationText(text) {
     return false;
 }
 
+const PDF_ALLOWED_FN_CODES = new Set([
+    'AB',
+    'AC',
+    'ACN',
+    'EM',
+    'EMN',
+    'KD',
+    'KE',
+    'KF',
+    'KFN',
+    'M',
+    'MN',
+    'MUB',
+    'NN',
+    'P',
+    'SB',
+    'UA',
+    'UB'
+]);
+
 /**
- * Devuelve true si el texto parece un token de columna FN (abreviatura corta 1-4 letras).
+ * Devuelve true si el texto parece un token de columna FN.
+ * Solo acepta codigos canonicos permitidos (incluye combinaciones como AB EM).
  */
 function isLikelyFnToken(text) {
     if (!text) return false;
-    const t = text.trim();
-    if (t.length === 0 || t.length > 4) return false;
-    return /^[A-Z]{1,4}$/i.test(t);
+    const t = String(text).trim().replace(/\s+/g, ' ').toUpperCase();
+    if (!t || t.length > 14) return false;
+    if (/\d/.test(t)) return false;
+    if (/[\/\-=,\.]/.test(t)) return false;
+    if (/\b(?:G|KG|MM|CM|BAR|PSI|PC|PCS)\b/.test(t)) return false;
+
+    const tokens = t.split(/\s+/).filter(Boolean);
+    if (tokens.length < 1 || tokens.length > 3) return false;
+    if (tokens.some((tok) => !PDF_ALLOWED_FN_CODES.has(tok))) return false;
+    return true;
+}
+
+/**
+ * Señal inversa para FN: cuando parece measurement técnico, no debe tratarse como FN.
+ */
+function isLikelyMeasurementTechnicalText(text) {
+    if (!text) return false;
+    const t = String(text).trim().toUpperCase();
+    if (!t) return false;
+    if (/\d/.test(t)) return true;
+    if (/[\/\-,]/.test(t)) return true;
+    if (/\b(?:G|KG|MM|CM|M|BAR|PSI|PC|PCS|NM|KW|HZ|V|A)\b/.test(t)) return true;
+    if (t.length > 8) return true;
+    return false;
+}
+
+/**
+ * Filtra ruido de footer típico de PDFs impresos/exportados.
+ */
+function isPdfFooterNoise(text, rect, pageInfo) {
+    if (!text || !rect || !pageInfo) return false;
+    const t = String(text).trim();
+    if (!t) return false;
+    const lower = t.toLowerCase();
+    const keywords = [
+        'business portal online print',
+        'mtu friedrichshafen',
+        'page:'
+    ];
+    if (keywords.some((k) => lower.includes(k))) return true;
+    if (t.includes('©')) return true;
+
+    const rectTop = rect.top - rect.height;
+    const tableBottom = Number(pageInfo.tableBottom || 0);
+    const pageHeight = Number(pageInfo.pageHeight || 0);
+
+    if (tableBottom > 0 && rectTop >= tableBottom + 6) return true;
+    if (pageHeight > 0 && rectTop >= pageHeight * 0.92) return true;
+    return false;
 }
 
 /**
@@ -3746,7 +3813,7 @@ function computeRectColumnOverlap(rectLeft, rectWidth, colX0, colX1) {
 function splitWeightFnCombinedRect(text, rect, columns) {
     if (!text || !rect || !columns || !columns.length) return null;
     const raw = String(text).trim();
-    const match = raw.match(/^(.+?\b(?:g|kg|pc)\b)\s+([A-Z]{1,4}(?:\s+[A-Z]{1,4})?)$/i);
+    const match = raw.match(/^(.+?\b(?:g|kg|pc)\b)\s+([A-Z]{1,4}(?:\s+[A-Z]{1,4}){0,2})$/i);
     if (!match) return null;
 
     const weightText = (match[1] || '').trim();
@@ -3816,6 +3883,191 @@ function splitWeightFnCombinedRect(text, rect, columns) {
             }
         ]
     };
+}
+
+/**
+ * Divide visualmente un textRect combinado usando la frontera entre dos columnas.
+ * Caso principal: FN + MEASUREMENT cuando un texto cruza x0 de MEASUREMENT.
+ */
+function splitCombinedRectAtColumnBoundary(text, rect, leftColumn, rightColumn, options = {}) {
+    const raw = String(text || '').trim().replace(/\s+/g, ' ');
+    const boundary = options.boundary || 'fn_measurement';
+    const maxDistancePx = Number.isFinite(options.maxDistancePx) ? options.maxDistancePx : 12;
+    const leftValidator = typeof options.leftValidator === 'function' ? options.leftValidator : isLikelyFnToken;
+    const rightDisallowValidator = typeof options.rightDisallowValidator === 'function'
+        ? options.rightDisallowValidator
+        : isLikelyFnToken;
+
+    const result = {
+        splitType: 'column_boundary_space',
+        boundary,
+        boundaryX: Number.isFinite(rightColumn?.x0) ? rightColumn.x0 : null,
+        splitSpaceIndex: null,
+        splitSpaceX: null,
+        splitDistancePx: null,
+        leftText: null,
+        rightText: null,
+        splitAccepted: false,
+        splitRejectedReason: null,
+        parts: null
+    };
+
+    if (!raw || !rect || !leftColumn || !rightColumn) {
+        result.splitRejectedReason = 'missing-input';
+        return result;
+    }
+
+    const leftKey = String(leftColumn.key || '').toLowerCase();
+    const rightKey = String(rightColumn.key || '').toLowerCase();
+    if (!(leftKey === 'fn' && rightKey === 'measurement')) {
+        result.splitRejectedReason = 'unsupported-boundary';
+        return result;
+    }
+
+    if (!Number.isFinite(result.boundaryX)) {
+        result.splitRejectedReason = 'invalid-boundary-x';
+        return result;
+    }
+
+    const rectRight = rect.left + rect.width;
+    if (!(rect.left < result.boundaryX && rectRight > result.boundaryX)) {
+        result.splitRejectedReason = 'rect-does-not-cross-boundary';
+        return result;
+    }
+
+    if (!/\s/.test(raw)) {
+        result.splitRejectedReason = 'no-space-in-text';
+        return result;
+    }
+
+    const spaceIndices = [];
+    for (let i = 0; i < raw.length; i++) {
+        if (raw[i] === ' ') spaceIndices.push(i);
+    }
+    if (spaceIndices.length === 0) {
+        result.splitRejectedReason = 'no-splittable-space';
+        return result;
+    }
+
+    const textLen = Math.max(1, raw.length);
+    let bestSpaceIndex = null;
+    let bestSpaceX = null;
+    let bestDistance = Infinity;
+
+    spaceIndices.forEach((spaceIdx) => {
+        const charX = rect.left + rect.width * (spaceIdx / textLen);
+        const distance = Math.abs(charX - result.boundaryX);
+        if (distance < bestDistance) {
+            bestDistance = distance;
+            bestSpaceIndex = spaceIdx;
+            bestSpaceX = charX;
+        }
+    });
+
+    result.splitSpaceIndex = bestSpaceIndex;
+    result.splitSpaceX = bestSpaceX;
+    result.splitDistancePx = Number.isFinite(bestDistance) ? Math.round(bestDistance * 100) / 100 : null;
+
+    if (!Number.isFinite(bestDistance) || bestDistance > maxDistancePx) {
+        result.splitRejectedReason = 'space-too-far-from-boundary';
+        return result;
+    }
+
+    const leftText = raw.slice(0, bestSpaceIndex).trim();
+    const rightText = raw.slice(bestSpaceIndex + 1).trim();
+    result.leftText = leftText;
+    result.rightText = rightText;
+
+    if (!leftText || !rightText) {
+        result.splitRejectedReason = 'empty-side-after-split';
+        return result;
+    }
+
+    if (!leftValidator(leftText)) {
+        result.splitRejectedReason = 'left-not-valid-fn';
+        return result;
+    }
+
+    if (rightDisallowValidator(rightText)) {
+        result.splitRejectedReason = 'right-looks-like-fn';
+        return result;
+    }
+
+    const rightUpper = rightText.toUpperCase();
+    const looksMeasurement =
+        isLikelyMeasurementTechnicalText(rightText)
+        || /\b(?:DIN|ISO|CODE|MM)\b/.test(rightUpper)
+        || /\bM\d/.test(rightUpper)
+        || /X/.test(rightUpper)
+        || /[0-9/\-=\.]/.test(rightUpper)
+        || rightUpper.length >= 10;
+
+    if (!looksMeasurement) {
+        result.splitRejectedReason = 'right-not-measurement-like';
+        return result;
+    }
+
+    const splitX = Math.max(rect.left + 8, Math.min(rectRight - 8, bestSpaceX));
+    const leftWidth = Math.max(8, splitX - rect.left);
+    const rightWidth = Math.max(8, rectRight - splitX);
+
+    result.splitAccepted = true;
+    result.parts = [
+        {
+            text: leftText,
+            normalizedText: normalizePdfToken(leftText),
+            left: rect.left,
+            top: rect.top,
+            width: leftWidth,
+            height: rect.height,
+            centerY: rect.centerY,
+            _forcedKey: leftKey,
+            _splitInfo: {
+                splitFromCombined: true,
+                splitType: 'column_boundary_space',
+                boundary,
+                originalText: raw,
+                boundaryX: result.boundaryX,
+                splitSpaceIndex: result.splitSpaceIndex,
+                splitSpaceX: result.splitSpaceX,
+                splitDistancePx: result.splitDistancePx,
+                splitAccepted: true,
+                splitRejectedReason: null,
+                leftText,
+                rightText,
+                splitX,
+                splitMethod: 'boundary_space'
+            }
+        },
+        {
+            text: rightText,
+            normalizedText: normalizePdfToken(rightText),
+            left: splitX,
+            top: rect.top,
+            width: rightWidth,
+            height: rect.height,
+            centerY: rect.centerY,
+            _forcedKey: rightKey,
+            _splitInfo: {
+                splitFromCombined: true,
+                splitType: 'column_boundary_space',
+                boundary,
+                originalText: raw,
+                boundaryX: result.boundaryX,
+                splitSpaceIndex: result.splitSpaceIndex,
+                splitSpaceX: result.splitSpaceX,
+                splitDistancePx: result.splitDistancePx,
+                splitAccepted: true,
+                splitRejectedReason: null,
+                leftText,
+                rightText,
+                splitX,
+                splitMethod: 'boundary_space'
+            }
+        }
+    ];
+
+    return result;
 }
 
 /**
@@ -4015,10 +4267,45 @@ export function buildHeaderColumnBodyHighlights() {
     const rects = extractPdfTextRects(textItems, viewport);
     const pageWidth = viewport.width || 500;
     const pageHeight = viewport.height || 0;
-    const bodyRects = rects.filter((rect) => {
+
+    // Delimitar horizontalmente el área de tabla para no arrastrar notas/pie fuera de columnas.
+    const tableLeft = columns.length > 0 ? (columns[0].x0 - 6) : 0;
+    const tableRight = columns.length > 0 ? (columns[columns.length - 1].x1 + 6) : pageWidth;
+
+    const candidateBodyRects = rects.filter((rect) => {
         const rectTop = rect.top - rect.height;
-        return rectTop >= bodyTop && rect.top < pageHeight;
+        const rectRight = rect.left + rect.width;
+        const inVerticalBand = rectTop >= bodyTop && rect.top < pageHeight;
+        const intersectsTableBand = rectRight >= tableLeft && rect.left <= tableRight;
+        return inVerticalBand && intersectsTableBand;
     });
+
+    // Recorte inferior dinámico: buscar la última franja "densa" de texto de tabla.
+    const densityBinSize = 8;
+    const densityBins = new Map();
+    candidateBodyRects.forEach((rect) => {
+        const cy = rect.top - rect.height / 2;
+        const bin = Math.round(cy / densityBinSize) * densityBinSize;
+        densityBins.set(bin, (densityBins.get(bin) || 0) + 1);
+    });
+
+    const minDenseCount = 2;
+    const sortedBins = Array.from(densityBins.entries()).sort((a, b) => a[0] - b[0]);
+    let lastDenseY = null;
+    sortedBins.forEach(([binY, count]) => {
+        if (binY >= bodyTop && count >= minDenseCount) {
+            lastDenseY = binY;
+        }
+    });
+
+    const pageBottomSafety = pageHeight - Math.max(26, Math.round(pageHeight * 0.04));
+    let bodyBottom = Math.max(bodyTop + 40, pageBottomSafety);
+    if (lastDenseY !== null) {
+        bodyBottom = Math.min(bodyBottom, lastDenseY + Math.max(18, densityBinSize * 2));
+    }
+
+    const bodyRects = candidateBodyRects.filter((rect) => rect.top <= bodyBottom);
+    const footerRectsIgnored = Math.max(0, candidateBodyRects.length - bodyRects.length);
 
     const partNoColumn = columns.find((c) => c.key === 'part_no') || null;
     const designationColumn = columns.find((c) => c.key === 'designation') || null;
@@ -4031,12 +4318,18 @@ export function buildHeaderColumnBodyHighlights() {
     const leftmostColumnX0 = columns.length > 0 ? columns[0].x0 : 0;
 
     // Asignar textos a columnas y generar highlights
-    const MAX_HIGHLIGHTS = 150;
+    // Safety cap to avoid freezing the UI on pathological PDFs, but high enough
+    // to paint the full table body in normal pages.
+    const MAX_HIGHLIGHTS = 2000;
     const highlights = [];
     const assignedByColumn = new Map();
     const rectDebugList = [];
     const partNoDesignationSplits = [];
+    const columnBoundarySplits = [];
     const measurementStandardBoundaryWarnings = [];
+    const footerNoiseIgnoredExamples = [];
+    let footerNoiseIgnoredCount = 0;
+    let fnMeasurementCorrectionsCount = 0;
     let ignoredCount = 0;
 
     bodyRects.forEach((rect) => {
@@ -4051,26 +4344,64 @@ export function buildHeaderColumnBodyHighlights() {
             ignoredCount++;
             return;
         }
+        if (isPdfFooterNoise(rect.text, rect, { pageHeight, tableBottom: bodyBottom })) {
+            footerNoiseIgnoredCount++;
+            if (footerNoiseIgnoredExamples.length < 8) {
+                footerNoiseIgnoredExamples.push(String(rect.text || '').trim());
+            }
+            ignoredCount++;
+            return;
+        }
 
-        // Orden de splits: 1) WEIGHT+FN 2) PART_NO+DESIGNATION 3) scoring normal.
+        // Orden de splits: 1) WEIGHT+FN 2) FN+MEASUREMENT por frontera 3) PART_NO+DESIGNATION 4) scoring normal.
         const weightSplitResult = splitWeightFnCombinedRect(rect.text, rect, columns);
         const weightParts = weightSplitResult ? weightSplitResult.parts : [rect];
         const finalParts = [];
 
         weightParts.forEach((weightPart) => {
-            const pnDesignationSplit = splitPartNoDesignationCombinedRect(weightPart.text, weightPart, columns);
-            if (pnDesignationSplit) {
-                finalParts.push(...pnDesignationSplit.parts);
-                partNoDesignationSplits.push({
-                    originalText: pnDesignationSplit.originalText,
-                    pnText: pnDesignationSplit.pnText,
-                    designationText: pnDesignationSplit.designationText,
-                    splitX: Math.round(pnDesignationSplit.splitX),
-                    splitMethod: pnDesignationSplit.splitMethod
+            const boundarySplit = splitCombinedRectAtColumnBoundary(
+                weightPart.text,
+                weightPart,
+                fnColumn,
+                measurementColumn,
+                { boundary: 'fn_measurement', maxDistancePx: 12 }
+            );
+
+            if (boundarySplit) {
+                columnBoundarySplits.push({
+                    splitType: boundarySplit.splitType,
+                    boundary: boundarySplit.boundary,
+                    originalText: String(weightPart.text || '').trim(),
+                    boundaryX: boundarySplit.boundaryX != null ? Math.round(boundarySplit.boundaryX) : null,
+                    splitSpaceIndex: boundarySplit.splitSpaceIndex,
+                    splitSpaceX: boundarySplit.splitSpaceX != null ? Math.round(boundarySplit.splitSpaceX) : null,
+                    splitDistancePx: boundarySplit.splitDistancePx,
+                    leftText: boundarySplit.leftText,
+                    rightText: boundarySplit.rightText,
+                    splitAccepted: boundarySplit.splitAccepted,
+                    splitRejectedReason: boundarySplit.splitRejectedReason
                 });
-            } else {
-                finalParts.push(weightPart);
             }
+
+            const boundaryParts = boundarySplit?.splitAccepted && Array.isArray(boundarySplit.parts)
+                ? boundarySplit.parts
+                : [weightPart];
+
+            boundaryParts.forEach((boundaryPart) => {
+                const pnDesignationSplit = splitPartNoDesignationCombinedRect(boundaryPart.text, boundaryPart, columns);
+                if (pnDesignationSplit) {
+                    finalParts.push(...pnDesignationSplit.parts);
+                    partNoDesignationSplits.push({
+                        originalText: pnDesignationSplit.originalText,
+                        pnText: pnDesignationSplit.pnText,
+                        designationText: pnDesignationSplit.designationText,
+                        splitX: Math.round(pnDesignationSplit.splitX),
+                        splitMethod: pnDesignationSplit.splitMethod
+                    });
+                } else {
+                    finalParts.push(boundaryPart);
+                }
+            });
         });
 
         finalParts.forEach((part) => {
@@ -4078,6 +4409,7 @@ export function buildHeaderColumnBodyHighlights() {
 
             const textPN = isLikelyPartNumber(part.text);
             const textFN = isLikelyFnToken(part.text);
+            const textMeasurementTech = isLikelyMeasurementTechnicalText(part.text);
             const textDesignation = isLikelyDesignationText(part.text);
             const splitInfo = part._splitInfo || null;
             const splitFromCombined = Boolean(splitInfo?.splitFromCombined);
@@ -4133,6 +4465,13 @@ export function buildHeaderColumnBodyHighlights() {
                 if (textFN) {
                     if (col.key === 'fn') score += 2.0;
                     if (col.key === 'weight') score -= 2.0;
+                    if (col.key === 'measurement') score -= 1.6;
+                }
+
+                // Regla inversa: si parece measurement técnico, no debe caer en FN.
+                if (textMeasurementTech) {
+                    if (col.key === 'fn') score -= 2.5;
+                    if (col.key === 'measurement') score += 1.4;
                 }
 
                 // Frenar invasiones: FN no debe comerse MEASUREMENT/ STANDARD.
@@ -4180,6 +4519,8 @@ export function buildHeaderColumnBodyHighlights() {
             const assignedColumnBeforeCorrection = bestColumn.key;
             let assignedColumn = bestColumn;
             let boundaryCase = null;
+            let correctedFromMeasurementToFn = false;
+            let fnMeasurementReason = null;
 
             // Corrección frontera PART NO. vs DESIGNATION
             if (partNoColumn && designationColumn) {
@@ -4210,8 +4551,9 @@ export function buildHeaderColumnBodyHighlights() {
             if (weightColumn && fnColumn) {
                 const smallMargin = 4;
                 const fnRightLimit = measurementColumn ? (measurementColumn.x0 - smallMargin) : Infinity;
+                const fnMeasurementRight = measurementColumn ? (measurementColumn.x0 + 8) : fnRightLimit;
                 const inWeightToMeasurementBand = measurementColumn
-                    ? (centerX >= weightColumn.x0 && centerX <= measurementColumn.x0)
+                    ? (centerX >= weightColumn.x0 && centerX <= fnMeasurementRight)
                     : (centerX >= weightColumn.x0 && centerX <= fnColumn.x1);
 
                 if (part.left >= fnColumn.x0 - smallMargin && part.left < fnRightLimit && textFN) {
@@ -4225,24 +4567,36 @@ export function buildHeaderColumnBodyHighlights() {
                 }
             }
 
-            // Corrección frontera FN -> MEASUREMENT
-            if (measurementColumn) {
-                const smallMargin = 4;
-                if (part.left >= measurementColumn.x0 - smallMargin) {
-                    if (!standardColumn || part.left < standardColumn.x0 - smallMargin) {
-                        if (assignedColumn.key !== 'measurement') {
-                            measurementStandardBoundaryWarnings.push({
-                                type: 'fn_measurement',
-                                text: String(part.text || '').trim(),
-                                left: Math.round(part.left),
-                                centerX: Math.round(centerX)
-                            });
-                        }
-                        assignedColumn = measurementColumn;
-                        assignedBy = 'heuristic';
-                        boundaryCase = 'fn_measurement';
+            // Corrección frontera FN/MEASUREMENT: tokens FN cortos se quedan en FN.
+            if (fnColumn && measurementColumn && weightColumn) {
+                const inFnMeasurementBand = centerX >= weightColumn.x0 && centerX <= (measurementColumn.x0 + 8);
+                const nearMeasurementEdge = part.left < measurementColumn.x0 + 8;
+                if (textFN && !textMeasurementTech && inFnMeasurementBand && nearMeasurementEdge) {
+                    correctedFromMeasurementToFn = assignedColumn.key === 'measurement' || assignedColumnBeforeCorrection === 'measurement';
+                    assignedColumn = fnColumn;
+                    assignedBy = 'heuristic';
+                    boundaryCase = 'fn_measurement';
+                    fnMeasurementReason = nearMeasurementEdge
+                        ? 'short-fn-near-measurement-edge'
+                        : 'short-fn-in-weight-measurement-band';
+                    if (correctedFromMeasurementToFn) {
+                        fnMeasurementCorrectionsCount++;
+                        measurementStandardBoundaryWarnings.push({
+                            type: 'fn_measurement',
+                            text: String(part.text || '').trim(),
+                            left: Math.round(part.left),
+                            centerX: Math.round(centerX)
+                        });
                     }
                 }
+            }
+
+            // Regla inversa: textos técnicos/largos no deben quedar en FN.
+            if (measurementColumn && assignedColumn.key === 'fn' && textMeasurementTech) {
+                assignedColumn = measurementColumn;
+                assignedBy = 'heuristic';
+                boundaryCase = boundaryCase || 'fn_measurement';
+                fnMeasurementReason = fnMeasurementReason || 'fn-disqualified-technical';
             }
 
             // Corrección frontera MEASUREMENT -> STANDARD
@@ -4271,7 +4625,13 @@ export function buildHeaderColumnBodyHighlights() {
                 if (forcedColumn) {
                     assignedColumn = forcedColumn;
                     assignedBy = 'split';
-                    boundaryCase = splitType === 'part_no_designation' ? 'part_no_designation' : 'weight_fn';
+                    if (splitType === 'part_no_designation') {
+                        boundaryCase = 'part_no_designation';
+                    } else if (splitType === 'column_boundary_space') {
+                        boundaryCase = splitInfo?.boundary || 'fn_measurement';
+                    } else {
+                        boundaryCase = 'weight_fn';
+                    }
                 }
             }
 
@@ -4294,6 +4654,8 @@ export function buildHeaderColumnBodyHighlights() {
                 overlapStandard: Math.round(standardOverlap * 100) / 100,
                 isLikelyPartNumber: textPN,
                 isLikelyFnToken: textFN,
+                correctedFromMeasurementToFn,
+                fnMeasurementReason,
                 isLikelyDesignationText: textDesignation,
                 boundaryCase,
                 splitFromCombined,
@@ -4302,6 +4664,14 @@ export function buildHeaderColumnBodyHighlights() {
                 designationText: splitInfo?.designationText || null,
                 splitX: splitInfo?.splitX != null ? Math.round(splitInfo.splitX) : null,
                 splitMethod: splitInfo?.splitMethod || null,
+                splitBoundary: splitInfo?.boundary || null,
+                splitSpaceIndex: splitInfo?.splitSpaceIndex ?? null,
+                splitSpaceX: splitInfo?.splitSpaceX != null ? Math.round(splitInfo.splitSpaceX) : null,
+                splitDistancePx: splitInfo?.splitDistancePx ?? null,
+                splitAccepted: splitInfo?.splitAccepted ?? null,
+                splitRejectedReason: splitInfo?.splitRejectedReason || null,
+                splitLeftText: splitInfo?.leftText || null,
+                splitRightText: splitInfo?.rightText || null,
                 assignedColumnBeforeCorrection,
                 assignedColumnAfterCorrection: assignedColumn.key,
                 rectLeft: Math.round(part.left),
@@ -4395,8 +4765,21 @@ export function buildHeaderColumnBodyHighlights() {
     if (partNoDesignationSplits.length > 0) {
         warnings.push(`${partNoDesignationSplits.length} split(s) PART NO + DESIGNATION aplicado(s) (visual/debug).`);
     }
+    const acceptedColumnBoundarySplits = columnBoundarySplits.filter((s) => s.splitAccepted).length;
+    if (acceptedColumnBoundarySplits > 0) {
+        warnings.push(`${acceptedColumnBoundarySplits} split(s) FN+MEASUREMENT por frontera/espacio aplicado(s) (visual/debug).`);
+    }
+    if (footerRectsIgnored > 0) {
+        warnings.push(`${footerRectsIgnored} rect(s) de zona de pie ignorado(s) para no colorear footer.`);
+    }
+    if (footerNoiseIgnoredCount > 0) {
+        warnings.push(`${footerNoiseIgnoredCount} footer noise rect(s) ignorado(s) por texto/patrón de pie.`);
+    }
     if (measurementStandardBoundaryWarnings.length > 0) {
         warnings.push(`${measurementStandardBoundaryWarnings.length} correccion(es) en frontera FN/MEASUREMENT/STANDARD aplicada(s).`);
+    }
+    if (fnMeasurementCorrectionsCount > 0) {
+        warnings.push(`${fnMeasurementCorrectionsCount} correccion(es) measurement→fn aplicada(s) en frontera FN/MEASUREMENT.`);
     }
 
     const measurementRectsCount = (assignedByColumn.get('measurement') || []).length;
@@ -4412,19 +4795,27 @@ export function buildHeaderColumnBodyHighlights() {
         highlightCount: highlights.length,
         headerMaxY1,
         bodyTop,
+        bodyBottom,
         bodyMargin,
         assignedByColumn: Object.fromEntries(assignedByColumn),
         columnStats,
         ignoredRects: ignoredCount,
+        footerRectsIgnored,
+        footerNoiseIgnoredCount,
+        footerNoiseIgnoredExamples,
         decorativeColumnIgnored,
         decorativeColumn: decorativeColumn
             ? { key: decorativeColumn.key, x0: decorativeColumn.x0, x1: decorativeColumn.x1 }
             : null,
         partNoDesignationSplits,
         partNoDesignationSplitCount: partNoDesignationSplits.length,
+        columnBoundarySplits: columnBoundarySplits.slice(0, 50),
+        columnBoundarySplitCount: columnBoundarySplits.length,
+        columnBoundarySplitAcceptedCount: acceptedColumnBoundarySplits,
         measurementRectsCount,
         standardRectsCount,
         fnRectsCount,
+        fnMeasurementCorrectionsCount,
         measurementStandardBoundaryWarnings,
         multilineCandidates,
         multilineCandidateCount: multilineCandidates.length,
