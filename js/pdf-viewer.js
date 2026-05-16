@@ -18,6 +18,11 @@ const PDF_FIT_HEIGHT_MARGIN = 8;
 
 const PDF_SELECTION_MAX_HIGHLIGHTS = 40;
 
+const PDF_HEADER_DEBUG_ENABLED = false;
+
+// Modo rendimiento: limitar highlights a PN/POS para reducir coste por página.
+const PDF_MINIMAL_GREEN_HIGHLIGHTS_MODE = true;
+
 // Deprecated experimental column/header parser path. Kept disabled until a clean reimplementation.
 const PDF_EXPERIMENTAL_COLUMN_FEATURES_ENABLED = false;
 
@@ -30,7 +35,11 @@ let pdfRelayoutRafId = 0;
 // Sistema de debug para detección de cabecera
 let headerDetectionDebugLog = [];
 function debugLog(stage, data) {
+    if (!PDF_HEADER_DEBUG_ENABLED) return;
     headerDetectionDebugLog.push({ stage, data, timestamp: Date.now() });
+    if (headerDetectionDebugLog.length > 400) {
+        headerDetectionDebugLog = headerDetectionDebugLog.slice(-400);
+    }
     console.log(`[PDF Header Debug] ${stage}:`, data);
     if (window.updateHeaderDetectionDebugPanel) {
         window.updateHeaderDetectionDebugPanel();
@@ -44,8 +53,10 @@ function clearHeaderDetectionDebug() {
 }
 
 // Exponer funciones de debug a window para acceso global
-window.getHeaderDetectionDebug = getHeaderDetectionDebug;
-window.clearHeaderDetectionDebug = clearHeaderDetectionDebug;
+if (PDF_HEADER_DEBUG_ENABLED) {
+    window.getHeaderDetectionDebug = getHeaderDetectionDebug;
+    window.clearHeaderDetectionDebug = clearHeaderDetectionDebug;
+}
 
 
 
@@ -1818,6 +1829,70 @@ function buildPdfTextHighlights(textItems, viewport, selection) {
 
         : [];
 
+    if (PDF_MINIMAL_GREEN_HIGHLIGHTS_MODE) {
+
+        pnRects.forEach(rect => {
+
+            const matchRect = getTokenHighlightRect(rect, tokens.pn) || rect;
+
+            highlights.push({
+
+                left: Math.max(0, matchRect.left - 4),
+
+                top: Math.max(0, matchRect.top - matchRect.height - 3),
+
+                width: Math.max(24, matchRect.width + 8),
+
+                height: Math.max(16, matchRect.height + 6),
+
+                text: matchRect.text,
+
+                priority: 6,
+
+                type: 'pn',
+
+                hasError: tokens.fieldErrors.pn ?? false
+
+            });
+
+        });
+
+
+
+        posRects.forEach(rect => {
+
+            const matchRect = getTokenHighlightRect(rect, tokens.pos) || rect;
+
+            highlights.push({
+
+                left: Math.max(0, matchRect.left - 4),
+
+                top: Math.max(0, matchRect.top - matchRect.height - 3),
+
+                width: Math.max(24, matchRect.width + 8),
+
+                height: Math.max(16, matchRect.height + 6),
+
+                text: matchRect.text,
+
+                priority: 5,
+
+                type: 'pos',
+
+                hasError: tokens.fieldErrors.pos ?? false
+
+            });
+
+        });
+
+
+
+        highlights.sort((a, b) => b.priority - a.priority);
+
+        return highlights.slice(0, PDF_SELECTION_MAX_HIGHLIGHTS);
+
+    }
+
 
 
     const readTokenHighlights = buildReadTokenHighlights(
@@ -2431,7 +2506,25 @@ async function renderPdfSelectionOverlay(page, viewport, requestToken = state.cu
 
     try {
 
-        const textContent = await page.getTextContent();
+        const hasCachedText = (
+
+            Array.isArray(state.currentPdfLastTextItems)
+
+            && state.currentPdfLastTextItems.length > 0
+
+            && String(state.currentPdfLastTextSource || '') === String(state.currentPdfSource || '')
+
+            && Number(state.currentPdfLastTextPageNumber || 0) === Number(state.currentPdfPageNumber || 0)
+
+        );
+
+
+
+        const textContent = hasCachedText
+
+            ? { items: state.currentPdfLastTextItems }
+
+            : await page.getTextContent();
 
         if (requestToken !== state.currentPdfRequestToken) return;
         const highlights = buildPdfTextHighlights(textContent.items || [], viewport, selection);
@@ -2439,6 +2532,8 @@ async function renderPdfSelectionOverlay(page, viewport, requestToken = state.cu
         // Almacenar para acceso externo (parser tabular, debug)
         state.currentPdfLastTextItems = textContent.items || [];
         state.currentPdfLastViewport = viewport;
+        state.currentPdfLastTextSource = state.currentPdfSource;
+        state.currentPdfLastTextPageNumber = state.currentPdfPageNumber;
         state.currentPdfTableDebugOverlay = [];
         state.currentPdfTableParseResult = null;
         state.currentPdfHeaderDetection = null;
@@ -2635,6 +2730,27 @@ export function setPdfSelection(row) {
 
     state.currentPdfExperimentalRowHighlights = [];
     state.currentPdfExperimentalColumnDetection = null;
+
+}
+
+
+export function refreshPdfSelectionOverlayFromCache() {
+
+    if (!state.currentPdfSelection) return false;
+
+    if (!Array.isArray(state.currentPdfLastTextItems) || !state.currentPdfLastTextItems.length) return false;
+
+    if (!state.currentPdfLastViewport) return false;
+
+    const highlights = buildPdfTextHighlights(
+        state.currentPdfLastTextItems,
+        state.currentPdfLastViewport,
+        state.currentPdfSelection
+    );
+
+    renderPdfSelectionHighlights(highlights, state.currentPdfLastViewport);
+
+    return true;
 
 }
 
@@ -3068,6 +3184,10 @@ export function loadPdfClear() {
 
     state.currentPdfLastViewport = null;
 
+    state.currentPdfLastTextSource = '';
+
+    state.currentPdfLastTextPageNumber = 0;
+
     window.dispatchEvent(new CustomEvent('pdf-table-parse-updated'));
 
     clearPdfSelectionLayer();
@@ -3253,6 +3373,158 @@ const HEADER_KEY_TO_KIND = {
     standard: 'header-standard'
 };
 
+const HEADER_SPLIT_PAIRS = [
+    {
+        leftKey: 'pos',
+        rightKey: 'part_no',
+        leftTokens: ['pos'],
+        rightTokens: ['part no', 'part no.', 'part number', 'partnumber', 'pn']
+    },
+    {
+        leftKey: 'designation',
+        rightKey: 'model_type',
+        leftTokens: ['designation', 'description', 'denomination', 'designacion', 'descripcion'],
+        rightTokens: ['model/type', 'model type', 'modeltype', 'model typ']
+    },
+    {
+        leftKey: 'fn',
+        rightKey: 'measurement',
+        leftTokens: ['fn', 'footnote', 'f.n.', 'f n', 'f.n'],
+        rightTokens: ['measurement', 'measure', 'meas', 'measurement / standard', 'measurement/standard']
+    },
+    {
+        leftKey: 'units',
+        rightKey: 'weight',
+        leftTokens: ['units', 'unit'],
+        rightTokens: ['weight', 'wt', 'wgt']
+    }
+];
+
+function trimHeaderBoundsWhitespace(bounds) {
+    if (!bounds) return null;
+
+    const rawText = String(bounds.text || '');
+    const trimmedText = rawText.trim();
+    const left = Number(bounds.left || 0);
+    const top = Number(bounds.top || 0);
+    const width = Math.max(1, Number(bounds.width || 0));
+    const height = Math.max(12, Number(bounds.height || 12));
+
+    if (!rawText || !trimmedText || rawText === trimmedText) {
+        return { left, top, width, height, text: trimmedText || rawText };
+    }
+
+    const leading = (rawText.match(/^\s+/) || [''])[0].length;
+    const trailing = (rawText.match(/\s+$/) || [''])[0].length;
+    const total = rawText.length;
+
+    if (total <= 0 || leading + trailing <= 0 || leading + trailing >= total) {
+        return { left, top, width, height, text: trimmedText || rawText };
+    }
+
+    const startRatio = leading / total;
+    const endRatio = (total - trailing) / total;
+    const nextLeft = left + (width * startRatio);
+    const nextRight = left + (width * endRatio);
+
+    return {
+        left: nextLeft,
+        top,
+        width: Math.max(8, nextRight - nextLeft),
+        height,
+        text: trimmedText
+    };
+}
+
+function findHeaderTokenIndex(source, variants) {
+    const normalizedSource = normalizePdfHeaderText(source);
+    if (!normalizedSource) return { index: -1, token: '' };
+
+    let bestIndex = -1;
+    let bestToken = '';
+
+    (variants || []).forEach((variant) => {
+        const token = normalizePdfHeaderVariant(variant);
+        if (!token) return;
+        const index = normalizedSource.indexOf(token);
+        if (index < 0) return;
+        if (bestIndex < 0 || index < bestIndex) {
+            bestIndex = index;
+            bestToken = token;
+        }
+    });
+
+    return { index: bestIndex, token: bestToken };
+}
+
+function refineCombinedHeaderBounds(match, key) {
+    const bounds = match?.bounds || match?.cluster;
+    if (!bounds) return null;
+
+    const left = Number(bounds.left || 0);
+    const top = Number(bounds.top || 0);
+    const width = Math.max(1, Number(bounds.width || 0));
+    const height = Math.max(12, Number(bounds.height || 12));
+    const text = String((match?.bounds?.text || match?.cluster?.text || '')).trim();
+
+    if (!text || width < 24) {
+        return trimHeaderBoundsWhitespace({ left, top, width, height, text });
+    }
+
+    const normalizedText = normalizePdfHeaderText(text);
+    if (!normalizedText) {
+        return trimHeaderBoundsWhitespace({ left, top, width, height, text });
+    }
+
+    for (const pair of HEADER_SPLIT_PAIRS) {
+        if (key !== pair.leftKey && key !== pair.rightKey) continue;
+
+        const leftMatch = findHeaderTokenIndex(normalizedText, pair.leftTokens);
+        const rightMatch = findHeaderTokenIndex(normalizedText, pair.rightTokens);
+
+        if (leftMatch.index < 0 || rightMatch.index < 0) continue;
+        if (leftMatch.index === rightMatch.index) continue;
+
+        const firstIsLeft = leftMatch.index < rightMatch.index;
+        const first = firstIsLeft ? leftMatch : rightMatch;
+        const second = firstIsLeft ? rightMatch : leftMatch;
+
+        const sourceLen = Math.max(1, normalizedText.length);
+        const firstEnd = Math.min(sourceLen, first.index + Math.max(1, first.token.length));
+        // Use end-of-left-token and start-of-right-token as split edges (not midpoint),
+        // so neither box includes the space character between the two tokens.
+        const leftEndRatio = Math.max(0.1, Math.min(0.9, firstEnd / sourceLen));
+        const rightStartRatio = Math.max(0.1, Math.min(0.9, second.index / sourceLen));
+        const leftEndX = left + (width * leftEndRatio);
+        const rightStartX = left + (width * rightStartRatio);
+
+        const visibleLeftKey = firstIsLeft ? pair.leftKey : pair.rightKey;
+        const visibleRightKey = firstIsLeft ? pair.rightKey : pair.leftKey;
+
+        if (key === visibleLeftKey) {
+            return trimHeaderBoundsWhitespace({
+                left,
+                top,
+                width: Math.max(10, leftEndX - left),
+                height,
+                text
+            });
+        }
+
+        if (key === visibleRightKey) {
+            return trimHeaderBoundsWhitespace({
+                left: rightStartX,
+                top,
+                width: Math.max(10, (left + width) - rightStartX),
+                height,
+                text
+            });
+        }
+    }
+
+    return trimHeaderBoundsWhitespace({ left, top, width, height, text });
+}
+
 /**
  * Detector mínimo de headers BOM.
  * Detecta la fila de cabecera y devuelve highlights coloreados por tipo + info de debug.
@@ -3294,7 +3566,7 @@ export function runPdfHeaderOnlyDetection() {
     const entries = [];
 
     bestByKey.forEach((match, key) => {
-        const bounds = match.bounds || match.cluster;
+        const bounds = refineCombinedHeaderBounds(match, key);
         if (!bounds) return;
         const top = Number(bounds.top || 0);
         const left = Number(bounds.left || 0);
@@ -3307,11 +3579,11 @@ export function runPdfHeaderOnlyDetection() {
             top: Math.max(0, top - 3),
             width: Math.max(18, width + 8),
             height: Math.max(14, height + 8),
-            text: String((match.bounds?.text || match.cluster?.text) || '').trim(),
+            text: String(bounds.text || '').trim(),
             kind
         });
         entries.push({
-            text: String((match.bounds?.text || match.cluster?.text) || '').trim(),
+            text: String(bounds.text || '').trim(),
             key,
             label: match.label,
             variant: match.variant,

@@ -47,6 +47,10 @@ export const state = {
     currentPdfExperimentalRowHighlights: [],
     currentPdfExperimentalRowSearch: null,
     currentPdfExperimentalColumnDetection: null,
+    currentPdfLastTextItems: [],
+    currentPdfLastViewport: null,
+    currentPdfLastTextSource: '',
+    currentPdfLastTextPageNumber: 0,
     currentPdfTableParserDebug: {
         enabled: false,
         overlayStyle: 'advanced',

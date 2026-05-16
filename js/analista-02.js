@@ -20,7 +20,7 @@ import {
 
 import { publishRevisionSync } from './revision-sync.js';
 
-import { getPdfExperimentalBlueTexts, initPdfZoomControls, loadPdfClear, loadPdfWithPage, requestPdfRelayout, setPdfExperimentalRowHighlights, setPdfReadTokens, setPdfSelection, runPdfHeaderOnlyDetection, clearPdfHeaderOnlyOverlay } from './pdf-viewer.js';
+import { getPdfExperimentalBlueTexts, initPdfZoomControls, loadPdfClear, loadPdfWithPage, requestPdfRelayout, setPdfExperimentalRowHighlights, setPdfReadTokens, setPdfSelection, runPdfHeaderOnlyDetection, clearPdfHeaderOnlyOverlay, refreshPdfSelectionOverlayFromCache } from './pdf-viewer.js';
 
 import { evaluateQaChecksForField, evaluateRowQaChecks, getAllQaCheckCodes, getQaCheckLabel } from './qa-checks.js';
 
@@ -269,6 +269,12 @@ const PDF_LINE_Y_TOLERANCE = 2;
 const PDF_ROW_Y_TOLERANCE = 5;
 
 const PDF_ROW_HIGHLIGHT_DEBUG = true;
+
+// Flags separados para evitar acoplar rendimiento con botones de diagnostico.
+const PDF_FEATURE_HEADERS_ENABLED = true;
+const PDF_FEATURE_BLUE_TEXT_PANEL_ENABLED = false;
+const PDF_FEATURE_PN_ROW_DEBUG_ENABLED = false;
+const PDF_FEATURE_BACKGROUND_TOKEN_SCAN_ENABLED = false;
 
 const RIGHT_PANEL_WIDTH_KEY = 'analista02:right-panel-width';
 
@@ -5945,7 +5951,11 @@ async function renderComparisonTable(row) {
 
 
 
-    // ── Paso 2: lectura asíncrona del PDF en segundo plano (solo para resaltado de tokens) ─────
+    // ── Paso 2 (opcional): lectura asíncrona del PDF en segundo plano (ruta pesada) ─────
+
+    if (!PDF_FEATURE_BACKGROUND_TOKEN_SCAN_ENABLED) {
+        return;
+    }
 
     const renderToken = ++comparisonRenderToken;
 
@@ -6165,6 +6175,23 @@ function syncPdfWithCurrentRow(row) {
 
         return;
 
+    }
+
+    const targetPageNum = Number.parseInt(String(page).replace(/[^0-9]/g, ''), 10);
+    const currentPageNum = Number(state.currentPdfPageNumber || 0);
+    const currentSource = String(state.currentPdfSource || '');
+    const currentBook = currentSource
+        ? decodeURIComponent(currentSource.split('/').pop() || '').replace(/\.pdf$/i, '')
+        : '';
+
+    if (
+        Number.isFinite(targetPageNum)
+        && targetPageNum > 0
+        && currentPageNum === targetPageNum
+        && currentBook === book
+    ) {
+        refreshPdfSelectionOverlayFromCache();
+        return;
     }
 
 
@@ -8088,7 +8115,11 @@ async function initialize() {
 
         initPdfZoomControls();
 
-        syncPdfBlueTextsArea();
+        applyPdfFeatureFlagsToUi();
+
+        if (PDF_FEATURE_BLUE_TEXT_PANEL_ENABLED) {
+            syncPdfBlueTextsArea();
+        }
 
         loadPdfClear();
 
@@ -8145,6 +8176,35 @@ function bindClick(id, callback) {
     if (!(element instanceof HTMLElement)) return;
 
     element.addEventListener('click', callback);
+
+}
+
+
+function applyPdfFeatureFlagsToUi() {
+
+    const blueFillBtn = $('pdfBlueTextsFillBtn');
+    if (blueFillBtn instanceof HTMLButtonElement) {
+        blueFillBtn.disabled = !PDF_FEATURE_BLUE_TEXT_PANEL_ENABLED;
+        if (!PDF_FEATURE_BLUE_TEXT_PANEL_ENABLED) blueFillBtn.title = 'Desactivado en modo rendimiento';
+    }
+
+    const blueCopyBtn = $('pdfBlueTextsCopyBtn');
+    if (blueCopyBtn instanceof HTMLButtonElement) {
+        blueCopyBtn.disabled = !PDF_FEATURE_BLUE_TEXT_PANEL_ENABLED;
+        if (!PDF_FEATURE_BLUE_TEXT_PANEL_ENABLED) blueCopyBtn.title = 'Desactivado en modo rendimiento';
+    }
+
+    const markPnBtn = $('markPnRowBtn');
+    if (markPnBtn instanceof HTMLButtonElement) {
+        markPnBtn.disabled = !PDF_FEATURE_PN_ROW_DEBUG_ENABLED;
+        if (!PDF_FEATURE_PN_ROW_DEBUG_ENABLED) markPnBtn.title = 'Desactivado en modo rendimiento';
+    }
+
+    const detectHeadersBtn = $('detectHeadersBtn');
+    if (detectHeadersBtn instanceof HTMLButtonElement) {
+        detectHeadersBtn.disabled = !PDF_FEATURE_HEADERS_ENABLED;
+        if (!PDF_FEATURE_HEADERS_ENABLED) detectHeadersBtn.title = 'Detectar headers desactivado';
+    }
 
 }
 
@@ -8271,6 +8331,10 @@ bindClick('recomputePdfRunBtn', () => {
 
 bindClick('pdfBlueTextsFillBtn', () => {
 
+    if (!PDF_FEATURE_BLUE_TEXT_PANEL_ENABLED) {
+        return;
+    }
+
     if (!syncPdfBlueTextsArea()) {
 
         alert('No se encontró la caja de texto azul.');
@@ -8281,6 +8345,10 @@ bindClick('pdfBlueTextsFillBtn', () => {
 
 
 bindClick('pdfBlueTextsCopyBtn', () => {
+
+    if (!PDF_FEATURE_BLUE_TEXT_PANEL_ENABLED) {
+        return;
+    }
 
     copyPdfBlueTextsArea().catch((error) => {
 
@@ -8293,6 +8361,10 @@ bindClick('pdfBlueTextsCopyBtn', () => {
 
 
 bindClick('markPnRowBtn', () => {
+
+    if (!PDF_FEATURE_PN_ROW_DEBUG_ENABLED) {
+        return;
+    }
 
     highlightPdfRowByPnFinal(currentRow).catch((error) => {
 
@@ -8309,6 +8381,9 @@ bindClick('markPnRowBtn', () => {
 });
 
 bindClick('detectHeadersBtn', () => {
+    if (!PDF_FEATURE_HEADERS_ENABLED) {
+        return;
+    }
     const result = runPdfHeaderOnlyDetection();
     renderHeaderDetectionPanel(result);
 });
