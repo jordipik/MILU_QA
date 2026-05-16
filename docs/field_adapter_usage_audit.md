@@ -4,22 +4,22 @@ Fecha: 2026-05-16
 
 ## Resumen global
 
-- Archivos escaneados: 121
-- Archivos con accesos legacy directos: 55
-- Total de accesos legacy detectados: 489
-- LOW: 172
-- MEDIUM: 82
-- HIGH: 113
-- IGNORE: 122
+- Archivos escaneados: 125
+- Archivos con accesos legacy directos: 56
+- Total de accesos legacy detectados: 491
+- LOW: 170
+- MEDIUM: 91
+- HIGH: 104
+- IGNORE: 126
 
 ## Archivos con mas accesos legacy
 
 - server.js: 84
-- js/analista-02.js: 28
+- js/analista-02.js: 37
 - js/qa-milu.js: 25
-- generate_synthetic_exports.js: 21
 - server/services/pn-review-qa-cache.js: 20
 - scripts/db/import_engines_to_sqlite.js: 15
+- generate_synthetic_exports.js: 14
 - js/qa-table.js: 14
 - js/export-wordpress.js: 12
 - server/services/sqlite-mirror-analytics.js: 12
@@ -32,16 +32,16 @@ Fecha: 2026-05-16
 
 ## Campos legacy mas usados
 
-- status: 114
-- sust_hierarchie: 51
-- exp_imagenes: 40
+- status: 112
+- sust_hierarchie: 47
+- exp_imagenes: 38
 - gesa: 34
-- sust_new_part_number: 26
-- PART NO.: 19
-- sust_superseded_list: 16
-- sust_status: 16
+- sust_new_part_number: 28
+- PART NO.: 18
+- sust_superseded_list: 18
+- sust_status: 18
+- normalizado: 15
 - dimensions_gesa: 14
-- normalizado: 14
 - units: 11
 - Source Page: 5
 - pages: 2
@@ -71,26 +71,26 @@ Fecha: 2026-05-16
 
 ## Riesgos HIGH (muestra)
 
-- generate_synthetic_exports.js:31 -> sust_hierarchie (backend/write/export/qa-state/synthetic area)
-- generate_synthetic_exports.js:39 -> gesa (backend/write/export/qa-state/synthetic area)
-- generate_synthetic_exports.js:56 -> dimensions_gesa (backend/write/export/qa-state/synthetic area)
-- generate_synthetic_exports.js:69 -> units (backend/write/export/qa-state/synthetic area)
-- generate_synthetic_exports.js:150 -> units (backend/write/export/qa-state/synthetic area)
-- generate_synthetic_exports.js:155 -> dimensions_gesa (backend/write/export/qa-state/synthetic area)
-- generate_synthetic_exports.js:209 -> exp_imagenes (backend/write/export/qa-state/synthetic area)
-- generate_synthetic_exports.js:211 -> sust_hierarchie (backend/write/export/qa-state/synthetic area)
-- generate_synthetic_exports.js:212 -> sust_superseded_list (backend/write/export/qa-state/synthetic area)
-- generate_synthetic_exports.js:213 -> sust_new_part_number (backend/write/export/qa-state/synthetic area)
-- generate_synthetic_exports.js:224 -> normalizado (backend/write/export/qa-state/synthetic area)
-- generate_synthetic_exports.js:232 -> pages (backend/write/export/qa-state/synthetic area)
-- generate_synthetic_exports.js:239 -> sust_new_part_number (backend/write/export/qa-state/synthetic area)
-- generate_synthetic_exports.js:254 -> sust_hierarchie (backend/write/export/qa-state/synthetic area)
-- generate_synthetic_exports.js:255 -> sust_new_part_number (backend/write/export/qa-state/synthetic area)
-- generate_synthetic_exports.js:261 -> exp_imagenes (backend/write/export/qa-state/synthetic area)
-- generate_synthetic_exports.js:275 -> normalizado (backend/write/export/qa-state/synthetic area)
-- generate_synthetic_exports.js:283 -> pages (backend/write/export/qa-state/synthetic area)
-- generate_synthetic_exports.js:313 -> sust_hierarchie (backend/write/export/qa-state/synthetic area)
-- generate_synthetic_exports.js:319 -> sust_hierarchie (backend/write/export/qa-state/synthetic area)
+- generate_synthetic_exports.js:31 -> gesa (backend/write/export/qa-state/synthetic area)
+- generate_synthetic_exports.js:48 -> dimensions_gesa (backend/write/export/qa-state/synthetic area)
+- generate_synthetic_exports.js:61 -> units (backend/write/export/qa-state/synthetic area)
+- generate_synthetic_exports.js:142 -> units (backend/write/export/qa-state/synthetic area)
+- generate_synthetic_exports.js:147 -> dimensions_gesa (backend/write/export/qa-state/synthetic area)
+- generate_synthetic_exports.js:204 -> sust_superseded_list (backend/write/export/qa-state/synthetic area)
+- generate_synthetic_exports.js:205 -> sust_new_part_number (backend/write/export/qa-state/synthetic area)
+- generate_synthetic_exports.js:216 -> normalizado (backend/write/export/qa-state/synthetic area)
+- generate_synthetic_exports.js:224 -> pages (backend/write/export/qa-state/synthetic area)
+- generate_synthetic_exports.js:231 -> sust_new_part_number (backend/write/export/qa-state/synthetic area)
+- generate_synthetic_exports.js:247 -> sust_new_part_number (backend/write/export/qa-state/synthetic area)
+- generate_synthetic_exports.js:267 -> normalizado (backend/write/export/qa-state/synthetic area)
+- generate_synthetic_exports.js:275 -> pages (backend/write/export/qa-state/synthetic area)
+- generate_synthetic_exports.js:312 -> sust_new_part_number (backend/write/export/qa-state/synthetic area)
+- server.js:181 -> dimensions_gesa (backend/write/export/qa-state/synthetic area)
+- server.js:212 -> sust_status (backend/write/export/qa-state/synthetic area)
+- server.js:213 -> sust_hierarchie (backend/write/export/qa-state/synthetic area)
+- server.js:214 -> sust_new_part_number (backend/write/export/qa-state/synthetic area)
+- server.js:215 -> sust_superseded_list (backend/write/export/qa-state/synthetic area)
+- server.js:248 -> sust_new_part_number (backend/write/export/qa-state/synthetic area)
 
 ## Recomendaciones
 

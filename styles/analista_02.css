@@ -1503,6 +1503,41 @@ body.a2-resizing * {
     overflow: auto;
 }
 
+/* Barra de herramientas encima de la tabla comparativa (field registry refactorizado) */
+.a2-compare-table-toolbar {
+    display: flex;
+    justify-content: flex-end;
+    padding: 4px 8px;
+    border-bottom: 1px solid var(--line);
+}
+
+.a2-debug-toggle {
+    font-size: 11px;
+    padding: 2px 8px;
+    border: 1px solid #c0cfe0;
+    border-radius: 4px;
+    background: #f3f7fc;
+    cursor: pointer;
+    color: #4b6080;
+}
+
+.a2-debug-toggle:hover {
+    background: #e0eaf5;
+}
+
+/* Modo depuración: muestra el nombre técnico del campo (data-field-key) debajo del valor */
+.a2-compare-table.is-debug td[data-field-key]:not([data-field-key=''])::after {
+    content: attr(data-field-key);
+    display: block;
+    font-size: 9px;
+    color: #7090b0;
+    font-family: 'IBM Plex Mono', monospace;
+    margin-top: 2px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
 .a2-compare-table {
     width: 100%;
     border-collapse: collapse;
@@ -1583,6 +1618,17 @@ body.a2-resizing * {
 
 .a2-compare-table td.compare-missing {
     background: rgba(198, 60, 44, 0.12);
+}
+
+/* Aviso discreto: celda PDF vacía aunque el campo _pdf existe (recompute-pdf-auto pendiente) */
+.a2-compare-table td.pdf-empty-hint {
+    background: repeating-linear-gradient(135deg,
+            transparent,
+            transparent 4px,
+            rgba(180, 140, 0, 0.07) 4px,
+            rgba(180, 140, 0, 0.07) 8px);
+    color: #9c7c00;
+    cursor: help;
 }
 
 .a2-compare-table td.compare-final-ok {

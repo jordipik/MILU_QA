@@ -173,23 +173,28 @@
                 </div>
             </div>
 
-            <section class="a2-compare-table-card" aria-label="Comparativa RAW, GESA, SUST y FINAL">
+            <!-- Tabla comparativa refactorizada. Columnas basadas en el field registry:
+                 campo_excel | campo_gesa | campo_subst | campo_pdf | campo_final | campo_error -->
+            <section class="a2-compare-table-card" aria-label="Comparativa Excel, GESA, SUBST, PDF y Final">
+                <div class="a2-compare-table-toolbar">
+                    <button id="comparisonDebugBtn" type="button" class="a2-debug-toggle"
+                        title="Alternar vista de nombres técnicos de campos (field registry)">Debug</button>
+                </div>
                 <table class="a2-compare-table">
                     <thead>
                         <tr>
                             <th>Campo</th>
-                            <th>RAW</th>
+                            <th>Excel</th>
                             <th>GESA</th>
-                            <th>SUST</th>
-                            <th>FINAL</th>
+                            <th>SUBST</th>
                             <th>PDF</th>
-                            <th>PDF_AUTO</th>
-                            <th id="errColHeader" class="err-col-header" title="Ver listado de checks">ERR</th>
+                            <th>Final</th>
+                            <th id="errColHeader" class="err-col-header" title="Ver listado de checks">Error</th>
                         </tr>
                     </thead>
                     <tbody id="comparisonBody">
                         <tr>
-                            <td colspan="8">Selecciona un registro para ver la comparativa.</td>
+                            <td colspan="7">Selecciona un registro para ver la comparativa.</td>
                         </tr>
                     </tbody>
                 </table>
