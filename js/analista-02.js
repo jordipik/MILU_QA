@@ -8491,6 +8491,25 @@ bindClick('pdfTableRecalcBtn', () => {
 });
 
 
+// Selector de modo de detección de columnas
+const columnModeSelect = document.getElementById('pdfColumnDetectionMode');
+if (columnModeSelect) {
+    // Cargar modo guardado en localStorage
+    const savedMode = localStorage.getItem('pdfColumnDetectionMode') || 'header-left-lines-mark-only';
+    columnModeSelect.value = savedMode;
+    
+    columnModeSelect.addEventListener('change', (e) => {
+        const mode = e.target.value;
+        localStorage.setItem('pdfColumnDetectionMode', mode);
+        // Pasar el modo al estado global para que pdf-viewer.js lo use
+        window.pdfColumnDetectionMode = mode;
+        // Recalcular tabla con el nuevo modo
+        requestPdfRelayout();
+    });
+    
+    // Establecer modo inicial en variable global
+    window.pdfColumnDetectionMode = savedMode;
+}
 
 bindClick('statusEstadoOkBtn', () => {
 

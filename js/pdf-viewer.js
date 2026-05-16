@@ -2345,6 +2345,16 @@ function renderPdfSelectionHighlights(highlights, viewport) {
             if (item.color) box.style.background = item.color;
         } else if (kind === 'table-debug-text-unassigned') {
             box.classList.add('pdf-table-debug-text-unassigned');
+        } else if (kind === 'header-left-line-initial') {
+            box.classList.add('pdf-header-left-line-initial');
+        } else if (kind === 'header-left-line-adjusted') {
+            box.classList.add('pdf-header-left-line-adjusted');
+            if (item.color) box.style.setProperty('--hll-color', item.color);
+        } else if (kind === 'header-left-line-label') {
+            box.classList.add('pdf-header-left-line-label');
+            box.textContent = String(item.text || '');
+            if (item.color) box.style.color = item.color;
+            if (item.fontSize) box.style.fontSize = `${item.fontSize}px`;
         } else {
             return;
         }
@@ -2431,7 +2441,8 @@ async function renderPdfSelectionOverlay(page, viewport, requestToken = state.cu
         // Calcular debug overlay tabular si está activado
         if (state.pdfTableDebugEnabled) {
             try {
-                const tableResult = runTableParser(textContent.items || [], viewport, {});
+                const columnDetectionMode = window.pdfColumnDetectionMode || 'header-left-lines-mark-only';
+                const tableResult = runTableParser(textContent.items || [], viewport, { columnDetectionMode });
                 state.currentPdfTableDebugOverlay = tableResult.debugOverlay || [];
                 state.currentPdfTableParseResult = tableResult;
                 if (tableResult && tableResult.geometryDebug) {

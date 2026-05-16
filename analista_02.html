@@ -238,6 +238,14 @@
                         title="Activar o desactivar el debug visual de tabla PDF">Debug Tabla ON</button>
                     <button id="pdfTableRecalcBtn" class="pdf-row-debug-btn" type="button"
                         title="Borrar overlay de columnas/rectangulos y recalcular deteccion">Recalcular Tabla</button>
+                                        <label class="pdf-column-mode-label" title="Seleccionar estrategia de detección de columnas">
+                                            Modo:
+                                            <select id="pdfColumnDetectionMode" class="pdf-column-mode-select">
+                                                <option value="header-left-lines-mark-only">Header Lines (Visual)</option>
+                                                <option value="header-left-lines">Header Lines (Full)</option>
+                                                <option value="normal">Normal</option>
+                                            </select>
+                                        </label>
                     <span class="pdf-page">1 / 12</span>
                 </div>
 
