@@ -8455,7 +8455,7 @@ function renderBodyColumnHighlightPanel(result) {
     const columnStats = result?.columnStats || {};
     const columnsHtml = Object.entries(columnStats).map(([label, stats]) => {
         const c = COLUMN_COLORS[stats.key] || { border: '#888', bg: 'rgba(0,0,0,0.05)' };
-        const samplesStr = stats.samples && stats.samples.length > 0 
+        const samplesStr = stats.samples && stats.samples.length > 0
             ? stats.samples.join(', ').substring(0, 80) + '...'
             : '-';
         return `<div class="header-detection-entry" style="border-color:${c.border};background:${c.bg}">
@@ -8474,7 +8474,71 @@ function renderBodyColumnHighlightPanel(result) {
         </div>`;
     }
 
-    body.innerHTML = columnsHtml + warningsHtml;
+    // Extra: columna decorativa ignorada
+    let decorativeHtml = '';
+    if (result.decorativeColumnIgnored && result.decorativeColumn) {
+        const dc = result.decorativeColumn;
+        const dw = Math.round((dc.x1 ?? 0) - (dc.x0 ?? 0));
+        decorativeHtml = `<div style="margin-top:6px;padding:4px 6px;background:rgba(220,38,38,0.08);border:1px solid #dc2626;border-radius:4px;font-size:11px;color:#dc2626">
+            🚫 Columna decorativa ignorada: <b>${dc.key}</b> · x0=${dc.x0} · ancho=${dw}px
+        </div>`;
+    }
+
+    // Extra: candidatos multiline
+    let multilineHtml = '';
+    const mlCount = result.multilineCandidateCount ?? 0;
+    if (mlCount > 0) {
+        const mlSamples = (result.multilineCandidates || []).slice(0, 6)
+            .map((m) => `<span style="background:rgba(168,85,247,0.12);border:1px solid #a855f7;border-radius:3px;padding:1px 4px;margin:1px;display:inline-block;font-size:10px">${m.text} <span style="opacity:0.6">[${m.column}]</span></span>`)
+            .join('');
+        multilineHtml = `<div style="margin-top:6px;padding:4px 6px;background:rgba(168,85,247,0.07);border:1px solid #a855f7;border-radius:4px;font-size:11px">
+            🔀 <b>${mlCount}</b> candidato(s) multiline (solo debug): ${mlSamples}
+        </div>`;
+    }
+
+    // Extra: tabla rectDebug (primeros 10 rects con heurísticas)
+    let rectDebugHtml = '';
+    const rectDebug = result.rectDebug || [];
+    if (rectDebug.length > 0) {
+        const rows = rectDebug.slice(0, 10).map((rd) => {
+            const pnBadge = rd.isLikelyPartNumber ? '<span style="color:#16a34a;font-weight:700">PN</span>' : '';
+            const fnBadge = rd.isLikelyFnToken ? '<span style="color:#a855f7;font-weight:700">FN</span>' : '';
+            const dsBadge = rd.isLikelyDesignationText ? '<span style="color:#ea580c;font-weight:700">DS</span>' : '';
+            const mlBadge = rd.multilineCandidate ? '<span style="color:#a855f7">ML</span>' : '';
+            const splitBadge = rd.splitFromCombined ? '<span style="color:#dc2626;font-weight:700">SPLIT</span>' : '';
+            const c = COLUMN_COLORS[rd.column] || { border: '#888' };
+            const boundary = rd.boundaryCase || '-';
+            const beforeAfter = `${rd.assignedColumnBeforeCorrection || '-'}→${rd.assignedColumnAfterCorrection || '-'}`;
+            return `<tr>
+                <td style="max-width:140px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="${rd.text}">${rd.text}</td>
+                <td style="color:${c.border};font-weight:600">${rd.column}</td>
+                <td>${rd.assignedBy}</td>
+                <td>${rd.overlapRatio}</td>
+                <td>${pnBadge}${fnBadge}${dsBadge}${mlBadge}${splitBadge}</td>
+                <td>${boundary}</td>
+                <td>${beforeAfter}</td>
+                <td style="max-width:140px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="${rd.originalText || rd.text}">${rd.originalText || rd.text}</td>
+            </tr>`;
+        }).join('');
+        rectDebugHtml = `<details style="margin-top:8px;font-size:11px">
+            <summary style="cursor:pointer;color:#555;padding:2px 0">▶ rectDebug (primeros ${Math.min(10, rectDebug.length)} de ${rectDebug.length})</summary>
+            <table style="width:100%;border-collapse:collapse;margin-top:4px">
+                <thead><tr style="background:#f0f0f0">
+                    <th style="text-align:left;padding:2px 4px">Texto</th>
+                    <th style="text-align:left;padding:2px 4px">Columna</th>
+                    <th style="text-align:left;padding:2px 4px">assignedBy</th>
+                    <th style="text-align:left;padding:2px 4px">overlap</th>
+                    <th style="text-align:left;padding:2px 4px">Flags</th>
+                    <th style="text-align:left;padding:2px 4px">boundaryCase</th>
+                    <th style="text-align:left;padding:2px 4px">before→after</th>
+                    <th style="text-align:left;padding:2px 4px">originalText</th>
+                </tr></thead>
+                <tbody>${rows}</tbody>
+            </table>
+        </details>`;
+    }
+
+    body.innerHTML = columnsHtml + decorativeHtml + multilineHtml + rectDebugHtml + warningsHtml;
     panel.hidden = false;
 }
 

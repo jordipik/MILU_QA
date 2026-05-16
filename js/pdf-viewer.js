@@ -3662,6 +3662,165 @@ export function clearPdfHeaderOnlyOverlay() {
  * Las columnas se definen usando los límites izquierdos (x0) de los headers detectados.
  * Cada texto del cuerpo se pinta con el color del header de su columna.
  */
+/**
+ * Devuelve true si el texto parece un Part Number.
+ * Regla endurecida: sin espacios y con patrones fuertes de PN.
+ */
+function isLikelyPartNumber(text) {
+    if (!text) return false;
+    const t = text.trim();
+    if (t.length < 3 || t.length > 40) return false;
+    if (/\s/.test(t)) return false;
+
+    const upper = t.toUpperCase();
+    const designationWords = [
+        'PRESSURE', 'SENSOR', 'WIRING', 'HARNESS', 'BUSHING', 'THREADED',
+        'WASHER', 'TEMPERATURE', 'CONNECTOR', 'PLUG', 'COUPLING'
+    ];
+    if (designationWords.some((w) => upper.includes(w))) return false;
+
+    const digitCount = (t.match(/\d/g) || []).length;
+    const compactAlphaNum = /^[A-Z0-9][A-Z0-9\-./]{7,}$/i.test(t);
+
+    if (/^X00/i.test(t)) return true;
+    if (/^000/.test(t)) return true;
+    if (/\d{6,}/.test(t)) return true;
+    if (compactAlphaNum && digitCount >= 4) return true;
+
+    return false;
+}
+
+/**
+ * Devuelve true si el texto parece DESIGNATION (descripción) y no PN compacto.
+ */
+function isLikelyDesignationText(text) {
+    if (!text) return false;
+    const t = String(text).trim();
+    if (!t) return false;
+
+    const upper = t.toUpperCase();
+    const hasSpaces = /\s/.test(t);
+    const longWords = upper.match(/[A-Z]{6,}/g) || [];
+    const designationWords = [
+        'PRESSURE', 'SENSOR', 'WIRING', 'HARNESS', 'BUSHING', 'THREADED',
+        'WASHER', 'TEMPERATURE', 'CONNECTOR', 'PLUG', 'COUPLING',
+        'VALVE', 'SWITCH', 'FILTER', 'ASSEMBLY', 'HOUSING'
+    ];
+    const hasDesignationWord = designationWords.some((w) => upper.includes(w));
+    const manyLetters = (upper.match(/[A-Z]/g) || []).length >= 6;
+
+    if (hasSpaces) return true;
+    if (longWords.length > 0) return true;
+    if (hasDesignationWord) return true;
+    if (t.length > 14 && manyLetters) return true;
+    return false;
+}
+
+/**
+ * Devuelve true si el texto parece un token de columna FN (abreviatura corta 1-4 letras).
+ */
+function isLikelyFnToken(text) {
+    if (!text) return false;
+    const t = text.trim();
+    if (t.length === 0 || t.length > 4) return false;
+    return /^[A-Z]{1,4}$/i.test(t);
+}
+
+/**
+ * Calcula el ratio de solapamiento horizontal entre un rect y un rango de columna.
+ * Devuelve un valor en [0, 1]: fracción del ancho del rect solapada con la columna.
+ */
+function computeRectColumnOverlap(rectLeft, rectWidth, colX0, colX1) {
+    if (rectWidth <= 0) return 0;
+    const rectRight = rectLeft + rectWidth;
+    const overlapLeft = Math.max(rectLeft, colX0);
+    const overlapRight = Math.min(rectRight, colX1);
+    const overlapWidth = Math.max(0, overlapRight - overlapLeft);
+    return overlapWidth / rectWidth;
+}
+
+/**
+ * Divide visualmente rects combinados WEIGHT+FN del estilo "105,200 g AB".
+ * Devuelve null si no parece un combinado.
+ */
+function splitWeightFnCombinedRect(text, rect, columns) {
+    if (!text || !rect || !columns || !columns.length) return null;
+    const raw = String(text).trim();
+    const match = raw.match(/^(.+?\b(?:g|kg|pc)\b)\s+([A-Z]{1,4}(?:\s+[A-Z]{1,4})?)$/i);
+    if (!match) return null;
+
+    const weightText = (match[1] || '').trim();
+    const fnText = (match[2] || '').trim();
+    if (!weightText || !fnText) return null;
+
+    const fnTokens = fnText.split(/\s+/).filter(Boolean);
+    if (fnTokens.length === 0 || fnTokens.some((tok) => !isLikelyFnToken(tok))) return null;
+
+    const fnColumn = columns.find((c) => c.key === 'fn');
+    const totalLen = Math.max(1, raw.length);
+    const ratio = Math.max(0.2, Math.min(0.9, weightText.length / totalLen));
+    let splitX = rect.left + rect.width * ratio;
+    if (fnColumn && Number.isFinite(fnColumn.x0)) {
+        splitX = Math.max(splitX, fnColumn.x0 - 2);
+    }
+
+    const rectRight = rect.left + rect.width;
+    const weightWidth = Math.max(8, splitX - rect.left);
+    const fnWidth = Math.max(8, rectRight - splitX);
+
+    return {
+        splitType: 'weight_fn',
+        originalText: raw,
+        parts: [
+            {
+                text: weightText,
+                normalizedText: normalizePdfToken(weightText),
+                left: rect.left,
+                top: rect.top,
+                width: weightWidth,
+                height: rect.height,
+                centerY: rect.centerY,
+                _forcedKey: 'weight'
+            },
+            {
+                text: fnText,
+                normalizedText: normalizePdfToken(fnText),
+                left: splitX,
+                top: rect.top,
+                width: fnWidth,
+                height: rect.height,
+                centerY: rect.centerY,
+                _forcedKey: 'fn'
+            }
+        ]
+    };
+}
+
+/**
+ * Detecta y elimina una columna decorativa izquierda (flecha/icono) antes de POS.
+ * Una columna es decorativa si es muy estrecha (<20px) o su clave no es reconocida.
+ */
+function filterDecorativeLeftColumns(columns) {
+    if (columns.length < 2) {
+        return { filteredColumns: columns, decorativeColumnIgnored: false, decorativeColumn: null };
+    }
+    const first = columns[0];
+    const knownKeys = ['pos', 'part_no', 'designation', 'model_type', 'qty', 'units', 'weight', 'fn', 'measurement', 'standard'];
+    const firstWidth = first.x1 - first.x0;
+    const isNarrow = firstWidth < 20;
+    const isUnknown = !knownKeys.includes(first.key);
+    if (isNarrow || isUnknown) {
+        return { filteredColumns: columns.slice(1), decorativeColumnIgnored: true, decorativeColumn: first };
+    }
+    return { filteredColumns: columns, decorativeColumnIgnored: false, decorativeColumn: null };
+}
+
+/**
+ * Fase experimental: colorea los textos del cuerpo de tabla por columnas.
+ * Las columnas se definen usando los límites izquierdos (x0) de los headers detectados.
+ * Aplica heurísticas para PART NO. (isLikelyPartNumber) y FN (isLikelyFnToken),
+ * detecta columnas decorativas izquierdas y marca candidatos multiline en debug.
+ */
 export function buildHeaderColumnBodyHighlights() {
     const headerDebug = state.currentPdfHeaderOnlyDebug;
     const textItems = state.currentPdfLastTextItems || [];
@@ -3716,7 +3875,7 @@ export function buildHeaderColumnBodyHighlights() {
     }
 
     // Definir columnas a partir del x0 de cada header
-    const columns = foundHeaders.map((header, idx) => {
+    const rawColumns = foundHeaders.map((header, idx) => {
         const nextHeader = foundHeaders[idx + 1];
         const x1 = nextHeader ? nextHeader.x0 : Math.max(1, viewport.width);
         return {
@@ -3730,6 +3889,10 @@ export function buildHeaderColumnBodyHighlights() {
         };
     });
 
+    // Filtrar columna decorativa izquierda (flecha/icono antes de POS)
+    const { filteredColumns: columns, decorativeColumnIgnored, decorativeColumn } =
+        filterDecorativeLeftColumns(rawColumns);
+
     // Calcular límite inferior de headers para definir "cuerpo"
     const headerMaxY1 = Math.max(...foundHeaders.map((h) => h.y1 || 0), 0);
     const bodyMargin = Math.max(2, Math.round(Math.min(...foundHeaders.map((h) => h.y1 - h.y0), 20) * 0.25));
@@ -3737,16 +3900,27 @@ export function buildHeaderColumnBodyHighlights() {
 
     // Extraer rects de texto del cuerpo
     const rects = extractPdfTextRects(textItems, viewport);
+    const pageWidth = viewport.width || 500;
     const pageHeight = viewport.height || 0;
     const bodyRects = rects.filter((rect) => {
         const rectTop = rect.top - rect.height;
         return rectTop >= bodyTop && rect.top < pageHeight;
     });
 
+    const partNoColumn = columns.find((c) => c.key === 'part_no') || null;
+    const designationColumn = columns.find((c) => c.key === 'designation') || null;
+    const weightColumn = columns.find((c) => c.key === 'weight') || null;
+    const fnColumn = columns.find((c) => c.key === 'fn') || null;
+    const measurementColumn = columns.find((c) => c.key === 'measurement') || null;
+
+    // Límite izquierdo de la primera columna: rects más a la izq se omiten en nearest-fallback
+    const leftmostColumnX0 = columns.length > 0 ? columns[0].x0 : 0;
+
     // Asignar textos a columnas y generar highlights
     const MAX_HIGHLIGHTS = 150;
     const highlights = [];
     const assignedByColumn = new Map();
+    const rectDebugList = [];
     let ignoredCount = 0;
 
     bodyRects.forEach((rect) => {
@@ -3757,59 +3931,226 @@ export function buildHeaderColumnBodyHighlights() {
             ignoredCount++;
             return;
         }
-
         if (rect.width < 4 || rect.height < 4) {
             ignoredCount++;
             return;
         }
 
-        // Encontrar columna: usar centerX
-        const centerX = rect.left + (rect.width / 2);
-        let assignedColumn = null;
+        const splitResult = splitWeightFnCombinedRect(rect.text, rect, columns);
+        const rectParts = splitResult ? splitResult.parts : [rect];
 
-        for (const col of columns) {
-            if (centerX >= col.x0 && centerX < col.x1) {
-                assignedColumn = col;
-                break;
-            }
-        }
+        rectParts.forEach((part) => {
+            if (highlights.length >= MAX_HIGHLIGHTS) return;
 
-        // Si no encontró columna clara, asignar a la más cercana
-        if (!assignedColumn && columns.length > 0) {
-            let minDist = Infinity;
+            const centerX = part.left + part.width / 2;
+            const textPN = isLikelyPartNumber(part.text);
+            const textFN = isLikelyFnToken(part.text);
+            const textDesignation = isLikelyDesignationText(part.text);
+            const originalText = String(rect.text || '').trim();
+
+            // Puntuar cada columna con solapamiento real o donde caiga centerX
+            let bestColumn = null;
+            let bestScore = -Infinity;
+            let bestOverlapRatio = 0;
+            let assignedBy = 'none';
+            const candidateColumns = [];
+
             for (const col of columns) {
-                const colCenterX = (col.x0 + col.x1) / 2;
-                const dist = Math.abs(centerX - colCenterX);
-                if (dist < minDist) {
-                    minDist = dist;
-                    assignedColumn = col;
+                const overlapRatio = computeRectColumnOverlap(part.left, part.width, col.x0, col.x1);
+                const inCenter = centerX >= col.x0 && centerX < col.x1;
+
+                // Solo considerar columnas con solapamiento significativo o donde caiga centerX
+                if (overlapRatio < 0.05 && !inCenter) continue;
+
+                candidateColumns.push({ key: col.key, overlapRatio: Math.round(overlapRatio * 100) / 100 });
+
+                // Score base: overlap y centerX
+                let score = overlapRatio * 2;
+                if (inCenter) score += 1.0;
+
+                // Proximidad del borde izquierdo del rect al borde izquierdo de la columna
+                const leftEdgeDist = Math.abs(part.left - col.x0);
+                score += Math.max(0, 1 - leftEdgeDist / pageWidth) * 0.3;
+
+                // Heurística DESIGNATION vs PART NO.
+                if (textDesignation) {
+                    if (col.key === 'part_no') score -= 2.0;
+                    if (col.key === 'designation') score += 1.2;
+                }
+
+                // Heurística PART NO.: solo bonificar si overlap razonable o center claro
+                if (textPN) {
+                    const pnStrong = overlapRatio >= 0.35 || inCenter;
+                    if (col.key === 'part_no' && pnStrong) score += 1.2;
+                    if (col.key === 'designation') score -= 0.8;
+                }
+
+                // Heurística FN: favorecer fn, penalizar weight
+                if (textFN) {
+                    if (col.key === 'fn') score += 2.0;
+                    if (col.key === 'weight') score -= 2.0;
+                }
+
+                if (score > bestScore) {
+                    bestScore = score;
+                    bestColumn = col;
+                    bestOverlapRatio = overlapRatio;
+                    assignedBy = inCenter ? 'centerX' : (overlapRatio > 0.3 ? 'overlap' : 'heuristic');
                 }
             }
-        }
 
-        if (!assignedColumn) {
-            ignoredCount++;
-            return;
-        }
+            // Fallback: columna más cercana por centerX, solo si el rect está dentro del rango de columnas
+            if (!bestColumn && columns.length > 0 && centerX >= leftmostColumnX0) {
+                let minDist = Infinity;
+                for (const col of columns) {
+                    const colCenterX = (col.x0 + col.x1) / 2;
+                    const dist = Math.abs(centerX - colCenterX);
+                    if (dist < minDist) {
+                        minDist = dist;
+                        bestColumn = col;
+                        bestOverlapRatio = computeRectColumnOverlap(part.left, part.width, col.x0, col.x1);
+                        assignedBy = 'nearest';
+                    }
+                }
+            }
 
-        // Registrar asignación
-        if (!assignedByColumn.has(assignedColumn.key)) {
-            assignedByColumn.set(assignedColumn.key, []);
-        }
-        assignedByColumn.get(assignedColumn.key).push(rect.text);
+            if (!bestColumn) {
+                ignoredCount++;
+                return;
+            }
 
-        // Crear highlight
-        highlights.push({
-            left: Math.max(0, rect.left - 2),
-            top: Math.max(0, rect.top - rect.height - 2),
-            width: Math.max(12, rect.width + 4),
-            height: Math.max(10, rect.height + 4),
-            text: String(rect.text || '').trim(),
-            kind: assignedColumn.kind
+            const assignedColumnBeforeCorrection = bestColumn.key;
+            let assignedColumn = bestColumn;
+            let boundaryCase = null;
+
+            // Corrección frontera PART NO. vs DESIGNATION
+            if (partNoColumn && designationColumn) {
+                const partNoOverlap = computeRectColumnOverlap(part.left, part.width, partNoColumn.x0, partNoColumn.x1);
+                const designationOverlap = computeRectColumnOverlap(part.left, part.width, designationColumn.x0, designationColumn.x1);
+                const touchesBoundary = partNoOverlap > 0.05 && designationOverlap > 0.05;
+                if (touchesBoundary) {
+                    boundaryCase = 'part_no_designation';
+                    const distToPartNo = Math.abs(part.left - partNoColumn.x0);
+                    const distToDesignation = Math.abs(part.left - designationColumn.x0);
+                    const startsInDesignation = part.left >= designationColumn.x0;
+                    const hasSpaces = /\s/.test(String(part.text || '').trim());
+                    if (startsInDesignation || hasSpaces || distToDesignation < distToPartNo) {
+                        assignedColumn = designationColumn;
+                        assignedBy = 'heuristic';
+                    }
+                }
+
+                // Si parece designación, no dejarla en PART NO salvo solape mayoritario claro
+                if (textDesignation && assignedColumn.key === 'part_no' && partNoOverlap < 0.6) {
+                    assignedColumn = designationColumn;
+                    assignedBy = 'heuristic';
+                    boundaryCase = boundaryCase || 'part_no_designation';
+                }
+            }
+
+            // Corrección WEIGHT vs FN por borde derecho de WEIGHT y tokens FN cortos
+            if (weightColumn && fnColumn) {
+                const smallMargin = 4;
+                const inWeightToMeasurementBand = measurementColumn
+                    ? (centerX >= weightColumn.x0 && centerX <= measurementColumn.x0)
+                    : (centerX >= weightColumn.x0 && centerX <= fnColumn.x1);
+
+                if (part.left >= fnColumn.x0 - smallMargin) {
+                    assignedColumn = fnColumn;
+                    assignedBy = 'heuristic';
+                    boundaryCase = 'weight_fn';
+                } else if (textFN && inWeightToMeasurementBand) {
+                    assignedColumn = fnColumn;
+                    assignedBy = 'heuristic';
+                    boundaryCase = 'weight_fn';
+                }
+            }
+
+            // Forzado de split WEIGHT/FN combinado
+            if (part._forcedKey) {
+                const forcedColumn = columns.find((c) => c.key === part._forcedKey);
+                if (forcedColumn) {
+                    assignedColumn = forcedColumn;
+                    assignedBy = 'split';
+                    boundaryCase = 'weight_fn';
+                }
+            }
+
+            if (!assignedByColumn.has(assignedColumn.key)) {
+                assignedByColumn.set(assignedColumn.key, []);
+            }
+            assignedByColumn.get(assignedColumn.key).push(part.text);
+
+            rectDebugList.push({
+                text: part.text,
+                originalText,
+                column: assignedColumn.key,
+                overlapRatio: Math.round(bestOverlapRatio * 100) / 100,
+                assignedBy,
+                candidateColumns,
+                isLikelyPartNumber: textPN,
+                isLikelyFnToken: textFN,
+                isLikelyDesignationText: textDesignation,
+                boundaryCase,
+                splitFromCombined: Boolean(splitResult),
+                splitType: splitResult ? splitResult.splitType : null,
+                assignedColumnBeforeCorrection,
+                assignedColumnAfterCorrection: assignedColumn.key,
+                rectLeft: Math.round(part.left),
+                rectTop: Math.round(part.top),
+                rectWidth: Math.round(part.width),
+                multilineCandidate: false
+            });
+
+            highlights.push({
+                left: Math.max(0, part.left - 2),
+                top: Math.max(0, part.top - part.height - 2),
+                width: Math.max(12, part.width + 4),
+                height: Math.max(10, part.height + 4),
+                text: String(part.text || '').trim(),
+                kind: assignedColumn.kind,
+                _assignedBy: assignedBy,
+                _overlapRatio: Math.round(bestOverlapRatio * 100) / 100,
+                _isPN: textPN,
+                _isFN: textFN,
+                _isDesignation: textDesignation,
+                _boundaryCase: boundaryCase,
+                _splitFromCombined: Boolean(splitResult),
+                _splitType: splitResult ? splitResult.splitType : null,
+                _assignedColumnBeforeCorrection: assignedColumnBeforeCorrection,
+                _assignedColumnAfterCorrection: assignedColumn.key,
+                _originalText: originalText,
+                _multilineCandidate: false
+            });
         });
     });
 
-    // Compilar información de debug
+    // Detectar candidatos multiline (mismo cuerpo, misma columna, Y cercanos, al menos uno estrecho)
+    // Solo para debug; no se fusionan.
+    const multilineCandidateIndices = new Set();
+    for (let i = 0; i < rectDebugList.length; i++) {
+        const ri = rectDebugList[i];
+        for (let j = i + 1; j < rectDebugList.length; j++) {
+            const rj = rectDebugList[j];
+            if (ri.column !== rj.column) continue;
+            const yDiff = Math.abs(ri.rectTop - rj.rectTop);
+            if (yDiff > 30) continue; // ~2.5× altura típica de línea 12px
+            if (ri.rectWidth > 80 && rj.rectWidth > 80) continue; // ambos anchos → no candidatos
+            multilineCandidateIndices.add(i);
+            multilineCandidateIndices.add(j);
+        }
+    }
+
+    const multilineCandidates = [];
+    multilineCandidateIndices.forEach((idx) => {
+        if (rectDebugList[idx]) {
+            rectDebugList[idx].multilineCandidate = true;
+            multilineCandidates.push({ text: rectDebugList[idx].text, column: rectDebugList[idx].column });
+        }
+        if (highlights[idx]) highlights[idx]._multilineCandidate = true;
+    });
+
+    // Compilar estadísticas de columnas
     const columnStats = {};
     columns.forEach((col) => {
         const texts = assignedByColumn.get(col.key) || [];
@@ -3832,6 +4173,13 @@ export function buildHeaderColumnBodyHighlights() {
     if (highlights.length >= MAX_HIGHLIGHTS) {
         warnings.push(`Límite de highlights alcanzado (${MAX_HIGHLIGHTS}); algunos textos no se mostraron.`);
     }
+    if (decorativeColumnIgnored && decorativeColumn) {
+        const dw = Math.round((decorativeColumn.x1 ?? 0) - (decorativeColumn.x0 ?? 0));
+        warnings.push(`Columna decorativa ignorada: "${decorativeColumn.key}" (x0=${decorativeColumn.x0}, ancho=${dw}px).`);
+    }
+    if (multilineCandidates.length > 0) {
+        warnings.push(`${multilineCandidates.length} posible(s) candidato(s) multiline detectado(s) (solo debug; no fusionados).`);
+    }
 
     state.currentPdfHeaderColumnBodyHighlights = highlights;
     state.currentPdfHeaderColumnBodyDebug = {
@@ -3846,6 +4194,13 @@ export function buildHeaderColumnBodyHighlights() {
         assignedByColumn: Object.fromEntries(assignedByColumn),
         columnStats,
         ignoredRects: ignoredCount,
+        decorativeColumnIgnored,
+        decorativeColumn: decorativeColumn
+            ? { key: decorativeColumn.key, x0: decorativeColumn.x0, x1: decorativeColumn.x1 }
+            : null,
+        multilineCandidates,
+        multilineCandidateCount: multilineCandidates.length,
+        rectDebug: rectDebugList.slice(0, 50),
         warnings
     };
 
