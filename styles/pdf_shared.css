@@ -84,6 +84,79 @@
     max-width: none;
 }
 
+.pdf-blue-texts-panel {
+    margin: 12px 0 0;
+    padding: 12px;
+    border-top: 1px solid var(--line, #dbe2ef);
+    background: linear-gradient(180deg, rgba(248, 250, 252, 0.96), rgba(241, 245, 249, 0.98));
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.pdf-blue-texts-head {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+}
+
+.pdf-blue-texts-title {
+    font-size: 12px;
+    font-weight: 700;
+    color: var(--text, #0f172a);
+    letter-spacing: 0.02em;
+}
+
+.pdf-blue-texts-actions {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    flex-wrap: wrap;
+}
+
+.pdf-blue-texts-btn {
+    height: 28px;
+    padding: 0 10px;
+    border: 1px solid #cbd5e1;
+    border-radius: 8px;
+    background: #ffffff;
+    color: #0f172a;
+    font-size: 12px;
+    font-weight: 600;
+    cursor: pointer;
+}
+
+.pdf-blue-texts-btn:hover {
+    background: #f8fafc;
+}
+
+.pdf-blue-texts-btn:focus {
+    outline: none;
+    border-color: var(--brand, var(--acc, #2563eb));
+    box-shadow: 0 0 0 2px rgba(37, 99, 235, 0.12);
+}
+
+.pdf-blue-texts-area {
+    width: 100%;
+    min-height: 120px;
+    resize: vertical;
+    padding: 10px 12px;
+    border: 1px solid #cbd5e1;
+    border-radius: 10px;
+    background: #ffffff;
+    color: #0f172a;
+    font-family: inherit;
+    font-size: 12px;
+    line-height: 1.45;
+}
+
+.pdf-blue-texts-area:focus {
+    outline: none;
+    border-color: var(--brand, var(--acc, #2563eb));
+    box-shadow: 0 0 0 2px rgba(37, 99, 235, 0.12);
+}
+
 .pdf-selection-layer {
     position: absolute;
     inset: 0;

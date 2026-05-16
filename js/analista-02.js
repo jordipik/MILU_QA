@@ -20,7 +20,7 @@ import {
 
 import { publishRevisionSync } from './revision-sync.js';
 
-import { initPdfZoomControls, loadPdfClear, loadPdfWithPage, requestPdfRelayout, setPdfExperimentalRowHighlights, setPdfReadTokens, setPdfSelection } from './pdf-viewer.js';
+import { getPdfExperimentalBlueTexts, initPdfZoomControls, loadPdfClear, loadPdfWithPage, requestPdfRelayout, setPdfExperimentalRowHighlights, setPdfReadTokens, setPdfSelection } from './pdf-viewer.js';
 
 import { evaluateQaChecksForField, evaluateRowQaChecks, getAllQaCheckCodes, getQaCheckLabel } from './qa-checks.js';
 
@@ -169,6 +169,83 @@ function getStoredPdfAutoValue(row, fieldName) {
     if (!pdfKey) return '';
 
     return String(row?.[pdfKey] ?? '').trim();
+
+}
+
+
+function getPdfBlueTextsArea() {
+
+    const area = $('pdfBlueTextsArea');
+
+    return area instanceof HTMLTextAreaElement ? area : null;
+
+}
+
+
+function syncPdfBlueTextsArea() {
+
+    const area = getPdfBlueTextsArea();
+
+    if (!area) return false;
+
+    const texts = getPdfExperimentalBlueTexts({ dedupe: false });
+
+    area.value = Array.isArray(texts) ? texts.join('\n') : '';
+
+    return true;
+
+}
+
+
+async function copyPdfBlueTextsArea() {
+
+    const area = getPdfBlueTextsArea();
+
+    if (!area) return;
+
+
+
+    const text = String(area.value || '').trim();
+
+    if (!text) {
+
+        alert('No hay textos azules para copiar.');
+
+        return;
+
+    }
+
+
+
+    if (navigator.clipboard?.writeText) {
+
+        await navigator.clipboard.writeText(text);
+
+        alert('Textos azules copiados al portapapeles.');
+
+        return;
+
+    }
+
+
+
+    area.focus();
+
+    area.select();
+
+    const copied = document.execCommand('copy');
+
+    if (copied) {
+
+        alert('Textos azules copiados al portapapeles.');
+
+        return;
+
+    }
+
+
+
+    alert('No se pudo copiar automáticamente.');
 
 }
 
@@ -784,6 +861,62 @@ async function getPdfPageNormalizedText(book, sourcePage) {
     pdfPageTextCache.set(pageCacheKey, task);
 
     return task;
+
+}
+
+
+
+function buildPdfLineItemsFromTextContent(pageText, lineIndices) {
+
+    if (!pageText || !Array.isArray(pageText.items) || !Array.isArray(lineIndices) || !lineIndices.length) return [];
+
+    const lineIndexSet = new Set(lineIndices.filter(Number.isInteger));
+
+    return pageText.items
+        .filter((item) => lineIndexSet.has(Number(item?.lineIndex)))
+        .filter((item) => String(item?.text || '').trim())
+        .sort((a, b) => {
+            const lineDelta = Number(a?.lineIndex || 0) - Number(b?.lineIndex || 0);
+            if (lineDelta !== 0) return lineDelta;
+            return Number(a?.left || 0) - Number(b?.left || 0);
+        });
+
+}
+
+
+
+async function findPdfLineByPnFinal(record = currentRow) {
+
+    if (!record) {
+        return { pnFinal: '', normalizedPn: '', pnMatches: [], pnClusterMatches: [], lineIndices: [], lineItems: [], pageText: null };
+    }
+
+    const book = String(record?.engine_model ?? '').trim();
+    const sourcePage = String(record?.['Source Page'] ?? '').trim();
+    const pnFinal = String(record?.pn_final ?? record?.['PART NO.'] ?? '').trim();
+    const normalizedPn = normalizePdfToken(pnFinal);
+
+    if (!book || !sourcePage || !normalizedPn) {
+        return { pnFinal, normalizedPn, pnMatches: [], pnClusterMatches: [], lineIndices: [], lineItems: [], pageText: null };
+    }
+
+    const pageText = await getPdfPageNormalizedText(book, sourcePage);
+    const pnMatches = (pageText?.items || []).filter((item) => tokenMatchesPdf(item?.normalized, normalizedPn));
+    const pnClusterMatches = (pageText?.clusters || []).filter((cluster) => tokenMatchesPdf(cluster?.normalized, normalizedPn));
+    const lineIndices = Array.from(new Set([
+        ...pnMatches.map((item) => Number(item?.lineIndex)).filter(Number.isInteger),
+        ...pnClusterMatches.map((cluster) => Number(cluster?.lineIndex)).filter(Number.isInteger)
+    ])).sort((a, b) => a - b);
+
+    return {
+        pnFinal,
+        normalizedPn,
+        pnMatches,
+        pnClusterMatches,
+        lineIndices,
+        lineItems: buildPdfLineItemsFromTextContent(pageText, lineIndices),
+        pageText
+    };
 
 }
 
@@ -6054,160 +6187,80 @@ function syncPdfWithCurrentRow(row) {
 
 // Experimental: detecta la fila del PDF a partir de pn_final y dibuja marcas azules.
 // No reemplaza la lógica verde actual; solo añade una capa temporal de depuración visual.
-async function highlightPdfRowByPnFinal(record = currentRow) {
+async function highlightPdfLineForPnFinal(record = currentRow) {
 
     console.log('[A2] highlightPdfRowByPnFinal: iniciando');
 
-    // Limpiar logs previos
     if (window.clearHeaderDetectionDebug) {
         window.clearHeaderDetectionDebug();
     }
 
     if (!record) {
-
+        setPdfExperimentalRowHighlights(null);
+        requestPdfRelayout();
         alert('Primero debes cargar un registro para marcar fila PN.');
-
         return;
-
     }
 
-
-
     const book = String(record?.engine_model ?? '').trim();
-
     const sourcePage = String(record?.['Source Page'] ?? '').trim();
 
     if (!book || !sourcePage) {
-
-        console.warn('[A2][PDF_ROW_EXPERIMENT] Sin libro/página para buscar cabecera/PN en PDF.', { book, sourcePage });
-
+        console.warn('[A2][PDF_ROW_EXPERIMENT] Sin libro/página para buscar PN en PDF.', { book, sourcePage });
+        setPdfExperimentalRowHighlights(null);
+        requestPdfRelayout();
         alert('No se pudo resolver libro/página del PDF para el registro actual.');
-
         return;
-
     }
 
     const pnFinal = normalizeString(record?.pn_final);
 
     if (!pnFinal) {
-
         console.warn('[A2][PDF_ROW_EXPERIMENT] Registro sin pn_final.');
-
-        // Modo header-first: permitir marcar cabecera sin depender de PN.
-        setPdfSelection(record);
-
-        // Asignar búsqueda ANTES de cargar el PDF para que se use en el primer render
-        console.log('[A2] Asignando experimental row search headerOnly antes de cargar PDF');
-
-        setPdfExperimentalRowHighlights({
-
-            headerOnly: true,
-
-            yTolerance: PDF_ROW_Y_TOLERANCE
-
-        });
-
-        await loadPdfWithPage(book, sourcePage);
-
-        console.log('[A2] PDF cargado, solicitando relayout');
-
+        setPdfExperimentalRowHighlights(null);
         requestPdfRelayout();
-
-        alert('El registro actual no tiene pn_final. Se intentó marcar la cabecera del PDF.');
-
+        alert('El registro actual no tiene pn_final para marcar la línea en el PDF.');
         return;
-
     }
 
-    // Garantiza contexto de selección para que el overlay no se descarte por falta de selección.
     setPdfSelection(record);
-
-
-
     await loadPdfWithPage(book, sourcePage);
 
-    const pageText = await getPdfPageNormalizedText(book, sourcePage);
-
-    const normalizedPn = normalizePdfToken(pnFinal);
-
-    const pnMatches = (pageText?.items || []).filter((item) => tokenMatchesPdf(item?.normalized, normalizedPn));
-
-
+    const lineMatch = await findPdfLineByPnFinal(record);
+    const pnMatches = lineMatch.pnMatches || [];
 
     logPdfRowHighlightDebug('pn_final buscado:', pnFinal);
-
     logPdfRowHighlightDebug('coincidencias PN en página:', pnMatches.length);
 
-
-
     if (!pnMatches.length) {
-
         console.warn(`[A2][PDF_ROW_EXPERIMENT] No se encontró pn_final en PDF: "${pnFinal}"`);
-
-        // Aunque no haya match de PN, mantenemos la búsqueda experimental activa
-        // para que el visor pueda pintar la cabecera detectada en violeta.
-        // Agregamos headerOnly: true para que intente detectar cabecera si el PN está OCR-degradado.
-        setPdfExperimentalRowHighlights({
-
-            pn: pnFinal,
-
-            headerOnly: true,
-
-            yTolerance: PDF_ROW_Y_TOLERANCE
-
-        });
-
+        setPdfExperimentalRowHighlights(null);
         requestPdfRelayout();
-
-        alert(`No se encontró pn_final en el PDF: ${pnFinal}. Se intentó marcar cabecera.`);
-
+        alert(`No se encontró pn_final en la página PDF actual: ${pnFinal}.`);
         return;
-
     }
-
-
-
-    const pnAnchor = pnMatches[0];
-
-    const anchorY = Number(pnAnchor?.top || 0);
-
-    const rowItems = (pageText?.items || [])
-
-        .filter((item) => String(item?.text || '').trim())
-
-        .filter((item) => Math.abs(Number(item?.top || 0) - anchorY) <= PDF_ROW_Y_TOLERANCE)
-
-        .sort((a, b) => Number(a?.left || 0) - Number(b?.left || 0));
-
-
 
     setPdfExperimentalRowHighlights({
-
+        mode: 'pn-line',
         pn: pnFinal,
-
         yTolerance: PDF_ROW_Y_TOLERANCE
-
     });
-
-    // Forzar render completo para recalcular tamaño/escala antes de overlays.
-    await loadPdfWithPage(book, sourcePage);
     requestPdfRelayout();
 
-
-
-    logPdfRowHighlightDebug('coordenada Y detectada:', anchorY);
-
-    logPdfRowHighlightDebug('tolerancia Y:', PDF_ROW_Y_TOLERANCE);
-
-    logPdfRowHighlightDebug('textos en misma fila:', rowItems.map((item) => String(item?.text || '').trim()).filter(Boolean));
-
-
+    logPdfRowHighlightDebug('líneas detectadas:', lineMatch.lineIndices);
+    logPdfRowHighlightDebug('textos en misma fila:', lineMatch.lineItems.map((item) => String(item?.text || '').trim()).filter(Boolean));
 
     if (pnMatches.length > 1) {
-
-        console.warn(`[A2][PDF_ROW_EXPERIMENT] PN con ${pnMatches.length} coincidencias. Se usa la primera.`);
-
+        console.warn(`[A2][PDF_ROW_EXPERIMENT] PN con ${pnMatches.length} coincidencias en la página. Se marcarán todas las líneas coincidentes.`);
     }
+
+}
+
+
+
+async function highlightPdfRowByPnFinal(record = currentRow) {
+
+    return highlightPdfLineForPnFinal(record);
 
 }
 
@@ -6218,40 +6271,23 @@ function renderRecord(row) {
     if (!row) {
 
         renderReviewStateButtons(null);
-
         renderReviewStats([], null);
-
         return;
 
     }
 
-
-
     renderReviewStats(getQueueRows(), row);
-
-    // Prioriza carga del PDF frente a tareas secundarias de tabla/procesos.
     syncPdfWithCurrentRow(row);
-
     renderMeta(row);
-
     renderComparisonTable(row).catch((error) => {
-
         console.warn('No se pudo renderizar la comparativa con PDF:', error);
-
     });
-
     fillEditFields(row);
 
-
-
     const processState = computeProcessState(row);
-
     renderProcessList(row, processState);
-
     renderEvidence(row, processState);
-
     renderVerdict(processState);
-
     renderReviewStateButtons(row);
 
 }
@@ -8060,6 +8096,8 @@ async function initialize() {
 
         initHeaderDetectionDebugPanel();
 
+        syncPdfBlueTextsArea();
+
         loadPdfClear();
 
 
@@ -8239,6 +8277,28 @@ bindClick('recomputePdfRunBtn', () => {
 });
 
 
+bindClick('pdfBlueTextsFillBtn', () => {
+
+    if (!syncPdfBlueTextsArea()) {
+
+        alert('No se encontró la caja de texto azul.');
+
+    }
+
+});
+
+
+bindClick('pdfBlueTextsCopyBtn', () => {
+
+    copyPdfBlueTextsArea().catch((error) => {
+
+        alert(`No se pudo copiar los textos azules: ${String(error?.message || error)}`);
+
+    });
+
+});
+
+
 
 bindClick('markPnRowBtn', () => {
 
@@ -8247,6 +8307,10 @@ bindClick('markPnRowBtn', () => {
         console.warn('No se pudo marcar la fila PN en el PDF:', error);
 
         alert(`No se pudo marcar la fila PN: ${String(error?.message || error)}`);
+
+    }).then(() => {
+
+        syncPdfBlueTextsArea();
 
     });
 

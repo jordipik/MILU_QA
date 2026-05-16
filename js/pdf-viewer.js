@@ -61,6 +61,13 @@ function normalizePdfToken(value) {
 }
 
 
+function isPdfRenderCancelledError(error) {
+
+    return String(error?.name || '') === 'RenderingCancelledException';
+
+}
+
+
 
 function normalizePdfZoom(value) {
 
@@ -349,6 +356,8 @@ function normalizeExperimentalRowSearch(search) {
     // Acepta tanto formato de entrada (pn/pnFinal/token) como formato ya normalizado (pnToken).
     const pnToken = normalizePdfToken(search?.pnToken || search?.pn || search?.pnFinal || search?.token);
     const headerOnly = Boolean(search?.headerOnly || search?.detectHeaderOnly);
+    const rawMode = String(search?.mode || '').trim().toLowerCase();
+    const mode = rawMode || (headerOnly ? 'header-only' : 'legacy');
 
     if (!pnToken && !headerOnly) return null;
 
@@ -357,6 +366,7 @@ function normalizeExperimentalRowSearch(search) {
     const yTolerance = Number(search?.yTolerance);
 
     return {
+        mode,
 
         pnToken,
 
@@ -916,6 +926,97 @@ function buildLineGroups(rects) {
 
 
 
+function buildPnLineDebugHighlights(rects, search) {
+
+    if (!Array.isArray(rects) || rects.length === 0) return [];
+
+    const pnToken = normalizePdfToken(search?.pnToken);
+    if (!pnToken) return [];
+
+    const lines = buildLineGroups(rects);
+    const matchedLines = [];
+
+    lines.forEach((line) => {
+        const directPnRects = line.rects.filter((rect) => tokenMatches(rect.normalizedText, pnToken, false));
+        const hasClusterMatch = buildTextClusters(line.rects)
+            .some((cluster) => tokenMatches(cluster.normalizedText, pnToken, true));
+
+        if (!directPnRects.length && !hasClusterMatch) return;
+
+        matchedLines.push({ line, directPnRects, hasClusterMatch });
+    });
+
+    if (!matchedLines.length) return [];
+
+    const highlights = [];
+
+    matchedLines.forEach(({ line, directPnRects, hasClusterMatch }) => {
+        const directPnKeys = new Set(directPnRects.map((rect) => `${rect.left}|${rect.top}|${rect.width}|${rect.height}`));
+
+        [...line.rects]
+            .sort((a, b) => a.left - b.left)
+            .forEach((rect) => {
+                const rectKey = `${rect.left}|${rect.top}|${rect.width}|${rect.height}`;
+
+                highlights.push({
+                    left: Math.max(0, Number(rect.left || 0) - 4),
+                    top: Math.max(0, Number(rect.top || 0) - Number(rect.height || 12) - 4),
+                    width: Math.max(18, Number(rect.width || 0) + 8),
+                    height: Math.max(14, Number(rect.height || 12) + 8),
+                    text: String(rect.text || '').trim(),
+                    kind: directPnKeys.has(rectKey) ? 'blue-token-pn' : 'blue-token'
+                });
+            });
+
+        if (!directPnRects.length && hasClusterMatch) {
+            const cluster = buildTextClusters(line.rects)
+                .find((item) => tokenMatches(item.normalizedText, pnToken, true));
+
+            if (cluster) {
+                highlights.push({
+                    left: Math.max(0, Number(cluster.left || 0) - 4),
+                    top: Math.max(0, Number(cluster.top || 0) - Number(cluster.height || 12) - 4),
+                    width: Math.max(18, Number(cluster.width || 0) + 8),
+                    height: Math.max(14, Number(cluster.height || 12) + 8),
+                    text: String(cluster.text || '').trim(),
+                    kind: 'blue-token-pn'
+                });
+            }
+        }
+    });
+
+    return highlights.slice(0, PDF_SELECTION_MAX_HIGHLIGHTS);
+
+}
+
+
+function buildRowBandFromLineRects(lineRects, viewport) {
+
+    if (!Array.isArray(lineRects) || lineRects.length === 0) return null;
+
+    const minTop = Math.min(...lineRects.map((rect) => (Number(rect.top) || 0) - (Number(rect.height) || 12)));
+    const maxBottom = Math.max(...lineRects.map((rect) => Number(rect.top) || 0));
+
+    return {
+
+        left: 0,
+
+        top: Math.max(0, minTop - 4),
+
+        width: Math.max(48, Number(viewport?.width || 0)),
+
+        height: Math.max(16, (maxBottom - minTop) + 8),
+
+        text: 'Fila completa',
+
+        kind: 'red-row'
+
+    };
+
+}
+
+
+
 function detectHeaderColumns(rects, viewport, options = {}) {
 
     if (!Array.isArray(rects) || rects.length === 0) {
@@ -1272,6 +1373,34 @@ function buildExperimentalRowHighlightsFromSearch(textItems, viewport, search) {
     }
 
     debugLog('buildExperimentalRowHighlightsFromSearch:extract', { rectCount: rects.length });
+
+    if (normalizedSearch.mode === 'pn-line') {
+        const lineHighlights = buildPnLineDebugHighlights(rects, normalizedSearch);
+
+        const pnRects = rects.filter((rect) => tokenMatches(rect.normalizedText, normalizedSearch.pnToken, false));
+        const pnLineRects = pnRects.length ? getPnLineRects(rects, pnRects) : [];
+        const rowBand = buildRowBandFromLineRects(pnLineRects, viewport);
+
+        const headerHighlights = detectHeaderColumns(rects, viewport, {
+            anchorCenterY: pnRects[0]?.centerY
+        });
+
+        const result = [
+            ...(rowBand ? [rowBand] : []),
+            ...lineHighlights,
+            ...headerHighlights
+        ];
+
+        debugLog('buildExperimentalRowHighlightsFromSearch:pn-line', {
+            pnToken: normalizedSearch.pnToken,
+            pnRectCount: pnRects.length,
+            lineRectCount: pnLineRects.length,
+            rowBand: !!rowBand,
+            headerCount: headerHighlights.length,
+            highlightCount: result.length
+        });
+        return result;
+    }
 
     const tokens = getSelectionSearchTokens(state.currentPdfSelection);
 
@@ -1778,8 +1907,10 @@ function renderPdfSelectionHighlights(highlights, viewport) {
             box.classList.add('pdf-row-highlight-violet-row');
         } else if (rect.kind === 'violet-column') {
             box.classList.add('pdf-column-highlight-violet');
+        } else if (rect.kind === 'blue-token-pn') {
+            box.classList.add('pdf-line-debug-highlight', 'pdf-line-debug-highlight--pn');
         } else {
-            box.classList.add('pdf-row-highlight-blue');
+            box.classList.add('pdf-line-debug-highlight');
         }
 
         box.style.left = `${Math.max(0, rect.left * scaleX)}px`;
@@ -1790,7 +1921,7 @@ function renderPdfSelectionHighlights(highlights, viewport) {
 
         box.style.height = `${Math.max(12, rect.height * scaleY)}px`;
 
-        box.title = rect.text ? `Fila PN: ${rect.text}` : 'Fila PN';
+        box.title = rect.text ? `Linea PN: ${rect.text}` : 'Linea PN';
 
         layer.appendChild(box);
 
@@ -1843,7 +1974,7 @@ function renderPdfSelectionHighlights(highlights, viewport) {
     debugLog('renderPdfSelectionHighlights:complete', {
         violetRowElements: layer.querySelectorAll('.pdf-row-highlight-violet-row').length,
         redRowElements: layer.querySelectorAll('.pdf-row-highlight-red-row').length,
-        blueTokenElements: layer.querySelectorAll('.pdf-row-highlight-blue').length,
+        blueTokenElements: layer.querySelectorAll('.pdf-line-debug-highlight, .pdf-row-highlight-blue').length,
         totalHighlights: layer.querySelectorAll('.pdf-selection-highlight').length
     });
 
@@ -1910,7 +2041,11 @@ async function renderPdfSelectionOverlay(page, viewport, requestToken = state.cu
 
         let rowHighlights = buildExperimentalRowHighlightsFromSearch(textContent.items || [], viewport, state.currentPdfExperimentalRowSearch);
 
-        if (state.currentPdfExperimentalRowSearch && (!Array.isArray(rowHighlights) || rowHighlights.length === 0)) {
+        if (
+            state.currentPdfExperimentalRowSearch
+            && state.currentPdfExperimentalRowSearch.mode !== 'pn-line'
+            && (!Array.isArray(rowHighlights) || rowHighlights.length === 0)
+        ) {
 
             const pnHighlights = highlights.filter((item) => String(item?.type || '') === 'pn');
 
@@ -2061,7 +2196,6 @@ export function setPdfSelection(row) {
             model: fieldHasError('model_type_final', 'MODEL/TYPE')
 
         },
-
         book: String(row?.engine_model ?? '').trim(),
 
         page: String(row?.['Source Page'] ?? '').trim(),
@@ -2071,6 +2205,28 @@ export function setPdfSelection(row) {
         renderPageNum: 0
 
     };
+
+    if (state.currentPdfExperimentalRowSearch?.mode === 'pn-line') {
+
+        const nextPnToken = normalizePdfToken(state.currentPdfSelection?.pn);
+
+        if (nextPnToken) {
+
+            state.currentPdfExperimentalRowSearch = {
+
+                ...state.currentPdfExperimentalRowSearch,
+
+                pnToken: nextPnToken
+
+            };
+
+        } else {
+
+            state.currentPdfExperimentalRowSearch = null;
+
+        }
+
+    }
 
     state.currentPdfExperimentalRowHighlights = [];
 
@@ -2442,6 +2598,8 @@ export async function loadPdfWithPage(book, page) {
 
     } catch (error) {
 
+        if (isPdfRenderCancelledError(error)) return;
+
         console.error('Error cargando PDF:', error);
 
         setPdfStatus(`Error cargando PDF: ${error.message}`, true);
@@ -2527,6 +2685,24 @@ export function setPdfReadTokens(tokens) {
     state.currentPdfReadTokens = tokens;
 
 }
+
+
+export function getPdfExperimentalBlueTexts({ dedupe = true } = {}) {
+
+    const texts = normalizeExperimentalRowHighlights(state.currentPdfExperimentalRowHighlights)
+        .filter((item) => {
+            const kind = String(item?.kind || '').trim().toLowerCase();
+            return kind === 'blue-token' || kind === 'blue-token-pn';
+        })
+        .map((item) => String(item?.text || '').trim())
+        .filter(Boolean);
+
+    return dedupe ? Array.from(new Set(texts)) : texts;
+
+}
+
+
+window.getPdfExperimentalBlueTexts = getPdfExperimentalBlueTexts;
 
 
 
