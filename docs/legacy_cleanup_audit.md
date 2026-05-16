@@ -365,3 +365,42 @@ Rationale:
 
 - Mantener un registro sentinel util para inspeccion de cabeceras/campos sin contaminar validaciones ni salidas productivas.
 - Cambio minimo y reversible: basta con retirar el flag o revertir el commit.
+
+## 13) Fase 2 - Decision (2026-05-16)
+
+Estado: **POSPUESTA / NO EJECUTABLE** en este momento.
+
+Motivo general:
+
+- No hay evidencia suficiente de no uso en produccion para retirar compatibilidad interna sin riesgo de regresion.
+- Se mantienen rutas y normalizaciones legacy que siguen activas en codigo y en cobertura de tests.
+- Por criterio de seguridad operativa, no se aplican cambios de Fase 2 hasta contar con metricas/logs reales y cierre de contrato de despliegue.
+
+Decision por candidato:
+
+1. Candidato A (`payload.field ?? payload.col`)
+- Decision: **Mantener**.
+- Justificacion: compatibilidad activa para payload legacy (`payload.col`) en validacion de escritura.
+
+2. Candidato B (`descartar -> eliminar`)
+- Decision: **Mantener**.
+- Justificacion: normalizacion activa de acciones legacy y cobertura de tests asociada.
+
+3. Candidato C (legacy key/v2 en `apply_revision_to_engines.js`)
+- Decision: **Mantener**.
+- Justificacion: riesgo alto en flujo de revision masiva; no hay matriz de evidencia suficiente para retiro seguro.
+
+4. Candidato D (aliases `.php` y fallback remoto)
+- Decision: **Mantener**.
+- Justificacion: riesgo alto en despliegues mixtos/remotos; no retirar hasta cerrar contrato de despliegue.
+
+Resultado de Fase 2:
+
+- No se ejecuta limpieza de compatibilidad en esta fase.
+- No se aplican cambios de codigo, JSON ni exports derivados de Fase 2.
+
+Recomendaciones obligatorias antes de reabrir Fase 2:
+
+1. Recolectar metricas/logs reales de uso de rutas y payloads legacy durante una ventana representativa.
+2. Mantener caminos de compatibilidad cubiertos por tests hasta que exista evidencia objetiva de no uso.
+3. No tocar rutas `.php` ni fallback frontend hasta cerrar formalmente el contrato de despliegue (local/remoto/mixto).
