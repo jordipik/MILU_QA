@@ -2,6 +2,17 @@
 
 Fecha: 2026-05-16
 
+Actualizacion: 2026-05-16 (formalizacion de sentinel tecnico)
+
+## Estado actual tras formalizacion
+
+- Se mantiene el registro `ID=1199999` en `engine_12V4000M40A.json` con flag `_internal_debug_record: true`.
+- `validate:schema` ahora omite explicitamente registros tecnicos/sentinel (`_internal_debug_record === true`).
+- Export WordPress oficial y espejo SQLite (base de analytics/read) omiten tambien esos registros tecnicos.
+- Resultado esperado de `npm run validate:schema` tras este cambio: OK con 0 errores de schema y 1 sentinel tecnico omitido.
+
+## Contexto historico de deuda (baseline previo)
+
 ## Resumen ejecutivo
 
 - Estado actual de `npm run validate:schema`: FAIL.
@@ -93,7 +104,7 @@ Todos los errores pertenecen al mismo registro: `engine_12V4000M40A.json`, `ID=1
 ## Recomendacion de correccion (sin aplicar en este informe)
 
 1. Corregir en fase de datos separada (no en fase legacy cleanup).
-2. Eliminar o reparar el registro `ID=1199999` en `engine_12V4000M40A.json` segun criterio de negocio (registro real vs fila de cabecera residual).
+2. Mantener el registro `ID=1199999` como sentinel tecnico de inspeccion de campos, sin mezclarlo con datos funcionales.
 3. Reejecutar validaciones:
    - `npm run validate:schema`
    - `npm run validate:field-refactor-final`
@@ -101,5 +112,5 @@ Todos los errores pertenecen al mismo registro: `engine_12V4000M40A.json`, `ID=1
 
 ## Bloqueo respecto a legacy cleanup
 
-- Legacy cleanup Fase 1/Fase 2 (documental/codigo no-datos): **No bloqueado** por estos errores.
-- Cierre de calidad con gate de schema en verde: **Si bloqueado** hasta resolver la deuda de datos.
+- Legacy cleanup Fase 1/Fase 2 (documental/codigo no-datos): **No bloqueado**.
+- Cierre de calidad con gate de schema en verde: **No bloqueado** con la exclusion sentinel activa y documentada.

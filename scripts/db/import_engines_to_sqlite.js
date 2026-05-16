@@ -59,6 +59,10 @@ function isPlaceholder(value) {
     return /sin[_-]?imagen|placeholder/i.test(String(value)) ? 1 : 0;
 }
 
+function isInternalDebugRecord(row) {
+    return Boolean(row && row._internal_debug_record === true);
+}
+
 const SCHEMA = `
 CREATE TABLE IF NOT EXISTS engines (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -215,11 +219,17 @@ function insertRows(db, fileList) {
                 console.warn(`[db:import] WARN: ${file} no es array, se omite.`);
                 continue;
             }
+            const effectiveRows = data.filter((row) => !isInternalDebugRecord(row));
+            const skippedRows = data.length - effectiveRows.length;
             const engineModel = engineModelFromFile(file);
-            const engineRes = insEngine.run(engineModel, file, data.length, imported_at);
+            const engineRes = insEngine.run(engineModel, file, effectiveRows.length, imported_at);
             const engineId = engineRes.lastInsertRowid;
 
-            for (const row of data) {
+            if (skippedRows > 0) {
+                console.log(`[db:import] INFO: ${file} omitio ${skippedRows} registro(s) tecnicos sentinel.`);
+            }
+
+            for (const row of effectiveRows) {
                 if (!row || typeof row !== 'object') continue;
                 const rec = {
                     engine_id: engineId,

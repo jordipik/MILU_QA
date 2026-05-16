@@ -116,6 +116,10 @@ function getWeight(row) {
     ]);
 }
 
+function isInternalDebugRecord(row) {
+    return Boolean(row && row._internal_debug_record === true);
+}
+
 function loadEngineRows() {
     const rows = [];
     for (const fileName of ENGINE_JSON_FILES) {
@@ -123,6 +127,7 @@ function loadEngineRows() {
         const parsed = readJson(filePath, []);
         if (!Array.isArray(parsed)) continue;
         for (const row of parsed) {
+            if (isInternalDebugRecord(row)) continue;
             rows.push({ ...row, __engine_file: fileName });
         }
     }

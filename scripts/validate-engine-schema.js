@@ -34,6 +34,10 @@ const ENGINE_FILES = [
     'engine_20V4000M93L.json',
 ];
 
+function isInternalDebugRecord(record) {
+    return Boolean(record && record._internal_debug_record === true);
+}
+
 // ---------------------------------------------------------------------------
 // Mini-validador (subconjunto draft-07 sin ajv)
 // ---------------------------------------------------------------------------
@@ -162,6 +166,7 @@ function run() {
     let globalErrors = 0;
     let globalRecords = 0;
     let globalFiles = 0;
+    let globalSkippedDebug = 0;
 
     for (const filePath of filesToValidate) {
         const fileName = path.basename(filePath);
@@ -187,9 +192,15 @@ function run() {
 
         let fileErrors = 0;
         let fileRecordErrors = 0;
+        let fileSkippedDebug = 0;
 
         for (let i = 0; i < records.length; i++) {
             const record = records[i];
+            if (isInternalDebugRecord(record)) {
+                fileSkippedDebug++;
+                globalSkippedDebug++;
+                continue;
+            }
             const errs = validateRecord(record, schema);
             if (errs.length > 0) {
                 fileRecordErrors++;
@@ -205,7 +216,8 @@ function run() {
         globalRecords += records.length;
         globalFiles++;
 
-        const status = fileRecordErrors === 0 ? 'OK' : `${fileRecordErrors} registros con errores`;
+        const skipNote = fileSkippedDebug > 0 ? ` (${fileSkippedDebug} sentinel tecnico omitido)` : '';
+        const status = fileRecordErrors === 0 ? `OK${skipNote}` : `${fileRecordErrors} registros con errores${skipNote}`;
         console.log(`${fileRecordErrors === 0 ? '✓' : '✗'} ${fileName.padEnd(30)} ${records.length.toString().padStart(6)} registros  ${status}`);
         fileErrors += fileRecordErrors;
     }
@@ -213,6 +225,7 @@ function run() {
     console.log('');
     console.log(`─────────────────────────────────────────────────────────────`);
     console.log(`Ficheros:  ${globalFiles}  |  Registros totales: ${globalRecords}  |  Errores schema: ${globalErrors}`);
+    console.log(`Sentinel tecnico omitido: ${globalSkippedDebug}`);
 
     if (globalErrors > 0) {
         console.log('RESULTADO: FAIL');

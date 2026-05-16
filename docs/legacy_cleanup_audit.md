@@ -347,3 +347,21 @@ Postponed items (explicitly not touched in Phase 1 due risk/constraints):
 - `styles/pn_review.css` (medium)
 - `styles/pn-review.css` (medium)
 - internal compatibility paths (`payload.field ?? payload.col`, `descartar -> eliminar`, legacy key apply, `.php` aliases)
+
+## 12) Sentinel tecnico de validacion (2026-05-16)
+
+Decision aplicada:
+
+- No eliminar el registro `ID=1199999` de `engine_12V4000M40A.json`.
+- Formalizarlo como registro tecnico mediante flag `_internal_debug_record: true`.
+
+Exclusion explicita y auditable:
+
+- `scripts/validate-engine-schema.js`: ignora registros con `_internal_debug_record === true`.
+- `scripts/export_wordpress_milu.js`: excluye registros tecnicos de export WordPress.
+- `scripts/db/import_engines_to_sqlite.js`: excluye registros tecnicos del espejo SQLite (impacta analytics/read productivo tras `npm run db:import`).
+
+Rationale:
+
+- Mantener un registro sentinel util para inspeccion de cabeceras/campos sin contaminar validaciones ni salidas productivas.
+- Cambio minimo y reversible: basta con retirar el flag o revertir el commit.
