@@ -8498,6 +8498,40 @@ function renderBodyColumnHighlightPanel(result) {
 
     // Extra: tabla rectDebug (primeros 10 rects con heurísticas)
     let rectDebugHtml = '';
+    let splitPnDesignationHtml = '';
+    const pnDsSplitCount = result.partNoDesignationSplitCount ?? 0;
+    if (pnDsSplitCount > 0) {
+        const splitRows = (result.partNoDesignationSplits || []).slice(0, 10).map((s) => {
+            return `<div style="padding:2px 0;border-bottom:1px dashed #e5e7eb">
+                <span style="color:#16a34a;font-weight:600">${s.pnText}</span>
+                <span style="opacity:0.6"> + </span>
+                <span style="color:#ea580c">${s.designationText}</span>
+                <span style="opacity:0.6"> · splitX=${s.splitX} · ${s.splitMethod}</span>
+            </div>`;
+        }).join('');
+        splitPnDesignationHtml = `<div style="margin-top:6px;padding:6px;background:rgba(22,163,74,0.08);border:1px solid #16a34a;border-radius:4px;font-size:11px">
+            <div style="font-weight:700;margin-bottom:3px">Splits PN + DESIGNATION: ${pnDsSplitCount}</div>
+            ${splitRows}
+        </div>`;
+    }
+
+    let measurementStandardSummaryHtml = '';
+    const measurementRectsCount = result.measurementRectsCount ?? 0;
+    const standardRectsCount = result.standardRectsCount ?? 0;
+    const fnRectsCount = result.fnRectsCount ?? 0;
+    const msWarnings = result.measurementStandardBoundaryWarnings || [];
+    if (measurementRectsCount > 0 || standardRectsCount > 0 || fnRectsCount > 0 || msWarnings.length > 0) {
+        const warningRows = msWarnings.slice(0, 10).map((w) => {
+            return `<div style="padding:1px 0;font-size:10px;opacity:0.85">${w.type} · x=${w.left} · cX=${w.centerX} · ${w.text}</div>`;
+        }).join('');
+        measurementStandardSummaryHtml = `<div style="margin-top:6px;padding:6px;background:rgba(8,145,178,0.08);border:1px solid #0891b2;border-radius:4px;font-size:11px">
+            <div style="font-weight:700;margin-bottom:3px">Measurement/Standard Summary</div>
+            <div>measurementRectsCount: <b>${measurementRectsCount}</b> · standardRectsCount: <b>${standardRectsCount}</b> · fnRectsCount: <b>${fnRectsCount}</b></div>
+            <div>measurementStandardBoundaryWarnings: <b>${msWarnings.length}</b></div>
+            ${warningRows}
+        </div>`;
+    }
+
     const rectDebug = result.rectDebug || [];
     if (rectDebug.length > 0) {
         const rows = rectDebug.slice(0, 10).map((rd) => {
@@ -8509,6 +8543,9 @@ function renderBodyColumnHighlightPanel(result) {
             const c = COLUMN_COLORS[rd.column] || { border: '#888' };
             const boundary = rd.boundaryCase || '-';
             const beforeAfter = `${rd.assignedColumnBeforeCorrection || '-'}→${rd.assignedColumnAfterCorrection || '-'}`;
+            const splitInfo = rd.splitType
+                ? `${rd.splitType} (${rd.splitMethod || '-'}, x=${rd.splitX ?? '-'})`
+                : '-';
             return `<tr>
                 <td style="max-width:140px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="${rd.text}">${rd.text}</td>
                 <td style="color:${c.border};font-weight:600">${rd.column}</td>
@@ -8517,6 +8554,13 @@ function renderBodyColumnHighlightPanel(result) {
                 <td>${pnBadge}${fnBadge}${dsBadge}${mlBadge}${splitBadge}</td>
                 <td>${boundary}</td>
                 <td>${beforeAfter}</td>
+                <td>${rd.x0 ?? '-'}/${rd.x1 ?? '-'}</td>
+                <td>${rd.centerX ?? '-'}</td>
+                <td>${rd.overlapMeasurement ?? '-'}</td>
+                <td>${rd.overlapStandard ?? '-'}</td>
+                <td>${splitInfo}</td>
+                <td style="max-width:120px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="${rd.pnText || '-'}">${rd.pnText || '-'}</td>
+                <td style="max-width:140px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="${rd.designationText || '-'}">${rd.designationText || '-'}</td>
                 <td style="max-width:140px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="${rd.originalText || rd.text}">${rd.originalText || rd.text}</td>
             </tr>`;
         }).join('');
@@ -8531,6 +8575,13 @@ function renderBodyColumnHighlightPanel(result) {
                     <th style="text-align:left;padding:2px 4px">Flags</th>
                     <th style="text-align:left;padding:2px 4px">boundaryCase</th>
                     <th style="text-align:left;padding:2px 4px">before→after</th>
+                    <th style="text-align:left;padding:2px 4px">x0/x1</th>
+                    <th style="text-align:left;padding:2px 4px">centerX</th>
+                    <th style="text-align:left;padding:2px 4px">ovlMeasure</th>
+                    <th style="text-align:left;padding:2px 4px">ovlStandard</th>
+                    <th style="text-align:left;padding:2px 4px">split</th>
+                    <th style="text-align:left;padding:2px 4px">pnText</th>
+                    <th style="text-align:left;padding:2px 4px">designationText</th>
                     <th style="text-align:left;padding:2px 4px">originalText</th>
                 </tr></thead>
                 <tbody>${rows}</tbody>
@@ -8538,7 +8589,7 @@ function renderBodyColumnHighlightPanel(result) {
         </details>`;
     }
 
-    body.innerHTML = columnsHtml + decorativeHtml + multilineHtml + rectDebugHtml + warningsHtml;
+    body.innerHTML = columnsHtml + decorativeHtml + splitPnDesignationHtml + measurementStandardSummaryHtml + multilineHtml + rectDebugHtml + warningsHtml;
     panel.hidden = false;
 }
 

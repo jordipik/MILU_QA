@@ -3771,6 +3771,10 @@ function splitWeightFnCombinedRect(text, rect, columns) {
     return {
         splitType: 'weight_fn',
         originalText: raw,
+        splitMethod: 'proportional',
+        splitX,
+        weightText,
+        fnText,
         parts: [
             {
                 text: weightText,
@@ -3780,7 +3784,16 @@ function splitWeightFnCombinedRect(text, rect, columns) {
                 width: weightWidth,
                 height: rect.height,
                 centerY: rect.centerY,
-                _forcedKey: 'weight'
+                _forcedKey: 'weight',
+                _splitInfo: {
+                    splitFromCombined: true,
+                    splitType: 'weight_fn',
+                    originalText: raw,
+                    splitX,
+                    splitMethod: 'proportional',
+                    weightText,
+                    fnText
+                }
             },
             {
                 text: fnText,
@@ -3790,7 +3803,107 @@ function splitWeightFnCombinedRect(text, rect, columns) {
                 width: fnWidth,
                 height: rect.height,
                 centerY: rect.centerY,
-                _forcedKey: 'fn'
+                _forcedKey: 'fn',
+                _splitInfo: {
+                    splitFromCombined: true,
+                    splitType: 'weight_fn',
+                    originalText: raw,
+                    splitX,
+                    splitMethod: 'proportional',
+                    weightText,
+                    fnText
+                }
+            }
+        ]
+    };
+}
+
+/**
+ * Divide visualmente rects combinados PART NO + DESIGNATION.
+ * Ejemplo: "X00E50208388 PRESSURE SENSOR" -> ["X00E50208388", "PRESSURE SENSOR"]
+ */
+function splitPartNoDesignationCombinedRect(text, rect, columns) {
+    if (!text || !rect || !columns || !columns.length) return null;
+    const raw = String(text).trim();
+    const match = raw.match(/^([A-Z0-9][A-Z0-9./-]{5,})\s+(.+)$/i);
+    if (!match) return null;
+
+    const pnText = (match[1] || '').trim();
+    const designationText = (match[2] || '').trim();
+    if (!pnText || !designationText) return null;
+    if (!isLikelyPartNumber(pnText)) return null;
+    if (!isLikelyDesignationText(designationText)) return null;
+
+    // Evitar falsos positivos (solo unidades/peso/FN al final)
+    if (/^(?:g|kg|pc|pcs|ea|lb|lbs)$/i.test(designationText)) return null;
+    if (/^\d+[\d,\.]*\s*(?:g|kg|pc|pcs)?$/i.test(designationText)) return null;
+    if (designationText.split(/\s+/).every((tok) => isLikelyFnToken(tok))) return null;
+
+    const partNoColumn = columns.find((c) => c.key === 'part_no');
+    const designationColumn = columns.find((c) => c.key === 'designation');
+    if (!partNoColumn || !designationColumn) return null;
+
+    const partNoOverlap = computeRectColumnOverlap(rect.left, rect.width, partNoColumn.x0, partNoColumn.x1);
+    const designationOverlap = computeRectColumnOverlap(rect.left, rect.width, designationColumn.x0, designationColumn.x1);
+    const rectRight = rect.left + rect.width;
+    const crossesBoundary = rect.left < designationColumn.x0 && rectRight > designationColumn.x0;
+    const overlapBoth = partNoOverlap >= 0.1 && designationOverlap >= 0.1;
+    if (!crossesBoundary && !overlapBoth) return null;
+
+    const splitRatio = Math.max(0.2, Math.min(0.8, pnText.length / Math.max(1, raw.length)));
+    const splitMethod = 'proportional';
+    const smallGap = 1;
+    let splitX = rect.left + rect.width * splitRatio;
+    splitX = Math.max(rect.left + 8, Math.min(rectRight - 8, splitX));
+
+    const pnWidth = Math.max(8, splitX - rect.left - smallGap);
+    const designationWidth = Math.max(8, rectRight - splitX - smallGap);
+
+    return {
+        splitType: 'part_no_designation',
+        originalText: raw,
+        splitMethod,
+        splitX,
+        pnText,
+        designationText,
+        parts: [
+            {
+                text: pnText,
+                normalizedText: normalizePdfToken(pnText),
+                left: rect.left,
+                top: rect.top,
+                width: pnWidth,
+                height: rect.height,
+                centerY: rect.centerY,
+                _forcedKey: 'part_no',
+                _splitInfo: {
+                    splitFromCombined: true,
+                    splitType: 'part_no_designation',
+                    originalText: raw,
+                    pnText,
+                    designationText,
+                    splitX,
+                    splitMethod
+                }
+            },
+            {
+                text: designationText,
+                normalizedText: normalizePdfToken(designationText),
+                left: splitX + smallGap,
+                top: rect.top,
+                width: designationWidth,
+                height: rect.height,
+                centerY: rect.centerY,
+                _forcedKey: 'designation',
+                _splitInfo: {
+                    splitFromCombined: true,
+                    splitType: 'part_no_designation',
+                    originalText: raw,
+                    pnText,
+                    designationText,
+                    splitX,
+                    splitMethod
+                }
             }
         ]
     };
@@ -3912,6 +4025,7 @@ export function buildHeaderColumnBodyHighlights() {
     const weightColumn = columns.find((c) => c.key === 'weight') || null;
     const fnColumn = columns.find((c) => c.key === 'fn') || null;
     const measurementColumn = columns.find((c) => c.key === 'measurement') || null;
+    const standardColumn = columns.find((c) => c.key === 'standard') || null;
 
     // Límite izquierdo de la primera columna: rects más a la izq se omiten en nearest-fallback
     const leftmostColumnX0 = columns.length > 0 ? columns[0].x0 : 0;
@@ -3921,6 +4035,8 @@ export function buildHeaderColumnBodyHighlights() {
     const highlights = [];
     const assignedByColumn = new Map();
     const rectDebugList = [];
+    const partNoDesignationSplits = [];
+    const measurementStandardBoundaryWarnings = [];
     let ignoredCount = 0;
 
     bodyRects.forEach((rect) => {
@@ -3936,17 +4052,45 @@ export function buildHeaderColumnBodyHighlights() {
             return;
         }
 
-        const splitResult = splitWeightFnCombinedRect(rect.text, rect, columns);
-        const rectParts = splitResult ? splitResult.parts : [rect];
+        // Orden de splits: 1) WEIGHT+FN 2) PART_NO+DESIGNATION 3) scoring normal.
+        const weightSplitResult = splitWeightFnCombinedRect(rect.text, rect, columns);
+        const weightParts = weightSplitResult ? weightSplitResult.parts : [rect];
+        const finalParts = [];
 
-        rectParts.forEach((part) => {
+        weightParts.forEach((weightPart) => {
+            const pnDesignationSplit = splitPartNoDesignationCombinedRect(weightPart.text, weightPart, columns);
+            if (pnDesignationSplit) {
+                finalParts.push(...pnDesignationSplit.parts);
+                partNoDesignationSplits.push({
+                    originalText: pnDesignationSplit.originalText,
+                    pnText: pnDesignationSplit.pnText,
+                    designationText: pnDesignationSplit.designationText,
+                    splitX: Math.round(pnDesignationSplit.splitX),
+                    splitMethod: pnDesignationSplit.splitMethod
+                });
+            } else {
+                finalParts.push(weightPart);
+            }
+        });
+
+        finalParts.forEach((part) => {
             if (highlights.length >= MAX_HIGHLIGHTS) return;
 
-            const centerX = part.left + part.width / 2;
             const textPN = isLikelyPartNumber(part.text);
             const textFN = isLikelyFnToken(part.text);
             const textDesignation = isLikelyDesignationText(part.text);
-            const originalText = String(rect.text || '').trim();
+            const splitInfo = part._splitInfo || null;
+            const splitFromCombined = Boolean(splitInfo?.splitFromCombined);
+            const splitType = splitInfo?.splitType || null;
+            const originalText = splitInfo?.originalText || String(rect.text || '').trim();
+            const centerX = part.left + part.width / 2;
+            const rectX1 = part.left + part.width;
+            const measurementOverlap = measurementColumn
+                ? computeRectColumnOverlap(part.left, part.width, measurementColumn.x0, measurementColumn.x1)
+                : 0;
+            const standardOverlap = standardColumn
+                ? computeRectColumnOverlap(part.left, part.width, standardColumn.x0, standardColumn.x1)
+                : 0;
 
             // Puntuar cada columna con solapamiento real o donde caiga centerX
             let bestColumn = null;
@@ -3989,6 +4133,20 @@ export function buildHeaderColumnBodyHighlights() {
                 if (textFN) {
                     if (col.key === 'fn') score += 2.0;
                     if (col.key === 'weight') score -= 2.0;
+                }
+
+                // Frenar invasiones: FN no debe comerse MEASUREMENT/ STANDARD.
+                if (measurementColumn && col.key === 'fn') {
+                    const smallMargin = 4;
+                    if (part.left >= measurementColumn.x0 - smallMargin) score -= 2.0;
+                    if (/\s/.test(String(part.text || '').trim()) && String(part.text || '').trim().length > 4) score -= 1.2;
+                }
+
+                if (measurementColumn && col.key === 'measurement' && part.left >= measurementColumn.x0 - 4) {
+                    score += 1.4;
+                }
+                if (standardColumn && col.key === 'standard' && part.left >= standardColumn.x0 - 4) {
+                    score += 1.6;
                 }
 
                 if (score > bestScore) {
@@ -4051,11 +4209,12 @@ export function buildHeaderColumnBodyHighlights() {
             // Corrección WEIGHT vs FN por borde derecho de WEIGHT y tokens FN cortos
             if (weightColumn && fnColumn) {
                 const smallMargin = 4;
+                const fnRightLimit = measurementColumn ? (measurementColumn.x0 - smallMargin) : Infinity;
                 const inWeightToMeasurementBand = measurementColumn
                     ? (centerX >= weightColumn.x0 && centerX <= measurementColumn.x0)
                     : (centerX >= weightColumn.x0 && centerX <= fnColumn.x1);
 
-                if (part.left >= fnColumn.x0 - smallMargin) {
+                if (part.left >= fnColumn.x0 - smallMargin && part.left < fnRightLimit && textFN) {
                     assignedColumn = fnColumn;
                     assignedBy = 'heuristic';
                     boundaryCase = 'weight_fn';
@@ -4066,13 +4225,53 @@ export function buildHeaderColumnBodyHighlights() {
                 }
             }
 
+            // Corrección frontera FN -> MEASUREMENT
+            if (measurementColumn) {
+                const smallMargin = 4;
+                if (part.left >= measurementColumn.x0 - smallMargin) {
+                    if (!standardColumn || part.left < standardColumn.x0 - smallMargin) {
+                        if (assignedColumn.key !== 'measurement') {
+                            measurementStandardBoundaryWarnings.push({
+                                type: 'fn_measurement',
+                                text: String(part.text || '').trim(),
+                                left: Math.round(part.left),
+                                centerX: Math.round(centerX)
+                            });
+                        }
+                        assignedColumn = measurementColumn;
+                        assignedBy = 'heuristic';
+                        boundaryCase = 'fn_measurement';
+                    }
+                }
+            }
+
+            // Corrección frontera MEASUREMENT -> STANDARD
+            if (standardColumn) {
+                const smallMargin = 4;
+                const clearlyRight = part.left >= standardColumn.x0 - smallMargin;
+                const shortRightToken = String(part.text || '').trim().length <= 16 && centerX >= standardColumn.x0;
+                if (clearlyRight || shortRightToken) {
+                    if (assignedColumn.key !== 'standard') {
+                        measurementStandardBoundaryWarnings.push({
+                            type: 'measurement_standard',
+                            text: String(part.text || '').trim(),
+                            left: Math.round(part.left),
+                            centerX: Math.round(centerX)
+                        });
+                    }
+                    assignedColumn = standardColumn;
+                    assignedBy = 'heuristic';
+                    boundaryCase = 'measurement_standard';
+                }
+            }
+
             // Forzado de split WEIGHT/FN combinado
             if (part._forcedKey) {
                 const forcedColumn = columns.find((c) => c.key === part._forcedKey);
                 if (forcedColumn) {
                     assignedColumn = forcedColumn;
                     assignedBy = 'split';
-                    boundaryCase = 'weight_fn';
+                    boundaryCase = splitType === 'part_no_designation' ? 'part_no_designation' : 'weight_fn';
                 }
             }
 
@@ -4088,12 +4287,21 @@ export function buildHeaderColumnBodyHighlights() {
                 overlapRatio: Math.round(bestOverlapRatio * 100) / 100,
                 assignedBy,
                 candidateColumns,
+                x0: Math.round(part.left),
+                x1: Math.round(rectX1),
+                centerX: Math.round(centerX),
+                overlapMeasurement: Math.round(measurementOverlap * 100) / 100,
+                overlapStandard: Math.round(standardOverlap * 100) / 100,
                 isLikelyPartNumber: textPN,
                 isLikelyFnToken: textFN,
                 isLikelyDesignationText: textDesignation,
                 boundaryCase,
-                splitFromCombined: Boolean(splitResult),
-                splitType: splitResult ? splitResult.splitType : null,
+                splitFromCombined,
+                splitType,
+                pnText: splitInfo?.pnText || null,
+                designationText: splitInfo?.designationText || null,
+                splitX: splitInfo?.splitX != null ? Math.round(splitInfo.splitX) : null,
+                splitMethod: splitInfo?.splitMethod || null,
                 assignedColumnBeforeCorrection,
                 assignedColumnAfterCorrection: assignedColumn.key,
                 rectLeft: Math.round(part.left),
@@ -4115,8 +4323,12 @@ export function buildHeaderColumnBodyHighlights() {
                 _isFN: textFN,
                 _isDesignation: textDesignation,
                 _boundaryCase: boundaryCase,
-                _splitFromCombined: Boolean(splitResult),
-                _splitType: splitResult ? splitResult.splitType : null,
+                _splitFromCombined: splitFromCombined,
+                _splitType: splitType,
+                _pnText: splitInfo?.pnText || null,
+                _designationText: splitInfo?.designationText || null,
+                _splitX: splitInfo?.splitX ?? null,
+                _splitMethod: splitInfo?.splitMethod || null,
                 _assignedColumnBeforeCorrection: assignedColumnBeforeCorrection,
                 _assignedColumnAfterCorrection: assignedColumn.key,
                 _originalText: originalText,
@@ -4180,6 +4392,16 @@ export function buildHeaderColumnBodyHighlights() {
     if (multilineCandidates.length > 0) {
         warnings.push(`${multilineCandidates.length} posible(s) candidato(s) multiline detectado(s) (solo debug; no fusionados).`);
     }
+    if (partNoDesignationSplits.length > 0) {
+        warnings.push(`${partNoDesignationSplits.length} split(s) PART NO + DESIGNATION aplicado(s) (visual/debug).`);
+    }
+    if (measurementStandardBoundaryWarnings.length > 0) {
+        warnings.push(`${measurementStandardBoundaryWarnings.length} correccion(es) en frontera FN/MEASUREMENT/STANDARD aplicada(s).`);
+    }
+
+    const measurementRectsCount = (assignedByColumn.get('measurement') || []).length;
+    const standardRectsCount = (assignedByColumn.get('standard') || []).length;
+    const fnRectsCount = (assignedByColumn.get('fn') || []).length;
 
     state.currentPdfHeaderColumnBodyHighlights = highlights;
     state.currentPdfHeaderColumnBodyDebug = {
@@ -4198,6 +4420,12 @@ export function buildHeaderColumnBodyHighlights() {
         decorativeColumn: decorativeColumn
             ? { key: decorativeColumn.key, x0: decorativeColumn.x0, x1: decorativeColumn.x1 }
             : null,
+        partNoDesignationSplits,
+        partNoDesignationSplitCount: partNoDesignationSplits.length,
+        measurementRectsCount,
+        standardRectsCount,
+        fnRectsCount,
+        measurementStandardBoundaryWarnings,
         multilineCandidates,
         multilineCandidateCount: multilineCandidates.length,
         rectDebug: rectDebugList.slice(0, 50),
