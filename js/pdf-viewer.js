@@ -2196,7 +2196,8 @@ function renderPdfSelectionHighlights(highlights, viewport) {
 
     const rowHighlights = [
         ...normalizeExperimentalRowHighlights(state.currentPdfExperimentalRowHighlights),
-        ...normalizeExperimentalRowHighlights(state.currentPdfHeaderOnlyOverlay || [])
+        ...normalizeExperimentalRowHighlights(state.currentPdfHeaderOnlyOverlay || []),
+        ...normalizeExperimentalRowHighlights(state.currentPdfHeaderColumnBodyHighlights || [])
     ];
 
     debugLog('renderPdfSelectionHighlights:start', {
@@ -3176,6 +3177,14 @@ export function loadPdfClear() {
 
     state.currentPdfExperimentalRowSearch = null;
 
+    state.currentPdfHeaderOnlyOverlay = [];
+
+    state.currentPdfHeaderOnlyDebug = null;
+
+    state.currentPdfHeaderColumnBodyHighlights = [];
+
+    state.currentPdfHeaderColumnBodyDebug = null;
+
     state.currentPdfTableDebugOverlay = [];
 
     state.currentPdfTableParseResult = null;
@@ -3642,6 +3651,213 @@ export function runPdfHeaderOnlyDetection() {
 export function clearPdfHeaderOnlyOverlay() {
     state.currentPdfHeaderOnlyOverlay = [];
     state.currentPdfHeaderOnlyDebug = null;
+    // Limpiar también el body highlighting al limpiar headers
+    state.currentPdfHeaderColumnBodyHighlights = [];
+    state.currentPdfHeaderColumnBodyDebug = null;
+    requestPdfRelayout();
+}
+
+/**
+ * Fase experimental: colorea los textos del cuerpo de tabla por columnas.
+ * Las columnas se definen usando los límites izquierdos (x0) de los headers detectados.
+ * Cada texto del cuerpo se pinta con el color del header de su columna.
+ */
+export function buildHeaderColumnBodyHighlights() {
+    const headerDebug = state.currentPdfHeaderOnlyDebug;
+    const textItems = state.currentPdfLastTextItems || [];
+    const viewport = state.currentPdfLastViewport;
+
+    // Validar precondiciones
+    if (!headerDebug || !headerDebug.entries || headerDebug.entries.length === 0) {
+        state.currentPdfHeaderColumnBodyHighlights = [];
+        state.currentPdfHeaderColumnBodyDebug = {
+            error: 'no-headers-detected',
+            message: 'Ejecuta primero "Detectar Headers" para usar esta funcionalidad.',
+            columnCount: 0,
+            textCount: 0,
+            highlightCount: 0,
+            assignedByColumn: {},
+            ignoredRects: 0,
+            warnings: []
+        };
+        return state.currentPdfHeaderColumnBodyDebug;
+    }
+
+    if (!textItems || !textItems.length || !viewport) {
+        state.currentPdfHeaderColumnBodyHighlights = [];
+        state.currentPdfHeaderColumnBodyDebug = {
+            error: 'no-text-data',
+            message: 'No hay datos de texto disponibles en la página actual.',
+            columnCount: 0,
+            textCount: 0,
+            highlightCount: 0,
+            assignedByColumn: {},
+            ignoredRects: 0,
+            warnings: []
+        };
+        return state.currentPdfHeaderColumnBodyDebug;
+    }
+
+    // Extraer headers encontrados (con x0, y0, y1) ordenados por x0
+    const foundHeaders = headerDebug.entries.filter((entry) => entry.found && entry.x0 !== null);
+    if (!foundHeaders.length) {
+        state.currentPdfHeaderColumnBodyHighlights = [];
+        state.currentPdfHeaderColumnBodyDebug = {
+            error: 'no-found-headers',
+            message: 'Ningún header fue detectado exitosamente.',
+            columnCount: 0,
+            textCount: 0,
+            highlightCount: 0,
+            assignedByColumn: {},
+            ignoredRects: 0,
+            warnings: ['Se detectaron headers pero ninguno fue validado.']
+        };
+        return state.currentPdfHeaderColumnBodyDebug;
+    }
+
+    // Definir columnas a partir del x0 de cada header
+    const columns = foundHeaders.map((header, idx) => {
+        const nextHeader = foundHeaders[idx + 1];
+        const x1 = nextHeader ? nextHeader.x0 : Math.max(1, viewport.width);
+        return {
+            key: header.key,
+            label: header.label,
+            x0: header.x0,
+            x1: x1,
+            headerY0: header.y0,
+            headerY1: header.y1,
+            kind: HEADER_KEY_TO_KIND[header.key] || 'orange-header-token'
+        };
+    });
+
+    // Calcular límite inferior de headers para definir "cuerpo"
+    const headerMaxY1 = Math.max(...foundHeaders.map((h) => h.y1 || 0), 0);
+    const bodyMargin = Math.max(2, Math.round(Math.min(...foundHeaders.map((h) => h.y1 - h.y0), 20) * 0.25));
+    const bodyTop = headerMaxY1 + bodyMargin;
+
+    // Extraer rects de texto del cuerpo
+    const rects = extractPdfTextRects(textItems, viewport);
+    const pageHeight = viewport.height || 0;
+    const bodyRects = rects.filter((rect) => {
+        const rectTop = rect.top - rect.height;
+        return rectTop >= bodyTop && rect.top < pageHeight;
+    });
+
+    // Asignar textos a columnas y generar highlights
+    const MAX_HIGHLIGHTS = 150;
+    const highlights = [];
+    const assignedByColumn = new Map();
+    let ignoredCount = 0;
+
+    bodyRects.forEach((rect) => {
+        if (highlights.length >= MAX_HIGHLIGHTS) return;
+
+        // Ignorar rects vacíos o muy pequeños
+        if (!rect.text || rect.text.trim().length === 0) {
+            ignoredCount++;
+            return;
+        }
+
+        if (rect.width < 4 || rect.height < 4) {
+            ignoredCount++;
+            return;
+        }
+
+        // Encontrar columna: usar centerX
+        const centerX = rect.left + (rect.width / 2);
+        let assignedColumn = null;
+
+        for (const col of columns) {
+            if (centerX >= col.x0 && centerX < col.x1) {
+                assignedColumn = col;
+                break;
+            }
+        }
+
+        // Si no encontró columna clara, asignar a la más cercana
+        if (!assignedColumn && columns.length > 0) {
+            let minDist = Infinity;
+            for (const col of columns) {
+                const colCenterX = (col.x0 + col.x1) / 2;
+                const dist = Math.abs(centerX - colCenterX);
+                if (dist < minDist) {
+                    minDist = dist;
+                    assignedColumn = col;
+                }
+            }
+        }
+
+        if (!assignedColumn) {
+            ignoredCount++;
+            return;
+        }
+
+        // Registrar asignación
+        if (!assignedByColumn.has(assignedColumn.key)) {
+            assignedByColumn.set(assignedColumn.key, []);
+        }
+        assignedByColumn.get(assignedColumn.key).push(rect.text);
+
+        // Crear highlight
+        highlights.push({
+            left: Math.max(0, rect.left - 2),
+            top: Math.max(0, rect.top - rect.height - 2),
+            width: Math.max(12, rect.width + 4),
+            height: Math.max(10, rect.height + 4),
+            text: String(rect.text || '').trim(),
+            kind: assignedColumn.kind
+        });
+    });
+
+    // Compilar información de debug
+    const columnStats = {};
+    columns.forEach((col) => {
+        const texts = assignedByColumn.get(col.key) || [];
+        columnStats[col.label] = {
+            key: col.key,
+            x0: col.x0,
+            x1: col.x1,
+            textCount: texts.length,
+            samples: texts.slice(0, 5)
+        };
+    });
+
+    const warnings = [];
+    if (bodyRects.length === 0) {
+        warnings.push('No se encontraron textos en el área de cuerpo de tabla.');
+    }
+    if (ignoredCount > bodyRects.length * 0.5) {
+        warnings.push(`Se ignoró más del 50% de los rects (${ignoredCount}/${bodyRects.length}).`);
+    }
+    if (highlights.length >= MAX_HIGHLIGHTS) {
+        warnings.push(`Límite de highlights alcanzado (${MAX_HIGHLIGHTS}); algunos textos no se mostraron.`);
+    }
+
+    state.currentPdfHeaderColumnBodyHighlights = highlights;
+    state.currentPdfHeaderColumnBodyDebug = {
+        error: null,
+        message: 'Body column highlighting completado.',
+        columnCount: columns.length,
+        textCount: bodyRects.length,
+        highlightCount: highlights.length,
+        headerMaxY1,
+        bodyTop,
+        bodyMargin,
+        assignedByColumn: Object.fromEntries(assignedByColumn),
+        columnStats,
+        ignoredRects: ignoredCount,
+        warnings
+    };
+
+    return state.currentPdfHeaderColumnBodyDebug;
+}
+
+/**
+ * Limpia el overlay de body column highlighting.
+ */
+export function clearPdfHeaderColumnBodyHighlights() {
+    state.currentPdfHeaderColumnBodyHighlights = [];
+    state.currentPdfHeaderColumnBodyDebug = null;
     requestPdfRelayout();
 }
 

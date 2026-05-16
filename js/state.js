@@ -47,6 +47,8 @@ export const state = {
     currentPdfExperimentalRowHighlights: [],
     currentPdfExperimentalRowSearch: null,
     currentPdfExperimentalColumnDetection: null,
+    currentPdfHeaderColumnBodyHighlights: [],
+    currentPdfHeaderColumnBodyDebug: null,
     currentPdfLastTextItems: [],
     currentPdfLastViewport: null,
     currentPdfLastTextSource: '',

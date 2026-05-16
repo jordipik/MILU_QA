@@ -20,7 +20,7 @@ import {
 
 import { publishRevisionSync } from './revision-sync.js';
 
-import { getPdfExperimentalBlueTexts, initPdfZoomControls, loadPdfClear, loadPdfWithPage, requestPdfRelayout, setPdfExperimentalRowHighlights, setPdfReadTokens, setPdfSelection, runPdfHeaderOnlyDetection, clearPdfHeaderOnlyOverlay, refreshPdfSelectionOverlayFromCache } from './pdf-viewer.js';
+import { getPdfExperimentalBlueTexts, initPdfZoomControls, loadPdfClear, loadPdfWithPage, requestPdfRelayout, setPdfExperimentalRowHighlights, setPdfReadTokens, setPdfSelection, runPdfHeaderOnlyDetection, clearPdfHeaderOnlyOverlay, buildHeaderColumnBodyHighlights, clearPdfHeaderColumnBodyHighlights, refreshPdfSelectionOverlayFromCache } from './pdf-viewer.js';
 
 import { evaluateQaChecksForField, evaluateRowQaChecks, getAllQaCheckCodes, getQaCheckLabel } from './qa-checks.js';
 
@@ -8206,6 +8206,12 @@ function applyPdfFeatureFlagsToUi() {
         if (!PDF_FEATURE_HEADERS_ENABLED) detectHeadersBtn.title = 'Detectar headers desactivado';
     }
 
+    const paintBodyBtn = $('paintBodyByHeadersBtn');
+    if (paintBodyBtn instanceof HTMLButtonElement) {
+        paintBodyBtn.disabled = !PDF_FEATURE_HEADERS_ENABLED;
+        if (!PDF_FEATURE_HEADERS_ENABLED) paintBodyBtn.title = 'Requiere Detectar Headers habilitado (experimental)';
+    }
+
 }
 
 
@@ -8393,6 +8399,85 @@ bindClick('headerDetectionCloseBtn', () => {
     const panel = document.getElementById('headerDetectionPanel');
     if (panel) panel.hidden = true;
 });
+
+bindClick('paintBodyByHeadersBtn', () => {
+    if (!PDF_FEATURE_HEADERS_ENABLED) {
+        alert('Detecta Headers primero');
+        return;
+    }
+    const result = buildHeaderColumnBodyHighlights();
+    renderBodyColumnHighlightPanel(result);
+    requestPdfRelayout();
+});
+
+bindClick('bodyColumnHighlightCloseBtn', () => {
+    clearPdfHeaderColumnBodyHighlights();
+    const panel = document.getElementById('bodyColumnHighlightPanel');
+    if (panel) panel.hidden = true;
+});
+
+function renderBodyColumnHighlightPanel(result) {
+    const panel = document.getElementById('bodyColumnHighlightPanel');
+    const body = document.getElementById('bodyColumnHighlightBody');
+    const statsBadge = document.getElementById('bodyColumnHighlightStats');
+    if (!panel || !body || !statsBadge) return;
+
+    const COLUMN_COLORS = {
+        pos: { border: '#2563eb', bg: 'rgba(96,165,250,0.20)', label: 'POS' },
+        part_no: { border: '#16a34a', bg: 'rgba(74,222,128,0.18)', label: 'PART NO.' },
+        designation: { border: '#ea580c', bg: 'rgba(251,146,60,0.18)', label: 'DESIGNATION' },
+        model_type: { border: '#0e7490', bg: 'rgba(103,232,249,0.18)', label: 'MODEL/TYPE' },
+        qty: { border: '#7c3aed', bg: 'rgba(196,181,253,0.22)', label: 'QTY.' },
+        units: { border: '#ca8a04', bg: 'rgba(253,224,71,0.22)', label: 'UNITS' },
+        weight: { border: '#dc2626', bg: 'rgba(252,165,165,0.22)', label: 'WEIGHT' },
+        fn: { border: '#a855f7', bg: 'rgba(221,214,254,0.22)', label: 'FN' },
+        measurement: { border: '#0891b2', bg: 'rgba(103,232,249,0.20)', label: 'MEASUREMENT' },
+        standard: { border: '#0f766e', bg: 'rgba(94,234,212,0.18)', label: 'STANDARD' }
+    };
+
+    if (result?.error) {
+        statsBadge.textContent = 'Error';
+        const errorMsg = result.message || result.error;
+        body.innerHTML = `<div style="color:#dc2626;font-size:12px;padding:8px;line-height:1.4">${errorMsg}</div>`;
+        if (result.warnings && result.warnings.length > 0) {
+            const warningsHtml = result.warnings.map((w) => `<div style="color:#b45309;font-size:11px;padding:2px 0">⚠ ${w}</div>`).join('');
+            body.innerHTML += `<div style="margin-top:8px;padding-top:8px;border-top:1px solid #ddd">${warningsHtml}</div>`;
+        }
+        panel.hidden = false;
+        return;
+    }
+
+    const highlightCount = result?.highlightCount ?? 0;
+    const textCount = result?.textCount ?? 0;
+    const columnCount = result?.columnCount ?? 0;
+    statsBadge.textContent = `${highlightCount} highlights · ${textCount} textos · ${columnCount} cols`;
+
+    const columnStats = result?.columnStats || {};
+    const columnsHtml = Object.entries(columnStats).map(([label, stats]) => {
+        const c = COLUMN_COLORS[stats.key] || { border: '#888', bg: 'rgba(0,0,0,0.05)' };
+        const samplesStr = stats.samples && stats.samples.length > 0 
+            ? stats.samples.join(', ').substring(0, 80) + '...'
+            : '-';
+        return `<div class="header-detection-entry" style="border-color:${c.border};background:${c.bg}">
+            <span class="header-detection-entry-label" style="color:${c.border}">${label}</span>
+            <span class="header-detection-entry-meta">
+                x0=${stats.x0} x1=${stats.x1} · ${stats.textCount} textos<br>
+                <small style="opacity:0.7">Samples: ${samplesStr}</small>
+            </span>
+        </div>`;
+    }).join('');
+
+    let warningsHtml = '';
+    if (result.warnings && result.warnings.length > 0) {
+        warningsHtml = `<div style="margin-top:8px;padding-top:8px;border-top:1px solid #ddd">
+            ${result.warnings.map((w) => `<div style="color:#b45309;font-size:11px;padding:2px 0">⚠ ${w}</div>`).join('')}
+        </div>`;
+    }
+
+    body.innerHTML = columnsHtml + warningsHtml;
+    panel.hidden = false;
+}
+
 
 function renderHeaderDetectionPanel(result) {
     const panel = document.getElementById('headerDetectionPanel');
