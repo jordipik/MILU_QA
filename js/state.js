@@ -44,6 +44,8 @@ export const state = {
     currentPdfSelection: null,
     currentPdfSelectionRects: [],
     currentPdfReadTokens: [],
+    currentPdfExperimentalRowHighlights: [],
+    currentPdfExperimentalRowSearch: null,
     currentPdfZoom: 'fit',
     rightPanelTab: 'pdf',
     qaErrorCheckDefinitions: getQaCheckDefinitions(),

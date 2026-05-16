@@ -20,13 +20,15 @@ import {
 
 import { publishRevisionSync } from './revision-sync.js';
 
-import { initPdfZoomControls, loadPdfClear, loadPdfWithPage, requestPdfRelayout, setPdfReadTokens, setPdfSelection } from './pdf-viewer.js';
+import { initPdfZoomControls, loadPdfClear, loadPdfWithPage, requestPdfRelayout, setPdfExperimentalRowHighlights, setPdfReadTokens, setPdfSelection } from './pdf-viewer.js';
 
 import { evaluateQaChecksForField, evaluateRowQaChecks, getAllQaCheckCodes, getQaCheckLabel } from './qa-checks.js';
 
 import { confirmTypedAction } from './confirm-typed-action.js';
 
 import { showToast } from './toast.js';
+
+import { initHeaderDetectionDebugPanel } from './debug-header-panel.js';
 
 
 
@@ -191,6 +193,10 @@ const pdfPageTextCache = new Map();
 const PDF_CLUSTER_GAP_MAX = 24;
 
 const PDF_LINE_Y_TOLERANCE = 2;
+
+const PDF_ROW_Y_TOLERANCE = 5;
+
+const PDF_ROW_HIGHLIGHT_DEBUG = true;
 
 const RIGHT_PANEL_WIDTH_KEY = 'analista02:right-panel-width';
 
@@ -531,6 +537,16 @@ function resolvePdfPageNumber(value) {
 
 
 
+function logPdfRowHighlightDebug(...args) {
+
+    if (!PDF_ROW_HIGHLIGHT_DEBUG) return;
+
+    console.debug('[A2][PDF_ROW_EXPERIMENT]', ...args);
+
+}
+
+
+
 async function getPdfPageNormalizedText(book, sourcePage) {
 
     if (!window.pdfjsLib) {
@@ -604,6 +620,8 @@ async function getPdfPageNormalizedText(book, sourcePage) {
                 left: Number(tx?.[4] || 0),
 
                 top: Number(tx?.[5] || 0),
+
+                height: Number(item?.height || 0),
 
                 width: Number(item?.width || 0)
 
@@ -5804,45 +5822,61 @@ async function renderComparisonTable(row) {
 
     const renderToken = ++comparisonRenderToken;
 
-    const pageText = await getPdfPageNormalizedText(row?.engine_model, row?.['Source Page']);
+    // Rendimiento: diferir lectura pesada del texto PDF para no bloquear la carga inicial del visor.
+    setTimeout(async () => {
 
-    if (renderToken !== comparisonRenderToken) return;
-
-    const pnAnchor = findPdfPnAnchor(row, pageText);
-
+        if (renderToken !== comparisonRenderToken) return;
 
 
-    const readTokens = [];
 
-    rows.forEach((entry) => {
+        const pageText = await getPdfPageNormalizedText(row?.engine_model, row?.['Source Page']);
 
-        const pdfRead = getPdfValueForRow(row, entry, pageText, pnAnchor);
+        if (renderToken !== comparisonRenderToken) return;
 
-        if (pdfRead.token) {
 
-            readTokens.push({ field: entry.field, token: pdfRead.token });
 
-        }
+        const pnAnchor = findPdfPnAnchor(row, pageText);
 
-    });
+        const readTokens = [];
 
-    const dedupedReadTokens = [];
+        rows.forEach((entry) => {
 
-    const seenReadTokens = new Set();
+            const pdfRead = getPdfValueForRow(row, entry, pageText, pnAnchor);
 
-    readTokens.forEach((entry) => {
+            if (pdfRead.token) {
 
-        const key = `${String(entry.field || '').toLowerCase()}|${entry.token}`;
+                readTokens.push({ field: entry.field, token: pdfRead.token });
 
-        if (seenReadTokens.has(key)) return;
+            }
 
-        seenReadTokens.add(key);
+        });
 
-        dedupedReadTokens.push(entry);
 
-    });
 
-    setPdfReadTokens(dedupedReadTokens);
+        const dedupedReadTokens = [];
+
+        const seenReadTokens = new Set();
+
+        readTokens.forEach((entry) => {
+
+            const key = `${String(entry.field || '').toLowerCase()}|${entry.token}`;
+
+            if (seenReadTokens.has(key)) return;
+
+            seenReadTokens.add(key);
+
+            dedupedReadTokens.push(entry);
+
+        });
+
+
+
+        setPdfReadTokens(dedupedReadTokens);
+
+        // Recalcular overlays cuando los tokens estén listos.
+        requestPdfRelayout();
+
+    }, 120);
 
 }
 
@@ -6018,6 +6052,167 @@ function syncPdfWithCurrentRow(row) {
 
 
 
+// Experimental: detecta la fila del PDF a partir de pn_final y dibuja marcas azules.
+// No reemplaza la lógica verde actual; solo añade una capa temporal de depuración visual.
+async function highlightPdfRowByPnFinal(record = currentRow) {
+
+    console.log('[A2] highlightPdfRowByPnFinal: iniciando');
+
+    // Limpiar logs previos
+    if (window.clearHeaderDetectionDebug) {
+        window.clearHeaderDetectionDebug();
+    }
+
+    if (!record) {
+
+        alert('Primero debes cargar un registro para marcar fila PN.');
+
+        return;
+
+    }
+
+
+
+    const book = String(record?.engine_model ?? '').trim();
+
+    const sourcePage = String(record?.['Source Page'] ?? '').trim();
+
+    if (!book || !sourcePage) {
+
+        console.warn('[A2][PDF_ROW_EXPERIMENT] Sin libro/página para buscar cabecera/PN en PDF.', { book, sourcePage });
+
+        alert('No se pudo resolver libro/página del PDF para el registro actual.');
+
+        return;
+
+    }
+
+    const pnFinal = normalizeString(record?.pn_final);
+
+    if (!pnFinal) {
+
+        console.warn('[A2][PDF_ROW_EXPERIMENT] Registro sin pn_final.');
+
+        // Modo header-first: permitir marcar cabecera sin depender de PN.
+        setPdfSelection(record);
+
+        // Asignar búsqueda ANTES de cargar el PDF para que se use en el primer render
+        console.log('[A2] Asignando experimental row search headerOnly antes de cargar PDF');
+
+        setPdfExperimentalRowHighlights({
+
+            headerOnly: true,
+
+            yTolerance: PDF_ROW_Y_TOLERANCE
+
+        });
+
+        await loadPdfWithPage(book, sourcePage);
+
+        console.log('[A2] PDF cargado, solicitando relayout');
+
+        requestPdfRelayout();
+
+        alert('El registro actual no tiene pn_final. Se intentó marcar la cabecera del PDF.');
+
+        return;
+
+    }
+
+    // Garantiza contexto de selección para que el overlay no se descarte por falta de selección.
+    setPdfSelection(record);
+
+
+
+    await loadPdfWithPage(book, sourcePage);
+
+    const pageText = await getPdfPageNormalizedText(book, sourcePage);
+
+    const normalizedPn = normalizePdfToken(pnFinal);
+
+    const pnMatches = (pageText?.items || []).filter((item) => tokenMatchesPdf(item?.normalized, normalizedPn));
+
+
+
+    logPdfRowHighlightDebug('pn_final buscado:', pnFinal);
+
+    logPdfRowHighlightDebug('coincidencias PN en página:', pnMatches.length);
+
+
+
+    if (!pnMatches.length) {
+
+        console.warn(`[A2][PDF_ROW_EXPERIMENT] No se encontró pn_final en PDF: "${pnFinal}"`);
+
+        // Aunque no haya match de PN, mantenemos la búsqueda experimental activa
+        // para que el visor pueda pintar la cabecera detectada en violeta.
+        // Agregamos headerOnly: true para que intente detectar cabecera si el PN está OCR-degradado.
+        setPdfExperimentalRowHighlights({
+
+            pn: pnFinal,
+
+            headerOnly: true,
+
+            yTolerance: PDF_ROW_Y_TOLERANCE
+
+        });
+
+        requestPdfRelayout();
+
+        alert(`No se encontró pn_final en el PDF: ${pnFinal}. Se intentó marcar cabecera.`);
+
+        return;
+
+    }
+
+
+
+    const pnAnchor = pnMatches[0];
+
+    const anchorY = Number(pnAnchor?.top || 0);
+
+    const rowItems = (pageText?.items || [])
+
+        .filter((item) => String(item?.text || '').trim())
+
+        .filter((item) => Math.abs(Number(item?.top || 0) - anchorY) <= PDF_ROW_Y_TOLERANCE)
+
+        .sort((a, b) => Number(a?.left || 0) - Number(b?.left || 0));
+
+
+
+    setPdfExperimentalRowHighlights({
+
+        pn: pnFinal,
+
+        yTolerance: PDF_ROW_Y_TOLERANCE
+
+    });
+
+    // Forzar render completo para recalcular tamaño/escala antes de overlays.
+    await loadPdfWithPage(book, sourcePage);
+    requestPdfRelayout();
+
+
+
+    logPdfRowHighlightDebug('coordenada Y detectada:', anchorY);
+
+    logPdfRowHighlightDebug('tolerancia Y:', PDF_ROW_Y_TOLERANCE);
+
+    logPdfRowHighlightDebug('textos en misma fila:', rowItems.map((item) => String(item?.text || '').trim()).filter(Boolean));
+
+
+
+    if (pnMatches.length > 1) {
+
+        console.warn(`[A2][PDF_ROW_EXPERIMENT] PN con ${pnMatches.length} coincidencias. Se usa la primera.`);
+
+    }
+
+}
+
+
+
 function renderRecord(row) {
 
     if (!row) {
@@ -6033,6 +6228,9 @@ function renderRecord(row) {
 
 
     renderReviewStats(getQueueRows(), row);
+
+    // Prioriza carga del PDF frente a tareas secundarias de tabla/procesos.
+    syncPdfWithCurrentRow(row);
 
     renderMeta(row);
 
@@ -6055,8 +6253,6 @@ function renderRecord(row) {
     renderVerdict(processState);
 
     renderReviewStateButtons(row);
-
-    syncPdfWithCurrentRow(row);
 
 }
 
@@ -7862,6 +8058,8 @@ async function initialize() {
 
         initPdfZoomControls();
 
+        initHeaderDetectionDebugPanel();
+
         loadPdfClear();
 
 
@@ -8035,6 +8233,20 @@ bindClick('recomputePdfRunBtn', () => {
     runBackendRecomputePdfAuto().catch((error) => {
 
         setRecomputeStatus(`Error: ${String(error?.message || error)}`, 'error');
+
+    });
+
+});
+
+
+
+bindClick('markPnRowBtn', () => {
+
+    highlightPdfRowByPnFinal(currentRow).catch((error) => {
+
+        console.warn('No se pudo marcar la fila PN en el PDF:', error);
+
+        alert(`No se pudo marcar la fila PN: ${String(error?.message || error)}`);
 
     });
 

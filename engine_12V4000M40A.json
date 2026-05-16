@@ -304980,14 +304980,16 @@
     "bom_pdf": "bom_pdf",
     "normalizado_pdf": "normalizado_pdf",
     "sust_new_part_number_pdf": "sust_new_part_number_pdf",
-    "qa_revision_estado": "qa_revision_estado",
-    "qa_revision_accion": "revisar",
+    "qa_revision_estado": "ok",
+    "qa_revision_accion": "eliminar",
     "qa_revision_motivo": "qa_revision_motivo",
     "qa_revision_confianza": "qa_revision_confianza",
     "qa_revision_origen": "qa_revision_origen",
     "qa_revision_fecha": "qa_revision_fecha",
     "qa_revision_regla_aplicada": "qa_revision_regla_aplicada",
     "qa_revision_updated_at": "qa_revision_updated_at",
-    "model_type_final": "model_final"
+    "model_type_final": "model_final",
+    "qa_action": "eliminar",
+    "qa_status": "ok"
   }
 ]

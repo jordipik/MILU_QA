@@ -2013,6 +2013,152 @@ body.a2-resizing * {
     font-size: 11px;
 }
 
+.pdf-row-debug-btn {
+    height: 28px;
+    border: 1px solid #9ab9df;
+    border-radius: 8px;
+    background: linear-gradient(180deg, #ffffff 0%, #edf5ff 100%);
+    color: #0e4a86;
+    font-size: 12px;
+    font-weight: 700;
+    padding: 0 10px;
+    cursor: pointer;
+}
+
+.pdf-row-debug-btn:hover {
+    border-color: #7ca7d7;
+    background: linear-gradient(180deg, #ffffff 0%, #e4f0ff 100%);
+    cursor: pointer;
+}
+
+/* Panel de debug para detección de cabecera */
+.header-detection-debug-panel {
+    position: fixed;
+    bottom: 16px;
+    right: 16px;
+    width: 480px;
+    max-height: 400px;
+    background: #ffffff;
+    border: 1px solid #ddd;
+    border-radius: 8px;
+    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.15);
+    z-index: 999;
+    display: flex;
+    flex-direction: column;
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 11px;
+}
+
+.header-detection-debug-panel[hidden] {
+    display: none !important;
+}
+
+.header-debug-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 12px;
+    background: linear-gradient(90deg, #7c3ae5, #8b5cf6);
+    color: #ffffff;
+    border-radius: 8px 8px 0 0;
+    border-bottom: 1px solid rgba(0, 0, 0, 0.1);
+}
+
+.header-debug-header h3 {
+    margin: 0;
+    font-size: 13px;
+    font-weight: 600;
+}
+
+.header-debug-toggle {
+    background: rgba(255, 255, 255, 0.2);
+    border: 0;
+    color: #ffffff;
+    border-radius: 4px;
+    cursor: pointer;
+    padding: 4px 8px;
+    font-size: 14px;
+}
+
+.header-debug-toggle:hover {
+    background: rgba(255, 255, 255, 0.3);
+}
+
+.header-debug-content {
+    display: flex;
+    flex-direction: column;
+    max-height: 320px;
+    overflow: hidden;
+}
+
+.header-debug-controls {
+    display: flex;
+    gap: 8px;
+    padding: 8px;
+    border-bottom: 1px solid #eee;
+    background: #f9f9f9;
+}
+
+.header-debug-btn {
+    flex: 1;
+    padding: 6px 10px;
+    background: #f0f0f0;
+    border: 1px solid #ccc;
+    border-radius: 4px;
+    cursor: pointer;
+    font-size: 10px;
+    font-weight: 600;
+    color: #333;
+}
+
+.header-debug-btn:hover {
+    background: #e8e8e8;
+    border-color: #999;
+}
+
+.header-debug-log {
+    flex: 1;
+    overflow-y: auto;
+    padding: 8px;
+    background: #fafafa;
+    color: #333;
+    line-height: 1.4;
+}
+
+.header-debug-log-entry {
+    margin-bottom: 6px;
+    padding: 4px;
+    background: #ffffff;
+    border-left: 3px solid #8b5cf6;
+    border-radius: 2px;
+}
+
+.header-debug-log-stage {
+    font-weight: 700;
+    color: #7c3ae5;
+}
+
+.header-debug-log-data {
+    color: #555;
+    word-break: break-all;
+    white-space: pre-wrap;
+}
+
+.header-debug-log-timestamp {
+    font-size: 9px;
+    color: #999;
+}
+
+@media (max-width: 1024px) {
+    .header-detection-debug-panel {
+        width: 90vw;
+        max-width: 400px;
+        right: 8px;
+        bottom: 8px;
+    }
+}
+}
+
 .pdfviewer {
     flex: 1;
     min-height: 220px;
@@ -2035,6 +2181,41 @@ body.a2-resizing * {
 .pdf-selection-highlight.is-read-field {
     border-color: rgba(220, 38, 38, 0.96);
     background: rgba(248, 113, 113, 0.32);
+}
+
+.pdf-selection-highlight.pdf-row-highlight-blue {
+    border-width: 3px;
+    border-color: rgba(9, 94, 196, 0.98);
+    background: rgba(37, 99, 235, 0.32);
+    box-shadow: none;
+    pointer-events: none;
+}
+
+.pdf-selection-highlight.pdf-row-highlight-red-row {
+    border-width: 3px 0;
+    border-color: rgba(220, 38, 38, 0.98);
+    background: rgba(220, 38, 38, 0.2);
+    border-radius: 0;
+    box-shadow: none;
+    pointer-events: none;
+}
+
+.pdf-selection-highlight.pdf-row-highlight-violet-row {
+    border-width: 3px 0;
+    border-color: rgba(124, 58, 237, 0.95);
+    background: rgba(139, 92, 246, 0.2);
+    border-radius: 0;
+    box-shadow: none;
+    pointer-events: none;
+}
+
+.pdf-selection-highlight.pdf-column-highlight-violet {
+    border-width: 0 2px;
+    border-color: rgba(124, 58, 237, 0.9);
+    background: rgba(139, 92, 246, 0.14);
+    border-radius: 0;
+    box-shadow: none;
+    pointer-events: none;
 }
 
 .pdf-meta-foot {

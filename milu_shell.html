@@ -1,908 +1,1820 @@
-<!doctype html>
-<html lang="es">
-
-<head>
-    <meta charset="utf-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <link rel="icon" type="image/svg+xml" href="favicon.svg" />
-    <title>MILU • Workspace</title>
-    <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@500;600;700;800&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="styles/analista_02.css" />
-    <style>
-        html,
-        body {
-            margin: 0;
-            padding: 0;
-            width: 100%;
-            height: 100%;
-            overflow: hidden;
-            font-family: 'Manrope', sans-serif;
-            background: #f3f4f6;
-        }
-
-        body {
-            display: flex;
-            flex-direction: column;
-        }
-
-        .shell-main {
-            flex: 1;
-            min-height: 0;
-            width: 100%;
-            background: #f3f4f6;
-            position: relative;
-        }
-
-        .shell-frame {
-            width: 100%;
-            height: 100%;
-            border: 0;
-            display: none;
-            background: #f3f4f6;
-            position: absolute;
-            inset: 0;
-        }
-
-        .shell-frame.is-active {
-            display: block;
-        }
-
-        .shell-shared-modal[hidden] {
-            display: none;
-        }
-
-        .shell-shared-modal {
-            position: fixed;
-            inset: 0;
-            z-index: 2000;
-            display: grid;
-            place-items: center;
-            padding: 20px;
-        }
-
-        .shell-shared-modal-backdrop {
-            position: absolute;
-            inset: 0;
-            background: rgba(15, 23, 42, 0.42);
-            backdrop-filter: blur(1px);
-        }
-
-        .shell-shared-modal-panel {
-            position: relative;
-            width: min(1120px, calc(100vw - 32px));
-            max-height: calc(100vh - 32px);
-            overflow: auto;
-            border-radius: 14px;
-            border: 1px solid #c9d6e3;
-            background: #ffffff;
-            box-shadow: 0 24px 48px rgba(15, 23, 42, 0.28);
-        }
-
-        .shell-shared-modal-head {
-            display: flex;
-            align-items: center;
-            justify-content: space-between;
-            gap: 12px;
-            padding: 12px 14px;
-            border-bottom: 1px solid #d8e2ee;
-            background: linear-gradient(180deg, #f7fbff, #eef5fc);
-        }
-
-        .shell-shared-modal-title {
-            margin: 0;
-            font-size: 14px;
-            font-weight: 800;
-            color: #17324a;
-        }
-
-        .shell-shared-modal-close {
-            width: 30px;
-            height: 30px;
-            border-radius: 8px;
-            border: 1px solid #c9d6e3;
-            background: #ffffff;
-            color: #17324a;
-            font-size: 18px;
-            line-height: 1;
-            cursor: pointer;
-        }
-
-        .shell-shared-modal-body {
-            padding: 14px;
-            display: grid;
-            gap: 12px;
-        }
-
-        .shell-shared-meta {
-            padding: 10px 12px;
-            border-radius: 10px;
-            border: 1px solid #d6e1ee;
-            background: #f8fbff;
-            font-size: 12px;
-            color: #2f4a63;
-            font-family: 'IBM Plex Mono', Consolas, monospace;
-        }
-
-        .shell-shared-grid {
-            display: grid;
-            grid-template-columns: repeat(6, minmax(0, 1fr));
-            gap: 10px;
-        }
-
-        .shell-shared-field {
-            display: grid;
-            gap: 6px;
-        }
-
-        .shell-shared-field.span-2 {
-            grid-column: span 2;
-        }
-
-        .shell-shared-field.span-3 {
-            grid-column: span 3;
-        }
-
-        .shell-shared-field.span-4 {
-            grid-column: span 4;
-        }
-
-        .shell-shared-field label {
-            font-size: 11px;
-            font-weight: 800;
-            color: #4a6179;
-            letter-spacing: 0.03em;
-            text-transform: uppercase;
-        }
-
-        .shell-shared-field input,
-        .shell-shared-field select {
-            height: 34px;
-            border-radius: 9px;
-            border: 1px solid #c9d6e3;
-            padding: 0 10px;
-            font-family: inherit;
-            font-size: 12px;
-            color: #14283a;
-            background: #ffffff;
-        }
-
-        .shell-shared-field input[readonly] {
-            background: #f6f9fc;
-            color: #496079;
-        }
-
-        .shell-shared-actions {
-            display: flex;
-            justify-content: flex-end;
-            gap: 8px;
-            padding: 0 14px 14px;
-        }
-
-        .shell-shared-btn {
-            height: 34px;
-            border-radius: 10px;
-            border: 1px solid #c9d6e3;
-            background: #f3f8fd;
-            color: #143652;
-            font-size: 12px;
-            font-weight: 800;
-            padding: 0 12px;
-            cursor: pointer;
-        }
-
-        .shell-shared-btn.primary {
-            border-color: #1766ac;
-            background: linear-gradient(135deg, #0a4f8f, #1f79c8);
-            color: #ffffff;
-        }
-
-        .shell-shared-status {
-            min-height: 16px;
-            padding: 0 14px 12px;
-            margin: 0;
-            font-size: 12px;
-            color: #46627d;
-        }
-
-        .shell-shared-status.error {
-            color: #a12626;
-        }
-
-        .shell-shared-status.ok {
-            color: #16613f;
-        }
-    </style>
-</head>
-
-<body>
-    <main id="shellMain" class="shell-main">
-    </main>
-
-    <div id="shellSharedRecordModal" class="shell-shared-modal" hidden aria-modal="true" role="dialog"
-        aria-labelledby="shellSharedRecordModalTitle">
-        <div class="shell-shared-modal-backdrop" data-shell-shared-close="true"></div>
-        <div class="shell-shared-modal-panel">
-            <div class="shell-shared-modal-head">
-                <h2 id="shellSharedRecordModalTitle" class="shell-shared-modal-title">Editar Registro</h2>
-                <button id="shellSharedRecordModalClose" class="shell-shared-modal-close" type="button"
-                    aria-label="Cerrar">&times;</button>
-            </div>
-            <div class="shell-shared-modal-body">
-                <div id="shellSharedMeta" class="shell-shared-meta">-</div>
-                <div class="shell-shared-grid">
-                    <div class="shell-shared-field">
-                        <label for="shellSharedPos">POS (pos_final)</label>
-                        <input id="shellSharedPos" type="text" />
-                    </div>
-                    <div class="shell-shared-field">
-                        <label for="shellSharedPnFinal">PN FINAL (pn_final)</label>
-                        <input id="shellSharedPnFinal" type="text" />
-                    </div>
-                    <div class="shell-shared-field span-3">
-                        <label for="shellSharedDesignationFinal">DESIGNATION FINAL (designation_final)</label>
-                        <input id="shellSharedDesignationFinal" type="text" />
-                    </div>
-                    <div class="shell-shared-field">
-                        <label for="shellSharedModelType">MODEL/TYPE FINAL (MODEL/TYPE_final)</label>
-                        <input id="shellSharedModelType" type="text" />
-                    </div>
-                    <div class="shell-shared-field">
-                        <label for="shellSharedQty">QTY (qty_final)</label>
-                        <input id="shellSharedQty" type="text" />
-                    </div>
-                    <div class="shell-shared-field">
-                        <label for="shellSharedUnits">UNITS (qty_units_final)</label>
-                        <input id="shellSharedUnits" type="text" />
-                    </div>
-                    <div class="shell-shared-field">
-                        <label for="shellSharedWeightFinal">WEIGHT FINAL (weight_final)</label>
-                        <input id="shellSharedWeightFinal" type="text" />
-                    </div>
-                    <div class="shell-shared-field">
-                        <label for="shellSharedFn">FN (fn_final)</label>
-                        <input id="shellSharedFn" type="text" />
-                    </div>
-                    <div class="shell-shared-field">
-                        <label for="shellSharedMeasurementFinal">MEASURE FINAL (measure_final)</label>
-                        <input id="shellSharedMeasurementFinal" type="text" />
-                    </div>
-                    <div class="shell-shared-field">
-                        <label for="shellSharedNorma">NORMA (norma_final)</label>
-                        <input id="shellSharedNorma" type="text" />
-                    </div>
-                    <div class="shell-shared-field">
-                        <label for="shellSharedEstado">ESTADO (qa_revision_estado)</label>
-                        <select id="shellSharedEstado">
-                            <option value="pendiente">Pendiente</option>
-                            <option value="ok">OK</option>
-                        </select>
-                    </div>
-                    <div class="shell-shared-field">
-                        <label for="shellSharedAccion">ACCION (qa_revision_accion)</label>
-                        <select id="shellSharedAccion">
-                            <option value="importar">Importar</option>
-                            <option value="revisar">Revisar</option>
-                            <option value="eliminar">Eliminar</option>
-                        </select>
-                    </div>
-                    <div class="shell-shared-field">
-                        <label for="shellSharedGesa">GESA (gesa)</label>
-                        <input id="shellSharedGesa" type="text" />
-                    </div>
-                    <div class="shell-shared-field">
-                        <label for="shellSharedNormalizado">NORM. (normalizado)</label>
-                        <input id="shellSharedNormalizado" type="text" />
-                    </div>
-                    <div class="shell-shared-field span-2">
-                        <label for="shellSharedNewSup">NEW/SUP (sust_hierarchie)</label>
-                        <input id="shellSharedNewSup" type="text" />
-                    </div>
-                    <div class="shell-shared-field">
-                        <label for="shellSharedHasImg">FOTO (has_img)</label>
-                        <input id="shellSharedHasImg" type="text" />
-                    </div>
-                    <div class="shell-shared-field">
-                        <label for="shellSharedEnWeb">EN WEB (EN_WEB)</label>
-                        <input id="shellSharedEnWeb" type="text" />
-                    </div>
-                    <div class="shell-shared-field span-3">
-                        <label for="shellSharedBook">LIBRO (engine_model)</label>
-                        <input id="shellSharedBook" type="text" />
-                    </div>
-                    <div class="shell-shared-field">
-                        <label for="shellSharedPage">PAGINA (Source Page)</label>
-                        <input id="shellSharedPage" type="text" />
-                    </div>
-                </div>
-            </div>
-            <div class="shell-shared-actions">
-                <button id="shellSharedCancelBtn" class="shell-shared-btn" type="button">Cancelar</button>
-                <button id="shellSharedSaveBtn" class="shell-shared-btn primary" type="button">Guardar</button>
-            </div>
-            <p id="shellSharedStatus" class="shell-shared-status" aria-live="polite"></p>
-        </div>
-    </div>
-
-    <script type="module">
-        import { initTopbar } from './js/topbar.js';
-        import { saveCellToServer } from './js/data-loader.js';
-
-        const ENABLE_EXPORT_VIEW = false;
-
-        const VIEW_TO_PAGE = {
-            pdf: 'qa_milu.html',
-            analisis: 'analista_02.html',
-            imagenes: 'qa_imagenes.html',
-            exportwp: 'export_wordpress.html'
-        };
-
-        if (ENABLE_EXPORT_VIEW) {
-            VIEW_TO_PAGE.export = 'qa_lista_agrupada.html';
-        }
-
-        const TITLES = {
-            pdf: 'MILU • PDF',
-            export: 'MILU • EXPORT',
-            analisis: 'MILU • ANALISIS',
-            imagenes: 'MILU • IMAGENES',
-            exportwp: 'MILU • EXPORT'
-        };
-        const frameByView = new Map();
-        let sharedEditorContext = null;
-
-        const EDITABLE_FIELDS = [
-            'pos_final',
-            'pn_final',
-            'designation_final',
-            'model_type_final',
-            'qty_final',
-            'qty_units_final',
-            'weight_final',
-            'fn_final',
-            'measure_final',
-            'norma_final',
-            'qa_revision_estado',
-            'qa_revision_accion',
-            'gesa',
-            'normalizado',
-            'sust_hierarchie',
-            'has_img',
-            'EN_WEB',
-            'engine_model',
-            'Source Page'
-        ];
-        const PENDING_SHARED_EDITOR_KEY = 'milu:pending-shared-editor-payload';
-
-        function txt(value) {
-            return String(value ?? '').trim();
-        }
-
-        function normalizeEngineFile(payload = {}) {
-            const rawEngineFile = txt(payload.engineFile);
-            if (rawEngineFile) {
-                const normalized = rawEngineFile.endsWith('.json') ? rawEngineFile : `${rawEngineFile}.json`;
-                return normalized.startsWith('engine_') ? normalized : `engine_${normalized}`;
-            }
-
-            const sourceFile = txt(payload.source_file);
-            if (sourceFile) {
-                const base = sourceFile.replace(/^engine_/i, '').replace(/\.xlsx$/i, '').replace(/\.json$/i, '');
-                return `engine_${base}.json`;
-            }
-
-            const engineModel = txt(payload.engineModel || payload.engine || payload.book).replace(/^engine_/i, '');
-            if (engineModel) return `engine_${engineModel}.json`;
-            return '';
-        }
-
-        function normalizeEstado(value) {
-            const raw = txt(value).toLowerCase();
-            if (raw === 'ok' || raw === 'revisado') return 'ok';
-            return 'pendiente';
-        }
-
-        function normalizeAccion(value) {
-            const raw = txt(value).toLowerCase();
-            if (raw === 'mantener' || raw === 'importar') return 'importar';
-            if (raw === 'eliminar') return 'eliminar';
-            if (raw === 'revisar') return 'revisar';
-            return 'importar';
-        }
-
-        function denormalizeEstado(value) {
-            return normalizeEstado(value) === 'ok' ? 'revisado' : '';
-        }
-
-        function denormalizeAccion(value) {
-            const normalized = normalizeAccion(value);
-            if (normalized === 'eliminar') return 'eliminar';
-            if (normalized === 'revisar') return 'revisar';
-            return 'mantener';
-        }
-
-        function consumePendingSharedEditorPayload() {
-            try {
-                const raw = sessionStorage.getItem(PENDING_SHARED_EDITOR_KEY);
-                if (!raw) return null;
-                sessionStorage.removeItem(PENDING_SHARED_EDITOR_KEY);
-                const parsed = JSON.parse(raw);
-                return parsed && typeof parsed === 'object' ? parsed : null;
-            } catch (error) {
-                console.warn('No se pudo leer payload de modal compartido:', error);
-                return null;
-            }
-        }
-
-        function getSharedModalElements() {
-            return {
-                modal: document.getElementById('shellSharedRecordModal'),
-                meta: document.getElementById('shellSharedMeta'),
-                status: document.getElementById('shellSharedStatus'),
-                saveBtn: document.getElementById('shellSharedSaveBtn'),
-                pnFinal: document.getElementById('shellSharedPnFinal'),
-                designationFinal: document.getElementById('shellSharedDesignationFinal'),
-                weightFinal: document.getElementById('shellSharedWeightFinal'),
-                measurementFinal: document.getElementById('shellSharedMeasurementFinal'),
-                norma: document.getElementById('shellSharedNorma'),
-                estado: document.getElementById('shellSharedEstado'),
-                accion: document.getElementById('shellSharedAccion'),
-                modelType: document.getElementById('shellSharedModelType'),
-                qty: document.getElementById('shellSharedQty'),
-                units: document.getElementById('shellSharedUnits'),
-                fn: document.getElementById('shellSharedFn'),
-                gesa: document.getElementById('shellSharedGesa'),
-                normalizado: document.getElementById('shellSharedNormalizado'),
-                newSup: document.getElementById('shellSharedNewSup'),
-                hasImg: document.getElementById('shellSharedHasImg'),
-                enWeb: document.getElementById('shellSharedEnWeb'),
-                book: document.getElementById('shellSharedBook'),
-                page: document.getElementById('shellSharedPage'),
-                pos: document.getElementById('shellSharedPos')
-            };
-        }
-
-        function setSharedModalStatus(message, kind = '') {
-            const { status } = getSharedModalElements();
-            if (!(status instanceof HTMLElement)) return;
-            status.classList.remove('ok', 'error');
-            if (kind === 'ok') status.classList.add('ok');
-            if (kind === 'error') status.classList.add('error');
-            status.textContent = message;
-        }
-
-        function closeSharedRecordEditor() {
-            const { modal } = getSharedModalElements();
-            if (!(modal instanceof HTMLElement)) return;
-            modal.hidden = true;
-            sharedEditorContext = null;
-            setSharedModalStatus('');
-        }
-
-        function notifyAnalisisDataChanged(payload = {}) {
-            const targetFrame = getFrameForView('analisis');
-            if (!(targetFrame instanceof HTMLIFrameElement)) return false;
-            const bridge = targetFrame.contentWindow?.miluRefreshAnalisisRecord;
-            if (typeof bridge !== 'function') return false;
-            try {
-                const result = bridge(payload);
-                if (result && typeof result.catch === 'function') result.catch(() => undefined);
-                return true;
-            } catch (_) {
-                return false;
-            }
-        }
-
-        function normalizeView(value) {
-            const raw = String(value || '').trim().toLowerCase();
-            if (raw === 'pdf' || raw === 'analisis' || raw === 'imagenes' || raw === 'exportwp') return raw;
-            if (ENABLE_EXPORT_VIEW && raw === 'export') return raw;
-            return 'pdf';
-        }
-
-        function getViewFromUrl() {
-            const params = new URLSearchParams(window.location.search);
-            return normalizeView(params.get('view'));
-        }
-
-        function buildEmbeddedUrl(view) {
-            const pageFile = VIEW_TO_PAGE[view] || VIEW_TO_PAGE.pdf;
-            const target = new URL(pageFile, window.location.href);
-            target.searchParams.set('embedded', '1');
-            return target.toString();
-        }
-
-        function getFrameForView(view) {
-            const normalizedView = normalizeView(view);
-            const existing = frameByView.get(normalizedView);
-            if (existing instanceof HTMLIFrameElement) return existing;
-
-            const shellMain = document.getElementById('shellMain');
-            if (!(shellMain instanceof HTMLElement)) return null;
-
-            const frame = document.createElement('iframe');
-            frame.className = 'shell-frame';
-            frame.loading = 'eager';
-            frame.title = `MILU ${normalizedView}`;
-            frame.src = buildEmbeddedUrl(normalizedView);
-            frame.dataset.view = normalizedView;
-
-            shellMain.appendChild(frame);
-            frameByView.set(normalizedView, frame);
-
-            return frame;
-        }
-
-        function setActiveFrame(view) {
-            const normalizedView = normalizeView(view);
-            const targetFrame = getFrameForView(normalizedView);
-            if (!(targetFrame instanceof HTMLIFrameElement)) return;
-
-            frameByView.forEach(frame => frame.classList.remove('is-active'));
-            targetFrame.classList.add('is-active');
-
-            const notifyActivated = () => {
-                const bridge = targetFrame.contentWindow?.miluOnShellActivated;
-                if (typeof bridge !== 'function') return false;
-                try {
-                    bridge();
-                    return true;
-                } catch (_) {
-                    return false;
-                }
-            };
-
-            if (!notifyActivated()) {
-                let attemptsLeft = 20;
-                const retry = () => {
-                    if (notifyActivated() || attemptsLeft <= 0) return;
-                    attemptsLeft -= 1;
-                    window.setTimeout(retry, 100);
-                };
-                window.requestAnimationFrame(retry);
-            }
-        }
-
-        function prewarmOtherViews(currentView) {
-            Object.keys(VIEW_TO_PAGE)
-                .filter(view => view !== currentView)
-                .forEach(view => {
-                    getFrameForView(view);
-                });
-        }
-
-        function updateUrl(view, replace = false) {
-            const url = new URL(window.location.href);
-            url.searchParams.set('view', view);
-            if (replace) {
-                history.replaceState({ view }, '', url);
-                return;
-            }
-            history.pushState({ view }, '', url);
-        }
-
-        function wireTopbarNavigation() {
-            const links = Array.from(document.querySelectorAll('header.a2-topbar .a2-nav a[data-page]'));
-            links.forEach(link => {
-                if (!(link instanceof HTMLAnchorElement)) return;
-                const pageKey = String(link.dataset.page || '').trim().toLowerCase();
-                if (!(pageKey in VIEW_TO_PAGE)) {
-                    return;
-                }
-
-                const view = normalizeView(pageKey);
-                link.addEventListener('click', (event) => {
-                    event.preventDefault();
-                    mountView(view, { updateHistory: true });
-                });
-            });
-        }
-
-        function mountView(view, options = {}) {
-            const { updateHistory = false, replaceHistory = false } = options;
-            const normalizedView = normalizeView(view);
-
-            initTopbar(normalizedView);
-            wireTopbarNavigation();
-            setActiveFrame(normalizedView);
-            prewarmOtherViews(normalizedView);
-
-            document.title = TITLES[normalizedView] || 'MILU • Workspace';
-
-            if (updateHistory) {
-                updateUrl(normalizedView, false);
-            } else if (replaceHistory) {
-                updateUrl(normalizedView, true);
-            }
-        }
-
-        function openPdfRecordModal(payload = {}) {
-            mountView('pdf', { updateHistory: true });
-
-            const targetFrame = getFrameForView('pdf');
-            if (!(targetFrame instanceof HTMLIFrameElement)) return false;
-
-            const invokeBridge = () => {
-                const bridge = targetFrame.contentWindow?.miluOpenPdfRecordModal;
-                if (typeof bridge !== 'function') return false;
-                return bridge(payload) !== false;
-            };
-
-            if (invokeBridge()) return true;
-
-            let attemptsLeft = 40;
-            const retry = () => {
-                if (invokeBridge() || attemptsLeft <= 0) return;
-                attemptsLeft -= 1;
-                window.setTimeout(retry, 100);
-            };
-            retry();
-            return true;
-        }
-
-        window.miluShellOpenPdfRecordModal = openPdfRecordModal;
-
-        function openSharedRecordEditor(payload = {}) {
-            const id = txt(payload.id);
-            const engineFile = normalizeEngineFile(payload);
-            if (!id || !engineFile) return false;
-
-            const {
-                modal,
-                meta,
-                pnFinal,
-                designationFinal,
-                weightFinal,
-                measurementFinal,
-                norma,
-                estado,
-                accion,
-                modelType,
-                qty,
-                units,
-                fn,
-                gesa,
-                normalizado,
-                newSup,
-                hasImg,
-                enWeb,
-                book,
-                page,
-                pos
-            } = getSharedModalElements();
-            if (!(modal instanceof HTMLElement)) return false;
-
-            sharedEditorContext = {
-                id,
-                engineFile,
-                basePayload: { ...payload },
-                values: {
-                    pos_final: txt(payload.pos_final || payload.pos || payload.POS),
-                    pn_final: txt(payload.pn_final),
-                    designation_final: txt(payload.designation_final),
-                    model_type_final: txt(payload.model_type_final || payload['MODEL/TYPE_final'] || payload.model_type_final || payload.model_type || payload.ModelType),
-                    qty_final: txt(payload.qty_final || payload.qty || payload.QTY),
-                    qty_units_final: txt(payload.qty_units_final || payload.units || payload.Units || payload.UNITS),
-                    weight_final: txt(payload.weight_final),
-                    fn_final: txt(payload.fn_final || payload.fn || payload.FN),
-                    measure_final: txt(payload.measure_final || payload.measurement_final),
-                    norma_final: txt(payload.norma_final || payload.norma),
-                    qa_revision_estado: normalizeEstado(payload.qa_revision_estado),
-                    qa_revision_accion: normalizeAccion(payload.qa_revision_accion),
-                    gesa: txt(payload.gesa),
-                    normalizado: txt(payload.normalizado),
-                    sust_hierarchie: txt(payload.sust_hierarchie || payload.new_sup),
-                    has_img: txt(payload.has_img),
-                    EN_WEB: txt(payload.en_web || payload.EN_WEB),
-                    engine_model: txt(payload.engineModel || payload.engine || payload.book),
-                    'Source Page': txt(payload.source_page || payload.page)
-                }
-            };
-
-            if (meta instanceof HTMLElement) {
-                const engineModel = txt(payload.engineModel || payload.engine || payload.book);
-                const record = txt(payload.record || payload.pn_final || payload['PART NO.']);
-                meta.textContent = `ID=${id} | Engine=${engineModel || '-'} | Record=${record || '-'} | File=${engineFile}`;
-            }
-
-            if (pos instanceof HTMLInputElement) pos.value = sharedEditorContext.values.pos_final;
-            if (pnFinal instanceof HTMLInputElement) pnFinal.value = sharedEditorContext.values.pn_final;
-            if (designationFinal instanceof HTMLInputElement) designationFinal.value = sharedEditorContext.values.designation_final;
-            if (modelType instanceof HTMLInputElement) modelType.value = sharedEditorContext.values['model_type_final'];
-            if (qty instanceof HTMLInputElement) qty.value = sharedEditorContext.values.qty_final;
-            if (units instanceof HTMLInputElement) units.value = sharedEditorContext.values.qty_units_final;
-            if (weightFinal instanceof HTMLInputElement) weightFinal.value = sharedEditorContext.values.weight_final;
-            if (fn instanceof HTMLInputElement) fn.value = sharedEditorContext.values.fn_final;
-            if (measurementFinal instanceof HTMLInputElement) measurementFinal.value = sharedEditorContext.values.measure_final;
-            if (norma instanceof HTMLInputElement) norma.value = sharedEditorContext.values.norma_final;
-            if (estado instanceof HTMLSelectElement) estado.value = sharedEditorContext.values.qa_revision_estado;
-            if (accion instanceof HTMLSelectElement) accion.value = sharedEditorContext.values.qa_revision_accion;
-            if (gesa instanceof HTMLInputElement) gesa.value = sharedEditorContext.values.gesa;
-            if (normalizado instanceof HTMLInputElement) normalizado.value = sharedEditorContext.values.normalizado;
-            if (newSup instanceof HTMLInputElement) newSup.value = sharedEditorContext.values.sust_hierarchie;
-            if (hasImg instanceof HTMLInputElement) hasImg.value = sharedEditorContext.values.has_img;
-            if (enWeb instanceof HTMLInputElement) enWeb.value = sharedEditorContext.values.EN_WEB;
-            if (book instanceof HTMLInputElement) book.value = sharedEditorContext.values.engine_model;
-            if (page instanceof HTMLInputElement) page.value = sharedEditorContext.values['Source Page'];
-
-            setSharedModalStatus('');
-            modal.hidden = false;
-            pnFinal?.focus();
-            return true;
-        }
-
-        async function saveSharedRecordEditor() {
-            const context = sharedEditorContext;
-            if (!context) return;
-
-            const {
-                saveBtn,
-                pos,
-                pnFinal,
-                designationFinal,
-                modelType,
-                qty,
-                units,
-                weightFinal,
-                fn,
-                measurementFinal,
-                norma,
-                estado,
-                accion,
-                gesa,
-                normalizado,
-                newSup,
-                hasImg,
-                enWeb,
-                book,
-                page
-            } = getSharedModalElements();
-            const nextValues = {
-                pos_final: txt(pos instanceof HTMLInputElement ? pos.value : ''),
-                pn_final: txt(pnFinal instanceof HTMLInputElement ? pnFinal.value : ''),
-                designation_final: txt(designationFinal instanceof HTMLInputElement ? designationFinal.value : ''),
-                model_type_final: txt(modelType instanceof HTMLInputElement ? modelType.value : ''),
-                qty_final: txt(qty instanceof HTMLInputElement ? qty.value : ''),
-                qty_units_final: txt(units instanceof HTMLInputElement ? units.value : ''),
-                weight_final: txt(weightFinal instanceof HTMLInputElement ? weightFinal.value : ''),
-                fn_final: txt(fn instanceof HTMLInputElement ? fn.value : ''),
-                measure_final: txt(measurementFinal instanceof HTMLInputElement ? measurementFinal.value : ''),
-                norma_final: txt(norma instanceof HTMLInputElement ? norma.value : ''),
-                qa_revision_estado: normalizeEstado(estado instanceof HTMLSelectElement ? estado.value : ''),
-                qa_revision_accion: normalizeAccion(accion instanceof HTMLSelectElement ? accion.value : ''),
-                gesa: txt(gesa instanceof HTMLInputElement ? gesa.value : ''),
-                normalizado: txt(normalizado instanceof HTMLInputElement ? normalizado.value : ''),
-                sust_hierarchie: txt(newSup instanceof HTMLInputElement ? newSup.value : ''),
-                has_img: txt(hasImg instanceof HTMLInputElement ? hasImg.value : ''),
-                EN_WEB: txt(enWeb instanceof HTMLInputElement ? enWeb.value : ''),
-                engine_model: txt(book instanceof HTMLInputElement ? book.value : ''),
-                'Source Page': txt(page instanceof HTMLInputElement ? page.value : '')
-            };
-
-            const changed = EDITABLE_FIELDS.filter((field) => nextValues[field] !== context.values[field]);
-            if (!changed.length) {
-                setSharedModalStatus('Sin cambios para guardar.', 'ok');
-                return;
-            }
-
-            if (saveBtn instanceof HTMLButtonElement) saveBtn.disabled = true;
-            setSharedModalStatus('Guardando cambios...');
-
-            try {
-                for (const field of changed) {
-                    const valueToPersist = field === 'qa_revision_estado'
-                        ? denormalizeEstado(nextValues[field])
-                        : field === 'qa_revision_accion'
-                            ? denormalizeAccion(nextValues[field])
-                            : nextValues[field];
-                    await saveCellToServer(context.engineFile, context.id, field, valueToPersist);
-                    context.values[field] = nextValues[field];
-                }
-
-                const refreshPayload = {
-                    id: context.id,
-                    engine: txt(context.basePayload.engineModel || context.basePayload.engine || context.basePayload.book),
-                    record: txt(nextValues.pn_final || context.basePayload.record || context.basePayload['PART NO.'])
-                };
-                notifyPdfDataChanged(refreshPayload);
-                notifyAnalisisDataChanged(refreshPayload);
-                setSharedModalStatus('Cambios guardados correctamente.', 'ok');
-                window.setTimeout(() => closeSharedRecordEditor(), 120);
-            } catch (error) {
-                setSharedModalStatus(`Error guardando: ${String(error?.message || error)}`, 'error');
-            } finally {
-                if (saveBtn instanceof HTMLButtonElement) saveBtn.disabled = false;
-            }
-        }
-
-        window.miluShellOpenSharedRecordEditor = openSharedRecordEditor;
-
-        function openAnalisisRecord(payload = {}) {
-            mountView('analisis', { updateHistory: true });
-
-            const targetFrame = getFrameForView('analisis');
-            if (!(targetFrame instanceof HTMLIFrameElement)) return false;
-
-            const invokeBridge = () => {
-                const bridge = targetFrame.contentWindow?.miluOpenAnalisisRecord;
-                if (typeof bridge !== 'function') return false;
-                return bridge(payload) !== false;
-            };
-
-            if (invokeBridge()) return true;
-
-            let attemptsLeft = 40;
-            const retry = () => {
-                if (invokeBridge() || attemptsLeft <= 0) return;
-                attemptsLeft -= 1;
-                window.setTimeout(retry, 100);
-            };
-            retry();
-            return true;
-        }
-
-        window.miluShellOpenAnalisisRecord = openAnalisisRecord;
-
-        function notifyPdfDataChanged(payload = {}) {
-            const targetFrame = getFrameForView('pdf');
-            if (!(targetFrame instanceof HTMLIFrameElement)) return false;
-
-            const bridge = targetFrame.contentWindow?.miluRefreshPdfData;
-            if (typeof bridge !== 'function') return false;
-
-            try {
-                bridge(payload);
-                return true;
-            } catch (_) {
-                return false;
-            }
-        }
-
-        window.miluShellNotifyPdfDataChanged = notifyPdfDataChanged;
-        window.miluShellNotifyAnalisisDataChanged = notifyAnalisisDataChanged;
-
-        const sharedModal = document.getElementById('shellSharedRecordModal');
-        document.getElementById('shellSharedRecordModalClose')?.addEventListener('click', closeSharedRecordEditor);
-        document.getElementById('shellSharedCancelBtn')?.addEventListener('click', closeSharedRecordEditor);
-        document.getElementById('shellSharedSaveBtn')?.addEventListener('click', () => {
-            saveSharedRecordEditor().catch((error) => {
-                setSharedModalStatus(`Error guardando: ${String(error?.message || error)}`, 'error');
-            });
-        });
-        sharedModal?.addEventListener('click', (event) => {
-            const target = event.target;
-            if (!(target instanceof HTMLElement)) return;
-            if (target.dataset.shellSharedClose === 'true') closeSharedRecordEditor();
-        });
-        document.addEventListener('keydown', (event) => {
-            if (event.key === 'Escape' && sharedModal instanceof HTMLElement && !sharedModal.hidden) {
-                closeSharedRecordEditor();
-            }
-        });
-
-        window.addEventListener('popstate', () => {
-            mountView(getViewFromUrl(), { updateHistory: false });
-        });
-
-        const initialView = getViewFromUrl();
-        mountView(initialView, { replaceHistory: true });
-
-        const pendingSharedPayload = consumePendingSharedEditorPayload();
-        if (pendingSharedPayload) {
-            mountView('analisis', { updateHistory: false });
-            const opened = openSharedRecordEditor(pendingSharedPayload);
-            if (!opened) {
-                let attemptsLeft = 40;
-                const retry = () => {
-                    if (openSharedRecordEditor(pendingSharedPayload) || attemptsLeft <= 0) return;
-                    attemptsLeft -= 1;
-                    window.setTimeout(retry, 100);
-                };
-                retry();
-            }
-        }
-    </script>
-</body>
-
+<!doctype html>
+
+<html lang="es">
+
+
+
+<head>
+
+    <meta charset="utf-8" />
+
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+
+    <link rel="icon" type="image/svg+xml" href="favicon.svg" />
+
+    <title>MILU • Workspace</title>
+
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+
+    <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@500;600;700;800&display=swap" rel="stylesheet">
+
+    <link rel="stylesheet" href="styles/analista_02.css" />
+
+    <style>
+        html,
+
+        body {
+
+            margin: 0;
+
+            padding: 0;
+
+            width: 100%;
+
+            height: 100%;
+
+            overflow: hidden;
+
+            font-family: 'Manrope', sans-serif;
+
+            background: #f3f4f6;
+
+        }
+
+
+
+        body {
+
+            display: flex;
+
+            flex-direction: column;
+
+        }
+
+
+
+        .shell-main {
+
+            flex: 1;
+
+            min-height: 0;
+
+            width: 100%;
+
+            background: #f3f4f6;
+
+            position: relative;
+
+        }
+
+
+
+        .shell-frame {
+
+            width: 100%;
+
+            height: 100%;
+
+            border: 0;
+
+            display: none;
+
+            background: #f3f4f6;
+
+            position: absolute;
+
+            inset: 0;
+
+        }
+
+
+
+        .shell-frame.is-active {
+
+            display: block;
+
+        }
+
+
+
+        .shell-shared-modal[hidden] {
+
+            display: none;
+
+        }
+
+
+
+        .shell-shared-modal {
+
+            position: fixed;
+
+            inset: 0;
+
+            z-index: 2000;
+
+            display: grid;
+
+            place-items: center;
+
+            padding: 20px;
+
+        }
+
+
+
+        .shell-shared-modal-backdrop {
+
+            position: absolute;
+
+            inset: 0;
+
+            background: rgba(15, 23, 42, 0.42);
+
+            backdrop-filter: blur(1px);
+
+        }
+
+
+
+        .shell-shared-modal-panel {
+
+            position: relative;
+
+            width: min(1120px, calc(100vw - 32px));
+
+            max-height: calc(100vh - 32px);
+
+            overflow: auto;
+
+            border-radius: 14px;
+
+            border: 1px solid #c9d6e3;
+
+            background: #ffffff;
+
+            box-shadow: 0 24px 48px rgba(15, 23, 42, 0.28);
+
+        }
+
+
+
+        .shell-shared-modal-head {
+
+            display: flex;
+
+            align-items: center;
+
+            justify-content: space-between;
+
+            gap: 12px;
+
+            padding: 12px 14px;
+
+            border-bottom: 1px solid #d8e2ee;
+
+            background: linear-gradient(180deg, #f7fbff, #eef5fc);
+
+        }
+
+
+
+        .shell-shared-modal-title {
+
+            margin: 0;
+
+            font-size: 14px;
+
+            font-weight: 800;
+
+            color: #17324a;
+
+        }
+
+
+
+        .shell-shared-modal-close {
+
+            width: 30px;
+
+            height: 30px;
+
+            border-radius: 8px;
+
+            border: 1px solid #c9d6e3;
+
+            background: #ffffff;
+
+            color: #17324a;
+
+            font-size: 18px;
+
+            line-height: 1;
+
+            cursor: pointer;
+
+        }
+
+
+
+        .shell-shared-modal-body {
+
+            padding: 14px;
+
+            display: grid;
+
+            gap: 12px;
+
+        }
+
+
+
+        .shell-shared-meta {
+
+            padding: 10px 12px;
+
+            border-radius: 10px;
+
+            border: 1px solid #d6e1ee;
+
+            background: #f8fbff;
+
+            font-size: 12px;
+
+            color: #2f4a63;
+
+            font-family: 'IBM Plex Mono', Consolas, monospace;
+
+        }
+
+
+
+        .shell-shared-grid {
+
+            display: grid;
+
+            grid-template-columns: repeat(6, minmax(0, 1fr));
+
+            gap: 10px;
+
+        }
+
+
+
+        .shell-shared-field {
+
+            display: grid;
+
+            gap: 6px;
+
+        }
+
+
+
+        .shell-shared-field.span-2 {
+
+            grid-column: span 2;
+
+        }
+
+
+
+        .shell-shared-field.span-3 {
+
+            grid-column: span 3;
+
+        }
+
+
+
+        .shell-shared-field.span-4 {
+
+            grid-column: span 4;
+
+        }
+
+
+
+        .shell-shared-field label {
+
+            font-size: 11px;
+
+            font-weight: 800;
+
+            color: #4a6179;
+
+            letter-spacing: 0.03em;
+
+            text-transform: uppercase;
+
+        }
+
+
+
+        .shell-shared-field input,
+
+        .shell-shared-field select {
+
+            height: 34px;
+
+            border-radius: 9px;
+
+            border: 1px solid #c9d6e3;
+
+            padding: 0 10px;
+
+            font-family: inherit;
+
+            font-size: 12px;
+
+            color: #14283a;
+
+            background: #ffffff;
+
+        }
+
+
+
+        .shell-shared-field input[readonly] {
+
+            background: #f6f9fc;
+
+            color: #496079;
+
+        }
+
+
+
+        .shell-shared-actions {
+
+            display: flex;
+
+            justify-content: flex-end;
+
+            gap: 8px;
+
+            padding: 0 14px 14px;
+
+        }
+
+
+
+        .shell-shared-btn {
+
+            height: 34px;
+
+            border-radius: 10px;
+
+            border: 1px solid #c9d6e3;
+
+            background: #f3f8fd;
+
+            color: #143652;
+
+            font-size: 12px;
+
+            font-weight: 800;
+
+            padding: 0 12px;
+
+            cursor: pointer;
+
+        }
+
+
+
+        .shell-shared-btn.primary {
+
+            border-color: #1766ac;
+
+            background: linear-gradient(135deg, #0a4f8f, #1f79c8);
+
+            color: #ffffff;
+
+        }
+
+
+
+        .shell-shared-status {
+
+            min-height: 16px;
+
+            padding: 0 14px 12px;
+
+            margin: 0;
+
+            font-size: 12px;
+
+            color: #46627d;
+
+        }
+
+
+
+        .shell-shared-status.error {
+
+            color: #a12626;
+
+        }
+
+
+
+        .shell-shared-status.ok {
+
+            color: #16613f;
+
+        }
+    </style>
+
+</head>
+
+
+
+<body>
+
+    <main id="shellMain" class="shell-main">
+
+    </main>
+
+
+
+    <div id="shellSharedRecordModal" class="shell-shared-modal" hidden aria-modal="true" role="dialog"
+        aria-labelledby="shellSharedRecordModalTitle">
+
+        <div class="shell-shared-modal-backdrop" data-shell-shared-close="true"></div>
+
+        <div class="shell-shared-modal-panel">
+
+            <div class="shell-shared-modal-head">
+
+                <h2 id="shellSharedRecordModalTitle" class="shell-shared-modal-title">Editar Registro</h2>
+
+                <button id="shellSharedRecordModalClose" class="shell-shared-modal-close" type="button"
+                    aria-label="Cerrar">&times;</button>
+
+            </div>
+
+            <div class="shell-shared-modal-body">
+
+                <div id="shellSharedMeta" class="shell-shared-meta">-</div>
+
+                <div class="shell-shared-grid">
+
+                    <div class="shell-shared-field">
+
+                        <label for="shellSharedPos">POS (pos_final)</label>
+
+                        <input id="shellSharedPos" type="text" />
+
+                    </div>
+
+                    <div class="shell-shared-field">
+
+                        <label for="shellSharedPnFinal">PN FINAL (pn_final)</label>
+
+                        <input id="shellSharedPnFinal" type="text" />
+
+                    </div>
+
+                    <div class="shell-shared-field span-3">
+
+                        <label for="shellSharedDesignationFinal">DESIGNATION FINAL (designation_final)</label>
+
+                        <input id="shellSharedDesignationFinal" type="text" />
+
+                    </div>
+
+                    <div class="shell-shared-field">
+
+                        <label for="shellSharedModelType">MODEL/TYPE FINAL (MODEL/TYPE_final)</label>
+
+                        <input id="shellSharedModelType" type="text" />
+
+                    </div>
+
+                    <div class="shell-shared-field">
+
+                        <label for="shellSharedQty">QTY (qty_final)</label>
+
+                        <input id="shellSharedQty" type="text" />
+
+                    </div>
+
+                    <div class="shell-shared-field">
+
+                        <label for="shellSharedUnits">UNITS (qty_units_final)</label>
+
+                        <input id="shellSharedUnits" type="text" />
+
+                    </div>
+
+                    <div class="shell-shared-field">
+
+                        <label for="shellSharedWeightFinal">WEIGHT FINAL (weight_final)</label>
+
+                        <input id="shellSharedWeightFinal" type="text" />
+
+                    </div>
+
+                    <div class="shell-shared-field">
+
+                        <label for="shellSharedFn">FN (fn_final)</label>
+
+                        <input id="shellSharedFn" type="text" />
+
+                    </div>
+
+                    <div class="shell-shared-field">
+
+                        <label for="shellSharedMeasurementFinal">MEASURE FINAL (measure_final)</label>
+
+                        <input id="shellSharedMeasurementFinal" type="text" />
+
+                    </div>
+
+                    <div class="shell-shared-field">
+
+                        <label for="shellSharedNorma">NORMA (norma_final)</label>
+
+                        <input id="shellSharedNorma" type="text" />
+
+                    </div>
+
+                    <div class="shell-shared-field">
+
+                        <label for="shellSharedEstado">ESTADO (qa_revision_estado)</label>
+
+                        <select id="shellSharedEstado">
+
+                            <option value="pendiente">Pendiente</option>
+
+                            <option value="ok">OK</option>
+
+                        </select>
+
+                    </div>
+
+                    <div class="shell-shared-field">
+
+                        <label for="shellSharedAccion">ACCION (qa_revision_accion)</label>
+
+                        <select id="shellSharedAccion">
+
+                            <option value="importar">Importar</option>
+
+                            <option value="revisar">Revisar</option>
+
+                            <option value="eliminar">Eliminar</option>
+
+                        </select>
+
+                    </div>
+
+                    <div class="shell-shared-field">
+
+                        <label for="shellSharedGesa">GESA (gesa)</label>
+
+                        <input id="shellSharedGesa" type="text" />
+
+                    </div>
+
+                    <div class="shell-shared-field">
+
+                        <label for="shellSharedNormalizado">NORM. (normalizado)</label>
+
+                        <input id="shellSharedNormalizado" type="text" />
+
+                    </div>
+
+                    <div class="shell-shared-field span-2">
+
+                        <label for="shellSharedNewSup">NEW/SUP (sust_hierarchie)</label>
+
+                        <input id="shellSharedNewSup" type="text" />
+
+                    </div>
+
+                    <div class="shell-shared-field">
+
+                        <label for="shellSharedHasImg">FOTO (has_img)</label>
+
+                        <input id="shellSharedHasImg" type="text" />
+
+                    </div>
+
+                    <div class="shell-shared-field">
+
+                        <label for="shellSharedEnWeb">EN WEB (EN_WEB)</label>
+
+                        <input id="shellSharedEnWeb" type="text" />
+
+                    </div>
+
+                    <div class="shell-shared-field span-3">
+
+                        <label for="shellSharedBook">LIBRO (engine_model)</label>
+
+                        <input id="shellSharedBook" type="text" />
+
+                    </div>
+
+                    <div class="shell-shared-field">
+
+                        <label for="shellSharedPage">PAGINA (Source Page)</label>
+
+                        <input id="shellSharedPage" type="text" />
+
+                    </div>
+
+                </div>
+
+            </div>
+
+            <div class="shell-shared-actions">
+
+                <button id="shellSharedCancelBtn" class="shell-shared-btn" type="button">Cancelar</button>
+
+                <button id="shellSharedSaveBtn" class="shell-shared-btn primary" type="button">Guardar</button>
+
+            </div>
+
+            <p id="shellSharedStatus" class="shell-shared-status" aria-live="polite"></p>
+
+        </div>
+
+    </div>
+
+
+
+    <script type="module">
+
+        import { initTopbar } from './js/topbar.js';
+
+        import { saveCellToServer } from './js/data-loader.js';
+
+
+
+        const ENABLE_EXPORT_VIEW = false;
+
+        // Ignora ruido de extensiones del navegador que no pertenece a MILU.
+        window.addEventListener('unhandledrejection', (event) => {
+            const reason = event?.reason;
+            const message = String(reason?.message || reason || '');
+            if (message.includes('A listener indicated an asynchronous response by returning true')) {
+                event.preventDefault();
+            }
+        });
+
+
+
+        const VIEW_TO_PAGE = {
+
+            pdf: 'qa_milu.html',
+
+            analisis: 'analista_02.html',
+
+            imagenes: 'qa_imagenes.html',
+
+            exportwp: 'export_wordpress.html'
+
+        };
+
+
+
+        if (ENABLE_EXPORT_VIEW) {
+
+            VIEW_TO_PAGE.export = 'qa_lista_agrupada.html';
+
+        }
+
+
+
+        const TITLES = {
+
+            pdf: 'MILU • PDF',
+
+            export: 'MILU • EXPORT',
+
+            analisis: 'MILU • ANALISIS',
+
+            imagenes: 'MILU • IMAGENES',
+
+            exportwp: 'MILU • EXPORT'
+
+        };
+
+        const frameByView = new Map();
+
+        let sharedEditorContext = null;
+
+
+
+        const EDITABLE_FIELDS = [
+
+            'pos_final',
+
+            'pn_final',
+
+            'designation_final',
+
+            'model_type_final',
+
+            'qty_final',
+
+            'qty_units_final',
+
+            'weight_final',
+
+            'fn_final',
+
+            'measure_final',
+
+            'norma_final',
+
+            'qa_revision_estado',
+
+            'qa_revision_accion',
+
+            'gesa',
+
+            'normalizado',
+
+            'sust_hierarchie',
+
+            'has_img',
+
+            'EN_WEB',
+
+            'engine_model',
+
+            'Source Page'
+
+        ];
+
+        const PENDING_SHARED_EDITOR_KEY = 'milu:pending-shared-editor-payload';
+
+
+
+        function txt(value) {
+
+            return String(value ?? '').trim();
+
+        }
+
+
+
+        function normalizeEngineFile(payload = {}) {
+
+            const rawEngineFile = txt(payload.engineFile);
+
+            if (rawEngineFile) {
+
+                const normalized = rawEngineFile.endsWith('.json') ? rawEngineFile : `${rawEngineFile}.json`;
+
+                return normalized.startsWith('engine_') ? normalized : `engine_${normalized}`;
+
+            }
+
+
+
+            const sourceFile = txt(payload.source_file);
+
+            if (sourceFile) {
+
+                const base = sourceFile.replace(/^engine_/i, '').replace(/\.xlsx$/i, '').replace(/\.json$/i, '');
+
+                return `engine_${base}.json`;
+
+            }
+
+
+
+            const engineModel = txt(payload.engineModel || payload.engine || payload.book).replace(/^engine_/i, '');
+
+            if (engineModel) return `engine_${engineModel}.json`;
+
+            return '';
+
+        }
+
+
+
+        function normalizeEstado(value) {
+
+            const raw = txt(value).toLowerCase();
+
+            if (raw === 'ok' || raw === 'revisado') return 'ok';
+
+            return 'pendiente';
+
+        }
+
+
+
+        function normalizeAccion(value) {
+
+            const raw = txt(value).toLowerCase();
+
+            if (raw === 'mantener' || raw === 'importar') return 'importar';
+
+            if (raw === 'eliminar') return 'eliminar';
+
+            if (raw === 'revisar') return 'revisar';
+
+            return 'importar';
+
+        }
+
+
+
+        function denormalizeEstado(value) {
+
+            return normalizeEstado(value) === 'ok' ? 'revisado' : '';
+
+        }
+
+
+
+        function denormalizeAccion(value) {
+
+            const normalized = normalizeAccion(value);
+
+            if (normalized === 'eliminar') return 'eliminar';
+
+            if (normalized === 'revisar') return 'revisar';
+
+            return 'mantener';
+
+        }
+
+
+
+        function consumePendingSharedEditorPayload() {
+
+            try {
+
+                const raw = sessionStorage.getItem(PENDING_SHARED_EDITOR_KEY);
+
+                if (!raw) return null;
+
+                sessionStorage.removeItem(PENDING_SHARED_EDITOR_KEY);
+
+                const parsed = JSON.parse(raw);
+
+                return parsed && typeof parsed === 'object' ? parsed : null;
+
+            } catch (error) {
+
+                console.warn('No se pudo leer payload de modal compartido:', error);
+
+                return null;
+
+            }
+
+        }
+
+
+
+        function getSharedModalElements() {
+
+            return {
+
+                modal: document.getElementById('shellSharedRecordModal'),
+
+                meta: document.getElementById('shellSharedMeta'),
+
+                status: document.getElementById('shellSharedStatus'),
+
+                saveBtn: document.getElementById('shellSharedSaveBtn'),
+
+                pnFinal: document.getElementById('shellSharedPnFinal'),
+
+                designationFinal: document.getElementById('shellSharedDesignationFinal'),
+
+                weightFinal: document.getElementById('shellSharedWeightFinal'),
+
+                measurementFinal: document.getElementById('shellSharedMeasurementFinal'),
+
+                norma: document.getElementById('shellSharedNorma'),
+
+                estado: document.getElementById('shellSharedEstado'),
+
+                accion: document.getElementById('shellSharedAccion'),
+
+                modelType: document.getElementById('shellSharedModelType'),
+
+                qty: document.getElementById('shellSharedQty'),
+
+                units: document.getElementById('shellSharedUnits'),
+
+                fn: document.getElementById('shellSharedFn'),
+
+                gesa: document.getElementById('shellSharedGesa'),
+
+                normalizado: document.getElementById('shellSharedNormalizado'),
+
+                newSup: document.getElementById('shellSharedNewSup'),
+
+                hasImg: document.getElementById('shellSharedHasImg'),
+
+                enWeb: document.getElementById('shellSharedEnWeb'),
+
+                book: document.getElementById('shellSharedBook'),
+
+                page: document.getElementById('shellSharedPage'),
+
+                pos: document.getElementById('shellSharedPos')
+
+            };
+
+        }
+
+
+
+        function setSharedModalStatus(message, kind = '') {
+
+            const { status } = getSharedModalElements();
+
+            if (!(status instanceof HTMLElement)) return;
+
+            status.classList.remove('ok', 'error');
+
+            if (kind === 'ok') status.classList.add('ok');
+
+            if (kind === 'error') status.classList.add('error');
+
+            status.textContent = message;
+
+        }
+
+
+
+        function closeSharedRecordEditor() {
+
+            const { modal } = getSharedModalElements();
+
+            if (!(modal instanceof HTMLElement)) return;
+
+            modal.hidden = true;
+
+            sharedEditorContext = null;
+
+            setSharedModalStatus('');
+
+        }
+
+
+
+        function notifyAnalisisDataChanged(payload = {}) {
+
+            const targetFrame = getFrameForView('analisis');
+
+            if (!(targetFrame instanceof HTMLIFrameElement)) return false;
+
+            const bridge = targetFrame.contentWindow?.miluRefreshAnalisisRecord;
+
+            if (typeof bridge !== 'function') return false;
+
+            try {
+
+                const result = bridge(payload);
+
+                if (result && typeof result.catch === 'function') result.catch(() => undefined);
+
+                return true;
+
+            } catch (_) {
+
+                return false;
+
+            }
+
+        }
+
+
+
+        function normalizeView(value) {
+
+            const raw = String(value || '').trim().toLowerCase();
+
+            if (raw === 'pdf' || raw === 'analisis' || raw === 'imagenes' || raw === 'exportwp') return raw;
+
+            if (ENABLE_EXPORT_VIEW && raw === 'export') return raw;
+
+            return 'pdf';
+
+        }
+
+
+
+        function getViewFromUrl() {
+
+            const params = new URLSearchParams(window.location.search);
+
+            return normalizeView(params.get('view'));
+
+        }
+
+
+
+        function buildEmbeddedUrl(view) {
+
+            const pageFile = VIEW_TO_PAGE[view] || VIEW_TO_PAGE.pdf;
+
+            const target = new URL(pageFile, window.location.href);
+
+            target.searchParams.set('embedded', '1');
+
+            return target.toString();
+
+        }
+
+
+
+        function getFrameForView(view) {
+
+            const normalizedView = normalizeView(view);
+
+            const existing = frameByView.get(normalizedView);
+
+            if (existing instanceof HTMLIFrameElement) return existing;
+
+
+
+            const shellMain = document.getElementById('shellMain');
+
+            if (!(shellMain instanceof HTMLElement)) return null;
+
+
+
+            const frame = document.createElement('iframe');
+
+            frame.className = 'shell-frame';
+
+            frame.loading = 'eager';
+
+            frame.title = `MILU ${normalizedView}`;
+
+            frame.src = buildEmbeddedUrl(normalizedView);
+
+            frame.dataset.view = normalizedView;
+
+
+
+            shellMain.appendChild(frame);
+
+            frameByView.set(normalizedView, frame);
+
+
+
+            return frame;
+
+        }
+
+
+
+        function setActiveFrame(view) {
+
+            const normalizedView = normalizeView(view);
+
+            const targetFrame = getFrameForView(normalizedView);
+
+            if (!(targetFrame instanceof HTMLIFrameElement)) return;
+
+
+
+            frameByView.forEach(frame => frame.classList.remove('is-active'));
+
+            targetFrame.classList.add('is-active');
+
+
+
+            const notifyActivated = () => {
+
+                const bridge = targetFrame.contentWindow?.miluOnShellActivated;
+
+                if (typeof bridge !== 'function') return false;
+
+                try {
+
+                    bridge();
+
+                    return true;
+
+                } catch (_) {
+
+                    return false;
+
+                }
+
+            };
+
+
+
+            if (!notifyActivated()) {
+
+                let attemptsLeft = 20;
+
+                const retry = () => {
+
+                    if (notifyActivated() || attemptsLeft <= 0) return;
+
+                    attemptsLeft -= 1;
+
+                    window.setTimeout(retry, 100);
+
+                };
+
+                window.requestAnimationFrame(retry);
+
+            }
+
+        }
+
+
+
+        function prewarmOtherViews(currentView) {
+
+            Object.keys(VIEW_TO_PAGE)
+
+                .filter(view => view !== currentView)
+
+                .forEach(view => {
+
+                    getFrameForView(view);
+
+                });
+
+        }
+
+
+
+        function updateUrl(view, replace = false) {
+
+            const url = new URL(window.location.href);
+
+            url.searchParams.set('view', view);
+
+            if (replace) {
+
+                history.replaceState({ view }, '', url);
+
+                return;
+
+            }
+
+            history.pushState({ view }, '', url);
+
+        }
+
+
+
+        function wireTopbarNavigation() {
+
+            const links = Array.from(document.querySelectorAll('header.a2-topbar .a2-nav a[data-page]'));
+
+            links.forEach(link => {
+
+                if (!(link instanceof HTMLAnchorElement)) return;
+
+                const pageKey = String(link.dataset.page || '').trim().toLowerCase();
+
+                if (!(pageKey in VIEW_TO_PAGE)) {
+
+                    return;
+
+                }
+
+
+
+                const view = normalizeView(pageKey);
+
+                link.addEventListener('click', (event) => {
+
+                    event.preventDefault();
+
+                    mountView(view, { updateHistory: true });
+
+                });
+
+            });
+
+        }
+
+
+
+        function mountView(view, options = {}) {
+
+            const { updateHistory = false, replaceHistory = false } = options;
+
+            const normalizedView = normalizeView(view);
+
+
+
+            initTopbar(normalizedView);
+
+            wireTopbarNavigation();
+
+            setActiveFrame(normalizedView);
+
+            prewarmOtherViews(normalizedView);
+
+
+
+            document.title = TITLES[normalizedView] || 'MILU • Workspace';
+
+
+
+            if (updateHistory) {
+
+                updateUrl(normalizedView, false);
+
+            } else if (replaceHistory) {
+
+                updateUrl(normalizedView, true);
+
+            }
+
+        }
+
+
+
+        function openPdfRecordModal(payload = {}) {
+
+            mountView('pdf', { updateHistory: true });
+
+
+
+            const targetFrame = getFrameForView('pdf');
+
+            if (!(targetFrame instanceof HTMLIFrameElement)) return false;
+
+
+
+            const invokeBridge = () => {
+
+                const bridge = targetFrame.contentWindow?.miluOpenPdfRecordModal;
+
+                if (typeof bridge !== 'function') return false;
+
+                return bridge(payload) !== false;
+
+            };
+
+
+
+            if (invokeBridge()) return true;
+
+
+
+            let attemptsLeft = 40;
+
+            const retry = () => {
+
+                if (invokeBridge() || attemptsLeft <= 0) return;
+
+                attemptsLeft -= 1;
+
+                window.setTimeout(retry, 100);
+
+            };
+
+            retry();
+
+            return true;
+
+        }
+
+
+
+        window.miluShellOpenPdfRecordModal = openPdfRecordModal;
+
+
+
+        function openSharedRecordEditor(payload = {}) {
+
+            const id = txt(payload.id);
+
+            const engineFile = normalizeEngineFile(payload);
+
+            if (!id || !engineFile) return false;
+
+
+
+            const {
+
+                modal,
+
+                meta,
+
+                pnFinal,
+
+                designationFinal,
+
+                weightFinal,
+
+                measurementFinal,
+
+                norma,
+
+                estado,
+
+                accion,
+
+                modelType,
+
+                qty,
+
+                units,
+
+                fn,
+
+                gesa,
+
+                normalizado,
+
+                newSup,
+
+                hasImg,
+
+                enWeb,
+
+                book,
+
+                page,
+
+                pos
+
+            } = getSharedModalElements();
+
+            if (!(modal instanceof HTMLElement)) return false;
+
+
+
+            sharedEditorContext = {
+
+                id,
+
+                engineFile,
+
+                basePayload: { ...payload },
+
+                values: {
+
+                    pos_final: txt(payload.pos_final || payload.pos || payload.POS),
+
+                    pn_final: txt(payload.pn_final),
+
+                    designation_final: txt(payload.designation_final),
+
+                    model_type_final: txt(payload.model_type_final || payload['MODEL/TYPE_final'] || payload.model_type_final || payload.model_type || payload.ModelType),
+
+                    qty_final: txt(payload.qty_final || payload.qty || payload.QTY),
+
+                    qty_units_final: txt(payload.qty_units_final || payload.units || payload.Units || payload.UNITS),
+
+                    weight_final: txt(payload.weight_final),
+
+                    fn_final: txt(payload.fn_final || payload.fn || payload.FN),
+
+                    measure_final: txt(payload.measure_final || payload.measurement_final),
+
+                    norma_final: txt(payload.norma_final || payload.norma),
+
+                    qa_revision_estado: normalizeEstado(payload.qa_revision_estado),
+
+                    qa_revision_accion: normalizeAccion(payload.qa_revision_accion),
+
+                    gesa: txt(payload.gesa),
+
+                    normalizado: txt(payload.normalizado),
+
+                    sust_hierarchie: txt(payload.sust_hierarchie || payload.new_sup),
+
+                    has_img: txt(payload.has_img),
+
+                    EN_WEB: txt(payload.en_web || payload.EN_WEB),
+
+                    engine_model: txt(payload.engineModel || payload.engine || payload.book),
+
+                    'Source Page': txt(payload.source_page || payload.page)
+
+                }
+
+            };
+
+
+
+            if (meta instanceof HTMLElement) {
+
+                const engineModel = txt(payload.engineModel || payload.engine || payload.book);
+
+                const record = txt(payload.record || payload.pn_final || payload['PART NO.']);
+
+                meta.textContent = `ID=${id} | Engine=${engineModel || '-'} | Record=${record || '-'} | File=${engineFile}`;
+
+            }
+
+
+
+            if (pos instanceof HTMLInputElement) pos.value = sharedEditorContext.values.pos_final;
+
+            if (pnFinal instanceof HTMLInputElement) pnFinal.value = sharedEditorContext.values.pn_final;
+
+            if (designationFinal instanceof HTMLInputElement) designationFinal.value = sharedEditorContext.values.designation_final;
+
+            if (modelType instanceof HTMLInputElement) modelType.value = sharedEditorContext.values['model_type_final'];
+
+            if (qty instanceof HTMLInputElement) qty.value = sharedEditorContext.values.qty_final;
+
+            if (units instanceof HTMLInputElement) units.value = sharedEditorContext.values.qty_units_final;
+
+            if (weightFinal instanceof HTMLInputElement) weightFinal.value = sharedEditorContext.values.weight_final;
+
+            if (fn instanceof HTMLInputElement) fn.value = sharedEditorContext.values.fn_final;
+
+            if (measurementFinal instanceof HTMLInputElement) measurementFinal.value = sharedEditorContext.values.measure_final;
+
+            if (norma instanceof HTMLInputElement) norma.value = sharedEditorContext.values.norma_final;
+
+            if (estado instanceof HTMLSelectElement) estado.value = sharedEditorContext.values.qa_revision_estado;
+
+            if (accion instanceof HTMLSelectElement) accion.value = sharedEditorContext.values.qa_revision_accion;
+
+            if (gesa instanceof HTMLInputElement) gesa.value = sharedEditorContext.values.gesa;
+
+            if (normalizado instanceof HTMLInputElement) normalizado.value = sharedEditorContext.values.normalizado;
+
+            if (newSup instanceof HTMLInputElement) newSup.value = sharedEditorContext.values.sust_hierarchie;
+
+            if (hasImg instanceof HTMLInputElement) hasImg.value = sharedEditorContext.values.has_img;
+
+            if (enWeb instanceof HTMLInputElement) enWeb.value = sharedEditorContext.values.EN_WEB;
+
+            if (book instanceof HTMLInputElement) book.value = sharedEditorContext.values.engine_model;
+
+            if (page instanceof HTMLInputElement) page.value = sharedEditorContext.values['Source Page'];
+
+
+
+            setSharedModalStatus('');
+
+            modal.hidden = false;
+
+            pnFinal?.focus();
+
+            return true;
+
+        }
+
+
+
+        async function saveSharedRecordEditor() {
+
+            const context = sharedEditorContext;
+
+            if (!context) return;
+
+
+
+            const {
+
+                saveBtn,
+
+                pos,
+
+                pnFinal,
+
+                designationFinal,
+
+                modelType,
+
+                qty,
+
+                units,
+
+                weightFinal,
+
+                fn,
+
+                measurementFinal,
+
+                norma,
+
+                estado,
+
+                accion,
+
+                gesa,
+
+                normalizado,
+
+                newSup,
+
+                hasImg,
+
+                enWeb,
+
+                book,
+
+                page
+
+            } = getSharedModalElements();
+
+            const nextValues = {
+
+                pos_final: txt(pos instanceof HTMLInputElement ? pos.value : ''),
+
+                pn_final: txt(pnFinal instanceof HTMLInputElement ? pnFinal.value : ''),
+
+                designation_final: txt(designationFinal instanceof HTMLInputElement ? designationFinal.value : ''),
+
+                model_type_final: txt(modelType instanceof HTMLInputElement ? modelType.value : ''),
+
+                qty_final: txt(qty instanceof HTMLInputElement ? qty.value : ''),
+
+                qty_units_final: txt(units instanceof HTMLInputElement ? units.value : ''),
+
+                weight_final: txt(weightFinal instanceof HTMLInputElement ? weightFinal.value : ''),
+
+                fn_final: txt(fn instanceof HTMLInputElement ? fn.value : ''),
+
+                measure_final: txt(measurementFinal instanceof HTMLInputElement ? measurementFinal.value : ''),
+
+                norma_final: txt(norma instanceof HTMLInputElement ? norma.value : ''),
+
+                qa_revision_estado: normalizeEstado(estado instanceof HTMLSelectElement ? estado.value : ''),
+
+                qa_revision_accion: normalizeAccion(accion instanceof HTMLSelectElement ? accion.value : ''),
+
+                gesa: txt(gesa instanceof HTMLInputElement ? gesa.value : ''),
+
+                normalizado: txt(normalizado instanceof HTMLInputElement ? normalizado.value : ''),
+
+                sust_hierarchie: txt(newSup instanceof HTMLInputElement ? newSup.value : ''),
+
+                has_img: txt(hasImg instanceof HTMLInputElement ? hasImg.value : ''),
+
+                EN_WEB: txt(enWeb instanceof HTMLInputElement ? enWeb.value : ''),
+
+                engine_model: txt(book instanceof HTMLInputElement ? book.value : ''),
+
+                'Source Page': txt(page instanceof HTMLInputElement ? page.value : '')
+
+            };
+
+
+
+            const changed = EDITABLE_FIELDS.filter((field) => nextValues[field] !== context.values[field]);
+
+            if (!changed.length) {
+
+                setSharedModalStatus('Sin cambios para guardar.', 'ok');
+
+                return;
+
+            }
+
+
+
+            if (saveBtn instanceof HTMLButtonElement) saveBtn.disabled = true;
+
+            setSharedModalStatus('Guardando cambios...');
+
+
+
+            try {
+
+                for (const field of changed) {
+
+                    const valueToPersist = field === 'qa_revision_estado'
+
+                        ? denormalizeEstado(nextValues[field])
+
+                        : field === 'qa_revision_accion'
+
+                            ? denormalizeAccion(nextValues[field])
+
+                            : nextValues[field];
+
+                    await saveCellToServer(context.engineFile, context.id, field, valueToPersist);
+
+                    context.values[field] = nextValues[field];
+
+                }
+
+
+
+                const refreshPayload = {
+
+                    id: context.id,
+
+                    engine: txt(context.basePayload.engineModel || context.basePayload.engine || context.basePayload.book),
+
+                    record: txt(nextValues.pn_final || context.basePayload.record || context.basePayload['PART NO.'])
+
+                };
+
+                notifyPdfDataChanged(refreshPayload);
+
+                notifyAnalisisDataChanged(refreshPayload);
+
+                setSharedModalStatus('Cambios guardados correctamente.', 'ok');
+
+                window.setTimeout(() => closeSharedRecordEditor(), 120);
+
+            } catch (error) {
+
+                setSharedModalStatus(`Error guardando: ${String(error?.message || error)}`, 'error');
+
+            } finally {
+
+                if (saveBtn instanceof HTMLButtonElement) saveBtn.disabled = false;
+
+            }
+
+        }
+
+
+
+        window.miluShellOpenSharedRecordEditor = openSharedRecordEditor;
+
+
+
+        function openAnalisisRecord(payload = {}) {
+
+            mountView('analisis', { updateHistory: true });
+
+
+
+            const targetFrame = getFrameForView('analisis');
+
+            if (!(targetFrame instanceof HTMLIFrameElement)) return false;
+
+
+
+            const invokeBridge = () => {
+
+                const bridge = targetFrame.contentWindow?.miluOpenAnalisisRecord;
+
+                if (typeof bridge !== 'function') return false;
+
+                return bridge(payload) !== false;
+
+            };
+
+
+
+            if (invokeBridge()) return true;
+
+
+
+            let attemptsLeft = 40;
+
+            const retry = () => {
+
+                if (invokeBridge() || attemptsLeft <= 0) return;
+
+                attemptsLeft -= 1;
+
+                window.setTimeout(retry, 100);
+
+            };
+
+            retry();
+
+            return true;
+
+        }
+
+
+
+        window.miluShellOpenAnalisisRecord = openAnalisisRecord;
+
+
+
+        function notifyPdfDataChanged(payload = {}) {
+
+            const targetFrame = getFrameForView('pdf');
+
+            if (!(targetFrame instanceof HTMLIFrameElement)) return false;
+
+
+
+            const bridge = targetFrame.contentWindow?.miluRefreshPdfData;
+
+            if (typeof bridge !== 'function') return false;
+
+
+
+            try {
+
+                bridge(payload);
+
+                return true;
+
+            } catch (_) {
+
+                return false;
+
+            }
+
+        }
+
+
+
+        window.miluShellNotifyPdfDataChanged = notifyPdfDataChanged;
+
+        window.miluShellNotifyAnalisisDataChanged = notifyAnalisisDataChanged;
+
+
+
+        const sharedModal = document.getElementById('shellSharedRecordModal');
+
+        document.getElementById('shellSharedRecordModalClose')?.addEventListener('click', closeSharedRecordEditor);
+
+        document.getElementById('shellSharedCancelBtn')?.addEventListener('click', closeSharedRecordEditor);
+
+        document.getElementById('shellSharedSaveBtn')?.addEventListener('click', () => {
+
+            saveSharedRecordEditor().catch((error) => {
+
+                setSharedModalStatus(`Error guardando: ${String(error?.message || error)}`, 'error');
+
+            });
+
+        });
+
+        sharedModal?.addEventListener('click', (event) => {
+
+            const target = event.target;
+
+            if (!(target instanceof HTMLElement)) return;
+
+            if (target.dataset.shellSharedClose === 'true') closeSharedRecordEditor();
+
+        });
+
+        document.addEventListener('keydown', (event) => {
+
+            if (event.key === 'Escape' && sharedModal instanceof HTMLElement && !sharedModal.hidden) {
+
+                closeSharedRecordEditor();
+
+            }
+
+        });
+
+
+
+        window.addEventListener('popstate', () => {
+
+            mountView(getViewFromUrl(), { updateHistory: false });
+
+        });
+
+
+
+        const initialView = getViewFromUrl();
+
+        mountView(initialView, { replaceHistory: true });
+
+
+
+        const pendingSharedPayload = consumePendingSharedEditorPayload();
+
+        if (pendingSharedPayload) {
+
+            mountView('analisis', { updateHistory: false });
+
+            const opened = openSharedRecordEditor(pendingSharedPayload);
+
+            if (!opened) {
+
+                let attemptsLeft = 40;
+
+                const retry = () => {
+
+                    if (openSharedRecordEditor(pendingSharedPayload) || attemptsLeft <= 0) return;
+
+                    attemptsLeft -= 1;
+
+                    window.setTimeout(retry, 100);
+
+                };
+
+                retry();
+
+            }
+
+        }
+
+    </script>
+
+</body>
+
+
+
 </html>
