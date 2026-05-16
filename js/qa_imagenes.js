@@ -99,8 +99,6 @@ async function loadCoreData() {
   const baseTargets = [
     "data/output/image_schema_audit.json",
     "data/output/image_inventory.json",
-    "data/output/qa_index.json",
-    "qa_index.json",
     "version.json"
   ];
 

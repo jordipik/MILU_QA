@@ -9,6 +9,7 @@
 import { state } from './state.js';
 
 import { evaluateRowQaChecks } from './qa-checks.js';
+import { runTableParser } from './pdf-table-parser.js';
 
 
 
@@ -1017,175 +1018,359 @@ function buildRowBandFromLineRects(lineRects, viewport) {
 
 
 
-function detectHeaderColumns(rects, viewport, options = {}) {
+const PDF_HEADER_LINE_WINDOW_PX = 220;
 
-    if (!Array.isArray(rects) || rects.length === 0) {
-        debugLog('detectHeaderColumns:start', { rectCount: 0, status: 'no-rects' });
-        return [];
-    }
+const PDF_HEADER_COLUMN_PATTERNS = [
+    { key: 'arrow', label: 'ARROW', variants: ['arrow', 'sel', 'selector', 'icon'] },
+    { key: 'pos', label: 'POS', variants: ['pos', 'pos.', 'position'] },
+    { key: 'part_no', label: 'PART NO.', variants: ['part no', 'part no.', 'part number', 'partnumber', 'pn'] },
+    { key: 'designation', label: 'DESIGNATION', variants: ['designation', 'description', 'denomination', 'designacion', 'descripcion'] },
+    { key: 'model_type', label: 'MODEL/TYPE', variants: ['model/type', 'model type', 'modeltype', 'model typ'] },
+    { key: 'qty', label: 'QTY', variants: ['qty', 'qty.', 'quantity', 'q ty'] },
+    { key: 'units', label: 'UNITS', variants: ['units', 'unit'] },
+    { key: 'weight', label: 'WEIGHT', variants: ['weight', 'wt', 'wgt'] },
+    { key: 'fn', label: 'FN', variants: ['fn', 'footnote', 'f.n.', 'f n', 'f.n'] },
+    { key: 'measurement', label: 'MEASUREMENT', variants: ['measurement', 'measure', 'meas', 'measurement / standard', 'measurement/standard'] },
+    { key: 'standard', label: 'STANDARD', variants: ['standard', 'std', 'norma'] },
+    { key: 'remarks', label: 'REMARKS', variants: ['remark', 'remarks', 'note', 'notes'] }
+];
 
-    debugLog('detectHeaderColumns:start', { rectCount: rects.length, viewportWidth: viewport?.width, viewportHeight: viewport?.height, options });
 
-    const lines = buildLineGroups(rects);
-    debugLog('detectHeaderColumns:lines', { lineCount: lines.length });
+function normalizePdfHeaderText(text) {
 
-    const sanitizeForOcrMatch = (value) => String(value || '')
+    return String(text || '')
         .toLowerCase()
         .normalize('NFD')
         .replace(/[\u0300-\u036f]/g, '')
-        .replace(/[^a-z0-9]/g, '')
-        .replace(/0/g, 'o')
-        .replace(/1/g, 'l')
-        .replace(/5/g, 's');
+        .replace(/[_\-]/g, ' ')
+        .replace(/[^a-z0-9\s.]/g, ' ')
+        .replace(/\b0\b/g, 'o')
+        .replace(/\s+/g, ' ')
+        .trim();
 
-    // Tokens fuertes y débiles para tolerar OCR fragmentado.
-    const strongHeaderTokens = [
-        'pos',
-        'partno',
-        'designation',
-        'modeltype',
-        'qty'
-    ];
+}
 
-    const weakHeaderTokens = [
-        'part',
-        'no',
-        'desig',
-        'model',
-        'type',
-        'unit',
-        'weight',
-        'measure',
-        'standard'
-    ];
 
-    const getHeaderTokenScore = (text) => {
-        const raw = String(text || '');
-        const compact = sanitizeForOcrMatch(raw);
-        if (!compact) return 0;
+function getHeaderClusterMatches(cluster) {
 
-        let score = 0;
-        if (strongHeaderTokens.some((token) => compact.includes(token))) score += 3;
-        if (weakHeaderTokens.some((token) => compact.includes(token))) score += 1;
-        return score;
-    };
+    const source = normalizePdfHeaderText(cluster?.text || cluster?.normalizedText || '');
+    if (!source) return [];
 
-    const hasHeaderKeyword = (text) => getHeaderTokenScore(text) > 0;
-    const anchorCenterYRaw = Number(options?.anchorCenterY);
-    const hasAnchorCenterY = Number.isFinite(anchorCenterYRaw);
-    const anchorCenterY = hasAnchorCenterY ? anchorCenterYRaw : 0;
+    const compact = source.replace(/\./g, ' ').replace(/\s+/g, ' ').trim();
+    const compactNoSpace = compact.replace(/\s+/g, '');
+    const matches = [];
 
-    let bestClusters = null;
-    let bestScore = 0;
-    let scoredLines = [];
+    PDF_HEADER_COLUMN_PATTERNS.forEach((definition) => {
+        let bestVariant = '';
+        let bestScore = 0;
 
-    lines.forEach((line) => {
-        const clusters = buildTextClusters(line.rects).sort((a, b) => a.left - b.left);
-        if (!clusters.length) return;
+        definition.variants.forEach((variant) => {
+            const normalizedVariant = normalizePdfHeaderText(variant).replace(/\./g, ' ').replace(/\s+/g, ' ').trim();
+            if (!normalizedVariant) return;
 
-        let score = 0;
-        clusters.forEach((cluster) => {
-            score += getHeaderTokenScore(cluster.normalizedText);
+            const variantNoSpace = normalizedVariant.replace(/\s+/g, '');
+            const exact = compact === normalizedVariant || compactNoSpace === variantNoSpace;
+            const contains = compact.includes(normalizedVariant) || compactNoSpace.includes(variantNoSpace);
+
+            let score = 0;
+            if (exact) score = 1;
+            else if (contains) score = 0.7;
+
+            if (score > bestScore) {
+                bestScore = score;
+                bestVariant = normalizedVariant;
+            }
         });
 
-        // Priorizamos cabeceras que suelen estar en la parte alta de la página.
-        const topBoost = Number(line.centerY || 0) > Number(viewport?.height || 0) * 0.6 ? 0.75 : 0;
-        score += topBoost;
+        if (bestScore > 0) {
+            matches.push({
+                key: definition.key,
+                label: definition.label,
+                variant: bestVariant,
+                score: bestScore
+            });
+        }
+    });
 
-        // Si tenemos ancla de la fila PN, favorecemos explícitamente líneas justo por encima.
-        if (hasAnchorCenterY) {
-            const delta = Number(line.centerY || 0) - anchorCenterY;
-            if (delta > 0 && delta <= 260) {
-                score += 2.2 - (delta / 180);
-            } else if (delta <= 0 && Math.abs(delta) <= 90) {
-                score += 0.25;
+    return matches;
+
+}
+
+
+function detectHeaderLineGroups(lineGroups, targetLine) {
+
+    if (!Array.isArray(lineGroups) || lineGroups.length === 0) {
+        return { headerLine: null, matches: [], confidence: 'low', lineCandidates: [] };
+    }
+
+    const targetCenterY = Number(targetLine?.centerY);
+    const hasTarget = Number.isFinite(targetCenterY);
+    const lineCandidates = [];
+
+    lineGroups.forEach((line) => {
+        const clusters = buildTextClusters(line?.rects || []).sort((a, b) => a.left - b.left);
+        if (!clusters.length) return;
+
+        const matches = [];
+        clusters.forEach((cluster) => {
+            getHeaderClusterMatches(cluster).forEach((match) => {
+                matches.push({ ...match, cluster });
+            });
+        });
+        if (!matches.length) return;
+
+        const uniqueKeys = new Set(matches.map((entry) => entry.key));
+        const strongestMatch = Math.max(...matches.map((entry) => entry.score));
+        let score = matches.reduce((sum, entry) => sum + entry.score, 0) + (uniqueKeys.size * 0.65) + strongestMatch;
+
+        if (hasTarget) {
+            const deltaAbove = targetCenterY - Number(line.centerY || 0);
+            const inWindowAbove = deltaAbove >= 0 && deltaAbove <= PDF_HEADER_LINE_WINDOW_PX;
+            if (inWindowAbove) {
+                score += 1.2 - Math.min(0.9, deltaAbove / PDF_HEADER_LINE_WINDOW_PX);
             } else {
-                score -= 0.35;
+                score -= 0.5;
             }
         }
 
-        scoredLines.push({ lineIndex: scoredLines.length, score, clusterCount: clusters.length, centerY: line.centerY });
+        lineCandidates.push({
+            line,
+            matches,
+            clusters,
+            uniqueKeys: Array.from(uniqueKeys),
+            score
+        });
+    });
 
-        if (score > bestScore) {
-            bestScore = score;
-            bestClusters = clusters;
+    if (!lineCandidates.length) {
+        return { headerLine: null, matches: [], confidence: 'low', lineCandidates: [] };
+    }
+
+    lineCandidates.sort((a, b) => b.score - a.score);
+    const best = lineCandidates[0];
+
+    const confidence = best.score >= 6
+        ? 'high'
+        : best.score >= 4
+            ? 'medium'
+            : 'low';
+
+    return {
+        headerLine: best.line,
+        matches: best.matches,
+        confidence,
+        lineCandidates
+    };
+
+}
+
+
+function buildColumnRegionsFromHeaderLine(headerLine) {
+
+    const viewportWidth = Math.max(1, Number(headerLine?.viewportWidth || 0));
+    const matches = Array.isArray(headerLine?.matches) ? headerLine.matches : [];
+    if (!matches.length) return [];
+
+    const byKey = new Map();
+    matches.forEach((entry) => {
+        const key = String(entry?.key || '').trim();
+        if (!key) return;
+        const previous = byKey.get(key);
+        if (!previous || Number(entry?.score || 0) > Number(previous?.score || 0)) {
+            byKey.set(key, entry);
         }
     });
 
-    debugLog('detectHeaderColumns:scores', {
-        totalLines: scoredLines.length,
-        bestScore,
-        clusterCount: bestClusters?.length || 0,
-        threshold: 2.5,
-        passedThreshold: bestScore >= 2.5,
-        topScoredLines: scoredLines.sort((a, b) => b.score - a.score).slice(0, 5),
-        allScores: scoredLines.map(l => l.score).sort((a, b) => b - a)
-    });
+    const anchors = Array.from(byKey.values())
+        .map((entry) => {
+            const cluster = entry.cluster || {};
+            const left = Number(cluster.left || 0);
+            const width = Math.max(12, Number(cluster.width || 0));
+            return {
+                key: entry.key,
+                label: entry.label,
+                centerX: left + (width / 2),
+                left,
+                right: left + width,
+                confidence: Number(entry.score || 0) >= 0.95 ? 'high' : 'medium'
+            };
+        })
+        .sort((a, b) => a.centerX - b.centerX);
 
-    const pageWidth = Math.max(1, Number(viewport?.width || 0));
-    const pageHeight = Math.max(1, Number(viewport?.height || 0));
+    if (!anchors.length) return [];
 
-    if (!bestClusters || bestScore < 2.5) {
-        debugLog('detectHeaderColumns:rejected', {
-            bestScore,
-            hasbestClusters: !!bestClusters,
-            reason: !bestClusters ? 'no-best-clusters' : 'below-threshold',
-            threshold: 2.5
+    const regions = anchors.map((anchor, index) => {
+        const prev = anchors[index - 1] || null;
+        const next = anchors[index + 1] || null;
+
+        const x1 = prev
+            ? (prev.centerX + anchor.centerX) / 2
+            : Math.max(0, anchor.left - Math.max(16, anchor.centerX * 0.18));
+
+        const x2 = next
+            ? (anchor.centerX + next.centerX) / 2
+            : Math.min(viewportWidth, anchor.right + Math.max(16, (viewportWidth - anchor.centerX) * 0.15));
+
+        return {
+            key: anchor.key,
+            label: anchor.label,
+            x1: Math.max(0, Math.min(x1, viewportWidth)),
+            x2: Math.max(0, Math.min(x2, viewportWidth)),
+            confidence: anchor.confidence
+        };
+    }).filter((region) => region.x2 > region.x1 + 2);
+
+    // Infer arrow region: if no arrow anchor was detected in the header text and the first
+    // detected column starts far enough from the left edge, create a narrow arrow region.
+    const ARROW_MIN_SPACE = 25;
+    if (regions.length && regions[0].key !== 'arrow' && regions[0].x1 > ARROW_MIN_SPACE) {
+        regions.unshift({
+            key: 'arrow',
+            label: 'ARROW',
+            x1: 0,
+            x2: regions[0].x1,
+            confidence: 'low'
         });
-        return [];
     }
 
-    // Debug: mostrar TODOS los clusters antes de filtrar
-    debugLog('detectHeaderColumns:all-clusters-before-filter', {
-        totalClusters: bestClusters.length,
-        clusterTexts: bestClusters.map(c => ({ text: c.text, normalized: c.normalizedText })).slice(0, 10)
-    });
+    return regions;
 
-    const headerClusters = bestClusters
-        .filter((cluster) => hasHeaderKeyword(cluster.normalizedText))
-        .sort((a, b) => a.left - b.left);
+}
 
-    debugLog('detectHeaderColumns:filtered', {
-        headerClusterCount: headerClusters.length,
-        headerClusterTexts: headerClusters.map(c => c.text).slice(0, 5)
-    });
 
-    if (headerClusters.length < 1) {
-        debugLog('detectHeaderColumns:rejected', { reason: 'no-header-clusters' });
-        return [];
-    }
+function assignTokensToColumnRegions(rowTokens, columnRegions) {
 
-    const headerTop = Math.min(...headerClusters.map((cluster) => (Number(cluster.top || 0) - Number(cluster.height || 12))));
-    const headerBottom = Math.max(...headerClusters.map((cluster) => Number(cluster.top || 0)));
-    const rowTop = Math.max(0, headerTop - 4);
-    const rowHeight = Math.max(16, Math.min(pageHeight - rowTop, (headerBottom - headerTop) + 8));
+    const tokens = Array.isArray(rowTokens)
+        ? [...rowTokens].sort((a, b) => Number(a?.left || 0) - Number(b?.left || 0))
+        : [];
+    const regions = Array.isArray(columnRegions) ? columnRegions : [];
 
-    const violetRow = {
-        left: 0,
-        top: rowTop,
-        width: pageWidth,
-        height: rowHeight,
-        text: 'Fila cabecera',
-        kind: 'violet-row'
+    const grouped = {
+        arrow: [],
+        pos: [],
+        part_no: [],
+        designation: [],
+        model_type: [],
+        qty: [],
+        units: [],
+        weight: [],
+        fn: [],
+        measurement: [],
+        standard: [],
+        remarks: [],
+        unknown: []
     };
 
-    const blueTexts = headerClusters.map((cluster) => ({
-        left: Math.max(0, Number(cluster.left || 0) - 3),
-        top: Math.max(0, Number(cluster.top || 0) - Number(cluster.height || 12) - 3),
-        width: Math.max(18, Number(cluster.width || 0) + 8),
-        height: Math.max(14, Number(cluster.height || 12) + 8),
-        text: String(cluster.text || '').trim(),
-        kind: 'blue-token'
-    }));
+    const assignments = tokens.map((token) => {
+        const centerX = Number(token?.left || 0) + (Math.max(0, Number(token?.width || 0)) / 2);
 
-    const result = [violetRow, ...blueTexts];
-    debugLog('detectHeaderColumns:success', {
-        violetRowTop: violetRow.top,
-        violetRowHeight: violetRow.height,
-        blueTokenCount: blueTexts.length,
-        totalHighlights: result.length
+        let region = regions.find((candidate) => centerX >= Number(candidate.x1 || 0) && centerX <= Number(candidate.x2 || 0));
+        let confidence = 'high';
+
+        if (!region && regions.length) {
+            confidence = 'low';
+            region = [...regions].sort((a, b) => {
+                const da = Math.abs(centerX - ((Number(a.x1 || 0) + Number(a.x2 || 0)) / 2));
+                const db = Math.abs(centerX - ((Number(b.x1 || 0) + Number(b.x2 || 0)) / 2));
+                return da - db;
+            })[0] || null;
+        }
+
+        const key = String(region?.key || 'unknown');
+        const label = String(region?.label || 'UNKNOWN');
+        const text = String(token?.text || '').trim();
+
+        if (text) {
+            const bucket = grouped[key] || grouped.unknown;
+            bucket.push(text);
+        }
+
+        return {
+            text,
+            left: Number(token?.left || 0),
+            top: Number(token?.top || 0),
+            width: Math.max(0, Number(token?.width || 0)),
+            height: Math.max(0, Number(token?.height || 0)),
+            centerX,
+            key,
+            label,
+            confidence
+        };
     });
-    return result;
+
+    return { grouped, assignments };
+
+}
+
+
+function detectHeaderColumns(rects, viewport, options = {}) {
+
+    if (!Array.isArray(rects) || rects.length === 0) return [];
+
+    const lineGroups = buildLineGroups(rects);
+    if (!lineGroups.length) return [];
+
+    const targetLine = lineGroups.find((line) => {
+        if (!Number.isFinite(Number(options?.anchorCenterY))) return false;
+        return Math.abs(Number(line.centerY || 0) - Number(options.anchorCenterY)) <= 10;
+    }) || null;
+
+    const detectedHeader = detectHeaderLineGroups(lineGroups, targetLine);
+    if (!detectedHeader.headerLine || !Array.isArray(detectedHeader.matches) || !detectedHeader.matches.length) {
+        return [];
+    }
+
+    const headerLinePayload = {
+        line: detectedHeader.headerLine,
+        matches: detectedHeader.matches,
+        viewportWidth: Number(viewport?.width || 0)
+    };
+
+    const columnRegions = buildColumnRegionsFromHeaderLine(headerLinePayload);
+    if (!columnRegions.length) return [];
+
+    const pageWidth = Math.max(1, Number(viewport?.width || 0));
+    const headerRects = Array.isArray(detectedHeader.headerLine.rects) ? detectedHeader.headerLine.rects : [];
+    const headerTop = headerRects.length
+        ? Math.min(...headerRects.map((rect) => (Number(rect.top || 0) - Number(rect.height || 12))))
+        : Math.max(0, Number(detectedHeader.headerLine.centerY || 0) - 12);
+
+    const highlights = [
+        {
+            left: 0,
+            top: Math.max(0, headerTop - 4),
+            width: pageWidth,
+            height: 22,
+            text: 'Fila cabecera',
+            kind: 'violet-row'
+        }
+    ];
+
+    detectedHeader.matches.forEach((entry) => {
+        const cluster = entry?.cluster || null;
+        if (!cluster) return;
+        highlights.push({
+            left: Math.max(0, Number(cluster.left || 0) - 3),
+            top: Math.max(0, Number(cluster.top || 0) - Number(cluster.height || 12) - 3),
+            width: Math.max(18, Number(cluster.width || 0) + 8),
+            height: Math.max(14, Number(cluster.height || 12) + 8),
+            text: String(cluster.text || '').trim(),
+            kind: 'blue-token'
+        });
+    });
+
+    columnRegions.forEach((region) => {
+        highlights.push({
+            left: Number(region.x1 || 0),
+            top: Math.max(0, headerTop - 18),
+            width: Math.max(6, Number(region.x2 || 0) - Number(region.x1 || 0)),
+            height: 52,
+            text: String(region.label || region.key || 'COLUMN'),
+            kind: 'column-region'
+        });
+    });
+
+    return highlights;
 
 }
 
@@ -1356,6 +1541,7 @@ function buildExperimentalRowHighlightsFromSearch(textItems, viewport, search) {
     const normalizedSearch = normalizeExperimentalRowSearch(search);
 
     if (!normalizedSearch) {
+        state.currentPdfExperimentalColumnDetection = null;
         debugLog('buildExperimentalRowHighlightsFromSearch:start', { status: 'no-normalized-search' });
         return [];
     }
@@ -1368,6 +1554,7 @@ function buildExperimentalRowHighlightsFromSearch(textItems, viewport, search) {
     const rects = extractPdfTextRects(textItems, viewport);
 
     if (!rects.length) {
+        state.currentPdfExperimentalColumnDetection = null;
         debugLog('buildExperimentalRowHighlightsFromSearch:extract', { rectCount: 0, status: 'no-rects' });
         return [];
     }
@@ -1375,32 +1562,152 @@ function buildExperimentalRowHighlightsFromSearch(textItems, viewport, search) {
     debugLog('buildExperimentalRowHighlightsFromSearch:extract', { rectCount: rects.length });
 
     if (normalizedSearch.mode === 'pn-line') {
+        state.currentPdfExperimentalColumnDetection = {
+            status: 'no-data',
+            message: 'Sin datos para detección de columnas.',
+            confidence: 'low',
+            columns: { pos: [], part_no: [], designation: [], qty: [], remarks: [], unknown: [] },
+            regions: [],
+            assignments: [],
+            header: null
+        };
+
         const lineHighlights = buildPnLineDebugHighlights(rects, normalizedSearch);
 
-        const pnRects = rects.filter((rect) => tokenMatches(rect.normalizedText, normalizedSearch.pnToken, false));
-        const pnLineRects = pnRects.length ? getPnLineRects(rects, pnRects) : [];
+        const lineGroups = buildLineGroups(rects);
+        const pnLineCandidates = lineGroups
+            .map((line) => {
+                const clusters = buildTextClusters(line.rects);
+                const directMatches = line.rects.filter((rect) => tokenMatches(rect.normalizedText, normalizedSearch.pnToken, false));
+                const hasClusterMatch = clusters.some((cluster) => tokenMatches(cluster.normalizedText, normalizedSearch.pnToken, true));
+                const score = (directMatches.length * 2) + (hasClusterMatch ? 1 : 0);
+                return { line, directMatches, hasClusterMatch, score };
+            })
+            .filter((entry) => entry.score > 0)
+            .sort((a, b) => b.score - a.score);
+
+        const targetLine = pnLineCandidates[0]?.line || null;
+        const pnLineRects = Array.isArray(targetLine?.rects) ? [...targetLine.rects].sort((a, b) => a.left - b.left) : [];
         const rowBand = buildRowBandFromLineRects(pnLineRects, viewport);
 
-        const headerHighlights = detectHeaderColumns(rects, viewport, {
-            anchorCenterY: pnRects[0]?.centerY
-        });
+        const headerDetection = detectHeaderLineGroups(lineGroups, targetLine);
+        const headerLinePayload = {
+            line: headerDetection.headerLine,
+            matches: headerDetection.matches,
+            viewportWidth: Number(viewport?.width || 0)
+        };
+        const columnRegions = buildColumnRegionsFromHeaderLine(headerLinePayload);
+        const assignment = assignTokensToColumnRegions(pnLineRects, columnRegions);
+
+        const columnRegionHighlights = columnRegions.map((region) => ({
+            left: Math.max(0, Number(region.x1 || 0)),
+            top: Math.max(0, Number((rowBand?.top ?? 0)) - 28),
+            width: Math.max(6, Number(region.x2 || 0) - Number(region.x1 || 0)),
+            height: Math.max(48, Number((rowBand?.height ?? 18)) + 36),
+            text: String(region.label || region.key || 'COLUMN'),
+            kind: 'column-region'
+        }));
+
+        const columnLabelHighlights = columnRegions.map((region) => ({
+            left: Math.max(0, Number(region.x1 || 0) + 2),
+            top: Math.max(0, Number((rowBand?.top ?? 0)) - 20),
+            width: Math.max(28, Number(region.x2 || 0) - Number(region.x1 || 0) - 4),
+            height: 14,
+            text: String(region.label || region.key || 'COLUMN'),
+            kind: 'column-label'
+        }));
+
+        const columnTokenHighlights = assignment.assignments.map((item) => ({
+            left: Math.max(0, Number(item.left || 0) - 1),
+            top: Math.max(0, Number(item.top || 0) - Number(item.height || 12) - 1),
+            width: Math.max(18, Number(item.width || 0) + 2),
+            height: Math.max(12, Number(item.height || 12) + 2),
+            text: `${item.label}: ${item.text}`,
+            kind: 'column-token',
+            columnKey: item.key
+        }));
+
+        const headerHighlights = [];
+        if (headerDetection.headerLine) {
+            const headerRects = Array.isArray(headerDetection.headerLine.rects) ? headerDetection.headerLine.rects : [];
+            const headerTop = headerRects.length
+                ? Math.min(...headerRects.map((rect) => (Number(rect.top || 0) - Number(rect.height || 12))))
+                : Math.max(0, Number(headerDetection.headerLine.centerY || 0) - 10);
+
+            headerHighlights.push({
+                left: 0,
+                top: Math.max(0, headerTop - 4),
+                width: Math.max(48, Number(viewport?.width || 0)),
+                height: 22,
+                text: 'Fila cabecera',
+                kind: 'violet-row'
+            });
+
+            headerDetection.matches.forEach((entry) => {
+                const cluster = entry?.cluster;
+                if (!cluster) return;
+                headerHighlights.push({
+                    left: Math.max(0, Number(cluster.left || 0) - 3),
+                    top: Math.max(0, Number(cluster.top || 0) - Number(cluster.height || 12) - 3),
+                    width: Math.max(18, Number(cluster.width || 0) + 8),
+                    height: Math.max(14, Number(cluster.height || 12) + 8),
+                    text: String(cluster.text || '').trim(),
+                    kind: 'blue-token'
+                });
+            });
+        }
+
+        const detectionStatus = !targetLine
+            ? 'no-pn-line'
+            : (!headerDetection.headerLine ? 'no-header' : (columnRegions.length ? 'ok' : 'partial'));
+
+        const detectionMessage = detectionStatus === 'no-header'
+            ? 'No se pudo detectar cabecera de columnas.'
+            : detectionStatus === 'no-pn-line'
+                ? 'No se pudo determinar la línea visual del PN.'
+                : (!columnRegions.length ? 'Cabecera detectada parcialmente, sin regiones de columna confiables.' : 'Detección experimental de columnas completada.');
+
+        state.currentPdfExperimentalColumnDetection = {
+            status: detectionStatus,
+            message: detectionMessage,
+            confidence: headerDetection.confidence || 'low',
+            columns: assignment.grouped,
+            regions: columnRegions,
+            assignments: assignment.assignments,
+            header: headerDetection.headerLine
+                ? {
+                    lineText: buildTextClusters(headerDetection.headerLine.rects || []).map((cluster) => cluster.text).join(' ').replace(/\s+/g, ' ').trim(),
+                    matchCount: headerDetection.matches.length,
+                    confidence: headerDetection.confidence || 'low'
+                }
+                : null
+        };
 
         const result = [
             ...(rowBand ? [rowBand] : []),
             ...lineHighlights,
-            ...headerHighlights
+            ...headerHighlights,
+            ...columnRegionHighlights,
+            ...columnLabelHighlights,
+            ...columnTokenHighlights
         ];
 
         debugLog('buildExperimentalRowHighlightsFromSearch:pn-line', {
             pnToken: normalizedSearch.pnToken,
-            pnRectCount: pnRects.length,
+            pnLineCount: pnLineCandidates.length,
             lineRectCount: pnLineRects.length,
             rowBand: !!rowBand,
+            headerDetected: !!headerDetection.headerLine,
             headerCount: headerHighlights.length,
+            regionCount: columnRegions.length,
+            assignmentCount: assignment.assignments.length,
+            detectionStatus,
             highlightCount: result.length
         });
         return result;
     }
+
+    state.currentPdfExperimentalColumnDetection = null;
 
     const tokens = getSelectionSearchTokens(state.currentPdfSelection);
 
@@ -1907,8 +2214,14 @@ function renderPdfSelectionHighlights(highlights, viewport) {
             box.classList.add('pdf-row-highlight-violet-row');
         } else if (rect.kind === 'violet-column') {
             box.classList.add('pdf-column-highlight-violet');
+        } else if (rect.kind === 'column-region') {
+            box.classList.add('pdf-column-debug-region');
+        } else if (rect.kind === 'column-label') {
+            box.classList.add('pdf-column-debug-label');
         } else if (rect.kind === 'blue-token-pn') {
             box.classList.add('pdf-line-debug-highlight', 'pdf-line-debug-highlight--pn');
+        } else if (rect.kind === 'column-token') {
+            box.classList.add('pdf-column-debug-token', 'pdf-line-debug-highlight');
         } else {
             box.classList.add('pdf-line-debug-highlight');
         }
@@ -1922,6 +2235,10 @@ function renderPdfSelectionHighlights(highlights, viewport) {
         box.style.height = `${Math.max(12, rect.height * scaleY)}px`;
 
         box.title = rect.text ? `Linea PN: ${rect.text}` : 'Linea PN';
+
+        if (rect.kind === 'column-label') {
+            box.textContent = String(rect.text || '').trim();
+        }
 
         layer.appendChild(box);
 
@@ -1971,6 +2288,59 @@ function renderPdfSelectionHighlights(highlights, viewport) {
 
     }
 
+    // ── Table debug overlay (Fase 1-3) ─────────────────────────────────────
+    const tableDebugItems = Array.isArray(state.currentPdfTableDebugOverlay)
+        ? state.currentPdfTableDebugOverlay
+        : [];
+
+    tableDebugItems.forEach((item) => {
+        const kind = String(item.kind || '');
+        const box = document.createElement('div');
+        box.className = 'pdf-selection-highlight';
+
+        if (kind === 'table-debug-col') {
+            box.classList.add('pdf-table-debug-col');
+            if (item.color) box.style.setProperty('--td-col-color', item.color);
+        } else if (kind === 'table-debug-col-label') {
+            box.classList.add('pdf-table-debug-col-label');
+            if (item.color) box.style.background = item.color;
+            box.textContent = String(item.text || '');
+        } else if (kind === 'table-debug-table-area') {
+            box.classList.add('pdf-table-debug-area');
+        } else if (kind === 'table-debug-table-top-line') {
+            box.classList.add('pdf-table-debug-top-line');
+        } else if (kind === 'table-debug-ignored-header') {
+            box.classList.add('pdf-table-debug-ignored-header');
+        } else if (kind === 'table-debug-stats') {
+            box.classList.add('pdf-table-debug-stats');
+            box.textContent = String(item.text || '');
+        } else if (kind === 'table-debug-header') {
+            box.classList.add('pdf-table-debug-header');
+        } else if (kind === 'table-debug-row') {
+            box.classList.add('pdf-table-debug-row');
+        } else if (kind === 'table-debug-separator') {
+            box.classList.add('pdf-table-debug-separator');
+        } else if (kind === 'table-debug-boundary-before') {
+            box.classList.add('pdf-table-debug-boundary-before');
+        } else if (kind === 'table-debug-boundary-after') {
+            box.classList.add('pdf-table-debug-boundary-after');
+        } else if (kind === 'table-debug-text-assigned') {
+            box.classList.add('pdf-table-debug-text-assigned');
+            if (item.color) box.style.background = item.color;
+        } else if (kind === 'table-debug-text-unassigned') {
+            box.classList.add('pdf-table-debug-text-unassigned');
+        } else {
+            return;
+        }
+
+        box.style.left = `${Math.max(0, (Number(item.left) || 0) * scaleX)}px`;
+        box.style.top = `${Math.max(0, (Number(item.top) || 0) * scaleY)}px`;
+        box.style.width = `${Math.max(2, (Number(item.width) || 0) * scaleX)}px`;
+        box.style.height = `${Math.max(2, (Number(item.height) || 0) * scaleY)}px`;
+        box.title = String(item.text || '');
+        layer.appendChild(box);
+    });
+
     debugLog('renderPdfSelectionHighlights:complete', {
         violetRowElements: layer.querySelectorAll('.pdf-row-highlight-violet-row').length,
         redRowElements: layer.querySelectorAll('.pdf-row-highlight-red-row').length,
@@ -1979,7 +2349,6 @@ function renderPdfSelectionHighlights(highlights, viewport) {
     });
 
 }
-
 
 
 async function renderPdfSelectionOverlay(page, viewport, requestToken = state.currentPdfRequestToken) {
@@ -2038,6 +2407,29 @@ async function renderPdfSelectionOverlay(page, viewport, requestToken = state.cu
 
         if (requestToken !== state.currentPdfRequestToken) return;
         const highlights = buildPdfTextHighlights(textContent.items || [], viewport, selection);
+
+        // Almacenar para acceso externo (parser tabular, debug)
+        state.currentPdfLastTextItems = textContent.items || [];
+        state.currentPdfLastViewport = viewport;
+
+        // Calcular debug overlay tabular si está activado
+        if (state.pdfTableDebugEnabled) {
+            try {
+                const tableResult = runTableParser(textContent.items || [], viewport, {});
+                state.currentPdfTableDebugOverlay = tableResult.debugOverlay || [];
+                state.currentPdfTableParseResult = tableResult;
+                window.dispatchEvent(new CustomEvent('pdf-table-parse-updated'));
+            } catch (tableErr) {
+                console.warn('[pdf-table-parser] Error calculando overlay:', tableErr);
+                state.currentPdfTableDebugOverlay = [];
+                state.currentPdfTableParseResult = null;
+                window.dispatchEvent(new CustomEvent('pdf-table-parse-updated'));
+            }
+        } else {
+            state.currentPdfTableDebugOverlay = [];
+            state.currentPdfTableParseResult = null;
+            window.dispatchEvent(new CustomEvent('pdf-table-parse-updated'));
+        }
 
         let rowHighlights = buildExperimentalRowHighlightsFromSearch(textContent.items || [], viewport, state.currentPdfExperimentalRowSearch);
 
@@ -2229,6 +2621,7 @@ export function setPdfSelection(row) {
     }
 
     state.currentPdfExperimentalRowHighlights = [];
+    state.currentPdfExperimentalColumnDetection = null;
 
 }
 
@@ -2650,7 +3043,19 @@ export function loadPdfClear() {
 
     state.currentPdfExperimentalRowHighlights = [];
 
+    state.currentPdfExperimentalColumnDetection = null;
+
     state.currentPdfExperimentalRowSearch = null;
+
+    state.currentPdfTableDebugOverlay = [];
+
+    state.currentPdfTableParseResult = null;
+
+    state.currentPdfLastTextItems = [];
+
+    state.currentPdfLastViewport = null;
+
+    window.dispatchEvent(new CustomEvent('pdf-table-parse-updated'));
 
     clearPdfSelectionLayer();
 
@@ -2702,7 +3107,84 @@ export function getPdfExperimentalBlueTexts({ dedupe = true } = {}) {
 }
 
 
+export function getPdfExperimentalColumnTexts({ dedupe = true } = {}) {
+
+    const detection = state.currentPdfExperimentalColumnDetection;
+    if (!detection || typeof detection !== 'object') {
+        return {
+            status: 'no-data',
+            message: 'No hay detección de columnas disponible.',
+            confidence: 'low',
+            columns: { pos: [], part_no: [], designation: [], qty: [], remarks: [], unknown: [] },
+            regions: [],
+            assignments: [],
+            header: null
+        };
+    }
+
+    const sourceColumns = detection.columns || {};
+    const keys = ['pos', 'part_no', 'designation', 'qty', 'remarks', 'unknown'];
+    const columns = {};
+
+    keys.forEach((key) => {
+        const values = Array.isArray(sourceColumns[key]) ? sourceColumns[key] : [];
+        columns[key] = dedupe ? Array.from(new Set(values)) : [...values];
+    });
+
+    return {
+        status: String(detection.status || 'no-data'),
+        message: String(detection.message || ''),
+        confidence: String(detection.confidence || 'low'),
+        columns,
+        regions: Array.isArray(detection.regions) ? detection.regions : [],
+        assignments: Array.isArray(detection.assignments) ? detection.assignments : [],
+        header: detection.header || null
+    };
+
+}
+
+
 window.getPdfExperimentalBlueTexts = getPdfExperimentalBlueTexts;
+window.getPdfExperimentalColumnTexts = getPdfExperimentalColumnTexts;
+
+// ─── Exports del parser tabular (Fase 1-3) ───────────────────────────────────
+
+/**
+ * Activa o desactiva el overlay de debug tabular.
+ * Cuando se activa, el overlay se recalcula en cada render de página.
+ */
+export function enablePdfTableDebug(enabled) {
+    state.pdfTableDebugEnabled = Boolean(enabled);
+    if (!enabled) {
+        state.currentPdfTableDebugOverlay = [];
+        state.currentPdfTableParseResult = null;
+    }
+}
+
+/**
+ * Devuelve los textItems y viewport de la última página renderizada.
+ * Útil para que módulos externos puedan correr el parser sin re-renderizar.
+ */
+export function getPdfLastPageData() {
+    return {
+        textItems: state.currentPdfLastTextItems || [],
+        viewport: state.currentPdfLastViewport || null,
+    };
+}
+
+/**
+ * Devuelve el resultado completo del último parse tabular.
+ */
+export function getPdfTableParseResult() {
+    return state.currentPdfTableParseResult || null;
+}
+
+/**
+ * Borra el overlay de debug tabular sin desactivar el modo debug.
+ */
+export function clearPdfTableDebugOverlay() {
+    state.currentPdfTableDebugOverlay = [];
+}
 
 
 
@@ -2719,6 +3201,7 @@ export function setPdfExperimentalRowHighlights(search) {
     if (!state.currentPdfExperimentalRowSearch) {
 
         state.currentPdfExperimentalRowHighlights = [];
+        state.currentPdfExperimentalColumnDetection = null;
 
     }
 

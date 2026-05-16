@@ -46,6 +46,12 @@ export const state = {
     currentPdfReadTokens: [],
     currentPdfExperimentalRowHighlights: [],
     currentPdfExperimentalRowSearch: null,
+    currentPdfExperimentalColumnDetection: null,
+    currentPdfTableParserDebug: {
+        enabled: false,
+        overlayStyle: 'advanced',
+        lastResult: null
+    },
     currentPdfZoom: 'fit',
     rightPanelTab: 'pdf',
     qaErrorCheckDefinitions: getQaCheckDefinitions(),

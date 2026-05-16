@@ -185,3 +185,35 @@
     border-color: rgba(220, 38, 38, 0.88);
     background: rgba(252, 165, 165, 0.28);
 }
+
+.pdf-selection-highlight.pdf-column-debug-region {
+    border: 1px dashed rgba(37, 99, 235, 0.45);
+    background: rgba(59, 130, 246, 0.06);
+    box-shadow: none;
+    pointer-events: none;
+    z-index: 2;
+}
+
+.pdf-selection-highlight.pdf-column-debug-label {
+    border: 0;
+    background: rgba(15, 23, 42, 0.72);
+    color: #f8fafc;
+    font-size: 10px;
+    line-height: 1.2;
+    padding: 1px 4px;
+    border-radius: 4px;
+    box-shadow: none;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    pointer-events: none;
+    z-index: 4;
+}
+
+.pdf-selection-highlight.pdf-column-debug-token {
+    border-color: rgba(14, 116, 144, 0.88);
+    background: rgba(34, 211, 238, 0.12);
+    box-shadow: none;
+    pointer-events: none;
+    z-index: 3;
+}

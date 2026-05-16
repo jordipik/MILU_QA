@@ -2031,6 +2031,12 @@ body.a2-resizing * {
     cursor: pointer;
 }
 
+.pdf-row-debug-btn.is-active {
+    border-color: #0f766e;
+    background: linear-gradient(180deg, #ecfdf5 0%, #d1fae5 100%);
+    color: #065f46;
+}
+
 /* Panel de debug para detección de cabecera */
 .header-detection-debug-panel {
     position: fixed;
@@ -2189,6 +2195,21 @@ body.a2-resizing * {
     background: rgba(37, 99, 235, 0.32);
     box-shadow: none;
     pointer-events: none;
+}
+
+.pdf-selection-highlight.pdf-line-debug-highlight {
+    border-width: 2px;
+    border-color: rgba(37, 99, 235, 0.95);
+    background: rgba(59, 130, 246, 0.14);
+    box-shadow: none;
+    pointer-events: none;
+    z-index: 3;
+}
+
+.pdf-selection-highlight.pdf-line-debug-highlight--pn {
+    border-width: 3px;
+    border-color: rgba(8, 95, 214, 0.98);
+    background: rgba(59, 130, 246, 0.24);
 }
 
 .pdf-selection-highlight.pdf-row-highlight-red-row {

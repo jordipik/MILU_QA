@@ -20,7 +20,7 @@ import {
 
 import { publishRevisionSync } from './revision-sync.js';
 
-import { getPdfExperimentalBlueTexts, initPdfZoomControls, loadPdfClear, loadPdfWithPage, requestPdfRelayout, setPdfExperimentalRowHighlights, setPdfReadTokens, setPdfSelection } from './pdf-viewer.js';
+import { getPdfExperimentalBlueTexts, getPdfExperimentalColumnTexts, initPdfZoomControls, loadPdfClear, loadPdfWithPage, requestPdfRelayout, setPdfExperimentalRowHighlights, setPdfReadTokens, setPdfSelection, setPdfTableParserDebugEnabled } from './pdf-viewer.js';
 
 import { evaluateQaChecksForField, evaluateRowQaChecks, getAllQaCheckCodes, getQaCheckLabel } from './qa-checks.js';
 
@@ -250,6 +250,80 @@ async function copyPdfBlueTextsArea() {
 }
 
 
+function formatPdfColumnDetectionSummary(result) {
+
+    const lines = [];
+    const confidence = String(result?.confidence || 'low').toUpperCase();
+    const headerLine = result?.header?.lineText ? ` | Cabecera: ${String(result.header.lineText).trim()}` : '';
+
+    lines.push(`Deteccion columnas (${confidence})${headerLine}`);
+    lines.push('');
+
+    const columns = result?.columns || {};
+    const ordered = [
+        ['arrow', 'ARROW'],
+        ['pos', 'POS'],
+        ['part_no', 'PART NO.'],
+        ['designation', 'DESIGNATION'],
+        ['model_type', 'MODEL/TYPE'],
+        ['qty', 'QTY'],
+        ['units', 'UNITS'],
+        ['weight', 'WEIGHT'],
+        ['fn', 'FN'],
+        ['measurement', 'MEASUREMENT'],
+        ['standard', 'STANDARD'],
+        ['remarks', 'REMARKS'],
+        ['unknown', 'UNKNOWN']
+    ];
+
+    ordered.forEach(([key, label]) => {
+        const values = Array.isArray(columns[key]) ? columns[key] : [];
+        lines.push(`${label}: ${values.length ? values.join(' ') : '---'}`);
+    });
+
+    if (Array.isArray(result?.regions) && result.regions.length) {
+        lines.push('');
+        lines.push('Regiones X:');
+        result.regions.forEach((region) => {
+            lines.push(`${String(region?.label || region?.key || 'UNKNOWN')}: [${Math.round(Number(region?.x1 || 0))}, ${Math.round(Number(region?.x2 || 0))}] (conf ${String(region?.confidence || 'low')})`);
+        });
+    }
+
+    if (result?.message) {
+        lines.push('');
+        lines.push(`Aviso: ${String(result.message)}`);
+    }
+
+    return lines.join('\n');
+
+}
+
+
+async function detectPdfColumnsIntoBlueTextsArea() {
+
+    const area = getPdfBlueTextsArea();
+    if (!area) {
+        alert('No se encontró la caja de texto azul.');
+        return;
+    }
+
+    await highlightPdfRowByPnFinal(currentRow);
+
+    const result = getPdfExperimentalColumnTexts({ dedupe: true });
+    if (!result || typeof result !== 'object') {
+        alert('No se pudo obtener la detección experimental de columnas.');
+        return;
+    }
+
+    area.value = formatPdfColumnDetectionSummary(result);
+
+    if (result.status === 'no-header') {
+        alert('No se pudo detectar cabecera de columnas.');
+    }
+
+}
+
+
 
 let currentRow = null;
 
@@ -274,6 +348,19 @@ const PDF_LINE_Y_TOLERANCE = 2;
 const PDF_ROW_Y_TOLERANCE = 5;
 
 const PDF_ROW_HIGHLIGHT_DEBUG = true;
+
+const PDF_TABLE_DEBUG_STORAGE_KEY = 'analista02:pdf-table-debug-enabled';
+
+let pdfTableDebugEnabled = true;
+
+try {
+    const storedPdfTableDebug = localStorage.getItem(PDF_TABLE_DEBUG_STORAGE_KEY);
+    if (storedPdfTableDebug === '0' || storedPdfTableDebug === 'false') {
+        pdfTableDebugEnabled = false;
+    }
+} catch (_) {
+    // Ignore storage failures.
+}
 
 const RIGHT_PANEL_WIDTH_KEY = 'analista02:right-panel-width';
 
@@ -619,6 +706,61 @@ function logPdfRowHighlightDebug(...args) {
     if (!PDF_ROW_HIGHLIGHT_DEBUG) return;
 
     console.debug('[A2][PDF_ROW_EXPERIMENT]', ...args);
+
+}
+
+
+
+function syncPdfTableDebugToggleButton() {
+
+    const btn = $('pdfTableDebugToggleBtn');
+
+    if (!(btn instanceof HTMLButtonElement)) return;
+
+
+
+    btn.classList.toggle('is-active', pdfTableDebugEnabled);
+
+    btn.textContent = pdfTableDebugEnabled ? 'Debug Tabla ON' : 'Debug Tabla OFF';
+
+    btn.setAttribute('aria-pressed', pdfTableDebugEnabled ? 'true' : 'false');
+
+}
+
+
+
+function setPdfTableDebugEnabled(enabled) {
+
+    pdfTableDebugEnabled = !!enabled;
+
+    syncPdfTableDebugToggleButton();
+
+
+
+    try {
+
+        localStorage.setItem(PDF_TABLE_DEBUG_STORAGE_KEY, pdfTableDebugEnabled ? '1' : '0');
+
+    } catch (_) {
+
+        // Ignore storage failures.
+
+    }
+
+
+
+    if (!pdfTableDebugEnabled) {
+        setPdfTableParserDebugEnabled(false);
+        requestPdfRelayout();
+
+        return;
+
+    }
+
+
+
+    setPdfTableParserDebugEnabled(true, { overlayStyle: 'advanced' });
+    requestPdfRelayout();
 
 }
 
@@ -8299,6 +8441,17 @@ bindClick('pdfBlueTextsCopyBtn', () => {
 });
 
 
+bindClick('pdfDetectColumnsBtn', () => {
+
+    detectPdfColumnsIntoBlueTextsArea().catch((error) => {
+
+        alert(`No se pudo detectar columnas en PDF: ${String(error?.message || error)}`);
+
+    });
+
+});
+
+
 
 bindClick('markPnRowBtn', () => {
 
@@ -8313,6 +8466,14 @@ bindClick('markPnRowBtn', () => {
         syncPdfBlueTextsArea();
 
     });
+
+});
+
+
+
+bindClick('pdfTableDebugToggleBtn', () => {
+
+    setPdfTableDebugEnabled(!pdfTableDebugEnabled);
 
 });
 
@@ -8501,6 +8662,11 @@ document.addEventListener('keydown', (event) => {
     loadRelativePending(1).catch((error) => alert(`No se pudo cargar siguiente pendiente: ${error.message}`));
 
 });
+
+
+
+syncPdfTableDebugToggleButton();
+setPdfTableParserDebugEnabled(pdfTableDebugEnabled, { overlayStyle: 'advanced' });
 
 
 

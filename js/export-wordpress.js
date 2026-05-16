@@ -12,15 +12,25 @@ function buildStaticJsonUrlCandidates(fileName) {
     const clean = String(fileName || '').trim();
     if (!clean) return [];
 
+    const isLegacyRootFile = /^(milu_(new|superseded)_v\d+|product-export-.*)\.json$/i.test(clean);
+
     const withBase = API_BASE_PATH
         ? `${API_BASE_PATH}/data/output/wordpress/${clean}`
         : `/data/output/wordpress/${clean}`;
 
-    return [
-        withBase,
-        `data/output/wordpress/${clean}`,
-        clean
-    ].filter((value, index, arr) => value && arr.indexOf(value) === index);
+    const candidates = isLegacyRootFile
+        ? [
+            clean,
+            withBase,
+            `data/output/wordpress/${clean}`
+        ]
+        : [
+            withBase,
+            `data/output/wordpress/${clean}`,
+            clean
+        ];
+
+    return candidates.filter((value, index, arr) => value && arr.indexOf(value) === index);
 }
 
 function shouldUseStaticExportMode() {

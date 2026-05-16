@@ -35,7 +35,13 @@ Documentación técnica completa del pipeline de imágenes, esquemas de posició
    - Índice de archivos en servidor
    - Validación de existencia local
 
-### 5. **[wordpress_image_export.md](wordpress_image_export.md)** — Exportación a WordPress
+### 5. **[pdf_rectangles_detection.md](pdf_rectangles_detection.md)** — Detección de Rectángulos en PDF
+   - Proceso real implementado hoy para localizar esquemas en PDFs
+   - Uso de PyMuPDF y rectángulos de imágenes embebidas
+   - Heurísticas de agrupación y expansión con etiquetas cortas
+   - Limitaciones actuales y diferencia frente a una detección por color
+
+### 6. **[wordpress_image_export.md](wordpress_image_export.md)** — Exportación a WordPress
    - Campo `exp_imagenes` (calculado en depuracion_json.py)
    - Regla de prioridad: ruta_foto → ruta_esquemas_pos → sin_imagen
    - URLs base de WordPress
@@ -43,7 +49,7 @@ Documentación técnica completa del pipeline de imágenes, esquemas de posició
    - Generación de manifiestos para exportación
    - Estrategia de actualización incremental
 
-### 6. **[performance.md](performance.md)** — Rendimiento y Bottlenecks
+### 7. **[performance.md](performance.md)** — Rendimiento y Bottlenecks
    - Análisis de métricas por página
    - Problemas críticos identificados
    - Re-render completo de tabla
@@ -52,7 +58,7 @@ Documentación técnica completa del pipeline de imágenes, esquemas de posició
    - Oportunidades de optimización
    - Benchmarks actuales
 
-### 7. **[pending_improvements.md](pending_improvements.md)** — Mejoras Pendientes
+### 8. **[pending_improvements.md](pending_improvements.md)** — Mejoras Pendientes
    - Deuda técnica identificada
    - Refactoring recomendado
    - Mejoras de rendimiento
@@ -67,6 +73,7 @@ Documentación técnica completa del pipeline de imágenes, esquemas de posició
 **¿Necesitas...?**
 
 - **Entender cómo se generan imágenes**: Lee [image_pipeline.md](image_pipeline.md)
+- **Entender cómo se detectan rectángulos de esquemas en PDFs**: Lee [pdf_rectangles_detection.md](pdf_rectangles_detection.md)
 - **Debuggear "MISS" o "FALTA" badges**: Lee [esquemas_pos.md](esquemas_pos.md) + [image_validation.md](image_validation.md)
 - **Entender cómo milu_qa renderiza**: Lee [milu_qa_images.md](milu_qa_images.md)
 - **Optimizar rendimiento**: Lee [performance.md](performance.md)
