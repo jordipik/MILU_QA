@@ -9,8 +9,6 @@
 import { state } from './state.js';
 
 import { evaluateRowQaChecks } from './qa-checks.js';
-import { runTableParser } from './pdf-table-parser.js';
-import { detectBomTableHeaders, buildHeaderDebugOverlay } from './pdf-table-header-debug.js';
 
 
 
@@ -19,6 +17,9 @@ const PDF_FIT_WIDTH_MARGIN = 8;
 const PDF_FIT_HEIGHT_MARGIN = 8;
 
 const PDF_SELECTION_MAX_HIGHLIGHTS = 40;
+
+// Deprecated experimental column/header parser path. Kept disabled until a clean reimplementation.
+const PDF_EXPERIMENTAL_COLUMN_FEATURES_ENABLED = false;
 
 const PDF_ZOOM_PERCENTAGES = new Set([50, 75, 100, 125, 150, 200]);
 
@@ -1563,15 +1564,7 @@ function buildExperimentalRowHighlightsFromSearch(textItems, viewport, search) {
     debugLog('buildExperimentalRowHighlightsFromSearch:extract', { rectCount: rects.length });
 
     if (normalizedSearch.mode === 'pn-line') {
-        state.currentPdfExperimentalColumnDetection = {
-            status: 'no-data',
-            message: 'Sin datos para detección de columnas.',
-            confidence: 'low',
-            columns: { pos: [], part_no: [], designation: [], qty: [], remarks: [], unknown: [] },
-            regions: [],
-            assignments: [],
-            header: null
-        };
+        state.currentPdfExperimentalColumnDetection = null;
 
         const lineHighlights = buildPnLineDebugHighlights(rects, normalizedSearch);
 
@@ -1591,106 +1584,9 @@ function buildExperimentalRowHighlightsFromSearch(textItems, viewport, search) {
         const pnLineRects = Array.isArray(targetLine?.rects) ? [...targetLine.rects].sort((a, b) => a.left - b.left) : [];
         const rowBand = buildRowBandFromLineRects(pnLineRects, viewport);
 
-        const headerDetection = detectHeaderLineGroups(lineGroups, targetLine);
-        const headerLinePayload = {
-            line: headerDetection.headerLine,
-            matches: headerDetection.matches,
-            viewportWidth: Number(viewport?.width || 0)
-        };
-        const columnRegions = buildColumnRegionsFromHeaderLine(headerLinePayload);
-        const assignment = assignTokensToColumnRegions(pnLineRects, columnRegions);
-
-        const columnRegionHighlights = columnRegions.map((region) => ({
-            left: Math.max(0, Number(region.x1 || 0)),
-            top: Math.max(0, Number((rowBand?.top ?? 0)) - 28),
-            width: Math.max(6, Number(region.x2 || 0) - Number(region.x1 || 0)),
-            height: Math.max(48, Number((rowBand?.height ?? 18)) + 36),
-            text: String(region.label || region.key || 'COLUMN'),
-            kind: 'column-region'
-        }));
-
-        const columnLabelHighlights = columnRegions.map((region) => ({
-            left: Math.max(0, Number(region.x1 || 0) + 2),
-            top: Math.max(0, Number((rowBand?.top ?? 0)) - 20),
-            width: Math.max(28, Number(region.x2 || 0) - Number(region.x1 || 0) - 4),
-            height: 14,
-            text: String(region.label || region.key || 'COLUMN'),
-            kind: 'column-label'
-        }));
-
-        const columnTokenHighlights = assignment.assignments.map((item) => ({
-            left: Math.max(0, Number(item.left || 0) - 1),
-            top: Math.max(0, Number(item.top || 0) - Number(item.height || 12) - 1),
-            width: Math.max(18, Number(item.width || 0) + 2),
-            height: Math.max(12, Number(item.height || 12) + 2),
-            text: `${item.label}: ${item.text}`,
-            kind: 'column-token',
-            columnKey: item.key
-        }));
-
-        const headerHighlights = [];
-        if (headerDetection.headerLine) {
-            const headerRects = Array.isArray(headerDetection.headerLine.rects) ? headerDetection.headerLine.rects : [];
-            const headerTop = headerRects.length
-                ? Math.min(...headerRects.map((rect) => (Number(rect.top || 0) - Number(rect.height || 12))))
-                : Math.max(0, Number(headerDetection.headerLine.centerY || 0) - 10);
-
-            headerHighlights.push({
-                left: 0,
-                top: Math.max(0, headerTop - 4),
-                width: Math.max(48, Number(viewport?.width || 0)),
-                height: 22,
-                text: 'Fila cabecera',
-                kind: 'violet-row'
-            });
-
-            headerDetection.matches.forEach((entry) => {
-                const cluster = entry?.cluster;
-                if (!cluster) return;
-                headerHighlights.push({
-                    left: Math.max(0, Number(cluster.left || 0) - 3),
-                    top: Math.max(0, Number(cluster.top || 0) - Number(cluster.height || 12) - 3),
-                    width: Math.max(18, Number(cluster.width || 0) + 8),
-                    height: Math.max(14, Number(cluster.height || 12) + 8),
-                    text: String(cluster.text || '').trim(),
-                    kind: 'blue-token'
-                });
-            });
-        }
-
-        const detectionStatus = !targetLine
-            ? 'no-pn-line'
-            : (!headerDetection.headerLine ? 'no-header' : (columnRegions.length ? 'ok' : 'partial'));
-
-        const detectionMessage = detectionStatus === 'no-header'
-            ? 'No se pudo detectar cabecera de columnas.'
-            : detectionStatus === 'no-pn-line'
-                ? 'No se pudo determinar la línea visual del PN.'
-                : (!columnRegions.length ? 'Cabecera detectada parcialmente, sin regiones de columna confiables.' : 'Detección experimental de columnas completada.');
-
-        state.currentPdfExperimentalColumnDetection = {
-            status: detectionStatus,
-            message: detectionMessage,
-            confidence: headerDetection.confidence || 'low',
-            columns: assignment.grouped,
-            regions: columnRegions,
-            assignments: assignment.assignments,
-            header: headerDetection.headerLine
-                ? {
-                    lineText: buildTextClusters(headerDetection.headerLine.rects || []).map((cluster) => cluster.text).join(' ').replace(/\s+/g, ' ').trim(),
-                    matchCount: headerDetection.matches.length,
-                    confidence: headerDetection.confidence || 'low'
-                }
-                : null
-        };
-
         const result = [
             ...(rowBand ? [rowBand] : []),
-            ...lineHighlights,
-            ...headerHighlights,
-            ...columnRegionHighlights,
-            ...columnLabelHighlights,
-            ...columnTokenHighlights
+            ...lineHighlights
         ];
 
         debugLog('buildExperimentalRowHighlightsFromSearch:pn-line', {
@@ -1698,11 +1594,7 @@ function buildExperimentalRowHighlightsFromSearch(textItems, viewport, search) {
             pnLineCount: pnLineCandidates.length,
             lineRectCount: pnLineRects.length,
             rowBand: !!rowBand,
-            headerDetected: !!headerDetection.headerLine,
-            headerCount: headerHighlights.length,
-            regionCount: columnRegions.length,
-            assignmentCount: assignment.assignments.length,
-            detectionStatus,
+            columnsDisabled: !PDF_EXPERIMENTAL_COLUMN_FEATURES_ENABLED,
             highlightCount: result.length
         });
         return result;
@@ -2171,7 +2063,7 @@ function renderPdfSelectionHighlights(highlights, viewport) {
 
     // Modo diagnóstico: si hay marcas azules experimentales, ocultamos temporalmente
     // los resaltados estándar para verificar claramente su visibilidad.
-    const suppressStandardHighlights = rowHighlights.length > 0;
+    const suppressStandardHighlights = false;
 
 
 
@@ -2450,44 +2342,10 @@ async function renderPdfSelectionOverlay(page, viewport, requestToken = state.cu
         // Almacenar para acceso externo (parser tabular, debug)
         state.currentPdfLastTextItems = textContent.items || [];
         state.currentPdfLastViewport = viewport;
-
-        // Calcular debug overlay tabular si está activado
-        if (state.pdfTableDebugEnabled) {
-            try {
-                // Si está en modo headers-only, detectar solo headers
-                if (state.pdfHeaderDebugMode === 'headers-only') {
-                    const headerDetection = detectBomTableHeaders(textContent.items || [], {
-                        lineTolerance: 4,
-                        clusterGapMax: 24
-                    });
-                    state.currentPdfHeaderDetection = headerDetection;
-                    state.currentPdfTableDebugOverlay = buildHeaderDebugOverlay(headerDetection, viewport.width, viewport.height);
-                    state.currentPdfTableParseResult = null;
-                } else {
-                    const columnDetectionMode = window.pdfColumnDetectionMode || 'header-left-lines-mark-only';
-                    const tableResult = runTableParser(textContent.items || [], viewport, { columnDetectionMode });
-                    state.currentPdfTableDebugOverlay = tableResult.debugOverlay || [];
-                    state.currentPdfTableParseResult = tableResult;
-                    if (tableResult && tableResult.geometryDebug) {
-                        debugLog('table-geometry', {
-                            headerRow: tableResult.headerRow || null,
-                            ...tableResult.geometryDebug
-                        });
-                    }
-                }
-                window.dispatchEvent(new CustomEvent('pdf-table-parse-updated'));
-            } catch (tableErr) {
-                console.warn('[pdf-table-parser] Error calculando overlay:', tableErr);
-                state.currentPdfTableDebugOverlay = [];
-                state.currentPdfTableParseResult = null;
-                state.currentPdfHeaderDetection = null;
-                window.dispatchEvent(new CustomEvent('pdf-table-parse-updated'));
-            }
-        } else {
-            state.currentPdfTableDebugOverlay = [];
-            state.currentPdfTableParseResult = null;
-            window.dispatchEvent(new CustomEvent('pdf-table-parse-updated'));
-        }
+        state.currentPdfTableDebugOverlay = [];
+        state.currentPdfTableParseResult = null;
+        state.currentPdfHeaderDetection = null;
+        window.dispatchEvent(new CustomEvent('pdf-table-parse-updated'));
 
         let rowHighlights = buildExperimentalRowHighlightsFromSearch(textContent.items || [], viewport, state.currentPdfExperimentalRowSearch);
 
@@ -3167,6 +3025,18 @@ export function getPdfExperimentalBlueTexts({ dedupe = true } = {}) {
 
 export function getPdfExperimentalColumnTexts({ dedupe = true } = {}) {
 
+    if (!PDF_EXPERIMENTAL_COLUMN_FEATURES_ENABLED) {
+        return {
+            status: 'disabled',
+            message: 'La detección experimental de columnas está desactivada.',
+            confidence: 'low',
+            columns: { pos: [], part_no: [], designation: [], qty: [], remarks: [], unknown: [] },
+            regions: [],
+            assignments: [],
+            header: null
+        };
+    }
+
     const detection = state.currentPdfExperimentalColumnDetection;
     if (!detection || typeof detection !== 'object') {
         return {
@@ -3213,11 +3083,11 @@ window.setPdfHeaderDebugMode = setPdfHeaderDebugMode;
  * Cuando se activa, el overlay se recalcula en cada render de página.
  */
 export function enablePdfTableDebug(enabled) {
-    state.pdfTableDebugEnabled = Boolean(enabled);
-    if (!enabled) {
-        state.currentPdfTableDebugOverlay = [];
-        state.currentPdfTableParseResult = null;
-    }
+    void enabled;
+    state.pdfTableDebugEnabled = false;
+    state.currentPdfTableDebugOverlay = [];
+    state.currentPdfTableParseResult = null;
+    state.currentPdfHeaderDetection = null;
 }
 
 // Backward-compatible API used by analista-02.js
@@ -3257,18 +3127,16 @@ export function clearPdfTableDebugOverlay() {
  * null: desactiva el modo
  */
 export function setPdfHeaderDebugMode(mode) {
-    state.pdfHeaderDebugMode = mode === 'headers-only' ? 'headers-only' : null;
-    if (!mode) {
-        state.currentPdfHeaderDetection = null;
-    }
-    // Request relayout will be called by caller (analista-02.js)
+    void mode;
+    state.pdfHeaderDebugMode = null;
+    state.currentPdfHeaderDetection = null;
 }
 
 /**
  * Devuelve el resultado de detección de headers del último parse.
  */
 export function getPdfHeaderDetection() {
-    return state.currentPdfHeaderDetection || null;
+    return PDF_EXPERIMENTAL_COLUMN_FEATURES_ENABLED ? (state.currentPdfHeaderDetection || null) : null;
 }
 
 

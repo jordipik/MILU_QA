@@ -233,21 +233,7 @@
                             aria-label="Aumentar zoom PDF">+</button>
                     </label>
                     <button id="markPnRowBtn" class="pdf-row-debug-btn" type="button"
-                        title="Experimental: marcar la linea del PN_FINAL en el PDF">Marcar linea PN en PDF</button>
-                    <button id="pdfTableDebugToggleBtn" class="pdf-row-debug-btn is-active" type="button"
-                        title="Activar o desactivar el debug visual de tabla PDF">Debug Tabla ON</button>
-                    <button id="pdfHeaderDebugToggleBtn" class="pdf-row-debug-btn" type="button"
-                        title="Mostrar solo headers BOM detectados en el PDF">Headers Only OFF</button>
-                    <button id="pdfTableRecalcBtn" class="pdf-row-debug-btn" type="button"
-                        title="Borrar overlay de columnas/rectangulos y recalcular deteccion">Recalcular Tabla</button>
-                    <label class="pdf-column-mode-label" title="Seleccionar estrategia de detección de columnas">
-                        Modo:
-                        <select id="pdfColumnDetectionMode" class="pdf-column-mode-select">
-                            <option value="header-left-lines-mark-only">Header Lines (Visual)</option>
-                            <option value="header-left-lines">Header Lines (Full)</option>
-                            <option value="normal">Normal</option>
-                        </select>
-                    </label>
+                        title="Marcar la línea de pn_final en el PDF">Marcar línea PN en PDF</button>
                     <span class="pdf-page">1 / 12</span>
                 </div>
 
@@ -264,8 +250,6 @@
                         <div class="pdf-blue-texts-actions">
                             <button id="pdfBlueTextsFillBtn" class="pdf-blue-texts-btn" type="button">Cargar
                                 azules</button>
-                            <button id="pdfDetectColumnsBtn" class="pdf-blue-texts-btn" type="button">Detectar
-                                columnas</button>
                             <button id="pdfBlueTextsCopyBtn" class="pdf-blue-texts-btn" type="button">Copiar</button>
                         </div>
                     </div>
@@ -453,21 +437,6 @@
                     </div>
                 </form>
             </div>
-        </div>
-    </div>
-
-    <div id="headerDetectionDebugPanel" class="header-detection-debug-panel" hidden>
-        <div class="header-debug-header">
-            <h3>Debug: Detección de Cabecera PDF</h3>
-            <button id="headerDetectionDebugToggle" type="button" class="header-debug-toggle"
-                title="Minimizar">&minus;</button>
-        </div>
-        <div id="headerDetectionDebugContent" class="header-debug-content">
-            <div class="header-debug-controls">
-                <button id="headerDetectionDebugClear" type="button" class="header-debug-btn">Limpiar logs</button>
-                <button id="headerDetectionDebugExport" type="button" class="header-debug-btn">Exportar JSON</button>
-            </div>
-            <div id="headerDetectionDebugLog" class="header-debug-log" role="log" aria-live="polite"></div>
         </div>
     </div>
 
