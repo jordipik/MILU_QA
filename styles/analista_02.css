@@ -2213,9 +2213,16 @@ body.a2-resizing * {
 }
 
 .pdf-selection-highlight.pdf-row-highlight-red-row {
-    border-width: 3px 0;
-    border-color: rgba(220, 38, 38, 0.98);
-    background: rgba(220, 38, 38, 0.2);
+    border: 3px dashed rgba(220, 38, 38, 0.98);
+    background: transparent;
+    border-radius: 0;
+    box-shadow: none;
+    pointer-events: none;
+}
+
+.pdf-selection-highlight.pdf-row-highlight-orange-row {
+    border: 3px dashed rgba(234, 88, 12, 0.98);
+    background: transparent;
     border-radius: 0;
     box-shadow: none;
     pointer-events: none;

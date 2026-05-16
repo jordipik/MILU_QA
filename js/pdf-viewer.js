@@ -1004,7 +1004,7 @@ function buildPnLineDebugHighlights(rects, search) {
 }
 
 
-function buildRowBandFromLineRects(lineRects, viewport) {
+function buildRowBandFromLineRects(lineRects, viewport, options = {}) {
 
     if (!Array.isArray(lineRects) || lineRects.length === 0) return null;
 
@@ -1021,11 +1021,55 @@ function buildRowBandFromLineRects(lineRects, viewport) {
 
         height: Math.max(16, (maxBottom - minTop) + 8),
 
-        text: 'Fila completa',
+        text: String(options.text || 'Fila completa'),
 
-        kind: 'red-row'
+        kind: String(options.kind || 'red-row')
 
     };
+
+}
+
+
+function buildLineBandHighlightsForToken(rects, viewport, tokenValue, options = {}) {
+
+    const normalizedToken = normalizePdfToken(tokenValue);
+
+    if (!normalizedToken) return [];
+
+    const lines = buildLineGroups(rects);
+    const highlights = [];
+    const directOnly = Boolean(options.directOnly);
+    const maxBands = Number.isFinite(options.maxBands) && options.maxBands > 0
+        ? options.maxBands
+        : PDF_SELECTION_MAX_HIGHLIGHTS;
+
+    const leftmostCellOnly = Boolean(options.leftmostCellOnly);
+
+    for (const line of lines) {
+        if (highlights.length >= maxBands) break;
+
+        const sortedByX = [...line.rects].sort((a, b) => (a.left || 0) - (b.left || 0));
+        const minLeft = sortedByX.length ? (sortedByX[0].left || 0) : 0;
+        // Allow rects within a small horizontal window of the leftmost position
+        const leftmostCellThreshold = minLeft + Math.max(20, (sortedByX[1]?.left ?? minLeft + 20) - minLeft - 1);
+
+        const candidateRects = leftmostCellOnly
+            ? line.rects.filter((r) => (r.left || 0) <= leftmostCellThreshold)
+            : line.rects;
+
+        const directMatches = candidateRects.filter((rect) => tokenMatches(rect.normalizedText, normalizedToken, false));
+        if (!directMatches.length) {
+            if (directOnly) continue;
+            const hasClusterMatch = buildTextClusters(candidateRects)
+                .some((cluster) => tokenMatches(cluster.normalizedText, normalizedToken, true));
+            if (!hasClusterMatch) continue;
+        }
+
+        const rowBand = buildRowBandFromLineRects(line.rects, viewport, options);
+        if (rowBand) highlights.push(rowBand);
+    }
+
+    return highlights;
 
 }
 
@@ -1648,35 +1692,21 @@ function buildExperimentalRowHighlightsFromSearch(textItems, viewport, search) {
 
     if (normalizedSearch.mode === 'pn-line') {
         state.currentPdfExperimentalColumnDetection = null;
-
-        const lineHighlights = buildPnLineDebugHighlights(rects, normalizedSearch);
-
-        const lineGroups = buildLineGroups(rects);
-        const pnLineCandidates = lineGroups
-            .map((line) => {
-                const clusters = buildTextClusters(line.rects);
-                const directMatches = line.rects.filter((rect) => tokenMatches(rect.normalizedText, normalizedSearch.pnToken, false));
-                const hasClusterMatch = clusters.some((cluster) => tokenMatches(cluster.normalizedText, normalizedSearch.pnToken, true));
-                const score = (directMatches.length * 2) + (hasClusterMatch ? 1 : 0);
-                return { line, directMatches, hasClusterMatch, score };
-            })
-            .filter((entry) => entry.score > 0)
-            .sort((a, b) => b.score - a.score);
-
-        const targetLine = pnLineCandidates[0]?.line || null;
-        const pnLineRects = Array.isArray(targetLine?.rects) ? [...targetLine.rects].sort((a, b) => a.left - b.left) : [];
-        const rowBand = buildRowBandFromLineRects(pnLineRects, viewport);
-
-        const result = [
-            ...(rowBand ? [rowBand] : []),
-            ...lineHighlights
-        ];
+        const rowKind = String(normalizedSearch.rowKind || 'red-row').trim().toLowerCase() === 'orange-row'
+            ? 'orange-row'
+            : 'red-row';
+        const rowLabel = String(normalizedSearch.rowLabel || '').trim() || (rowKind === 'orange-row' ? 'Fila POS' : 'Fila PN');
+        const result = buildLineBandHighlightsForToken(rects, viewport, normalizedSearch.pnToken, {
+            kind: rowKind,
+            text: rowLabel,
+            directOnly: rowKind === 'orange-row',
+            maxBands: rowKind === 'orange-row' ? 1 : PDF_SELECTION_MAX_HIGHLIGHTS,
+            leftmostCellOnly: rowKind === 'orange-row'
+        });
 
         debugLog('buildExperimentalRowHighlightsFromSearch:pn-line', {
             pnToken: normalizedSearch.pnToken,
-            pnLineCount: pnLineCandidates.length,
-            lineRectCount: pnLineRects.length,
-            rowBand: !!rowBand,
+            rowKind,
             columnsDisabled: !PDF_EXPERIMENTAL_COLUMN_FEATURES_ENABLED,
             highlightCount: result.length
         });
@@ -1831,65 +1861,28 @@ function buildPdfTextHighlights(textItems, viewport, selection) {
 
     if (PDF_MINIMAL_GREEN_HIGHLIGHTS_MODE) {
 
-        pnRects.forEach(rect => {
-
-            const matchRect = getTokenHighlightRect(rect, tokens.pn) || rect;
-
-            highlights.push({
-
-                left: Math.max(0, matchRect.left - 4),
-
-                top: Math.max(0, matchRect.top - matchRect.height - 3),
-
-                width: Math.max(24, matchRect.width + 8),
-
-                height: Math.max(16, matchRect.height + 6),
-
-                text: matchRect.text,
-
-                priority: 6,
-
-                type: 'pn',
-
-                hasError: tokens.fieldErrors.pn ?? false
-
-            });
-
+        const pnLineHighlights = buildLineBandHighlightsForToken(rects, viewport, tokens.pn, {
+            kind: 'red-row',
+            text: 'Fila PN'
         });
 
+        if (pnLineHighlights.length > 0) {
+            return pnLineHighlights;
+        }
 
-
-        posRects.forEach(rect => {
-
-            const matchRect = getTokenHighlightRect(rect, tokens.pos) || rect;
-
-            highlights.push({
-
-                left: Math.max(0, matchRect.left - 4),
-
-                top: Math.max(0, matchRect.top - matchRect.height - 3),
-
-                width: Math.max(24, matchRect.width + 8),
-
-                height: Math.max(16, matchRect.height + 6),
-
-                text: matchRect.text,
-
-                priority: 5,
-
-                type: 'pos',
-
-                hasError: tokens.fieldErrors.pos ?? false
-
-            });
-
+        const posLineHighlights = buildLineBandHighlightsForToken(rects, viewport, tokens.pos, {
+            kind: 'orange-row',
+            text: 'Fila POS',
+            directOnly: true,
+            maxBands: 1,
+            leftmostCellOnly: true
         });
 
+        if (posLineHighlights.length > 0) {
+            return posLineHighlights;
+        }
 
-
-        highlights.sort((a, b) => b.priority - a.priority);
-
-        return highlights.slice(0, PDF_SELECTION_MAX_HIGHLIGHTS);
+        return [];
 
     }
 
@@ -2226,7 +2219,15 @@ function renderPdfSelectionHighlights(highlights, viewport) {
 
         box.className = 'pdf-selection-highlight';
 
-        box.classList.add(rect.hasError ? 'is-error' : 'is-ok');
+        const rowKind = String(rect.kind || '').trim().toLowerCase();
+
+        if (rowKind === 'red-row') {
+            box.classList.add('pdf-row-highlight-red-row');
+        } else if (rowKind === 'orange-row') {
+            box.classList.add('pdf-row-highlight-orange-row');
+        } else {
+            box.classList.add(rect.hasError ? 'is-error' : 'is-ok');
+        }
 
         box.style.left = `${Math.max(0, rect.left * scaleX)}px`;
 
@@ -2236,7 +2237,7 @@ function renderPdfSelectionHighlights(highlights, viewport) {
 
         box.style.height = `${Math.max(14, rect.height * scaleY)}px`;
 
-        box.title = `Coincidencia: ${rect.text}`;
+        box.title = rect.text ? `Coincidencia: ${rect.text}` : 'Coincidencia';
 
         layer.appendChild(box);
 
@@ -2300,7 +2301,7 @@ function renderPdfSelectionHighlights(highlights, viewport) {
 
         box.style.height = `${Math.max(12, rect.height * scaleY)}px`;
 
-        box.title = rect.text ? `Linea PN: ${rect.text}` : 'Linea PN';
+        box.title = rect.text ? `Linea PDF: ${rect.text}` : 'Linea PDF';
 
         if (rect.kind === 'column-label') {
             box.textContent = String(rect.text || '').trim();

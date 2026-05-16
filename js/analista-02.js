@@ -885,38 +885,48 @@ function buildPdfLineItemsFromTextContent(pageText, lineIndices) {
 
 
 
-async function findPdfLineByPnFinal(record = currentRow) {
+async function findPdfLineByToken(record = currentRow, rawToken = '', fieldName = 'pn_final') {
 
     if (!record) {
-        return { pnFinal: '', normalizedPn: '', pnMatches: [], pnClusterMatches: [], lineIndices: [], lineItems: [], pageText: null };
+        return { token: '', normalizedToken: '', matches: [], clusterMatches: [], lineIndices: [], lineItems: [], pageText: null, fieldName };
     }
 
     const book = String(record?.engine_model ?? '').trim();
     const sourcePage = String(record?.['Source Page'] ?? '').trim();
-    const pnFinal = String(record?.pn_final ?? record?.['PART NO.'] ?? '').trim();
-    const normalizedPn = normalizePdfToken(pnFinal);
+    const token = String(rawToken ?? '').trim();
+    const normalizedToken = normalizePdfToken(token);
 
-    if (!book || !sourcePage || !normalizedPn) {
-        return { pnFinal, normalizedPn, pnMatches: [], pnClusterMatches: [], lineIndices: [], lineItems: [], pageText: null };
+    if (!book || !sourcePage || !normalizedToken) {
+        return { token, normalizedToken, matches: [], clusterMatches: [], lineIndices: [], lineItems: [], pageText: null, fieldName };
     }
 
     const pageText = await getPdfPageNormalizedText(book, sourcePage);
-    const pnMatches = (pageText?.items || []).filter((item) => tokenMatchesPdf(item?.normalized, normalizedPn));
-    const pnClusterMatches = (pageText?.clusters || []).filter((cluster) => tokenMatchesPdf(cluster?.normalized, normalizedPn));
+    const matches = (pageText?.items || []).filter((item) => tokenMatchesPdf(item?.normalized, normalizedToken));
+    const clusterMatches = (pageText?.clusters || []).filter((cluster) => tokenMatchesPdf(cluster?.normalized, normalizedToken));
     const lineIndices = Array.from(new Set([
-        ...pnMatches.map((item) => Number(item?.lineIndex)).filter(Number.isInteger),
-        ...pnClusterMatches.map((cluster) => Number(cluster?.lineIndex)).filter(Number.isInteger)
+        ...matches.map((item) => Number(item?.lineIndex)).filter(Number.isInteger),
+        ...clusterMatches.map((cluster) => Number(cluster?.lineIndex)).filter(Number.isInteger)
     ])).sort((a, b) => a - b);
 
     return {
-        pnFinal,
-        normalizedPn,
-        pnMatches,
-        pnClusterMatches,
+        token,
+        normalizedToken,
+        matches,
+        clusterMatches,
         lineIndices,
         lineItems: buildPdfLineItemsFromTextContent(pageText, lineIndices),
-        pageText
+        pageText,
+        fieldName
     };
+
+}
+
+
+async function findPdfLineByPnFinal(record = currentRow) {
+
+    const pnFinal = String(record?.pn_final ?? record?.['PART NO.'] ?? '').trim();
+
+    return findPdfLineByToken(record, pnFinal, 'pn_final');
 
 }
 
@@ -6206,8 +6216,8 @@ function syncPdfWithCurrentRow(row) {
 
 
 
-// Experimental: detecta la fila del PDF a partir de pn_final y dibuja marcas azules.
-// No reemplaza la lógica verde actual; solo añade una capa temporal de depuración visual.
+// Experimental: detecta la fila del PDF a partir de pn_final y dibuja una banda completa.
+// Si pn_final no aparece, usa POS como fallback y cambia la banda a naranja.
 async function highlightPdfLineForPnFinal(record = currentRow) {
 
     console.log('[A2] highlightPdfRowByPnFinal: iniciando');
@@ -6235,6 +6245,7 @@ async function highlightPdfLineForPnFinal(record = currentRow) {
     }
 
     const pnFinal = normalizeString(record?.pn_final);
+    const posValue = normalizeString(record?.POS ?? record?.pos_final ?? record?.pos);
 
     if (!pnFinal) {
         console.warn('[A2][PDF_ROW_EXPERIMENT] Registro sin pn_final.');
@@ -6247,23 +6258,40 @@ async function highlightPdfLineForPnFinal(record = currentRow) {
     setPdfSelection(record);
     await loadPdfWithPage(book, sourcePage);
 
-    const lineMatch = await findPdfLineByPnFinal(record);
-    const pnMatches = lineMatch.pnMatches || [];
+    let lineMatch = await findPdfLineByPnFinal(record);
+    let highlightToken = pnFinal;
+    let highlightKind = 'red-row';
+    let matchedFieldName = 'pn_final';
+    let matches = lineMatch.matches || [];
 
     logPdfRowHighlightDebug('pn_final buscado:', pnFinal);
-    logPdfRowHighlightDebug('coincidencias PN en página:', pnMatches.length);
+    logPdfRowHighlightDebug('coincidencias PN en página:', matches.length);
 
-    if (!pnMatches.length) {
-        console.warn(`[A2][PDF_ROW_EXPERIMENT] No se encontró pn_final en PDF: "${pnFinal}"`);
+    if (!matches.length && posValue) {
+        lineMatch = await findPdfLineByToken(record, posValue, 'POS');
+        highlightToken = posValue;
+        highlightKind = 'orange-row';
+        matchedFieldName = 'POS';
+        matches = lineMatch.matches || [];
+        logPdfRowHighlightDebug('fallback POS buscado:', posValue);
+        logPdfRowHighlightDebug('coincidencias POS en página:', matches.length);
+    }
+
+    if (!matches.length) {
+        console.warn(`[A2][PDF_ROW_EXPERIMENT] No se encontró pn_final ni POS en PDF: "${pnFinal}"${posValue ? ` / "${posValue}"` : ''}`);
         setPdfExperimentalRowHighlights(null);
         requestPdfRelayout();
-        alert(`No se encontró pn_final en la página PDF actual: ${pnFinal}.`);
+        alert(posValue
+            ? `No se encontró pn_final ni POS en la página PDF actual: ${pnFinal} / ${posValue}.`
+            : `No se encontró pn_final en la página PDF actual: ${pnFinal}.`);
         return;
     }
 
     setPdfExperimentalRowHighlights({
         mode: 'pn-line',
-        pn: pnFinal,
+        pn: highlightToken,
+        rowKind: highlightKind,
+        rowLabel: matchedFieldName === 'POS' ? 'Fila POS' : 'Fila PN',
         yTolerance: PDF_ROW_Y_TOLERANCE
     });
     requestPdfRelayout();
@@ -6271,8 +6299,8 @@ async function highlightPdfLineForPnFinal(record = currentRow) {
     logPdfRowHighlightDebug('líneas detectadas:', lineMatch.lineIndices);
     logPdfRowHighlightDebug('textos en misma fila:', lineMatch.lineItems.map((item) => String(item?.text || '').trim()).filter(Boolean));
 
-    if (pnMatches.length > 1) {
-        console.warn(`[A2][PDF_ROW_EXPERIMENT] PN con ${pnMatches.length} coincidencias en la página. Se marcarán todas las líneas coincidentes.`);
+    if (matches.length > 1) {
+        console.warn(`[A2][PDF_ROW_EXPERIMENT] ${matchedFieldName} con ${matches.length} coincidencias en la página. Se marcarán todas las líneas coincidentes.`);
     }
 
 }
