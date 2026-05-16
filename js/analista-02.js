@@ -20,7 +20,7 @@ import {
 
 import { publishRevisionSync } from './revision-sync.js';
 
-import { getPdfExperimentalBlueTexts, getPdfExperimentalColumnTexts, initPdfZoomControls, loadPdfClear, loadPdfWithPage, requestPdfRelayout, setPdfExperimentalRowHighlights, setPdfReadTokens, setPdfSelection, setPdfTableParserDebugEnabled } from './pdf-viewer.js';
+import { clearPdfTableDebugOverlay, getPdfExperimentalBlueTexts, getPdfExperimentalColumnTexts, initPdfZoomControls, loadPdfClear, loadPdfWithPage, requestPdfRelayout, setPdfExperimentalRowHighlights, setPdfReadTokens, setPdfSelection, setPdfTableParserDebugEnabled } from './pdf-viewer.js';
 
 import { evaluateQaChecksForField, evaluateRowQaChecks, getAllQaCheckCodes, getQaCheckLabel } from './qa-checks.js';
 
@@ -8474,6 +8474,19 @@ bindClick('markPnRowBtn', () => {
 bindClick('pdfTableDebugToggleBtn', () => {
 
     setPdfTableDebugEnabled(!pdfTableDebugEnabled);
+
+});
+
+bindClick('pdfTableRecalcBtn', () => {
+
+    clearPdfTableDebugOverlay();
+
+    if (!pdfTableDebugEnabled) {
+        setPdfTableDebugEnabled(true);
+        return;
+    }
+
+    requestPdfRelayout();
 
 });
 

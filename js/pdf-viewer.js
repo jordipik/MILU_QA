@@ -2314,16 +2314,32 @@ function renderPdfSelectionHighlights(highlights, viewport) {
         } else if (kind === 'table-debug-stats') {
             box.classList.add('pdf-table-debug-stats');
             box.textContent = String(item.text || '');
+        } else if (kind === 'table-debug-header-row') {
+            box.classList.add('pdf-table-debug-header-row');
+            box.textContent = String(item.text || '');
+        } else if (kind === 'table-debug-header-label') {
+            box.classList.add('pdf-table-debug-header-label');
+            box.textContent = String(item.text || '');
         } else if (kind === 'table-debug-header') {
             box.classList.add('pdf-table-debug-header');
         } else if (kind === 'table-debug-row') {
             box.classList.add('pdf-table-debug-row');
         } else if (kind === 'table-debug-separator') {
             box.classList.add('pdf-table-debug-separator');
-        } else if (kind === 'table-debug-boundary-before') {
+        } else if (kind === 'table-debug-natural-gap') {
+            box.classList.add('pdf-table-debug-natural-gap');
+        } else if (kind === 'table-debug-boundary-initial') {
             box.classList.add('pdf-table-debug-boundary-before');
-        } else if (kind === 'table-debug-boundary-after') {
+        } else if (kind === 'table-debug-boundary-refined') {
             box.classList.add('pdf-table-debug-boundary-after');
+        } else if (kind === 'table-debug-boundary-adjustment') {
+            box.classList.add('pdf-table-debug-boundary-adjustment');
+            box.textContent = String(item.text || '');
+        } else if (kind === 'table-debug-overlap') {
+            box.classList.add('pdf-table-debug-overlap');
+        } else if (kind === 'table-debug-warning') {
+            box.classList.add('pdf-table-debug-warning');
+            box.textContent = String(item.text || '');
         } else if (kind === 'table-debug-text-assigned') {
             box.classList.add('pdf-table-debug-text-assigned');
             if (item.color) box.style.background = item.color;
@@ -2418,6 +2434,12 @@ async function renderPdfSelectionOverlay(page, viewport, requestToken = state.cu
                 const tableResult = runTableParser(textContent.items || [], viewport, {});
                 state.currentPdfTableDebugOverlay = tableResult.debugOverlay || [];
                 state.currentPdfTableParseResult = tableResult;
+                if (tableResult && tableResult.geometryDebug) {
+                    debugLog('table-geometry', {
+                        headerRow: tableResult.headerRow || null,
+                        ...tableResult.geometryDebug
+                    });
+                }
                 window.dispatchEvent(new CustomEvent('pdf-table-parse-updated'));
             } catch (tableErr) {
                 console.warn('[pdf-table-parser] Error calculando overlay:', tableErr);
@@ -3159,6 +3181,12 @@ export function enablePdfTableDebug(enabled) {
         state.currentPdfTableDebugOverlay = [];
         state.currentPdfTableParseResult = null;
     }
+}
+
+// Backward-compatible API used by analista-02.js
+export function setPdfTableParserDebugEnabled(enabled, options = {}) {
+    void options;
+    enablePdfTableDebug(enabled);
 }
 
 /**

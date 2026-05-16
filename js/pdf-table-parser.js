@@ -47,7 +47,7 @@ const COLUMN_WIDTH_LIMITS = {
     part_no: { min: 55, max: 110 },
     designation: { min: 90, max: 180 },
     model_type: { min: 60, max: 130 },
-    qty: { min: 18, max: 35 },
+    qty: { min: 24, max: 35 },
     units: { min: 18, max: 35 },
     weight: { min: 35, max: 70 },
     fn: { min: 14, max: 30 },
@@ -67,42 +67,6 @@ const TEMPLATE_RATIOS = [
     { key: 'fn', start: 0.750, end: 0.790 },
     { key: 'measurement', start: 0.790, end: 0.930 },
     { key: 'standard', start: 0.930, end: 1.000 }
-];
-
-const HEADER_TOKEN_TO_KEY = new Map([
-    ['POS', 'pos'],
-    ['POSITION', 'pos'],
-    ['PART NO', 'part_no'],
-    ['PARTNO', 'part_no'],
-    ['PART NUMBER', 'part_no'],
-    ['PARTNUMBER', 'part_no'],
-    ['DESIGNATION', 'designation'],
-    ['DESCRIPTION', 'designation'],
-    ['MODEL/TYPE', 'model_type'],
-    ['MODEL TYPE', 'model_type'],
-    ['MODELTYPE', 'model_type'],
-    ['QTY', 'qty'],
-    ['QUANTITY', 'qty'],
-    ['UNITS', 'units'],
-    ['UNIT', 'units'],
-    ['WEIGHT', 'weight'],
-    ['WT', 'weight'],
-    ['WGT', 'weight'],
-    ['FN', 'fn'],
-    ['FOOTNOTE', 'fn'],
-    ['MEASUREMENT', 'measurement'],
-    ['MEASUREMENTS', 'measurement'],
-    ['STANDARD', 'standard'],
-    ['STANDARDS', 'standard']
-]);
-
-const TABLE_HEADER_HINTS = [
-    'POS', 'PART', 'PART NO', 'DESIGNATION', 'MODEL', 'TYPE',
-    'QTY', 'UNITS', 'WEIGHT', 'FN', 'MEASUREMENT', 'STANDARD'
-];
-
-const PAGE_METADATA_HINTS = [
-    'EQUI TYPE', 'PRODUCT TYPE', 'SERIAL NUMBER', 'ENGINE CABLING', 'FG/FGS', 'BOM-NO', 'BOM NO'
 ];
 
 const COL_ASSIGN_COLORS = {
@@ -181,6 +145,42 @@ function median(values) {
     return sorted.length % 2 ? sorted[mid] : ((sorted[mid - 1] + sorted[mid]) / 2);
 }
 
+function percentile(values, p = 0.5) {
+    if (!Array.isArray(values) || !values.length) return NaN;
+    const sorted = [...values].filter(Number.isFinite).sort((a, b) => a - b);
+    if (!sorted.length) return NaN;
+    const clamped = Math.max(0, Math.min(1, Number(p || 0)));
+    const idx = (sorted.length - 1) * clamped;
+    const low = Math.floor(idx);
+    const high = Math.ceil(idx);
+    if (low === high) return sorted[low];
+    const t = idx - low;
+    return (sorted[low] * (1 - t)) + (sorted[high] * t);
+}
+
+function pushWarningOnce(warnings, payload) {
+    const code = String(payload?.code || '');
+    if (!code) return;
+    const key = String(payload?.key || '');
+    const between = String(payload?.between || '');
+    const exists = (warnings || []).some((item) => String(item?.code || '') === code
+        && String(item?.key || '') === key
+        && String(item?.between || '') === between);
+    if (!exists) warnings.push(payload);
+}
+
+function clamp01(value) {
+    if (!Number.isFinite(Number(value))) return 0;
+    return Math.max(0, Math.min(1, Number(value)));
+}
+
+function confidenceLabel(score) {
+    const v = clamp01(score);
+    if (v >= 0.78) return 'high';
+    if (v >= 0.48) return 'medium';
+    return 'low';
+}
+
 function isShortIntegerToken(text) {
     const t = String(text || '').trim();
     return /^\d{1,3}$/.test(t);
@@ -207,6 +207,22 @@ function isWeightLikeToken(text) {
     if (/^\d[\d.,]*$/.test(t) && /[.,]/.test(t)) return true;
     if (/^\d{2,}$/.test(t)) return true;
     return false;
+}
+
+function isModelTypeLikeToken(text) {
+    const raw = String(text || '').trim();
+    const t = normalizeHeaderToken(raw);
+    if (!t) return false;
+    if (isShortIntegerToken(raw)) return false;
+    if (isUnitToken(raw)) return false;
+    if (isWeightLikeToken(raw)) return false;
+    if (isPartNoLikeToken(raw)) return false;
+
+    // Typical model/type cells are short alpha-numeric descriptors.
+    const hasLetter = /[A-Z]/.test(t);
+    const hasDigit = /\d/.test(t);
+    if (!hasLetter && !hasDigit) return false;
+    return t.length >= 2 && t.length <= 22;
 }
 
 export function extractTextRects(textItems, viewport) {
@@ -328,31 +344,6 @@ function buildClusters(rects, maxGap = 28) {
     }));
 }
 
-function detectHeaderKeyFromPhrase(phrase) {
-    const normalized = normalizeHeaderToken(phrase);
-    if (!normalized) return null;
-
-    if (HEADER_TOKEN_TO_KEY.has(normalized)) return HEADER_TOKEN_TO_KEY.get(normalized);
-
-    if (normalized.includes('PART') && normalized.includes('NO')) return 'part_no';
-    if (normalized.includes('MODEL') && normalized.includes('TYPE')) return 'model_type';
-    if (normalized.includes('MEASUREMENT')) return 'measurement';
-    if (normalized.includes('STANDARD')) return 'standard';
-    if (normalized === 'QTY' || normalized.includes('QUANTITY')) return 'qty';
-    if (normalized.includes('UNITS') || normalized === 'UNIT') return 'units';
-    if (normalized.includes('WEIGHT') || normalized === 'WT' || normalized === 'WGT') return 'weight';
-    if (normalized === 'FN' || normalized.includes('FOOTNOTE')) return 'fn';
-    if (normalized.includes('DESIGNATION') || normalized.includes('DESCRIPTION')) return 'designation';
-    if (normalized === 'POS' || normalized === 'POSITION') return 'pos';
-    return null;
-}
-
-function lineTokenHits(lineText, dictionary) {
-    const normalized = normalizeHeaderToken(lineText);
-    if (!normalized) return [];
-    return dictionary.filter((token) => normalized.includes(token));
-}
-
 export function detectTableArea(rects, lines, pageInfo = {}) {
     const viewportHeight = Math.max(1, Number(pageInfo.viewportHeight || 0));
     const viewportWidth = Math.max(1, Number(pageInfo.viewportWidth || 0));
@@ -368,19 +359,23 @@ export function detectTableArea(rects, lines, pageInfo = {}) {
         };
     }
 
-    let bestCandidate = null;
-    for (const line of lines) {
-        const tableHits = lineTokenHits(line.normalizedText, TABLE_HEADER_HINTS);
-        const metadataHits = lineTokenHits(line.normalizedText, PAGE_METADATA_HINTS);
-        const spread = Number(line.width || 0) / viewportWidth;
-        const score = (new Set(tableHits)).size * 2 + spread - ((new Set(metadataHits)).size * 2.5);
-
-        if ((new Set(tableHits)).size >= 3 && spread >= 0.35 && (new Set(metadataHits)).size <= 1) {
-            if (!bestCandidate || score > bestCandidate.score || line.cy < bestCandidate.line.cy) {
-                bestCandidate = { line, score, tableHits, metadataHits };
+    // Pure geometry: choose first dense/wide line as table top anchor.
+    const candidates = lines
+        .map((line) => {
+            const spread = Number(line.width || 0) / viewportWidth;
+            const itemCount = Array.isArray(line.rects) ? line.rects.length : 0;
+            const score = (spread * 2.3) + Math.min(2.2, itemCount * 0.2);
+            return { line, spread, itemCount, score };
+        })
+        .filter((item) => item.spread >= 0.33 && item.itemCount >= 4)
+        .sort((a, b) => {
+            if (Math.abs(Number(a.line.cy || 0) - Number(b.line.cy || 0)) > geomPx(18, geomScale)) {
+                return Number(a.line.cy || 0) - Number(b.line.cy || 0);
             }
-        }
-    }
+            return Number(b.score || 0) - Number(a.score || 0);
+        });
+
+    const bestCandidate = candidates[0] || null;
 
     if (!bestCandidate) {
         const fallbackTop = Math.max(0, viewportHeight * 0.20);
@@ -394,18 +389,17 @@ export function detectTableArea(rects, lines, pageInfo = {}) {
         };
     }
 
-    const headerLine = bestCandidate.line;
-    const tableTopY = Math.max(0, Number(headerLine.y1 || 0) - geomPx(8, geomScale));
+    const anchorLine = bestCandidate.line;
+    const tableTopY = Math.max(0, Number(anchorLine.y1 || 0) - geomPx(8, geomScale));
 
-    const linesFromHeader = lines.filter((line) => Number(line.cy || 0) >= Number(headerLine.cy || 0));
+    const linesFromTop = lines.filter((line) => Number(line.cy || 0) >= Number(anchorLine.cy || 0));
     let tableBottomY = viewportHeight;
     let lastDense = null;
 
-    linesFromHeader.forEach((line) => {
+    linesFromTop.forEach((line) => {
         const span = Number(line.width || 0) / viewportWidth;
         const itemCount = Array.isArray(line.rects) ? line.rects.length : 0;
-        const metadataHits = lineTokenHits(line.normalizedText, PAGE_METADATA_HINTS);
-        const dense = itemCount >= 4 && span >= 0.35 && metadataHits.length === 0;
+        const dense = itemCount >= 4 && span >= 0.33;
         if (dense) lastDense = line;
     });
 
@@ -418,85 +412,10 @@ export function detectTableArea(rects, lines, pageInfo = {}) {
     return {
         tableTopY,
         tableBottomY,
-        reason: `header-line:${bestCandidate.tableHits.join('|')}`,
-        confidence: bestCandidate.score >= 7 ? 'high' : 'medium',
-        headerLine,
+        reason: 'density-anchor',
+        confidence: bestCandidate.score >= 2.5 ? 'high' : 'medium',
+        headerLine: null,
         ignoredHeaderRects
-    };
-}
-
-function detectHeaderAnchors(tableLines, tableTopY, windowPx = 90, geomScale = 1) {
-    const candidateLines = tableLines.filter((line) => Number(line.cy || 0) <= (tableTopY + windowPx));
-    const anchorsByKey = new Map();
-    const headerLines = [];
-
-    candidateLines.forEach((line) => {
-        const clusters = buildClusters(line.rects, geomPx(26, geomScale));
-        if (!clusters.length) return;
-
-        const localHits = [];
-        for (let i = 0; i < clusters.length; i++) {
-            const c1 = clusters[i];
-            const candidates = [
-                { phrase: c1.text, left: c1.left, right: c1.right, score: 1 },
-                i + 1 < clusters.length
-                    ? {
-                        phrase: `${c1.text} ${clusters[i + 1].text}`,
-                        left: c1.left,
-                        right: clusters[i + 1].right,
-                        score: 1.15
-                    }
-                    : null,
-                i + 2 < clusters.length
-                    ? {
-                        phrase: `${c1.text} ${clusters[i + 1].text} ${clusters[i + 2].text}`,
-                        left: c1.left,
-                        right: clusters[i + 2].right,
-                        score: 1.3
-                    }
-                    : null
-            ].filter(Boolean);
-
-            candidates.forEach((item) => {
-                let key = detectHeaderKeyFromPhrase(item.phrase);
-                const normalizedPhrase = normalizeHeaderToken(item.phrase);
-
-                // Arrow headers are often rendered as a symbol, not text.
-                // If the leftmost tiny cluster has no alphanumeric text, treat it as ARROW.
-                if (!key && i === 0 && !normalizedPhrase && String(item.phrase || '').trim() && Number(item.right || 0) - Number(item.left || 0) <= geomPx(28, geomScale)) {
-                    key = 'arrow';
-                }
-
-                if (!key) return;
-
-                const confidence = item.score >= 1.2 ? 'high' : 'medium';
-                const anchor = {
-                    key,
-                    centerX: (Number(item.left || 0) + Number(item.right || 0)) / 2,
-                    x1: Number(item.left || 0),
-                    x2: Number(item.right || 0),
-                    confidence,
-                    source: 'header',
-                    lineCy: Number(line.cy || 0),
-                    text: item.phrase,
-                    score: item.score
-                };
-
-                const previous = anchorsByKey.get(key);
-                if (!previous || Number(anchor.score || 0) > Number(previous.score || 0)) {
-                    anchorsByKey.set(key, anchor);
-                }
-                localHits.push(anchor);
-            });
-        }
-
-        if (localHits.length >= 2) headerLines.push(line);
-    });
-
-    return {
-        anchors: Array.from(anchorsByKey.values()).sort((a, b) => Number(a.x1 || a.centerX || 0) - Number(b.x1 || b.centerX || 0)),
-        headerLines,
-        detectedHeaderKeys: Array.from(anchorsByKey.keys())
     };
 }
 
@@ -694,6 +613,111 @@ function detectVerticalSeparators(pageGraphics, rects, tableArea, bodyRows, left
         .sort((a, b) => Number(a.x || 0) - Number(b.x || 0));
 }
 
+function detectNaturalGapsFromBodyRows(bodyRows, leftX, rightX, geomScale = 1) {
+    const rows = Array.isArray(bodyRows) ? bodyRows : [];
+    if (!rows.length) return [];
+
+    const bins = new Map();
+    const binSize = Math.max(1, geomPx(2, geomScale));
+
+    rows.forEach((row) => {
+        const rects = [...(row?.rects || [])].sort((a, b) => Number(a.left || 0) - Number(b.left || 0));
+        const seenInRow = new Set();
+        for (let i = 0; i < rects.length - 1; i++) {
+            const r1 = rects[i];
+            const r2 = rects[i + 1];
+            const gap = Number(r2.left || 0) - Number(toRight(r1));
+            if (gap < geomPx(5, geomScale)) continue;
+            const x = Number(toRight(r1)) + (gap / 2);
+            if (x <= leftX || x >= rightX) continue;
+
+            const bin = Math.round(x / binSize) * binSize;
+            const bucket = bins.get(bin) || { xs: [], gaps: [], rowHits: 0 };
+            bucket.xs.push(x);
+            bucket.gaps.push(gap);
+            if (!seenInRow.has(bin)) {
+                bucket.rowHits += 1;
+                seenInRow.add(bin);
+            }
+            bins.set(bin, bucket);
+        }
+    });
+
+    const minHits = Math.max(4, Math.round(rows.length * 0.22));
+    const candidates = [];
+    bins.forEach((bucket, bin) => {
+        if (bucket.rowHits < minHits) return;
+        const x = median(bucket.xs);
+        const gapMed = median(bucket.gaps);
+        const persistence = bucket.rowHits / Math.max(1, rows.length);
+        candidates.push({
+            x: Number.isFinite(x) ? x : Number(bin),
+            confidence: clamp01((persistence * 0.65) + Math.min(0.35, (gapMed / geomPx(22, geomScale)) * 0.35)),
+            persistence,
+            medianGap: Number.isFinite(gapMed) ? gapMed : 0,
+            source: 'natural-gap'
+        });
+    });
+
+    return aggregateCloseSeparators(candidates.map((item) => ({
+        x: item.x,
+        score: item.confidence,
+        source: 'natural-gap'
+    })), geomPx(3, geomScale)).map((item) => {
+        const nearest = candidates.sort((a, b) => Math.abs(a.x - item.x) - Math.abs(b.x - item.x))[0];
+        return {
+            x: Number(item.x || 0),
+            confidence: Number(item.confidence || nearest?.confidence || 0),
+            persistence: Number(nearest?.persistence || 0),
+            medianGap: Number(nearest?.medianGap || 0),
+            source: 'natural-gap'
+        };
+    }).sort((a, b) => Number(a.x || 0) - Number(b.x || 0));
+}
+
+function detectBoundaryOverlapMetrics(columns, bodyRows, geomScale = 1) {
+    const ordered = sortByCanonical(columns || []);
+    const markers = [];
+    if (ordered.length < 2 || !Array.isArray(bodyRows) || !bodyRows.length) {
+        return { totalCrossings: 0, markers, byBoundary: [] };
+    }
+
+    let totalCrossings = 0;
+    const byBoundary = [];
+    for (let i = 0; i < ordered.length - 1; i++) {
+        const leftCol = ordered[i];
+        const rightCol = ordered[i + 1];
+        const boundaryX = Number(leftCol.x2 || 0);
+        let crossings = 0;
+
+        bodyRows.forEach((row) => {
+            (row?.rects || []).forEach((rect) => {
+                const l = Number(rect.left || 0);
+                const r = Number(toRight(rect));
+                if (l < boundaryX - geomPx(0.6, geomScale) && r > boundaryX + geomPx(0.6, geomScale)) {
+                    crossings += 1;
+                    if (markers.length < 140) {
+                        markers.push({
+                            boundaryX,
+                            between: `${leftCol.key}|${rightCol.key}`,
+                            left: l,
+                            top: Number(rect.visualTop || 0),
+                            width: Math.max(3, r - l),
+                            height: Math.max(8, Number(rect.height || 0)),
+                            text: String(rect.text || '').trim()
+                        });
+                    }
+                }
+            });
+        });
+
+        totalCrossings += crossings;
+        byBoundary.push({ between: `${leftCol.key}|${rightCol.key}`, x: boundaryX, crossings });
+    }
+
+    return { totalCrossings, markers, byBoundary };
+}
+
 function snapBoundariesToSeparators(columns, verticalSeparators, leftX, rightX, geomScale = 1) {
     const ordered = sortByCanonical(columns);
     if (ordered.length < 2) {
@@ -876,9 +900,63 @@ function refineUnitsWeightBoundary(columns, bodyRects, separators, boundaryMoves
     return ordered;
 }
 
+function refineModelQtyBoundary(columns, bodyRects, separators, boundaryMoves, warnings, geomScale = 1) {
+    let ordered = sortByCanonical(columns);
+    const model = ordered.find((col) => col.key === 'model_type');
+    const qty = ordered.find((col) => col.key === 'qty');
+    if (!model || !qty) return ordered;
+
+    const x1 = Number(model.x1 || 0);
+    const x2 = Number(qty.x2 || 0);
+    const zoneRects = (bodyRects || []).filter((rect) => {
+        const cx = Number(rect.centerX || 0);
+        return cx >= x1 && cx <= x2;
+    });
+
+    const modelEnds = zoneRects
+        .filter((rect) => isModelTypeLikeToken(rect.text))
+        .map((rect) => Number(toRight(rect)));
+    const qtyStarts = zoneRects
+        .filter((rect) => isShortIntegerToken(rect.text))
+        .map((rect) => Number(rect.left || 0));
+
+    if (modelEnds.length >= 4 && qtyStarts.length >= 4) {
+        const modelMed = percentile(modelEnds, 0.72);
+        const qtyMed = percentile(qtyStarts, 0.28);
+        if (Number.isFinite(modelMed) && Number.isFinite(qtyMed) && qtyMed > modelMed + geomPx(2, geomScale)) {
+            let newBoundary = (modelMed + qtyMed) / 2;
+            newBoundary = nearestSeparatorX(separators, newBoundary, geomPx(12, geomScale));
+            ordered = moveBoundaryBetween(ordered, 'model_type', 'qty', newBoundary, 'manual-rule-model-qty', boundaryMoves, geomScale);
+        }
+    }
+
+    const modelWidth = Number((ordered.find((c) => c.key === 'model_type')?.x2 || 0) - (ordered.find((c) => c.key === 'model_type')?.x1 || 0));
+    const qtyWidth = Number((ordered.find((c) => c.key === 'qty')?.x2 || 0) - (ordered.find((c) => c.key === 'qty')?.x1 || 0));
+    const qtyMin = Number(getColumnWidthLimit('qty', geomScale).min || geomPx(24, geomScale));
+    const modelMax = Number(getColumnWidthLimit('model_type', geomScale).max || geomPx(130, geomScale));
+
+    if (qtyWidth < qtyMin || modelWidth > modelMax * 1.08) {
+        const targetShift = Math.max(qtyMin - qtyWidth, modelWidth - modelMax, geomPx(4, geomScale));
+        const oldBoundary = Number(ordered.find((c) => c.key === 'model_type')?.x2 || 0);
+        const forcedBoundary = oldBoundary - targetShift;
+        ordered = moveBoundaryBetween(ordered, 'model_type', 'qty', forcedBoundary, 'manual-rule-model-qty-guard', boundaryMoves, geomScale);
+        pushWarningOnce(warnings, {
+            code: 'MODEL_QTY_COMPRESSED',
+            between: 'model_type|qty',
+            modelWidth,
+            qtyWidth,
+            qtyMin,
+            modelMax
+        });
+    }
+
+    return ordered;
+}
+
 function refineColumnsWithBodyEvidence(columns, bodyRows, boundaryMoves, warnings, geomScale = 1) {
     let ordered = sortByCanonical(columns);
     if (!Array.isArray(bodyRows) || !bodyRows.length) return ordered;
+    let weakBoundaries = 0;
 
     for (let i = 0; i < ordered.length - 1; i++) {
         const leftCol = ordered[i];
@@ -908,14 +986,39 @@ function refineColumnsWithBodyEvidence(columns, bodyRows, boundaryMoves, warning
         });
 
         const touchingRatio = considered > 0 ? touching / considered : 0;
-        if (touchingRatio < 0.4 || rowGapCenters.length < Math.max(3, Math.round(bodyRows.length * 0.2))) continue;
+        if (touchingRatio < 0.4 || rowGapCenters.length < Math.max(3, Math.round(bodyRows.length * 0.2))) {
+            weakBoundaries += 1;
+            continue;
+        }
 
         const newBoundary = median(rowGapCenters);
         if (!Number.isFinite(newBoundary)) continue;
         ordered = moveBoundaryBetween(ordered, leftCol.key, rightCol.key, newBoundary, 'body-gap-refine', boundaryMoves, geomScale);
     }
 
+    if (weakBoundaries >= Math.max(2, Math.round((ordered.length - 1) * 0.45))) {
+        warnings.push({ code: 'BODY_ALIGNMENT_WEAK', weakBoundaries, totalBoundaries: Math.max(0, ordered.length - 1) });
+    }
+
     return ordered;
+}
+
+function buildBoundaryList(columns, rightX) {
+    const ordered = sortByCanonical(columns || []);
+    if (!ordered.length) return [];
+    const boundaries = ordered.map((col, idx) => ({
+        index: idx,
+        key: col.key,
+        x: Number(col.x1 || 0),
+        source: String(col.source || 'auto')
+    }));
+    boundaries.push({
+        index: ordered.length,
+        key: 'right-edge',
+        x: Number(ordered[ordered.length - 1].x2 || rightX || 0),
+        source: 'right-edge'
+    });
+    return boundaries;
 }
 
 function applyFlexibleWidthConstraints(columns, boundaryMoves, warnings, geomScale = 1) {
@@ -950,6 +1053,119 @@ function applyFlexibleWidthConstraints(columns, boundaryMoves, warnings, geomSca
     }
 
     return ordered;
+}
+
+function refineBoundariesToNaturalGaps(columns, naturalGaps, boundaryMoves, geomScale = 1) {
+    let ordered = sortByCanonical(columns);
+    if (!Array.isArray(naturalGaps) || !naturalGaps.length) return ordered;
+
+    for (let i = 0; i < ordered.length - 1; i++) {
+        const left = ordered[i];
+        const right = ordered[i + 1];
+        const oldX = Number(left.x2 || 0);
+        const window = Math.max(geomPx(12, geomScale), (Number(right.x2 || 0) - Number(left.x1 || 0)) * 0.18);
+        const candidate = [...naturalGaps]
+            .filter((gap) => Math.abs(Number(gap.x || 0) - oldX) <= window)
+            .sort((a, b) => {
+                const da = Math.abs(Number(a.x || 0) - oldX);
+                const db = Math.abs(Number(b.x || 0) - oldX);
+                const sa = (Number(a.persistence || 0) * 2) + Number(a.confidence || 0) - (da / window);
+                const sb = (Number(b.persistence || 0) * 2) + Number(b.confidence || 0) - (db / window);
+                return sb - sa;
+            })[0];
+        if (!candidate) continue;
+        ordered = moveBoundaryBetween(ordered, left.key, right.key, Number(candidate.x || oldX), 'natural-gap-refine', boundaryMoves, geomScale);
+    }
+
+    return ordered;
+}
+
+function minimizeTokenOverlaps(columns, bodyRows, boundaryMoves, warnings, geomScale = 1) {
+    let ordered = sortByCanonical(columns);
+    if (!Array.isArray(bodyRows) || !bodyRows.length) return { columns: ordered, overlap: detectBoundaryOverlapMetrics(ordered, bodyRows, geomScale) };
+
+    for (let i = 0; i < ordered.length - 1; i++) {
+        const left = ordered[i];
+        const right = ordered[i + 1];
+        const boundaryX = Number(left.x2 || 0);
+        const leftEnds = [];
+        const rightStarts = [];
+
+        bodyRows.forEach((row) => {
+            const rowRects = [...(row?.rects || [])].sort((a, b) => Number(a.left || 0) - Number(b.left || 0));
+            if (!rowRects.length) return;
+            const leftNear = rowRects.filter((rect) => Number(toRight(rect)) <= boundaryX + geomPx(14, geomScale) && Number(rect.centerX || 0) >= Number(left.x1 || 0));
+            const rightNear = rowRects.filter((rect) => Number(rect.left || 0) >= boundaryX - geomPx(14, geomScale) && Number(rect.centerX || 0) <= Number(right.x2 || 0));
+            if (!leftNear.length || !rightNear.length) return;
+            leftEnds.push(safeMax(leftNear.map((rect) => Number(toRight(rect))), boundaryX));
+            rightStarts.push(safeMin(rightNear.map((rect) => Number(rect.left || 0)), boundaryX));
+        });
+
+        if (leftEnds.length < 4 || rightStarts.length < 4) continue;
+        const leftQ = percentile(leftEnds, 0.78);
+        const rightQ = percentile(rightStarts, 0.22);
+        if (!Number.isFinite(leftQ) || !Number.isFinite(rightQ)) continue;
+        if (rightQ <= leftQ + geomPx(2, geomScale)) continue;
+        const proposed = (leftQ + rightQ) / 2;
+        ordered = moveBoundaryBetween(ordered, left.key, right.key, proposed, 'overlap-minimize', boundaryMoves, geomScale);
+    }
+
+    const overlap = detectBoundaryOverlapMetrics(ordered, bodyRows, geomScale);
+    const rowCount = Math.max(1, bodyRows.length);
+    if (overlap.totalCrossings > rowCount * 0.85) {
+        pushWarningOnce(warnings, { code: 'TOKEN_OVERLAP', crossings: overlap.totalCrossings, rows: rowCount });
+    }
+
+    return { columns: ordered, overlap };
+}
+
+function refineVerticalBoundaries(columns, bodyRows, separators, naturalGaps, boundaryMoves, warnings, geomScale = 1) {
+    let refined = sortByCanonical(columns);
+    const bodyRects = (bodyRows || []).flatMap((row) => row?.rects || []);
+    let overlap = { totalCrossings: 0, markers: [], byBoundary: [] };
+
+    // Iterative optimizer: body gaps -> natural gaps -> overlap minimization.
+    for (let pass = 0; pass < 2; pass++) {
+        refined = refineColumnsWithBodyEvidence(refined, bodyRows, boundaryMoves, warnings, geomScale);
+        refined = refineBoundariesToNaturalGaps(refined, naturalGaps, boundaryMoves, geomScale);
+        refined = refinePosPartBoundary(refined, bodyRects, separators, boundaryMoves, warnings, geomScale);
+        refined = refineModelQtyBoundary(refined, bodyRects, separators, boundaryMoves, warnings, geomScale);
+        refined = refineUnitsWeightBoundary(refined, bodyRects, separators, boundaryMoves, warnings, geomScale);
+        const overlapResult = minimizeTokenOverlaps(refined, bodyRows, boundaryMoves, warnings, geomScale);
+        refined = overlapResult.columns;
+        overlap = overlapResult.overlap;
+        refined = applyFlexibleWidthConstraints(refined, boundaryMoves, warnings, geomScale);
+    }
+
+    const part = refined.find((col) => col.key === 'part_no');
+    const designation = refined.find((col) => col.key === 'designation');
+    const qty = refined.find((col) => col.key === 'qty');
+    const model = refined.find((col) => col.key === 'model_type');
+
+    if (part && designation) {
+        const partW = Number(part.x2 || 0) - Number(part.x1 || 0);
+        const desW = Number(designation.x2 || 0) - Number(designation.x1 || 0);
+        if (partW < geomPx(50, geomScale) || partW < desW * 0.36) {
+            pushWarningOnce(warnings, { code: 'PARTNO_COMPRESSED', partWidth: partW, designationWidth: desW });
+        }
+    }
+
+    if (qty) {
+        const qtyW = Number(qty.x2 || 0) - Number(qty.x1 || 0);
+        if (qtyW < geomPx(24, geomScale)) {
+            pushWarningOnce(warnings, { code: 'QTY_TOO_NARROW', width: qtyW, minExpected: geomPx(24, geomScale) });
+        }
+    }
+
+    if (model) {
+        const modelW = Number(model.x2 || 0) - Number(model.x1 || 0);
+        const limit = Number(getColumnWidthLimit('model_type', geomScale).max || geomPx(130, geomScale));
+        if (modelW > limit * 1.12) {
+            pushWarningOnce(warnings, { code: 'MODELTYPE_TOO_WIDE', width: modelW, maxExpected: limit });
+        }
+    }
+
+    return { columns: refined, overlap };
 }
 
 function adjustBoundariesToGaps(columns, gaps, leftX, rightX, geomScale = 1) {
@@ -1083,184 +1299,32 @@ function removeArrowIfEmpty(columns, bodyRects) {
     return sortByCanonical(filtered);
 }
 
-/**
- * Build columns using the x1 of each header anchor token as the left boundary
- * of its column. This makes columns zoom-invariant and geometrically exact.
- *
- * Strategy:
- *  - Sort anchors by x1 left-to-right.
- *  - Each anchor.x1 is the START of that column.
- *  - The END of column[i] = the x1 of column[i+1].
- *  - First column starts at leftX, last column ends at rightX.
- *  - Fill any COLUMN_ORDER gaps with proportional template slices.
- */
-function buildColumnsFromHeaderX1(anchors, leftX, rightX, geomScale = 1) {
-    if (!Array.isArray(anchors) || anchors.length < 3) return null;
-
-    const includeArrow = anchors.some((anchor) => anchor.key === 'arrow');
-    const keys = COLUMN_ORDER.filter((key) => includeArrow || key !== 'arrow');
-
-    const anchorByKey = new Map();
-    for (const anchor of anchors) {
-        const key = String(anchor?.key || '').trim();
-        if (!key || !keys.includes(key)) continue;
-        anchorByKey.set(key, anchor);
-    }
-
-    const base = buildTemplateColumns(leftX, rightX, includeArrow)
-        .filter((col) => keys.includes(col.key));
-
-    if (!base.length) return null;
-
-    const starts = [];
-    keys.forEach((key) => {
-        const templateCol = base.find((col) => col.key === key);
-        const anchor = anchorByKey.get(key);
-        const x1 = anchor ? Number(anchor.x1 || templateCol?.x1 || leftX) : Number(templateCol?.x1 || leftX);
-        starts.push({ key, x1: Math.max(leftX, x1), anchor, templateCol });
-    });
-
-    // Keep starts monotonic to avoid inverted spans when one header is noisy.
-    let cursor = leftX;
-    const monotonicStarts = starts.map((entry, idx) => {
-        const minWidth = getColumnWidthLimit(entry.key, geomScale).min;
-        const remaining = starts.length - idx - 1;
-        const maxStart = rightX - (remaining + 1) * Math.max(geomPx(4, geomScale), minWidth * 0.35);
-        const start = Math.min(Math.max(entry.x1, cursor), maxStart);
-        cursor = start + Math.max(geomPx(2, geomScale), minWidth * 0.25);
-        return { ...entry, x1: start };
-    });
-
-    const result = [];
-    for (let i = 0; i < monotonicStarts.length; i++) {
-        const current = monotonicStarts[i];
-        const next = monotonicStarts[i + 1];
-        const x1 = current.x1;
-        const x2 = next ? Math.max(x1 + geomPx(4, geomScale), next.x1) : rightX;
-        result.push({
-            key: current.key,
-            label: COLUMN_SCHEMA[current.key]?.label || current.key.toUpperCase(),
-            x1,
-            x2,
-            source: current.anchor ? 'header-x1' : 'header-x1-template',
-            confidence: current.anchor ? (current.anchor.confidence || 'medium') : 'low',
-            color: COLUMN_SCHEMA[current.key]?.color || '#22c55e'
-        });
-    }
-
-    const keysResult = new Set(result.map((c) => c.key));
-    if (REQUIRED_KEYS.some((k) => !keysResult.has(k))) return null;
-    return result;
-}
-
-function lockBoundariesToHeaderX1(columns, headerAnchors, leftX, rightX, boundaryMoves, geomScale = 1) {
-    let ordered = sortByCanonical(columns);
-    if (!Array.isArray(ordered) || ordered.length < 2) return ordered;
-
-    const anchorByKey = new Map((headerAnchors || [])
-        .map((a) => [String(a?.key || ''), Number(a?.x1 || NaN)])
-        .filter(([, x]) => Number.isFinite(x)));
-
-    // Keep boundary close to header x1 while respecting minimum widths.
-    for (let i = 1; i < ordered.length; i++) {
-        const current = ordered[i];
-        const prev = ordered[i - 1];
-        const anchorX1 = anchorByKey.get(current.key);
-        if (!Number.isFinite(anchorX1)) continue;
-
-        const leftMin = Number(getColumnWidthLimit(prev.key, geomScale).min || geomPx(6, geomScale));
-        const rightMin = Number(getColumnWidthLimit(current.key, geomScale).min || geomPx(6, geomScale));
-        const lower = Number(prev.x1 || leftX) + leftMin;
-        const upper = Number(current.x2 || rightX) - rightMin;
-        if (upper <= lower) continue;
-
-        const target = Math.max(lower, Math.min(upper, anchorX1));
-        ordered = moveBoundaryBetween(ordered, prev.key, current.key, target, 'header-x1-lock', boundaryMoves, geomScale);
-    }
-
-    return enforceMonotonicBounds(ordered, leftX, rightX, geomScale);
-}
-
-function enforceColumnStartsFromHeaders(columns, headerAnchors, leftX, rightX, boundaryMoves, geomScale = 1) {
-    let ordered = sortByCanonical(columns);
-    if (!Array.isArray(ordered) || !ordered.length) return ordered;
-
-    const anchorByKey = new Map((headerAnchors || [])
-        .map((a) => [String(a?.key || ''), Number(a?.x1 || NaN)])
-        .filter(([, x]) => Number.isFinite(x)));
-
-    // First visible column (often POS when arrow is absent): lock its own x1 too.
-    const first = ordered[0];
-    if (first) {
-        const firstAnchor = anchorByKey.get(first.key);
-        if (Number.isFinite(firstAnchor)) {
-            const firstMin = Number(getColumnWidthLimit(first.key, geomScale).min || geomPx(6, geomScale));
-            const maxX1 = Number(first.x2 || rightX) - firstMin;
-            const clamped = Math.max(leftX, Math.min(maxX1, firstAnchor));
-            const oldX1 = Number(first.x1 || 0);
-            first.x1 = clamped;
-            if (Math.abs(clamped - oldX1) > geomPx(0.5, geomScale)) {
-                boundaryMoves.push({
-                    between: `LEFT|${first.key}`,
-                    oldX: oldX1,
-                    newX: clamped,
-                    delta: clamped - oldX1,
-                    reason: 'header-x1-start-lock'
-                });
-            }
-        }
-    }
-
-    // Internal boundaries: boundary before each column follows that column's header x1.
-    for (let i = 1; i < ordered.length; i++) {
-        const current = ordered[i];
-        const prev = ordered[i - 1];
-        const anchorX1 = anchorByKey.get(current.key);
-        if (!Number.isFinite(anchorX1)) continue;
-        ordered = moveBoundaryBetween(ordered, prev.key, current.key, anchorX1, 'header-x1-start-lock', boundaryMoves, geomScale);
-    }
-
-    return enforceMonotonicBounds(ordered, leftX, rightX, geomScale);
-}
-
-function buildColumns(tableRects, headerAnchors, bodyRects, bodyRows, leftX, rightX, geomScale = 1) {
+function buildColumns(tableRects, bodyRects, bodyRows, leftX, rightX, geomScale = 1) {
     const gapBoundaries = detectHistogramGaps(bodyRects, leftX, rightX, geomScale);
-    const includeArrow = headerAnchors.some((anchor) => anchor.key === 'arrow')
-        || bodyRects.filter((rect) => Number(rect.centerX || 0) <= (leftX + ((rightX - leftX) * 0.05))).length >= 7;
-
-    // ── Strategy 1: header x1 boundaries (zoom-invariant, most precise) ──
-    let columns = buildColumnsFromHeaderX1(headerAnchors, leftX, rightX, geomScale);
-    let method = 'header-x1';
+    let method = 'body-geometry';
     let fallbackApplied = false;
 
-    if (!columns) {
-        // ── Strategy 2: template + anchor centers + histogram gaps ─────────
-        method = 'hybrid';
-        columns = buildTemplateColumns(leftX, rightX, includeArrow);
-        columns = mergeAnchorsIntoTemplate(columns, headerAnchors);
+    let columns = buildTemplateColumns(leftX, rightX, false);
+    columns = adjustBoundariesToGaps(columns, gapBoundaries, leftX, rightX, geomScale);
+    columns = enforceNarrowColumns(columns, geomScale);
+    columns = ensureMeasurementStandardSplit(columns, geomScale);
+    columns = removeArrowIfEmpty(columns, bodyRects);
+
+    const keysDetected = new Set(columns.map((col) => col.key));
+    const missingCritical = REQUIRED_KEYS.filter((key) => !keysDetected.has(key));
+    if (columns.length < 8 || missingCritical.length) {
+        fallbackApplied = true;
+        method = 'body-geometry-fallback';
+        columns = buildTemplateColumns(leftX, rightX, false);
         columns = adjustBoundariesToGaps(columns, gapBoundaries, leftX, rightX, geomScale);
         columns = enforceNarrowColumns(columns, geomScale);
         columns = ensureMeasurementStandardSplit(columns, geomScale);
         columns = removeArrowIfEmpty(columns, bodyRects);
-
-        const keysDetected = new Set(columns.map((col) => col.key));
-        const missingCritical = REQUIRED_KEYS.filter((key) => !keysDetected.has(key));
-
-        if (columns.length < 8 || missingCritical.length || headerAnchors.length < 5) {
-            // ── Strategy 3: pure template fallback ─────────────────────────
-            fallbackApplied = true;
-            method = 'template-fallback';
-            columns = buildTemplateColumns(leftX, rightX, includeArrow);
-            columns = mergeAnchorsIntoTemplate(columns, headerAnchors);
-            columns = adjustBoundariesToGaps(columns, gapBoundaries, leftX, rightX, geomScale);
-            columns = enforceNarrowColumns(columns, geomScale);
-            columns = ensureMeasurementStandardSplit(columns, geomScale);
-            columns = removeArrowIfEmpty(columns, bodyRects);
-        }
     }
 
     columns = enforceMonotonicBounds(columns, leftX, rightX, geomScale);
     const columnsBeforeSnap = columns.map((col) => ({ ...col }));
+    const initialBoundaries = buildBoundaryList(columnsBeforeSnap, rightX);
 
     const verticalSeparatorsDetected = detectVerticalSeparators(
         null,
@@ -1271,21 +1335,25 @@ function buildColumns(tableRects, headerAnchors, bodyRects, bodyRows, leftX, rig
         rightX,
         geomScale
     );
+    const naturalGapsDetected = detectNaturalGapsFromBodyRows(bodyRows, leftX, rightX, geomScale);
 
     const snapResult = snapBoundariesToSeparators(columns, verticalSeparatorsDetected, leftX, rightX, geomScale);
     const boundaryMoves = [...(snapResult.boundaryMoves || [])];
     const warnings = [...(snapResult.warnings || [])];
 
     columns = snapResult.columns;
-    columns = refinePosPartBoundary(columns, bodyRects, verticalSeparatorsDetected, boundaryMoves, warnings, geomScale);
-    columns = refineUnitsWeightBoundary(columns, bodyRects, verticalSeparatorsDetected, boundaryMoves, warnings, geomScale);
-    columns = refineColumnsWithBodyEvidence(columns, bodyRows, boundaryMoves, warnings, geomScale);
-    columns = applyFlexibleWidthConstraints(columns, boundaryMoves, warnings, geomScale);
 
-    if (method === 'header-x1') {
-        columns = lockBoundariesToHeaderX1(columns, headerAnchors, leftX, rightX, boundaryMoves, geomScale);
-        columns = enforceColumnStartsFromHeaders(columns, headerAnchors, leftX, rightX, boundaryMoves, geomScale);
-    }
+    const refinedResult = refineVerticalBoundaries(
+        columns,
+        bodyRows,
+        verticalSeparatorsDetected,
+        naturalGapsDetected,
+        boundaryMoves,
+        warnings,
+        geomScale
+    );
+    columns = refinedResult.columns;
+    const overlapMarkers = refinedResult.overlap?.markers || [];
 
     columns = enforceMonotonicBounds(columns, leftX, rightX, geomScale);
 
@@ -1309,6 +1377,26 @@ function buildColumns(tableRects, headerAnchors, bodyRects, bodyRows, leftX, rig
         geomScale
     );
 
+    const refinedBoundaries = buildBoundaryList(finalColumns, rightX);
+    const expectedBoundaryCount = Math.max(1, finalColumns.length - 1);
+    if ((verticalSeparatorsDetected || []).length < Math.max(2, Math.round(expectedBoundaryCount * 0.45))) {
+        warnings.push({ code: 'BOUNDARY_LOW_CONFIDENCE', separators: (verticalSeparatorsDetected || []).length, expected: expectedBoundaryCount });
+    }
+
+    const boundaryAdjustments = (boundaryMoves || []).map((move) => {
+        const between = String(move.between || '');
+        const [leftKey, rightKey] = between.includes('|') ? between.split('|') : [between, ''];
+        return {
+            between: between || 'unknown',
+            leftKey: leftKey || 'unknown',
+            rightKey: rightKey || 'unknown',
+            fromX: Number(move.oldX || 0),
+            toX: Number(move.newX || 0),
+            delta: Number(move.delta || 0),
+            source: String(move.reason || 'adjustment')
+        };
+    });
+
     return {
         columns: finalColumns,
         method,
@@ -1318,37 +1406,34 @@ function buildColumns(tableRects, headerAnchors, bodyRects, bodyRows, leftX, rig
         columnsAfterSnap,
         verticalSeparatorsDetected,
         boundaryMoves,
-        warnings
+        warnings,
+        initialBoundaries,
+        refinedBoundaries,
+        boundaryAdjustments,
+        naturalGapsDetected,
+        overlapMarkers
     };
 }
 
 function assignToColumn(rect, columns) {
     if (!Array.isArray(columns) || !columns.length) return 'unknown';
-    const startX = Number(rect.left || rect.centerX || 0);
+    const centerX = Number(rect.centerX || rect.left || 0);
     const sorted = [...columns].sort((a, b) => Number(a.x1 || 0) - Number(b.x1 || 0));
-    const firstX = Number(sorted[0].x1 || 0);
-
-    // If token starts before the first column boundary, keep it unknown.
-    if (startX < firstX) return 'unknown';
-
-    // Column ownership is defined by the latest x1 boundary at or before startX.
-    for (let i = sorted.length - 1; i >= 0; i--) {
-        if (startX >= Number(sorted[i].x1 || 0)) {
-            return sorted[i].key;
-        }
+    for (let i = 0; i < sorted.length; i++) {
+        const currentX = Number(sorted[i].x1 || 0);
+        const nextX = i < sorted.length - 1
+            ? Number(sorted[i + 1].x1 || sorted[i].x2 || currentX)
+            : Number(sorted[i].x2 || currentX);
+        if (centerX >= currentX && centerX < nextX) return sorted[i].key;
     }
-
     return 'unknown';
 }
 
-function detectDataRows(tableRects, headerLines, tableTopY, lineTolerance = 6, geomScale = 1) {
+function detectDataRows(tableRects, tableTopY, lineTolerance = 6, geomScale = 1) {
     const lines = groupIntoLines(tableRects, lineTolerance);
-    const headerCenters = headerLines.map((line) => Number(line.cy || 0));
     const rows = [];
 
     lines.forEach((line) => {
-        const isHeader = headerCenters.some((cy) => Math.abs(cy - Number(line.cy || 0)) <= Math.max(geomPx(8, geomScale), lineTolerance * 2));
-        if (isHeader) return;
         if (Number(line.cy || 0) < tableTopY) return;
 
         const top = safeMin(line.rects.map((rect) => Number(rect.visualTop || 0)), Number(line.cy || 0));
@@ -1428,7 +1513,6 @@ function buildTableDebugOverlay(payload) {
         tableRects,
         ignoredHeaderRects,
         columns,
-        headerLines,
         rows,
         tableArea,
         viewportWidth,
@@ -1437,10 +1521,12 @@ function buildTableDebugOverlay(payload) {
         missingColumns,
         confidence,
         unknownCount,
-        columnsBeforeSnap,
-        columnsAfterSnap,
+        initialBoundaries,
+        refinedBoundaries,
         verticalSeparatorsDetected,
-        boundaryMoves,
+        naturalGapsDetected,
+        overlapMarkers,
+        boundaryAdjustments,
         warnings,
         overlayStyle
     } = payload;
@@ -1523,29 +1609,33 @@ function buildTableDebugOverlay(payload) {
     });
 
     if (showAdvanced) {
-        const beforeOrdered = sortByCanonical(columnsBeforeSnap || []);
-        for (let i = 0; i < beforeOrdered.length - 1; i++) {
-            const boundaryX = Number(beforeOrdered[i].x2 || 0);
+        const beforeBoundaries = Array.isArray(initialBoundaries) ? initialBoundaries : [];
+        for (let i = 0; i < beforeBoundaries.length; i++) {
+            const item = beforeBoundaries[i];
+            if (String(item.key || '') === 'right-edge') continue;
+            const boundaryX = Number(item.x || 0);
             overlays.push({
-                kind: 'table-debug-boundary-before',
+                kind: 'table-debug-boundary-initial',
                 left: boundaryX,
                 top: Math.max(0, Number(tableArea.tableTopY || 0)),
                 width: 1,
                 height: Math.max(2, Number(tableArea.tableBottomY || H) - Number(tableArea.tableTopY || 0)),
-                text: ''
+                text: `INIT ${String(item.key || '')}`
             });
         }
 
-        const afterOrdered = sortByCanonical(columnsAfterSnap || columns || []);
-        for (let i = 0; i < afterOrdered.length - 1; i++) {
-            const boundaryX = Number(afterOrdered[i].x2 || 0);
+        const afterBoundaries = Array.isArray(refinedBoundaries) ? refinedBoundaries : [];
+        for (let i = 0; i < afterBoundaries.length; i++) {
+            const item = afterBoundaries[i];
+            if (String(item.key || '') === 'right-edge') continue;
+            const boundaryX = Number(item.x || 0);
             overlays.push({
-                kind: 'table-debug-boundary-after',
+                kind: 'table-debug-boundary-refined',
                 left: boundaryX,
                 top: Math.max(0, Number(tableArea.tableTopY || 0)),
                 width: 2,
                 height: Math.max(2, Number(tableArea.tableBottomY || H) - Number(tableArea.tableTopY || 0)),
-                text: ''
+                text: `REF ${String(item.key || '')}`
             });
         }
 
@@ -1560,14 +1650,14 @@ function buildTableDebugOverlay(payload) {
             });
         });
 
-        headerLines.forEach((line) => {
+        (naturalGapsDetected || []).forEach((gap) => {
             overlays.push({
-                kind: 'table-debug-header',
-                left: 0,
-                top: Math.max(0, Number(line.y1 || 0) - 2),
-                width: W,
-                height: Math.max(10, Number(line.y2 || 0) - Number(line.y1 || 0) + 4),
-                text: 'HEADER'
+                kind: 'table-debug-natural-gap',
+                left: Number(gap.x || 0),
+                top: Math.max(0, Number(tableArea.tableTopY || 0)),
+                width: 1,
+                height: Math.max(2, Number(tableArea.tableBottomY || H) - Number(tableArea.tableTopY || 0)),
+                text: `gap ${Math.round(Number(gap.confidence || 0) * 100)}%`
             });
         });
 
@@ -1582,6 +1672,39 @@ function buildTableDebugOverlay(payload) {
             });
         });
 
+        (boundaryAdjustments || []).forEach((move, idx) => {
+            overlays.push({
+                kind: 'table-debug-boundary-adjustment',
+                left: Number(move.toX || 0) + 2,
+                top: Math.max(0, Number(tableArea.tableTopY || 0) + 6 + (idx % 8) * 12),
+                width: 170,
+                height: 11,
+                text: `${move.leftKey}|${move.rightKey} Δ${Math.round(Number(move.delta || 0) * 10) / 10} (${move.source})`
+            });
+        });
+
+        (overlapMarkers || []).forEach((mark) => {
+            overlays.push({
+                kind: 'table-debug-overlap',
+                left: Number(mark.left || 0),
+                top: Number(mark.top || 0),
+                width: Math.max(4, Number(mark.width || 0)),
+                height: Math.max(8, Number(mark.height || 0)),
+                text: String(mark.between || 'overlap')
+            });
+        });
+
+        (warnings || []).forEach((warning, idx) => {
+            overlays.push({
+                kind: 'table-debug-warning',
+                left: Math.max(4, W - 220),
+                top: Math.max(6, Number(tableArea.tableTopY || 0) + 8 + (idx * 12)),
+                width: 210,
+                height: 11,
+                text: String(warning.code || 'WARNING')
+            });
+        });
+
     }
 
     overlays.push({
@@ -1589,8 +1712,8 @@ function buildTableDebugOverlay(payload) {
         left: 4,
         top: 4,
         width: Math.min(420, Math.max(260, W * 0.60)),
-        height: 42,
-        text: `cols:${columns.length} missing:${missingColumns.join(',') || '-'} method:${method} unknown:${unknownCount} conf:${confidence} seps:${(verticalSeparatorsDetected || []).length} moves:${(boundaryMoves || []).length} warn:${(warnings || []).length}`
+        height: 54,
+        text: `cols:${columns.length} missingCols:${missingColumns.join(',') || '-'} method:${method} unknown:${unknownCount} conf:${confidence} seps:${(verticalSeparatorsDetected || []).length} moves:${(boundaryAdjustments || []).length} warn:${(warnings || []).map((w) => w.code).join('|') || '-'}`
     });
 
     return overlays;
@@ -1635,20 +1758,15 @@ export function runTableParser(textItems, viewport, options = {}) {
         return cy >= Number(tableArea.tableTopY || 0) && cy <= Number(tableArea.tableBottomY || vh);
     });
 
-    const tableLines = groupIntoLines(tableRects, lineTolerance);
-    const { anchors, headerLines } = detectHeaderAnchors(tableLines, Number(tableArea.tableTopY || 0), geomPx(90, geomScale), geomScale);
-
-    const headerBottom = headerLines.length
-        ? safeMax(headerLines.map((line) => Number(line.y2 || 0)), Number(tableArea.tableTopY || 0))
-        : Number(tableArea.tableTopY || 0) + geomPx(24, geomScale);
+    const headerBottom = Number(tableArea.tableTopY || 0) + geomPx(6, geomScale);
 
     const bodyRects = tableRects.filter((rect) => Number(rect.centerY || 0) > (headerBottom + geomPx(2, geomScale)));
-    const provisionalRows = detectDataRows(tableRects, headerLines, Number(tableArea.tableTopY || 0), lineTolerance, geomScale);
+    const provisionalRows = detectDataRows(tableRects, Number(tableArea.tableTopY || 0), lineTolerance, geomScale);
     const denseSource = bodyRects.length ? bodyRects : tableRects;
     const leftX = Math.max(0, safeMin(denseSource.map((rect) => Number(rect.left || 0)), 0) - geomPx(2, geomScale));
     const rightX = Math.min(vw, safeMax(denseSource.map((rect) => toRight(rect)), vw) + geomPx(2, geomScale));
 
-    const columnDetection = buildColumns(tableRects, anchors, bodyRects, provisionalRows, leftX, rightX, geomScale);
+    const columnDetection = buildColumns(tableRects, bodyRects, provisionalRows, leftX, rightX, geomScale);
     const columns = columnDetection.columns;
 
     const rows = provisionalRows;
@@ -1659,6 +1777,7 @@ export function runTableParser(textItems, viewport, options = {}) {
 
     const detectedKeySet = new Set(columns.map((col) => col.key));
     const missingColumns = REQUIRED_KEYS.filter((key) => !detectedKeySet.has(key));
+    const mergedWarnings = [...(columnDetection.warnings || [])];
     const confidence = buildConfidence({
         tableArea,
         columns,
@@ -1672,7 +1791,6 @@ export function runTableParser(textItems, viewport, options = {}) {
             tableRects,
             ignoredHeaderRects: tableArea.ignoredHeaderRects || [],
             columns,
-            headerLines,
             rows,
             tableArea,
             viewportWidth: vw,
@@ -1681,13 +1799,26 @@ export function runTableParser(textItems, viewport, options = {}) {
             missingColumns,
             confidence,
             unknownCount,
-            columnsBeforeSnap: columnDetection.columnsBeforeSnap || [],
-            columnsAfterSnap: columnDetection.columnsAfterSnap || columns,
+            initialBoundaries: columnDetection.initialBoundaries || [],
+            refinedBoundaries: columnDetection.refinedBoundaries || [],
             verticalSeparatorsDetected: columnDetection.verticalSeparatorsDetected || [],
-            boundaryMoves: columnDetection.boundaryMoves || [],
-            warnings: columnDetection.warnings || [],
+            naturalGapsDetected: columnDetection.naturalGapsDetected || [],
+            overlapMarkers: columnDetection.overlapMarkers || [],
+            boundaryAdjustments: columnDetection.boundaryAdjustments || [],
+            warnings: mergedWarnings,
             overlayStyle: debugOverlayStyle
         });
+
+    const geometryDebug = {
+        headersDetected: [],
+        missingHeaders: [],
+        verticalBoundaries: columnDetection.initialBoundaries || [],
+        refinedBoundaries: columnDetection.refinedBoundaries || [],
+        naturalGapsDetected: columnDetection.naturalGapsDetected || [],
+        boundaryAdjustments: columnDetection.boundaryAdjustments || [],
+        confidence,
+        warnings: mergedWarnings
+    };
 
     return {
         rects,
@@ -1695,10 +1826,11 @@ export function runTableParser(textItems, viewport, options = {}) {
         tableArea,
         tableRects,
         ignoredHeaderRects: tableArea.ignoredHeaderRects || [],
-        headerLines,
-        headerAnchors: anchors,
-        detectedHeaderKeys: Array.from(new Set(anchors.map((anchor) => String(anchor.key || '')))),
-        detectedHeaderKeys: Array.from(new Set(anchors.map((anchor) => String(anchor.key || '')))),
+        headerLines: [],
+        headerRow: null,
+        headerDetection: null,
+        headerAnchors: [],
+        detectedHeaderKeys: [],
         columns,
         rows,
         grid,
@@ -1711,7 +1843,14 @@ export function runTableParser(textItems, viewport, options = {}) {
         columnsAfterSnap: columnDetection.columnsAfterSnap || columns,
         verticalSeparatorsDetected: columnDetection.verticalSeparatorsDetected || [],
         boundaryMoves: columnDetection.boundaryMoves || [],
-        warnings: columnDetection.warnings || [],
+        warnings: mergedWarnings,
+        missingHeaders: [],
+        verticalBoundaries: columnDetection.initialBoundaries || [],
+        refinedBoundaries: columnDetection.refinedBoundaries || [],
+        naturalGapsDetected: columnDetection.naturalGapsDetected || [],
+        overlapMarkers: columnDetection.overlapMarkers || [],
+        boundaryAdjustments: columnDetection.boundaryAdjustments || [],
+        geometryDebug,
         debugOverlay
     };
 }

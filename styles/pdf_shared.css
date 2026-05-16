@@ -217,3 +217,128 @@
     pointer-events: none;
     z-index: 3;
 }
+
+.pdf-selection-highlight.pdf-table-debug-area {
+    border: 1px solid rgba(14, 165, 233, 0.6);
+    background: rgba(56, 189, 248, 0.06);
+    box-shadow: none;
+}
+
+.pdf-selection-highlight.pdf-table-debug-top-line {
+    border: 0;
+    background: rgba(14, 165, 233, 0.95);
+    box-shadow: none;
+}
+
+.pdf-selection-highlight.pdf-table-debug-col {
+    border: 1px dashed color-mix(in srgb, var(--td-col-color, #22c55e) 70%, transparent);
+    background: color-mix(in srgb, var(--td-col-color, #22c55e) 12%, transparent);
+    box-shadow: none;
+}
+
+.pdf-selection-highlight.pdf-table-debug-col-label,
+.pdf-selection-highlight.pdf-table-debug-header-label,
+.pdf-selection-highlight.pdf-table-debug-boundary-adjustment {
+    border: 0;
+    background: rgba(15, 23, 42, 0.78);
+    color: #f8fafc;
+    box-shadow: none;
+    padding: 1px 4px;
+    font-size: 10px;
+    line-height: 1.2;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.pdf-selection-highlight.pdf-table-debug-header-row {
+    border: 1px dashed rgba(245, 158, 11, 0.95);
+    background: rgba(251, 191, 36, 0.12);
+    box-shadow: none;
+    color: #92400e;
+    font-size: 10px;
+    line-height: 1.2;
+    padding: 1px 4px;
+}
+
+.pdf-selection-highlight.pdf-table-debug-header {
+    border: 1px dashed rgba(245, 158, 11, 0.7);
+    background: rgba(251, 191, 36, 0.08);
+    box-shadow: none;
+}
+
+.pdf-selection-highlight.pdf-table-debug-row {
+    border: 1px solid rgba(148, 163, 184, 0.25);
+    background: rgba(148, 163, 184, 0.03);
+    box-shadow: none;
+}
+
+.pdf-selection-highlight.pdf-table-debug-separator {
+    border: 0;
+    background: rgba(244, 63, 94, 0.75);
+    box-shadow: none;
+}
+
+.pdf-selection-highlight.pdf-table-debug-natural-gap {
+    border: 0;
+    background: rgba(234, 179, 8, 0.9);
+    box-shadow: none;
+}
+
+.pdf-selection-highlight.pdf-table-debug-boundary-before {
+    border: 0;
+    background: rgba(59, 130, 246, 0.45);
+    box-shadow: none;
+}
+
+.pdf-selection-highlight.pdf-table-debug-boundary-after {
+    border: 0;
+    background: rgba(16, 185, 129, 0.9);
+    box-shadow: none;
+}
+
+.pdf-selection-highlight.pdf-table-debug-ignored-header {
+    border: 1px solid rgba(239, 68, 68, 0.8);
+    background: rgba(248, 113, 113, 0.1);
+    box-shadow: none;
+}
+
+.pdf-selection-highlight.pdf-table-debug-text-assigned {
+    border: 1px solid rgba(15, 23, 42, 0.22);
+    box-shadow: none;
+}
+
+.pdf-selection-highlight.pdf-table-debug-text-unassigned {
+    border: 1px solid rgba(220, 38, 38, 0.95);
+    background: rgba(252, 165, 165, 0.35);
+    box-shadow: none;
+}
+
+.pdf-selection-highlight.pdf-table-debug-overlap {
+    border: 1px solid rgba(220, 38, 38, 0.92);
+    background: rgba(248, 113, 113, 0.22);
+    box-shadow: none;
+}
+
+.pdf-selection-highlight.pdf-table-debug-warning {
+    border: 0;
+    background: rgba(127, 29, 29, 0.82);
+    color: #fee2e2;
+    box-shadow: none;
+    padding: 1px 4px;
+    font-size: 10px;
+    line-height: 1.2;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.pdf-selection-highlight.pdf-table-debug-stats {
+    border: 1px solid rgba(15, 23, 42, 0.25);
+    background: rgba(15, 23, 42, 0.78);
+    color: #e2e8f0;
+    box-shadow: none;
+    padding: 4px 6px;
+    font-size: 10px;
+    line-height: 1.3;
+}
