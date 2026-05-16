@@ -3119,6 +3119,16 @@ export async function loadPdfWithPage(book, page) {
 
         await renderPdfPage(pdfUrl, pageNum, { resetScroll: true });
 
+        // Esperar a que renderPdfSelectionOverlay (que se ejecuta async) cargue los datos
+        await new Promise(resolve => setTimeout(resolve, 150));
+
+        // Ejecutar automáticamente detección de headers y pintado de cuerpo
+        runPdfHeaderOnlyDetection();
+
+        buildHeaderColumnBodyHighlights();
+
+        requestPdfRelayout();
+
     } catch (error) {
 
         if (isPdfRenderCancelledError(error)) return;
