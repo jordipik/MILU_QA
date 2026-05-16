@@ -49,9 +49,11 @@
     "test:all-smoke": "npm run test:smoke && npm run test:db-read && npm run test:db-analytics && node --test tests/smoke/engine-schema.test.js && node --test tests/smoke/python-lib.test.js && node --test tests/smoke/python-exporters-smoke.test.js",
     "refactor:json:dry": "python scripts/refactor_json_fields.py --all-engines --dry-run --include-legacy",
     "refactor:json": "python scripts/refactor_json_fields.py --all-engines --include-legacy",
-    "test:field-registry": "node --test tests/refactor-json-fields.test.js tests/field-adapter.test.js tests/field-adapter-compact-read.test.js tests/field-adapter-pn-review.test.js tests/field-adapter-qa-articulos.test.js tests/field-adapter-export-preview.test.js",
+    "test:field-registry": "node --test tests/refactor-json-fields.test.js tests/field-adapter.test.js tests/field-adapter-compact-read.test.js tests/field-adapter-pn-review.test.js tests/field-adapter-qa-articulos.test.js tests/field-adapter-export-preview.test.js tests/export-field-helper.test.js tests/write-field-helper.test.js tests/write-compat-smoke.test.js",
     "compare:normalized": "python scripts/compare_normalized_engines.py",
-    "audit:field-adapter": "python scripts/audit_field_adapter_usage.py"
+    "audit:field-adapter": "python scripts/audit_field_adapter_usage.py",
+    "validate:field-refactor-final": "npm run test:field-registry && npm run compare:normalized && npm run audit:field-adapter && npm test",
+    "validate:field-refactor-final:exports": "python scripts/compare_export_outputs.py --legacy-new dist/milu_publish/data/output/wordpress/milu_wp_import.json --semantic-new data/output/wordpress/milu_wp_import.json --legacy-superseded dist/milu_publish/data/output/wordpress/milu_wp_superseded.json --semantic-superseded data/output/wordpress/milu_wp_superseded.json --legacy-synthetic-new MILU_New_v506.json --semantic-synthetic-new qa_synthetic_new.json --legacy-synthetic-superseded MILU_Superseded_v506.json --semantic-synthetic-superseded qa_synthetic_superseded.json"
   },
   "dependencies": {
     "body-parser": "^2.2.2",

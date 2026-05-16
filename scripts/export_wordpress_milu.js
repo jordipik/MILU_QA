@@ -1,6 +1,7 @@
 const fs = require('fs');
 const path = require('path');
 const { ENGINE_JSON_FILES } = require('../engine_files');
+const { getExportField, getExportType, isExportable } = require('../js/export-field-helper');
 
 const REPO_ROOT = path.resolve(__dirname, '..');
 const OUTPUT_DIR = path.join(REPO_ROOT, 'data', 'output', 'wordpress');
@@ -87,7 +88,7 @@ function pickMostFrequent(values) {
 }
 
 function getPn(row) {
-    return t(row.pn_final || row['PART NO.'] || row.pn);
+    return t(getExportField(row, 'pn_final', row.pn));
 }
 
 function getDesignation(row) {
@@ -226,28 +227,19 @@ function buildTraceEntry(sku, rows, merged, decisionMeta, qaSummary) {
 }
 
 function isQaOkImportRow(row) {
-    return key(row?.qa_revision_estado) === 'ok' && key(row?.qa_revision_accion) === 'importar';
+    return isExportable(row);
 }
 
 function isQaOkDeleteRow(row) {
-    return key(row?.qa_revision_estado) === 'ok' && key(row?.qa_revision_accion) === 'eliminar';
+    return key(getExportField(row, 'qa_revision_estado')) === 'ok' && key(getExportField(row, 'qa_revision_accion')) === 'eliminar';
 }
 
 function isQaPendingOrReviewRow(row) {
-    const estado = key(row?.qa_revision_estado);
-    const accion = key(row?.qa_revision_accion);
+    const estado = key(getExportField(row, 'qa_revision_estado'));
+    const accion = key(getExportField(row, 'qa_revision_accion'));
     if (estado === 'pendiente' || estado === 'en revision' || estado === 'en revisión') return true;
     if (accion === 'revisar') return true;
     return false;
-}
-
-// IMPORTANTE:
-// sust_status === "SI" solo indica que el PN participa en relaciones SUST.
-// La exportación como Superseded depende exclusivamente de:
-// sust_hierarchie === "Superseded"
-// No usar sust_status ni sust_superseded_list como criterio de clasificación New/Superseded.
-function getExportType(row) {
-    return String(row?.sust_hierarchie ?? '').trim() === 'Superseded' ? 'superseded' : 'new';
 }
 
 function isSupersededRow(row) {

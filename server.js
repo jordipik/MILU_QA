@@ -29,6 +29,7 @@ const {
     canonicalFieldName,
     normalizeEditableFieldValue,
 } = require('./server/validation/allowed-fields');
+const { setField: setWriteField } = require('./js/write-field-helper');
 const {
     validateSaveJsonPayload,
     validateEngineFilePayload,
@@ -1965,7 +1966,7 @@ async function handleSaveJson(req, res) {
                 notFoundError.status = 404;
                 throw notFoundError;
             }
-            row[payload.field] = payload.value;
+            setWriteField(row, payload.field, payload.value);
             stripLegacyQaFields(json);
             await writeJsonAtomic(filePath, json);
             pnReviewQaCacheService.invalidate();

@@ -257,3 +257,64 @@ Crear una primera capa segura para migrar nombres de campos de `engine_*.json` s
 - No iniciar fase de escritura compatible mientras existan accesos HIGH en backend/QA-state/synthetic/export.
 - Priorizar reduccion de MEDIUM en filtros/conteos/preview para evitar divergencias semanticas por alias legacy.
 - Abrir escritura compatible solo cuando HIGH este controlado (o explicitamente acotado) y con tests de no regresion dedicados.
+
+## CIERRE DE REFACTORIZACION (field_registry / fieldAdapter)
+
+Fecha de cierre formal: 2026-05-16
+
+1. Alcance cerrado en esta etapa
+- Se centraliza lectura semantica de export en `js/export-field-helper.js`.
+- Se integra en exportadores reales/synthetic para PN, QA gate y tipo New/Superseded.
+- Se incorpora escritura compatible minima en backend con `js/write-field-helper.js` y uso en `/save-json`.
+- Se agregan tests de helper semantico, helper de escritura y smoke de escritura sobre fixture temporal.
+
+2. Baseline legacy congelado para comparacion
+- WordPress New legacy: `dist/milu_publish/data/output/wordpress/milu_wp_import.json`
+  - SHA256: `93C915DC742A9E21118A7805F150890595C7BCE38821650442974762943440F7`
+- WordPress Superseded legacy: `dist/milu_publish/data/output/wordpress/milu_wp_superseded.json`
+  - SHA256: `31028285A707FCCE76575F3ADCF68C93B1A3B4CF139C98992354A3464FB0E299`
+- Synthetic legacy de referencia historica:
+  - `MILU_New_v506.json` (SHA256 `648BA789838FCB7638A9B1A56BDB4287F9F93716DBA05CB7D899055E09905532`)
+  - `MILU_Superseded_v506.json` (SHA256 `BF7A9D298DBDDF8D65D4499E2759C799A27F84B76B0D62B207C8DA40A2AF1877`)
+
+3. Lo que no se elimino (compatibilidad)
+- No se removieron campos legacy en `engine_*.json`.
+- No se eliminan alias de lectura/escritura necesarios para coexistencia con UI y scripts previos.
+- No se fuerza migracion global de modulos (CommonJS/ESM) para no introducir riesgo transversal.
+
+4. Comandos de validacion repetible (cierre)
+- Suite final de refactor:
+  - `npm run validate:field-refactor-final`
+- Equivalencia de export con rutas explicitas:
+  - `npm run validate:field-refactor-final:exports`
+- Salida esperada de evidencia de export:
+  - `docs/export_output_compare.md`
+
+5. Smoke minimo de escritura (sin tocar engines reales)
+- Cobertura en `tests/write-compat-smoke.test.js`.
+- Verifica alias sincronizados para:
+  - `pn_final` / `PART NO.`
+  - `designation_final` / `DESIGNATION`
+  - `qa_revision_estado`
+  - `qa_revision_accion`
+  - `hierarchie_final` / `sust_hierarchie`
+- Opera sobre fixture JSON temporal en directorio de sistema, sin modificar runtime data.
+
+6. Rollback
+- Si se detecta regresion de export o escritura:
+  - Revertir commit de cierre de esta etapa.
+  - Re-ejecutar `npm run validate:field-refactor-final` y `npm run validate:field-refactor-final:exports`.
+  - Validar `GET /health` y flujo minimo `POST /save-json` con fixture controlado antes de reabrir cambios.
+
+7. Riesgos pendientes documentados
+- Persisten accesos legacy en zonas fuera del alcance de este cierre (auditoria ya documentada).
+- Baseline synthetic legacy procede de snapshot historico (v506), no de pipeline synthetic antiguo congelado en `dist`.
+- Warning `MODULE_TYPELESS_PACKAGE_JSON` se mantiene como deuda tecnica menor sin impacto funcional confirmado.
+
+8. Decision sobre JSON ignorados
+- Se mantiene politica de no versionar artefactos generados de salida intermedia/final fuera de los ficheros de evidencia explicitamente requeridos.
+- No se incluyen en el diff de cierre los JSON regenerados de export salvo reportes/documentacion de comparacion.
+
+9. Decision sobre MODULE_TYPELESS_PACKAGE_JSON
+- Se mantiene sin cambio en esta etapa.
+- Justificacion: warning no bloqueante, tests verdes, y alto riesgo de regresion al alterar modo global de modulos en un repositorio mixto CommonJS + ESM.

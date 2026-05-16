@@ -1,5 +1,6 @@
 const fs = require('fs');
 const path = require('path');
+const { getExportField, getExportType } = require('./js/export-field-helper');
 
 const ENGINE_JSON_FILES = [
     'engine_12V4000M40A.json',
@@ -20,15 +21,6 @@ function norm(value) {
 function val(row, key) {
     const v = row?.[key];
     return v != null && String(v).trim() !== '' ? v : '';
-}
-
-// IMPORTANTE:
-// sust_status === "SI" solo indica que el PN participa en relaciones SUST.
-// La exportación como Superseded depende exclusivamente de:
-// sust_hierarchie === "Superseded"
-// No usar sust_status ni sust_superseded_list como criterio de clasificación New/Superseded.
-function getExportType(row) {
-    return String(row?.sust_hierarchie ?? '').trim() === 'Superseded' ? 'superseded' : 'new';
 }
 
 function isSupersededArticle(row) {
@@ -206,9 +198,9 @@ function buildSyntheticNewExportRow(row, matches) {
     const modelType = String(row?.model ?? '').trim();
     const engineModels = uniqueSortedValues(matches.map(item => String(item?.engine_model ?? '').trim()), true);
     const categoryValues = uniqueSortedValues(matches.map(item => String(item?.categoria ?? '').trim()));
-    const imageValue = firstNonEmptyValue([row, ...matches], item => item?.exp_imagenes || '');
-    const normalizedPn = String(row?.pn_final ?? row?.['PART NO.'] ?? row?.pn ?? '').trim();
-    const hierarchy = String(row?.sust_hierarchie ?? '').trim();
+    const imageValue = firstNonEmptyValue([row, ...matches], item => getExportField(item, 'ruta_esquemas_pos', ''));
+    const normalizedPn = String(getExportField(row, 'pn_final', row?.pn)).trim();
+    const hierarchy = String(getExportField(row, 'hierarchie_final', '')).trim();
     const supersededList = String(row?.sust_superseded_list ?? '').trim();
     const hasSubstitution = hierarchy !== '' || supersededList !== '' || String(row?.sust_new_part_number ?? '').trim() !== '';
 
@@ -251,15 +243,15 @@ function buildSyntheticSupersededExportRow(row, matches) {
     // Synthetic Superseded output mapping mirrors New mapping, but:
     // - Forces substitution semantics (SUST_TIPO/New PN linkage).
     // - Adds vinculo URL using related new PN when available.
-    const hierarchy = String(row?.sust_hierarchie ?? '').trim();
+    const hierarchy = String(getExportField(row, 'hierarchie_final', '')).trim();
     const relatedNewPn = String(row?.sust_new_part_number ?? '').trim() || String(row?.['New Part Number'] ?? '').trim();
     if (!relatedNewPn && hierarchy !== 'Superseded') return null;
 
     const modelType = String(row?.model ?? '').trim();
     const engineModels = uniqueSortedValues(matches.map(item => String(item?.engine_model ?? '').trim()), true);
     const categoryValues = uniqueSortedValues(matches.map(item => String(item?.categoria ?? '').trim()));
-    const imageValue = firstNonEmptyValue([row, ...matches], item => item?.exp_imagenes || '');
-    const normalizedPn = String(row?.pn_final ?? row?.['PART NO.'] ?? row?.pn ?? '').trim();
+    const imageValue = firstNonEmptyValue([row, ...matches], item => getExportField(item, 'ruta_esquemas_pos', ''));
+    const normalizedPn = String(getExportField(row, 'pn_final', row?.pn)).trim();
     const resolvedRelatedPn = relatedNewPn || normalizedPn;
     const hasSubstitution = hierarchy === 'Superseded' || resolvedRelatedPn !== '';
 
@@ -310,13 +302,13 @@ function loadAllRows(repoRoot) {
 }
 
 function selectRepresentativeRowForNew(rows) {
-    const candidates = rows.filter(row => String(row?.sust_hierarchie ?? '').trim() === 'New');
+    const candidates = rows.filter(row => String(getExportField(row, 'hierarchie_final', '')).trim() === 'New');
     const pool = candidates.length ? candidates : rows;
     return [...pool].sort((a, b) => String(a?.ID ?? '').localeCompare(String(b?.ID ?? ''), 'es', { numeric: true }))[0] || null;
 }
 
 function selectRepresentativeRowForSuperseded(rows) {
-    const exact = rows.filter(row => String(row?.sust_hierarchie ?? '').trim() === 'Superseded');
+    const exact = rows.filter(row => String(getExportField(row, 'hierarchie_final', '')).trim() === 'Superseded');
     const withLinkedNew = rows.filter(row => String(row?.sust_new_part_number ?? row?.['New Part Number'] ?? '').trim() !== '');
     const pool = exact.length ? exact : (withLinkedNew.length ? withLinkedNew : rows);
     return [...pool].sort((a, b) => String(a?.ID ?? '').localeCompare(String(b?.ID ?? ''), 'es', { numeric: true }))[0] || null;
@@ -336,7 +328,7 @@ function main() {
     const byPn = new Map();
 
     allRows.forEach(row => {
-        const pn = String(row?.pn_final ?? row?.['PART NO.'] ?? row?.pn ?? '').trim();
+        const pn = String(getExportField(row, 'pn_final', row?.pn)).trim();
         if (!pn) return;
         const key = norm(pn);
         if (!byPn.has(key)) byPn.set(key, []);
@@ -345,7 +337,7 @@ function main() {
 
     const pnEntries = [...byPn.entries()].map(([pnKey, rows]) => ({
         pnKey,
-        pn: String(rows?.[0]?.pn_final ?? rows?.[0]?.['PART NO.'] ?? rows?.[0]?.pn ?? '').trim(),
+        pn: String(getExportField(rows?.[0], 'pn_final', rows?.[0]?.pn)).trim(),
         rows
     }));
 
