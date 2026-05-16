@@ -234,6 +234,8 @@
                     </label>
                     <button id="markPnRowBtn" class="pdf-row-debug-btn" type="button"
                         title="Marcar la línea de pn_final en el PDF">Marcar línea PN en PDF</button>
+                    <button id="detectHeadersBtn" class="pdf-row-debug-btn" type="button"
+                        title="Detectar fila de cabecera BOM y marcar headers en naranja">Detectar Headers</button>
                     <span class="pdf-page">1 / 12</span>
                 </div>
 
@@ -243,6 +245,17 @@
                         <canvas id="pdfCanvas" class="pdfcanvas"></canvas>
                     </div>
                 </div>
+
+                <section id="headerDetectionPanel" class="header-detection-panel" hidden
+                    aria-label="Debug: detección de headers">
+                    <div class="header-detection-panel-head">
+                        <strong class="header-detection-panel-title">Headers detectados</strong>
+                        <span id="headerDetectionConfidence" class="header-detection-confidence"></span>
+                        <button id="headerDetectionCloseBtn" class="header-detection-close-btn" type="button"
+                            aria-label="Cerrar panel">✕</button>
+                    </div>
+                    <div id="headerDetectionBody" class="header-detection-body"></div>
+                </section>
 
                 <section class="pdf-blue-texts-panel" aria-label="Textos azules del PDF">
                     <div class="pdf-blue-texts-head">

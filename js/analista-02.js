@@ -20,7 +20,7 @@ import {
 
 import { publishRevisionSync } from './revision-sync.js';
 
-import { getPdfExperimentalBlueTexts, initPdfZoomControls, loadPdfClear, loadPdfWithPage, requestPdfRelayout, setPdfExperimentalRowHighlights, setPdfReadTokens, setPdfSelection } from './pdf-viewer.js';
+import { getPdfExperimentalBlueTexts, initPdfZoomControls, loadPdfClear, loadPdfWithPage, requestPdfRelayout, setPdfExperimentalRowHighlights, setPdfReadTokens, setPdfSelection, runPdfHeaderOnlyDetection, clearPdfHeaderOnlyOverlay } from './pdf-viewer.js';
 
 import { evaluateQaChecksForField, evaluateRowQaChecks, getAllQaCheckCodes, getQaCheckLabel } from './qa-checks.js';
 
@@ -8307,6 +8307,87 @@ bindClick('markPnRowBtn', () => {
     });
 
 });
+
+bindClick('detectHeadersBtn', () => {
+    const result = runPdfHeaderOnlyDetection();
+    renderHeaderDetectionPanel(result);
+});
+
+bindClick('headerDetectionCloseBtn', () => {
+    clearPdfHeaderOnlyOverlay();
+    const panel = document.getElementById('headerDetectionPanel');
+    if (panel) panel.hidden = true;
+});
+
+function renderHeaderDetectionPanel(result) {
+    const panel = document.getElementById('headerDetectionPanel');
+    const body = document.getElementById('headerDetectionBody');
+    const confBadge = document.getElementById('headerDetectionConfidence');
+    if (!panel || !body || !confBadge) return;
+
+    const HEADER_COLORS = {
+        pos: { border: '#2563eb', bg: 'rgba(96,165,250,0.20)', label: 'POS' },
+        part_no: { border: '#16a34a', bg: 'rgba(74,222,128,0.18)', label: 'PART NO.' },
+        designation: { border: '#ea580c', bg: 'rgba(251,146,60,0.18)', label: 'DESIGNATION' },
+        model_type: { border: '#0e7490', bg: 'rgba(103,232,249,0.18)', label: 'MODEL/TYPE' },
+        qty: { border: '#7c3aed', bg: 'rgba(196,181,253,0.22)', label: 'QTY.' },
+        units: { border: '#ca8a04', bg: 'rgba(253,224,71,0.22)', label: 'UNITS' },
+        weight: { border: '#dc2626', bg: 'rgba(252,165,165,0.22)', label: 'WEIGHT' },
+        fn: { border: '#a855f7', bg: 'rgba(221,214,254,0.22)', label: 'FN' },
+        measurement: { border: '#0891b2', bg: 'rgba(103,232,249,0.20)', label: 'MEASUREMENT' },
+        standard: { border: '#0f766e', bg: 'rgba(94,234,212,0.18)', label: 'STANDARD' }
+    };
+
+    if (result?.error) {
+        confBadge.textContent = 'sin datos';
+        body.innerHTML = `<div style="color:#c63c2c;font-size:12px;padding:4px 0">${result.error}</div>`;
+        panel.hidden = false;
+        return;
+    }
+
+    const conf = result?.confidence || '?';
+    const matchCount = result?.matchCount ?? 0;
+    confBadge.textContent = `${conf} · ${matchCount}/10 headers`;
+
+    const entries = Array.isArray(result?.entries) ? result.entries : [];
+
+    // Build legend.
+    const legendHtml = `<div class="header-detection-legend">${Object.entries(HEADER_COLORS).map(([key, c]) => {
+        const found = entries.some((e) => e.key === key && e.found);
+        return `<span class="header-detection-legend-chip${found ? '' : ' is-missing'}"
+                style="border-color:${c.border};background:${c.bg};color:${c.border}">${c.label}</span>`;
+    }).join('')
+        }</div>`;
+
+    if (!entries.length) {
+        body.innerHTML = legendHtml + '<div style="color:#5e6f84;font-size:12px;padding:4px 0">No se detectaron headers en esta página.</div>';
+        panel.hidden = false;
+        return;
+    }
+
+    const entriesHtml = entries.map((e) => {
+        const c = HEADER_COLORS[e.key] || { border: '#888', bg: 'rgba(0,0,0,0.05)', label: e.key };
+        if (!e.found) {
+            return `<div class="header-detection-entry is-missing"
+                style="border-color:${c.border};background:rgba(0,0,0,0.03)">
+                <span class="header-detection-entry-label" style="color:${c.border};opacity:0.5">${c.label}</span>
+                <span class="header-detection-entry-meta" style="color:#9ca3af;font-style:italic">No detectado</span>
+            </div>`;
+        }
+        return `<div class="header-detection-entry"
+            style="border-color:${c.border};background:${c.bg}">
+            <span class="header-detection-entry-label" style="color:${c.border}">${c.label}</span>
+            <span class="header-detection-entry-meta">
+                texto: <b>${e.text}</b> · variante: <i>${e.variant}</i><br>
+                x0=${e.x0} x1=${e.x1} · y0=${e.y0} y1=${e.y1}<br>
+                confianza: <b>${e.confidence}</b> (score ${e.score}) · ${e.method}
+            </span>
+        </div>`;
+    }).join('');
+
+    body.innerHTML = legendHtml + entriesHtml;
+    panel.hidden = false;
+}
 
 bindClick('statusEstadoOkBtn', () => {
 

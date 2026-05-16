@@ -2247,6 +2247,103 @@ body.a2-resizing * {
     background: #f9fbfd;
 }
 
+/* ── Header detection debug panel ── */
+.header-detection-panel {
+    border-top: 2px solid rgba(37, 99, 235, 0.45);
+    background: #f8faff;
+    padding: 8px 10px 10px;
+    font-size: 11.5px;
+    font-family: 'Manrope', 'Segoe UI', Arial, sans-serif;
+}
+
+.header-detection-panel-head {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-bottom: 6px;
+}
+
+.header-detection-panel-title {
+    font-size: 12px;
+    color: #1e3a5f;
+    flex: 1;
+}
+
+.header-detection-confidence {
+    font-size: 11px;
+    padding: 1px 6px;
+    border-radius: 8px;
+    background: rgba(37, 99, 235, 0.10);
+    color: #1e40af;
+    font-weight: 600;
+}
+
+.header-detection-close-btn {
+    border: none;
+    background: transparent;
+    cursor: pointer;
+    color: var(--muted);
+    font-size: 13px;
+    line-height: 1;
+    padding: 2px 4px;
+}
+
+.header-detection-legend {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 4px;
+    margin-bottom: 8px;
+}
+
+.header-detection-legend-chip {
+    display: inline-block;
+    padding: 2px 7px;
+    border-radius: 10px;
+    border: 1.5px solid currentColor;
+    font-size: 10px;
+    font-weight: 700;
+    letter-spacing: 0.02em;
+    white-space: nowrap;
+}
+
+.header-detection-legend-chip.is-missing {
+    opacity: 0.35;
+    text-decoration: line-through;
+}
+
+.header-detection-body {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    max-height: 260px;
+    overflow-y: auto;
+}
+
+.header-detection-entry {
+    display: grid;
+    grid-template-columns: 90px 1fr;
+    gap: 2px 8px;
+    padding: 4px 6px;
+    border-radius: 4px;
+    border: 1.5px solid;
+}
+
+.header-detection-entry.is-missing {
+    opacity: 0.5;
+}
+
+.header-detection-entry-label {
+    font-weight: 700;
+    font-size: 11px;
+    align-self: center;
+}
+
+.header-detection-entry-meta {
+    font-size: 10.5px;
+    color: var(--muted);
+    line-height: 1.5;
+}
+
 @media (max-width: 1200px) {
     .a2-layout {
         grid-template-columns: 1fr;

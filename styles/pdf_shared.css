@@ -218,6 +218,95 @@
     z-index: 3;
 }
 
+.pdf-selection-highlight.pdf-header-orange-token {
+    border: 2px solid rgba(234, 88, 12, 0.92);
+    background: rgba(251, 146, 60, 0.18);
+    box-shadow: 0 0 0 1px rgba(234, 88, 12, 0.35);
+    pointer-events: none;
+    z-index: 5;
+}
+
+/* ── Per-header-key colored highlights ── */
+.pdf-selection-highlight.pdf-header-pos {
+    border: 2px solid rgba(37, 99, 235, 0.92);
+    background: rgba(96, 165, 250, 0.20);
+    box-shadow: 0 0 0 1px rgba(37, 99, 235, 0.30);
+    pointer-events: none;
+    z-index: 5;
+}
+
+.pdf-selection-highlight.pdf-header-part-no {
+    border: 2px solid rgba(22, 163, 74, 0.92);
+    background: rgba(74, 222, 128, 0.18);
+    box-shadow: 0 0 0 1px rgba(22, 163, 74, 0.30);
+    pointer-events: none;
+    z-index: 5;
+}
+
+.pdf-selection-highlight.pdf-header-model-type {
+    border: 2px solid rgba(14, 116, 144, 0.92);
+    background: rgba(103, 232, 249, 0.18);
+    box-shadow: 0 0 0 1px rgba(14, 116, 144, 0.30);
+    pointer-events: none;
+    z-index: 5;
+}
+
+.pdf-selection-highlight.pdf-header-qty {
+    border: 2px solid rgba(124, 58, 237, 0.92);
+    background: rgba(196, 181, 253, 0.22);
+    box-shadow: 0 0 0 1px rgba(124, 58, 237, 0.30);
+    pointer-events: none;
+    z-index: 5;
+}
+
+.pdf-selection-highlight.pdf-header-designation {
+    border: 2px solid rgba(234, 88, 12, 0.92);
+    background: rgba(251, 146, 60, 0.18);
+    box-shadow: 0 0 0 1px rgba(234, 88, 12, 0.30);
+    pointer-events: none;
+    z-index: 5;
+}
+
+.pdf-selection-highlight.pdf-header-units {
+    border: 2px solid rgba(202, 138, 4, 0.92);
+    background: rgba(253, 224, 71, 0.22);
+    box-shadow: 0 0 0 1px rgba(202, 138, 4, 0.30);
+    pointer-events: none;
+    z-index: 5;
+}
+
+.pdf-selection-highlight.pdf-header-weight {
+    border: 2px solid rgba(220, 38, 38, 0.92);
+    background: rgba(252, 165, 165, 0.22);
+    box-shadow: 0 0 0 1px rgba(220, 38, 38, 0.30);
+    pointer-events: none;
+    z-index: 5;
+}
+
+.pdf-selection-highlight.pdf-header-fn {
+    border: 2px solid rgba(168, 85, 247, 0.92);
+    background: rgba(221, 214, 254, 0.22);
+    box-shadow: 0 0 0 1px rgba(168, 85, 247, 0.30);
+    pointer-events: none;
+    z-index: 5;
+}
+
+.pdf-selection-highlight.pdf-header-measurement {
+    border: 2px solid rgba(8, 145, 178, 0.92);
+    background: rgba(103, 232, 249, 0.20);
+    box-shadow: 0 0 0 1px rgba(8, 145, 178, 0.30);
+    pointer-events: none;
+    z-index: 5;
+}
+
+.pdf-selection-highlight.pdf-header-standard {
+    border: 2px solid rgba(15, 118, 110, 0.92);
+    background: rgba(94, 234, 212, 0.18);
+    box-shadow: 0 0 0 1px rgba(15, 118, 110, 0.30);
+    pointer-events: none;
+    z-index: 5;
+}
+
 .pdf-selection-highlight.pdf-table-debug-area {
     border: 1px solid rgba(14, 165, 233, 0.6);
     background: rgba(56, 189, 248, 0.06);

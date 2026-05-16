@@ -1034,7 +1034,8 @@ const PDF_HEADER_COLUMN_PATTERNS = [
     { key: 'fn', label: 'FN', variants: ['fn', 'footnote', 'f.n.', 'f n', 'f.n'] },
     { key: 'measurement', label: 'MEASUREMENT', variants: ['measurement', 'measure', 'meas', 'measurement / standard', 'measurement/standard'] },
     { key: 'standard', label: 'STANDARD', variants: ['standard', 'std', 'norma'] },
-    { key: 'remarks', label: 'REMARKS', variants: ['remark', 'remarks', 'note', 'notes'] }
+    { key: 'remarks', label: 'REMARKS', variants: ['remark', 'remarks', 'note', 'notes'] },
+    { key: 'dimensions', label: 'DIMENSIONS', variants: ['dimensions', 'dimension', 'dims', 'dim'] }
 ];
 
 
@@ -1053,6 +1054,74 @@ function normalizePdfHeaderText(text) {
 }
 
 
+function normalizePdfHeaderVariant(text) {
+
+    return normalizePdfHeaderText(text)
+        .replace(/\./g, ' ')
+        .replace(/\s+/g, ' ')
+        .trim();
+
+}
+
+
+function resolveHeaderMatchBounds(cluster, variant) {
+
+    const rects = Array.isArray(cluster?.rects)
+        ? [...cluster.rects].sort((a, b) => Number(a?.left || 0) - Number(b?.left || 0))
+        : [];
+    const normalizedVariant = normalizePdfHeaderVariant(variant);
+    if (!rects.length || !normalizedVariant) return null;
+
+    const tokens = rects.map((rect) => ({
+        rect,
+        normalized: normalizePdfHeaderVariant(rect?.text || rect?.normalizedText || '')
+    }));
+
+    let best = null;
+
+    for (let start = 0; start < tokens.length; start += 1) {
+        let joined = '';
+        for (let end = start; end < tokens.length; end += 1) {
+            const token = tokens[end];
+            joined = joined ? `${joined} ${token.normalized}`.trim() : token.normalized;
+            const joinedCompact = joined.replace(/\s+/g, '');
+            const variantCompact = normalizedVariant.replace(/\s+/g, '');
+            const exact = joined === normalizedVariant || joinedCompact === variantCompact;
+            const contains = joined.includes(normalizedVariant) || joinedCompact.includes(variantCompact);
+            if (!exact && !contains) continue;
+
+            const matchedRects = tokens.slice(start, end + 1).map((entry) => entry.rect);
+            const left = Math.min(...matchedRects.map((entry) => Number(entry?.left || 0)));
+            const right = Math.max(...matchedRects.map((entry) => Number(entry?.left || 0) + Number(entry?.width || 0)));
+            const top = Math.min(...matchedRects.map((entry) => Number(entry?.top || 0) - Number(entry?.height || 12)));
+            const bottom = Math.max(...matchedRects.map((entry) => Number(entry?.top || 0)));
+            const candidate = {
+                left,
+                top,
+                width: Math.max(1, right - left),
+                height: Math.max(12, bottom - top),
+                text: matchedRects.map((entry) => String(entry?.text || '').trim()).join(' ').replace(/\s+/g, ' ').trim(),
+                exact,
+                tokenCount: matchedRects.length
+            };
+
+            if (!best
+                || (candidate.exact && !best.exact)
+                || (candidate.exact === best.exact && candidate.tokenCount < best.tokenCount)
+            ) {
+                best = candidate;
+            }
+
+            if (exact) break;
+        }
+        if (best?.exact) break;
+    }
+
+    return best;
+
+}
+
+
 function getHeaderClusterMatches(cluster) {
 
     const source = normalizePdfHeaderText(cluster?.text || cluster?.normalizedText || '');
@@ -1065,9 +1134,10 @@ function getHeaderClusterMatches(cluster) {
     PDF_HEADER_COLUMN_PATTERNS.forEach((definition) => {
         let bestVariant = '';
         let bestScore = 0;
+        let bestBounds = null;
 
         definition.variants.forEach((variant) => {
-            const normalizedVariant = normalizePdfHeaderText(variant).replace(/\./g, ' ').replace(/\s+/g, ' ').trim();
+            const normalizedVariant = normalizePdfHeaderVariant(variant);
             if (!normalizedVariant) return;
 
             const variantNoSpace = normalizedVariant.replace(/\s+/g, '');
@@ -1081,6 +1151,7 @@ function getHeaderClusterMatches(cluster) {
             if (score > bestScore) {
                 bestScore = score;
                 bestVariant = normalizedVariant;
+                bestBounds = resolveHeaderMatchBounds(cluster, normalizedVariant);
             }
         });
 
@@ -1089,7 +1160,8 @@ function getHeaderClusterMatches(cluster) {
                 key: definition.key,
                 label: definition.label,
                 variant: bestVariant,
-                score: bestScore
+                score: bestScore,
+                bounds: bestBounds
             });
         }
     });
@@ -1185,9 +1257,9 @@ function buildColumnRegionsFromHeaderLine(headerLine) {
 
     const anchors = Array.from(byKey.values())
         .map((entry) => {
-            const cluster = entry.cluster || {};
-            const left = Number(cluster.left || 0);
-            const width = Math.max(12, Number(cluster.width || 0));
+            const bounds = entry.bounds || entry.cluster || {};
+            const left = Number(bounds.left || 0);
+            const width = Math.max(12, Number(bounds.width || 0));
             return {
                 key: entry.key,
                 label: entry.label,
@@ -2047,7 +2119,10 @@ function renderPdfSelectionHighlights(highlights, viewport) {
     const scaleX = viewport?.width > 0 && canvasWidth > 0 ? (canvasWidth / viewport.width) : 1;
     const scaleY = viewport?.height > 0 && canvasHeight > 0 ? (canvasHeight / viewport.height) : 1;
 
-    const rowHighlights = normalizeExperimentalRowHighlights(state.currentPdfExperimentalRowHighlights);
+    const rowHighlights = [
+        ...normalizeExperimentalRowHighlights(state.currentPdfExperimentalRowHighlights),
+        ...normalizeExperimentalRowHighlights(state.currentPdfHeaderOnlyOverlay || [])
+    ];
 
     debugLog('renderPdfSelectionHighlights:start', {
         standardHighlightCount: highlights.length,
@@ -2113,6 +2188,28 @@ function renderPdfSelectionHighlights(highlights, viewport) {
             box.classList.add('pdf-column-debug-label');
         } else if (rect.kind === 'blue-token-pn') {
             box.classList.add('pdf-line-debug-highlight', 'pdf-line-debug-highlight--pn');
+        } else if (rect.kind === 'orange-header-token') {
+            box.classList.add('pdf-header-orange-token');
+        } else if (rect.kind === 'header-pos') {
+            box.classList.add('pdf-header-pos');
+        } else if (rect.kind === 'header-part-no') {
+            box.classList.add('pdf-header-part-no');
+        } else if (rect.kind === 'header-model-type') {
+            box.classList.add('pdf-header-model-type');
+        } else if (rect.kind === 'header-qty') {
+            box.classList.add('pdf-header-qty');
+        } else if (rect.kind === 'header-designation') {
+            box.classList.add('pdf-header-designation');
+        } else if (rect.kind === 'header-units') {
+            box.classList.add('pdf-header-units');
+        } else if (rect.kind === 'header-weight') {
+            box.classList.add('pdf-header-weight');
+        } else if (rect.kind === 'header-fn') {
+            box.classList.add('pdf-header-fn');
+        } else if (rect.kind === 'header-measurement') {
+            box.classList.add('pdf-header-measurement');
+        } else if (rect.kind === 'header-standard') {
+            box.classList.add('pdf-header-standard');
         } else if (rect.kind === 'column-token') {
             box.classList.add('pdf-column-debug-token', 'pdf-line-debug-highlight');
         } else {
@@ -3137,6 +3234,143 @@ export function setPdfHeaderDebugMode(mode) {
  */
 export function getPdfHeaderDetection() {
     return PDF_EXPERIMENTAL_COLUMN_FEATURES_ENABLED ? (state.currentPdfHeaderDetection || null) : null;
+}
+
+// All expected header keys, used to report missing headers.
+const HEADER_DETECTION_ALL_KEYS = ['pos', 'part_no', 'designation', 'model_type', 'qty', 'units', 'weight', 'fn', 'measurement', 'standard'];
+
+// Maps each header key to a CSS kind token.
+const HEADER_KEY_TO_KIND = {
+    pos: 'header-pos',
+    part_no: 'header-part-no',
+    designation: 'header-designation',
+    model_type: 'header-model-type',
+    qty: 'header-qty',
+    units: 'header-units',
+    weight: 'header-weight',
+    fn: 'header-fn',
+    measurement: 'header-measurement',
+    standard: 'header-standard'
+};
+
+/**
+ * Detector mínimo de headers BOM.
+ * Detecta la fila de cabecera y devuelve highlights coloreados por tipo + info de debug.
+ * No detecta columnas ni parsea filas.
+ */
+export function runPdfHeaderOnlyDetection() {
+    const { textItems, viewport } = getPdfLastPageData();
+    if (!textItems || !textItems.length || !viewport) {
+        state.currentPdfHeaderOnlyOverlay = [];
+        state.currentPdfHeaderOnlyDebug = { error: 'no-page-data', entries: [] };
+        requestPdfRelayout();
+        return state.currentPdfHeaderOnlyDebug;
+    }
+
+    const rects = extractPdfTextRects(textItems, viewport);
+    if (!rects.length) {
+        state.currentPdfHeaderOnlyOverlay = [];
+        state.currentPdfHeaderOnlyDebug = { error: 'no-rects', entries: [] };
+        requestPdfRelayout();
+        return state.currentPdfHeaderOnlyDebug;
+    }
+
+    const lineGroups = buildLineGroups(rects);
+    const detection = detectHeaderLineGroups(lineGroups, null);
+
+    const highlights = [];
+    const foundKeys = new Set();
+
+    // Best match per key (highest score wins).
+    const bestByKey = new Map();
+    if (detection.headerLine && detection.matches.length) {
+        detection.matches.forEach((match) => {
+            const key = match.key;
+            const prev = bestByKey.get(key);
+            if (!prev || match.score > prev.score) bestByKey.set(key, match);
+        });
+    }
+
+    const entries = [];
+
+    bestByKey.forEach((match, key) => {
+        const bounds = match.bounds || match.cluster;
+        if (!bounds) return;
+        const top = Number(bounds.top || 0);
+        const left = Number(bounds.left || 0);
+        const width = Number(bounds.width || 0);
+        const height = Number(bounds.height || 12);
+        const kind = HEADER_KEY_TO_KIND[key] || 'orange-header-token';
+        foundKeys.add(key);
+        highlights.push({
+            left: Math.max(0, left - 3),
+            top: Math.max(0, top - 3),
+            width: Math.max(18, width + 8),
+            height: Math.max(14, height + 8),
+            text: String((match.bounds?.text || match.cluster?.text) || '').trim(),
+            kind
+        });
+        entries.push({
+            text: String((match.bounds?.text || match.cluster?.text) || '').trim(),
+            key,
+            label: match.label,
+            variant: match.variant,
+            x0: Math.round(left),
+            x1: Math.round(left + width),
+            y0: Math.round(top),
+            y1: Math.round(top + height),
+            confidence: match.score >= 1 ? 'exact' : match.score >= 0.7 ? 'contains' : 'partial',
+            score: match.score,
+            method: 'header-line-group',
+            found: true
+        });
+    });
+
+    // Report missing keys (no position).
+    HEADER_DETECTION_ALL_KEYS.forEach((key) => {
+        if (!foundKeys.has(key)) {
+            const def = PDF_HEADER_COLUMN_PATTERNS.find((p) => p.key === key);
+            entries.push({
+                text: '',
+                key,
+                label: def ? def.label : key.toUpperCase(),
+                variant: '',
+                x0: null, x1: null, y0: null, y1: null,
+                confidence: 'missing',
+                score: 0,
+                method: 'header-line-group',
+                found: false
+            });
+        }
+    });
+
+    // Sort detected entries by x0; missing go to the end.
+    entries.sort((a, b) => {
+        if (a.found && b.found) return a.x0 - b.x0;
+        if (a.found) return -1;
+        return 1;
+    });
+
+    state.currentPdfHeaderOnlyOverlay = highlights;
+    state.currentPdfHeaderOnlyDebug = {
+        error: null,
+        confidence: detection.confidence,
+        headerLineCenterY: Number(detection.headerLine?.centerY || 0),
+        matchCount: foundKeys.size,
+        entries
+    };
+
+    requestPdfRelayout();
+    return state.currentPdfHeaderOnlyDebug;
+}
+
+/**
+ * Borra el overlay de header-only sin relanzar detección.
+ */
+export function clearPdfHeaderOnlyOverlay() {
+    state.currentPdfHeaderOnlyOverlay = [];
+    state.currentPdfHeaderOnlyDebug = null;
+    requestPdfRelayout();
 }
 
 
