@@ -8497,7 +8497,7 @@ if (columnModeSelect) {
     // Cargar modo guardado en localStorage
     const savedMode = localStorage.getItem('pdfColumnDetectionMode') || 'header-left-lines-mark-only';
     columnModeSelect.value = savedMode;
-    
+
     columnModeSelect.addEventListener('change', (e) => {
         const mode = e.target.value;
         localStorage.setItem('pdfColumnDetectionMode', mode);
@@ -8506,7 +8506,7 @@ if (columnModeSelect) {
         // Recalcular tabla con el nuevo modo
         requestPdfRelayout();
     });
-    
+
     // Establecer modo inicial en variable global
     window.pdfColumnDetectionMode = savedMode;
 }

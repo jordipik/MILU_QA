@@ -344,6 +344,107 @@ function buildClusters(rects, maxGap = 28) {
     }));
 }
 
+function detectHeaderKeyFromPhrase(phrase) {
+    const normalized = normalizeHeaderToken(phrase);
+    if (!normalized) return null;
+
+    if (normalized === 'POS' || normalized === 'POSITION') return 'pos';
+    if (normalized.includes('PART') && normalized.includes('NO')) return 'part_no';
+    if (normalized.includes('DESIGNATION') || normalized.includes('DESCRIPTION')) return 'designation';
+    if (normalized.includes('MODEL') && normalized.includes('TYPE')) return 'model_type';
+    if (normalized === 'QTY' || normalized.includes('QUANTITY')) return 'qty';
+    if (normalized.includes('UNITS') || normalized === 'UNIT' || normalized === 'UNL') return 'units';
+    if (normalized.includes('WEIGHT') || normalized === 'WT' || normalized === 'WGT') return 'weight';
+    if (normalized === 'FN' || normalized.includes('FOOTNOTE') || normalized === 'F/N') return 'fn';
+    if (normalized.includes('MEASUREMENT')) return 'measurement';
+    if (normalized.includes('STANDARD') || normalized === 'STD') return 'standard';
+
+    return null;
+}
+
+function detectHeaderAnchors(tableLines, tableTopY, windowPx = 90, geomScale = 1) {
+    const candidateLines = (tableLines || []).filter(
+        (line) => Number(line?.cy || 0) <= (Number(tableTopY || 0) + Number(windowPx || 0))
+    );
+
+    const anchorsByKey = new Map();
+    const headerLines = [];
+
+    candidateLines.forEach((line) => {
+        const clusters = buildClusters(line.rects, geomPx(26, geomScale));
+        if (!clusters.length) return;
+
+        const localHits = [];
+        for (let i = 0; i < clusters.length; i++) {
+            const c1 = clusters[i];
+            const candidates = [
+                { phrase: c1.text, left: c1.left, right: c1.right, score: 1 },
+                i + 1 < clusters.length
+                    ? {
+                        phrase: `${c1.text} ${clusters[i + 1].text}`,
+                        left: c1.left,
+                        right: clusters[i + 1].right,
+                        score: 1.15
+                    }
+                    : null,
+                i + 2 < clusters.length
+                    ? {
+                        phrase: `${c1.text} ${clusters[i + 1].text} ${clusters[i + 2].text}`,
+                        left: c1.left,
+                        right: clusters[i + 2].right,
+                        score: 1.3
+                    }
+                    : null
+            ].filter(Boolean);
+
+            candidates.forEach((item) => {
+                let key = detectHeaderKeyFromPhrase(item.phrase);
+                const normalizedPhrase = normalizeHeaderToken(item.phrase);
+
+                if (
+                    !key
+                    && i === 0
+                    && !normalizedPhrase
+                    && String(item.phrase || '').trim()
+                    && Number(item.right || 0) - Number(item.left || 0) <= geomPx(28, geomScale)
+                ) {
+                    key = 'arrow';
+                }
+
+                if (!key) return;
+
+                const confidence = item.score >= 1.2 ? 'high' : 'medium';
+                const anchor = {
+                    key,
+                    centerX: (Number(item.left || 0) + Number(item.right || 0)) / 2,
+                    x1: Number(item.left || 0),
+                    x2: Number(item.right || 0),
+                    confidence,
+                    source: 'header',
+                    lineCy: Number(line.cy || 0),
+                    text: item.phrase,
+                    score: item.score
+                };
+
+                const previous = anchorsByKey.get(key);
+                if (!previous || Number(anchor.score || 0) > Number(previous.score || 0)) {
+                    anchorsByKey.set(key, anchor);
+                }
+                localHits.push(anchor);
+            });
+        }
+
+        if (localHits.length >= 2) headerLines.push(line);
+    });
+
+    return {
+        anchors: Array.from(anchorsByKey.values())
+            .sort((a, b) => Number(a.x1 || a.centerX || 0) - Number(b.x1 || b.centerX || 0)),
+        headerLines,
+        detectedHeaderKeys: Array.from(anchorsByKey.keys())
+    };
+}
+
 export function detectTableArea(rects, lines, pageInfo = {}) {
     const viewportHeight = Math.max(1, Number(pageInfo.viewportHeight || 0));
     const viewportWidth = Math.max(1, Number(pageInfo.viewportWidth || 0));
@@ -1299,6 +1400,270 @@ function removeArrowIfEmpty(columns, bodyRects) {
     return sortByCanonical(filtered);
 }
 
+// ════════════════════════════════════════════════════════════════════════════════════════
+// ESTRATEGIA EXPERIMENTAL: Header Left Lines (líneas verticales en margen izquierdo)
+// ════════════════════════════════════════════════════════════════════════════════════════
+
+/**
+ * Detecta líneas verticales en el margen izquierdo (x1) de cada header detectado.
+ * Retorna un array de líneas ordenadas por X, listas para ser ajustadas.
+ */
+function detectHeaderLeftLines(headerAnchors, includeArrow = false) {
+    if (!Array.isArray(headerAnchors) || !headerAnchors.length) {
+        return [];
+    }
+
+    const order = includeArrow ? COLUMN_ORDER : COLUMN_ORDER.filter(k => k !== 'arrow');
+
+    const lines = headerAnchors
+        .filter(anchor => String(anchor?.key || '').trim())
+        .map(anchor => ({
+            key: anchor.key,
+            x: Number(anchor.x1 || 0),
+            x1Initial: Number(anchor.x1 || 0),
+            x1Adjusted: Number(anchor.x1 || 0),
+            confidence: anchor.confidence || 'medium',
+            text: anchor.text || '',
+            headerAnchor: anchor,
+            adjustmentSource: null,
+            adjustmentDelta: 0
+        }))
+        .sort((a, b) => a.x - b.x);
+
+    return lines;
+}
+
+/**
+ * Ajusta líneas verticales de headers usando gaps en body rows.
+ * Mantiene la línea cerca de su posición original pero busca gaps reales.
+ * Tolerancia: ±8 px para movimiento, sin permitir que se crucen.
+ */
+function adjustHeaderLeftLinesToGaps(headerLines, bodyRows, leftX, rightX, tolerance = 8, geomScale = 1) {
+    if (!Array.isArray(headerLines) || !headerLines.length) {
+        return headerLines;
+    }
+
+    const tolerancePx = Math.max(4, tolerance * geomScale);
+    const adjusted = headerLines.map(line => ({ ...line }));
+
+    // Para cada línea, buscar gaps en body rows cercanos a su posición
+    adjusted.forEach((line, idx) => {
+        const initialX = Number(line.x1Initial || 0);
+        const searchLeft = Math.max(leftX, initialX - tolerancePx);
+        const searchRight = Math.min(rightX, initialX + tolerancePx);
+
+        const gaps = detectGapsInBodyRects(bodyRows, searchLeft, searchRight, geomScale);
+
+        if (gaps.length > 0) {
+            // Elige el gap más cercano al x1 inicial
+            const bestGap = gaps.sort((a, b) => Math.abs(a - initialX) - Math.abs(b - initialX))[0];
+            if (Number.isFinite(bestGap)) {
+                line.x1Adjusted = bestGap;
+                line.adjustmentSource = 'body-gap';
+                line.adjustmentDelta = bestGap - initialX;
+            }
+        }
+    });
+
+    // Verifica que las líneas no se crucen
+    for (let i = 1; i < adjusted.length; i++) {
+        const prev = adjusted[i - 1];
+        const current = adjusted[i];
+        if (Number(current.x1Adjusted || 0) <= Number(prev.x1Adjusted || 0)) {
+            // Restaura a valor inicial si se cruzan
+            current.x1Adjusted = Number(current.x1Initial || 0);
+            current.adjustmentSource = null;
+            current.adjustmentDelta = 0;
+        }
+    }
+
+    return adjusted;
+}
+
+/**
+ * Detecta gaps (espacios vacíos) en body rects dentro de un rango X.
+ */
+function detectGapsInBodyRects(bodyRows, leftX, rightX, geomScale = 1) {
+    if (!Array.isArray(bodyRows) || !bodyRows.length) {
+        return [];
+    }
+
+    const rects = bodyRows.flatMap(row => row?.rects || []);
+    if (!rects.length) return [];
+
+    // Histogram approach: divide el rango en buckets
+    const bucketSize = Math.max(1, geomPx(2, geomScale));
+    const numBuckets = Math.ceil((rightX - leftX) / bucketSize);
+    const buckets = new Array(numBuckets).fill(0);
+
+    rects.forEach(rect => {
+        const x = Number(rect.centerX || 0);
+        if (x >= leftX && x < rightX) {
+            const idx = Math.floor((x - leftX) / bucketSize);
+            if (idx >= 0 && idx < numBuckets) {
+                buckets[idx] += 1;
+            }
+        }
+    });
+
+    // Encuentra gaps: buckets con densidad baja rodeados de densidad alta
+    const avg = buckets.reduce((sum, v) => sum + v, 0) / Math.max(1, numBuckets);
+    const threshold = avg * 0.3;
+    const gaps = [];
+
+    for (let i = 1; i < numBuckets - 1; i++) {
+        const prev = buckets[i - 1] || 0;
+        const curr = buckets[i] || 0;
+        const next = buckets[i + 1] || 0;
+
+        if (curr <= threshold && prev > threshold && next > threshold) {
+            const gapX = leftX + (i * bucketSize) + (bucketSize / 2);
+            gaps.push(gapX);
+        }
+    }
+
+    return gaps;
+}
+
+/**
+ * Construye columnas a partir de líneas verticales de headers.
+ * Define cada columna como el espacio entre dos líneas consecutivas.
+ */
+function buildColumnsFromHeaderLeftLines(headerLeftLines, bodyRects, leftX, rightX, geomScale = 1) {
+    if (!Array.isArray(headerLeftLines) || headerLeftLines.length < 2) {
+        return null;
+    }
+
+    const includeArrow = headerLeftLines.some((line) => line.key === 'arrow');
+    const template = buildTemplateColumns(leftX, rightX, includeArrow);
+    const detectedByKey = new Map(headerLeftLines.map((line) => [String(line.key || ''), line]));
+    const missingHeaders = [];
+
+    const starts = template.map((col) => {
+        const line = detectedByKey.get(col.key);
+        if (!line) {
+            missingHeaders.push(col.key);
+        }
+
+        return {
+            key: col.key,
+            x1: line ? Number(line.x1Adjusted || col.x1) : Number(col.x1 || leftX),
+            source: line ? 'header-left-lines' : 'header-left-lines-fallback',
+            confidence: line ? (line.confidence || 'medium') : 'low',
+            headerLineSource: line || null
+        };
+    });
+
+    // Keep starts monotonic to avoid boundary crossings.
+    let cursor = leftX;
+    const monotonicStarts = starts.map((entry, idx) => {
+        const minWidth = Number(getColumnWidthLimit(entry.key, geomScale).min || geomPx(6, geomScale));
+        const remaining = starts.length - idx - 1;
+        const maxStart = rightX - (remaining + 1) * Math.max(geomPx(4, geomScale), minWidth * 0.35);
+        const clamped = Math.min(Math.max(entry.x1, cursor), maxStart);
+        cursor = clamped + Math.max(geomPx(2, geomScale), minWidth * 0.25);
+        return { ...entry, x1: clamped };
+    });
+
+    const columns = [];
+    for (let i = 0; i < monotonicStarts.length; i++) {
+        const current = monotonicStarts[i];
+        const next = monotonicStarts[i + 1];
+        const x1 = Math.max(leftX, Number(current.x1 || 0));
+        const x2 = next
+            ? Math.max(x1 + geomPx(4, geomScale), Number(next.x1 || 0))
+            : rightX;
+        const schema = COLUMN_SCHEMA[current.key] || { label: current.key.toUpperCase(), color: '#22c55e' };
+
+        columns.push({
+            key: current.key,
+            label: schema.label,
+            x1,
+            x2,
+            source: current.source,
+            confidence: current.confidence,
+            color: schema.color,
+            headerLineSource: current.headerLineSource
+        });
+    }
+
+    return {
+        columns,
+        missingHeaders
+    };
+}
+
+/**
+ * Estrategia envolvente: intenta usar líneas de headers para detección de columnas.
+ * Si falla, retorna null para que se use estrategia fallback.
+ */
+function buildColumnsHeaderLeftLinesMode(tableRects, headerAnchors, bodyRects, bodyRows, leftX, rightX, geomScale = 1) {
+    if (!Array.isArray(headerAnchors) || headerAnchors.length < 2) {
+        return null;
+    }
+
+    const includeArrow = headerAnchors.some(a => a.key === 'arrow');
+
+    // Detecta líneas verticales en margen izquierdo de headers
+    const headerLines = detectHeaderLeftLines(headerAnchors, includeArrow);
+    if (!headerLines.length) {
+        return null;
+    }
+
+    // Ajusta las líneas usando body gaps
+    const adjustedLines = adjustHeaderLeftLinesToGaps(headerLines, bodyRows, leftX, rightX, 8, geomScale);
+
+    // Construye columnas
+    const fromHeaderLeft = buildColumnsFromHeaderLeftLines(adjustedLines, bodyRects, leftX, rightX, geomScale);
+    if (!fromHeaderLeft || !Array.isArray(fromHeaderLeft.columns) || !fromHeaderLeft.columns.length) {
+        return null;
+    }
+
+    const columns = fromHeaderLeft.columns;
+    const missingHeaders = Array.isArray(fromHeaderLeft.missingHeaders) ? fromHeaderLeft.missingHeaders : [];
+    const warnings = [];
+
+    missingHeaders.forEach((key) => {
+        warnings.push({ code: 'HEADER_NOT_FOUND', key });
+        warnings.push({ code: 'MISSING_BOUNDARY_FALLBACK_USED', key });
+    });
+
+    adjustedLines.forEach((line) => {
+        const delta = Number(line.adjustmentDelta || 0);
+        if (Math.abs(delta) >= geomPx(1.5, geomScale)) {
+            warnings.push({ code: 'HEADER_LEFT_LINE_ADJUSTED', key: line.key, delta });
+        }
+        if (String(line.confidence || 'medium') === 'low') {
+            warnings.push({ code: 'HEADER_LEFT_LINE_LOW_CONFIDENCE', key: line.key });
+        }
+    });
+
+    columns.forEach((col) => {
+        const w = Number(col.x2 || 0) - Number(col.x1 || 0);
+        const limits = getColumnWidthLimit(col.key, geomScale);
+        if (Number.isFinite(limits.min) && w < limits.min * 0.75) {
+            warnings.push({ code: 'COLUMN_TOO_NARROW', key: col.key, width: w, minExpected: limits.min });
+        }
+        if (Number.isFinite(limits.max) && w > limits.max * 1.35) {
+            warnings.push({ code: 'COLUMN_TOO_WIDE', key: col.key, width: w, maxExpected: limits.max });
+        }
+    });
+
+    // Retorna resultado con información de debug
+    return {
+        columns: sortByCanonical(columns),
+        method: 'header-left-lines',
+        fallbackApplied: false,
+        headerLeftLines: headerLines,
+        adjustedHeaderLines: adjustedLines,
+        missingHeaders,
+        warnings,
+        columnsFromHeaderLeft: columns
+    };
+}
+
+// ════════════════════════════════════════════════════════════════════════════════════════
+
 function buildColumns(tableRects, bodyRects, bodyRows, leftX, rightX, geomScale = 1) {
     const gapBoundaries = detectHistogramGaps(bodyRects, leftX, rightX, geomScale);
     let method = 'body-geometry';
@@ -1528,7 +1893,11 @@ function buildTableDebugOverlay(payload) {
         overlapMarkers,
         boundaryAdjustments,
         warnings,
-        overlayStyle
+        overlayStyle,
+        headerAnchors,
+        headerLeftLines,
+        adjustedHeaderLines,
+        experimentalMode
     } = payload;
 
     const overlays = [];
@@ -1592,6 +1961,61 @@ function buildTableDebugOverlay(payload) {
             key: col.key
         });
     });
+
+    // 🔬 EXPERIMENTAL: Dibuja líneas verticales de headers detectados (header-left-lines mode)
+    if (Array.isArray(headerLeftLines) && headerLeftLines.length > 0) {
+        headerLeftLines.forEach((line) => {
+            const x1Initial = Number(line.x1Initial || 0);
+            const tableTopY = Number(tableArea.tableTopY || 0);
+            const tableBottomY = Number(tableArea.tableBottomY || H);
+
+            // Línea inicial (discontinua) en gris claro
+            overlays.push({
+                kind: 'header-left-line-initial',
+                left: x1Initial,
+                top: Math.max(0, tableTopY),
+                width: 1,
+                height: Math.max(2, tableBottomY - tableTopY),
+                text: `${line.key || 'HEADER'} (INITIAL)`,
+                dashStyle: 'dashed',
+                color: '#99999955'
+            });
+        });
+
+        // Líneas ajustadas (sólidas) en color vivo
+        if (Array.isArray(adjustedHeaderLines) && adjustedHeaderLines.length > 0) {
+            adjustedHeaderLines.forEach((line) => {
+                const x1Adjusted = Number(line.x1Adjusted || 0);
+                const tableTopY = Number(tableArea.tableTopY || 0);
+                const tableBottomY = Number(tableArea.tableBottomY || H);
+                const schema = COLUMN_SCHEMA[line.key] || { label: line.key.toUpperCase(), color: '#22c55e' };
+
+                // Línea ajustada (sólida) con color de columna
+                overlays.push({
+                    kind: 'header-left-line-adjusted',
+                    left: x1Adjusted,
+                    top: Math.max(0, tableTopY),
+                    width: 2,
+                    height: Math.max(2, tableBottomY - tableTopY),
+                    text: `${line.key || 'HEADER'} (ADJUSTED)`,
+                    color: schema.color,
+                    dashStyle: 'solid'
+                });
+
+                // Etiqueta encima de la línea
+                overlays.push({
+                    kind: 'header-left-line-label',
+                    left: x1Adjusted - 12,
+                    top: Math.max(0, tableTopY - 24),
+                    width: 28,
+                    height: 12,
+                    text: line.key ? COLUMN_SCHEMA[line.key]?.label || line.key.toUpperCase() : 'H',
+                    color: schema.color,
+                    fontSize: 10
+                });
+            });
+        }
+    }
 
     tableRects.forEach((rect) => {
         const key = assignToColumn(rect, columns);
@@ -1725,6 +2149,7 @@ export function runTableParser(textItems, viewport, options = {}) {
     const geomScale = Math.max(0.5, Number(viewport?.scale || 1));
     const lineTolerance = Number(options.lineTolerance || 6) * geomScale;
     const debugOverlayStyle = String(options.debugOverlayStyle || 'clean');
+    const columnDetectionMode = String(options.columnDetectionMode || 'header-left-lines-mark-only');
 
     const rects = extractTextRects(textItems, viewport);
     if (!rects.length) {
@@ -1766,7 +2191,46 @@ export function runTableParser(textItems, viewport, options = {}) {
     const leftX = Math.max(0, safeMin(denseSource.map((rect) => Number(rect.left || 0)), 0) - geomPx(2, geomScale));
     const rightX = Math.min(vw, safeMax(denseSource.map((rect) => toRight(rect)), vw) + geomPx(2, geomScale));
 
-    const columnDetection = buildColumns(tableRects, bodyRects, provisionalRows, leftX, rightX, geomScale);
+    // 🔬 EXPERIMENTAL: Intenta detectar headers y usar modo header-left-lines
+    const tableLines = groupIntoLines(tableRects, lineTolerance);
+    const headerAnchorsResult = detectHeaderAnchors(tableLines, Number(tableArea.tableTopY || 0), geomPx(90, geomScale), geomScale);
+    const headerAnchors = headerAnchorsResult?.anchors || [];
+    const headerLines = headerAnchorsResult?.headerLines || [];
+    const detectedHeaderKeys = headerAnchorsResult?.detectedHeaderKeys || [];
+
+    let columnDetection = null;
+    let experimentalHeaderLeftLinesMode = null;
+    let headerLeftLinesForDebug = [];
+    let adjustedHeaderLinesForDebug = [];
+
+    // Intenta modo experimental header-left-lines
+    if (headerAnchors.length >= 2) {
+        experimentalHeaderLeftLinesMode = buildColumnsHeaderLeftLinesMode(
+            tableRects,
+            headerAnchors,
+            bodyRects,
+            provisionalRows,
+            leftX,
+            rightX,
+            geomScale
+        );
+
+        if (experimentalHeaderLeftLinesMode) {
+            headerLeftLinesForDebug = experimentalHeaderLeftLinesMode.headerLeftLines || [];
+            adjustedHeaderLinesForDebug = experimentalHeaderLeftLinesMode.adjustedHeaderLines || [];
+        }
+    }
+
+    // Modo visual puro: solo dibuja líneas, no altera columnas ni usa fallback de estrategia experimental.
+    if (columnDetectionMode === 'header-left-lines-mark-only') {
+        columnDetection = buildColumns(tableRects, bodyRects, provisionalRows, leftX, rightX, geomScale);
+    } else if (experimentalHeaderLeftLinesMode && experimentalHeaderLeftLinesMode.columns && experimentalHeaderLeftLinesMode.columns.length >= 8) {
+        // Usa experimental si fue exitoso, si no, fallback a estrategia actual.
+        columnDetection = experimentalHeaderLeftLinesMode;
+    } else {
+        columnDetection = buildColumns(tableRects, bodyRects, provisionalRows, leftX, rightX, geomScale);
+    }
+
     const columns = columnDetection.columns;
 
     const rows = provisionalRows;
@@ -1806,7 +2270,11 @@ export function runTableParser(textItems, viewport, options = {}) {
             overlapMarkers: columnDetection.overlapMarkers || [],
             boundaryAdjustments: columnDetection.boundaryAdjustments || [],
             warnings: mergedWarnings,
-            overlayStyle: debugOverlayStyle
+            overlayStyle: debugOverlayStyle,
+            headerAnchors,
+            headerLeftLines: headerLeftLinesForDebug,
+            adjustedHeaderLines: adjustedHeaderLinesForDebug,
+            experimentalMode: columnDetection.method === 'header-left-lines'
         });
 
     const geometryDebug = {
@@ -1826,11 +2294,9 @@ export function runTableParser(textItems, viewport, options = {}) {
         tableArea,
         tableRects,
         ignoredHeaderRects: tableArea.ignoredHeaderRects || [],
-        headerLines: [],
-        headerRow: null,
-        headerDetection: null,
-        headerAnchors: [],
-        detectedHeaderKeys: [],
+        headerLines: headerLines || [],
+        headerAnchors: headerAnchors || [],
+        detectedHeaderKeys: detectedHeaderKeys || [],
         columns,
         rows,
         grid,
@@ -1844,12 +2310,15 @@ export function runTableParser(textItems, viewport, options = {}) {
         verticalSeparatorsDetected: columnDetection.verticalSeparatorsDetected || [],
         boundaryMoves: columnDetection.boundaryMoves || [],
         warnings: mergedWarnings,
-        missingHeaders: [],
+        missingHeaders: columnDetection.missingHeaders || [],
         verticalBoundaries: columnDetection.initialBoundaries || [],
         refinedBoundaries: columnDetection.refinedBoundaries || [],
         naturalGapsDetected: columnDetection.naturalGapsDetected || [],
         overlapMarkers: columnDetection.overlapMarkers || [],
         boundaryAdjustments: columnDetection.boundaryAdjustments || [],
+        headerLeftLines: headerLeftLinesForDebug,
+        adjustedHeaderLines: adjustedHeaderLinesForDebug,
+        experimentalMode: columnDetection.method === 'header-left-lines',
         geometryDebug,
         debugOverlay
     };
