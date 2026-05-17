@@ -3898,8 +3898,6 @@ async function copyPdfToFinalGeneric(pdfKey, finalKey, fieldLabel) {
 
 
 
-        await autoRecomputeEditedRecord(engineFile, id);
-
         await reloadEditedRecord(engineFile, id);
 
         renderReviewStateButtons(currentRow);
