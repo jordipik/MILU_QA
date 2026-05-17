@@ -227,10 +227,10 @@ function applyToRow(row, options) {
 
     const currentEstado = String(row?.qa_revision_estado || '').trim().toLowerCase();
     const currentAccion = String(row?.qa_revision_accion || '').trim().toLowerCase();
+    // Solo tratamos como resuelto cuando estado y accion son coherentes de cierre.
+    // Antes se usaba OR y acababa evitando el recálculo real en demasiados registros.
     const isResolved = currentEstado === 'ok'
-        || currentAccion === 'importar'
-        || currentAccion === 'eliminar'
-        || currentAccion === 'copia';
+        && (currentAccion === 'importar' || currentAccion === 'eliminar' || currentAccion === 'copia');
 
     let errorPayload;
     if (isResolved) {

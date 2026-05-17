@@ -25,6 +25,7 @@ import { getPdfExperimentalBlueTexts, getPdfHeaderColumnBodyDebug, getPdfLastPag
 import { evaluateQaChecksForField, evaluateRowQaChecks, getAllQaCheckCodes, getQaCheckLabel } from './qa-checks.js';
 
 import { confirmTypedAction } from './confirm-typed-action.js';
+import { runInMemoryRecalculation } from './error-recalc.js';
 
 import { showToast } from './toast.js';
 
@@ -89,6 +90,39 @@ const FIELD_TO_ERROR_KEY = {
     'NORMA': 'norma_error'
 
 };
+
+const ERROR_FIELD_KEYS = [...new Set(Object.values(FIELD_TO_ERROR_KEY).filter(Boolean))];
+
+function snapshotRowErrorFields(row) {
+    const snapshot = {};
+    ERROR_FIELD_KEYS.forEach((key) => {
+        snapshot[key] = Number(row?.[key]) || 0;
+    });
+    return snapshot;
+}
+
+function getChangedErrorKeys(beforeSnapshot, rowAfter) {
+    return ERROR_FIELD_KEYS.filter((key) => {
+        const before = Number(beforeSnapshot?.[key]) || 0;
+        const after = Number(rowAfter?.[key]) || 0;
+        return before !== after;
+    });
+}
+
+function flashChangedErrorCells(changedErrorKeys = []) {
+    const body = $('comparisonBody');
+    if (!(body instanceof HTMLElement) || !Array.isArray(changedErrorKeys) || !changedErrorKeys.length) return;
+
+    changedErrorKeys.forEach((errorKey) => {
+        const cell = body.querySelector(`td.field-err[data-field-key="${errorKey}"]`);
+        if (!(cell instanceof HTMLElement)) return;
+        cell.classList.remove('a2-error-cell-flash');
+        // Reinicia la animacion si se dispara varias veces seguidas
+        void cell.offsetWidth;
+        cell.classList.add('a2-error-cell-flash');
+        setTimeout(() => cell.classList.remove('a2-error-cell-flash'), 1600);
+    });
+}
 
 
 
@@ -762,6 +796,12 @@ const PDF_FEATURE_AUTO_PDF_ENABLED = true;
 const PDF_FEATURE_AUTO_SYNC_ON_RECORD_EVENTS = true;
 const AUTO_RECOMPUTE_ON_EDIT_ENABLED = false;
 const SHELL_NOTIFY_ON_PDF_DATA_CHANGE = false;
+
+// Scope configurable del boton rapido de recálculo de errores:
+// - 'all': recalcula errores de todo el libro
+// - 'current': recalcula solo el registro actual
+// Cambiar aqui para alternar comportamiento en el futuro.
+const QUICK_ERRORS_RECALC_SCOPE = 'all';
 
 const RIGHT_PANEL_WIDTH_KEY = 'analista02:right-panel-width';
 
@@ -2226,6 +2266,8 @@ function initComparisonDebugToggle() {
 
 
 
+let recomputeModalListenersBound = false;
+
 function initRecomputeModal() {
 
     const quickRecomputeBtn = $('recalculateRecordBtn');
@@ -2241,6 +2283,8 @@ function initRecomputeModal() {
     const recomputeRunBtn = $('recomputeRunBtn');
 
     const recomputePdfRunBtn = $('recomputePdfRunBtn');
+    const recomputeCopyCurrentBtn = $('recomputeCopyCurrentBtn');
+    const recomputeErrorsCurrentBtn = $('recomputeErrorsCurrentBtn');
 
 
 
@@ -2309,6 +2353,25 @@ function initRecomputeModal() {
 
     }
 
+    if (recomputeCopyCurrentBtn instanceof HTMLButtonElement) {
+        recomputeCopyCurrentBtn.disabled = !PDF_FEATURE_AUTO_PDF_ENABLED;
+        recomputeCopyCurrentBtn.title = PDF_FEATURE_AUTO_PDF_ENABLED
+            ? 'Copiar lectura del PDF actual a campos _pdf'
+            : 'Auto-PDF desactivado';
+    }
+
+    if (recomputeErrorsCurrentBtn instanceof HTMLButtonElement) {
+        recomputeErrorsCurrentBtn.disabled = !allowRecompute;
+        recomputeErrorsCurrentBtn.textContent = QUICK_ERRORS_RECALC_SCOPE === 'all'
+            ? '2) Recalcular errores de TODO el libro'
+            : '2) Recalcular errores del registro actual';
+        recomputeErrorsCurrentBtn.title = allowRecompute
+            ? (QUICK_ERRORS_RECALC_SCOPE === 'all'
+                ? 'Recalcular campos _error para todos los registros del libro'
+                : 'Recalcular campos _error del registro actual')
+            : 'Disponible solo en local (localhost:3000).';
+    }
+
 
 
     setRecomputeStatus(
@@ -2325,17 +2388,15 @@ function initRecomputeModal() {
 
 
 
-    closeBtn?.addEventListener('click', closeModal);
+    if (!recomputeModalListenersBound) {
+        closeBtn?.addEventListener('click', closeModal);
+        backdrop?.addEventListener('click', closeModal);
 
-    backdrop?.addEventListener('click', closeModal);
-
-
-
-    document.addEventListener('keydown', (event) => {
-
-        if (!modal.hidden && event.key === 'Escape') closeModal();
-
-    });
+        document.addEventListener('keydown', (event) => {
+            if (!modal.hidden && event.key === 'Escape') closeModal();
+        });
+        recomputeModalListenersBound = true;
+    }
 
 }
 
@@ -4320,6 +4381,7 @@ function syncRecomputeEngineSelect() {
 
 
 
+// Recalcula errores y, opcionalmente, estado/accion en backend (libro completo o ID puntual).
 async function runBackendRecompute() {
 
     const recomputeEngineSelect = $('recomputeEngineSelect');
@@ -4556,7 +4618,7 @@ async function runBackendRecompute() {
 
         );
 
-        return;
+        return null;
 
     }
 
@@ -4608,10 +4670,13 @@ async function runBackendRecompute() {
 
     }
 
+    return result;
+
 }
 
 
 
+// Recalcula campos *_pdf leyendo el PDF en backend (libro completo o ID puntual).
 async function runBackendRecomputePdfAuto() {
 
     if (!PDF_FEATURE_AUTO_PDF_ENABLED) {
@@ -5026,6 +5091,8 @@ async function runQuickRecomputeForCurrentRecord() {
 
     setRecomputeModalInputsForAction(selectedModel, currentId);
 
+    const errorSnapshotBefore = snapshotRowErrorFields(currentRow);
+
     setQuickRecomputeButtonsDisabled(true);
 
     setQuickRecomputeBusyUi(true);
@@ -5036,9 +5103,19 @@ async function runQuickRecomputeForCurrentRecord() {
 
         await copyPdfReadValuesToPdfFields();
 
-        await runBackendRecompute();
+        const backendResult = await runBackendRecompute();
+        if (!backendResult) {
+            setRecomputeStatus(`No se pudo recalcular el registro ID ${currentId}.`, 'error');
+            return;
+        }
 
-        setRecomputeStatus(`Registro ID ${currentId} recalculado correctamente.`, 'ok');
+        const changedErrorKeys = getChangedErrorKeys(errorSnapshotBefore, currentRow);
+        flashChangedErrorCells(changedErrorKeys);
+
+        setRecomputeStatus(
+            `Registro ID ${currentId} recalculado. Cambios _error: ${changedErrorKeys.length}.`,
+            'ok'
+        );
 
     } finally {
 
@@ -5052,6 +5129,7 @@ async function runQuickRecomputeForCurrentRecord() {
 
 
 
+// Atajo UI: recálculo backend de errores para el registro actual.
 async function runQuickRecomputeErrorsForCurrentRecord() {
 
     if (!currentRow) {
@@ -5096,15 +5174,34 @@ async function runQuickRecomputeErrorsForCurrentRecord() {
 
     setRecomputeModalInputsForAction(selectedModel, currentId);
 
+    const errorSnapshotBefore = snapshotRowErrorFields(currentRow);
+
     setQuickRecomputeButtonsDisabled(true);
 
     try {
 
         setRecomputeStatus(`Recalculando errores del registro ID ${currentId}...`, '');
 
-        await runBackendRecompute();
+        const backendResult = await runBackendRecompute();
+        if (!backendResult) {
+            setRecomputeStatus(`No se pudo recalcular errores del registro ID ${currentId}.`, 'error');
+            return;
+        }
 
-        setRecomputeStatus(`Errores del registro ID ${currentId} recalculados correctamente.`, 'ok');
+        const changedErrorKeys = getChangedErrorKeys(errorSnapshotBefore, currentRow);
+        flashChangedErrorCells(changedErrorKeys);
+
+        if (Number(backendResult.changedRows) > 0) {
+            setRecomputeStatus(
+                `Errores del registro ID ${currentId} recalculados: ${backendResult.changedRows} cambio(s), _error cambiados=${changedErrorKeys.length}, ko=${backendResult.koRows}, ok=${backendResult.okRows}.`,
+                'ok'
+            );
+        } else {
+            setRecomputeStatus(
+                `Registro ID ${currentId} recalculado sin cambios (ko=${backendResult.koRows}, ok=${backendResult.okRows}, _error cambiados=${changedErrorKeys.length}).`,
+                'ok'
+            );
+        }
 
     } finally {
 
@@ -5115,7 +5212,61 @@ async function runQuickRecomputeErrorsForCurrentRecord() {
 }
 
 
+// Recalculo rapido de errores para todo el libro (sin tocar PDF_AUTO).
+async function runQuickRecomputeErrorsForFullBook() {
 
+    const engineFilterSelect = $('engineFilterSelect');
+
+    if (!(engineFilterSelect instanceof HTMLSelectElement)) return;
+
+    const selectedModel = String(engineFilterSelect.value || '').trim();
+    if (!selectedModel) {
+        alert('Selecciona un libro para recalcular errores.');
+        return;
+    }
+
+    const confirmed = await confirmTypedAction({
+        title: 'Confirmar recálculo de errores',
+        message: `Se recalcularan SOLO los campos _error para TODO el libro ${selectedModel}.`,
+        expectedText: 'APLICAR',
+        confirmLabel: 'Recalcular errores',
+        cancelLabel: 'Cancelar',
+        dangerLevel: 'high'
+    });
+
+    if (!confirmed) {
+        setRecomputeStatus('Operacion cancelada por el usuario.', '');
+        return;
+    }
+
+    if (!isBackendEndpointAllowed('recompute-qa-errors')) {
+        setRecomputeStatus(getLocalOnlyBackendMessage('recompute-qa-errors'), 'error');
+        return;
+    }
+
+    setRecomputeModalInputsForAction(selectedModel, '');
+    setQuickRecomputeButtonsDisabled(true);
+
+    try {
+        setRecomputeStatus(`Recalculando errores de todo el libro ${selectedModel}...`, '');
+        const backendResult = await runBackendRecompute();
+        if (!backendResult) {
+            setRecomputeStatus(`No se pudo recalcular errores del libro ${selectedModel}.`, 'error');
+            return;
+        }
+
+        setRecomputeStatus(
+            `Libro ${selectedModel} recalculado: changed=${backendResult.changedRows}, ko=${backendResult.koRows}, ok=${backendResult.okRows}.`,
+            'ok'
+        );
+    } finally {
+        setQuickRecomputeButtonsDisabled(false);
+    }
+}
+
+
+
+// Atajo UI: recálculo backend del registro actual con actualización de estado/accion.
 async function runQuickRecomputeRevisionForCurrentRecord() {
 
     if (!currentRow) {
@@ -5187,100 +5338,139 @@ async function runQuickRecomputeRevisionForCurrentRecord() {
 
 
 
-async function setRevisionOkImportIfNoErrors() {
+// ── Recálculo en memoria ──────────────────────────────────────────────────────
+// Guard para evitar ejecuciones simultáneas del recálculo local.
+let isRecalculatingErrors = false;
 
+/**
+ * Ejecuta el recálculo de errores en memoria sobre los registros cargados.
+ * No escribe en disco. Lee el modo desde los radio buttons del modal.
+ * @param {'all'|'pending'} [forcedMode] – si se omite, lee del DOM
+ */
+async function runLocalRecalculation(forcedMode) {
+    if (isRecalculatingErrors) return;
+    isRecalculatingErrors = true;
+    const localRecalcBtn = $('localRecalcBtn');
+    if (localRecalcBtn instanceof HTMLButtonElement) localRecalcBtn.disabled = true;
+    try {
+        const modeRadio = document.querySelector('input[name="localRecalcMode"]:checked');
+        const mode = forcedMode || (modeRadio instanceof HTMLInputElement ? modeRadio.value : 'pending');
+
+        const records = Array.isArray(state.allData) ? state.allData : [];
+
+        setRecomputeStatus('Recalculando en memoria…', '');
+
+        // Ceder el hilo para que el navegador actualice el texto de estado
+        await new Promise((resolve) => setTimeout(resolve, 0));
+
+        const result = runInMemoryRecalculation(records, mode);
+        renderRecalcSummary(result);
+
+        setRecomputeStatus(
+            `Recálculo en memoria completado: ${result.errorCount} registro(s) con errores detectados.`,
+            result.errorCount > 0 ? 'error' : 'ok'
+        );
+    } finally {
+        isRecalculatingErrors = false;
+        if (localRecalcBtn instanceof HTMLButtonElement) localRecalcBtn.disabled = false;
+    }
+}
+
+/**
+ * Renderiza el panel de resumen del recálculo en memoria.
+ * @param {{ mode, total, recalculated, skipped, errorCount, results, timestamp }} result
+ */
+function renderRecalcSummary(result) {
+    const panel = $('localRecalcSummary');
+    if (!(panel instanceof HTMLElement)) return;
+
+    const modeLabel = result.mode === 'all' ? 'Todos los registros' : 'Solo pendientes/revisar';
+    const ts = result.timestamp ? new Date(result.timestamp).toLocaleString() : '—';
+
+    // Primeras 30 filas con errores para no saturar el DOM
+    const maxItems = 30;
+    const errRows = (result.results || []).slice(0, maxItems);
+    const hiddenCount = (result.results || []).length - errRows.length;
+
+    const itemsHtml = errRows.map((item) => {
+        const codeList = item.errors.map((e) => `<span class="lrs-err-code lrs-sev-${e.severity}" title="${e.message}">${e.code}</span>`).join(' ');
+        const label = item.pn || item.id || '—';
+        return `<li class="lrs-item"><span class="lrs-item-label">${label}</span>${codeList}</li>`;
+    }).join('');
+
+    const moreHtml = hiddenCount > 0
+        ? `<p class="lrs-more">… y ${hiddenCount} más (ver consola para lista completa).</p>`
+        : '';
+
+    panel.hidden = false;
+    panel.innerHTML = `
+        <div class="lrs-head">
+            <strong class="lrs-title">Resumen recálculo en memoria</strong>
+            <time class="lrs-ts">${ts}</time>
+        </div>
+        <ul class="lrs-stats">
+            <li><span class="lrs-stat-label">Modo:</span> <span class="lrs-stat-val">${modeLabel}</span></li>
+            <li><span class="lrs-stat-label">Registros totales:</span> <span class="lrs-stat-val">${result.total}</span></li>
+            <li><span class="lrs-stat-label">Recalculados:</span> <span class="lrs-stat-val">${result.recalculated}</span></li>
+            <li><span class="lrs-stat-label">Omitidos:</span> <span class="lrs-stat-val">${result.skipped}</span></li>
+            <li><span class="lrs-stat-label">Errores encontrados:</span> <span class="lrs-stat-val lrs-stat-errors">${result.errorCount}</span></li>
+        </ul>
+        ${errRows.length > 0
+            ? `<ol class="lrs-error-list">${itemsHtml}</ol>${moreHtml}`
+            : '<p class="lrs-ok">No se detectaron errores en los registros recalculados.</p>'}
+    `;
+}
+
+async function setRevisionOkImportIfNoErrors() {
     if (!currentRow) return false;
 
-
-
     const isNoiseFooter = String(currentRow?.criterio_pn || '').trim() === 'C_NOISE_FOOTER'
-
         || String(currentRow?.status || '').trim().toUpperCase() === 'NOISE';
-
-
 
     if (!isNoiseFooter && getRowErrorCount(currentRow) > 0) return 'has-errors';
 
-
-
     const engineFile = resolveEngineFile(currentRow);
-
     const id = txt(currentRow?.ID, '');
-
     if (!engineFile || !id) return 'has-errors';
 
-
-
     const nextEstado = 'ok';
-
     const nextAccion = isNoiseFooter ? 'eliminar' : 'importar';
-
     const currentEstado = normalizeEstadoToNew(currentRow?.qa_revision_estado);
-
     const currentAccion = normalizeAccionToNew(currentRow?.qa_revision_accion);
-
-
 
     let changed = false;
 
-
-
     if (currentEstado !== nextEstado) {
-
         await saveCellToServer(engineFile, id, 'qa_revision_estado', denormalizeEstadoFromNew(nextEstado));
-
         currentRow.qa_revision_estado = nextEstado;
-
         changed = true;
-
     }
-
-
 
     if (currentAccion !== nextAccion) {
-
         await saveCellToServer(engineFile, id, 'qa_revision_accion', denormalizeAccionFromNew(nextAccion));
-
         currentRow.qa_revision_accion = nextAccion;
-
         changed = true;
-
     }
-
-
 
     if (!changed) return isNoiseFooter ? 'already-ok-eliminar' : 'already-ok-importar';
 
-
-
     publishRevisionSync({
-
         id,
-
         engineFile,
-
         estado: currentRow?.qa_revision_estado,
-
         accion: currentRow?.qa_revision_accion,
-
         source: 'analista-02'
-
     });
 
-
-
     renderReviewStateButtons(currentRow);
-
     renderReviewStats();
-
     notifyPdfDataChangedFromAnalista(currentRow);
-
     return isNoiseFooter ? 'applied-eliminar' : 'applied';
-
 }
 
 
 
+// Flujo masivo backend para libro: copia PDF_AUTO y luego recálculo de errores.
 async function runQuickRecomputeForFullBook() {
 
     const engineFilterSelect = $('engineFilterSelect');
@@ -5917,6 +6107,8 @@ function renderMeta(row) {
 
 <button id="openEditRecordBtn" type="button" class="a2-meta-edit-btn">Editar</button>
 
+<button id="openRecomputeModalBtn" type="button" class="a2-meta-edit-btn" title="Abrir módulo de recálculo">Recálculo</button>
+
 </div>`;
 
 
@@ -5931,6 +6123,26 @@ function renderMeta(row) {
 
         });
 
+    }
+
+    const recomputeBtn = $('openRecomputeModalBtn');
+    if (recomputeBtn instanceof HTMLButtonElement) {
+        recomputeBtn.addEventListener('click', () => {
+            const modal = $('recomputeModal');
+            const engineFilterSelect = $('engineFilterSelect');
+            if (!(modal instanceof HTMLElement) || !(engineFilterSelect instanceof HTMLSelectElement)) return;
+
+            const selectedModel = String(engineFilterSelect.value || '').trim();
+            const currentId = String(currentRow?.ID || '').trim();
+
+            if (selectedModel) {
+                setRecomputeModalInputsForAction(selectedModel, currentId);
+            } else {
+                syncRecomputeEngineSelect();
+            }
+
+            modal.hidden = false;
+        });
     }
 
 
@@ -9314,7 +9526,36 @@ bindClick('recomputeRunBtn', () => {
 
 });
 
+bindClick('recomputeCopyCurrentBtn', () => {
 
+    if (!PDF_FEATURE_AUTO_PDF_ENABLED) {
+        setRecomputeStatus('Auto-PDF desactivado para copiar a campos _pdf.', 'error');
+        return;
+    }
+
+    setRecomputeStatus('Copiando lectura PDF a campos _pdf del registro actual...', '');
+    copyPdfReadValuesToPdfFields().then(() => {
+        setRecomputeStatus('Campos _pdf del registro actual guardados correctamente.', 'ok');
+    }).catch((error) => {
+        setRecomputeStatus(`Error al copiar _pdf: ${String(error?.message || error)}`, 'error');
+    });
+
+});
+
+bindClick('recomputeErrorsCurrentBtn', () => {
+
+    const runner = QUICK_ERRORS_RECALC_SCOPE === 'all'
+        ? runQuickRecomputeErrorsForFullBook
+        : runQuickRecomputeErrorsForCurrentRecord;
+
+    runner().catch((error) => {
+
+        const scopeLabel = QUICK_ERRORS_RECALC_SCOPE === 'all' ? 'todo el libro' : 'el registro actual';
+        setRecomputeStatus(`Error recalculando _error de ${scopeLabel}: ${String(error?.message || error)}`, 'error');
+
+    });
+
+});
 
 bindClick('recomputePdfRunBtn', () => {
 
@@ -9328,6 +9569,13 @@ bindClick('recomputePdfRunBtn', () => {
 
     });
 
+});
+
+// Recálculo en memoria (solo UI, sin backend, con selector de modo)
+bindClick('localRecalcBtn', () => {
+    runLocalRecalculation().catch((error) => {
+        setRecomputeStatus(`Error en recálculo local: ${String(error?.message || error)}`, 'error');
+    });
 });
 
 
