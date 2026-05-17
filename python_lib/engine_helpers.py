@@ -161,7 +161,7 @@ def calc_record_errors(record: dict) -> dict:
         and not is_compare_match(weight_final, weight_pdf)
         and not is_compare_match(weight_final, weight_gesa_with_units)
     )
-    measurement_error = int(
+    measure_error = int(
         (not measurement_all_empty)
         and not is_compare_match(measurement_final, measurement_pdf)
         and not is_compare_match(measurement_final, measurement_gesa)
@@ -180,13 +180,13 @@ def calc_record_errors(record: dict) -> dict:
     record["pn_error"] = pn_error
     record["designation_error"] = designation_error
     record["weight_error"] = weight_error
-    record["measurement_error"] = measurement_error
+    record["measure_error"] = measure_error
     record["norma_error"] = norma_error
     record["bom_error"] = bom_error
 
     total_error = (
         pos_error + pn_error + designation_error
-        + weight_error + measurement_error + norma_error + bom_error
+        + weight_error + measure_error + norma_error + bom_error
     )
     record["total_error"] = total_error
     record["has_error"] = total_error > 0

@@ -11,6 +11,7 @@ const OPERATIONAL_EDITABLE_FIELDS = new Set([
     'measure_final',
     'weight_final',
     'pn_final',
+    'norma',
     'exp_imagenes',
     'pos_pdf',
     'pn_pdf',
