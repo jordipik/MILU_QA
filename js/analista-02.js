@@ -508,6 +508,8 @@ function buildPdfReadSummary(valuesToCopy) {
         ['QTY', 'qty_pdf'],
         ['UNITS', 'units_pdf'],
         ['WEIGHT', 'weight_pdf'],
+        ['FG/FGS', 'fg_fgs_pdf'],
+        ['BOM-No.', 'bom_pdf'],
         ['FN', 'fn_pdf'],
         ['MEASUREMENT / STANDARD', 'measure_pdf'],
         ['NORMA', 'norma_pdf']
@@ -4256,6 +4258,23 @@ async function copyPdfReadValuesToPdfFields() {
     }
 
     const valuesToCopy = buildMarkedRowValuesFromGroup(markedRow);
+
+    // Include top header detections so FG/FGS and BOM can be copied together
+    // with the main row values when available.
+    try {
+        const topDetection = await detectTopBomAndFgInPdf(currentRow);
+        const topEntries = Array.isArray(topDetection?.entries) ? topDetection.entries : [];
+        const detectedFg = topEntries.find((entry) => String(entry?.key || '').trim() === 'fg_fgs');
+        const detectedBom = topEntries.find((entry) => String(entry?.key || '').trim() === 'bom');
+
+        const fgValue = normalizeString(detectedFg?.value);
+        const bomValue = normalizeString(detectedBom?.value);
+
+        if (fgValue) valuesToCopy.fg_fgs_pdf = fgValue;
+        if (bomValue) valuesToCopy.bom_pdf = bomValue;
+    } catch (error) {
+        console.warn('No se pudo detectar FG/FGS + BOM superior durante la copia de lectura PDF:', error);
+    }
 
 
 
