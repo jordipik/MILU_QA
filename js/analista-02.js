@@ -324,9 +324,11 @@ function looksLikeFnValue(value) {
 
     const normalized = normalizeString(value).toUpperCase();
 
-    return Boolean(normalized)
-        && normalized.length <= 12
-        && /^[A-Z0-9/.-]+$/.test(normalized);
+    if (!normalized) return false;
+    if (normalized.length > 20) return false;
+    // FN suele venir como 1-3 codigos cortos (ej: "EM", "MN", "MN EM").
+    if (!/[A-Z]/.test(normalized)) return false;
+    return /^(?:[A-Z0-9/.-]{1,8})(?:\s+[A-Z0-9/.-]{1,8}){0,2}$/.test(normalized);
 
 }
 
@@ -4291,17 +4293,25 @@ async function copyPdfReadValuesToPdfFields() {
 
 
 
-        await saveCellToServer(engineFile, id, field, value);
-        currentRow[field] = value;
-        changedFields.push(field);
+        try {
+            await saveCellToServer(engineFile, id, field, value);
+            currentRow[field] = value;
+            changedFields.push(field);
+        } catch (error) {
+            console.error(`Error guardando ${field} en JSON:`, error);
+        }
 
     }
 
     if (changedFields.includes('norma_pdf') && String(currentRow?.normalizado_pdf ?? '') !== 'SI') {
 
-        await saveCellToServer(engineFile, id, 'normalizado_pdf', 'SI');
-        currentRow['normalizado_pdf'] = 'SI';
-        changedFields.push('normalizado_pdf');
+        try {
+            await saveCellToServer(engineFile, id, 'normalizado_pdf', 'SI');
+            currentRow['normalizado_pdf'] = 'SI';
+            changedFields.push('normalizado_pdf');
+        } catch (error) {
+            console.error(`Error guardando normalizado_pdf en JSON:`, error);
+        }
 
     }
 
