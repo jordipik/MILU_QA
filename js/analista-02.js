@@ -68,7 +68,7 @@ function simpleConfirm(message) {
             justify-content: center;
             padding: 16px;
         `;
-        
+
         const panel = document.createElement('div');
         panel.style.cssText = `
             width: min(480px, 96vw);
@@ -80,11 +80,11 @@ function simpleConfirm(message) {
             color: #0f172a;
             overflow: hidden;
         `;
-        
+
         const content = document.createElement('div');
         content.style.cssText = `padding: 20px 16px; font-size: 14px; line-height: 1.5; color: #334155;`;
         content.textContent = message;
-        
+
         const footer = document.createElement('div');
         footer.style.cssText = `
             border-top: 1px solid #e6edf5;
@@ -94,7 +94,7 @@ function simpleConfirm(message) {
             gap: 10px;
             background: #f8fafc;
         `;
-        
+
         const cancelBtn = document.createElement('button');
         cancelBtn.textContent = 'Cancelar';
         cancelBtn.style.cssText = `
@@ -112,7 +112,7 @@ function simpleConfirm(message) {
             document.body.removeChild(modal);
             resolve(false);
         };
-        
+
         const confirmBtn = document.createElement('button');
         confirmBtn.textContent = 'Confirmar';
         confirmBtn.style.cssText = `
@@ -130,14 +130,14 @@ function simpleConfirm(message) {
             document.body.removeChild(modal);
             resolve(true);
         };
-        
+
         footer.appendChild(cancelBtn);
         footer.appendChild(confirmBtn);
         panel.appendChild(content);
         panel.appendChild(footer);
         modal.appendChild(panel);
         document.body.appendChild(modal);
-        
+
         confirmBtn.focus();
     });
 }
@@ -4470,7 +4470,7 @@ function resolveEngineFileFromFilter(engineFilter) {
 
 
 
-const LOCAL_ONLY_BACKEND_ENDPOINTS = new Set(['recompute-qa-errors', 'recompute-pdf-auto']);
+const LOCAL_ONLY_BACKEND_ENDPOINTS = new Set(['recompute-qa-errors', 'recompute-pdf-auto', 'recompute-pdf-auto-visual']);
 
 
 
@@ -10452,10 +10452,56 @@ bindClick('recomputeCopyBookBtn', () => {
         return;
     }
 
-    runBulkCopyPdfToBook().catch((error) => {
+    // Flujo rapido: usar backend puro para evitar carga visual de PDF/overlays.
+    const recomputeIdInput = $('recomputeIdInput');
+    const previousId = recomputeIdInput instanceof HTMLInputElement
+        ? String(recomputeIdInput.value || '')
+        : '';
 
-        setRecomputeStatus(`Error al copiar PDF a todo el libro: ${String(error?.message || error)}`, 'error');
+    if (recomputeIdInput instanceof HTMLInputElement) {
+        recomputeIdInput.value = '';
+    }
 
+    const runStandardFallback = () => {
+        runBackendRecomputePdfAuto().catch((error) => {
+            setRecomputeStatus(`Error al copiar PDF en backend para todo el libro: ${String(error?.message || error)}`, 'error');
+        }).finally(() => {
+            if (recomputeIdInput instanceof HTMLInputElement) {
+                recomputeIdInput.value = previousId;
+            }
+        });
+    };
+
+    if (!isBackendEndpointAllowed('recompute-pdf-auto-visual')) {
+        setRecomputeStatus('Endpoint visual backend no disponible; usando modo backend estandar...', '');
+        runStandardFallback();
+        return;
+    }
+
+    setRecomputeStatus('Ejecutando copia PDF visual-compatible en backend (sin render visual)...', '');
+
+    postJsonToBackendCandidates('recompute-pdf-auto-visual', {
+        file: resolveEngineFileFromFilter(String(($('recomputeEngineSelect')?.value || $('engineFilterSelect')?.value || '').trim())),
+        dryRun: false,
+        backup: true
+    }).then(async (responseData) => {
+        const result = responseData?.result || {};
+        setRecomputeStatus(
+            `OK PDF visual backend | scanned=${Number(result.scanned) || 0} changed=${Number(result.changedRows) || 0} missingPages=${Number(result.missingPages) || 0}`,
+            'ok'
+        );
+        const selectedModel = String(($('engineFilterSelect')?.value || '').trim());
+        if (selectedModel) {
+            await loadEngineForFilter(selectedModel);
+            updateRecordSearchSuggestions();
+        }
+    }).catch((error) => {
+        setRecomputeStatus(`Visual backend no disponible (${String(error?.message || error)}). Usando modo backend estandar...`, 'error');
+        runStandardFallback();
+    }).finally(() => {
+        if (recomputeIdInput instanceof HTMLInputElement) {
+            recomputeIdInput.value = previousId;
+        }
     });
 
 });
@@ -11122,3 +11168,4 @@ document.addEventListener('keydown', (event) => {
 
 initialize();
 
+                                                        

@@ -8,6 +8,7 @@ const cors = require('cors');
 const { ENGINE_JSON_FILES } = require('./engine_files');
 const { recomputeEngineErrors } = require('./recompute_engine_errors');
 const { runComparison } = require('./scripts/qa_pdf_compare');
+const { runVisualCopyComparison } = require('./scripts/qa_pdf_visual_copy');
 const { createRevisionSyncService } = require('./server/services/revision-sync');
 const { createRevisionApplyService } = require('./server/services/revision-apply');
 const { createPnReviewQaCacheService } = require('./server/services/pn-review-qa-cache');
@@ -611,6 +612,59 @@ app.post('/recompute-pdf-auto', async (req, res) => {
             fieldsWithDetectedValues: fieldSummary.filter((entry) => Number(entry.detected) > 0).length,
             totalComparedFields: fieldSummary.length,
             fieldSummary
+        };
+
+        return res.json({ ok: true, result });
+    } catch (error) {
+        const message = String(error?.message || error || 'Error desconocido');
+        const isNotFound = /no se encontro ningun registro con id=/i.test(message);
+        return res.status(isNotFound ? 404 : 500).json({ ok: false, error: message });
+    }
+});
+
+app.post('/recompute-pdf-auto-visual', async (req, res) => {
+    let file;
+    let id;
+    let dryRun;
+    let backup;
+
+    try {
+        const validated = validateEngineFilePayload(req.body, { maxBytes: 12288 });
+        file = validated.file;
+        if (!ENGINE_JSON_FILES.includes(file)) {
+            throw validationError({ code: 'FILE_NOT_ALLOWED', field: 'file', message: 'Archivo no permitido' });
+        }
+        id = assertString(req.body?.id ?? '', { field: 'id', allowEmpty: true, maxLength: 128 });
+        dryRun = assertBooleanLike(req.body?.dryRun ?? false, 'dryRun');
+        backup = req.body?.backup === false ? false : true;
+    } catch (error) {
+        return isValidationError(error)
+            ? sendValidationError(res, error, { endpoint: '/recompute-pdf-auto-visual' })
+            : res.status(400).json({ ok: false, error: String(error?.message || error) });
+    }
+
+    try {
+        const comparisonResult = await runVisualCopyComparison({
+            file,
+            id,
+            writePdf: !dryRun,
+            backup
+        });
+
+        const report = comparisonResult?.report || {};
+        const result = {
+            file,
+            mode: id ? 'single-id' : 'full-book',
+            id: id || null,
+            algorithm: 'visual-compatible-backend',
+            dryRun,
+            scanned: Number(report.scanned_rows) || 0,
+            changedRows: Number(report.changed_pdf_fields_rows) || 0,
+            missingPages: Array.isArray(report.missing_pages) ? report.missing_pages.length : 0,
+            wroteFile: Boolean(report.wrote_engine_file),
+            fieldsWithDetectedValues: 0,
+            totalComparedFields: 0,
+            fieldSummary: []
         };
 
         return res.json({ ok: true, result });
