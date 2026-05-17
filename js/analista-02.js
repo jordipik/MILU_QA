@@ -2071,7 +2071,7 @@ function initComparisonDebugToggle() {
 
 function initRecomputeModal() {
 
-    const quickRecomputeBtn = $('openRecomputeModalBtn');
+    const quickRecomputeBtn = $('recalculateRecordBtn');
 
     const recomputeAllBtn = $('recomputeAllBtn');
 
@@ -4672,7 +4672,7 @@ async function runBackendRecomputePdfAuto() {
 
 function setQuickRecomputeButtonsDisabled(disabled) {
 
-    const quickRecomputeBtn = $('openRecomputeModalBtn');
+    const quickRecomputeBtn = $('recalculateRecordBtn');
 
     const recomputeAllBtn = $('recomputeAllBtn');
 
@@ -4686,22 +4686,20 @@ function setQuickRecomputeButtonsDisabled(disabled) {
 
 function setQuickRecomputeBusyUi(busy) {
 
-    const quickRecomputeBtn = $('openRecomputeModalBtn');
+    const quickRecomputeBtn = $('recalculateRecordBtn');
 
     if (quickRecomputeBtn instanceof HTMLButtonElement) {
 
         if (!quickRecomputeBtn.dataset.defaultLabel) {
 
-            quickRecomputeBtn.dataset.defaultLabel = quickRecomputeBtn.textContent || 'Recalcular registro';
+            quickRecomputeBtn.dataset.defaultLabel = quickRecomputeBtn.textContent || 'RECALCULAR';
 
         }
 
 
 
         quickRecomputeBtn.textContent = busy
-
-            ? `âŒ› ${quickRecomputeBtn.dataset.defaultLabel}`
-
+            ? `... ${quickRecomputeBtn.dataset.defaultLabel}`
             : quickRecomputeBtn.dataset.defaultLabel;
 
         quickRecomputeBtn.style.cursor = busy ? 'wait' : '';
@@ -4782,7 +4780,7 @@ async function runQuickRecomputeForCurrentRecord() {
 
 
 
-    if (!isBackendEndpointAllowed('recompute-qa-errors') || !isBackendEndpointAllowed('recompute-pdf-auto')) {
+    if (!isBackendEndpointAllowed('recompute-qa-errors')) {
 
         setRecomputeStatus(getLocalOnlyBackendMessage('recompute-qa-errors'), 'error');
 
@@ -4800,11 +4798,11 @@ async function runQuickRecomputeForCurrentRecord() {
 
     try {
 
-        setRecomputeStatus(`Recalculando registro ID ${currentId} (errores + PDF_AUTO)...`, '');
+        setRecomputeStatus(`Recalculando registro ID ${currentId} (Copiar lectura a _pdf + errores)...`, '');
+
+        await copyPdfReadValuesToPdfFields();
 
         await runBackendRecompute();
-
-        await runBackendRecomputePdfAuto();
 
         const revisionAutoUpdate = await setRevisionOkImportIfNoErrors();
 
@@ -4958,7 +4956,7 @@ async function runQuickRecomputeForFullBook() {
 
         title: 'Confirmar recálculo completo',
 
-        message: `Se recalcularan ERRORES y PDF_AUTO para todo el libro ${selectedModel}. Esta accion afecta a multiples registros.`,
+        message: `Se copiara lectura a _pdf y despues se recalcularan ERRORES para todo el libro ${selectedModel}. Esta accion afecta a multiples registros.`,
 
         expectedText: 'APLICAR',
 
@@ -4970,7 +4968,10 @@ async function runQuickRecomputeForFullBook() {
 
     });
 
-    if (!confirmed) return;
+    if (!confirmed) {
+        setRecomputeStatus('Operacion cancelada por el usuario.', '');
+        return;
+    }
 
 
 
@@ -4990,11 +4991,12 @@ async function runQuickRecomputeForFullBook() {
 
     try {
 
-        setRecomputeStatus(`Recalculando libro ${selectedModel} completo (errores + PDF_AUTO)...`, '');
+        setRecomputeStatus(`Recalculando libro ${selectedModel} completo (Copiar lectura a _pdf + errores)...`, '');
+
+        // Orden correcto para que errores use el _pdf ya sincronizado.
+        await runBackendRecomputePdfAuto();
 
         await runBackendRecompute();
-
-        await runBackendRecomputePdfAuto();
 
         setRecomputeStatus(`Libro ${selectedModel} recalculado correctamente.`, 'ok');
 
@@ -8782,7 +8784,7 @@ bindClick('nextPendingBtn', () => {
 
 
 
-bindClick('openRecomputeModalBtn', () => {
+bindClick('recalculateRecordBtn', () => {
 
     runQuickRecomputeForCurrentRecord().catch((error) => {
 

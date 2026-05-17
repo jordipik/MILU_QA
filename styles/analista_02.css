@@ -340,7 +340,7 @@ body.a2-resizing * {
 }
 
 .a2-toolbar #loadRecordBtn,
-.a2-toolbar #openRecomputeModalBtn,
+.a2-toolbar #recalculateRecordBtn,
 .a2-toolbar #recomputeAllBtn {
     font-size: 12px;
     letter-spacing: 0.01em;
@@ -405,12 +405,17 @@ body.a2-resizing * {
     background: linear-gradient(180deg, #f6fffa, #e8f8ef);
 }
 
-.a2-toolbar #openRecomputeModalBtn {
+.a2-toolbar #recalculateRecordBtn {
     height: 38px;
     border-radius: 10px;
-    border-color: #9bcab0;
-    background: #f0fbf4;
-    color: #195d35;
+    border-color: #be3b3b;
+    background: #df4a4a;
+    color: #ffffff;
+}
+
+.a2-toolbar #recalculateRecordBtn:hover {
+    background: #cd3d3d;
+    border-color: #a63434;
 }
 
 .a2-toolbar #recomputeAllBtn {
