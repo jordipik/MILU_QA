@@ -4536,7 +4536,9 @@ export function buildHeaderColumnBodyHighlights() {
         measurementStandardBoundaryWarnings,
         multilineCandidates,
         multilineCandidateCount: multilineCandidates.length,
-        rectDebug: rectDebugList.slice(0, 50),
+        // Keep the full list for downstream row matching (copy-to-_pdf).
+        // UI panels still render a short preview on their side.
+        rectDebug: rectDebugList,
         warnings
     };
 
