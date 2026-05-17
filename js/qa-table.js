@@ -1133,22 +1133,22 @@ function renderRow(row) {
             <td class="${withCellClasses(`revision-cell ${getRevisionAccionClass(revisionAccion)}`, 'qa_revision_accion')}" title="Acción a realizar">
           <select class="revision-select" data-revision-field="accion" data-revision-key="${escapeHtml(revisionKey)}">${revisionAccionOptions}</select>
       </td>
-    <td class="${withCellClasses('', 'PART NO.', getComparisonClasses({ pdfMatch: comparisonMeta.pn.pdfMatch }))}" title="${escapeHtml(val(row, 'PART NO.'))}">${escapeHtml(val(row, 'PART NO.'))}</td>
+    <td data-copy-to-final="pn_final" data-copy-from-field="PART NO." class="${withCellClasses('', 'PART NO.', getComparisonClasses({ pdfMatch: comparisonMeta.pn.pdfMatch }))}" title="${escapeHtml(val(row, 'PART NO.'))}">${escapeHtml(val(row, 'PART NO.'))}</td>
         <td class="${withCellClasses('', 'pos_final', getComparisonClasses({ missing: comparisonMeta.pos.missing }))}" title="${escapeHtml(getQaPosValue(row))}">${escapeHtml(getQaPosValue(row))}</td>
     <td${editableAttr('pn_final')} title="${escapeHtml(getCompactFieldValue(row, 'pn_final', '—'))}" class="${withCellClasses('cell-inline-editable', 'pn_final', getComparisonClasses(comparisonMeta.pn))}">${escapeHtml(getCompactFieldValue(row, 'pn_final', '—'))}</td>
     <td class="${withCellClasses('', 'designation_final', getComparisonClasses(comparisonMeta.designation))}" title="${escapeHtml(getCompactFieldValue(row, 'designation_final', '—'))}">${escapeHtml(getCompactFieldValue(row, 'designation_final', '—'))}</td>
             <td class="${withCellClasses('', 'pn_raw', getComparisonClasses({ gesaMatch: comparisonMeta.pn.gesaMatch }))}" title="${escapeHtml(val(row, 'pn_raw'))}">${escapeHtml(val(row, 'pn_raw'))}</td>
         <td title="${escapeHtml(val(row, 'criterio_pn'))}">${escapeHtml(val(row, 'criterio_pn'))}</td>
-    <td title="${escapeHtml(val(row, 'designation_gesa'))}" class="${withCellClasses(classGesa, 'designation_gesa', getComparisonClasses({ gesaMatch: comparisonMeta.designation.gesaMatch }))}">${escapeHtml(val(row, 'designation_gesa'))}</td>
+    <td data-copy-to-final="designation_final" data-copy-from-field="designation_gesa" title="${escapeHtml(val(row, 'designation_gesa'))}" class="${withCellClasses(classGesa, 'designation_gesa', getComparisonClasses({ gesaMatch: comparisonMeta.designation.gesaMatch }))}">${escapeHtml(val(row, 'designation_gesa'))}</td>
     <td class="separator-after" title="${escapeHtml(getRowValueForColumn(row, 'MODEL/TYPE'))}">${escapeHtml(getRowValueForColumn(row, 'MODEL/TYPE'))}</td>
     <td title="${escapeHtml(getCompactFieldValue(row, 'qty_final', '—'))}">${escapeHtml(getCompactFieldValue(row, 'qty_final', '—'))}</td>
         <td class="${withCellClasses(classGesa, 'weight_final')}" title="${escapeHtml(getCompactFieldValue(row, 'weight_final', '—'))}">${escapeHtml(getCompactFieldValue(row, 'weight_final', '—'))}</td>
             <td class="${withCellClasses('', 'qty_units_final')}" title="${escapeHtml(getCompactFieldValue(row, 'qty_units_final', '—'))}">${escapeHtml(getCompactFieldValue(row, 'qty_units_final', '—'))}</td>
-            <td class="${withCellClasses(classGesa, 'weight_gesa')}" title="${escapeHtml(val(row, 'weight_gesa'))}">${escapeHtml(val(row, 'weight_gesa'))}</td>
+            <td data-copy-to-final="weight_final" data-copy-from-field="weight_gesa" class="${withCellClasses(classGesa, 'weight_gesa')}" title="${escapeHtml(val(row, 'weight_gesa'))}">${escapeHtml(val(row, 'weight_gesa'))}</td>
             <td class="${withCellClasses(`separator-after ${classGesa}`, 'units')}" title="${escapeHtml(val(row, 'units'))}">${escapeHtml(val(row, 'units'))}</td>
       <td title="${escapeHtml(val(row, 'FG/FGS'))}">${escapeHtml(val(row, 'FG/FGS'))}</td>
         <td class="${withCellClasses(classGesa, 'measure_final', getComparisonClasses(comparisonMeta.measurement))}" title="${escapeHtml(getCompactFieldValue(row, 'measure_final', '—'))}">${escapeHtml(getCompactFieldValue(row, 'measure_final', '—'))}</td>
-            <td class="${withCellClasses(classGesa, 'dimensions_gesa', getComparisonClasses({ gesaMatch: comparisonMeta.measurement.gesaMatch }))}" title="${escapeHtml(val(row, 'dimensions_gesa'))}">${escapeHtml(val(row, 'dimensions_gesa'))}</td>
+            <td data-copy-to-final="measure_final" data-copy-from-field="dimensions_gesa" class="${withCellClasses(classGesa, 'dimensions_gesa', getComparisonClasses({ gesaMatch: comparisonMeta.measurement.gesaMatch }))}" title="${escapeHtml(val(row, 'dimensions_gesa'))}">${escapeHtml(val(row, 'dimensions_gesa'))}</td>
       <td title="${escapeHtml(val(row, 'BOM-No.'))}">${escapeHtml(val(row, 'BOM-No.'))}</td>
       <td title="${escapeHtml(val(row, 'model'))}">${escapeHtml(val(row, 'model'))}</td>
     <td class="${withCellClasses('', 'Source Page')}" title="${escapeHtml(getCompactFieldValue(row, 'source_page', '—'))}">${escapeHtml(getCompactFieldValue(row, 'source_page', '—'))}</td>
@@ -1286,7 +1286,7 @@ function renderErrorViewRow(row, definitions) {
         <td title="${escapeHtml(val(row, 'engine_model'))}">${escapeHtml(val(row, 'engine_model'))}</td>
         <td title="${escapeHtml(getCompactFieldValue(row, 'source_page', '—'))}">${escapeHtml(getCompactFieldValue(row, 'source_page', '—'))}</td>
         <td title="${escapeHtml(getQaPosValue(row))}">${escapeHtml(getQaPosValue(row))}</td>
-        <td title="${escapeHtml(val(row, 'PART NO.'))}">${escapeHtml(val(row, 'PART NO.'))}</td>
+        <td data-copy-to-final="pn_final" data-copy-from-field="PART NO." title="${escapeHtml(val(row, 'PART NO.'))}">${escapeHtml(val(row, 'PART NO.'))}</td>
         <td title="${escapeHtml(getCompactFieldValue(row, 'designation_final', '—'))}">${escapeHtml(getCompactFieldValue(row, 'designation_final', '—'))}</td>
         <td class="error-total-cell" title="${totalError}">${totalError}</td>
         ${checkCells}

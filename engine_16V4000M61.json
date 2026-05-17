@@ -86779,7 +86779,8 @@
     "qa_revision_estado": "ok",
     "qa_revision_accion": "copia",
     "qa_revision_updated_at": "2026-05-06T01:22:36.176Z",
-    "model_type_final": null
+    "model_type_final": null,
+    "weight_pdf": "7,721 KG"
   },
   {
     "ID": "1300845",
@@ -117695,7 +117696,8 @@
     "qa_revision_estado": "ok",
     "qa_revision_accion": "copia",
     "qa_revision_updated_at": "2026-05-06T01:22:36.176Z",
-    "model_type_final": null
+    "model_type_final": null,
+    "weight_pdf": "166,600 G"
   },
   {
     "ID": "1301144",
@@ -387418,7 +387420,8 @@
     "qa_revision_estado": "ok",
     "qa_revision_accion": "copia",
     "qa_revision_updated_at": "2026-05-06T01:22:36.176Z",
-    "model_type_final": null
+    "model_type_final": null,
+    "weight_pdf": "7,721 KG"
   },
   {
     "ID": "1303756",
@@ -418439,7 +418442,8 @@
     "qa_revision_estado": "ok",
     "qa_revision_accion": "copia",
     "qa_revision_updated_at": "2026-05-06T01:22:36.176Z",
-    "model_type_final": null
+    "model_type_final": null,
+    "weight_pdf": "166,600 G"
   },
   {
     "ID": "1304057",

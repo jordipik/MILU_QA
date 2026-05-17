@@ -4603,6 +4603,110 @@ function closeMatchesModal() {
 
 
 
+function normalizeCopyCellValue(value) {
+
+    const raw = String(value ?? '').trim();
+
+    if (!raw || raw === '—' || raw === '-') return '';
+
+    return raw;
+
+}
+
+
+
+async function tryHandleTableCellDoubleClickCopy(event, row, cell) {
+
+    const toField = String(cell?.dataset?.copyToFinal || '').trim();
+
+    const fromField = String(cell?.dataset?.copyFromField || '').trim();
+
+    if (!toField || !fromField || !row) return false;
+
+
+
+    event.preventDefault();
+
+    event.stopPropagation();
+
+
+
+    if (!ensureBackendWritable('copiar valor a campo _final')) {
+
+        return true;
+
+    }
+
+
+
+    const nextValue = normalizeCopyCellValue(getRowValueForColumn(row, fromField, row?.[fromField]));
+
+    if (!nextValue) {
+
+        showToast(`No hay valor en ${fromField} para copiar a ${toField}.`, 'warning');
+
+        return true;
+
+    }
+
+
+
+    const currentValue = normalizeCopyCellValue(getRowValueForColumn(row, toField, row?.[toField]));
+
+    if (nextValue === currentValue) {
+
+        showToast(`${toField} ya coincide con ${fromField}.`, 'info');
+
+        return true;
+
+    }
+
+
+
+    const changes = {
+
+        [toField]: {
+
+            before: String(row?.[toField] ?? ''),
+
+            after: nextValue
+
+        }
+
+    };
+
+
+
+    try {
+
+        await changeControl.applyAndRecord(buildRowPatchEntryWithPnCopyPropagation(row, changes, {
+
+            action: `dblclick-copy-${toField}`,
+
+            description: `Doble click copia ${fromField} -> ${toField} (ID ${row.ID})`
+
+        }));
+
+        updateUndoButtonState();
+
+        showToast(`Copiado ${fromField} -> ${toField}.`, 'success');
+
+    } catch (error) {
+
+        console.error('No se pudo copiar valor por doble click:', error);
+
+        showToast(`No se pudo copiar ${fromField} a ${toField}: ${error.message}`, 'error');
+
+    }
+
+
+
+    return true;
+
+}
+
+
+
 async function handleRecordModalSubmit(event) {
 
     event.preventDefault();
@@ -7793,7 +7897,7 @@ function attachGlobalEvents() {
 
 
 
-    tbody?.addEventListener('dblclick', (event) => {
+    tbody?.addEventListener('dblclick', async (event) => {
 
         const target = event.target;
 
@@ -7810,6 +7914,16 @@ function attachGlobalEvents() {
         const row = state.allData.find(item => getRevisionKey(item) === revisionKey);
 
         if (!row) return;
+
+        const copyCell = target.closest('td[data-copy-to-final][data-copy-from-field]');
+
+        if (copyCell instanceof HTMLTableCellElement) {
+
+            const handledCopy = await tryHandleTableCellDoubleClickCopy(event, row, copyCell);
+
+            if (handledCopy) return;
+
+        }
 
         event.preventDefault();
 
@@ -7977,7 +8091,7 @@ function attachGlobalEvents() {
 
 
 
-    errorViewTbody?.addEventListener('dblclick', (event) => {
+    errorViewTbody?.addEventListener('dblclick', async (event) => {
 
         const target = event.target;
 
@@ -7996,6 +8110,16 @@ function attachGlobalEvents() {
         const row = state.allData.find(item => getRevisionKey(item) === revisionKey);
 
         if (!row) return;
+
+        const copyCell = target.closest('td[data-copy-to-final][data-copy-from-field]');
+
+        if (copyCell instanceof HTMLTableCellElement) {
+
+            const handledCopy = await tryHandleTableCellDoubleClickCopy(event, row, copyCell);
+
+            if (handledCopy) return;
+
+        }
 
 
 
