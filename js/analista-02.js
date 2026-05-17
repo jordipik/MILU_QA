@@ -5038,27 +5038,7 @@ async function runQuickRecomputeForCurrentRecord() {
 
         await runBackendRecompute();
 
-        const revisionAutoUpdate = await setRevisionOkImportIfNoErrors();
-
-        const revisionSuffix = revisionAutoUpdate === 'applied'
-
-            ? ' Sin errores: estado=OK y accion=Importar aplicados automaticamente.'
-
-            : revisionAutoUpdate === 'applied-eliminar'
-
-                ? ' Footer/ruido detectado: estado=OK y accion=Eliminar aplicados automaticamente.'
-
-                : revisionAutoUpdate === 'already-ok-importar'
-
-                    ? ' Sin errores: estado/accion ya estaban en OK/Importar.'
-
-                    : revisionAutoUpdate === 'already-ok-eliminar'
-
-                        ? ' Footer/ruido: estado/accion ya estaban en OK/Eliminar.'
-
-                        : '';
-
-        setRecomputeStatus(`Registro ID ${currentId} recalculado correctamente.${revisionSuffix}`, 'ok');
+        setRecomputeStatus(`Registro ID ${currentId} recalculado correctamente.`, 'ok');
 
     } finally {
 
@@ -5124,27 +5104,7 @@ async function runQuickRecomputeErrorsForCurrentRecord() {
 
         await runBackendRecompute();
 
-        const revisionAutoUpdate = await setRevisionOkImportIfNoErrors();
-
-        const revisionSuffix = revisionAutoUpdate === 'applied'
-
-            ? ' Sin errores: estado=OK y accion=Importar aplicados automaticamente.'
-
-            : revisionAutoUpdate === 'applied-eliminar'
-
-                ? ' Footer/ruido detectado: estado=OK y accion=Eliminar aplicados automaticamente.'
-
-                : revisionAutoUpdate === 'already-ok-importar'
-
-                    ? ' Sin errores: estado/accion ya estaban en OK/Importar.'
-
-                    : revisionAutoUpdate === 'already-ok-eliminar'
-
-                        ? ' Footer/ruido: estado/accion ya estaban en OK/Eliminar.'
-
-                        : '';
-
-        setRecomputeStatus(`Errores del registro ID ${currentId} recalculados correctamente.${revisionSuffix}`, 'ok');
+        setRecomputeStatus(`Errores del registro ID ${currentId} recalculados correctamente.`, 'ok');
 
     } finally {
 
@@ -6721,20 +6681,20 @@ async function renderComparisonTable(row) {
 
             : '';
 
-        // Aviso discreto en celda PDF cuando el valor está vacío pero el campo _pdf existe en el JSON
-        // (indica que recompute-pdf-auto no se ha ejecutado aún para este registro).
+        // Aviso discreto en celda PDF cuando el valor está vacío para cualquier
+        // campo que tenga mapeo PDF en la tabla comparativa.
         // Solo visual, no afecta guardado ni lógica de validación.
         const pdfIsEmpty = !txt(entry.pdf) || txt(entry.pdf) === '-';
 
-        const pdfKeyExists = entry.fieldKeys?.pdf && Object.prototype.hasOwnProperty.call(row, entry.fieldKeys.pdf);
+        const hasPdfMappedField = Boolean(entry.fieldKeys?.pdf);
 
-        const pdfEmptyHint = pdfIsEmpty && pdfKeyExists
+        const pdfEmptyHint = pdfIsEmpty && hasPdfMappedField
 
             ? ' pdf-empty-hint'
 
             : '';
 
-        const pdfCellTitle = pdfIsEmpty && pdfKeyExists
+        const pdfCellTitle = pdfIsEmpty && hasPdfMappedField
 
             ? ` title="PDF sin calcular – ejecuta Rec. para obtener valor"`
 
