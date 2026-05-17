@@ -2207,4 +2207,3 @@ app.post('/apply-qa-checks-filter', async (req, res) => {
 app.listen(PORT, () => {
     console.log(`Servidor backend escuchando en http://localhost:${PORT}`);
 });
-            

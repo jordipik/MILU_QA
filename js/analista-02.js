@@ -5030,21 +5030,7 @@ async function fetchRecomputePdfDetailRow(outputPath, requestUrl) {
 
 function syncRecomputeEngineSelect() {
 
-    const source = $('engineFilterSelect');
-
-    const target = $('recomputeEngineSelect');
-
-    if (!(source instanceof HTMLSelectElement) || !(target instanceof HTMLSelectElement)) return;
-
-
-
-    target.innerHTML = ENGINE_BOOK_MODELS
-
-        .map((model) => `<option value="${escapeHtml(model)}">${escapeHtml(model)}</option>`)
-
-        .join('');
-
-    target.value = source.value;
+    // El select del modal muestra siempre "Todos los libros" y está desvinculado del filtro activo.
 
 }
 

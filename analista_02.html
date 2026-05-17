@@ -247,6 +247,9 @@
                         <button id="pdfPaintSelectedRowRedBtn" class="pdf-row-debug-btn is-step-mark" type="button"
                             title="Pintar en rojo la fila del registro seleccionado"><span class="pdf-btn-icon"
                                 aria-hidden="true">■</span><span class="pdf-btn-label">3.Fila</span></button>
+                        <button id="detectTopBomFgBtn" class="pdf-row-debug-btn is-step-read" type="button"
+                            title="Paso 9: detectar BOM y FG/FGS en cabecera superior"><span class="pdf-btn-icon"
+                                aria-hidden="true">⌃</span><span class="pdf-btn-label">4.BOM</span></button>
                         <button id="copyPdfReadToPdfBtn" class="pdf-row-debug-btn is-step-copy" type="button"
                             title="Paso 3: copiar lectura del PDF a campos _pdf"><span class="pdf-btn-icon"
                                 aria-hidden="true">▣</span><span class="pdf-btn-label">COPIAR</span></button>
@@ -256,9 +259,6 @@
                         <button id="pdfRecomputeRevisionBtn" class="pdf-row-debug-btn is-step-revision" type="button"
                             title="Paso 5: recalcular estado y acción del registro actual"><span class="pdf-btn-icon"
                                 aria-hidden="true">◆</span><span class="pdf-btn-label">ESTADO</span></button>
-                        <button id="detectTopBomFgBtn" class="pdf-row-debug-btn is-step-read" type="button"
-                            title="Paso 9: detectar BOM y FG/FGS en cabecera superior"><span class="pdf-btn-icon"
-                                aria-hidden="true">⌃</span><span class="pdf-btn-label">9.BOM</span></button>
                         <button id="pdfClearOverlaysBtn" class="pdf-row-debug-btn is-step-clear" type="button"
                             title="Limpiar todo lo pintado sobre el PDF"><span class="pdf-btn-icon"
                                 aria-hidden="true">✕</span><span class="pdf-btn-label">Clear</span></button>
@@ -337,16 +337,14 @@
                     <p class="recompute-modal-subtitle">Flujo compacto para todo el libro: copiar lectura PDF y
                         recalcular errores.</p>
                 </div>
+                <label class="a2-recompute-book-picker" for="recomputeEngineSelect">
+                    <span>Todos los libros</span>
+                </label>
                 <button id="recomputeModalClose" class="recompute-modal-close" type="button"
                     aria-label="Cerrar">&times;</button>
             </header>
             <div class="recompute-modal-body">
                 <section class="a2-recompute-compact" aria-label="Recálculo por libro">
-                    <label class="a2-recompute-book-picker" for="recomputeEngineSelect">
-                        <span>Libro</span>
-                        <select id="recomputeEngineSelect" aria-label="Libro para recálculo"></select>
-                    </label>
-
                     <article class="a2-recompute-card" aria-label="Copiar datos leídos del PDF">
                         <h3>
                             <span class="a2-step-index">1</span>
@@ -366,31 +364,31 @@
                             <span class="a2-color-tag is-units">UNITS</span>
                             <span class="a2-color-tag is-weight">WEIGHT</span>
                         </div>
-                        <button id="recomputeCopyBookBtn" type="button">Copiar lectura PDF a _pdf del libro</button>
-                    </article>
-
-                    <article class="a2-recompute-card" aria-label="Recalcular errores">
-                        <h3>
-                            <span class="a2-step-index">2</span>
-                            <div>
-                                <span class="a2-step-title">Calcular errores</span>
-                                <p class="a2-step-desc">Recalcula validaciones QA para todos los registros del libro
-                                    seleccionado. Compara columnas Excel, GESA, SUBST, PDF y FINAL.</p>
-                            </div>
-                        </h3>
-                        <button id="recomputeRunBtn" type="button">Calcular errores del libro</button>
+                        <button id="recomputeCopyBookBtn" type="button">IMPORTAR PDF</button>
                     </article>
 
                     <article class="a2-recompute-card" aria-label="Calcular campos FINAL desde GESA">
                         <h3>
-                            <span class="a2-step-index">3</span>
+                            <span class="a2-step-index">2</span>
                             <div>
                                 <span class="a2-step-title">Calcular FINAL</span>
                                 <p class="a2-step-desc">Copia campos GESA a sus equivalentes _final cuando gesa = SI.
                                     Campos: designation, dimensions (→ measure), weight, nsn, normalizado y norma.</p>
                             </div>
                         </h3>
-                        <button id="recomputeCalculateFinalBtn" type="button" class="is-success">Calcular FINAL del libro</button>
+                        <button id="recomputeCalculateFinalBtn" type="button" class="is-success">CÁLCULO FINAL</button>
+                    </article>
+
+                    <article class="a2-recompute-card" aria-label="Recalcular errores">
+                        <h3>
+                            <span class="a2-step-index">3</span>
+                            <div>
+                                <span class="a2-step-title">Calcular errores</span>
+                                <p class="a2-step-desc">Recalcula validaciones QA para todos los registros del libro
+                                    seleccionado. Compara columnas Excel, GESA, SUBST, PDF y FINAL.</p>
+                            </div>
+                        </h3>
+                        <button id="recomputeRunBtn" type="button">ERRORES</button>
                     </article>
 
                     <article class="a2-recompute-card" aria-label="Recalcular estado y acción de revisión">
@@ -398,10 +396,11 @@
                             <span class="a2-step-index">4</span>
                             <div>
                                 <span class="a2-step-title">Recalcular ESTADO</span>
-                                <p class="a2-step-desc">Recalcula el estado de revisión (qa_revision_estado) y acción (qa_revision_accion) para todos los registros basándose en si hay errores o no.</p>
+                                <p class="a2-step-desc">Recalcula el estado de revisión (qa_revision_estado) y acción
+                                    (qa_revision_accion) para todos los registros basándose en si hay errores o no.</p>
                             </div>
                         </h3>
-                        <button id="recomputeRevisionStatusBtn" type="button" class="is-warning">Recalcular ESTADO de todos</button>
+                        <button id="recomputeRevisionStatusBtn" type="button" class="is-warning">ESTADOS</button>
                     </article>
                 </section>
 
