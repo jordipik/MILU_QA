@@ -1527,6 +1527,8 @@ function extractTopLabeledValue(lines, config = {}) {
 
     const rejectNextLineRegex = config.rejectNextLineRegex instanceof RegExp ? config.rejectNextLineRegex : null;
 
+    const sameLineOnly = config.sameLineOnly === true;
+
     if (!labelRegex || !valueRegex || !Array.isArray(lines) || !lines.length) return null;
 
 
@@ -1548,7 +1550,7 @@ function extractTopLabeledValue(lines, config = {}) {
         let valueLineIndex = Number(line?.lineIndex);
 
 
-        if (!value) {
+        if (!value && !sameLineOnly) {
 
             const nextLine = lines[index + 1] || null;
 
@@ -1707,9 +1709,10 @@ function buildRenderedPdfItemsWithLineIndex(textItems, viewport) {
         };
     }).filter(Boolean);
 
+    const HEADER_LINE_Y_TOLERANCE = 5;
     const lines = [];
     baseItems.forEach((item) => {
-        const existing = lines.find((line) => Math.abs(Number(line.top) - Number(item.top)) <= PDF_LINE_Y_TOLERANCE);
+        const existing = lines.find((line) => Math.abs(Number(line.top) - Number(item.top)) <= HEADER_LINE_Y_TOLERANCE);
         if (existing) {
             existing.items.push(item);
             existing.top = (existing.top + item.top) / 2;
@@ -1718,7 +1721,7 @@ function buildRenderedPdfItemsWithLineIndex(textItems, viewport) {
         }
     });
 
-    lines.sort((a, b) => Number(b.top) - Number(a.top));
+    lines.sort((a, b) => Number(a.top) - Number(b.top));
     lines.forEach((line, idx) => {
         line.items.forEach((item) => {
             item.lineIndex = idx;
@@ -1769,16 +1772,18 @@ async function detectTopBomAndFgInPdf(record = currentRow) {
     }
 
 
-    const maxTopLineIndex = 18;
-
     const topLineMap = new Map();
 
+    const allTops = pageItems.map((item) => Number(item?.top || 0));
+    const pageMaxTop = allTops.length ? Math.max(...allTops) : 0;
+    const pageMinTop = allTops.length ? Math.min(...allTops) : 0;
+    const pageTopThreshold = pageMinTop + (pageMaxTop - pageMinTop) * 0.30;
 
     pageItems
 
         .filter((item) => Number.isInteger(Number(item?.lineIndex)))
 
-        .filter((item) => Number(item?.lineIndex) >= 0 && Number(item?.lineIndex) <= maxTopLineIndex)
+        .filter((item) => Number(item?.top || 0) <= pageTopThreshold)
 
         .sort((a, b) => Number(a?.lineIndex || 0) - Number(b?.lineIndex || 0) || Number(a?.left || 0) - Number(b?.left || 0))
 
@@ -1828,7 +1833,9 @@ async function detectTopBomAndFgInPdf(record = currentRow) {
 
         valueRegex: /\bfg\s*\/?\s*fgs\b\s*[:\-]?\s*(.+)$/i,
 
-        rejectNextLineRegex: tableHeaderRegex
+        rejectNextLineRegex: tableHeaderRegex,
+
+        sameLineOnly: true
 
     });
 
@@ -1853,20 +1860,95 @@ async function detectTopBomAndFgInPdf(record = currentRow) {
 
     const topOverlayHighlights = [];
 
-    const pushTopOverlayForDetection = (detection, label) => {
+    const pushTopOverlayForDetection = (detection, label, labelFilterRegex) => {
         if (!detection?.value) return;
         const valueLineIndex = Number(detection?.valueLineIndex);
         if (!Number.isInteger(valueLineIndex)) return;
 
-        const lineItems = pageItems
+        // Work on ALL items on the line — label filtering is only used as last resort fallback
+        const allLineItems = pageItems
             .filter((item) => Number(item?.lineIndex) === valueLineIndex)
             .sort((a, b) => Number(a?.left || 0) - Number(b?.left || 0));
-        if (!lineItems.length) return;
+        if (!allLineItems.length) return;
 
-        const left = Math.min(...lineItems.map((item) => Number(item?.left || 0)));
-        const right = Math.max(...lineItems.map((item) => Number(item?.left || 0) + Number(item?.width || 0)));
-        const top = Math.min(...lineItems.map((item) => Number(item?.top || 0) - Math.max(10, Number(item?.height || 0))));
-        const bottom = Math.max(...lineItems.map((item) => Number(item?.top || 0)));
+        // Narrow to only the items that correspond to the detected value (not the whole line)
+        const detectedValue = String(detection.value || '').trim();
+        const detectedNorm = normalizePdfToken(detectedValue);
+        let matchedItems = [];
+
+        // Method 1: single item exact match
+        const exactMatch = allLineItems.find((item) =>
+            normalizePdfToken(String(item.text || '').trim()) === detectedNorm
+        );
+        if (exactMatch) {
+            matchedItems = [exactMatch];
+        }
+
+        // Method 2: multi-token value — find contiguous window of items
+        if (!matchedItems.length) {
+            const valueParts = detectedValue.split(/\s+/).filter(Boolean);
+            if (valueParts.length > 1) {
+                const partNorms = valueParts.map((p) => normalizePdfToken(p));
+                for (let i = 0; i <= allLineItems.length - valueParts.length; i++) {
+                    const windowNorms = allLineItems.slice(i, i + valueParts.length)
+                        .map((item) => normalizePdfToken(String(item.text || '').trim()));
+                    if (windowNorms.every((n, j) => n === partNorms[j])) {
+                        matchedItems = allLineItems.slice(i, i + valueParts.length);
+                        break;
+                    }
+                }
+            }
+        }
+
+        // Method 2.5: value with dashes (e.g. "011-05") — split on '-' and look for contiguous items.
+        // Also handles the case where pdfjs merges the label with the first token (e.g. item text
+        // is "FG/FGS: 011"): the first window item may END WITH partNorms[0] instead of being equal.
+        if (!matchedItems.length && detectedValue.includes('-')) {
+            const dashParts = detectedValue.split('-').filter(Boolean);
+            if (dashParts.length > 1) {
+                const partNorms = dashParts.map((p) => normalizePdfToken(p.trim()));
+                for (let i = 0; i <= allLineItems.length - dashParts.length; i++) {
+                    const windowItems = allLineItems.slice(i, i + dashParts.length);
+                    const windowNorms = windowItems.map((item) => normalizePdfToken(String(item.text || '').trim()));
+                    // First item: exact match OR ends-with (handles "FG/FGS: 011" merged item)
+                    const firstOk = windowNorms[0] === partNorms[0] || windowNorms[0].endsWith(partNorms[0]);
+                    const restOk = windowNorms.slice(1).every((n, j) => n === partNorms[j + 1]);
+                    if (firstOk && restOk) {
+                        matchedItems = windowItems;
+                        break;
+                    }
+                }
+            }
+        }
+
+        // Method 3: single item that contains the value
+        if (!matchedItems.length) {
+            const containsMatch = allLineItems.find((item) =>
+                normalizePdfToken(String(item.text || '').trim()).includes(detectedNorm)
+            );
+            if (containsMatch) matchedItems = [containsMatch];
+        }
+
+        // Fallback: items to the right of the label (exclude label item itself)
+        if (!matchedItems.length) {
+            let fallbackItems = allLineItems;
+            if (labelFilterRegex instanceof RegExp) {
+                const labelItem = allLineItems.find((item) => labelFilterRegex.test(String(item.text || '')));
+                if (labelItem) {
+                    const labelRight = Number(labelItem.left || 0) + Number(labelItem.width || 0);
+                    const afterLabel = allLineItems.filter((item) => Number(item.left || 0) >= labelRight);
+                    if (afterLabel.length) fallbackItems = afterLabel;
+                }
+            }
+            matchedItems = fallbackItems;
+        }
+
+        const itemsToHighlight = matchedItems;
+
+        const left = Math.min(...itemsToHighlight.map((item) => Number(item?.left || 0)));
+        const right = Math.max(...itemsToHighlight.map((item) => Number(item?.left || 0) + Number(item?.width || 0)));
+        const top = Math.min(...itemsToHighlight.map((item) => Number(item?.top || 0) - Math.max(10, Number(item?.height || 0))));
+        const bottom = Math.max(...itemsToHighlight.map((item) => Number(item?.top || 0)));
 
         topOverlayHighlights.push({
             left: Math.max(0, left - 4),
@@ -1878,8 +1960,13 @@ async function detectTopBomAndFgInPdf(record = currentRow) {
         });
     };
 
-    pushTopOverlayForDetection(fgDetection, 'FG/FGS');
-    pushTopOverlayForDetection(bomDetection, 'BOM-No.');
+    // Normalize FG/FGS: two space-separated tokens → joined with dash (e.g. "004 05" → "004-05")
+    if (fgDetection?.value) {
+        fgDetection.value = String(fgDetection.value).replace(/^(\S+)\s+(\S+)$/, '$1-$2');
+    }
+
+    pushTopOverlayForDetection(fgDetection, 'FG/FGS', /\bfg\s*\/?\s*fgs\b/i);
+    pushTopOverlayForDetection(bomDetection, 'BOM-No.', /\bbom\b/i);
 
 
     // Asegura que renderPdfSelectionOverlay no descarte el pintado por falta de selección.
