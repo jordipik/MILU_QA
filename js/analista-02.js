@@ -6952,9 +6952,9 @@ function renderMeta(row) {
 
 <span class="a2-meta-item a2-meta-item-designation"><span class="a2-meta-k">Designation</span><strong class="a2-meta-v" title="${escapeHtml(txt(row?.designation_final || row?.DESIGNATION))}">${escapeHtml(txt(row?.designation_final || row?.DESIGNATION))}</strong></span>
 
-<button id="openEditRecordBtn" type="button" class="a2-meta-edit-btn">Editar</button>
+<button id="openEditRecordBtn" type="button" class="a2-meta-edit-btn">EDITAR</button>
 
-<button id="openRecomputeModalBtn" type="button" class="a2-meta-edit-btn" title="Abrir módulo de recálculo">Recálculo</button>
+<button id="openRecomputeModalBtn" type="button" class="a2-meta-edit-btn" title="Abrir módulo de recálculo">RECALCULAR</button>
 
 </div>`;
 
