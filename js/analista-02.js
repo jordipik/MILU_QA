@@ -5801,6 +5801,8 @@ function renderReviewStateButtons(row) {
 
     const accionImportarBtn = $('statusAccionImportarBtn');
 
+    const accionCopiaBtn = $('statusAccionCopiaBtn');
+
     const accionRevisarBtn = $('statusAccionRevisarBtn');
 
     const accionEliminarBtn = $('statusAccionEliminarBtn');
@@ -5840,6 +5842,12 @@ function renderReviewStateButtons(row) {
     if (accionImportarBtn instanceof HTMLElement) {
 
         accionImportarBtn.classList.toggle('is-active', accion === 'importar');
+
+    }
+
+    if (accionCopiaBtn instanceof HTMLElement) {
+
+        accionCopiaBtn.classList.toggle('is-active', accion === 'copia');
 
     }
 
@@ -5935,49 +5943,21 @@ function renderMeta(row) {
 
 
 
-    target.innerHTML = `<section class="a2-meta-block a2-meta-block-book">
+    target.innerHTML = `<div class="a2-meta-inline" aria-label="Resumen de registro">
 
-<span class="a2-meta-label">Libro + Pag</span>
+<span class="a2-meta-item"><span class="a2-meta-k">Pag</span><strong class="a2-meta-v">${escapeHtml(txt(row?.['Source Page']))}</strong></span>
 
-<strong class="a2-meta-value">${escapeHtml(txt(row?.engine_model))} Pag: ${escapeHtml(txt(row?.['Source Page']))}</strong>
+<span class="a2-meta-sep" aria-hidden="true">|</span>
 
-</section>
+<span class="a2-meta-item"><span class="a2-meta-k">Pos</span><strong class="a2-meta-v">${escapeHtml(txt(row?.POS))}</strong></span>
 
-<section class="a2-meta-block a2-meta-block-pos">
+<span class="a2-meta-sep" aria-hidden="true">|</span>
 
-<span class="a2-meta-label">POS</span>
-
-<strong class="a2-meta-value">${escapeHtml(txt(row?.POS))}</strong>
-
-</section>
-
-<section class="a2-meta-block a2-meta-block-pn">
-
-<span class="a2-meta-label">PN</span>
-
-<strong class="a2-meta-value">${escapeHtml(getDisplayPn(row))}</strong>
-
-</section>
-
-<section class="a2-meta-block a2-meta-block-designation">
-
-<div class="a2-meta-designation-inner">
-
-<span class="a2-meta-label">DESIGNATION</span>
-
-<strong class="a2-meta-value">${escapeHtml(txt(row?.designation_final || row?.DESIGNATION))}</strong>
-
-</div>
-
-<div class="a2-meta-actions">
+<span class="a2-meta-item a2-meta-item-designation"><span class="a2-meta-k">Designation</span><strong class="a2-meta-v" title="${escapeHtml(txt(row?.designation_final || row?.DESIGNATION))}">${escapeHtml(txt(row?.designation_final || row?.DESIGNATION))}</strong></span>
 
 <button id="openEditRecordBtn" type="button" class="a2-meta-edit-btn">Editar</button>
 
-<button id="openExportRecordBtn" type="button" class="a2-meta-edit-btn">Exportar</button>
-
-</div>
-
-</section>`;
+</div>`;
 
 
 
@@ -5994,18 +5974,6 @@ function renderMeta(row) {
     }
 
 
-
-    const exportBtn = $('openExportRecordBtn');
-
-    if (exportBtn instanceof HTMLButtonElement) {
-
-        exportBtn.addEventListener('click', () => {
-
-            openExportRecordModalForRow();
-
-        });
-
-    }
 
 }
 
@@ -7592,6 +7560,28 @@ function rowHasReviewAction(row) {
 
 }
 
+function rowHasCopyOkAction(row) {
+
+    const estado = normalizeEstadoToNew(row?.qa_revision_estado);
+
+    const accion = normalizeAccionToNew(row?.qa_revision_accion);
+
+    return estado === 'ok' && accion === 'copia';
+
+}
+
+function rowHasImportOkAction(row) {
+
+    const estado = normalizeEstadoToNew(row?.qa_revision_estado);
+
+    if (estado !== 'ok') return false;
+
+    const accion = normalizeAccionToNew(row?.qa_revision_accion);
+
+    return accion !== 'revisar' && accion !== 'eliminar' && accion !== 'copia';
+
+}
+
 
 
 function rowIsPending(row) {
@@ -7731,6 +7721,98 @@ async function loadRelativeReview(direction) {
         }
 
         if (rowHasReviewAction(queue[idx])) break;
+
+    }
+
+
+
+    currentRow = queue[idx];
+
+    $('recordIdInput').value = getDisplayPnForInput(currentRow);
+
+    currentProcessIndex = 0;
+
+    await revalidateCurrentRow();
+
+}
+
+async function loadRelativeCopy(direction) {
+
+    const queue = getQueueRows();
+
+    if (!queue.length) return;
+
+
+
+    const startIndex = currentRow
+
+        ? queue.findIndex(row => getRevisionKey(row) === getRevisionKey(currentRow))
+
+        : -1;
+
+
+
+    let idx = startIndex;
+
+    while (true) {
+
+        idx += direction;
+
+        if (idx < 0 || idx >= queue.length) {
+
+            alert(direction > 0 ? 'No hay mas registros con accion Copia.' : 'No hay registros anteriores con accion Copia.');
+
+            return;
+
+        }
+
+        if (rowHasCopyOkAction(queue[idx])) break;
+
+    }
+
+
+
+    currentRow = queue[idx];
+
+    $('recordIdInput').value = getDisplayPnForInput(currentRow);
+
+    currentProcessIndex = 0;
+
+    await revalidateCurrentRow();
+
+}
+
+async function loadRelativeImport(direction) {
+
+    const queue = getQueueRows();
+
+    if (!queue.length) return;
+
+
+
+    const startIndex = currentRow
+
+        ? queue.findIndex(row => getRevisionKey(row) === getRevisionKey(currentRow))
+
+        : -1;
+
+
+
+    let idx = startIndex;
+
+    while (true) {
+
+        idx += direction;
+
+        if (idx < 0 || idx >= queue.length) {
+
+            alert(direction > 0 ? 'No hay mas registros con accion Importar.' : 'No hay registros anteriores con accion Importar.');
+
+            return;
+
+        }
+
+        if (rowHasImportOkAction(queue[idx])) break;
 
     }
 
@@ -9125,7 +9207,7 @@ bindClick('loadRecordBtn', () => {
 
 
 
-bindClick('prevRecordBtn', () => {
+bindClick('statsPrevRecordBtn', () => {
 
     loadRelativeRecord(-1).catch((error) => alert(`No se pudo cargar registro anterior: ${error.message}`));
 
@@ -9133,15 +9215,39 @@ bindClick('prevRecordBtn', () => {
 
 
 
-bindClick('nextRecordBtn', () => {
+bindClick('statsNextRecordBtn', () => {
 
     loadRelativeRecord(1).catch((error) => alert(`No se pudo cargar siguiente registro: ${error.message}`));
 
 });
 
+bindClick('statsPrevImportBtn', () => {
+
+    loadRelativeImport(-1).catch((error) => alert(`No se pudo cargar importar anterior: ${error.message}`));
+
+});
+
+bindClick('statsNextImportBtn', () => {
+
+    loadRelativeImport(1).catch((error) => alert(`No se pudo cargar siguiente importar: ${error.message}`));
+
+});
+
+bindClick('statsPrevCopyBtn', () => {
+
+    loadRelativeCopy(-1).catch((error) => alert(`No se pudo cargar copia anterior: ${error.message}`));
+
+});
+
+bindClick('statsNextCopyBtn', () => {
+
+    loadRelativeCopy(1).catch((error) => alert(`No se pudo cargar siguiente copia: ${error.message}`));
+
+});
 
 
-bindClick('prevErrorBtn', () => {
+
+bindClick('statsPrevErrorBtn', () => {
 
     loadRelativeError(-1).catch((error) => alert(`No se pudo cargar error anterior: ${error.message}`));
 
@@ -9149,7 +9255,7 @@ bindClick('prevErrorBtn', () => {
 
 
 
-bindClick('nextErrorBtn', () => {
+bindClick('statsNextErrorBtn', () => {
 
     loadRelativeError(1).catch((error) => alert(`No se pudo cargar siguiente error: ${error.message}`));
 
@@ -9157,7 +9263,7 @@ bindClick('nextErrorBtn', () => {
 
 
 
-bindClick('prevReviewBtn', () => {
+bindClick('statsPrevReviewBtn', () => {
 
     loadRelativeReview(-1).catch((error) => alert(`No se pudo cargar registro revisar anterior: ${error.message}`));
 
@@ -9165,7 +9271,7 @@ bindClick('prevReviewBtn', () => {
 
 
 
-bindClick('nextReviewBtn', () => {
+bindClick('statsNextReviewBtn', () => {
 
     loadRelativeReview(1).catch((error) => alert(`No se pudo cargar siguiente registro revisar: ${error.message}`));
 
@@ -9173,7 +9279,7 @@ bindClick('nextReviewBtn', () => {
 
 
 
-bindClick('prevPendingBtn', () => {
+bindClick('statsPrevPendingBtn', () => {
 
     loadRelativePending(-1).catch((error) => alert(`No se pudo cargar pendiente anterior: ${error.message}`));
 
@@ -9181,7 +9287,7 @@ bindClick('prevPendingBtn', () => {
 
 
 
-bindClick('nextPendingBtn', () => {
+bindClick('statsNextPendingBtn', () => {
 
     loadRelativePending(1).catch((error) => alert(`No se pudo cargar siguiente pendiente: ${error.message}`));
 
@@ -9666,6 +9772,14 @@ bindClick('statusAccionEliminarBtn', () => {
 bindClick('statusAccionImportarBtn', () => {
 
     setReviewStatus('ok').catch((error) => alert(`No se pudo guardar accion importar: ${error.message}`));
+
+});
+
+
+
+bindClick('statusAccionCopiaBtn', () => {
+
+    setReviewStatus('copia').catch((error) => alert(`No se pudo guardar accion copia: ${error.message}`));
 
 });
 

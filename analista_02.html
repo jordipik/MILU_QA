@@ -39,55 +39,22 @@
                     <input id="recordIdInput" list="recordSearchList" type="search" placeholder="Escribe para buscar..."
                         autocomplete="off">
                     <datalist id="recordSearchList"></datalist>
-                    <button id="loadRecordBtn" class="a2-search-submit" type="button">Buscar</button>
-                </div>
-                <div class="a2-toolbar-bottom">
-                    <div class="a2-search-nav is-record" aria-label="Busqueda de registros">
-                        <button id="prevRecordBtn" class="a2-btn-nav a2-btn-nav-record" type="button"
-                            title="Registro anterior" aria-label="Registro anterior">&#9664;</button>
-                        <span class="a2-search-nav-center">Registro</span>
-                        <button id="nextRecordBtn" class="a2-btn-nav a2-btn-nav-record" type="button"
-                            title="Registro siguiente" aria-label="Registro siguiente">&#9654;</button>
-                    </div>
-                    <div class="a2-recompute-top-group" aria-label="Acciones de recálculo">
-                        <button id="recalculateRecordBtn" type="button"
-                            title="Copiar lectura a _pdf y recalcular errores del registro">RECALCULAR</button>
-                        <button id="recomputeAllBtn" type="button" title="Recalcular todo">Rec-Tot</button>
-                    </div>
-                    <div class="a2-search-nav is-copy" aria-label="Busqueda de copia">
-                        <button id="prevCopyBtn" class="a2-btn-nav a2-btn-nav-err" type="button" title="Copia anterior"
-                            aria-label="Copia anterior">&#9664;</button>
-                        <span class="a2-search-nav-center">Copia</span>
-                        <button id="nextCopyBtn" class="a2-btn-nav a2-btn-nav-err" type="button" title="Siguiente copia"
-                            aria-label="Siguiente copia">&#9654;</button>
-                    </div>
-                    <div class="a2-search-nav is-review" aria-label="Busqueda de revisar">
-                        <button id="prevReviewBtn" class="a2-btn-nav a2-btn-nav-err" type="button"
-                            title="Revisar anterior" aria-label="Revisar anterior">&#9664;</button>
-                        <span class="a2-search-nav-center">Revisar</span>
-                        <button id="nextReviewBtn" class="a2-btn-nav a2-btn-nav-err" type="button"
-                            title="Siguiente revisar" aria-label="Siguiente revisar">&#9654;</button>
-                    </div>
-                    <div class="a2-search-nav is-error" aria-label="Busqueda de errores">
-                        <button id="prevErrorBtn" class="a2-btn-nav a2-btn-nav-err" type="button" title="Error anterior"
-                            aria-label="Error anterior">&#9664;</button>
-                        <span class="a2-search-nav-center">Error</span>
-                        <button id="nextErrorBtn" class="a2-btn-nav a2-btn-nav-err" type="button"
-                            title="Siguiente error" aria-label="Siguiente error">&#9654;</button>
-                    </div>
-                    <div class="a2-search-nav is-pending" aria-label="Busqueda de pendientes">
-                        <button id="prevPendingBtn" class="a2-btn-nav a2-btn-nav-err" type="button"
-                            title="Pendiente anterior" aria-label="Pendiente anterior">&#9664;</button>
-                        <span class="a2-search-nav-center">Pendiente</span>
-                        <button id="nextPendingBtn" class="a2-btn-nav a2-btn-nav-err" type="button"
-                            title="Siguiente pendiente" aria-label="Siguiente pendiente">&#9654;</button>
-                    </div>
+                    <div id="recordMeta" class="a2-meta">Sin registro cargado.</div>
+                    <button id="loadRecordBtn" class="a2-meta-edit-btn a2-top-search-btn" type="button">Buscar</button>
                 </div>
             </div>
 
             <section class="a2-stats-row" aria-label="Estadisticas de revision">
                 <article class="a2-stat-card">
-                    <span class="a2-stat-label">Total analizados</span>
+                    <div class="a2-stat-head-row">
+                        <span class="a2-stat-label">Total analizados</span>
+                        <div class="a2-stat-mini-nav" aria-label="Navegacion de registros">
+                            <button id="statsPrevRecordBtn" class="a2-stat-mini-btn" type="button"
+                                title="Registro anterior" aria-label="Registro anterior">◀</button>
+                            <button id="statsNextRecordBtn" class="a2-stat-mini-btn" type="button"
+                                title="Registro siguiente" aria-label="Registro siguiente">▶</button>
+                        </div>
+                    </div>
                     <div class="a2-stat-inline-total" aria-live="polite">
                         <span id="statsCurrentIndex" class="a2-stat-inline-number">0</span>
                         <span class="a2-stat-inline-separator">de</span>
@@ -96,43 +63,81 @@
                     </div>
                 </article>
                 <article class="a2-stat-card is-ok">
-                    <span class="a2-stat-label">Importar (OK)</span>
+                    <div class="a2-stat-head-row">
+                        <span class="a2-stat-label">Importar (OK)</span>
+                        <div class="a2-stat-mini-nav" aria-label="Navegacion de importar">
+                            <button id="statsPrevImportBtn" class="a2-stat-mini-btn" type="button"
+                                title="Importar anterior" aria-label="Importar anterior">◀</button>
+                            <button id="statsNextImportBtn" class="a2-stat-mini-btn" type="button"
+                                title="Importar siguiente" aria-label="Importar siguiente">▶</button>
+                        </div>
+                    </div>
                     <div class="a2-stat-total-row">
                         <strong id="statsTotalImportOk">0</strong>
                         <span id="statsUniqueTotalImportOk" class="a2-stat-inline-unique">0</span>
                     </div>
                 </article>
                 <article class="a2-stat-card is-copy">
-                    <span class="a2-stat-label">Copia (OK)</span>
+                    <div class="a2-stat-head-row">
+                        <span class="a2-stat-label">Copia (OK)</span>
+                        <div class="a2-stat-mini-nav" aria-label="Navegacion de copia">
+                            <button id="statsPrevCopyBtn" class="a2-stat-mini-btn" type="button" title="Copia anterior"
+                                aria-label="Copia anterior">◀</button>
+                            <button id="statsNextCopyBtn" class="a2-stat-mini-btn" type="button" title="Copia siguiente"
+                                aria-label="Copia siguiente">▶</button>
+                        </div>
+                    </div>
                     <div class="a2-stat-total-row">
                         <strong id="statsTotalCopyOk">0</strong>
                         <span id="statsUniqueTotalCopyOk" class="a2-stat-inline-unique">0</span>
                     </div>
                 </article>
                 <article class="a2-stat-card is-review">
-                    <span class="a2-stat-label">Revisar (OK)</span>
+                    <div class="a2-stat-head-row">
+                        <span class="a2-stat-label">Revisar (OK)</span>
+                        <div class="a2-stat-mini-nav" aria-label="Navegacion de revisar">
+                            <button id="statsPrevReviewBtn" class="a2-stat-mini-btn" type="button"
+                                title="Revisar anterior" aria-label="Revisar anterior">◀</button>
+                            <button id="statsNextReviewBtn" class="a2-stat-mini-btn" type="button"
+                                title="Revisar siguiente" aria-label="Revisar siguiente">▶</button>
+                        </div>
+                    </div>
                     <div class="a2-stat-total-row">
                         <strong id="statsTotalReviewOk">0</strong>
                         <span id="statsUniqueTotalReviewOk" class="a2-stat-inline-unique">0</span>
                     </div>
                 </article>
                 <article class="a2-stat-card is-ko">
-                    <span class="a2-stat-label">Eliminar (OK)</span>
+                    <div class="a2-stat-head-row">
+                        <span class="a2-stat-label">Eliminar (OK)</span>
+                        <div class="a2-stat-mini-nav" aria-label="Navegacion de errores">
+                            <button id="statsPrevErrorBtn" class="a2-stat-mini-btn" type="button" title="Error anterior"
+                                aria-label="Error anterior">◀</button>
+                            <button id="statsNextErrorBtn" class="a2-stat-mini-btn" type="button"
+                                title="Error siguiente" aria-label="Error siguiente">▶</button>
+                        </div>
+                    </div>
                     <div class="a2-stat-total-row">
                         <strong id="statsTotalDeleteOk">0</strong>
                         <span id="statsUniqueTotalDeleteOk" class="a2-stat-inline-unique">0</span>
                     </div>
                 </article>
                 <article class="a2-stat-card">
-                    <span class="a2-stat-label">Pendientes</span>
+                    <div class="a2-stat-head-row">
+                        <span class="a2-stat-label">Pendientes</span>
+                        <div class="a2-stat-mini-nav" aria-label="Navegacion de pendientes">
+                            <button id="statsPrevPendingBtn" class="a2-stat-mini-btn" type="button"
+                                title="Pendiente anterior" aria-label="Pendiente anterior">◀</button>
+                            <button id="statsNextPendingBtn" class="a2-stat-mini-btn" type="button"
+                                title="Pendiente siguiente" aria-label="Pendiente siguiente">▶</button>
+                        </div>
+                    </div>
                     <div class="a2-stat-total-row">
                         <strong id="statsTotalPending">0</strong>
                         <span id="statsUniqueTotalPending" class="a2-stat-inline-unique">0</span>
                     </div>
                 </article>
             </section>
-
-            <div id="recordMeta" class="a2-meta">Sin registro cargado.</div>
 
             <div class="a2-review-actions" aria-label="Estado y acciones de revisión">
                 <div class="a2-review-status-group" aria-label="Estado de revisión manual">
@@ -145,8 +150,8 @@
                     </label>
                     <div class="a2-review-quick-buttons" aria-label="Acciones rápidas de estado">
                         <button id="statusEstadoOkBtn" class="a2-review-btn is-ok" type="button">OK</button>
-                        <button id="statusEstadoPendingBtn" class="a2-review-btn is-pending"
-                            type="button">Pendiente</button>
+                        <button id="statusEstadoPendingBtn" class="a2-review-btn is-pending" type="button"
+                            title="Pendiente">Pte</button>
                     </div>
                 </div>
                 <div class="a2-review-action-group" aria-label="Acciones de revisión">
@@ -160,16 +165,19 @@
                         </select>
                     </label>
                     <div class="a2-review-quick-buttons" aria-label="Acciones rápidas de revisión">
-                        <button id="statusAccionImportarBtn" class="a2-review-btn is-ok" type="button">Importar</button>
-                        <button id="statusAccionRevisarBtn" class="a2-review-btn is-review"
-                            type="button">Revisar</button>
-                        <button id="statusAccionEliminarBtn" class="a2-review-btn is-ko" type="button">Eliminar</button>
+                        <button id="statusAccionImportarBtn" class="a2-review-btn is-ok" type="button"
+                            title="Importar">Imp</button>
+                        <button id="statusAccionCopiaBtn" class="a2-review-btn is-copy" type="button"
+                            title="Copia">Cop</button>
+                        <button id="statusAccionRevisarBtn" class="a2-review-btn is-review" type="button"
+                            title="Revisar">Rev</button>
+                        <button id="statusAccionEliminarBtn" class="a2-review-btn is-ko" type="button"
+                            title="Eliminar">Del</button>
                         <button id="propagateHermanosBtn" class="a2-review-btn" type="button"
-                            title="Propagar revisión OK+Importar a todos los hermanos con el mismo PN">⬇
-                            Hermanos</button>
+                            title="Propagar revisión OK+Importar a todos los hermanos con el mismo PN">Hnos</button>
                         <button id="propagateHermanosBookBtn" class="a2-review-btn" type="button"
-                            title="Recorrer el libro actual y propagar hermanos para todos los registros en OK+Importar">⬇⬇
-                            Hermanos libro</button>
+                            title="Recorrer el libro actual y propagar hermanos para todos los registros en OK+Importar">Hnos
+                            libro</button>
                     </div>
                 </div>
             </div>
@@ -177,10 +185,6 @@
             <!-- Tabla comparativa refactorizada. Columnas basadas en el field registry:
                  campo_excel | campo_gesa | campo_subst | campo_pdf | campo_final | campo_error -->
             <section class="a2-compare-table-card" aria-label="Comparativa Excel, GESA, SUBST, PDF y Final">
-                <div class="a2-compare-table-toolbar">
-                    <button id="comparisonDebugBtn" type="button" class="a2-debug-toggle"
-                        title="Alternar vista de nombres técnicos de campos (field registry)">Debug</button>
-                </div>
                 <table class="a2-compare-table">
                     <thead>
                         <tr>
@@ -199,6 +203,10 @@
                         </tr>
                     </tbody>
                 </table>
+                <div class="a2-compare-table-debug-footer">
+                    <button id="comparisonDebugBtn" type="button" class="a2-debug-toggle"
+                        title="Alternar vista de nombres técnicos de campos (field registry)">Debug</button>
+                </div>
             </section>
 
         </section>
