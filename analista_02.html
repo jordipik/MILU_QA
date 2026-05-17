@@ -339,36 +339,40 @@
             <div class="recompute-modal-body">
                 <section class="a2-recompute-section a2-recompute-current" aria-label="Recálculo de registro actual">
                     <h3>Registro actual</h3>
-                    <p class="a2-recompute-help">Acciones rápidas sobre el registro cargado (guardan en tabla y JSON).</p>
+                    <p class="a2-recompute-help">Acciones rápidas sobre el registro cargado (guardan en tabla y JSON).
+                    </p>
                     <div class="a2-recompute-current-actions">
                         <button id="recomputeCopyCurrentBtn" type="button">1) Copiar lectura PDF a campos _pdf</button>
-                        <button id="recomputeErrorsCurrentBtn" type="button">2) Recalcular errores del registro actual</button>
+                        <button id="recomputeErrorsCurrentBtn" type="button">2) Recalcular errores del registro
+                            actual</button>
                     </div>
                 </section>
 
                 <section class="a2-recompute-section" aria-label="Recálculo backend por libro o ID">
                     <h3>Libro / ID (backend)</h3>
                     <p class="a2-recompute-help">Procesos para libro completo o ID puntual.</p>
-                <div class="a2-auto-recompute-controls">
-                    <select id="recomputeEngineSelect" aria-label="Libro para recalculo"></select>
-                    <input id="recomputeIdInput" type="search" placeholder="ID opcional (vacio = todo el libro)"
-                        autocomplete="off">
-                    <label class="a2-auto-recompute-check" for="recomputeUpdateRevisionInput">
-                        <input id="recomputeUpdateRevisionInput" type="checkbox">
-                        Actualizar estados (sin errores→ok, con errores→pendiente)
-                    </label>
-                    <label class="a2-auto-recompute-check a2-recompute-force-label" for="recomputeForceRevisionInput">
-                        <input id="recomputeForceRevisionInput" type="checkbox">
-                        Forzar sobreescritura (incluye revisados como ok)
-                    </label>
-                    <button id="recomputeRunBtn" type="button">Ejecutar recálculo</button>
-                    <button id="recomputePdfRunBtn" type="button">Recalcular PDF_AUTO</button>
-                </div>
+                    <div class="a2-auto-recompute-controls">
+                        <select id="recomputeEngineSelect" aria-label="Libro para recalculo"></select>
+                        <input id="recomputeIdInput" type="search" placeholder="ID opcional (vacio = todo el libro)"
+                            autocomplete="off">
+                        <label class="a2-auto-recompute-check" for="recomputeUpdateRevisionInput">
+                            <input id="recomputeUpdateRevisionInput" type="checkbox">
+                            Actualizar estados (sin errores→ok, con errores→pendiente)
+                        </label>
+                        <label class="a2-auto-recompute-check a2-recompute-force-label"
+                            for="recomputeForceRevisionInput">
+                            <input id="recomputeForceRevisionInput" type="checkbox">
+                            Forzar sobreescritura (incluye revisados como ok)
+                        </label>
+                        <button id="recomputeRunBtn" type="button">Ejecutar recálculo</button>
+                        <button id="recomputePdfRunBtn" type="button">Recalcular PDF_AUTO</button>
+                    </div>
                 </section>
 
                 <section class="a2-local-recalc-box" aria-label="Recálculo en memoria">
                     <h3>Recálculo local en memoria</h3>
-                    <p class="a2-local-recalc-help">Se ejecuta sin guardar JSON. Útil para validar reglas y priorizar revisión.</p>
+                    <p class="a2-local-recalc-help">Se ejecuta sin guardar JSON. Útil para validar reglas y priorizar
+                        revisión.</p>
                     <div class="a2-local-recalc-modes" role="radiogroup" aria-label="Modo de recálculo local">
                         <label class="a2-local-recalc-mode">
                             <input type="radio" name="localRecalcMode" value="pending" checked>
@@ -382,7 +386,8 @@
                     <div class="a2-local-recalc-actions">
                         <button id="localRecalcBtn" type="button">Ejecutar recálculo local</button>
                     </div>
-                    <section id="localRecalcSummary" class="a2-local-recalc-summary" hidden aria-live="polite"></section>
+                    <section id="localRecalcSummary" class="a2-local-recalc-summary" hidden aria-live="polite">
+                    </section>
                 </section>
                 <p id="recomputeStatusText" class="a2-auto-recompute-status">Listo para ejecutar.</p>
                 <section id="recomputePdfDetailPanel" class="recompute-result-panel" hidden>
