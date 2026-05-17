@@ -20,7 +20,9 @@ import {
 
 import { publishRevisionSync } from './revision-sync.js';
 
-import { getPdfExperimentalBlueTexts, initPdfZoomControls, loadPdfClear, loadPdfWithPage, requestPdfRelayout, setPdfExperimentalRowHighlights, setPdfReadTokens, setPdfSelection, runPdfHeaderOnlyDetection, clearPdfHeaderOnlyOverlay, buildHeaderColumnBodyHighlights, clearPdfHeaderColumnBodyHighlights, refreshPdfSelectionOverlayFromCache } from './pdf-viewer.js';
+import { getPdfExperimentalBlueTexts, getPdfHeaderColumnBodyDebug, getPdfLastPageData, initPdfZoomControls, loadPdfClear, loadPdfWithPage, requestPdfRelayout, setPdfExperimentalRowHighlights, setPdfReadTokens, setPdfSelection, runPdfHeaderOnlyDetection, clearPdfHeaderOnlyOverlay, buildHeaderColumnBodyHighlights, clearPdfHeaderColumnBodyHighlights, refreshPdfSelectionOverlayFromCache } from './pdf-viewer.js';
+
+import { runTableParser } from './pdf-table-parser.js';
 
 import { evaluateQaChecksForField, evaluateRowQaChecks, getAllQaCheckCodes, getQaCheckLabel } from './qa-checks.js';
 
@@ -165,6 +167,369 @@ function getStoredPdfAutoValue(row, fieldName) {
     if (!pdfKey) return '';
 
     return String(row?.[pdfKey] ?? '').trim();
+
+}
+
+
+function normalizePdfLookupValue(value) {
+
+    return String(value ?? '')
+
+        .trim()
+
+        .replace(/\s+/g, ' ')
+
+        .toLowerCase()
+
+        .normalize('NFD')
+
+        .replace(/[\u0300-\u036f]/g, '');
+
+}
+
+
+function matchesPdfLookupValue(value, candidates = []) {
+
+    const normalizedValue = normalizePdfLookupValue(value);
+
+    if (!normalizedValue) return false;
+
+
+
+    const compactValue = normalizedValue.replace(/[^a-z0-9]/g, '');
+
+
+
+    return candidates.some((candidate) => {
+
+        const normalizedCandidate = normalizePdfLookupValue(candidate);
+
+        if (!normalizedCandidate) return false;
+
+
+
+        if (normalizedValue === normalizedCandidate) return true;
+
+
+
+        const compactCandidate = normalizedCandidate.replace(/[^a-z0-9]/g, '');
+
+        return compactValue && compactCandidate && compactValue === compactCandidate;
+
+    });
+
+}
+
+
+function findParsedPdfRowForCurrentRow(row, parsedRows = []) {
+
+    if (!Array.isArray(parsedRows) || !parsedRows.length) return null;
+
+
+
+    const partNoCandidates = [row?.pn_final, row?.pn_pdf, row?.['PART NO.']];
+    const posCandidates = [row?.pos_final, row?.pos_pdf, row?.POS];
+    const designationCandidates = [row?.designation_final, row?.designation_pdf, row?.DESIGNATION];
+    const qtyCandidates = [row?.qty_final, row?.qty_pdf, row?.QTY];
+    const weightCandidates = [row?.weight_final, row?.weight_pdf, row?.WEIGHT];
+
+
+
+    let bestRow = null;
+    let bestScore = 0;
+
+
+
+    parsedRows.forEach((parsedRow) => {
+
+        const cells = parsedRow?.cells || {};
+        let score = 0;
+
+
+
+        if (matchesPdfLookupValue(cells.part_no, partNoCandidates)) score += 6;
+        if (matchesPdfLookupValue(cells.pos, posCandidates)) score += 4;
+        if (matchesPdfLookupValue(cells.designation, designationCandidates)) score += 2;
+        if (matchesPdfLookupValue(cells.qty, qtyCandidates)) score += 1;
+        if (matchesPdfLookupValue(cells.weight, weightCandidates)) score += 1;
+
+
+
+        if (score > bestScore) {
+
+            bestScore = score;
+
+            bestRow = parsedRow;
+
+        }
+
+    });
+
+
+
+    return bestScore >= 4 ? bestRow : null;
+
+}
+
+
+function looksLikeFnValue(value) {
+
+    const normalized = normalizeString(value).toUpperCase();
+
+    return Boolean(normalized)
+        && normalized.length <= 12
+        && /^[A-Z0-9/.-]+$/.test(normalized);
+
+}
+
+
+function stripTrailingQtyFromDesignation(designation, qty) {
+
+    const cleanedDesignation = normalizeString(designation);
+
+    const cleanedQty = normalizeString(qty);
+
+
+
+    if (!cleanedDesignation || !cleanedQty) return cleanedDesignation;
+
+
+
+    if (cleanedDesignation === cleanedQty) return cleanedDesignation;
+
+
+
+    if (cleanedDesignation.endsWith(cleanedQty)) {
+
+        const candidate = cleanedDesignation.slice(0, -cleanedQty.length).trim();
+
+        if (candidate && /[A-Za-z]/.test(candidate)) {
+
+            return candidate;
+
+        }
+
+    }
+
+
+
+    return cleanedDesignation;
+
+}
+
+
+function buildPdfAutoCopyValuesFromParsedRow(parsedRow, row = currentRow) {
+
+    const cells = parsedRow?.cells || {};
+
+
+
+    const measurement = normalizeString(cells.measurement);
+    const standard = normalizeString(cells.standard);
+    const parsedFn = normalizeString(cells.fn);
+    const unknownFn = looksLikeFnValue(cells.unknown) ? normalizeString(cells.unknown) : '';
+    const qtyValue = normalizeString(cells.qty);
+    const designationValue = stripTrailingQtyFromDesignation(cells.designation, qtyValue);
+
+
+
+    return {
+
+        pos_pdf: normalizeString(cells.pos),
+        pn_pdf: normalizeString(cells.part_no),
+        designation_pdf: designationValue,
+        model_type_pdf: normalizeString(cells.model_type),
+        qty_pdf: qtyValue,
+        units_pdf: normalizeString(cells.units),
+        weight_pdf: normalizeString(cells.weight),
+        fn_pdf: parsedFn || unknownFn || normalizeString(row?.FN),
+        measure_pdf: measurement,
+        norma_pdf: standard
+
+    };
+
+}
+
+
+function buildPdfReadSummary(valuesToCopy) {
+
+    const entries = [
+
+        ['POS', 'pos_pdf'],
+        ['PART NO.', 'pn_pdf'],
+        ['DESIGNATION', 'designation_pdf'],
+        ['MODEL/TYPE', 'model_type_pdf'],
+        ['QTY', 'qty_pdf'],
+        ['UNITS', 'units_pdf'],
+        ['WEIGHT', 'weight_pdf'],
+        ['FN', 'fn_pdf'],
+        ['MEASUREMENT / STANDARD', 'measure_pdf'],
+        ['NORMA', 'norma_pdf']
+
+    ];
+
+
+
+    const lines = entries
+        .map(([label, key]) => `${label}: ${txt(valuesToCopy?.[key], '-')}`)
+        .filter((line) => !line.endsWith(': -'));
+
+
+
+    return lines.length
+        ? `Campos leídos del PDF:\n${lines.join('\n')}`
+        : 'Campos leídos del PDF: no se detectaron valores.';
+
+}
+
+
+function groupMarkedPdfRectsByRow(rectDebug = [], tolerance = 8) {
+
+    const rows = [];
+
+
+
+    [...rectDebug]
+        .filter((item) => String(item?.text ?? '').trim())
+        .sort((left, right) => Number(left?.rectTop || 0) - Number(right?.rectTop || 0) || Number(left?.rectLeft || 0) - Number(right?.rectLeft || 0))
+        .forEach((item) => {
+
+            const rectTop = Number(item?.rectTop || 0);
+            const lastRow = rows[rows.length - 1];
+
+            if (lastRow && Math.abs(rectTop - lastRow.centerTop) <= tolerance) {
+
+                lastRow.items.push(item);
+                lastRow.centerTop = (lastRow.centerTop + rectTop) / 2;
+
+                return;
+
+            }
+
+            rows.push({
+
+                centerTop: rectTop,
+                items: [item]
+
+            });
+
+        });
+
+
+
+    return rows;
+
+}
+
+
+function buildMarkedRowValuesFromGroup(rowGroup = {}, row = currentRow) {
+
+    const byColumn = new Map();
+
+    (rowGroup.items || []).forEach((item) => {
+
+        const column = String(item?.column || '').trim();
+        const text = normalizeString(item?.text);
+
+        if (!column || !text) return;
+
+        if (!byColumn.has(column)) byColumn.set(column, []);
+        byColumn.get(column).push({ text, left: Number(item?.rectLeft || 0) });
+
+    });
+
+
+
+    const readColumn = (...keys) => {
+
+        const texts = keys
+            .flatMap((key) => byColumn.get(key) || [])
+            .sort((left, right) => left.left - right.left)
+            .map((entry) => entry.text)
+            .filter(Boolean);
+
+        return texts.join(' ').replace(/\s+/g, ' ').trim();
+
+    };
+
+
+
+    const measurement = readColumn('measurement');
+    const standard = readColumn('standard');
+    const parsedFn = readColumn('fn');
+    const unknownFn = looksLikeFnValue(readColumn('unknown')) ? readColumn('unknown') : '';
+    const qtyValue = readColumn('qty');
+    const designationValue = stripTrailingQtyFromDesignation(readColumn('designation'), qtyValue);
+
+
+
+    return {
+
+        pos_pdf: readColumn('pos'),
+        pn_pdf: readColumn('part_no'),
+        designation_pdf: designationValue,
+        model_type_pdf: readColumn('model_type'),
+        qty_pdf: qtyValue,
+        units_pdf: readColumn('units'),
+        weight_pdf: readColumn('weight'),
+        fn_pdf: parsedFn || unknownFn || normalizeString(row?.FN),
+        measure_pdf: measurement,
+        norma_pdf: standard
+
+    };
+
+}
+
+
+function findMarkedPdfRowForCurrentRow(debug, row = currentRow) {
+
+    const rectDebug = Array.isArray(debug?.rectDebug) ? debug.rectDebug : [];
+    const rowGroups = groupMarkedPdfRectsByRow(rectDebug);
+
+    if (!rowGroups.length) return null;
+
+
+
+    const posCandidates = [row?.pos_final, row?.pos_pdf, row?.POS];
+    const pnCandidates = [row?.pn_final, row?.pn_pdf, row?.['PART NO.']];
+    const designationCandidates = [row?.designation_final, row?.designation_pdf, row?.DESIGNATION];
+    const qtyCandidates = [row?.qty_final, row?.qty_pdf, row?.QTY];
+    const weightCandidates = [row?.weight_final, row?.weight_pdf, row?.WEIGHT];
+
+
+
+    let bestGroup = null;
+    let bestScore = 0;
+
+
+
+    rowGroups.forEach((group) => {
+
+        const values = buildMarkedRowValuesFromGroup(group, row);
+        let score = 0;
+
+
+
+        if (matchesPdfLookupValue(values.pos_pdf, posCandidates)) score += 4;
+        if (matchesPdfLookupValue(values.pn_pdf, pnCandidates)) score += 6;
+        if (matchesPdfLookupValue(values.designation_pdf, designationCandidates)) score += 2;
+        if (matchesPdfLookupValue(values.qty_pdf, qtyCandidates)) score += 1;
+        if (matchesPdfLookupValue(values.weight_pdf, weightCandidates)) score += 1;
+
+
+
+        if (score > bestScore) {
+
+            bestScore = score;
+            bestGroup = group;
+
+        }
+
+    });
+
+
+
+    return bestScore >= 4 ? bestGroup : null;
 
 }
 
@@ -3007,6 +3372,107 @@ async function copyPdfAutoPosToFinalAndRecompute() {
         isApplyingPdfAutoPos = false;
 
     }
+
+}
+
+
+async function copyPdfReadValuesToPdfFields() {
+
+    if (!currentRow) {
+
+        alert('Primero debes cargar un registro.');
+
+        return;
+
+    }
+
+
+
+    const engineFile = resolveEngineFile(currentRow);
+    const id = txt(currentRow?.ID, '');
+
+    if (!engineFile || !id) {
+
+        alert('No se pudo resolver archivo engine o ID para copiar la lectura del PDF.');
+
+        return;
+
+    }
+
+
+
+    const { textItems, viewport } = getPdfLastPageData();
+
+    if (!Array.isArray(textItems) || !textItems.length || !viewport) {
+
+        alert('Primero carga el PDF del registro para poder copiar sus valores.');
+
+        return;
+
+    }
+
+
+
+    const headerColumnBodyDebug = getPdfHeaderColumnBodyDebug();
+    const markedRow = findMarkedPdfRowForCurrentRow(headerColumnBodyDebug, currentRow);
+
+    let valuesToCopy = markedRow ? buildMarkedRowValuesFromGroup(markedRow, currentRow) : null;
+
+    if (!valuesToCopy) {
+
+        const parsedTable = runTableParser(textItems, viewport, { buildDebug: false });
+        const parsedRow = findParsedPdfRowForCurrentRow(currentRow, parsedTable?.grid || []);
+
+        if (!parsedRow) {
+
+            alert('No se pudo identificar la fila del PDF para copiar sus valores.');
+
+            return;
+
+        }
+
+        valuesToCopy = buildPdfAutoCopyValuesFromParsedRow(parsedRow, currentRow);
+
+    }
+
+
+
+    const readSummaryMessage = buildPdfReadSummary(valuesToCopy);
+    const changedFields = [];
+
+
+
+    for (const [field, value] of Object.entries(valuesToCopy)) {
+
+        if (!value) continue;
+
+        if (String(currentRow?.[field] ?? '') === String(value ?? '')) continue;
+
+
+
+        await saveCellToServer(engineFile, id, field, value);
+        currentRow[field] = value;
+        changedFields.push(field);
+
+    }
+
+
+
+    if (!changedFields.length) {
+
+        alert(`${readSummaryMessage}\n\nLos campos _pdf ya estaban sincronizados con la lectura del PDF.`);
+
+        return;
+
+    }
+
+
+
+    await reloadEditedRecord(engineFile, id);
+    renderReviewStats();
+    notifyPdfDataChangedFromAnalista(currentRow);
+
+    alert(`${readSummaryMessage}\n\nCopiados ${changedFields.length} campos _pdf desde la fila del PDF.`);
 
 }
 
@@ -8409,6 +8875,18 @@ bindClick('markPnRowBtn', () => {
     }).then(() => {
 
         syncPdfBlueTextsArea();
+
+    });
+
+});
+
+bindClick('copyPdfReadToPdfBtn', () => {
+
+    copyPdfReadValuesToPdfFields().catch((error) => {
+
+        console.warn('No se pudo copiar la lectura del PDF a los campos _pdf:', error);
+
+        alert(`No se pudo copiar la lectura del PDF: ${String(error?.message || error)}`);
 
     });
 

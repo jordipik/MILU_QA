@@ -11,7 +11,26 @@ const OPERATIONAL_EDITABLE_FIELDS = new Set([
     'measure_final',
     'weight_final',
     'pn_final',
-    'exp_imagenes'
+    'exp_imagenes',
+    'pos_pdf',
+    'pn_pdf',
+    'designation_pdf',
+    'model_type_pdf',
+    'qty_pdf',
+    'units_pdf',
+    'weight_pdf',
+    'fn_pdf',
+    'measure_pdf',
+    'fg_fgs_pdf',
+    'gesa_pdf',
+    'nsn_pdf',
+    'normalizado_pdf',
+    'norma_pdf',
+    'sust_status_pdf',
+    'hierarchi_pdf',
+    'sust_new_part_number_pdf',
+    'sust_superseded_list_pdf',
+    'bom_pdf'
 ]);
 
 const PROHIBITED_FIELDS = new Set([

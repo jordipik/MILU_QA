@@ -5063,6 +5063,11 @@ export function buildHeaderColumnBodyHighlights() {
     return state.currentPdfHeaderColumnBodyDebug;
 }
 
+
+export function getPdfHeaderColumnBodyDebug() {
+    return state.currentPdfHeaderColumnBodyDebug || null;
+}
+
 /**
  * Limpia el overlay de body column highlighting.
  */
