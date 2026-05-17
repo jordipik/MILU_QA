@@ -9,6 +9,7 @@ const QA_EDITABLE_FIELDS = new Set([
 const OPERATIONAL_EDITABLE_FIELDS = new Set([
     'designation_final',
     'measure_final',
+    'fn_final',
     'weight_final',
     'pn_final',
     'pos_final',

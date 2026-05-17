@@ -750,7 +750,24 @@ app.get('/export/trace/:sku', async (req, res) => {
 async function writeJsonAtomic(filePath, payload) {
     const tmpPath = `${filePath}.tmp`;
     await fs.promises.writeFile(tmpPath, `${JSON.stringify(payload, null, 2)}\n`, 'utf8');
-    await fs.promises.rename(tmpPath, filePath);
+
+    const RETRYABLE_CODES = new Set(['EPERM', 'EACCES']);
+    const maxAttempts = 5;
+
+    for (let attempt = 1; attempt <= maxAttempts; attempt += 1) {
+        try {
+            await fs.promises.rename(tmpPath, filePath);
+            return;
+        } catch (error) {
+            const code = String(error?.code || '');
+            const isLastAttempt = attempt === maxAttempts;
+            if (!RETRYABLE_CODES.has(code) || isLastAttempt) {
+                throw error;
+            }
+            const backoffMs = 40 * attempt;
+            await new Promise((resolve) => setTimeout(resolve, backoffMs));
+        }
+    }
 }
 
 function normalizeEngineFileName(value) {
