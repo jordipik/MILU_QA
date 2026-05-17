@@ -3456,6 +3456,14 @@ async function copyPdfReadValuesToPdfFields() {
 
     }
 
+    if (changedFields.includes('norma_pdf') && String(currentRow?.normalizado_pdf ?? '') !== 'SI') {
+
+        await saveCellToServer(engineFile, id, 'normalizado_pdf', 'SI');
+        currentRow['normalizado_pdf'] = 'SI';
+        changedFields.push('normalizado_pdf');
+
+    }
+
 
 
     if (!changedFields.length) {
