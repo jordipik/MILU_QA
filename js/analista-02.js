@@ -4780,6 +4780,21 @@ function setRecomputeStatus(message, status = '') {
 
     if (status === 'error') statusEl.classList.add('is-error');
 
+    let _pdfActionStatusTimer = null;
+    function setPdfActionStatus(message, status = '') {
+        const el = $('pdfActionStatusText');
+        if (!(el instanceof HTMLElement)) return;
+        el.classList.remove('is-ok', 'is-error', 'is-busy');
+        if (status === 'ok') el.classList.add('is-ok');
+        else if (status === 'error') el.classList.add('is-error');
+        else if (status === 'busy') el.classList.add('is-busy');
+        el.textContent = message;
+        if (_pdfActionStatusTimer) clearTimeout(_pdfActionStatusTimer);
+        if (status === 'ok' || status === 'error') {
+            _pdfActionStatusTimer = setTimeout(() => { el.textContent = ''; el.className = 'pdf-action-status'; }, 4000);
+        }
+    }
+
     statusEl.textContent = message;
 
 }
@@ -5980,58 +5995,39 @@ async function runQuickRecomputeForCurrentRecord() {
 async function runQuickRecomputeErrorsForCurrentRecord() {
 
     if (!currentRow) {
-
         alert('Primero debes cargar un registro.');
-
         return;
-
     }
 
-
-
     const engineFilterSelect = $('engineFilterSelect');
-
     if (!(engineFilterSelect instanceof HTMLSelectElement)) return;
 
-
-
     const selectedModel = String(engineFilterSelect.value || '').trim();
-
     const currentId = String(currentRow?.ID || '').trim();
 
     if (!selectedModel || !currentId) {
-
         alert('No se pudo resolver libro o ID del registro actual.');
-
         return;
-
     }
-
-
 
     if (!isBackendEndpointAllowed('recompute-qa-errors')) {
-
         setRecomputeStatus(getLocalOnlyBackendMessage('recompute-qa-errors'), 'error');
-
+        setPdfActionStatus('Solo disponible en localhost.', 'error');
         return;
-
     }
 
-
-
     setRecomputeModalInputsForAction(selectedModel, currentId);
-
     const errorSnapshotBefore = snapshotRowErrorFields(currentRow);
-
     setQuickRecomputeButtonsDisabled(true);
+    setPdfActionStatus(`Recalculando ID ${currentId}...`, 'busy');
 
     try {
-
         setRecomputeStatus(`Recalculando errores del registro ID ${currentId}...`, '');
 
         const backendResult = await runBackendRecompute();
         if (!backendResult) {
             setRecomputeStatus(`No se pudo recalcular errores del registro ID ${currentId}.`, 'error');
+            setPdfActionStatus(`Error al recalcular ID ${currentId}.`, 'error');
             return;
         }
 
@@ -6043,17 +6039,17 @@ async function runQuickRecomputeErrorsForCurrentRecord() {
                 `Errores del registro ID ${currentId} recalculados: ${backendResult.changedRows} cambio(s), _error cambiados=${changedErrorKeys.length}, ko=${backendResult.koRows}, ok=${backendResult.okRows}.`,
                 'ok'
             );
+            setPdfActionStatus(`ID ${currentId}: ${backendResult.changedRows} cambio(s), errores=${changedErrorKeys.length}`, 'ok');
         } else {
             setRecomputeStatus(
                 `Registro ID ${currentId} recalculado sin cambios (ko=${backendResult.koRows}, ok=${backendResult.okRows}, _error cambiados=${changedErrorKeys.length}).`,
                 'ok'
             );
+            setPdfActionStatus(`ID ${currentId}: sin cambios (errores=${changedErrorKeys.length})`, 'ok');
         }
 
     } finally {
-
         setQuickRecomputeButtonsDisabled(false);
-
     }
 
 }
@@ -10599,70 +10595,8 @@ bindClick('recomputePdfRunBtn', () => {
 });
 
 bindClick('recomputeCopyBookBtn', () => {
-
-    if (!PDF_FEATURE_AUTO_PDF_ENABLED) {
-        setRecomputeStatus('Auto-PDF desactivado.', 'error');
-        return;
-    }
-
-    // Flujo rapido: usar backend puro para evitar carga visual de PDF/overlays.
-    const recomputeIdInput = $('recomputeIdInput');
-    const previousId = recomputeIdInput instanceof HTMLInputElement
-        ? String(recomputeIdInput.value || '')
-        : '';
-
-    if (recomputeIdInput instanceof HTMLInputElement) {
-        recomputeIdInput.value = '';
-    }
-
-    const runStandardFallback = () => {
-        runBackendRecomputePdfAuto().catch((error) => {
-            setRecomputeStatus(`Error al copiar PDF en backend para todo el libro: ${String(error?.message || error)}`, 'error');
-        }).finally(() => {
-            if (recomputeIdInput instanceof HTMLInputElement) {
-                recomputeIdInput.value = previousId;
-            }
-        });
-    };
-
-    if (!isBackendEndpointAllowed('recompute-pdf-auto-visual')) {
-        setRecomputeStatus('Endpoint visual backend no disponible; usando modo backend estandar...', '');
-        runStandardFallback();
-        return;
-    }
-
-    setRecomputeStatus('Ejecutando copia PDF visual-compatible en backend (sin render visual)...', '');
-
-    postJsonToBackendCandidates('recompute-pdf-auto-visual', {
-        file: resolveEngineFileFromFilter(String(($('recomputeEngineSelect')?.value || $('engineFilterSelect')?.value || '').trim())),
-        dryRun: false,
-        backup: true
-    }).then(async (responseData) => {
-        const result = responseData?.result || {};
-        setRecomputeStatus(
-            `OK PDF visual backend | scanned=${Number(result.scanned) || 0} changed=${Number(result.changedRows) || 0} missingPages=${Number(result.missingPages) || 0}`,
-            'ok'
-        );
-        const selectedModel = String(($('engineFilterSelect')?.value || '').trim());
-        if (selectedModel) {
-            await loadEngineForFilter(selectedModel);
-            updateRecordSearchSuggestions();
-        }
-    }).catch((error) => {
-        setRecomputeStatus(`Visual backend no disponible (${String(error?.message || error)}). Usando modo backend estandar...`, 'error');
-        runStandardFallback();
-    }).finally(() => {
-        if (recomputeIdInput instanceof HTMLInputElement) {
-            recomputeIdInput.value = previousId;
-        }
-    });
-
-});
-
-// Calcula campos FINAL desde GESA
-bindClick('recomputeCalculateFinalBtn', () => {
-    runBackendCalculateFinal().catch((error) => {
-        setRecomputeStatus(`Error: ${String(error?.message || error)}`, 'error');
+    runBulkCopyPdfToBook().catch((error) => {
+        setRecomputeStatus(`Error al copiar PDF para el libro: ${String(error?.message || error)}`, 'error');
     });
 });
 
@@ -10672,6 +10606,9 @@ bindClick('recomputeRevisionStatusBtn', () => {
         setRecomputeStatus(`Error: ${String(error?.message || error)}`, 'error');
     });
 });
+
+
+// ── Recálculo en memoria ──────────────────────────────────────────────────────
 
 // Recálculo en memoria (solo UI, sin backend, con selector de modo)
 bindClick('localRecalcBtn', () => {

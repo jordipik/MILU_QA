@@ -3364,3 +3364,43 @@ body.a2-resizing * {
 .edit-record-footer #editRecordSaveBtn:hover {
     background: linear-gradient(135deg, #083d6f, #1361a8);
 }
+
+.pdf-action-status {
+    font-size: 0.78rem;
+    min-height: 1.2em;
+    padding: 2px 6px;
+    border-radius: 3px;
+    transition: background 0.2s, color 0.2s;
+    color: transparent;
+}
+
+.pdf-action-status.is-busy {
+    color: #555;
+    background: #f0f0f0;
+}
+
+.pdf-action-status.is-ok {
+    color: #1a6b1a;
+    background: #e6f4e6;
+    animation: pdfActionStatusFadeOut 4s ease-out forwards;
+}
+
+.pdf-action-status.is-error {
+    color: #8b1a1a;
+    background: #fde8e8;
+    animation: pdfActionStatusFadeOut 4s ease-out forwards;
+}
+
+@keyframes pdfActionStatusFadeOut {
+    0% {
+        opacity: 1;
+    }
+
+    70% {
+        opacity: 1;
+    }
+
+    100% {
+        opacity: 0;
+    }
+}
