@@ -142,6 +142,16 @@ describe('MILU write validation', () => {
         assert.ok([200, 404].includes(res.status), `status inesperado: ${res.status}`);
     });
 
+    test('model_type_final permitido -> 200', async () => {
+        const res = await requestJson('/save-json', {
+            file: 'engine_12V4000M40A.json',
+            id: '1',
+            field: 'model_type_final',
+            value: 'MODEL-TYPE-TEST'
+        });
+        assert.ok([200, 404].includes(res.status), `status inesperado: ${res.status}`);
+    });
+
     test('qa_revision_estado invalido -> 400', async () => {
         const res = await requestJson('/save-json', {
             file: 'engine_12V4000M40A.json',
