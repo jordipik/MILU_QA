@@ -20,7 +20,7 @@ import {
 
 import { publishRevisionSync } from './revision-sync.js';
 
-import { getPdfExperimentalBlueTexts, getPdfHeaderColumnBodyDebug, getPdfLastPageData, initPdfZoomControls, loadPdfClear, loadPdfWithPage, requestPdfRelayout, setPdfExperimentalRowHighlights, setPdfReadTokens, setPdfSelection, runPdfHeaderOnlyDetection, clearPdfHeaderOnlyOverlay, buildHeaderColumnBodyHighlights, clearPdfHeaderColumnBodyHighlights, clearPdfAllOverlays } from './pdf-viewer.js';
+import { getPdfExperimentalBlueTexts, getPdfHeaderColumnBodyDebug, getPdfLastPageData, initPdfZoomControls, loadPdfClear, loadPdfWithPage, requestPdfRelayout, setPdfExperimentalRowHighlights, setPdfReadTokens, setPdfSelection, runPdfHeaderOnlyDetection, clearPdfHeaderOnlyOverlay, buildHeaderColumnBodyHighlights, clearPdfHeaderColumnBodyHighlights, clearPdfAllOverlays, clearPdfOverlaysExceptHeaders } from './pdf-viewer.js';
 
 import { evaluateQaChecksForField, evaluateRowQaChecks, getAllQaCheckCodes, getQaCheckLabel } from './qa-checks.js';
 
@@ -759,7 +759,7 @@ const PDF_FEATURE_BLUE_TEXT_PANEL_ENABLED = false;
 const PDF_FEATURE_PN_ROW_DEBUG_ENABLED = false;
 const PDF_FEATURE_BACKGROUND_TOKEN_SCAN_ENABLED = false;
 const PDF_FEATURE_AUTO_PDF_ENABLED = true;
-const PDF_FEATURE_AUTO_SYNC_ON_RECORD_EVENTS = false;
+const PDF_FEATURE_AUTO_SYNC_ON_RECORD_EVENTS = true;
 const AUTO_RECOMPUTE_ON_EDIT_ENABLED = false;
 const SHELL_NOTIFY_ON_PDF_DATA_CHANGE = false;
 
@@ -811,7 +811,7 @@ function clearPdfOverlaysOnRecordChange(row) {
 function clearAllPdfOverlaysAndPanels() {
 
     invalidatePendingPdfRowHighlight();
-    clearPdfAllOverlays();
+    clearPdfOverlaysExceptHeaders();
 
     const headerPanel = document.getElementById('headerDetectionPanel');
     if (headerPanel) headerPanel.hidden = true;
@@ -6932,7 +6932,7 @@ function renderVerdict(processState) {
 
 
 
-function syncPdfWithCurrentRow(row) {
+async function syncPdfWithCurrentRow(row) {
 
     if (!row) {
 
@@ -6944,17 +6944,13 @@ function syncPdfWithCurrentRow(row) {
 
     }
 
-
-
-    setPdfSelection(row);
-
-
-
     const book = String(row?.engine_model ?? '').trim();
 
     const page = String(row?.['Source Page'] ?? '').trim();
 
     if (!book || !page) {
+
+        setPdfSelection(null);
 
         loadPdfClear();
 
@@ -6962,11 +6958,40 @@ function syncPdfWithCurrentRow(row) {
 
     }
 
-    loadPdfWithPage(book, page).catch((error) => {
+    const pageNum = parseInt(page.replace(/[^0-9]/g, ''), 10);
 
-        console.error('No se pudo cargar PDF del registro:', error);
+    const isDifferentPage = !(
 
-    });
+        state.currentPdfPageNumber === pageNum
+
+        && state.currentPdfSource.endsWith(encodeURIComponent(book) + '.pdf')
+
+        && Array.isArray(state.currentPdfLastTextItems)
+
+        && state.currentPdfLastTextItems.length > 0
+
+    );
+
+    if (isDifferentPage) {
+
+        clearPdfHeaderOnlyOverlay();
+
+        clearPdfHeaderColumnBodyHighlights();
+
+    }
+
+    // Usa la misma función que el botón rojo: busca el PN/POS y dibuja la banda roja.
+    await highlightPdfLineForPnFinal(row);
+
+    if (isDifferentPage) {
+
+        runPdfHeaderOnlyDetection();
+
+        buildHeaderColumnBodyHighlights();
+
+        requestPdfRelayout();
+
+    }
 
 }
 

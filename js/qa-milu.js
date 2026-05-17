@@ -8625,9 +8625,10 @@ async function loadPdfWithPageAndAutoRender(book, page) {
 
     await loadPdfWithPage(book, page);
 
-    // Las detecciones se ejecutan automáticamente en loadPdfWithPage()
-
-    // pero los paneles no se muestran hasta que el usuario hace clic en "Estadísticas"
+    // La caché de texto ya está lista (renderPdfPage espera el overlay).
+    runPdfHeaderOnlyDetection();
+    buildHeaderColumnBodyHighlights();
+    requestPdfRelayout();
 
 }
 

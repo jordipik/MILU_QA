@@ -2130,39 +2130,11 @@ async function renderPdfSelectionOverlay(page, viewport, requestToken = state.cu
 
     try {
 
-        const hasCachedText = (
+        // La caché de texto ya está populada por renderPdfPage antes de llamar aquí.
+        const textItems = state.currentPdfLastTextItems || [];
+        const viewport2 = state.currentPdfLastViewport || viewport;
 
-            Array.isArray(state.currentPdfLastTextItems)
-
-            && state.currentPdfLastTextItems.length > 0
-
-            && String(state.currentPdfLastTextSource || '') === String(state.currentPdfSource || '')
-
-            && Number(state.currentPdfLastTextPageNumber || 0) === Number(state.currentPdfPageNumber || 0)
-
-        );
-
-
-
-        const textContent = hasCachedText
-
-            ? { items: state.currentPdfLastTextItems }
-
-            : await page.getTextContent();
-
-        if (requestToken !== state.currentPdfRequestToken) return;
-
-        // Almacenar para acceso externo (parser tabular, debug)
-        state.currentPdfLastTextItems = textContent.items || [];
-        state.currentPdfLastViewport = viewport;
-        state.currentPdfLastTextSource = state.currentPdfSource;
-        state.currentPdfLastTextPageNumber = state.currentPdfPageNumber;
-        state.currentPdfTableDebugOverlay = [];
-        state.currentPdfTableParseResult = null;
-        state.currentPdfHeaderDetection = null;
-        window.dispatchEvent(new CustomEvent('pdf-table-parse-updated'));
-
-        let rowHighlights = buildExperimentalRowHighlightsFromSearch(textContent.items || [], viewport, state.currentPdfExperimentalRowSearch);
+        let rowHighlights = buildExperimentalRowHighlightsFromSearch(textItems, viewport2, state.currentPdfExperimentalRowSearch);
 
         state.currentPdfExperimentalRowHighlights = rowHighlights;
 
@@ -2559,10 +2531,23 @@ export async function renderPdfPage(pdfUrl, pageNum, options = {}) {
 
 
 
-    // Mejora de rendimiento percibido: primero mostrar canvas, luego overlays.
+    // Extraer texto de la página incondicionalmente para rellenar la caché.
+    // Esto garantiza que runPdfHeaderOnlyDetection() siempre tiene datos disponibles
+    // independientemente de si hay selección activa o no.
+    try {
+        const textContent = await page.getTextContent();
+        if (requestToken === state.currentPdfRequestToken) {
+            state.currentPdfLastTextItems = textContent.items || [];
+            state.currentPdfLastViewport = viewport;
+            state.currentPdfLastTextSource = state.currentPdfSource;
+            state.currentPdfLastTextPageNumber = state.currentPdfPageNumber;
+        }
+    } catch (e) {
+        console.warn('No se pudo extraer texto del PDF:', e);
+    }
 
-    renderPdfSelectionOverlay(page, viewport, requestToken)
-
+    // Renderizar overlay de selección (usa la caché ya populada).
+    await renderPdfSelectionOverlay(page, viewport, requestToken)
         .catch(error => console.warn('No se pudo renderizar overlay del PDF:', error));
 
 }
@@ -2570,6 +2555,12 @@ export async function renderPdfPage(pdfUrl, pageNum, options = {}) {
 
 
 export async function loadPdfWithPage(book, page) {
+
+    // Cancel any pending relayout RAF to avoid racing with this full load
+    if (pdfRelayoutRafId) {
+        cancelAnimationFrame(pdfRelayoutRafId);
+        pdfRelayoutRafId = 0;
+    }
 
     const pdfLabel = document.getElementById('pdfLabel');
 
@@ -4575,6 +4566,22 @@ export function clearPdfAllOverlays() {
     state.currentPdfHeaderOnlyDebug = null;
     state.currentPdfHeaderColumnBodyHighlights = [];
     state.currentPdfHeaderColumnBodyDebug = null;
+    state.currentPdfTableDebugOverlay = [];
+    state.currentPdfTableParseResult = null;
+    state.currentPdfHeaderDetection = null;
+    clearPdfSelectionLayer();
+    requestPdfRelayout();
+}
+
+/**
+ * Limpia overlays de selección/experimentales pero conserva los overlays de
+ * header y body-column para que no desaparezcan al cambiar de registro.
+ * Los overlays de header/body se limpian explícitamente antes de recargarlos.
+ */
+export function clearPdfOverlaysExceptHeaders() {
+    state.currentPdfExperimentalRowHighlights = [];
+    state.currentPdfExperimentalRowSearch = null;
+    state.currentPdfExperimentalColumnDetection = null;
     state.currentPdfTableDebugOverlay = [];
     state.currentPdfTableParseResult = null;
     state.currentPdfHeaderDetection = null;
