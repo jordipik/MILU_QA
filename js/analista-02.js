@@ -20,7 +20,7 @@ import {
 
 import { publishRevisionSync } from './revision-sync.js';
 
-import { getPdfExperimentalBlueTexts, getPdfHeaderColumnBodyDebug, getPdfLastPageData, initPdfZoomControls, loadPdfClear, loadPdfWithPage, requestPdfRelayout, setPdfExperimentalRowHighlights, setPdfReadTokens, setPdfSelection, runPdfHeaderOnlyDetection, clearPdfHeaderOnlyOverlay, buildHeaderColumnBodyHighlights, clearPdfHeaderColumnBodyHighlights, refreshPdfSelectionOverlayFromCache } from './pdf-viewer.js';
+import { getPdfExperimentalBlueTexts, getPdfHeaderColumnBodyDebug, getPdfLastPageData, initPdfZoomControls, loadPdfClear, loadPdfWithPage, requestPdfRelayout, setPdfExperimentalRowHighlights, setPdfReadTokens, setPdfSelection, runPdfHeaderOnlyDetection, clearPdfHeaderOnlyOverlay, buildHeaderColumnBodyHighlights, clearPdfHeaderColumnBodyHighlights, clearPdfAllOverlays } from './pdf-viewer.js';
 
 import { evaluateQaChecksForField, evaluateRowQaChecks, getAllQaCheckCodes, getQaCheckLabel } from './qa-checks.js';
 
@@ -729,6 +729,8 @@ let currentProcessIndex = 0;
 
 let comparisonRenderToken = 0;
 
+let lastRenderedRecordKey = '';
+
 let isApplyingPdfAutoDesignation = false;
 
 let isApplyingPdfAutoPn = false;
@@ -736,6 +738,8 @@ let isApplyingPdfAutoPn = false;
 let isApplyingPdfAutoPos = false;
 
 let isApplyingPdfGeneric = false;
+
+let pdfRowHighlightRequestId = 0;
 
 const pdfDocumentPromiseCache = new Map();
 
@@ -754,7 +758,10 @@ const PDF_FEATURE_HEADERS_ENABLED = true;
 const PDF_FEATURE_BLUE_TEXT_PANEL_ENABLED = false;
 const PDF_FEATURE_PN_ROW_DEBUG_ENABLED = false;
 const PDF_FEATURE_BACKGROUND_TOKEN_SCAN_ENABLED = false;
-const PDF_FEATURE_AUTO_PDF_ENABLED = false;
+const PDF_FEATURE_AUTO_PDF_ENABLED = true;
+const PDF_FEATURE_AUTO_SYNC_ON_RECORD_EVENTS = false;
+const AUTO_RECOMPUTE_ON_EDIT_ENABLED = false;
+const SHELL_NOTIFY_ON_PDF_DATA_CHANGE = false;
 
 const RIGHT_PANEL_WIDTH_KEY = 'analista02:right-panel-width';
 
@@ -778,6 +785,41 @@ const AUTO_RECOMPUTE_TRIGGER_FIELDS = new Set([
 
 ]);
 
+
+
+function invalidatePendingPdfRowHighlight() {
+
+    pdfRowHighlightRequestId += 1;
+
+}
+
+
+function clearPdfOverlaysOnRecordChange(row) {
+
+    const nextRecordKey = row ? String(getRevisionKey(row) || '').trim() : '';
+
+    if (nextRecordKey === lastRenderedRecordKey) {
+        return;
+    }
+
+    lastRenderedRecordKey = nextRecordKey;
+    clearAllPdfOverlaysAndPanels();
+
+}
+
+
+function clearAllPdfOverlaysAndPanels() {
+
+    invalidatePendingPdfRowHighlight();
+    clearPdfAllOverlays();
+
+    const headerPanel = document.getElementById('headerDetectionPanel');
+    if (headerPanel) headerPanel.hidden = true;
+
+    const bodyPanel = document.getElementById('bodyColumnHighlightPanel');
+    if (bodyPanel) bodyPanel.hidden = true;
+
+}
 
 
 function getStartupSelectionFromUrl() {
@@ -2217,9 +2259,6 @@ function initRecomputeModal() {
         quickRecomputeBtn.title = allowRecompute ? '' : 'Disponible solo en local (localhost:3000).';
 
     }
-
-
-
     if (recomputeAllBtn instanceof HTMLButtonElement) {
 
         recomputeAllBtn.disabled = !allowRecompute;
@@ -2824,6 +2863,8 @@ function openExportRecordModalForRow(row = currentRow) {
 
 function notifyPdfDataChangedFromAnalista(row = currentRow) {
 
+    if (!SHELL_NOTIFY_ON_PDF_DATA_CHANGE) return;
+
     const shellBridge = window.parent && window.parent !== window
 
         ? window.parent.miluShellNotifyPdfDataChanged
@@ -3008,7 +3049,8 @@ async function saveEditRecordForm() {
 
 
 
-            const mustAutoRecompute = [...changedFields].some((field) => AUTO_RECOMPUTE_TRIGGER_FIELDS.has(field));
+            const mustAutoRecompute = AUTO_RECOMPUTE_ON_EDIT_ENABLED
+                && [...changedFields].some((field) => AUTO_RECOMPUTE_TRIGGER_FIELDS.has(field));
 
             const recomputeErrors = ($('editRecordRecomputeErrors') instanceof HTMLInputElement)
 
@@ -5030,6 +5072,161 @@ async function runQuickRecomputeForCurrentRecord() {
 
 
 
+async function runQuickRecomputeErrorsForCurrentRecord() {
+
+    if (!currentRow) {
+
+        alert('Primero debes cargar un registro.');
+
+        return;
+
+    }
+
+
+
+    const engineFilterSelect = $('engineFilterSelect');
+
+    if (!(engineFilterSelect instanceof HTMLSelectElement)) return;
+
+
+
+    const selectedModel = String(engineFilterSelect.value || '').trim();
+
+    const currentId = String(currentRow?.ID || '').trim();
+
+    if (!selectedModel || !currentId) {
+
+        alert('No se pudo resolver libro o ID del registro actual.');
+
+        return;
+
+    }
+
+
+
+    if (!isBackendEndpointAllowed('recompute-qa-errors')) {
+
+        setRecomputeStatus(getLocalOnlyBackendMessage('recompute-qa-errors'), 'error');
+
+        return;
+
+    }
+
+
+
+    setRecomputeModalInputsForAction(selectedModel, currentId);
+
+    setQuickRecomputeButtonsDisabled(true);
+
+    try {
+
+        setRecomputeStatus(`Recalculando errores del registro ID ${currentId}...`, '');
+
+        await runBackendRecompute();
+
+        const revisionAutoUpdate = await setRevisionOkImportIfNoErrors();
+
+        const revisionSuffix = revisionAutoUpdate === 'applied'
+
+            ? ' Sin errores: estado=OK y accion=Importar aplicados automaticamente.'
+
+            : revisionAutoUpdate === 'applied-eliminar'
+
+                ? ' Footer/ruido detectado: estado=OK y accion=Eliminar aplicados automaticamente.'
+
+                : revisionAutoUpdate === 'already-ok-importar'
+
+                    ? ' Sin errores: estado/accion ya estaban en OK/Importar.'
+
+                    : revisionAutoUpdate === 'already-ok-eliminar'
+
+                        ? ' Footer/ruido: estado/accion ya estaban en OK/Eliminar.'
+
+                        : '';
+
+        setRecomputeStatus(`Errores del registro ID ${currentId} recalculados correctamente.${revisionSuffix}`, 'ok');
+
+    } finally {
+
+        setQuickRecomputeButtonsDisabled(false);
+
+    }
+
+}
+
+
+
+async function runQuickRecomputeRevisionForCurrentRecord() {
+
+    if (!currentRow) {
+
+        alert('Primero debes cargar un registro.');
+
+        return;
+
+    }
+
+
+
+    const engineFilterSelect = $('engineFilterSelect');
+    const recomputeUpdateRevisionInput = $('recomputeUpdateRevisionInput');
+    const recomputeForceRevisionInput = $('recomputeForceRevisionInput');
+    const pdfRecomputeRevisionBtn = $('pdfRecomputeRevisionBtn');
+
+    if (!(engineFilterSelect instanceof HTMLSelectElement)) return;
+
+
+
+    const selectedModel = String(engineFilterSelect.value || '').trim();
+    const currentId = String(currentRow?.ID || '').trim();
+
+    if (!selectedModel || !currentId) {
+
+        alert('No se pudo resolver libro o ID del registro actual.');
+
+        return;
+
+    }
+
+
+
+    if (!isBackendEndpointAllowed('recompute-qa-errors')) {
+
+        setRecomputeStatus(getLocalOnlyBackendMessage('recompute-qa-errors'), 'error');
+
+        return;
+
+    }
+
+
+
+    setRecomputeModalInputsForAction(selectedModel, currentId);
+
+    if (recomputeUpdateRevisionInput instanceof HTMLInputElement) recomputeUpdateRevisionInput.checked = true;
+    if (recomputeForceRevisionInput instanceof HTMLInputElement) recomputeForceRevisionInput.checked = false;
+
+    setQuickRecomputeButtonsDisabled(true);
+    if (pdfRecomputeRevisionBtn instanceof HTMLButtonElement) pdfRecomputeRevisionBtn.disabled = true;
+
+    try {
+
+        setRecomputeStatus(`Recalculando estado/accion del registro ID ${currentId}...`, '');
+
+        await runBackendRecompute();
+
+    } finally {
+
+        setQuickRecomputeButtonsDisabled(false);
+        if (pdfRecomputeRevisionBtn instanceof HTMLButtonElement) {
+            pdfRecomputeRevisionBtn.disabled = !isBackendEndpointAllowed('recompute-qa-errors');
+        }
+
+    }
+
+}
+
+
+
 async function setRevisionOkImportIfNoErrors() {
 
     if (!currentRow) return false;
@@ -5251,8 +5448,6 @@ async function loadEngineForFilter(engineFilter) {
         currentProcessIndex = 0;
 
         renderRecord(firstRow);
-
-        await revalidateCurrentRow();
 
         return;
 
@@ -6839,25 +7034,6 @@ function syncPdfWithCurrentRow(row) {
 
     }
 
-    const targetPageNum = Number.parseInt(String(page).replace(/[^0-9]/g, ''), 10);
-    const currentPageNum = Number(state.currentPdfPageNumber || 0);
-    const currentSource = String(state.currentPdfSource || '');
-    const currentBook = currentSource
-        ? decodeURIComponent(currentSource.split('/').pop() || '').replace(/\.pdf$/i, '')
-        : '';
-
-    if (
-        Number.isFinite(targetPageNum)
-        && targetPageNum > 0
-        && currentPageNum === targetPageNum
-        && currentBook === book
-    ) {
-        refreshPdfSelectionOverlayFromCache();
-        return;
-    }
-
-
-
     loadPdfWithPage(book, page).catch((error) => {
 
         console.error('No se pudo cargar PDF del registro:', error);
@@ -6871,6 +7047,8 @@ function syncPdfWithCurrentRow(row) {
 // Experimental: detecta la fila del PDF a partir de pn_final y dibuja una banda completa.
 // Si pn_final no aparece, usa POS como fallback y cambia la banda a naranja.
 async function highlightPdfLineForPnFinal(record = currentRow) {
+
+    const requestId = ++pdfRowHighlightRequestId;
 
     console.log('[A2] highlightPdfRowByPnFinal: iniciando');
 
@@ -6910,6 +7088,10 @@ async function highlightPdfLineForPnFinal(record = currentRow) {
     setPdfSelection(record);
     await loadPdfWithPage(book, sourcePage);
 
+    if (requestId !== pdfRowHighlightRequestId) {
+        return;
+    }
+
     let lineMatch = await findPdfLineByPnFinal(record);
     let highlightToken = pnFinal;
     let highlightKind = 'red-row';
@@ -6927,6 +7109,10 @@ async function highlightPdfLineForPnFinal(record = currentRow) {
         matches = lineMatch.matches || [];
         logPdfRowHighlightDebug('fallback POS buscado:', posValue);
         logPdfRowHighlightDebug('coincidencias POS en página:', matches.length);
+    }
+
+    if (requestId !== pdfRowHighlightRequestId) {
+        return;
     }
 
     if (!matches.length) {
@@ -6969,6 +7155,8 @@ async function highlightPdfRowByPnFinal(record = currentRow) {
 
 function renderRecord(row) {
 
+    clearPdfOverlaysOnRecordChange(row);
+
     if (!row) {
 
         renderReviewStateButtons(null);
@@ -6978,7 +7166,9 @@ function renderRecord(row) {
     }
 
     renderReviewStats(getQueueRows(), row);
-    syncPdfWithCurrentRow(row);
+    if (PDF_FEATURE_AUTO_SYNC_ON_RECORD_EVENTS) {
+        syncPdfWithCurrentRow(row);
+    }
     renderMeta(row);
     renderComparisonTable(row).catch((error) => {
         console.warn('No se pudo renderizar la comparativa con PDF:', error);
@@ -7107,7 +7297,8 @@ async function saveCurrentFieldChanges() {
 
 
 
-    const mustAutoRecompute = [...changedFields].some((field) => AUTO_RECOMPUTE_TRIGGER_FIELDS.has(field));
+    const mustAutoRecompute = AUTO_RECOMPUTE_ON_EDIT_ENABLED
+        && [...changedFields].some((field) => AUTO_RECOMPUTE_TRIGGER_FIELDS.has(field));
 
     if (mustAutoRecompute) {
 
@@ -8874,10 +9065,14 @@ function applyPdfFeatureFlagsToUi() {
         if (!PDF_FEATURE_BLUE_TEXT_PANEL_ENABLED) blueCopyBtn.title = 'Desactivado en modo rendimiento';
     }
 
-    const markPnBtn = $('markPnRowBtn');
-    if (markPnBtn instanceof HTMLButtonElement) {
-        markPnBtn.disabled = !PDF_FEATURE_PN_ROW_DEBUG_ENABLED;
-        if (!PDF_FEATURE_PN_ROW_DEBUG_ENABLED) markPnBtn.title = 'Desactivado en modo rendimiento';
+    const paintSelectedRowRedBtn = $('pdfPaintSelectedRowRedBtn');
+    if (paintSelectedRowRedBtn instanceof HTMLButtonElement) {
+        paintSelectedRowRedBtn.disabled = false;
+    }
+
+    const pdfLoadCurrentBtn = $('pdfLoadCurrentBtn');
+    if (pdfLoadCurrentBtn instanceof HTMLButtonElement) {
+        pdfLoadCurrentBtn.disabled = false;
     }
 
     const detectHeadersBtn = $('detectHeadersBtn');
@@ -8896,6 +9091,20 @@ function applyPdfFeatureFlagsToUi() {
     if (copyPdfReadBtn instanceof HTMLButtonElement) {
         copyPdfReadBtn.disabled = !PDF_FEATURE_AUTO_PDF_ENABLED;
         if (!PDF_FEATURE_AUTO_PDF_ENABLED) copyPdfReadBtn.title = 'Auto-PDF desactivado';
+    }
+
+    const pdfRecomputeErrorsBtn = $('pdfRecomputeErrorsBtn');
+    if (pdfRecomputeErrorsBtn instanceof HTMLButtonElement) {
+        const allowRecomputeErrors = isBackendEndpointAllowed('recompute-qa-errors');
+        pdfRecomputeErrorsBtn.disabled = !allowRecomputeErrors;
+        if (!allowRecomputeErrors) pdfRecomputeErrorsBtn.title = 'Disponible solo en local (localhost:3000).';
+    }
+
+    const pdfRecomputeRevisionBtn = $('pdfRecomputeRevisionBtn');
+    if (pdfRecomputeRevisionBtn instanceof HTMLButtonElement) {
+        const allowRecomputeRevision = isBackendEndpointAllowed('recompute-qa-errors');
+        pdfRecomputeRevisionBtn.disabled = !allowRecomputeRevision;
+        if (!allowRecomputeRevision) pdfRecomputeRevisionBtn.title = 'Disponible solo en local (localhost:3000).';
     }
 
     const recomputePdfRunBtn = $('recomputePdfRunBtn');
@@ -9060,23 +9269,37 @@ bindClick('pdfBlueTextsCopyBtn', () => {
 
 });
 
+bindClick('pdfLoadCurrentBtn', () => {
 
-
-bindClick('markPnRowBtn', () => {
-
-    if (!PDF_FEATURE_PN_ROW_DEBUG_ENABLED) {
+    if (!currentRow) {
+        alert('Primero debes cargar un registro.');
         return;
     }
 
+    invalidatePendingPdfRowHighlight();
+    clearPdfHeaderOnlyOverlay();
+    clearPdfHeaderColumnBodyHighlights();
+    setPdfExperimentalRowHighlights(null);
+
+    syncPdfWithCurrentRow(currentRow);
+
+});
+
+bindClick('pdfClearOverlaysBtn', () => {
+
+    clearAllPdfOverlaysAndPanels();
+
+});
+
+
+
+bindClick('pdfPaintSelectedRowRedBtn', () => {
+
     highlightPdfRowByPnFinal(currentRow).catch((error) => {
 
-        console.warn('No se pudo marcar la fila PN en el PDF:', error);
+        console.warn('No se pudo pintar en rojo la fila seleccionada en el PDF:', error);
 
-        alert(`No se pudo marcar la fila PN: ${String(error?.message || error)}`);
-
-    }).then(() => {
-
-        syncPdfBlueTextsArea();
+        alert(`No se pudo pintar la fila en rojo: ${String(error?.message || error)}`);
 
     });
 
@@ -9093,6 +9316,26 @@ bindClick('copyPdfReadToPdfBtn', () => {
         console.warn('No se pudo copiar la lectura del PDF a los campos _pdf:', error);
 
         alert(`No se pudo copiar la lectura del PDF: ${String(error?.message || error)}`);
+
+    });
+
+});
+
+bindClick('pdfRecomputeErrorsBtn', () => {
+
+    runQuickRecomputeErrorsForCurrentRecord().catch((error) => {
+
+        setRecomputeStatus(`Error: ${String(error?.message || error)}`, 'error');
+
+    });
+
+});
+
+bindClick('pdfRecomputeRevisionBtn', () => {
+
+    runQuickRecomputeRevisionForCurrentRecord().catch((error) => {
+
+        setRecomputeStatus(`Error: ${String(error?.message || error)}`, 'error');
 
     });
 

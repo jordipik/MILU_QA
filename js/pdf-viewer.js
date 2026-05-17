@@ -8,8 +8,6 @@
 
 import { state } from './state.js';
 
-import { evaluateRowQaChecks } from './qa-checks.js';
-
 
 
 const PDF_FIT_WIDTH_MARGIN = 8;
@@ -19,9 +17,6 @@ const PDF_FIT_HEIGHT_MARGIN = 8;
 const PDF_SELECTION_MAX_HIGHLIGHTS = 40;
 
 const PDF_HEADER_DEBUG_ENABLED = false;
-
-// Modo rendimiento: limitar highlights a PN/POS para reducir coste por página.
-const PDF_MINIMAL_GREEN_HIGHLIGHTS_MODE = true;
 
 // Deprecated experimental column/header parser path. Kept disabled until a clean reimplementation.
 const PDF_EXPERIMENTAL_COLUMN_FEATURES_ENABLED = false;
@@ -381,18 +376,12 @@ function normalizeExperimentalRowSearch(search) {
 
     return {
         mode,
-
         pnToken,
-
         headerOnly,
-
         yTolerance: Number.isFinite(yTolerance) && yTolerance > 0 ? yTolerance : 5
-
     };
 
 }
-
-
 
 function syncPdfSelectionLayerBounds(viewportWidth, viewportHeight, canvas) {
 
@@ -1833,336 +1822,7 @@ function buildExperimentalRowHighlightsFromSearch(textItems, viewport, search) {
 
 function buildPdfTextHighlights(textItems, viewport, selection) {
 
-    const tokens = getSelectionSearchTokens(selection);
-
-    if (!tokens) return [];
-
-
-
-    const rects = extractPdfTextRects(textItems, viewport);
-
-
-
-    const highlights = [];
-
-
-
-    const pnRects = tokens.pn
-
-        ? rects.filter(rect => tokenMatches(rect.normalizedText, tokens.pn, tokens.allowPnContains))
-
-        : [];
-
-    const posRects = tokens.pos
-
-        ? rects.filter(rect => tokenMatches(rect.normalizedText, tokens.pos, tokens.allowPosContains))
-
-        : [];
-
-    if (PDF_MINIMAL_GREEN_HIGHLIGHTS_MODE) {
-
-        const pnLineHighlights = buildLineBandHighlightsForToken(rects, viewport, tokens.pn, {
-            kind: 'red-row',
-            text: 'Fila PN'
-        });
-
-        if (pnLineHighlights.length > 0) {
-            return pnLineHighlights;
-        }
-
-        const posLineHighlights = buildLineBandHighlightsForToken(rects, viewport, tokens.pos, {
-            kind: 'orange-row',
-            text: 'Fila POS',
-            directOnly: true,
-            maxBands: 1,
-            leftmostCellOnly: true
-        });
-
-        if (posLineHighlights.length > 0) {
-            return posLineHighlights;
-        }
-
-        return [];
-
-    }
-
-
-
-    const readTokenHighlights = buildReadTokenHighlights(
-
-        rects,
-
-        normalizeReadTokenEntries(state.currentPdfReadTokens),
-
-        pnRects
-
-    );
-
-    highlights.push(...readTokenHighlights);
-
-
-
-    pnRects.forEach(rect => {
-
-        const matchRect = getTokenHighlightRect(rect, tokens.pn) || rect;
-
-        highlights.push({
-
-            left: Math.max(0, matchRect.left - 4),
-
-            top: Math.max(0, matchRect.top - matchRect.height - 3),
-
-            width: Math.max(24, matchRect.width + 8),
-
-            height: Math.max(16, matchRect.height + 6),
-
-            text: matchRect.text,
-
-            priority: 6,
-
-            type: 'pn',
-
-            hasError: tokens.fieldErrors.pn ?? false
-
-        });
-
-    });
-
-
-
-    posRects.forEach(rect => {
-
-        const matchRect = getTokenHighlightRect(rect, tokens.pos) || rect;
-
-        highlights.push({
-
-            left: Math.max(0, matchRect.left - 4),
-
-            top: Math.max(0, matchRect.top - matchRect.height - 3),
-
-            width: Math.max(24, matchRect.width + 8),
-
-            height: Math.max(16, matchRect.height + 6),
-
-            text: matchRect.text,
-
-            priority: 5,
-
-            type: 'pos',
-
-            hasError: tokens.fieldErrors.pos ?? false
-
-        });
-
-    });
-
-
-
-    const designationRects = tokens.designationFinal
-
-        ? findExactDesignationClusters(rects, tokens.designationFinal)
-
-        : [];
-
-
-
-    let bestPair = null;
-
-    let bestScore = Number.POSITIVE_INFINITY;
-
-
-
-    if (pnRects.length && designationRects.length) {
-
-        designationRects.forEach(designationRect => {
-
-            pnRects.forEach(pnRect => {
-
-                const verticalGap = Math.abs(designationRect.centerY - pnRect.centerY);
-
-                const sameLineThreshold = Math.max(designationRect.height, pnRect.height) * 0.9 + 6;
-
-                if (verticalGap > sameLineThreshold) return;
-
-
-
-                const horizontalDelta = designationRect.left - (pnRect.left + pnRect.width);
-
-                const horizontalGap = Math.abs(horizontalDelta);
-
-                const nearThreshold = Math.max(220, (designationRect.width + pnRect.width) * 2.5);
-
-                if (horizontalGap > nearThreshold) return;
-
-
-
-                const leftSidePenalty = horizontalDelta < -20 ? 40 : 0;
-
-                const score = verticalGap * 5 + horizontalGap + leftSidePenalty;
-
-                if (score < bestScore) {
-
-                    bestScore = score;
-
-                    bestPair = { designationRect, pnRect };
-
-                }
-
-            });
-
-        });
-
-    }
-
-
-
-    if (bestPair) {
-
-        highlights.push({
-
-            left: Math.max(0, bestPair.designationRect.left - 4),
-
-            top: Math.max(0, bestPair.designationRect.top - bestPair.designationRect.height - 3),
-
-            width: Math.max(24, bestPair.designationRect.width + 8),
-
-            height: Math.max(16, bestPair.designationRect.height + 6),
-
-            text: bestPair.designationRect.text,
-
-            priority: 9,
-
-            type: 'designation-near-pn',
-
-            hasError: tokens.fieldErrors.designation ?? false
-
-        });
-
-    }
-
-
-
-    // Same-line highlights for extra fields (qty, measurement, weight, model)
-
-    const extraFieldTokens = [
-
-        { key: 'qty', allowContainsKey: 'allowQtyContains', priority: 3, type: 'qty', hasError: tokens.fieldErrors.qty ?? false },
-
-        { key: 'measurement', allowContainsKey: 'allowMeasurementContains', priority: 4, type: 'measurement', hasError: tokens.fieldErrors.measurement ?? false },
-
-        { key: 'weight', allowContainsKey: 'allowWeightContains', priority: 3, type: 'weight', hasError: tokens.fieldErrors.weight ?? false },
-
-        { key: 'model', allowContainsKey: 'allowModelContains', priority: 3, type: 'model', hasError: tokens.fieldErrors.model ?? false },
-
-    ];
-
-
-
-    if (pnRects.length > 0) {
-
-        const pnLineRects = getPnLineRects(rects, pnRects);
-
-
-
-        for (const fieldDef of extraFieldTokens) {
-
-            const tokenValue = tokens[fieldDef.key];
-
-            if (!tokenValue) continue;
-
-
-
-            const allowContains = tokens[fieldDef.allowContainsKey] || false;
-
-
-
-            // Try direct rect match first
-
-            const directMatches = pnLineRects.filter(r => tokenMatches(r.normalizedText, tokenValue, false));
-
-            if (directMatches.length > 0) {
-
-                directMatches.forEach(rect => {
-
-                    highlights.push({
-
-                        left: Math.max(0, rect.left - 4),
-
-                        top: Math.max(0, rect.top - rect.height - 3),
-
-                        width: Math.max(20, rect.width + 8),
-
-                        height: Math.max(14, rect.height + 6),
-
-                        text: rect.text,
-
-                        priority: fieldDef.priority,
-
-                        type: fieldDef.type,
-
-                        hasError: fieldDef.hasError
-
-                    });
-
-                });
-
-                continue;
-
-            }
-
-
-
-            // Try cluster match for multi-word values
-
-            if (allowContains || tokenValue.length >= 4) {
-
-                const lines = buildLineGroups(pnLineRects);
-
-                for (const line of lines) {
-
-                    const clusters = buildTextClusters(line.rects);
-
-                    for (const cluster of clusters) {
-
-                        if (tokenMatches(cluster.normalizedText, tokenValue, allowContains)) {
-
-                            highlights.push({
-
-                                left: Math.max(0, cluster.left - 4),
-
-                                top: Math.max(0, cluster.top - cluster.height - 3),
-
-                                width: Math.max(24, cluster.width + 8),
-
-                                height: Math.max(16, cluster.height + 6),
-
-                                text: cluster.text,
-
-                                priority: fieldDef.priority,
-
-                                type: fieldDef.type,
-
-                                hasError: fieldDef.hasError
-
-                            });
-
-                        }
-
-                    }
-
-                }
-
-            }
-
-        }
-
-    }
-
-
-
-    highlights.sort((a, b) => b.priority - a.priority);
-
-    return highlights.slice(0, PDF_SELECTION_MAX_HIGHLIGHTS);
+    return [];
 
 }
 
@@ -2179,7 +1839,7 @@ function renderPdfSelectionHighlights(highlights, viewport) {
 
     layer.querySelectorAll('.pdf-selection-highlight').forEach(node => node.remove());
 
-    state.currentPdfSelectionRects = highlights;
+    state.currentPdfSelectionRects = [];
 
     const canvas = document.getElementById('pdfCanvas');
     const canvasWidth = canvas instanceof HTMLCanvasElement ? canvas.clientWidth : 0;
@@ -2205,45 +1865,7 @@ function renderPdfSelectionHighlights(highlights, viewport) {
         viewportHeight: viewport?.height
     });
 
-    // Modo diagnóstico: si hay marcas azules experimentales, ocultamos temporalmente
-    // los resaltados estándar para verificar claramente su visibilidad.
-    const suppressStandardHighlights = false;
-
-
-
     let focusHighlight = null;
-
-    if (!suppressStandardHighlights) highlights.forEach((rect) => {
-
-        const box = document.createElement('div');
-
-        box.className = 'pdf-selection-highlight';
-
-        const rowKind = String(rect.kind || '').trim().toLowerCase();
-
-        if (rowKind === 'red-row') {
-            box.classList.add('pdf-row-highlight-red-row');
-        } else if (rowKind === 'orange-row') {
-            box.classList.add('pdf-row-highlight-orange-row');
-        } else {
-            box.classList.add(rect.hasError ? 'is-error' : 'is-ok');
-        }
-
-        box.style.left = `${Math.max(0, rect.left * scaleX)}px`;
-
-        box.style.top = `${Math.max(0, rect.top * scaleY)}px`;
-
-        box.style.width = `${Math.max(20, rect.width * scaleX)}px`;
-
-        box.style.height = `${Math.max(14, rect.height * scaleY)}px`;
-
-        box.title = rect.text ? `Coincidencia: ${rect.text}` : 'Coincidencia';
-
-        layer.appendChild(box);
-
-        if (!focusHighlight) focusHighlight = box;
-
-    });
 
 
 
@@ -2529,7 +2151,6 @@ async function renderPdfSelectionOverlay(page, viewport, requestToken = state.cu
             : await page.getTextContent();
 
         if (requestToken !== state.currentPdfRequestToken) return;
-        const highlights = buildPdfTextHighlights(textContent.items || [], viewport, selection);
 
         // Almacenar para acceso externo (parser tabular, debug)
         state.currentPdfLastTextItems = textContent.items || [];
@@ -2543,87 +2164,11 @@ async function renderPdfSelectionOverlay(page, viewport, requestToken = state.cu
 
         let rowHighlights = buildExperimentalRowHighlightsFromSearch(textContent.items || [], viewport, state.currentPdfExperimentalRowSearch);
 
-        if (
-            state.currentPdfExperimentalRowSearch
-            && state.currentPdfExperimentalRowSearch.mode !== 'pn-line'
-            && (!Array.isArray(rowHighlights) || rowHighlights.length === 0)
-        ) {
-
-            const pnHighlights = highlights.filter((item) => String(item?.type || '') === 'pn');
-
-            if (pnHighlights.length > 0) {
-
-                const minLeft = Math.min(...pnHighlights.map((item) => Number(item.left) || 0));
-
-                const maxRight = Math.max(...pnHighlights.map((item) => (Number(item.left) || 0) + (Number(item.width) || 0)));
-
-                const minTop = Math.min(...pnHighlights.map((item) => Number(item.top) || 0));
-
-                const maxBottom = Math.max(...pnHighlights.map((item) => (Number(item.top) || 0) + (Number(item.height) || 0)));
-
-                const bandTop = Math.max(0, minTop - 6);
-
-                const bandHeight = Math.max(24, (maxBottom - minTop) + 12);
-
-                const bandBottom = bandTop + bandHeight;
-
-                const textRects = extractPdfTextRects(textContent.items || [], viewport);
-
-                const blueInBand = textRects
-
-                    .filter((rect) => {
-
-                        const rectTop = Number(rect.top || 0) - Number(rect.height || 12);
-
-                        const rectBottom = Number(rect.top || 0);
-
-                        return rectBottom >= bandTop && rectTop <= bandBottom;
-
-                    })
-
-                    .sort((a, b) => Number(a.left || 0) - Number(b.left || 0))
-
-                    .map((rect) => ({
-
-                        left: Math.max(0, Number(rect.left || 0) - 4),
-
-                        top: Math.max(0, Number(rect.top || 0) - Number(rect.height || 12) - 4),
-
-                        width: Math.max(20, Number(rect.width || 0) + 10),
-
-                        height: Math.max(16, Number(rect.height || 12) + 10),
-
-                        text: String(rect.text || '').trim(),
-
-                        kind: 'blue-token'
-
-                    }));
-
-                rowHighlights = [{
-
-                    left: 0,
-
-                    top: bandTop,
-
-                    width: Math.max(160, Number(viewport?.width || 0)),
-
-                    height: bandHeight,
-
-                    text: 'Fila PN (fallback PN verde)',
-
-                    kind: 'red-row'
-
-                }, ...blueInBand];
-
-            }
-
-        }
-
         state.currentPdfExperimentalRowHighlights = rowHighlights;
 
         if (requestToken !== state.currentPdfRequestToken) return;
 
-        renderPdfSelectionHighlights(highlights, viewport);
+        renderPdfSelectionHighlights([], viewport);
 
     } catch (error) {
 
@@ -2657,12 +2202,6 @@ export function setPdfSelection(row) {
 
 
 
-    const qaFields = evaluateRowQaChecks(row, [...(state.activeQaErrorChecks || [])]).fields || {};
-
-    const fieldHasError = (...keys) => keys.some(k => (qaFields[k]?.length ?? 0) > 0);
-
-
-
     state.currentPdfSelection = {
 
         id: String(row?.ID ?? '').trim(),
@@ -2680,24 +2219,6 @@ export function setPdfSelection(row) {
         weight: String(row?.weight_final ?? row?.WEIGHT ?? '').trim(),
 
         model: String(row?.model_type_final ?? row?.['MODEL/TYPE'] ?? '').trim(),
-
-        fieldErrors: {
-
-            pn: fieldHasError('pn_final', 'PART NO.', 'pn'),
-
-            pos: fieldHasError('pos_final', 'POS'),
-
-            designation: fieldHasError('designation_final', 'DESIGNATION'),
-
-            qty: fieldHasError('qty_final', 'QTY'),
-
-            measurement: fieldHasError('measurement_final', 'MEASUREMENT / STANDARD'),
-
-            weight: fieldHasError('weight_final', 'WEIGHT'),
-
-            model: fieldHasError('model_type_final', 'MODEL/TYPE')
-
-        },
         book: String(row?.engine_model ?? '').trim(),
 
         page: String(row?.['Source Page'] ?? '').trim(),
@@ -2707,28 +2228,6 @@ export function setPdfSelection(row) {
         renderPageNum: 0
 
     };
-
-    if (state.currentPdfExperimentalRowSearch?.mode === 'pn-line') {
-
-        const nextPnToken = normalizePdfToken(state.currentPdfSelection?.pn);
-
-        if (nextPnToken) {
-
-            state.currentPdfExperimentalRowSearch = {
-
-                ...state.currentPdfExperimentalRowSearch,
-
-                pnToken: nextPnToken
-
-            };
-
-        } else {
-
-            state.currentPdfExperimentalRowSearch = null;
-
-        }
-
-    }
 
     state.currentPdfExperimentalRowHighlights = [];
     state.currentPdfExperimentalColumnDetection = null;
@@ -3119,16 +2618,6 @@ export async function loadPdfWithPage(book, page) {
     try {
 
         await renderPdfPage(pdfUrl, pageNum, { resetScroll: true });
-
-        // Esperar a que renderPdfSelectionOverlay (que se ejecuta async) cargue los datos
-        await new Promise(resolve => setTimeout(resolve, 150));
-
-        // Ejecutar automáticamente detección de headers y pintado de cuerpo
-        runPdfHeaderOnlyDetection();
-
-        buildHeaderColumnBodyHighlights();
-
-        requestPdfRelayout();
 
     } catch (error) {
 
@@ -5074,6 +4563,22 @@ export function getPdfHeaderColumnBodyDebug() {
 export function clearPdfHeaderColumnBodyHighlights() {
     state.currentPdfHeaderColumnBodyHighlights = [];
     state.currentPdfHeaderColumnBodyDebug = null;
+    requestPdfRelayout();
+}
+
+
+export function clearPdfAllOverlays() {
+    state.currentPdfExperimentalRowHighlights = [];
+    state.currentPdfExperimentalRowSearch = null;
+    state.currentPdfExperimentalColumnDetection = null;
+    state.currentPdfHeaderOnlyOverlay = [];
+    state.currentPdfHeaderOnlyDebug = null;
+    state.currentPdfHeaderColumnBodyHighlights = [];
+    state.currentPdfHeaderColumnBodyDebug = null;
+    state.currentPdfTableDebugOverlay = [];
+    state.currentPdfTableParseResult = null;
+    state.currentPdfHeaderDetection = null;
+    clearPdfSelectionLayer();
     requestPdfRelayout();
 }
 

@@ -207,14 +207,7 @@
             aria-label="Ajustar ancho del panel PDF"></div>
 
         <aside class="a2-right">
-            <!-- Tab bar -->
-            <div class="a2-right-tabs" role="tablist" aria-label="Panel derecho">
-                <button class="a2-right-tab" id="tabPdf" role="tab" aria-selected="true"
-                    aria-controls="tabpanelPdf">PDF</button>
-            </div>
-
-            <!-- Tab panel: PDF -->
-            <div id="tabpanelPdf" role="tabpanel" aria-labelledby="tabPdf" class="pre-panel-wrap"
+            <div id="tabpanelPdf" class="pre-panel-wrap"
                 style="display:flex;flex-direction:column;flex:1;min-height:0;">
                 <div class="pdf-toolbar">
                     <label class="pdf-zoom-wrap" for="pdfZoomSelect">
@@ -233,17 +226,32 @@
                         <button id="pdfZoomInBtn" class="pdf-zoom-btn" type="button"
                             aria-label="Aumentar zoom PDF">+</button>
                     </label>
-                    <button id="markPnRowBtn" class="pdf-row-debug-btn" type="button"
-                        title="Marcar la línea de pn_final en el PDF">Marcar línea PN en PDF</button>
-                    <button id="copyPdfReadToPdfBtn" class="pdf-row-debug-btn" type="button"
-                        title="Copiar la fila detectada del PDF a los campos _pdf del registro actual">Copiar
-                        lectura a _pdf</button>
-                    <button id="detectHeadersBtn" class="pdf-row-debug-btn" type="button"
-                        title="Detectar fila de cabecera BOM y marcar headers en naranja">Detectar Headers</button>
-                    <button id="paintBodyByHeadersBtn" class="pdf-row-debug-btn" type="button"
-                        title="Pintar cuerpo de tabla por columnas detectadas desde headers (experimental)">Pintar
-                        Cuerpo</button>
-                    <span class="pdf-page">1 / 12</span>
+                    <div class="pdf-quick-actions" aria-label="Acciones rápidas PDF">
+                        <button id="pdfLoadCurrentBtn" class="pdf-row-debug-btn is-step-load" type="button"
+                            title="Paso 0: cargar el PDF del registro actual"><span class="pdf-btn-icon"
+                                aria-hidden="true">◫</span><span class="pdf-btn-label">0.Load</span></button>
+                        <button id="pdfClearOverlaysBtn" class="pdf-row-debug-btn is-step-clear" type="button"
+                            title="Limpiar todo lo pintado sobre el PDF"><span class="pdf-btn-icon"
+                                aria-hidden="true">✕</span><span class="pdf-btn-label">Clear</span></button>
+                        <button id="detectHeadersBtn" class="pdf-row-debug-btn is-step-read" type="button"
+                            title="Paso 1: detectar cabeceras BOM"><span class="pdf-btn-icon"
+                                aria-hidden="true">▤</span><span class="pdf-btn-label">1.Hdr</span></button>
+                        <button id="paintBodyByHeadersBtn" class="pdf-row-debug-btn is-step-read" type="button"
+                            title="Paso 2: pintar cuerpo por columnas detectadas"><span class="pdf-btn-icon"
+                                aria-hidden="true">▥</span><span class="pdf-btn-label">2.Body</span></button>
+                        <button id="pdfPaintSelectedRowRedBtn" class="pdf-row-debug-btn is-step-mark" type="button"
+                            title="Pintar en rojo la fila del registro seleccionado"><span class="pdf-btn-icon"
+                                aria-hidden="true">■</span><span class="pdf-btn-label">Red</span></button>
+                        <button id="copyPdfReadToPdfBtn" class="pdf-row-debug-btn is-step-copy" type="button"
+                            title="Paso 3: copiar lectura del PDF a campos _pdf"><span class="pdf-btn-icon"
+                                aria-hidden="true">▣</span><span class="pdf-btn-label">3.Copy</span></button>
+                        <button id="pdfRecomputeErrorsBtn" class="pdf-row-debug-btn is-step-check" type="button"
+                            title="Paso 4: recalcular errores del registro actual"><span class="pdf-btn-icon"
+                                aria-hidden="true">▲</span><span class="pdf-btn-label">4.Err</span></button>
+                        <button id="pdfRecomputeRevisionBtn" class="pdf-row-debug-btn is-step-revision" type="button"
+                            title="Paso 5: recalcular estado y acción del registro actual"><span class="pdf-btn-icon"
+                                aria-hidden="true">◆</span><span class="pdf-btn-label">5.Rev</span></button>
+                    </div>
                 </div>
 
                 <div id="pdfViewer" class="pdfviewer">
