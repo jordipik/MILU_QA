@@ -22,8 +22,6 @@ import { publishRevisionSync } from './revision-sync.js';
 
 import { getPdfExperimentalBlueTexts, getPdfHeaderColumnBodyDebug, getPdfLastPageData, initPdfZoomControls, loadPdfClear, loadPdfWithPage, requestPdfRelayout, setPdfExperimentalRowHighlights, setPdfReadTokens, setPdfSelection, runPdfHeaderOnlyDetection, clearPdfHeaderOnlyOverlay, buildHeaderColumnBodyHighlights, clearPdfHeaderColumnBodyHighlights, refreshPdfSelectionOverlayFromCache } from './pdf-viewer.js';
 
-import { runTableParser } from './pdf-table-parser.js';
-
 import { evaluateQaChecksForField, evaluateRowQaChecks, getAllQaCheckCodes, getQaCheckLabel } from './qa-checks.js';
 
 import { confirmTypedAction } from './confirm-typed-action.js';
@@ -66,13 +64,29 @@ const FIELD_TO_ERROR_KEY = {
 
     'DESIGNATION': 'designation_error',
 
+    'MODEL/TYPE': 'model_type_error',
+
+    'QTY': 'qty_error',
+
+    'UNITS': 'units_error',
+
     'WEIGHT': 'weight_error',
+
+    'FN': 'fn_error',
 
     'MEASUREMENT / STANDARD': 'measurement_error',
 
-    'NORMA': 'norma_error',
+    'FG/FGS': 'fg_fgs_error',
 
-    'BOM-No.': 'bom_error'
+    'BOM-No.': 'bom_error',
+
+    'GESA': 'gesa_error',
+
+    'NSN': 'nsn_error',
+
+    'NORMALIZADO': 'normalizado_error',
+
+    'NORMA': 'norma_error'
 
 };
 
@@ -299,9 +313,11 @@ function stripTrailingQtyFromDesignation(designation, qty) {
 
 
 
-    if (cleanedDesignation.endsWith(cleanedQty)) {
+    // Solo recorta si el QTY está separado por espacio.
+    // Evita recortes falsos como "HSK-M-PVDF9" -> "HSK-M-PVDF".
+    if (cleanedDesignation.endsWith(` ${cleanedQty}`)) {
 
-        const candidate = cleanedDesignation.slice(0, -cleanedQty.length).trim();
+        const candidate = cleanedDesignation.slice(0, -(cleanedQty.length + 1)).trim();
 
         if (candidate && /[A-Za-z]/.test(candidate)) {
 
@@ -318,7 +334,103 @@ function stripTrailingQtyFromDesignation(designation, qty) {
 }
 
 
-function buildPdfAutoCopyValuesFromParsedRow(parsedRow, row = currentRow) {
+function isQtyNumeric(value) {
+
+    return /^\d+(?:[.,]\d+)?$/.test(normalizeString(value));
+
+}
+
+
+function isUnitToken(value) {
+
+    return /^(?:PC|PCS|EA|SET|KIT|PAIR|PZA|PZAS)$/i.test(normalizeString(value));
+
+}
+
+
+function isWeightLike(value) {
+
+    return /^\d+[\d.,]*\s*(?:G|GR|KG|LB|LBS)$/i.test(normalizeString(value));
+
+}
+
+
+function splitModelTypeTrailingQty(modelTypeValue) {
+
+    const clean = normalizeString(modelTypeValue);
+
+    const match = clean.match(/^(.*?)(?:\s+)(\d+(?:[.,]\d+)?)$/);
+
+    if (!match) return { modelType: clean, qty: '' };
+
+    return {
+
+        modelType: normalizeString(match[1]),
+
+        qty: normalizeString(match[2])
+
+    };
+
+}
+
+
+function normalizePdfReadFieldAlignment(values = {}) {
+
+    const normalized = {
+
+        ...values,
+
+        designation_pdf: normalizeString(values.designation_pdf),
+
+        model_type_pdf: normalizeString(values.model_type_pdf),
+
+        qty_pdf: normalizeString(values.qty_pdf),
+
+        units_pdf: normalizeString(values.units_pdf),
+
+        weight_pdf: normalizeString(values.weight_pdf)
+
+    };
+
+
+
+    // Caso frecuente de OCR: MODEL/TYPE trae el QTY al final ("HSK-M-PVDF 9").
+    const split = splitModelTypeTrailingQty(normalized.model_type_pdf);
+    if (split.qty && (!isQtyNumeric(normalized.qty_pdf) || isUnitToken(normalized.qty_pdf))) {
+
+        normalized.model_type_pdf = split.modelType || normalized.model_type_pdf;
+
+        if (!isQtyNumeric(normalized.qty_pdf)) {
+
+            normalized.qty_pdf = split.qty;
+
+        }
+
+    }
+
+
+
+    // Caso frecuente de desplazamiento: QTY="pc" y UNITS="15.000 g".
+    if (isUnitToken(normalized.qty_pdf) && isWeightLike(normalized.units_pdf)) {
+
+        const qtyToken = normalized.qty_pdf;
+
+        const weightToken = normalized.units_pdf;
+
+        normalized.units_pdf = qtyToken;
+
+        normalized.weight_pdf = normalized.weight_pdf || weightToken;
+
+    }
+
+
+
+    return normalized;
+
+}
+
+
+function buildPdfAutoCopyValuesFromParsedRow(parsedRow) {
 
     const cells = parsedRow?.cells || {};
 
@@ -333,7 +445,7 @@ function buildPdfAutoCopyValuesFromParsedRow(parsedRow, row = currentRow) {
 
 
 
-    return {
+    return normalizePdfReadFieldAlignment({
 
         pos_pdf: normalizeString(cells.pos),
         pn_pdf: normalizeString(cells.part_no),
@@ -342,11 +454,11 @@ function buildPdfAutoCopyValuesFromParsedRow(parsedRow, row = currentRow) {
         qty_pdf: qtyValue,
         units_pdf: normalizeString(cells.units),
         weight_pdf: normalizeString(cells.weight),
-        fn_pdf: parsedFn || unknownFn || normalizeString(row?.FN),
+        fn_pdf: parsedFn || unknownFn,
         measure_pdf: measurement,
         norma_pdf: standard
 
-    };
+    });
 
 }
 
@@ -422,7 +534,7 @@ function groupMarkedPdfRectsByRow(rectDebug = [], tolerance = 8) {
 }
 
 
-function buildMarkedRowValuesFromGroup(rowGroup = {}, row = currentRow) {
+function buildMarkedRowValuesFromGroup(rowGroup = {}) {
 
     const byColumn = new Map();
 
@@ -463,7 +575,7 @@ function buildMarkedRowValuesFromGroup(rowGroup = {}, row = currentRow) {
 
 
 
-    return {
+    return normalizePdfReadFieldAlignment({
 
         pos_pdf: readColumn('pos'),
         pn_pdf: readColumn('part_no'),
@@ -472,11 +584,11 @@ function buildMarkedRowValuesFromGroup(rowGroup = {}, row = currentRow) {
         qty_pdf: qtyValue,
         units_pdf: readColumn('units'),
         weight_pdf: readColumn('weight'),
-        fn_pdf: parsedFn || unknownFn || normalizeString(row?.FN),
+        fn_pdf: parsedFn || unknownFn,
         measure_pdf: measurement,
         norma_pdf: standard
 
-    };
+    });
 
 }
 
@@ -623,6 +735,8 @@ let isApplyingPdfAutoPn = false;
 
 let isApplyingPdfAutoPos = false;
 
+let isApplyingPdfGeneric = false;
+
 const pdfDocumentPromiseCache = new Map();
 
 const pdfPageTextCache = new Map();
@@ -640,6 +754,7 @@ const PDF_FEATURE_HEADERS_ENABLED = true;
 const PDF_FEATURE_BLUE_TEXT_PANEL_ENABLED = false;
 const PDF_FEATURE_PN_ROW_DEBUG_ENABLED = false;
 const PDF_FEATURE_BACKGROUND_TOKEN_SCAN_ENABLED = false;
+const PDF_FEATURE_AUTO_PDF_ENABLED = false;
 
 const RIGHT_PANEL_WIDTH_KEY = 'analista02:right-panel-width';
 
@@ -2147,9 +2262,11 @@ function initRecomputeModal() {
 
     if (recomputePdfRunBtn instanceof HTMLButtonElement) {
 
-        recomputePdfRunBtn.disabled = !allowRecompute;
+        recomputePdfRunBtn.disabled = !allowRecompute || !PDF_FEATURE_AUTO_PDF_ENABLED;
 
-        recomputePdfRunBtn.title = allowRecompute ? '' : 'Disponible solo en local (localhost:3000).';
+        recomputePdfRunBtn.title = !PDF_FEATURE_AUTO_PDF_ENABLED
+            ? 'Auto-PDF desactivado'
+            : (allowRecompute ? '' : 'Disponible solo en local (localhost:3000).');
 
     }
 
@@ -3041,41 +3158,19 @@ function initComparisonEditTriggers() {
 
 
 
-        const pdfAutoCopyCell = target.closest('td[data-copy-pdf-auto-designation="true"]');
+        const copyPdfCell = target.closest('td[data-copy-pdf-to-final="true"]');
 
-        if (pdfAutoCopyCell && currentRow) {
-
-            event.preventDefault();
-
-            await copyPdfAutoDesignationToFinalAndRecompute();
-
-            return;
-
-        }
-
-
-
-        const pdfAutoCopyPnCell = target.closest('td[data-copy-pdf-auto-pn="true"]');
-
-        if (pdfAutoCopyPnCell && currentRow) {
+        if (copyPdfCell && currentRow) {
 
             event.preventDefault();
 
-            await copyPdfAutoPnToFinalAndRecompute();
+            const pdfKey = copyPdfCell.getAttribute('data-pdf-key') || '';
 
-            return;
+            const finalKey = copyPdfCell.getAttribute('data-final-key') || '';
 
-        }
+            const fieldLabel = copyPdfCell.getAttribute('data-field-label') || pdfKey;
 
-
-
-        const pdfAutoCopyPosCell = target.closest('td[data-copy-pdf-auto-pos="true"]');
-
-        if (pdfAutoCopyPosCell && currentRow) {
-
-            event.preventDefault();
-
-            await copyPdfAutoPosToFinalAndRecompute();
+            await copyPdfToFinalGeneric(pdfKey, finalKey, fieldLabel);
 
             return;
 
@@ -3094,6 +3189,92 @@ function initComparisonEditTriggers() {
         openEditRecordModalForRow(currentRow);
 
     });
+
+}
+
+
+
+async function copyPdfToFinalGeneric(pdfKey, finalKey, fieldLabel) {
+
+    if (!currentRow || isApplyingPdfGeneric) return;
+
+
+
+    const engineFile = resolveEngineFile(currentRow);
+
+    const id = txt(currentRow?.ID, '');
+
+    if (!engineFile || !id) {
+
+        alert(`No se pudo resolver archivo engine o ID para aplicar ${fieldLabel} desde PDF.`);
+
+        return;
+
+    }
+
+
+
+    const pdfValue = normalizeString(String(currentRow?.[pdfKey] ?? '').trim());
+
+    if (!pdfValue) {
+
+        setRecomputeStatus(`No hay valor PDF en ${fieldLabel} para copiar.`, 'error');
+
+        return;
+
+    }
+
+
+
+    const currentFinalValue = normalizeString(String(currentRow?.[finalKey] ?? '').trim());
+
+    const changed = normalizeCompareValue(pdfValue) !== normalizeCompareValue(currentFinalValue);
+
+
+
+    isApplyingPdfGeneric = true;
+
+    try {
+
+        setRecomputeStatus(`Aplicando ${fieldLabel} PDF en ID ${id}...`, '');
+
+
+
+        if (changed) {
+
+            await saveCellToServer(engineFile, id, finalKey, pdfValue);
+
+            currentRow[finalKey] = pdfValue;
+
+        }
+
+
+
+        await autoRecomputeEditedRecord(engineFile, id);
+
+        await reloadEditedRecord(engineFile, id);
+
+        renderReviewStateButtons(currentRow);
+
+        renderReviewStats();
+
+        notifyPdfDataChangedFromAnalista(currentRow);
+
+
+
+        const actionLabel = changed ? 'copiado a FINAL' : 'ya coincide con FINAL';
+
+        setRecomputeStatus(`Registro ID ${id}: ${fieldLabel} ${actionLabel}.`, 'ok');
+
+    } catch (error) {
+
+        setRecomputeStatus(`Error aplicando ${fieldLabel} desde PDF: ${String(error?.message || error)}`, 'error');
+
+    } finally {
+
+        isApplyingPdfGeneric = false;
+
+    }
 
 }
 
@@ -3378,6 +3559,12 @@ async function copyPdfAutoPosToFinalAndRecompute() {
 
 async function copyPdfReadValuesToPdfFields() {
 
+    if (!PDF_FEATURE_AUTO_PDF_ENABLED) {
+
+        return;
+
+    }
+
     if (!currentRow) {
 
         alert('Primero debes cargar un registro.');
@@ -3416,24 +3603,15 @@ async function copyPdfReadValuesToPdfFields() {
     const headerColumnBodyDebug = getPdfHeaderColumnBodyDebug();
     const markedRow = findMarkedPdfRowForCurrentRow(headerColumnBodyDebug, currentRow);
 
-    let valuesToCopy = markedRow ? buildMarkedRowValuesFromGroup(markedRow, currentRow) : null;
+    if (!markedRow) {
 
-    if (!valuesToCopy) {
+        alert('No se pudo identificar la fila de rectangulos de color para copiar sus valores. Ejecuta Detectar Headers y Pintar Cuerpo en la pagina actual.');
 
-        const parsedTable = runTableParser(textItems, viewport, { buildDebug: false });
-        const parsedRow = findParsedPdfRowForCurrentRow(currentRow, parsedTable?.grid || []);
-
-        if (!parsedRow) {
-
-            alert('No se pudo identificar la fila del PDF para copiar sus valores.');
-
-            return;
-
-        }
-
-        valuesToCopy = buildPdfAutoCopyValuesFromParsedRow(parsedRow, currentRow);
+        return;
 
     }
+
+    const valuesToCopy = buildMarkedRowValuesFromGroup(markedRow);
 
 
 
@@ -4393,6 +4571,12 @@ async function runBackendRecompute() {
 
 
 async function runBackendRecomputePdfAuto() {
+
+    if (!PDF_FEATURE_AUTO_PDF_ENABLED) {
+
+        return;
+
+    }
 
     const recomputeEngineSelect = $('recomputeEngineSelect');
 
@@ -5789,9 +5973,9 @@ function buildComparisonRows(row) {
 
             final: firstNonEmpty(row?.model_type_final, row?.['MODEL/TYPE']),
 
-            errorKey: null,
+            errorKey: 'model_type_error',
 
-            fieldKeys: { excel: 'MODEL/TYPE', gesa: null, subst: null, pdf: 'model_type_pdf', final: 'model_type_final', error: null },
+            fieldKeys: { excel: 'MODEL/TYPE', gesa: null, subst: null, pdf: 'model_type_pdf', final: 'model_type_final', error: 'model_type_error' },
 
             errFields: [],
 
@@ -5813,9 +5997,9 @@ function buildComparisonRows(row) {
 
             final: row?.qty_final,
 
-            errorKey: null,
+            errorKey: 'qty_error',
 
-            fieldKeys: { excel: 'QTY', gesa: null, subst: null, pdf: 'qty_pdf', final: 'qty_final', error: null },
+            fieldKeys: { excel: 'QTY', gesa: null, subst: null, pdf: 'qty_pdf', final: 'qty_final', error: 'qty_error' },
 
             errFields: [],
 
@@ -5835,11 +6019,11 @@ function buildComparisonRows(row) {
 
             pdf: row?.units_pdf,
 
-            final: row?.UNITS,
+            final: firstNonEmpty(row?.units_final, row?.UNITS),
 
-            errorKey: null,
+            errorKey: 'units_error',
 
-            fieldKeys: { excel: 'UNITS', gesa: null, subst: null, pdf: 'units_pdf', final: 'UNITS', error: null },
+            fieldKeys: { excel: 'UNITS', gesa: null, subst: null, pdf: 'units_pdf', final: 'units_final', error: 'units_error' },
 
             errFields: [],
 
@@ -5883,11 +6067,11 @@ function buildComparisonRows(row) {
 
             pdf: row?.fn_pdf,
 
-            final: row?.FN,
+            final: firstNonEmpty(row?.fn_final, row?.FN),
 
-            errorKey: null,
+            errorKey: 'fn_error',
 
-            fieldKeys: { excel: 'FN', gesa: null, subst: null, pdf: 'fn_pdf', final: 'FN', error: null },
+            fieldKeys: { excel: 'FN', gesa: null, subst: null, pdf: 'fn_pdf', final: 'fn_final', error: 'fn_error' },
 
             errFields: [],
 
@@ -5932,11 +6116,11 @@ function buildComparisonRows(row) {
 
             pdf: row?.fg_fgs_pdf,
 
-            final: row?.['FG/FGS'],
+            final: firstNonEmpty(row?.fg_fgs_final, row?.['FG/FGS']),
 
-            errorKey: null,
+            errorKey: 'fg_fgs_error',
 
-            fieldKeys: { excel: 'FG/FGS', gesa: null, subst: null, pdf: 'fg_fgs_pdf', final: 'FG/FGS', error: null },
+            fieldKeys: { excel: 'FG/FGS', gesa: null, subst: null, pdf: 'fg_fgs_pdf', final: 'fg_fgs_final', error: 'fg_fgs_error' },
 
             errFields: [],
 
@@ -5956,11 +6140,11 @@ function buildComparisonRows(row) {
 
             pdf: row?.bom_pdf,
 
-            final: row?.['BOM-No.'],
+            final: firstNonEmpty(row?.bom_final, row?.['BOM-No.']),
 
             errorKey: 'bom_error',
 
-            fieldKeys: { excel: 'BOM-No.', gesa: null, subst: null, pdf: 'bom_pdf', final: 'BOM-No.', error: 'bom_error' },
+            fieldKeys: { excel: 'BOM-No.', gesa: null, subst: null, pdf: 'bom_pdf', final: 'bom_final', error: 'bom_error' },
 
             errFields: [],
 
@@ -5980,13 +6164,13 @@ function buildComparisonRows(row) {
 
             pdf: row?.gesa_pdf,
 
-            final: row?.gesa,
+            final: firstNonEmpty(row?.gesa_final, row?.gesa),
 
-            errorKey: null,
+            errorKey: 'gesa_error',
 
             separatorTop: true,
 
-            fieldKeys: { excel: null, gesa: 'gesa', subst: null, pdf: 'gesa_pdf', final: 'gesa', error: null },
+            fieldKeys: { excel: null, gesa: 'gesa', subst: null, pdf: 'gesa_pdf', final: 'gesa_final', error: 'gesa_error' },
 
             errFields: [],
 
@@ -6006,11 +6190,11 @@ function buildComparisonRows(row) {
 
             pdf: row?.nsn_pdf,
 
-            final: row?.nsn,
+            final: firstNonEmpty(row?.nsn_final, row?.nsn),
 
-            errorKey: null,
+            errorKey: 'nsn_error',
 
-            fieldKeys: { excel: null, gesa: 'nsn', subst: null, pdf: 'nsn_pdf', final: 'nsn', error: null },
+            fieldKeys: { excel: null, gesa: 'nsn', subst: null, pdf: 'nsn_pdf', final: 'nsn_final', error: 'nsn_error' },
 
             errFields: [],
 
@@ -6030,11 +6214,11 @@ function buildComparisonRows(row) {
 
             pdf: row?.normalizado_pdf,
 
-            final: row?.normalizado,
+            final: firstNonEmpty(row?.normalizado_final, row?.normalizado),
 
-            errorKey: null,
+            errorKey: 'normalizado_error',
 
-            fieldKeys: { excel: null, gesa: 'normalizado', subst: null, pdf: 'normalizado_pdf', final: 'normalizado', error: null },
+            fieldKeys: { excel: null, gesa: 'normalizado', subst: null, pdf: 'normalizado_pdf', final: 'normalizado_final', error: 'normalizado_error' },
 
             errFields: [],
 
@@ -6054,11 +6238,11 @@ function buildComparisonRows(row) {
 
             pdf: row?.norma_pdf,
 
-            final: row?.norma,
+            final: firstNonEmpty(row?.norma_final, row?.norma),
 
             errorKey: 'norma_error',
 
-            fieldKeys: { excel: null, gesa: 'norma', subst: null, pdf: 'norma_pdf', final: 'norma', error: 'norma_error' },
+            fieldKeys: { excel: null, gesa: 'norma', subst: null, pdf: 'norma_pdf', final: 'norma_final', error: 'norma_error' },
 
             errFields: [],
 
@@ -6076,15 +6260,15 @@ function buildComparisonRows(row) {
 
             subst: row?.sust_status,
 
-            pdf: null,
+            pdf: row?.sust_status_pdf,
 
-            final: row?.sust_status,
+            final: firstNonEmpty(row?.sust_status_final, row?.sust_status),
 
             errorKey: null,
 
             separatorTop: true,
 
-            fieldKeys: { excel: null, gesa: null, subst: 'sust_status', pdf: null, final: 'sust_status', error: null },
+            fieldKeys: { excel: null, gesa: null, subst: 'sust_status', pdf: 'sust_status_pdf', final: 'sust_status_final', error: null },
 
             errFields: [],
 
@@ -6103,13 +6287,13 @@ function buildComparisonRows(row) {
             // hierarchie_subst → sust_hierarchie → hierarchi (fallbacks legacy)
             subst: firstNonEmpty(row?.hierarchie_subst, row?.sust_hierarchie, row?.hierarchi),
 
-            pdf: null,
+            pdf: row?.hierarchi_pdf,
 
             final: firstNonEmpty(row?.hierarchie_final, row?.sust_hierarchie, row?.hierarchi),
 
             errorKey: null,
 
-            fieldKeys: { excel: null, gesa: null, subst: 'hierarchie_subst', pdf: null, final: 'hierarchie_final', error: null },
+            fieldKeys: { excel: null, gesa: null, subst: 'hierarchie_subst', pdf: 'hierarchi_pdf', final: 'hierarchie_final', error: null },
 
             errFields: [],
 
@@ -6366,21 +6550,13 @@ async function renderComparisonTable(row) {
 
             : '';
 
-        // data-copy-pdf-auto-* se mantiene para la acción de doble clic de copiar PDF a final
+        // data-copy-pdf-to-final: doble clic copia el valor _pdf almacenado al campo _final correspondiente
 
-        const pdfActionAttrs = entry.pdfAutoAction === 'designation'
+        const pdfActionAttrs = (entry.fieldKeys?.pdf && entry.fieldKeys?.final)
 
-            ? ' data-copy-pdf-auto-designation="true" title="Doble clic para copiar PDF a DESIGNATION_FINAL y recalcular"'
+            ? ` data-copy-pdf-to-final="true" data-pdf-key="${escapeHtml(entry.fieldKeys.pdf)}" data-final-key="${escapeHtml(entry.fieldKeys.final)}" data-field-label="${escapeHtml(entry.field)}" title="Doble clic para copiar PDF a FINAL"`
 
-            : entry.pdfAutoAction === 'pn'
-
-                ? ' data-copy-pdf-auto-pn="true" title="Doble clic para copiar PDF a PN_FINAL y recalcular"'
-
-                : entry.pdfAutoAction === 'pos'
-
-                    ? ' data-copy-pdf-auto-pos="true" title="Doble clic para copiar PDF a POS_FINAL y recalcular"'
-
-                    : '';
+            : '';
 
         // Aviso discreto en celda PDF cuando el valor está vacío pero el campo _pdf existe en el JSON
         // (indica que recompute-pdf-auto no se ha ejecutado aún para este registro).
@@ -8716,6 +8892,18 @@ function applyPdfFeatureFlagsToUi() {
         if (!PDF_FEATURE_HEADERS_ENABLED) paintBodyBtn.title = 'Requiere Detectar Headers habilitado (experimental)';
     }
 
+    const copyPdfReadBtn = $('copyPdfReadToPdfBtn');
+    if (copyPdfReadBtn instanceof HTMLButtonElement) {
+        copyPdfReadBtn.disabled = !PDF_FEATURE_AUTO_PDF_ENABLED;
+        if (!PDF_FEATURE_AUTO_PDF_ENABLED) copyPdfReadBtn.title = 'Auto-PDF desactivado';
+    }
+
+    const recomputePdfRunBtn = $('recomputePdfRunBtn');
+    if (recomputePdfRunBtn instanceof HTMLButtonElement) {
+        recomputePdfRunBtn.disabled = !PDF_FEATURE_AUTO_PDF_ENABLED;
+        if (!PDF_FEATURE_AUTO_PDF_ENABLED) recomputePdfRunBtn.title = 'Auto-PDF desactivado';
+    }
+
 }
 
 
@@ -8830,6 +9018,10 @@ bindClick('recomputeRunBtn', () => {
 
 bindClick('recomputePdfRunBtn', () => {
 
+    if (!PDF_FEATURE_AUTO_PDF_ENABLED) {
+        return;
+    }
+
     runBackendRecomputePdfAuto().catch((error) => {
 
         setRecomputeStatus(`Error: ${String(error?.message || error)}`, 'error');
@@ -8891,6 +9083,10 @@ bindClick('markPnRowBtn', () => {
 });
 
 bindClick('copyPdfReadToPdfBtn', () => {
+
+    if (!PDF_FEATURE_AUTO_PDF_ENABLED) {
+        return;
+    }
 
     copyPdfReadValuesToPdfFields().catch((error) => {
 
