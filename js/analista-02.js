@@ -55,6 +55,93 @@ function alert(message) {
 
 }
 
+function simpleConfirm(message) {
+    return new Promise((resolve) => {
+        const modal = document.createElement('div');
+        modal.style.cssText = `
+            position: fixed;
+            inset: 0;
+            background: rgba(8, 14, 24, 0.55);
+            z-index: 13000;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 16px;
+        `;
+        
+        const panel = document.createElement('div');
+        panel.style.cssText = `
+            width: min(480px, 96vw);
+            background: #ffffff;
+            border-radius: 14px;
+            border: 1px solid #d9e1ea;
+            box-shadow: 0 24px 64px rgba(10, 25, 40, 0.28);
+            font-family: Manrope, sans-serif;
+            color: #0f172a;
+            overflow: hidden;
+        `;
+        
+        const content = document.createElement('div');
+        content.style.cssText = `padding: 20px 16px; font-size: 14px; line-height: 1.5; color: #334155;`;
+        content.textContent = message;
+        
+        const footer = document.createElement('div');
+        footer.style.cssText = `
+            border-top: 1px solid #e6edf5;
+            padding: 12px 16px 14px;
+            display: flex;
+            justify-content: flex-end;
+            gap: 10px;
+            background: #f8fafc;
+        `;
+        
+        const cancelBtn = document.createElement('button');
+        cancelBtn.textContent = 'Cancelar';
+        cancelBtn.style.cssText = `
+            border: 1px solid #cbd5e1;
+            background: #ffffff;
+            color: #0f172a;
+            padding: 8px 12px;
+            min-width: 110px;
+            border-radius: 10px;
+            cursor: pointer;
+            font: inherit;
+            font-weight: 600;
+        `;
+        cancelBtn.onclick = () => {
+            document.body.removeChild(modal);
+            resolve(false);
+        };
+        
+        const confirmBtn = document.createElement('button');
+        confirmBtn.textContent = 'Confirmar';
+        confirmBtn.style.cssText = `
+            border: 1px solid #dc2626;
+            background: linear-gradient(135deg, #dc2626, #b91c1c);
+            color: #ffffff;
+            padding: 8px 12px;
+            min-width: 110px;
+            border-radius: 10px;
+            cursor: pointer;
+            font: inherit;
+            font-weight: 700;
+        `;
+        confirmBtn.onclick = () => {
+            document.body.removeChild(modal);
+            resolve(true);
+        };
+        
+        footer.appendChild(cancelBtn);
+        footer.appendChild(confirmBtn);
+        panel.appendChild(content);
+        panel.appendChild(footer);
+        modal.appendChild(panel);
+        document.body.appendChild(modal);
+        
+        confirmBtn.focus();
+    });
+}
+
 
 
 const FIELD_TO_ERROR_KEY = {
@@ -2830,6 +2917,7 @@ function initRecomputeModal() {
     const recomputePdfRunBtn = $('recomputePdfRunBtn');
     const recomputeCopyCurrentBtn = $('recomputeCopyCurrentBtn');
     const recomputeErrorsCurrentBtn = $('recomputeErrorsCurrentBtn');
+    const recomputeCopyBookBtn = $('recomputeCopyBookBtn');
 
 
 
@@ -2917,7 +3005,15 @@ function initRecomputeModal() {
             : 'Disponible solo en local (localhost:3000).';
     }
 
-
+    if (recomputeCopyBookBtn instanceof HTMLButtonElement) {
+        const allowPdfBook = allowRecompute && PDF_FEATURE_AUTO_PDF_ENABLED;
+        recomputeCopyBookBtn.disabled = !allowPdfBook;
+        recomputeCopyBookBtn.title = !PDF_FEATURE_AUTO_PDF_ENABLED
+            ? 'Auto-PDF desactivado'
+            : (allowRecompute
+                ? 'Aplicar lectura PDF (recompute-pdf-auto) a todos los registros del libro seleccionado'
+                : 'Disponible solo en local (localhost:3000).');
+    }
 
     setRecomputeStatus(
 
@@ -4203,66 +4299,40 @@ async function copyPdfAutoPosToFinalAndRecompute() {
 }
 
 
-async function copyPdfReadValuesToPdfFields() {
+async function copyPdfReadValuesForRow(row, options = {}) {
+
+    const silent = options?.silent !== false;
+    const reloadAfterSave = options?.reloadAfterSave !== false;
 
     if (!PDF_FEATURE_AUTO_PDF_ENABLED) {
-
-        return;
-
+        return { ok: false, reason: 'feature-disabled', changedFields: [], valuesToCopy: {} };
     }
 
-    if (!currentRow) {
-
-        alert('Primero debes cargar un registro.');
-
-        return;
-
+    if (!row) {
+        return { ok: false, reason: 'missing-row', changedFields: [], valuesToCopy: {} };
     }
 
-
-
-    const engineFile = resolveEngineFile(currentRow);
-    const id = txt(currentRow?.ID, '');
-
+    const engineFile = resolveEngineFile(row);
+    const id = txt(row?.ID, '');
     if (!engineFile || !id) {
-
-        alert('No se pudo resolver archivo engine o ID para copiar la lectura del PDF.');
-
-        return;
-
+        return { ok: false, reason: 'missing-engine-or-id', changedFields: [], valuesToCopy: {} };
     }
-
-
 
     const { textItems, viewport } = getPdfLastPageData();
-
     if (!Array.isArray(textItems) || !textItems.length || !viewport) {
-
-        alert('Primero carga el PDF del registro para poder copiar sus valores.');
-
-        return;
-
+        return { ok: false, reason: 'missing-pdf-page', changedFields: [], valuesToCopy: {} };
     }
 
-
-
     const headerColumnBodyDebug = getPdfHeaderColumnBodyDebug();
-    const markedRow = findMarkedPdfRowForCurrentRow(headerColumnBodyDebug, currentRow);
-
+    const markedRow = findMarkedPdfRowForCurrentRow(headerColumnBodyDebug, row);
     if (!markedRow) {
-
-        alert('No se pudo identificar la fila de rectangulos de color para copiar sus valores. Ejecuta Detectar Headers y Pintar Cuerpo en la pagina actual.');
-
-        return;
-
+        return { ok: false, reason: 'missing-marked-row', changedFields: [], valuesToCopy: {} };
     }
 
     const valuesToCopy = buildMarkedRowValuesFromGroup(markedRow);
 
-    // Include top header detections so FG/FGS and BOM can be copied together
-    // with the main row values when available.
     try {
-        const topDetection = await detectTopBomAndFgInPdf(currentRow);
+        const topDetection = await detectTopBomAndFgInPdf(row);
         const topEntries = Array.isArray(topDetection?.entries) ? topDetection.entries : [];
         const detectedFg = topEntries.find((entry) => String(entry?.key || '').trim() === 'fg_fgs');
         const detectedBom = topEntries.find((entry) => String(entry?.key || '').trim() === 'bom');
@@ -4276,60 +4346,91 @@ async function copyPdfReadValuesToPdfFields() {
         console.warn('No se pudo detectar FG/FGS + BOM superior durante la copia de lectura PDF:', error);
     }
 
-
-
     const readSummaryMessage = buildPdfReadSummary(valuesToCopy);
     const changedFields = [];
 
-
-
     for (const [field, value] of Object.entries(valuesToCopy)) {
-
         if (!value) continue;
-
-        if (String(currentRow?.[field] ?? '') === String(value ?? '')) continue;
-
-
+        if (String(row?.[field] ?? '') === String(value ?? '')) continue;
 
         try {
             await saveCellToServer(engineFile, id, field, value);
-            currentRow[field] = value;
+            row[field] = value;
             changedFields.push(field);
         } catch (error) {
             console.error(`Error guardando ${field} en JSON:`, error);
         }
-
     }
 
-    if (changedFields.includes('norma_pdf') && String(currentRow?.normalizado_pdf ?? '') !== 'SI') {
-
+    if (changedFields.includes('norma_pdf') && String(row?.normalizado_pdf ?? '') !== 'SI') {
         try {
             await saveCellToServer(engineFile, id, 'normalizado_pdf', 'SI');
-            currentRow['normalizado_pdf'] = 'SI';
+            row['normalizado_pdf'] = 'SI';
             changedFields.push('normalizado_pdf');
         } catch (error) {
-            console.error(`Error guardando normalizado_pdf en JSON:`, error);
+            console.error('Error guardando normalizado_pdf en JSON:', error);
         }
-
     }
 
+    if (reloadAfterSave && changedFields.length > 0) {
+        await reloadEditedRecord(engineFile, id);
+        renderReviewStats();
+        notifyPdfDataChangedFromAnalista(row);
+    }
 
-
-    if (!changedFields.length) {
-
+    if (!silent && !changedFields.length) {
         alert(`${readSummaryMessage}\n\nLos campos _pdf ya estaban sincronizados con la lectura del PDF.`);
-
-        return;
-
     }
 
+    if (!silent && changedFields.length > 0) {
+        alert(`${readSummaryMessage}\n\nCopiados ${changedFields.length} campos _pdf desde la fila del PDF.`);
+    }
+
+    return {
+        ok: true,
+        reason: changedFields.length > 0 ? 'updated' : 'already-synced',
+        changedFields,
+        valuesToCopy,
+        readSummaryMessage
+    };
+
+}
 
 
-    await reloadEditedRecord(engineFile, id);
-    renderReviewStats();
-    notifyPdfDataChangedFromAnalista(currentRow);
+async function copyPdfReadValuesToPdfFields() {
 
-    alert(`${readSummaryMessage}\n\nCopiados ${changedFields.length} campos _pdf desde la fila del PDF.`);
+    if (!currentRow) {
+        alert('Primero debes cargar un registro.');
+        return;
+    }
+
+    const result = await copyPdfReadValuesForRow(currentRow, {
+        silent: false,
+        reloadAfterSave: true
+    });
+
+    if (result.ok) return;
+
+    if (result.reason === 'missing-engine-or-id') {
+        alert('No se pudo resolver archivo engine o ID para copiar la lectura del PDF.');
+        return;
+    }
+
+    if (result.reason === 'missing-pdf-page') {
+        alert('Primero carga el PDF del registro para poder copiar sus valores.');
+        return;
+    }
+
+    if (result.reason === 'missing-marked-row') {
+        alert('No se pudo identificar la fila de rectangulos de color para copiar sus valores. Ejecuta Detectar Headers y Pintar Cuerpo en la pagina actual.');
+        return;
+    }
+
+    if (result.reason === 'feature-disabled') {
+        return;
+    }
+
+    alert('No se pudo copiar la lectura del PDF para el registro actual.');
 
 }
 
@@ -5243,6 +5344,198 @@ async function runBackendRecompute() {
 }
 
 
+
+// Copia lectura PDF a campos *_pdf para TODOS los registros del libro seleccionado (motor visual por fila).
+async function runBulkCopyPdfToBook() {
+
+    if (!PDF_FEATURE_AUTO_PDF_ENABLED) {
+        return;
+    }
+
+    if (!isBackendEndpointAllowed('recompute-pdf-auto')) {
+        setRecomputeStatus(getLocalOnlyBackendMessage('recompute-pdf-auto'), 'error');
+        return;
+    }
+
+    const recomputeEngineSelect = $('recomputeEngineSelect');
+    const engineFilterSelect = $('engineFilterSelect');
+
+    const selectedModel = (recomputeEngineSelect instanceof HTMLSelectElement
+        ? String(recomputeEngineSelect.value || '').trim()
+        : '') || (engineFilterSelect instanceof HTMLSelectElement
+            ? String(engineFilterSelect.value || '').trim()
+            : '');
+
+    if (!selectedModel) {
+        setRecomputeStatus('Selecciona un libro antes de copiar PDF.', 'error');
+        return;
+    }
+
+    const file = resolveEngineFileFromFilter(selectedModel);
+    if (!file) {
+        setRecomputeStatus('No se pudo resolver el archivo engine para el libro seleccionado.', 'error');
+        return;
+    }
+
+    const confirmed = await simpleConfirm(
+        `Se sobreescribirán los campos *_pdf de TODOS los registros del libro "${selectedModel}" con los valores leídos desde el PDF.\n\n¿Deseas continuar?`
+    );
+
+    if (!confirmed) {
+        setRecomputeStatus('Operación cancelada por el usuario.', '');
+        return;
+    }
+
+    const recomputeCopyBookBtn = $('recomputeCopyBookBtn');
+    const recomputeRunBtn = $('recomputeRunBtn');
+    const recomputePdfRunBtn = $('recomputePdfRunBtn');
+
+    if (recomputeCopyBookBtn instanceof HTMLButtonElement) recomputeCopyBookBtn.disabled = true;
+    if (recomputeRunBtn instanceof HTMLButtonElement) recomputeRunBtn.disabled = true;
+    if (recomputePdfRunBtn instanceof HTMLButtonElement) recomputePdfRunBtn.disabled = true;
+    setRecomputeStatus(`Copiando lectura PDF a todo el libro "${selectedModel}"...`, '');
+
+    // Mostrar barra de progreso
+    const progressContainer = $('recomputeProgressContainer');
+    if (progressContainer instanceof HTMLElement) {
+        progressContainer.hidden = false;
+        const fillEl = $('recomputeProgressFill');
+        const textEl = $('recomputeProgressText');
+        if (fillEl instanceof HTMLElement) fillEl.style.width = '20%';
+        if (textEl instanceof HTMLElement) textEl.textContent = 'Iniciando operación...';
+    }
+
+    const selectedRows = Array.isArray(state.allData)
+        ? state.allData.filter((row) => String(row?.engine_model || '').trim() === selectedModel)
+        : [];
+
+    if (!selectedRows.length) {
+        if (recomputeCopyBookBtn instanceof HTMLButtonElement) recomputeCopyBookBtn.disabled = false;
+        if (recomputeRunBtn instanceof HTMLButtonElement) recomputeRunBtn.disabled = false;
+        if (recomputePdfRunBtn instanceof HTMLButtonElement) recomputePdfRunBtn.disabled = false;
+        if (progressContainer instanceof HTMLElement) progressContainer.hidden = true;
+        setRecomputeStatus(`No hay registros cargados para el libro ${selectedModel}.`, 'error');
+        return;
+    }
+
+    let changedRows = 0;
+    let scannedRows = 0;
+    let failedRows = 0;
+    let missingMarkedRowRows = 0;
+    const previousCurrentId = txt(currentRow?.ID, '');
+    const failedDetails = [];
+
+    for (let index = 0; index < selectedRows.length; index += 1) {
+        const row = selectedRows[index];
+        scannedRows += 1;
+
+        const fillEl = $('recomputeProgressFill');
+        const textEl = $('recomputeProgressText');
+        const progressPct = Math.min(98, 20 + Math.round(((index + 1) / selectedRows.length) * 78));
+        if (fillEl instanceof HTMLElement) fillEl.style.width = `${progressPct}%`;
+        if (textEl instanceof HTMLElement) {
+            textEl.textContent = `Procesando ${index + 1}/${selectedRows.length} (ID ${txt(row?.ID, '?')})...`;
+        }
+
+        try {
+            currentRow = row;
+            await syncPdfWithCurrentRow(row);
+            const copyResult = await copyPdfReadValuesForRow(row, {
+                silent: true,
+                reloadAfterSave: false
+            });
+
+            if (!copyResult.ok) {
+                failedRows += 1;
+                if (copyResult.reason === 'missing-marked-row') missingMarkedRowRows += 1;
+                failedDetails.push({
+                    id: txt(row?.ID, '?'),
+                    pn: txt(row?.pn_final, '?'),
+                    qty: txt(row?.QUANTITY, '?'),
+                    reason: copyResult.reason
+                });
+                continue;
+            }
+
+            if (copyResult.changedFields.length > 0) {
+                changedRows += 1;
+            }
+        } catch (error) {
+            failedRows += 1;
+            failedDetails.push({
+                id: txt(row?.ID, '?'),
+                pn: txt(row?.pn_final, '?'),
+                qty: txt(row?.QUANTITY, '?'),
+                reason: 'exception',
+                errorMsg: String(error?.message || error || '')
+            });
+            console.warn('Error en copia visual masiva PDF por fila:', error);
+        }
+    }
+
+    if (failedDetails.length > 0) {
+        console.group(`📊 Detalles de ${failedDetails.length} fallos (mostrando primeros 20)`);
+        failedDetails.slice(0, 20).forEach((detail) => {
+            console.log(`  ID: ${detail.id}, PN: ${detail.pn}, QTY: ${detail.qty}, Razón: ${detail.reason}${detail.errorMsg ? ` (${detail.errorMsg})` : ''}`);
+        });
+        console.groupEnd();
+    }
+
+    const result = {
+        scanned: scannedRows,
+        changedRows,
+        missingPages: failedRows,
+        failedRows,
+        missingMarkedRowRows,
+        wroteFile: changedRows > 0
+    };
+
+    if (recomputeCopyBookBtn instanceof HTMLButtonElement) recomputeCopyBookBtn.disabled = false;
+    if (recomputeRunBtn instanceof HTMLButtonElement) recomputeRunBtn.disabled = false;
+    if (recomputePdfRunBtn instanceof HTMLButtonElement) recomputePdfRunBtn.disabled = false;
+
+    // Ocultar barra de progreso
+    if (progressContainer instanceof HTMLElement) {
+        progressContainer.hidden = true;
+    }
+
+    const fillEl = $('recomputeProgressFill');
+    const textEl = $('recomputeProgressText');
+    if (fillEl instanceof HTMLElement) fillEl.style.width = '100%';
+    if (textEl instanceof HTMLElement) textEl.textContent = 'Finalizando...';
+
+    const summaryChangedRows = Number(result.changedRows) || 0;
+    const summaryScannedRows = Number(result.scanned) || 0;
+    const summaryFailedRows = Number(result.failedRows) || 0;
+    const summaryMissingMarkedRowRows = Number(result.missingMarkedRowRows) || 0;
+    const summaryUnchangedRows = summaryScannedRows - summaryChangedRows - summaryFailedRows;
+    const statusMessage = summaryChangedRows === 0
+        ? `Sin cambios: campos *_pdf ya sincronizados | libro="${selectedModel}" scanned=${summaryScannedRows} fallos=${summaryFailedRows} sinFilaMarcada=${summaryMissingMarkedRowRows}`
+        : `OK libro "${selectedModel}" | scanned=${summaryScannedRows} changed=${summaryChangedRows} unchanged=${summaryUnchangedRows} fallos=${summaryFailedRows} sinFilaMarcada=${summaryMissingMarkedRowRows}`;
+
+    setRecomputeStatus(statusMessage, 'ok');
+
+    if (result.wroteFile) {
+        const activeModel = engineFilterSelect instanceof HTMLSelectElement
+            ? String(engineFilterSelect.value || '').trim()
+            : '';
+        if (activeModel === selectedModel) {
+            const keepId = previousCurrentId || (currentRow ? txt(currentRow?.ID, '') : '');
+            await loadEngineForFilter(selectedModel);
+            if (keepId) {
+                const reloaded = findRecordByPrimaryKey(keepId, selectedModel);
+                if (reloaded) {
+                    currentRow = reloaded;
+                    $('recordIdInput').value = getDisplayPnForInput(reloaded);
+                    currentProcessIndex = 0;
+                    await revalidateCurrentRow();
+                }
+            }
+            updateRecordSearchSuggestions();
+        }
+    }
+
+}
 
 // Recalcula campos *_pdf leyendo el PDF en backend (libro completo o ID puntual).
 async function runBackendRecomputePdfAuto() {
@@ -10147,6 +10440,21 @@ bindClick('recomputePdfRunBtn', () => {
     runBackendRecomputePdfAuto().catch((error) => {
 
         setRecomputeStatus(`Error: ${String(error?.message || error)}`, 'error');
+
+    });
+
+});
+
+bindClick('recomputeCopyBookBtn', () => {
+
+    if (!PDF_FEATURE_AUTO_PDF_ENABLED) {
+        setRecomputeStatus('Auto-PDF desactivado.', 'error');
+        return;
+    }
+
+    runBulkCopyPdfToBook().catch((error) => {
+
+        setRecomputeStatus(`Error al copiar PDF a todo el libro: ${String(error?.message || error)}`, 'error');
 
     });
 

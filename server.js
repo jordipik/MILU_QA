@@ -565,6 +565,39 @@ app.post('/recompute-pdf-auto', async (req, res) => {
         });
 
         const report = comparisonResult?.report || {};
+        const rows = Array.isArray(report.rows) ? report.rows : [];
+        const fieldSummaryMap = new Map();
+
+        for (const row of rows) {
+            const comparisons = Array.isArray(row?.comparisons) ? row.comparisons : [];
+            for (const comparison of comparisons) {
+                const field = String(comparison?.field || '').trim();
+                if (!field) continue;
+
+                const pdfValue = String(comparison?.pdf ?? '').trim();
+                const hasPdfValue = pdfValue !== '' && pdfValue !== '-';
+
+                if (!fieldSummaryMap.has(field)) {
+                    fieldSummaryMap.set(field, { field, detected: 0, empty: 0, total: 0 });
+                }
+
+                const summary = fieldSummaryMap.get(field);
+                summary.total += 1;
+                if (hasPdfValue) {
+                    summary.detected += 1;
+                } else {
+                    summary.empty += 1;
+                }
+            }
+        }
+
+        const fieldSummary = Array.from(fieldSummaryMap.values())
+            .sort((a, b) => {
+                const detectedDelta = Number(b.detected) - Number(a.detected);
+                if (detectedDelta !== 0) return detectedDelta;
+                return String(a.field).localeCompare(String(b.field));
+            });
+
         const result = {
             file,
             mode: id ? 'single-id' : 'full-book',
@@ -574,7 +607,10 @@ app.post('/recompute-pdf-auto', async (req, res) => {
             changedRows: Number(report.changed_pdf_fields_rows) || 0,
             missingPages: Array.isArray(report.missing_pages) ? report.missing_pages.length : 0,
             wroteFile: Boolean(report.wrote_engine_file),
-            output: String(comparisonResult?.outputPath || '')
+            output: String(comparisonResult?.outputPath || ''),
+            fieldsWithDetectedValues: fieldSummary.filter((entry) => Number(entry.detected) > 0).length,
+            totalComparedFields: fieldSummary.length,
+            fieldSummary
         };
 
         return res.json({ ok: true, result });
