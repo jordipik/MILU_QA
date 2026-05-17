@@ -8,10 +8,15 @@ const FIELD_TO_ERROR_KEY = {
     'POS': 'pos_error',
     'PART NO.': 'pn_error',
     'DESIGNATION': 'designation_error',
+    'MODEL/TYPE': 'model_type_error',
+    'QTY': 'qty_error',
+    'UNITS': 'units_error',
     'WEIGHT': 'weight_error',
-    'MEASUREMENT / STANDARD': 'measurement_error',
-    'NORMA': 'norma_error',
-    'BOM-No.': 'bom_error'
+    'FN': 'fn_error',
+    'MEASUREMENT / STANDARD': 'measure_error',
+    'FG/FGS': 'fg_fgs_error',
+    'BOM-No.': 'bom_error',
+    'NORMA': 'norma_error'
 };
 
 function printUsage() {
@@ -113,25 +118,50 @@ function getEntryMap(row) {
             pdf: row?.designation_pdf ?? row?.DESIGNATION,
             gesa: row?.designation_gesa
         },
+        'MODEL/TYPE': {
+            final: row?.model_type_final ?? row?.model_final,
+            pdf: row?.model_type_pdf ?? row?.['MODEL/TYPE'],
+            gesa: null
+        },
+        'QTY': {
+            final: row?.qty_final,
+            pdf: row?.qty_pdf ?? row?.QTY,
+            gesa: null
+        },
+        'UNITS': {
+            final: row?.units_final,
+            pdf: row?.units_pdf ?? row?.UNITS,
+            gesa: null
+        },
         'WEIGHT': {
             final: row?.weight_final,
             pdf: row?.weight_pdf ?? row?.WEIGHT,
             gesa: getGesaWeightWithUnits(row)
+        },
+        'FN': {
+            final: row?.fn_final,
+            pdf: row?.fn_pdf ?? row?.FN,
+            gesa: null
         },
         'MEASUREMENT / STANDARD': {
             final: row?.measure_final ?? row?.measurement_final,
             pdf: row?.measure_pdf ?? row?.['MEASUREMENT / STANDARD'],
             gesa: row?.dimensions_gesa ?? row?.measure_gesa
         },
+        'FG/FGS': {
+            final: row?.fg_fgs_final,
+            pdf: row?.fg_fgs_pdf ?? row?.['FG/FGS'],
+            gesa: null
+        },
+        'BOM-No.': {
+            final: row?.bom_final ?? row?.['BOM-No.'],
+            pdf: row?.bom_pdf ?? row?.['BOM-No.'],
+            gesa: null
+        },
         'NORMA': {
             final: row?.norma_final ?? row?.norma,
             pdf: row?.norma_pdf ?? row?.norma_raw ?? row?.norma,
             gesa: row?.norma_gesa ?? row?.norma
-        },
-        'BOM-No.': {
-            final: row?.['BOM-No.'],
-            pdf: row?.bom_pdf,
-            gesa: null
         }
     };
 }
@@ -139,32 +169,98 @@ function getEntryMap(row) {
 const QA_FIELD_CHECKS = {
     'POS': [
         (entry) => normalizeCompareValue(entry?.final) !== '',
-        (entry) => isCompareMatch(entry?.final, entry?.pdf)
+        (entry) => {
+            const pdfValue = normalizeCompareValue(entry?.pdf);
+            if (pdfValue === '') return true;
+            return isCompareMatch(entry?.final, entry?.pdf);
+        }
     ],
     'PART NO.': [
         (entry) => normalizeCompareValue(entry?.final) !== '',
-        (entry) => isCompareMatch(entry?.final, entry?.pdf)
+        (entry) => {
+            const pdfValue = normalizeCompareValue(entry?.pdf);
+            if (pdfValue === '') return true;
+            return isCompareMatch(entry?.final, entry?.pdf);
+        }
     ],
     'DESIGNATION': [
         (entry) => normalizeCompareValue(entry?.final) !== '',
-        (entry) => isCompareMatch(entry?.final, entry?.pdf) || isCompareMatch(entry?.final, entry?.gesa)
+        (entry) => {
+            const pdfValue = normalizeCompareValue(entry?.pdf);
+            if (pdfValue === '') return true;
+            return isCompareMatch(entry?.final, entry?.pdf);
+        }
+    ],
+    'MODEL/TYPE': [
+        (entry) => {
+            const finalValue = normalizeCompareValue(entry?.final);
+            const pdfValue = normalizeCompareValue(entry?.pdf);
+            if (!finalValue && !pdfValue) return true;
+            if (pdfValue !== '') return isCompareMatch(entry?.final, entry?.pdf);
+            return true;
+        }
+    ],
+    'QTY': [
+        (entry) => {
+            const finalValue = normalizeCompareValue(entry?.final);
+            const pdfValue = normalizeCompareValue(entry?.pdf);
+            if (!finalValue && !pdfValue) return true;
+            if (pdfValue !== '') return isCompareMatch(entry?.final, entry?.pdf);
+            return true;
+        }
+    ],
+    'UNITS': [
+        (entry) => {
+            const finalValue = normalizeCompareValue(entry?.final);
+            const pdfValue = normalizeCompareValue(entry?.pdf);
+            if (!finalValue && !pdfValue) return true;
+            if (pdfValue !== '') return isCompareMatch(entry?.final, entry?.pdf);
+            return true;
+        }
     ],
     'WEIGHT': [
         (entry) => {
             const finalValue = normalizeCompareValue(entry?.final);
             const pdfValue = normalizeCompareValue(entry?.pdf);
-            const gesaValue = normalizeCompareValue(entry?.gesa);
-            if (!finalValue && !pdfValue && !gesaValue) return true;
-            return isCompareMatch(entry?.final, entry?.pdf) || isCompareMatch(entry?.final, entry?.gesa);
+            if (!finalValue && !pdfValue) return true;
+            if (pdfValue !== '') return isCompareMatch(entry?.final, entry?.pdf);
+            return true;
+        }
+    ],
+    'FN': [
+        (entry) => {
+            const finalValue = normalizeCompareValue(entry?.final);
+            const pdfValue = normalizeCompareValue(entry?.pdf);
+            if (!finalValue && !pdfValue) return true;
+            if (pdfValue !== '') return isCompareMatch(entry?.final, entry?.pdf);
+            return true;
         }
     ],
     'MEASUREMENT / STANDARD': [
         (entry) => {
             const finalValue = normalizeCompareValue(entry?.final);
             const pdfValue = normalizeCompareValue(entry?.pdf);
-            const gesaValue = normalizeCompareValue(entry?.gesa);
-            if (!finalValue && !pdfValue && !gesaValue) return true;
-            return isCompareMatch(entry?.final, entry?.pdf) || isCompareMatch(entry?.final, entry?.gesa);
+            if (!finalValue && !pdfValue) return true;
+            if (pdfValue !== '') return isCompareMatch(entry?.final, entry?.pdf);
+            return true;
+        }
+    ],
+    'FG/FGS': [
+        (entry) => {
+            const finalValue = normalizeCompareValue(entry?.final);
+            const pdfValue = normalizeCompareValue(entry?.pdf);
+            if (!finalValue && !pdfValue) return true;
+            if (pdfValue !== '') return isCompareMatch(entry?.final, entry?.pdf);
+            return true;
+        }
+    ],
+    'BOM-No.': [
+        (entry) => {
+            const finalValue = normalizeCompareValue(entry?.final);
+            const pdfValue = normalizeCompareValue(entry?.pdf);
+            if (!finalValue && !pdfValue) return true;
+            if (pdfValue !== '') return isCompareMatch(entry?.final, entry?.pdf);
+            return true;
         }
     ],
     'NORMA': [
@@ -175,9 +271,6 @@ const QA_FIELD_CHECKS = {
             if (!finalValue && !pdfValue && !gesaValue) return true;
             return isCompareMatch(entry?.final, entry?.pdf) || isCompareMatch(entry?.final, entry?.gesa);
         }
-    ],
-    'BOM-No.': [
-        (entry) => normalizeCompareValue(entry?.pdf) === '' || isCompareMatch(entry?.final, entry?.pdf)
     ]
 };
 

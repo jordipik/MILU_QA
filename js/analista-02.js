@@ -75,7 +75,7 @@ const FIELD_TO_ERROR_KEY = {
 
     'FN': 'fn_error',
 
-    'MEASUREMENT / STANDARD': 'measurement_error',
+    'MEASUREMENT / STANDARD': 'measure_error',
 
     'FG/FGS': 'fg_fgs_error',
 
@@ -6265,7 +6265,7 @@ function getRowErrorCount(row) {
 
         'weight_error',
 
-        'measurement_error',
+        'measure_error',
 
         'norma_error',
 
@@ -6989,9 +6989,9 @@ function buildComparisonRows(row) {
             // measure_final con alias legacy measurement_final (ver fieldAdapter.js FALLBACK_ALIASES)
             final: firstNonEmpty(row?.measure_final, row?.measurement_final),
 
-            errorKey: 'measurement_error',
+            errorKey: 'measure_error',
 
-            fieldKeys: { excel: 'MEASUREMENT / STANDARD', gesa: 'dimensions_gesa', subst: null, pdf: 'measure_pdf', final: 'measure_final', error: 'measurement_error' },
+            fieldKeys: { excel: 'MEASUREMENT / STANDARD', gesa: 'dimensions_gesa', subst: null, pdf: 'measure_pdf', final: 'measure_final', error: 'measure_error' },
 
             errFields: [],
 
