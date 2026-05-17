@@ -380,6 +380,29 @@
                         </h3>
                         <button id="recomputeRunBtn" type="button">Calcular errores del libro</button>
                     </article>
+
+                    <article class="a2-recompute-card" aria-label="Calcular campos FINAL desde GESA">
+                        <h3>
+                            <span class="a2-step-index">3</span>
+                            <div>
+                                <span class="a2-step-title">Calcular FINAL</span>
+                                <p class="a2-step-desc">Copia campos GESA a sus equivalentes _final cuando gesa = SI.
+                                    Campos: designation, dimensions (→ measure), weight, nsn, normalizado y norma.</p>
+                            </div>
+                        </h3>
+                        <button id="recomputeCalculateFinalBtn" type="button" class="is-success">Calcular FINAL del libro</button>
+                    </article>
+
+                    <article class="a2-recompute-card" aria-label="Recalcular estado y acción de revisión">
+                        <h3>
+                            <span class="a2-step-index">4</span>
+                            <div>
+                                <span class="a2-step-title">Recalcular ESTADO</span>
+                                <p class="a2-step-desc">Recalcula el estado de revisión (qa_revision_estado) y acción (qa_revision_accion) para todos los registros basándose en si hay errores o no.</p>
+                            </div>
+                        </h3>
+                        <button id="recomputeRevisionStatusBtn" type="button" class="is-warning">Recalcular ESTADO de todos</button>
+                    </article>
                 </section>
 
                 <input id="recomputeIdInput" type="hidden" value="">

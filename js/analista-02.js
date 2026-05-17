@@ -4470,7 +4470,7 @@ function resolveEngineFileFromFilter(engineFilter) {
 
 
 
-const LOCAL_ONLY_BACKEND_ENDPOINTS = new Set(['recompute-qa-errors', 'recompute-pdf-auto', 'recompute-pdf-auto-visual']);
+const LOCAL_ONLY_BACKEND_ENDPOINTS = new Set(['recompute-qa-errors', 'recompute-pdf-auto', 'recompute-pdf-auto-visual', 'calculate-final-fields', 'recalculate-revision-status']);
 
 
 
@@ -10268,6 +10268,173 @@ function applyPdfFeatureFlagsToUi() {
 
 }
 
+// Calcula campos FINAL desde GESA ejecutando el script Python en el backend
+async function runBackendCalculateFinal() {
+    const recomputeEngineSelect = $('recomputeEngineSelect');
+    const recomputeCalculateFinalBtn = $('recomputeCalculateFinalBtn');
+    const engineFilterSelect = $('engineFilterSelect');
+
+    if (!(recomputeEngineSelect instanceof HTMLSelectElement)
+        || !(recomputeCalculateFinalBtn instanceof HTMLButtonElement)
+        || !(engineFilterSelect instanceof HTMLSelectElement)) {
+        return;
+    }
+
+    const selectedModel = String(recomputeEngineSelect.value || '').trim();
+
+    if (!isBackendEndpointAllowed('calculate-final-fields')) {
+        setRecomputeStatus(getLocalOnlyBackendMessage('calculate-final-fields'), 'error');
+        return;
+    }
+
+    recomputeCalculateFinalBtn.disabled = true;
+    setRecomputeStatus('Calculando campos FINAL desde GESA...', '');
+
+    const urls = getBackendCandidateUrls('calculate-final-fields');
+    let lastError = '';
+    let result = null;
+
+    for (const url of urls) {
+        try {
+            const response = await fetch(url, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({})
+            });
+            const rawBody = await response.text();
+            let data = null;
+            try {
+                data = rawBody ? JSON.parse(rawBody) : null;
+            } catch (_parseError) {
+                data = null;
+            }
+
+            if (!response.ok) {
+                lastError = String(data?.error || `HTTP ${response.status}`).trim();
+                continue;
+            }
+
+            if (!data || data.ok !== true || !data.result) {
+                const snippet = rawBody ? rawBody.replace(/\s+/g, ' ').trim().slice(0, 140) : '';
+                lastError = snippet
+                    ? `Respuesta invalida: ${snippet}`
+                    : `Respuesta invalida (esperado JSON con { ok: true, result })`;
+                continue;
+            }
+
+            result = data.result;
+            break;
+        } catch (error) {
+            lastError = String(error?.message || error || 'Error de red');
+        }
+    }
+
+    recomputeCalculateFinalBtn.disabled = false;
+
+    if (!result) {
+        setRecomputeStatus(`Error calculando FINAL: ${lastError}`, 'error');
+        return;
+    }
+
+    const affectedRecords = Number(result.affectedRecords) || 0;
+    const updatedFields = Number(result.updatedFields) || 0;
+    setRecomputeStatus(
+        `OK | Registros afectados: ${affectedRecords}, Campos actualizados: ${updatedFields}`,
+        'ok'
+    );
+
+    // Recargar el engine si está activo
+    if (selectedModel) {
+        const activeModel = engineFilterSelect instanceof HTMLSelectElement
+            ? String(engineFilterSelect.value || '').trim()
+            : '';
+        if (activeModel === selectedModel) {
+            await loadEngineForFilter(selectedModel);
+            updateRecordSearchSuggestions();
+        }
+    }
+}
+
+// Recalcula estado y acción de revisión para todos los registros de todos los libros
+async function runBackendRecalculateRevisionStatus() {
+    const recomputeRevisionStatusBtn = $('recomputeRevisionStatusBtn');
+    const engineFilterSelect = $('engineFilterSelect');
+
+    if (!(recomputeRevisionStatusBtn instanceof HTMLButtonElement)
+        || !(engineFilterSelect instanceof HTMLSelectElement)) {
+        return;
+    }
+
+    if (!isBackendEndpointAllowed('recalculate-revision-status')) {
+        setRecomputeStatus(getLocalOnlyBackendMessage('recalculate-revision-status'), 'error');
+        return;
+    }
+
+    recomputeRevisionStatusBtn.disabled = true;
+    setRecomputeStatus('Recalculando estado de revisión para todos los registros...', '');
+
+    const urls = getBackendCandidateUrls('recalculate-revision-status');
+    let lastError = '';
+    let result = null;
+
+    for (const url of urls) {
+        try {
+            const response = await fetch(url, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({})
+            });
+            const rawBody = await response.text();
+            let data = null;
+            try {
+                data = rawBody ? JSON.parse(rawBody) : null;
+            } catch (_parseError) {
+                data = null;
+            }
+
+            if (!response.ok) {
+                lastError = String(data?.error || `HTTP ${response.status}`).trim();
+                continue;
+            }
+
+            if (!data || data.ok !== true || !data.result) {
+                const snippet = rawBody ? rawBody.replace(/\s+/g, ' ').trim().slice(0, 140) : '';
+                lastError = snippet
+                    ? `Respuesta invalida: ${snippet}`
+                    : `Respuesta invalida (esperado JSON con { ok: true, result })`;
+                continue;
+            }
+
+            result = data.result;
+            break;
+        } catch (error) {
+            lastError = String(error?.message || error || 'Error de red');
+        }
+    }
+
+    recomputeRevisionStatusBtn.disabled = false;
+
+    if (!result) {
+        setRecomputeStatus(`Error recalculando estado: ${lastError}`, 'error');
+        return;
+    }
+
+    const totalRecords = Number(result.totalRecords) || 0;
+    const changedRecords = Number(result.changedRecords) || 0;
+    setRecomputeStatus(
+        `OK | Total registros: ${totalRecords}, Estado actualizado: ${changedRecords}`,
+        'ok'
+    );
+
+    // Recargar el engine activo si hay
+    const activeModel = engineFilterSelect instanceof HTMLSelectElement
+        ? String(engineFilterSelect.value || '').trim()
+        : '';
+    if (activeModel) {
+        await loadEngineForFilter(activeModel);
+        updateRecordSearchSuggestions();
+    }
+}
 
 
 bindClick('loadRecordBtn', () => {
@@ -10504,6 +10671,20 @@ bindClick('recomputeCopyBookBtn', () => {
         }
     });
 
+});
+
+// Calcula campos FINAL desde GESA
+bindClick('recomputeCalculateFinalBtn', () => {
+    runBackendCalculateFinal().catch((error) => {
+        setRecomputeStatus(`Error: ${String(error?.message || error)}`, 'error');
+    });
+});
+
+// Recalcula estado y acción de revisión para todos
+bindClick('recomputeRevisionStatusBtn', () => {
+    runBackendRecalculateRevisionStatus().catch((error) => {
+        setRecomputeStatus(`Error: ${String(error?.message || error)}`, 'error');
+    });
 });
 
 // Recálculo en memoria (solo UI, sin backend, con selector de modo)
@@ -11168,4 +11349,3 @@ document.addEventListener('keydown', (event) => {
 
 initialize();
 
-                                                        

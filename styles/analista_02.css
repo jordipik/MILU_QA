@@ -1092,6 +1092,16 @@ body.a2-resizing * {
     background: linear-gradient(135deg, #d6362a, #b32117);
 }
 
+.a2-recompute-card #recomputeCalculateFinalBtn {
+    border-color: #1a6e28;
+    background: linear-gradient(135deg, #2ecc71, #27ae60);
+}
+
+.a2-recompute-card #recomputeRevisionStatusBtn {
+    border-color: #b8860b;
+    background: linear-gradient(135deg, #f0ad4e, #ec971f);
+}
+
 .a2-recompute-card button:hover {
     filter: brightness(1.05);
 }

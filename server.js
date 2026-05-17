@@ -534,6 +534,113 @@ app.post('/recompute-qa-errors', async (req, res) => {
     }
 });
 
+app.post('/calculate-final-fields', async (req, res) => {
+    try {
+        // Ejecutar el script Python copy_gesa_fields_to_final.py
+        const python = spawn('python', ['copy_gesa_fields_to_final.py'], {
+            cwd: __dirname,
+            stdio: ['pipe', 'pipe', 'pipe']
+        });
+
+        let stdout = '';
+        let stderr = '';
+
+        python.stdout.on('data', (data) => {
+            stdout += data.toString();
+        });
+
+        python.stderr.on('data', (data) => {
+            stderr += data.toString();
+        });
+
+        python.on('close', (code) => {
+            if (code !== 0) {
+                console.error('Script error:', stderr);
+                return res.status(500).json({
+                    ok: false,
+                    error: `Script execution failed with code ${code}: ${stderr}`
+                });
+            }
+
+            // Parsear la salida del script para extraer los totales
+            let affectedRecords = 0;
+            let updatedFields = 0;
+
+            const resumenMatch = stdout.match(/Resumen:\s+(\d+)\s+registros\s+afectados,\s+(\d+)\s+campos\s+actualizados/i);
+            if (resumenMatch) {
+                affectedRecords = parseInt(resumenMatch[1], 10);
+                updatedFields = parseInt(resumenMatch[2], 10);
+            }
+
+            res.json({
+                ok: true,
+                result: {
+                    affectedRecords,
+                    updatedFields,
+                    message: `Successfully calculated FINAL fields: ${affectedRecords} records, ${updatedFields} fields updated`
+                }
+            });
+        });
+
+    } catch (error) {
+        console.error('Backend error:', error);
+        res.status(500).json({
+            ok: false,
+            error: String(error?.message || error || 'Unknown error')
+        });
+    }
+});
+
+app.post('/recalculate-revision-status', async (req, res) => {
+    try {
+        let totalRecords = 0;
+        let changedRecords = 0;
+
+        // Recalcular estado/acción para todos los libros
+        for (const engineFile of ENGINE_JSON_FILES) {
+            const filePath = path.join(__dirname, engineFile);
+
+            if (!fs.existsSync(filePath)) {
+                console.warn(`Engine file not found: ${filePath}`);
+                continue;
+            }
+
+            try {
+                const result = recomputeEngineErrors({
+                    file: engineFile,
+                    dryRun: false,
+                    updateRevision: true,
+                    forceRevision: false,
+                    backup: true,
+                    rootDir: __dirname
+                });
+
+                totalRecords += Number(result?.scanned) || 0;
+                changedRecords += Number(result?.changedRows) || 0;
+            } catch (error) {
+                console.error(`Error processing ${engineFile}:`, error?.message);
+                // Continuar con el siguiente archivo
+            }
+        }
+
+        res.json({
+            ok: true,
+            result: {
+                totalRecords,
+                changedRecords,
+                message: `Revision status recalculated: ${totalRecords} records, ${changedRecords} updated`
+            }
+        });
+
+    } catch (error) {
+        console.error('Backend error:', error);
+        res.status(500).json({
+            ok: false,
+            error: String(error?.message || error || 'Unknown error')
+        });
+    }
+});
+
 app.post('/recompute-pdf-auto', async (req, res) => {
     let file;
     let id;
@@ -2100,3 +2207,4 @@ app.post('/apply-qa-checks-filter', async (req, res) => {
 app.listen(PORT, () => {
     console.log(`Servidor backend escuchando en http://localhost:${PORT}`);
 });
+            
