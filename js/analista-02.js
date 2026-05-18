@@ -5721,7 +5721,7 @@ async function runBulkCopyPdfToBook() {
     }
 
     const confirmed = await simpleConfirm(
-        `Se sobreescribirán los campos *_pdf de TODOS los registros del libro "${selectedModel}" con los valores leídos desde el PDF.\n\n¿Deseas continuar?`
+        `Vas a importar la lectura PDF en lote para los libros seleccionados (actual: "${selectedModel}").\n\nSe actualizarán los campos *_pdf de todos sus registros y se guardará el JSON con copia de seguridad.\n\nEsta acción puede tardar unos minutos.\n\n¿Deseas continuar?`
     );
 
     if (!confirmed) {
