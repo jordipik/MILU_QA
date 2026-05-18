@@ -1084,9 +1084,7 @@ function normalizeString(value) {
 
 function normalizeCompareValue(value) {
 
-    const normalized = String(value ?? '').trim();
-
-    return normalized === '-' ? '' : normalized;
+    return String(value ?? '');
 
 }
 
@@ -1133,13 +1131,13 @@ function getComparisonCellClasses(entry) {
 
 
 
-    const getClassAgainstFinal = (value) => {
+    const getMismatchClassAgainstFinal = (value) => {
 
         const normalizedValue = normalizeCompareValue(value);
 
         const normalizedFinal = normalizeCompareValue(finalValue);
 
-        if (!normalizedValue) return '';
+        if (!normalizedValue || !normalizedFinal) return '';
 
         return normalizedValue === normalizedFinal ? 'compare-match' : 'compare-mismatch-soft';
 
@@ -1151,41 +1149,33 @@ function getComparisonCellClasses(entry) {
 
     const excelMatchesSubst = isCompareMatch(excelValue, substValue);
 
-    const substMatchesFinal = isCompareMatch(substValue, finalValue);
-
     const gesaMatchesFinal = isCompareMatch(gesaValue, finalValue);
 
     const pdfMatchesFinal = isCompareMatch(pdfValue, finalValue);
 
     const excelSubstMatchClass = excelMatchesSubst ? 'compare-raw-sust-match' : '';
 
-    const finalFilled = normalizeCompareValue(finalValue) !== '';
-
-    const finalMatchesAnySource = gesaMatchesFinal || substMatchesFinal || pdfMatchesFinal;
-
 
 
     return {
 
-        excelClass: [getClassAgainstFinal(excelValue), excelSubstMatchClass].filter(Boolean).join(' '),
+        excelClass: [getMismatchClassAgainstFinal(excelValue), excelSubstMatchClass].filter(Boolean).join(' '),
 
-        substClass: getClassAgainstFinal(substValue),
+        substClass: excelMatchesSubst ? `compare-match ${excelSubstMatchClass}` : '',
 
-        finalClass: finalMissing
-            ? 'compare-missing'
-            : (finalFilled ? (finalMatchesAnySource ? 'compare-match' : 'compare-mismatch-soft') : ''),
+        finalClass: finalMissing ? 'compare-missing' : (gesaMatchesFinal || pdfMatchesFinal ? 'compare-match' : ''),
 
-        gesaClass: getClassAgainstFinal(gesaValue),
+        gesaClass: getMismatchClassAgainstFinal(gesaValue),
 
-        pdfClass: getClassAgainstFinal(pdfValue),
+        pdfClass: getMismatchClassAgainstFinal(pdfValue),
 
         // Aliases legacy para compatibilidad con código que lea rawClass/sustClass/pdfAutoClass
 
-        rawClass: [getClassAgainstFinal(excelValue), excelSubstMatchClass].filter(Boolean).join(' '),
+        rawClass: [getMismatchClassAgainstFinal(excelValue), excelSubstMatchClass].filter(Boolean).join(' '),
 
-        sustClass: getClassAgainstFinal(substValue),
+        sustClass: excelMatchesSubst ? `compare-match ${excelSubstMatchClass}` : '',
 
-        pdfAutoClass: getClassAgainstFinal(pdfValue)
+        pdfAutoClass: getMismatchClassAgainstFinal(pdfValue)
 
     };
 
@@ -2959,7 +2949,6 @@ function initRecomputeModal() {
 
 
     const allowRecompute = isBackendEndpointAllowed('recompute-qa-errors');
-    const allowCopyFinalAll = isBackendEndpointAllowed('copy-pdf-to-final-all-books');
 
 
 
@@ -3002,11 +2991,9 @@ function initRecomputeModal() {
 
     if (recomputeRunBtn instanceof HTMLButtonElement) {
 
-        recomputeRunBtn.disabled = !allowCopyFinalAll;
+        recomputeRunBtn.disabled = !allowRecompute;
 
-        recomputeRunBtn.title = allowCopyFinalAll
-            ? 'Copiar campos _pdf a _final para todos los registros de todos los libros'
-            : 'Disponible solo en local (localhost:3000).';
+        recomputeRunBtn.title = allowRecompute ? '' : 'Disponible solo en local (localhost:3000).';
 
     }
 
@@ -4681,7 +4668,7 @@ function resolveEngineFileFromFilter(engineFilter) {
 
 
 
-const LOCAL_ONLY_BACKEND_ENDPOINTS = new Set(['recompute-qa-errors', 'recompute-pdf-auto-visual', 'calculate-final-fields', 'recalculate-revision-status', 'copy-pdf-to-pdf', 'copy-pdf-to-pdf-all-books', 'copy-pdf-to-final-all-books']);
+const LOCAL_ONLY_BACKEND_ENDPOINTS = new Set(['recompute-qa-errors', 'recompute-pdf-auto', 'recompute-pdf-auto-visual', 'calculate-final-fields', 'recalculate-revision-status', 'copy-pdf-to-pdf', 'copy-pdf-to-pdf-all-books']);
 
 
 
@@ -5549,7 +5536,13 @@ async function runBackendRecompute() {
 
 
 
-            if (!data || data.ok !== true || !data.result || typeof data.result !== 'object') {
+            const legacyTotals = data?.totals;
+
+            const hasLegacyPayload = data?.ok === true && legacyTotals && typeof legacyTotals === 'object';
+
+
+
+            if (!data || data.ok !== true || (!data.result && !hasLegacyPayload)) {
 
                 const snippet = rawBody
 
@@ -5569,7 +5562,37 @@ async function runBackendRecompute() {
 
 
 
-            result = data.result;
+            if (data.result && typeof data.result === 'object') {
+
+                result = data.result;
+
+            } else {
+
+                result = {
+
+                    file,
+
+                    mode: id ? 'single-id' : 'full-book',
+
+                    id: id || null,
+
+                    dryRun,
+
+                    updateRevision,
+
+                    scanned: Number(legacyTotals.totalRows) || 0,
+
+                    changedRows: Number(legacyTotals.changedRows) || 0,
+
+                    okRows: Math.max((Number(legacyTotals.totalRows) || 0) - (Number(legacyTotals.rowsWithErrors) || 0), 0),
+
+                    koRows: Number(legacyTotals.rowsWithErrors) || 0,
+
+                    wroteFile: !dryRun && (Number(legacyTotals.changedRows) || 0) > 0
+
+                };
+
+            }
 
             break;
 
@@ -5666,63 +5689,6 @@ async function runBackendRecompute() {
 // Copia lectura PDF a campos *_pdf para todos los registros del libro seleccionado (backend batch).
 async function runBulkCopyPdfToBook() {
 
-
-async function runBulkCopyPdfToFinalAllBooks() {
-
-    clearRecomputePdfDetail();
-
-    if (!isBackendEndpointAllowed('copy-pdf-to-final-all-books')) {
-        setRecomputeStatus(getLocalOnlyBackendMessage('copy-pdf-to-final-all-books'), 'error');
-        return;
-    }
-
-    const confirmed = await simpleConfirm(
-        'Vas a copiar en lote los campos *_pdf a *_final para TODOS los registros de TODOS los libros.\n\nSe guardarán los JSON con copia de seguridad.\n\n¿Deseas continuar?'
-    );
-    if (!confirmed) {
-        setRecomputeStatus('Operación cancelada por el usuario.', '');
-        return;
-    }
-
-    const recomputeRunBtn = $('recomputeRunBtn');
-    const recomputeCopyBookBtn = $('recomputeCopyBookBtn');
-    const recomputePdfRunBtn = $('recomputePdfRunBtn');
-
-    if (recomputeRunBtn instanceof HTMLButtonElement) recomputeRunBtn.disabled = true;
-    if (recomputeCopyBookBtn instanceof HTMLButtonElement) recomputeCopyBookBtn.disabled = true;
-    if (recomputePdfRunBtn instanceof HTMLButtonElement) recomputePdfRunBtn.disabled = true;
-
-    setRecomputeStatus('Copiando PDF -> FINAL para todos los libros...', '');
-
-    try {
-        const response = await postJsonToBackendCandidates('copy-pdf-to-final-all-books', {
-            backup: true
-        });
-
-        const totals = response?.totals || {};
-        const filesProcessed = Number(totals.filesProcessed) || 0;
-        const filesWritten = Number(totals.filesWritten) || 0;
-        const scannedRows = Number(totals.scannedRows) || 0;
-        const changedRows = Number(totals.changedRows) || 0;
-        const updatedFields = Number(totals.updatedFields) || 0;
-
-        setRecomputeStatus(
-            `OK FINAL MASIVO | libros=${filesProcessed} escritos=${filesWritten} registros=${scannedRows} cambiados=${changedRows} campos=${updatedFields}`,
-            'ok'
-        );
-
-        const activeModel = inferEngineModelFromRow(currentRow);
-        if (activeModel) {
-            await loadEngineForFilter(activeModel);
-        }
-    } catch (error) {
-        setRecomputeStatus(`Error en copia masiva PDF -> FINAL: ${String(error?.message || error)}`, 'error');
-    } finally {
-        if (recomputeRunBtn instanceof HTMLButtonElement) recomputeRunBtn.disabled = false;
-        if (recomputeCopyBookBtn instanceof HTMLButtonElement) recomputeCopyBookBtn.disabled = false;
-        if (recomputePdfRunBtn instanceof HTMLButtonElement) recomputePdfRunBtn.disabled = false;
-    }
-}
     if (!PDF_FEATURE_AUTO_PDF_ENABLED) {
         return;
     }
@@ -5923,9 +5889,9 @@ async function runBackendRecomputePdfAuto() {
 
 
 
-    if (!isBackendEndpointAllowed('recompute-pdf-auto-visual')) {
+    if (!isBackendEndpointAllowed('recompute-pdf-auto')) {
 
-        setRecomputeStatus(getLocalOnlyBackendMessage('recompute-pdf-auto-visual'), 'error');
+        setRecomputeStatus(getLocalOnlyBackendMessage('recompute-pdf-auto'), 'error');
 
         return;
 
@@ -5957,7 +5923,7 @@ async function runBackendRecomputePdfAuto() {
 
 
 
-    const urls = getBackendCandidateUrls('recompute-pdf-auto-visual');
+    const urls = getBackendCandidateUrls('recompute-pdf-auto');
 
     let lastError = '';
 
@@ -8040,7 +8006,9 @@ async function renderComparisonTable(row) {
 
         const errTitle = errCount > 0 ? ` title="${escapeHtml(`Errores persistidos en JSON: ${errCount}`)}"` : '';
 
-        const finalFullClass = [cellClasses.finalClass].filter(Boolean).join(' ');
+        const finalErrClass = errCount > 0 ? 'compare-final-error' : 'compare-final-ok';
+
+        const finalFullClass = [cellClasses.finalClass, finalErrClass].filter(Boolean).join(' ');
 
         const finalEditAttrs = isEditableComparisonField(entry.field)
 
@@ -10563,13 +10531,6 @@ function applyPdfFeatureFlagsToUi() {
         if (!allowCopyToFinal) copyPdfReadToFinalBtn.title = 'Disponible solo en local (localhost:3000).';
     }
 
-    const copyPdfReadToFinalBackendBtn = $('copyPdfReadToFinalBackendBtn');
-    if (copyPdfReadToFinalBackendBtn instanceof HTMLButtonElement) {
-        const allowCopyToFinalBackend = isBackendEndpointAllowed('copy-pdf-to-final-all-books');
-        copyPdfReadToFinalBackendBtn.disabled = !allowCopyToFinalBackend;
-        if (!allowCopyToFinalBackend) copyPdfReadToFinalBackendBtn.title = 'Disponible solo en local (localhost:3000).';
-    }
-
     const pdfRecomputeErrorsBtn = $('pdfRecomputeErrorsBtn');
     if (pdfRecomputeErrorsBtn instanceof HTMLButtonElement) {
         const allowRecomputeErrors = isBackendEndpointAllowed('recompute-qa-errors');
@@ -10883,7 +10844,7 @@ bindClick('recomputeAllBtn', () => {
 
 bindClick('recomputeRunBtn', () => {
 
-    runBulkCopyPdfToFinalAllBooks().catch((error) => {
+    runBackendRecompute().catch((error) => {
 
         setRecomputeStatus(`Error: ${String(error?.message || error)}`, 'error');
 
@@ -11064,18 +11025,6 @@ bindClick('copyPdfReadToFinalBtn', () => {
         console.warn('No se pudieron copiar los campos _pdf a _final del registro actual:', error);
 
         alert(`No se pudo copiar PDF a FINAL: ${String(error?.message || error)}`);
-
-    });
-
-});
-
-bindClick('copyPdfReadToFinalBackendBtn', () => {
-
-    runBulkCopyPdfToFinalAllBooks().catch((error) => {
-
-        console.warn('No se pudo ejecutar FINAL masivo en backend:', error);
-
-        alert(`No se pudo ejecutar FINAL (Backend): ${String(error?.message || error)}`);
 
     });
 

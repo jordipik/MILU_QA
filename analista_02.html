@@ -157,7 +157,7 @@
                     <div class="a2-review-quick-buttons" aria-label="Acciones rápidas de estado">
                         <button id="statusEstadoOkBtn" class="a2-review-btn is-ok" type="button">OK</button>
                         <button id="statusEstadoPendingBtn" class="a2-review-btn is-pending" type="button"
-                            title="Pendiente">Pte</button>
+                            title="Pendiente">PENDIENTE</button>
                     </div>
                 </div>
                 <div class="a2-review-action-group" aria-label="Acciones de revisión">
@@ -172,18 +172,18 @@
                     </label>
                     <div class="a2-review-quick-buttons" aria-label="Acciones rápidas de revisión">
                         <button id="statusAccionImportarBtn" class="a2-review-btn is-ok" type="button"
-                            title="Importar">Imp</button>
+                            title="Importar">IMPORTAR</button>
                         <button id="statusAccionCopiaBtn" class="a2-review-btn is-copy" type="button"
-                            title="Copia">Cop</button>
+                            title="Copia">COPIA</button>
                         <button id="statusAccionRevisarBtn" class="a2-review-btn is-review" type="button"
-                            title="Revisar">Rev</button>
+                            title="Revisar">REVISAR</button>
                         <button id="statusAccionEliminarBtn" class="a2-review-btn is-ko" type="button"
-                            title="Eliminar">Del</button>
+                            title="Eliminar">ELIMINAR</button>
                         <button id="propagateHermanosBtn" class="a2-review-btn" type="button"
-                            title="Propagar revisión OK+Importar a todos los hermanos con el mismo PN">Hnos</button>
+                            title="Propagar revisión OK+Importar a todos los hermanos con el mismo PN">HERMANOS</button>
                         <button id="propagateHermanosBookBtn" class="a2-review-btn" type="button"
-                            title="Recorrer el libro actual y propagar hermanos para todos los registros en OK+Importar">Hnos
-                            libro</button>
+                            title="Recorrer el libro actual y propagar hermanos para todos los registros en OK+Importar">HERMANOS
+                            LIBRO</button>
                     </div>
                 </div>
             </div>
@@ -267,10 +267,6 @@
                             title="Paso 3b: copiar campos _pdf del registro actual a campos _final"><span
                                 class="pdf-btn-icon" aria-hidden="true">◩</span><span
                                 class="pdf-btn-label">FINAL</span></button>
-                        <button id="copyPdfReadToFinalBackendBtn" class="pdf-row-debug-btn is-step-copy" type="button"
-                            title="Paso 3c (Backend): ejecutar PDF -> FINAL masivo para todos los libros"><span
-                                class="pdf-btn-icon" aria-hidden="true">◪</span><span
-                                class="pdf-btn-label">FINAL (Backend)</span></button>
                         <button id="pdfRecomputeErrorsBtn" class="pdf-row-debug-btn is-step-check" type="button"
                             title="Paso 4: recalcular errores del registro actual"><span class="pdf-btn-icon"
                                 aria-hidden="true">▲</span><span class="pdf-btn-label">ERROR</span></button>
@@ -391,17 +387,16 @@
                         <button id="recomputeCalculateFinalBtn" type="button" class="is-success">CÁLCULO FINAL</button>
                     </article>
 
-                    <article class="a2-recompute-card" aria-label="Copiar PDF a FINAL en lote">
+                    <article class="a2-recompute-card" aria-label="Recalcular errores">
                         <h3>
                             <span class="a2-step-index">3</span>
                             <div>
-                                <span class="a2-step-title">PDF -> FINAL (masivo)</span>
-                                <p class="a2-step-desc">Ejecuta la misma lógica del botón FINAL para todos los
-                                    registros de todos los libros: copia campos *_pdf a *_final, y cuando gesa = SI
-                                    prioriza datos GESA en designation/measure/weight/nsn/normalizado/norma.</p>
+                                <span class="a2-step-title">Calcular errores</span>
+                                <p class="a2-step-desc">Recalcula validaciones QA para todos los registros del libro
+                                    seleccionado. Compara columnas Excel, GESA, SUBST, PDF y FINAL.</p>
                             </div>
                         </h3>
-                        <button id="recomputeRunBtn" type="button">FINAL MASIVO</button>
+                        <button id="recomputeRunBtn" type="button">ERRORES</button>
                     </article>
 
                     <article class="a2-recompute-card" aria-label="Recalcular estado y acción de revisión">
