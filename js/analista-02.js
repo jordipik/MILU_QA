@@ -864,6 +864,39 @@ let isApplyingPdfAutoPos = false;
 
 let isApplyingPdfGeneric = false;
 
+let isApplyingPdfCurrentRowToFinal = false;
+
+const PDF_TO_FINAL_FIELD_MAPPINGS = [
+    { pdfKey: 'pos_pdf', finalKey: 'pos_final', label: 'POS' },
+    { pdfKey: 'pn_pdf', finalKey: 'pn_final', label: 'PART NO.' },
+    { pdfKey: 'designation_pdf', finalKey: 'designation_final', label: 'DESIGNATION' },
+    { pdfKey: 'model_type_pdf', finalKey: 'model_type_final', label: 'MODEL/TYPE' },
+    { pdfKey: 'qty_pdf', finalKey: 'qty_final', label: 'QTY' },
+    { pdfKey: 'units_pdf', finalKey: 'units_final', label: 'UNITS' },
+    { pdfKey: 'weight_pdf', finalKey: 'weight_final', label: 'WEIGHT' },
+    { pdfKey: 'fn_pdf', finalKey: 'fn_final', label: 'FN' },
+    { pdfKey: 'measure_pdf', finalKey: 'measure_final', label: 'MEASUREMENT / STANDARD' },
+    { pdfKey: 'fg_fgs_pdf', finalKey: 'fg_fgs_final', label: 'FG/FGS' },
+    { pdfKey: 'bom_pdf', finalKey: 'bom_final', label: 'BOM-No.' },
+    { pdfKey: 'gesa_pdf', finalKey: 'gesa_final', label: 'GESA' },
+    { pdfKey: 'nsn_pdf', finalKey: 'nsn_final', label: 'NSN' },
+    { pdfKey: 'normalizado_pdf', finalKey: 'normalizado_final', label: 'NORMALIZADO' },
+    { pdfKey: 'norma_pdf', finalKey: 'norma_final', label: 'NORMA' },
+    { pdfKey: 'sust_status_pdf', finalKey: 'sust_status_final', label: 'SUST_STATUS' },
+    { pdfKey: 'hierarchi_pdf', finalKey: 'hierarchie_final', label: 'HIERARCHI' },
+    { pdfKey: 'sust_new_part_number_pdf', finalKey: 'new_pn_final', label: 'SUST_NEW_PART_NUMBER' },
+    { pdfKey: 'sust_superseded_list_pdf', finalKey: 'subst_pnlist_final', label: 'SUST_SUPERSEDED_LIST' }
+];
+
+const GESA_TO_FINAL_FIELD_MAPPINGS = new Map([
+    ['designation_final', 'designation_gesa'],
+    ['measure_final', 'dimensions_gesa'],
+    ['weight_final', 'weight_gesa'],
+    ['nsn_final', 'nsn'],
+    ['normalizado_final', 'normalizado'],
+    ['norma_final', 'norma']
+]);
+
 let pdfRowHighlightRequestId = 0;
 
 const pdfDocumentPromiseCache = new Map();
@@ -1051,17 +1084,7 @@ function normalizeString(value) {
 
 function normalizeCompareValue(value) {
 
-    const normalized = normalizeString(value);
-
-    if (!normalized || normalized === '-') return '';
-
-    return normalized
-
-        .toLowerCase()
-
-        .normalize('NFD')
-
-        .replace(/[\u0300-\u036f]/g, '');
+    return String(value ?? '');
 
 }
 
@@ -4020,6 +4043,88 @@ async function copyPdfToFinalGeneric(pdfKey, finalKey, fieldLabel) {
 
 }
 
+async function copyCurrentPdfFieldsToFinal() {
+
+    if (!currentRow || isApplyingPdfCurrentRowToFinal) return;
+
+    const engineFile = resolveEngineFile(currentRow);
+    const id = txt(currentRow?.ID, '');
+
+    if (!engineFile || !id) {
+        alert('No se pudo resolver archivo engine o ID para copiar campos PDF a FINAL.');
+        return;
+    }
+
+    const isGesaSi = normalizeString(String(currentRow?.gesa ?? '')).toUpperCase() === 'SI';
+
+    const valuesToApply = PDF_TO_FINAL_FIELD_MAPPINGS
+        .map(({ pdfKey, finalKey, label }) => {
+            const gesaKey = GESA_TO_FINAL_FIELD_MAPPINGS.get(finalKey);
+            const gesaValue = finalKey === 'weight_final'
+                ? normalizeString(getGesaWeightWithUnits(currentRow))
+                : (gesaKey
+                    ? normalizeString(String(currentRow?.[gesaKey] ?? '').trim())
+                    : '');
+            const pdfValue = normalizeString(String(currentRow?.[pdfKey] ?? '').trim());
+            const resolvedValue = (isGesaSi && gesaKey)
+                ? gesaValue
+                : pdfValue;
+
+            if (isGesaSi && gesaKey && !resolvedValue) {
+                return null;
+            }
+
+            const finalValue = normalizeString(String(currentRow?.[finalKey] ?? '').trim());
+            if (normalizeCompareValue(resolvedValue) === normalizeCompareValue(finalValue)) return null;
+
+            return {
+                finalKey,
+                label,
+                value: resolvedValue,
+                source: isGesaSi && gesaKey ? 'GESA' : 'PDF'
+            };
+        })
+        .filter(Boolean);
+
+    if (!valuesToApply.length) {
+        setRecomputeStatus(`Registro ID ${id}: no hay cambios PDF pendientes para FINAL.`, 'ok');
+        return;
+    }
+
+    isApplyingPdfCurrentRowToFinal = true;
+
+    try {
+        const sources = [...new Set(valuesToApply.map(({ source }) => source))].join('/');
+        setRecomputeStatus(`Copiando ${valuesToApply.length} campos ${sources} a FINAL en ID ${id}...`, '');
+
+        for (const { finalKey, value } of valuesToApply) {
+            await saveCellToServer(engineFile, id, finalKey, value);
+            currentRow[finalKey] = value;
+        }
+
+        await reloadEditedRecord(engineFile, id);
+        renderReviewStateButtons(currentRow);
+        renderReviewStats();
+        notifyPdfDataChangedFromAnalista(currentRow);
+
+        const labelsBySource = valuesToApply.reduce((acc, item) => {
+            if (!acc[item.source]) acc[item.source] = [];
+            acc[item.source].push(item.label);
+            return acc;
+        }, {});
+        const sourceSummary = Object.entries(labelsBySource)
+            .map(([source, labels]) => `${source}: ${labels.join(', ')}`)
+            .join(' | ');
+
+        setRecomputeStatus(`Registro ID ${id}: ${valuesToApply.length} campos copiados a FINAL (${sourceSummary}).`, 'ok');
+    } catch (error) {
+        setRecomputeStatus(`Error copiando PDF a FINAL: ${String(error?.message || error)}`, 'error');
+    } finally {
+        isApplyingPdfCurrentRowToFinal = false;
+    }
+
+}
+
 
 
 async function copyPdfAutoDesignationToFinalAndRecompute() {
@@ -4303,6 +4408,7 @@ async function copyPdfReadValuesForRow(row, options = {}) {
 
     const silent = options?.silent !== false;
     const reloadAfterSave = options?.reloadAfterSave !== false;
+    const clearPdfBeforeCopy = options?.clearPdfBeforeCopy === true;
 
     if (!PDF_FEATURE_AUTO_PDF_ENABLED) {
         return { ok: false, reason: 'feature-disabled', changedFields: [], valuesToCopy: {} };
@@ -4348,6 +4454,21 @@ async function copyPdfReadValuesForRow(row, options = {}) {
 
     const readSummaryMessage = buildPdfReadSummary(valuesToCopy);
     const changedFields = [];
+    const changedFieldSet = new Set();
+
+    if (clearPdfBeforeCopy) {
+        const pdfFieldsToClear = Object.keys(row || {}).filter((key) => String(key).endsWith('_pdf'));
+        for (const field of pdfFieldsToClear) {
+            if (String(row?.[field] ?? '') === '') continue;
+            try {
+                await saveCellToServer(engineFile, id, field, '');
+                row[field] = '';
+                changedFieldSet.add(field);
+            } catch (error) {
+                console.error(`Error limpiando ${field} en JSON:`, error);
+            }
+        }
+    }
 
     for (const [field, value] of Object.entries(valuesToCopy)) {
         if (!value) continue;
@@ -4356,21 +4477,23 @@ async function copyPdfReadValuesForRow(row, options = {}) {
         try {
             await saveCellToServer(engineFile, id, field, value);
             row[field] = value;
-            changedFields.push(field);
+            changedFieldSet.add(field);
         } catch (error) {
             console.error(`Error guardando ${field} en JSON:`, error);
         }
     }
 
-    if (changedFields.includes('norma_pdf') && String(row?.normalizado_pdf ?? '') !== 'SI') {
+    if (changedFieldSet.has('norma_pdf') && String(row?.normalizado_pdf ?? '') !== 'SI') {
         try {
             await saveCellToServer(engineFile, id, 'normalizado_pdf', 'SI');
             row['normalizado_pdf'] = 'SI';
-            changedFields.push('normalizado_pdf');
+            changedFieldSet.add('normalizado_pdf');
         } catch (error) {
             console.error('Error guardando normalizado_pdf en JSON:', error);
         }
     }
+
+    changedFields.push(...changedFieldSet);
 
     if (reloadAfterSave && changedFields.length > 0) {
         await reloadEditedRecord(engineFile, id);
@@ -4406,7 +4529,8 @@ async function copyPdfReadValuesToPdfFields() {
 
     const result = await copyPdfReadValuesForRow(currentRow, {
         silent: false,
-        reloadAfterSave: true
+        reloadAfterSave: true,
+        clearPdfBeforeCopy: true
     });
 
     if (result.ok) return;
@@ -5450,7 +5574,8 @@ async function runBulkCopyPdfToBook() {
             await syncPdfWithCurrentRow(row);
             const copyResult = await copyPdfReadValuesForRow(row, {
                 silent: true,
-                reloadAfterSave: false
+                reloadAfterSave: false,
+                clearPdfBeforeCopy: true
             });
 
             if (!copyResult.ok) {
@@ -10235,6 +10360,13 @@ function applyPdfFeatureFlagsToUi() {
         if (!PDF_FEATURE_AUTO_PDF_ENABLED) copyPdfReadBtn.title = 'Auto-PDF desactivado';
     }
 
+    const copyPdfReadToFinalBtn = $('copyPdfReadToFinalBtn');
+    if (copyPdfReadToFinalBtn instanceof HTMLButtonElement) {
+        const allowCopyToFinal = isBackendEndpointAllowed('save-json');
+        copyPdfReadToFinalBtn.disabled = !allowCopyToFinal;
+        if (!allowCopyToFinal) copyPdfReadToFinalBtn.title = 'Disponible solo en local (localhost:3000).';
+    }
+
     const pdfRecomputeErrorsBtn = $('pdfRecomputeErrorsBtn');
     if (pdfRecomputeErrorsBtn instanceof HTMLButtonElement) {
         const allowRecomputeErrors = isBackendEndpointAllowed('recompute-qa-errors');
@@ -10701,6 +10833,18 @@ bindClick('copyPdfReadToPdfBtn', () => {
         console.warn('No se pudo copiar la lectura del PDF a los campos _pdf:', error);
 
         alert(`No se pudo copiar la lectura del PDF: ${String(error?.message || error)}`);
+
+    });
+
+});
+
+bindClick('copyPdfReadToFinalBtn', () => {
+
+    copyCurrentPdfFieldsToFinal().catch((error) => {
+
+        console.warn('No se pudieron copiar los campos _pdf a _final del registro actual:', error);
+
+        alert(`No se pudo copiar PDF a FINAL: ${String(error?.message || error)}`);
 
     });
 

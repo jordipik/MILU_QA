@@ -74,11 +74,7 @@ function text(value) {
 }
 
 function normalizeCompareValue(value) {
-    return text(value)
-        .replace(/\s+/g, ' ')
-        .toLowerCase()
-        .normalize('NFD')
-        .replace(/[\u0300-\u036f]/g, '');
+    return String(value ?? '');
 }
 
 function isCompareMatch(left, right) {
@@ -136,7 +132,8 @@ function getEntryMap(row) {
         'WEIGHT': {
             final: row?.weight_final,
             pdf: row?.weight_pdf ?? row?.WEIGHT,
-            gesa: getGesaWeightWithUnits(row)
+            gesa: getGesaWeightWithUnits(row),
+            gesaRaw: row?.weight_gesa
         },
         'FN': {
             final: row?.fn_final,
@@ -187,8 +184,10 @@ const QA_FIELD_CHECKS = {
         (entry) => normalizeCompareValue(entry?.final) !== '',
         (entry) => {
             const pdfValue = normalizeCompareValue(entry?.pdf);
-            if (pdfValue === '') return true;
-            return isCompareMatch(entry?.final, entry?.pdf);
+            const gesaValue = normalizeCompareValue(entry?.gesa);
+            if (pdfValue === '' && gesaValue === '') return true;
+            return isCompareMatch(entry?.final, entry?.pdf)
+                || isCompareMatch(entry?.final, entry?.gesa);
         }
     ],
     'MODEL/TYPE': [
@@ -222,9 +221,12 @@ const QA_FIELD_CHECKS = {
         (entry) => {
             const finalValue = normalizeCompareValue(entry?.final);
             const pdfValue = normalizeCompareValue(entry?.pdf);
-            if (!finalValue && !pdfValue) return true;
-            if (pdfValue !== '') return isCompareMatch(entry?.final, entry?.pdf);
-            return true;
+            const gesaValue = normalizeCompareValue(entry?.gesa);
+            const gesaRawValue = normalizeCompareValue(entry?.gesaRaw);
+            if (!finalValue && !pdfValue && !gesaValue && !gesaRawValue) return true;
+            return isCompareMatch(entry?.final, entry?.pdf)
+                || isCompareMatch(entry?.final, entry?.gesa)
+                || isCompareMatch(entry?.final, entry?.gesaRaw);
         }
     ],
     'FN': [
@@ -240,9 +242,10 @@ const QA_FIELD_CHECKS = {
         (entry) => {
             const finalValue = normalizeCompareValue(entry?.final);
             const pdfValue = normalizeCompareValue(entry?.pdf);
-            if (!finalValue && !pdfValue) return true;
-            if (pdfValue !== '') return isCompareMatch(entry?.final, entry?.pdf);
-            return true;
+            const gesaValue = normalizeCompareValue(entry?.gesa);
+            if (!finalValue && !pdfValue && !gesaValue) return true;
+            return isCompareMatch(entry?.final, entry?.pdf)
+                || isCompareMatch(entry?.final, entry?.gesa);
         }
     ],
     'FG/FGS': [

@@ -228,6 +228,31 @@ describe('MILU write validation', () => {
         assert.equal(normalized.value, 'VALIDATION_TEST');
     });
 
+    test('campos FINAL operativos de analista_02 -> permitidos', () => {
+        const finalFields = [
+            'bom_final',
+            'gesa_final',
+            'nsn_final',
+            'normalizado_final',
+            'norma_final',
+            'sust_status_final',
+            'hierarchie_final',
+            'new_pn_final',
+            'subst_pnlist_final'
+        ];
+
+        for (const field of finalFields) {
+            const normalized = validateSaveJsonPayload({
+                file: 'engine_12V4000M40A.json',
+                id: '1',
+                field,
+                value: 'VALIDATION_TEST'
+            });
+            assert.equal(normalized.field, field);
+            assert.equal(normalized.value, 'VALIDATION_TEST');
+        }
+    });
+
     test('/save-json roundtrip HTTP: guarda y restaura designation_final', async () => {
         const file = 'engine_12V4000M40A.json';
         const filePath = path.join(process.cwd(), file);

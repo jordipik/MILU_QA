@@ -110,11 +110,7 @@ function text(value) {
 }
 
 function normalizeCompareValue(value) {
-    return text(value)
-        .replace(/\s+/g, ' ')
-        .toLowerCase()
-        .normalize('NFD')
-        .replace(/[\u0300-\u036f]/g, '');
+    return String(value ?? '');
 }
 
 function normalizeDesignationCompareValue(value) {

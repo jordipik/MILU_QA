@@ -55,8 +55,11 @@ const QA_FIELD_CHECKS = {
                 const finalValue = normalizeCompareValue(entry?.final);
                 const pdfValue = normalizeCompareValue(context?.pdfValue);
                 const gesaValue = normalizeCompareValue(entry?.gesa);
-                if (!finalValue && !pdfValue && !gesaValue) return true;
-                return isCompareMatch(entry?.final, context?.pdfValue) || isCompareMatch(entry?.final, entry?.gesa);
+                const gesaRawValue = normalizeCompareValue(entry?.gesaRaw);
+                if (!finalValue && !pdfValue && !gesaValue && !gesaRawValue) return true;
+                return isCompareMatch(entry?.final, context?.pdfValue)
+                    || isCompareMatch(entry?.final, entry?.gesa)
+                    || isCompareMatch(entry?.final, entry?.gesaRaw);
             }
         }
     ],
@@ -100,11 +103,7 @@ function text(value) {
 }
 
 export function normalizeCompareValue(value) {
-    return text(value)
-        .replace(/\s+/g, ' ')
-        .toLowerCase()
-        .normalize('NFD')
-        .replace(/[\u0300-\u036f]/g, '');
+    return String(value ?? '');
 }
 
 export function isCompareMatch(left, right) {
@@ -174,6 +173,7 @@ function getEntryMap(row) {
             final: row?.weight_final,
             pdf: row?.weight_pdf ?? row?.WEIGHT,
             gesa: getGesaWeightWithUnits(row),
+            gesaRaw: row?.weight_gesa,
             fields: ['WEIGHT', 'weight_final', 'weight_gesa']
         },
         'MEASUREMENT / STANDARD': {
