@@ -3034,7 +3034,7 @@ function initRecomputeModal() {
         recomputeCopyBookBtn.title = !PDF_FEATURE_AUTO_PDF_ENABLED
             ? 'Auto-PDF desactivado'
             : (allowRecompute
-                ? 'Aplicar lectura PDF (recompute-pdf-auto) a todos los registros del libro seleccionado'
+                ? 'Aplicar lectura PDF (copy-pdf-to-pdf-all-books) a todos los registros del libro seleccionado'
                 : 'Disponible solo en local (localhost:3000).');
     }
 
@@ -5212,6 +5212,141 @@ function renderRecomputePdfDetail(detailRow, result, pdfAutoBefore = {}) {
 
 
 
+function renderRecomputePdfBatchDetail(result, selectedModel = '') {
+
+    const panel = $('recomputePdfDetailPanel');
+
+    const title = $('recomputePdfDetailTitle');
+
+    const meta = $('recomputePdfDetailMeta');
+
+    const body = $('recomputePdfDetailBody');
+
+
+
+    if (!(panel instanceof HTMLElement)
+
+        || !(title instanceof HTMLElement)
+
+        || !(meta instanceof HTMLElement)
+
+        || !(body instanceof HTMLElement)) {
+
+        return;
+
+    }
+
+
+
+    const totals = result?.totals || {};
+    const perFile = Array.isArray(result?.perFile) ? result.perFile : [];
+
+    if (perFile.length === 0) {
+        clearRecomputePdfDetail();
+        return;
+    }
+
+    const modelLabel = txt(selectedModel, 'N/A');
+    const filesCount = Number(result?.options?.files?.length) || perFile.length;
+
+    title.textContent = `Detalle lote PDF · ${modelLabel}`;
+    meta.textContent = `Funcion: runBulkCopyPdfToBook() -> POST /copy-pdf-to-pdf-all-books | libros=${filesCount}`;
+
+    const summaryCards = [
+        { label: 'Registros escaneados', value: String(Number(totals.scanned) || 0) },
+        { label: 'Registros cambiados', value: String(Number(totals.changedRows) || 0) },
+        { label: 'Sin cambio', value: String(Number(totals.unchangedRows) || 0) },
+        { label: 'Sin ancla PN', value: String(Number(totals.pnAnchorMissing) || 0) },
+        { label: 'Paginas faltantes', value: String(Number(totals.missingPages) || 0) },
+        { label: 'Libros escritos', value: String(Number(totals.filesWritten) || 0) }
+    ];
+
+    const summaryHtml = `
+
+        <div class="recompute-result-summary">
+
+            ${summaryCards.map((card) => `
+
+                <div class="recompute-result-kpi">
+
+                    <div class="recompute-result-kpi-label">${escapeHtml(card.label)}</div>
+
+                    <div class="recompute-result-kpi-value">${escapeHtml(card.value)}</div>
+
+                </div>
+
+            `).join('')}
+
+        </div>
+
+    `;
+
+    const rowsHtml = perFile.map((item) => {
+        const scanned = Number(item?.scanned) || 0;
+        const changed = Number(item?.changedRows) || 0;
+        const unchanged = Number(item?.unchangedRows) || Math.max(0, scanned - changed);
+        const pnAnchorMissing = Number(item?.pnAnchorMissing) || 0;
+        const missingPages = Number(item?.missingPages) || 0;
+
+        return `
+
+            <tr>
+
+                <td>${escapeHtml(txt(item?.file, ''))}</td>
+
+                <td>${escapeHtml(String(scanned))}</td>
+
+                <td>${escapeHtml(String(changed))}</td>
+
+                <td>${escapeHtml(String(unchanged))}</td>
+
+                <td>${escapeHtml(String(pnAnchorMissing))}</td>
+
+                <td>${escapeHtml(String(missingPages))}</td>
+
+            </tr>
+
+        `;
+    }).join('');
+
+    body.innerHTML = `${summaryHtml}
+
+        <div class="recompute-result-table-wrap">
+
+            <table class="recompute-result-table">
+
+                <thead>
+
+                    <tr>
+
+                        <th>Libro</th>
+
+                        <th>Scanned</th>
+
+                        <th>Changed</th>
+
+                        <th>Unchanged</th>
+
+                        <th>Sin ancla PN</th>
+
+                        <th>Missing pages</th>
+
+                    </tr>
+
+                </thead>
+
+                <tbody>${rowsHtml}</tbody>
+
+            </table>
+
+        </div>`;
+
+    panel.hidden = false;
+
+}
+
+
+
 async function fetchRecomputePdfDetailRow(outputPath, requestUrl) {
 
     const fileName = String(outputPath || '').split(/[\\/]/).pop();
@@ -5551,15 +5686,17 @@ async function runBackendRecompute() {
 
 
 
-// Copia lectura PDF a campos *_pdf para TODOS los registros del libro seleccionado (motor visual por fila).
+// Copia lectura PDF a campos *_pdf para todos los registros del libro seleccionado (backend batch).
 async function runBulkCopyPdfToBook() {
 
     if (!PDF_FEATURE_AUTO_PDF_ENABLED) {
         return;
     }
 
-    if (!isBackendEndpointAllowed('recompute-pdf-auto')) {
-        setRecomputeStatus(getLocalOnlyBackendMessage('recompute-pdf-auto'), 'error');
+    clearRecomputePdfDetail();
+
+    if (!isBackendEndpointAllowed('copy-pdf-to-pdf-all-books')) {
+        setRecomputeStatus(getLocalOnlyBackendMessage('copy-pdf-to-pdf-all-books'), 'error');
         return;
     }
 
@@ -5611,91 +5748,33 @@ async function runBulkCopyPdfToBook() {
         if (textEl instanceof HTMLElement) textEl.textContent = 'Iniciando operación...';
     }
 
-    const selectedRows = Array.isArray(state.allData)
-        ? state.allData.filter((row) => String(row?.engine_model || '').trim() === selectedModel)
-        : [];
+    const previousCurrentId = txt(currentRow?.ID, '');
+    let result = null;
 
-    if (!selectedRows.length) {
+    try {
+        const fillEl = $('recomputeProgressFill');
+        const textEl = $('recomputeProgressText');
+        if (fillEl instanceof HTMLElement) fillEl.style.width = '45%';
+        if (textEl instanceof HTMLElement) textEl.textContent = 'Ejecutando copia masiva en backend...';
+
+        result = await postJsonToBackendCandidates('copy-pdf-to-pdf-all-books', {
+            writePdf: true,
+            backup: true,
+            file
+        });
+
+        const fillElDone = $('recomputeProgressFill');
+        const textElDone = $('recomputeProgressText');
+        if (fillElDone instanceof HTMLElement) fillElDone.style.width = '90%';
+        if (textElDone instanceof HTMLElement) textElDone.textContent = 'Generando resumen por libro...';
+    } catch (error) {
+        if (progressContainer instanceof HTMLElement) progressContainer.hidden = true;
         if (recomputeCopyBookBtn instanceof HTMLButtonElement) recomputeCopyBookBtn.disabled = false;
         if (recomputeRunBtn instanceof HTMLButtonElement) recomputeRunBtn.disabled = false;
         if (recomputePdfRunBtn instanceof HTMLButtonElement) recomputePdfRunBtn.disabled = false;
-        if (progressContainer instanceof HTMLElement) progressContainer.hidden = true;
-        setRecomputeStatus(`No hay registros cargados para el libro ${selectedModel}.`, 'error');
+        setRecomputeStatus(`Error en copia masiva PDF (backend): ${String(error?.message || error)}. Verifica que server.js este reiniciado y exponga /copy-pdf-to-pdf-all-books.`, 'error');
         return;
     }
-
-    let changedRows = 0;
-    let scannedRows = 0;
-    let failedRows = 0;
-    let missingMarkedRowRows = 0;
-    const previousCurrentId = txt(currentRow?.ID, '');
-    const failedDetails = [];
-
-    for (let index = 0; index < selectedRows.length; index += 1) {
-        const row = selectedRows[index];
-        scannedRows += 1;
-
-        const fillEl = $('recomputeProgressFill');
-        const textEl = $('recomputeProgressText');
-        const progressPct = Math.min(98, 20 + Math.round(((index + 1) / selectedRows.length) * 78));
-        if (fillEl instanceof HTMLElement) fillEl.style.width = `${progressPct}%`;
-        if (textEl instanceof HTMLElement) {
-            textEl.textContent = `Procesando ${index + 1}/${selectedRows.length} (ID ${txt(row?.ID, '?')})...`;
-        }
-
-        try {
-            currentRow = row;
-            await syncPdfWithCurrentRow(row);
-            const copyResult = await copyPdfReadValuesForRow(row, {
-                silent: true,
-                reloadAfterSave: false,
-                clearPdfBeforeCopy: true
-            });
-
-            if (!copyResult.ok) {
-                failedRows += 1;
-                if (copyResult.reason === 'missing-marked-row') missingMarkedRowRows += 1;
-                failedDetails.push({
-                    id: txt(row?.ID, '?'),
-                    pn: txt(row?.pn_final, '?'),
-                    qty: txt(row?.QUANTITY, '?'),
-                    reason: copyResult.reason
-                });
-                continue;
-            }
-
-            if (copyResult.changedFields.length > 0) {
-                changedRows += 1;
-            }
-        } catch (error) {
-            failedRows += 1;
-            failedDetails.push({
-                id: txt(row?.ID, '?'),
-                pn: txt(row?.pn_final, '?'),
-                qty: txt(row?.QUANTITY, '?'),
-                reason: 'exception',
-                errorMsg: String(error?.message || error || '')
-            });
-            console.warn('Error en copia visual masiva PDF por fila:', error);
-        }
-    }
-
-    if (failedDetails.length > 0) {
-        console.group(`📊 Detalles de ${failedDetails.length} fallos (mostrando primeros 20)`);
-        failedDetails.slice(0, 20).forEach((detail) => {
-            console.log(`  ID: ${detail.id}, PN: ${detail.pn}, QTY: ${detail.qty}, Razón: ${detail.reason}${detail.errorMsg ? ` (${detail.errorMsg})` : ''}`);
-        });
-        console.groupEnd();
-    }
-
-    const result = {
-        scanned: scannedRows,
-        changedRows,
-        missingPages: failedRows,
-        failedRows,
-        missingMarkedRowRows,
-        wroteFile: changedRows > 0
-    };
 
     if (recomputeCopyBookBtn instanceof HTMLButtonElement) recomputeCopyBookBtn.disabled = false;
     if (recomputeRunBtn instanceof HTMLButtonElement) recomputeRunBtn.disabled = false;
@@ -5711,18 +5790,21 @@ async function runBulkCopyPdfToBook() {
     if (fillEl instanceof HTMLElement) fillEl.style.width = '100%';
     if (textEl instanceof HTMLElement) textEl.textContent = 'Finalizando...';
 
-    const summaryChangedRows = Number(result.changedRows) || 0;
-    const summaryScannedRows = Number(result.scanned) || 0;
-    const summaryFailedRows = Number(result.failedRows) || 0;
-    const summaryMissingMarkedRowRows = Number(result.missingMarkedRowRows) || 0;
-    const summaryUnchangedRows = summaryScannedRows - summaryChangedRows - summaryFailedRows;
+    const totals = result?.totals || {};
+    const summaryChangedRows = Number(totals.changedRows) || 0;
+    const summaryScannedRows = Number(totals.scanned) || 0;
+    const summaryFailedRows = Number(totals.missingPages) || 0;
+    const summaryMissingMarkedRowRows = Number(totals.pnAnchorMissing) || 0;
+    const summaryUnchangedRows = Number(totals.unchangedRows) || Math.max(0, summaryScannedRows - summaryChangedRows);
     const statusMessage = summaryChangedRows === 0
-        ? `Sin cambios: campos *_pdf ya sincronizados | libro="${selectedModel}" scanned=${summaryScannedRows} fallos=${summaryFailedRows} sinFilaMarcada=${summaryMissingMarkedRowRows}`
-        : `OK libro "${selectedModel}" | scanned=${summaryScannedRows} changed=${summaryChangedRows} unchanged=${summaryUnchangedRows} fallos=${summaryFailedRows} sinFilaMarcada=${summaryMissingMarkedRowRows}`;
+        ? `Sin cambios: campos *_pdf ya sincronizados | libro="${selectedModel}" scanned=${summaryScannedRows} missingPages=${summaryFailedRows} sinAnclaPN=${summaryMissingMarkedRowRows}`
+        : `OK libro "${selectedModel}" | scanned=${summaryScannedRows} changed=${summaryChangedRows} unchanged=${summaryUnchangedRows} missingPages=${summaryFailedRows} sinAnclaPN=${summaryMissingMarkedRowRows}`;
 
     setRecomputeStatus(statusMessage, 'ok');
+    renderRecomputePdfBatchDetail(result, selectedModel);
 
-    if (result.wroteFile) {
+    const wroteFile = Number(totals.filesWritten) > 0;
+    if (wroteFile) {
         const activeModel = engineFilterSelect instanceof HTMLSelectElement
             ? String(engineFilterSelect.value || '').trim()
             : '';

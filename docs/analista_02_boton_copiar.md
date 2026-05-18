@@ -79,6 +79,17 @@ Payload por campo:
 - `js/analista-02.js`: `buildMarkedRowValuesFromGroup(...)`.
 - `js/data-loader.js`: `saveCellToServer(...)`.
 
+## Modal de recálculo (Paso 1)
+En el modal **Recálculo QA por Libro**, el boton **IMPORTAR PDF** ahora ejecuta:
+- Funcion frontend: `runBulkCopyPdfToBook()`
+- Endpoint backend: `POST /copy-pdf-to-pdf-all-books`
+- Servicio backend reutilizable: `runPdfVisualCopyBatch(options)`
+
+Descripcion funcional del Paso 1:
+- Aplica copia masiva de lectura PDF a campos `*_pdf` de todo el libro seleccionado.
+- Guarda en JSON en backend (con backup habilitado en este flujo).
+- Devuelve estadisticas globales y por libro (`totals` y `perFile`) que se muestran en el panel de detalle del modal.
+
 ---
 
 ## Ejecucion masiva (todos los libros)
