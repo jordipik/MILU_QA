@@ -1084,7 +1084,9 @@ function normalizeString(value) {
 
 function normalizeCompareValue(value) {
 
-    return String(value ?? '');
+    const normalized = String(value ?? '').trim();
+
+    return normalized === '-' ? '' : normalized;
 
 }
 
@@ -1131,13 +1133,13 @@ function getComparisonCellClasses(entry) {
 
 
 
-    const getMismatchClassAgainstFinal = (value) => {
+    const getClassAgainstFinal = (value) => {
 
         const normalizedValue = normalizeCompareValue(value);
 
         const normalizedFinal = normalizeCompareValue(finalValue);
 
-        if (!normalizedValue || !normalizedFinal) return '';
+        if (!normalizedValue) return '';
 
         return normalizedValue === normalizedFinal ? 'compare-match' : 'compare-mismatch-soft';
 
@@ -1149,33 +1151,41 @@ function getComparisonCellClasses(entry) {
 
     const excelMatchesSubst = isCompareMatch(excelValue, substValue);
 
+    const substMatchesFinal = isCompareMatch(substValue, finalValue);
+
     const gesaMatchesFinal = isCompareMatch(gesaValue, finalValue);
 
     const pdfMatchesFinal = isCompareMatch(pdfValue, finalValue);
 
     const excelSubstMatchClass = excelMatchesSubst ? 'compare-raw-sust-match' : '';
 
+    const finalFilled = normalizeCompareValue(finalValue) !== '';
+
+    const finalMatchesAnySource = gesaMatchesFinal || substMatchesFinal || pdfMatchesFinal;
+
 
 
     return {
 
-        excelClass: [getMismatchClassAgainstFinal(excelValue), excelSubstMatchClass].filter(Boolean).join(' '),
+        excelClass: [getClassAgainstFinal(excelValue), excelSubstMatchClass].filter(Boolean).join(' '),
 
-        substClass: excelMatchesSubst ? `compare-match ${excelSubstMatchClass}` : '',
+        substClass: getClassAgainstFinal(substValue),
 
-        finalClass: finalMissing ? 'compare-missing' : (gesaMatchesFinal || pdfMatchesFinal ? 'compare-match' : ''),
+        finalClass: finalMissing
+            ? 'compare-missing'
+            : (finalFilled ? (finalMatchesAnySource ? 'compare-match' : 'compare-mismatch-soft') : ''),
 
-        gesaClass: getMismatchClassAgainstFinal(gesaValue),
+        gesaClass: getClassAgainstFinal(gesaValue),
 
-        pdfClass: getMismatchClassAgainstFinal(pdfValue),
+        pdfClass: getClassAgainstFinal(pdfValue),
 
         // Aliases legacy para compatibilidad con código que lea rawClass/sustClass/pdfAutoClass
 
-        rawClass: [getMismatchClassAgainstFinal(excelValue), excelSubstMatchClass].filter(Boolean).join(' '),
+        rawClass: [getClassAgainstFinal(excelValue), excelSubstMatchClass].filter(Boolean).join(' '),
 
-        sustClass: excelMatchesSubst ? `compare-match ${excelSubstMatchClass}` : '',
+        sustClass: getClassAgainstFinal(substValue),
 
-        pdfAutoClass: getMismatchClassAgainstFinal(pdfValue)
+        pdfAutoClass: getClassAgainstFinal(pdfValue)
 
     };
 
@@ -8006,9 +8016,7 @@ async function renderComparisonTable(row) {
 
         const errTitle = errCount > 0 ? ` title="${escapeHtml(`Errores persistidos en JSON: ${errCount}`)}"` : '';
 
-        const finalErrClass = errCount > 0 ? 'compare-final-error' : 'compare-final-ok';
-
-        const finalFullClass = [cellClasses.finalClass, finalErrClass].filter(Boolean).join(' ');
+        const finalFullClass = [cellClasses.finalClass].filter(Boolean).join(' ');
 
         const finalEditAttrs = isEditableComparisonField(entry.field)
 
