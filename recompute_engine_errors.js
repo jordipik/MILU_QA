@@ -318,21 +318,9 @@ function assignIfChanged(target, key, nextValue) {
 function applyToRow(row, options) {
     let changed = false;
 
-    const currentEstado = String(row?.qa_revision_estado || '').trim().toLowerCase();
-    const currentAccion = String(row?.qa_revision_accion || '').trim().toLowerCase();
-    // Solo tratamos como resuelto cuando estado y accion son coherentes de cierre.
-    // Antes se usaba OR y acababa evitando el recálculo real en demasiados registros.
-    const isResolved = currentEstado === 'ok'
-        && (currentAccion === 'importar' || currentAccion === 'eliminar' || currentAccion === 'copia');
-
-    let errorPayload;
-    if (isResolved) {
-        errorPayload = {};
-        Object.values(FIELD_TO_ERROR_KEY).forEach(key => { errorPayload[key] = 0; });
-        errorPayload.total_error = 0;
-    } else {
-        errorPayload = computeErrorPayload(row);
-    }
+    // Siempre recalcular QA real para reflejar discrepancias actuales.
+    // El estado manual se respeta mas abajo al decidir qa_revision_* cuando updateRevision=true.
+    const errorPayload = computeErrorPayload(row);
     const hasErrors = Number(errorPayload.total_error) > 0;
     Object.entries(errorPayload).forEach(([key, value]) => {
         if (assignIfChanged(row, key, value)) changed = true;

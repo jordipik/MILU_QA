@@ -4780,23 +4780,30 @@ function setRecomputeStatus(message, status = '') {
 
     if (status === 'error') statusEl.classList.add('is-error');
 
-    let _pdfActionStatusTimer = null;
-    function setPdfActionStatus(message, status = '') {
-        const el = $('pdfActionStatusText');
-        if (!(el instanceof HTMLElement)) return;
-        el.classList.remove('is-ok', 'is-error', 'is-busy');
-        if (status === 'ok') el.classList.add('is-ok');
-        else if (status === 'error') el.classList.add('is-error');
-        else if (status === 'busy') el.classList.add('is-busy');
-        el.textContent = message;
-        if (_pdfActionStatusTimer) clearTimeout(_pdfActionStatusTimer);
-        if (status === 'ok' || status === 'error') {
-            _pdfActionStatusTimer = setTimeout(() => { el.textContent = ''; el.className = 'pdf-action-status'; }, 4000);
-        }
-    }
-
     statusEl.textContent = message;
 
+}
+
+let _pdfActionStatusTimer = null;
+
+function setPdfActionStatus(message, status = '') {
+    const el = $('pdfActionStatusText');
+    if (!(el instanceof HTMLElement)) return;
+
+    el.classList.remove('is-ok', 'is-error', 'is-busy');
+    if (status === 'ok') el.classList.add('is-ok');
+    else if (status === 'error') el.classList.add('is-error');
+    else if (status === 'busy') el.classList.add('is-busy');
+
+    el.textContent = message;
+
+    if (_pdfActionStatusTimer) clearTimeout(_pdfActionStatusTimer);
+    if (status === 'ok' || status === 'error') {
+        _pdfActionStatusTimer = setTimeout(() => {
+            el.textContent = '';
+            el.className = 'pdf-action-status';
+        }, 4000);
+    }
 }
 
 
@@ -5070,9 +5077,7 @@ async function runBackendRecompute() {
 
 
 
-    if (!(recomputeEngineSelect instanceof HTMLSelectElement)
-
-        || !(recomputeIdInput instanceof HTMLInputElement)
+    if (!(recomputeIdInput instanceof HTMLInputElement)
 
         || !(recomputeRunBtn instanceof HTMLButtonElement)
 
@@ -5084,7 +5089,9 @@ async function runBackendRecompute() {
 
 
 
-    const selectedModel = String(recomputeEngineSelect.value || '').trim();
+    const selectedModel = recomputeEngineSelect instanceof HTMLSelectElement
+        ? String(recomputeEngineSelect.value || '').trim()
+        : String(engineFilterSelect.value || '').trim();
 
     const file = resolveEngineFileFromFilter(selectedModel);
 

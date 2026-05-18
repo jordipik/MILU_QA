@@ -587,11 +587,11 @@
     "pos_error": 0,
     "pn_error": 0,
     "designation_error": 0,
-    "weight_error": 0,
+    "weight_error": 1,
     "norma_error": 0,
     "bom_error": 0,
-    "total_error": 0,
-    "has_error": false,
+    "total_error": 1,
+    "has_error": true,
     "qa_revision_estado": "ok",
     "qa_revision_accion": "importar",
     "qa_revision_motivo": "PN encontrado en GESA",
@@ -627,7 +627,8 @@
     "norma_pdf": "DIN912",
     "fg_fgs_pdf": "011-05",
     "bom_pdf": "010.00475",
-    "normalizado_pdf": "SI"
+    "normalizado_pdf": "SI",
+    "measure_pdf": "M 8 X 16"
   },
   {
     "ID": "1100672",
