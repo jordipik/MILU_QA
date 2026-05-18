@@ -2200,6 +2200,77 @@ async function handleSaveJson(req, res) {
 app.post('/save-json', handleSaveJson);
 app.post('/save-json.php', handleSaveJson);
 
+app.post('/copy-pdf-to-pdf', async (req, res) => {
+    const payload = req.body;
+
+    try {
+        assertNonEmptyObject(payload, 'payload');
+        assertPayloadSize(payload, 32768, 'payload');
+
+        const file = assertString(payload.file, { field: 'file', maxLength: 128 });
+        const id = assertString(payload.id, { field: 'id', maxLength: 128 });
+        const clearPdfBeforeCopy = payload.clearPdfBeforeCopy === true || payload.clearPdfBeforeCopy === 'true';
+        const rawValues = payload.valuesToCopy;
+        if (!rawValues || typeof rawValues !== 'object' || Array.isArray(rawValues)) {
+            throw validationError({ code: 'INVALID_VALUES', field: 'valuesToCopy', message: 'valuesToCopy debe ser un objeto' });
+        }
+        if (!ENGINE_JSON_FILES.includes(file)) {
+            throw validationError({ code: 'FILE_NOT_ALLOWED', field: 'file', message: 'Archivo no permitido' });
+        }
+
+        const filePath = path.join(__dirname, file);
+        const changedFields = [];
+
+        await withSaveJsonFileLock(file, async () => {
+            const data = await fs.promises.readFile(filePath, 'utf8');
+            let json;
+            try { json = JSON.parse(data); } catch (_) { const e = new Error('JSON inválido'); e.status = 500; throw e; }
+
+            const row = json.find(r => String(r.ID) === String(id));
+            if (!row) { const e = new Error('Registro no encontrado'); e.status = 404; throw e; }
+
+            if (clearPdfBeforeCopy) {
+                for (const key of Object.keys(row)) {
+                    if (String(key).endsWith('_pdf') && String(row[key] ?? '') !== '') {
+                        setWriteField(row, key, '');
+                        changedFields.push(key);
+                    }
+                }
+            }
+
+            let normaChanged = false;
+            for (const [rawField, value] of Object.entries(rawValues)) {
+                const field = canonicalFieldName(rawField);
+                if (!field || !isAllowedSaveJsonField(field)) continue;
+                const normalized = normalizeEditableFieldValue(field, value);
+                if (normalized === undefined || normalized === null) continue;
+                if (String(row[field] ?? '') === String(normalized)) continue;
+                setWriteField(row, field, normalized);
+                changedFields.push(field);
+                if (field === 'norma_pdf') normaChanged = true;
+            }
+
+            if (normaChanged && String(row['normalizado_pdf'] ?? '') !== 'SI') {
+                setWriteField(row, 'normalizado_pdf', 'SI');
+                changedFields.push('normalizado_pdf');
+            }
+
+            stripLegacyQaFields(json);
+            await writeJsonAtomic(filePath, json);
+            pnReviewQaCacheService.invalidate();
+        });
+
+        return res.json({ ok: true, changedFields });
+    } catch (error) {
+        if (isValidationError(error)) {
+            return sendValidationError(res, error, { endpoint: '/copy-pdf-to-pdf' });
+        }
+        console.error('[copy-pdf-to-pdf] Error:', error);
+        const status = Number(error?.status || 500);
+        return res.status(status).json({ ok: false, error: String(error?.message || error) });
+    }
+});
+
 app.post('/apply-qa-checks-filter', async (req, res) => {
     return legacyQaPipelineDisabled(res);
 });

@@ -4559,6 +4559,80 @@ async function copyPdfReadValuesToPdfFields() {
 }
 
 
+async function copyPdfReadValuesToPdfFieldsBackend() {
+
+    if (!PDF_FEATURE_AUTO_PDF_ENABLED) return;
+
+    if (!currentRow) {
+        alert('Primero debes cargar un registro.');
+        return;
+    }
+
+    const engineFile = resolveEngineFile(currentRow);
+    const id = txt(currentRow?.ID, '');
+    if (!engineFile || !id) {
+        alert('No se pudo resolver archivo engine o ID para copiar la lectura del PDF.');
+        return;
+    }
+
+    const { textItems, viewport } = getPdfLastPageData();
+    if (!Array.isArray(textItems) || !textItems.length || !viewport) {
+        alert('Primero carga el PDF del registro para poder copiar sus valores.');
+        return;
+    }
+
+    const headerColumnBodyDebug = getPdfHeaderColumnBodyDebug();
+    const markedRow = findMarkedPdfRowForCurrentRow(headerColumnBodyDebug, currentRow);
+    if (!markedRow) {
+        alert('No se pudo identificar la fila de rectangulos de color para copiar sus valores. Ejecuta Detectar Headers y Pintar Cuerpo en la pagina actual.');
+        return;
+    }
+
+    const valuesToCopy = buildMarkedRowValuesFromGroup(markedRow);
+
+    try {
+        const topDetection = await detectTopBomAndFgInPdf(currentRow);
+        const topEntries = Array.isArray(topDetection?.entries) ? topDetection.entries : [];
+        const detectedFg = topEntries.find((entry) => String(entry?.key || '').trim() === 'fg_fgs');
+        const detectedBom = topEntries.find((entry) => String(entry?.key || '').trim() === 'bom');
+        const fgValue = normalizeString(detectedFg?.value);
+        const bomValue = normalizeString(detectedBom?.value);
+        if (fgValue) valuesToCopy.fg_fgs_pdf = fgValue;
+        if (bomValue) valuesToCopy.bom_pdf = bomValue;
+    } catch (error) {
+        console.warn('No se pudo detectar FG/FGS + BOM superior durante la copia backend:', error);
+    }
+
+    let response;
+    try {
+        const res = await fetch('/copy-pdf-to-pdf', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ file: engineFile, id, valuesToCopy, clearPdfBeforeCopy: true })
+        });
+        response = await res.json();
+        if (!res.ok || !response?.ok) {
+            throw new Error(response?.error || `HTTP ${res.status}`);
+        }
+    } catch (error) {
+        alert(`Error al llamar al backend: ${String(error?.message || error)}`);
+        return;
+    }
+
+    const changedFields = Array.isArray(response.changedFields) ? response.changedFields : [];
+
+    if (changedFields.length > 0) {
+        await reloadEditedRecord(engineFile, id);
+        renderReviewStats();
+        notifyPdfDataChangedFromAnalista(currentRow);
+        alert(`Copiados ${changedFields.length} campos _pdf desde el backend.`);
+    } else {
+        alert('Los campos _pdf ya estaban sincronizados con la lectura del PDF.');
+    }
+
+}
+
+
 
 function buildEngineOptions(selectedModel = '') {
 
@@ -4594,7 +4668,7 @@ function resolveEngineFileFromFilter(engineFilter) {
 
 
 
-const LOCAL_ONLY_BACKEND_ENDPOINTS = new Set(['recompute-qa-errors', 'recompute-pdf-auto', 'recompute-pdf-auto-visual', 'calculate-final-fields', 'recalculate-revision-status']);
+const LOCAL_ONLY_BACKEND_ENDPOINTS = new Set(['recompute-qa-errors', 'recompute-pdf-auto', 'recompute-pdf-auto-visual', 'calculate-final-fields', 'recalculate-revision-status', 'copy-pdf-to-pdf']);
 
 
 
@@ -10360,6 +10434,14 @@ function applyPdfFeatureFlagsToUi() {
         if (!PDF_FEATURE_AUTO_PDF_ENABLED) copyPdfReadBtn.title = 'Auto-PDF desactivado';
     }
 
+    const copyPdfReadBackendBtn = $('copyPdfReadToPdfBackendBtn');
+    if (copyPdfReadBackendBtn instanceof HTMLButtonElement) {
+        const backendAllowed = PDF_FEATURE_AUTO_PDF_ENABLED && isBackendEndpointAllowed('copy-pdf-to-pdf');
+        copyPdfReadBackendBtn.disabled = !backendAllowed;
+        if (!PDF_FEATURE_AUTO_PDF_ENABLED) copyPdfReadBackendBtn.title = 'Auto-PDF desactivado';
+        else if (!backendAllowed) copyPdfReadBackendBtn.title = 'Disponible solo en local (localhost:3000).';
+    }
+
     const copyPdfReadToFinalBtn = $('copyPdfReadToFinalBtn');
     if (copyPdfReadToFinalBtn instanceof HTMLButtonElement) {
         const allowCopyToFinal = isBackendEndpointAllowed('save-json');
@@ -10833,6 +10915,22 @@ bindClick('copyPdfReadToPdfBtn', () => {
         console.warn('No se pudo copiar la lectura del PDF a los campos _pdf:', error);
 
         alert(`No se pudo copiar la lectura del PDF: ${String(error?.message || error)}`);
+
+    });
+
+});
+
+bindClick('copyPdfReadToPdfBackendBtn', () => {
+
+    if (!PDF_FEATURE_AUTO_PDF_ENABLED) {
+        return;
+    }
+
+    copyPdfReadValuesToPdfFieldsBackend().catch((error) => {
+
+        console.warn('No se pudo copiar la lectura del PDF (backend):', error);
+
+        alert(`No se pudo copiar la lectura del PDF (backend): ${String(error?.message || error)}`);
 
     });
 
