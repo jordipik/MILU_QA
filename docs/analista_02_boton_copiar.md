@@ -78,3 +78,54 @@ Payload por campo:
 - `js/analista-02.js`: `copyPdfReadValuesForRow(...)`.
 - `js/analista-02.js`: `buildMarkedRowValuesFromGroup(...)`.
 - `js/data-loader.js`: `saveCellToServer(...)`.
+
+---
+
+## Ejecucion masiva (todos los libros)
+
+Se dejo preparada una ruta backend y un script CLI para ejecutar la copia visual-compatible en lote reutilizando la misma logica.
+
+### Funcion reutilizable backend
+- Archivo: `server/services/pdf-copy-batch.js`
+- Funcion: `runPdfVisualCopyBatch(options)`
+- Opciones:
+	- `writePdf` (bool): escribe cambios en `engine_*.json`.
+	- `backup` (bool): genera `.backup` antes de escribir.
+	- `file` o `files`: limitar a uno o varios libros.
+- Devuelve:
+	- `totals`: `scanned`, `changedRows`, `unchangedRows`, `missingPages`, `pnAnchorMissing`, `filesWritten`.
+	- `perFile`: detalle por libro.
+	- `missingPageStatusBreakdown`: conteo de estados de pagina faltante.
+
+### Endpoint HTTP listo para boton futuro
+- Ruta: `POST /copy-pdf-to-pdf-all-books`
+- Payload opcional:
+```json
+{
+	"writePdf": true,
+	"backup": true,
+	"file": "engine_12V4000M53.json",
+	"files": ["engine_12V4000M53.json", "engine_12V4000M70.json"]
+}
+```
+- Notas:
+	- Si no se envian `file/files`, procesa los 9 libros.
+	- Responde `{ ok: true, result: ... }` con estadisticas agregadas y por libro.
+
+### Script CLI
+- Archivo: `scripts/run_visual_pdf_copy_batch.js`
+- NPM scripts:
+	- `npm run qa:pdf-copy:batch` (dry-run)
+	- `npm run qa:pdf-copy:batch:write` (escritura con backup)
+	- `npm run qa:pdf-copy:batch:write:no-backup` (escritura sin backup)
+- Flags directas:
+	- `--write-pdf`
+	- `--dry-run`
+	- `--no-backup`
+	- `--files engine_12V4000M53.json,engine_12V4000M70.json`
+
+### Recomendacion para UI futura
+Para agregar un boton de "Copiar PDF en lote":
+- usar `fetch('/copy-pdf-to-pdf-all-books', { method: 'POST', ... })`;
+- mostrar progreso/estado en `setRecomputeStatus(...)`;
+- al finalizar, renderizar resumen con `result.totals` y un detalle por libro de `result.perFile`.

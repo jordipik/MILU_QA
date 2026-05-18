@@ -9,6 +9,7 @@ const { ENGINE_JSON_FILES } = require('./engine_files');
 const { recomputeEngineErrors } = require('./recompute_engine_errors');
 const { runComparison } = require('./scripts/qa_pdf_compare');
 const { runVisualCopyComparison } = require('./scripts/qa_pdf_visual_copy');
+const { runPdfVisualCopyBatch } = require('./server/services/pdf-copy-batch');
 const { createRevisionSyncService } = require('./server/services/revision-sync');
 const { createRevisionApplyService } = require('./server/services/revision-apply');
 const { createPnReviewQaCacheService } = require('./server/services/pn-review-qa-cache');
@@ -779,6 +780,38 @@ app.post('/recompute-pdf-auto-visual', async (req, res) => {
         const message = String(error?.message || error || 'Error desconocido');
         const isNotFound = /no se encontro ningun registro con id=/i.test(message);
         return res.status(isNotFound ? 404 : 500).json({ ok: false, error: message });
+    }
+});
+
+app.post('/copy-pdf-to-pdf-all-books', async (req, res) => {
+    const payload = req.body || {};
+
+    try {
+        assertPlainObject(payload, 'payload');
+        assertPayloadSize(payload, 12288, 'payload');
+
+        const file = String(payload.file || '').trim();
+        const files = Array.isArray(payload.files)
+            ? payload.files.map((value) => String(value || '').trim()).filter(Boolean)
+            : [];
+
+        const writePdf = assertBooleanLike(payload.writePdf ?? true, 'writePdf');
+        const backup = assertBooleanLike(payload.backup ?? true, 'backup');
+
+        const result = await runPdfVisualCopyBatch({
+            writePdf,
+            backup,
+            files: files.length > 0 ? files : (file ? [file] : undefined)
+        });
+
+        return res.json({ ok: true, result });
+    } catch (error) {
+        if (isValidationError(error)) {
+            return sendValidationError(res, error, { endpoint: '/copy-pdf-to-pdf-all-books' });
+        }
+
+        const message = String(error?.message || error || 'Error desconocido');
+        return res.status(400).json({ ok: false, error: message });
     }
 });
 
