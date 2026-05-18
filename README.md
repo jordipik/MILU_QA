@@ -55,6 +55,7 @@ Toda la documentación vive en [docs/](docs/README.md). Documentos canónicos (f
 - Arquitectura: [docs/ARQUITECTURA_MILU.md](docs/ARQUITECTURA_MILU.md)
 - Flujo de datos: [docs/FLUJO_DATOS_MILU.md](docs/FLUJO_DATOS_MILU.md)
 - QA / reglas y comprobaciones: [docs/QA_MILU.md](docs/QA_MILU.md)
+- Analista_02 - boton COPIAR (lectura PDF a campos _pdf): [docs/analista_02_boton_copiar.md](docs/analista_02_boton_copiar.md)
 - Export WordPress (QA-only): [docs/WORDPRESS_EXPORT_MILU.md](docs/WORDPRESS_EXPORT_MILU.md)
 - Imágenes y esquemas: [docs/IMAGENES_ESQUEMAS_MILU.md](docs/IMAGENES_ESQUEMAS_MILU.md)
 - Plan de trabajo: [docs/PLAN_TRABAJO_MILU.md](docs/PLAN_TRABAJO_MILU.md)
