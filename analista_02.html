@@ -267,6 +267,10 @@
                             title="Paso 3b: copiar campos _pdf del registro actual a campos _final"><span
                                 class="pdf-btn-icon" aria-hidden="true">◩</span><span
                                 class="pdf-btn-label">FINAL</span></button>
+                        <button id="copyPdfReadToFinalBackendBtn" class="pdf-row-debug-btn is-step-copy" type="button"
+                            title="Paso 3c (Backend): ejecutar PDF -> FINAL masivo para todos los libros"><span
+                                class="pdf-btn-icon" aria-hidden="true">◪</span><span
+                                class="pdf-btn-label">FINAL (Backend)</span></button>
                         <button id="pdfRecomputeErrorsBtn" class="pdf-row-debug-btn is-step-check" type="button"
                             title="Paso 4: recalcular errores del registro actual"><span class="pdf-btn-icon"
                                 aria-hidden="true">▲</span><span class="pdf-btn-label">ERROR</span></button>
@@ -387,16 +391,17 @@
                         <button id="recomputeCalculateFinalBtn" type="button" class="is-success">CÁLCULO FINAL</button>
                     </article>
 
-                    <article class="a2-recompute-card" aria-label="Recalcular errores">
+                    <article class="a2-recompute-card" aria-label="Copiar PDF a FINAL en lote">
                         <h3>
                             <span class="a2-step-index">3</span>
                             <div>
-                                <span class="a2-step-title">Calcular errores</span>
-                                <p class="a2-step-desc">Recalcula validaciones QA para todos los registros del libro
-                                    seleccionado. Compara columnas Excel, GESA, SUBST, PDF y FINAL.</p>
+                                <span class="a2-step-title">PDF -> FINAL (masivo)</span>
+                                <p class="a2-step-desc">Ejecuta la misma lógica del botón FINAL para todos los
+                                    registros de todos los libros: copia campos *_pdf a *_final, y cuando gesa = SI
+                                    prioriza datos GESA en designation/measure/weight/nsn/normalizado/norma.</p>
                             </div>
                         </h3>
-                        <button id="recomputeRunBtn" type="button">ERRORES</button>
+                        <button id="recomputeRunBtn" type="button">FINAL MASIVO</button>
                     </article>
 
                     <article class="a2-recompute-card" aria-label="Recalcular estado y acción de revisión">

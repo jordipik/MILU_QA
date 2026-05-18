@@ -140,3 +140,110 @@ Para agregar un boton de "Copiar PDF en lote":
 - usar `fetch('/copy-pdf-to-pdf-all-books', { method: 'POST', ... })`;
 - mostrar progreso/estado en `setRecomputeStatus(...)`;
 - al finalizar, renderizar resumen con `result.totals` y un detalle por libro de `result.perFile`.
+
+---
+
+## Modal de recálculo (Paso 3: FINAL MASIVO)
+
+Se añadió el flujo masivo que replica la lógica del botón `FINAL` del panel PDF, pero aplicado a **todos los registros de todos los libros**.
+
+### Objetivo
+- Copiar datos `*_pdf` a `*_final` en lote.
+- Mantener la misma regla de prioridad del botón `FINAL` individual:
+	- Si `gesa = SI` y el campo tiene mapeo GESA, usar valor GESA.
+	- En otro caso, usar valor PDF.
+
+### Dónde se dispara en UI
+- Modal: `analista_02.html`
+- Paso 3:
+	- Título: `PDF -> FINAL (masivo)`
+	- Botón: `FINAL MASIVO`
+	- ID: `recomputeRunBtn`
+- Handler frontend:
+	- `bindClick('recomputeRunBtn', ...)`
+	- función ejecutada: `runBulkCopyPdfToFinalAllBooks()`
+
+### Endpoint backend
+- Ruta: `POST /copy-pdf-to-final-all-books`
+- Payload opcional:
+```json
+{
+	"backup": true,
+	"file": "engine_12V4000M53.json",
+	"files": ["engine_12V4000M53.json", "engine_12V4000M70.json"]
+}
+```
+
+Reglas de selección:
+- Si no se envía `file` ni `files`, procesa los 9 `engine_*.json`.
+- Si se envía `file` o `files`, limita a esos libros (si están permitidos).
+
+### Mapeo aplicado (`pdf -> final`)
+- `pos_pdf` -> `pos_final`
+- `pn_pdf` -> `pn_final`
+- `designation_pdf` -> `designation_final`
+- `model_type_pdf` -> `model_type_final`
+- `qty_pdf` -> `qty_final`
+- `units_pdf` -> `units_final`
+- `weight_pdf` -> `weight_final`
+- `fn_pdf` -> `fn_final`
+- `measure_pdf` -> `measure_final`
+- `fg_fgs_pdf` -> `fg_fgs_final`
+- `bom_pdf` -> `bom_final`
+- `gesa_pdf` -> `gesa_final`
+- `nsn_pdf` -> `nsn_final`
+- `normalizado_pdf` -> `normalizado_final`
+- `norma_pdf` -> `norma_final`
+- `sust_status_pdf` -> `sust_status_final`
+- `hierarchi_pdf` -> `hierarchie_final`
+- `sust_new_part_number_pdf` -> `new_pn_final`
+- `sust_superseded_list_pdf` -> `subst_pnlist_final`
+
+Campos con prioridad GESA cuando `gesa = SI`:
+- `designation_final` <- `designation_gesa`
+- `measure_final` <- `dimensions_gesa`
+- `weight_final` <- `weight_gesa + units`
+- `nsn_final` <- `nsn`
+- `normalizado_final` <- `normalizado`
+- `norma_final` <- `norma`
+
+### Persistencia y seguridad
+- Escritura por archivo con lock: `withSaveJsonFileLock(...)`.
+- Backup opcional por archivo antes de escribir: `engine_xxx.json.backup.<timestamp>`.
+- Escritura atómica con `writeJsonAtomic(...)`.
+- Limpieza de campos QA legacy persistidos: `stripLegacyQaFields(...)`.
+
+### Respuesta esperada
+Respuesta `ok`:
+```json
+{
+	"ok": true,
+	"result": {
+		"files": ["engine_...json"],
+		"backup": true,
+		"totals": {
+			"filesProcessed": 9,
+			"filesWritten": 9,
+			"scannedRows": 12345,
+			"changedRows": 678,
+			"updatedFields": 2345
+		},
+		"perFile": [
+			{
+				"file": "engine_...json",
+				"scannedRows": 1000,
+				"changedRows": 120,
+				"updatedFields": 420,
+				"wroteFile": true,
+				"sourceCounts": { "PDF": 300, "GESA": 120 }
+			}
+		]
+	}
+}
+```
+
+### Mensaje de estado en frontend
+Al finalizar correctamente, el modal muestra:
+- `OK FINAL MASIVO | libros=... escritos=... registros=... cambiados=... campos=...`
+
+Con esto, el Paso 3 deja de ser "recalcular errores" y pasa a ser la operación masiva del botón `FINAL`.

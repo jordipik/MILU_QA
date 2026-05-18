@@ -7,7 +7,6 @@ const bodyParser = require('body-parser');
 const cors = require('cors');
 const { ENGINE_JSON_FILES } = require('./engine_files');
 const { recomputeEngineErrors } = require('./recompute_engine_errors');
-const { runComparison } = require('./scripts/qa_pdf_compare');
 const { runVisualCopyComparison } = require('./scripts/qa_pdf_visual_copy');
 const { runPdfVisualCopyBatch } = require('./server/services/pdf-copy-batch');
 const { createRevisionSyncService } = require('./server/services/revision-sync');
@@ -643,91 +642,11 @@ app.post('/recalculate-revision-status', async (req, res) => {
 });
 
 app.post('/recompute-pdf-auto', async (req, res) => {
-    let file;
-    let id;
-    let dryRun;
-    let backup;
-
-    try {
-        const validated = validateEngineFilePayload(req.body, { maxBytes: 12288 });
-        file = validated.file;
-        if (!ENGINE_JSON_FILES.includes(file)) {
-            throw validationError({ code: 'FILE_NOT_ALLOWED', field: 'file', message: 'Archivo no permitido' });
-        }
-        id = assertString(req.body?.id ?? '', { field: 'id', allowEmpty: true, maxLength: 128 });
-        dryRun = assertBooleanLike(req.body?.dryRun ?? false, 'dryRun');
-        backup = req.body?.backup === false ? false : true;
-    } catch (error) {
-        return isValidationError(error)
-            ? sendValidationError(res, error, { endpoint: '/recompute-pdf-auto' })
-            : res.status(400).json({ ok: false, error: String(error?.message || error) });
-    }
-
-    try {
-        const comparisonResult = await runComparison({
-            file,
-            id,
-            writePdf: !dryRun,
-            recomputeErrors: false,
-            backup,
-            output: ''
-        });
-
-        const report = comparisonResult?.report || {};
-        const rows = Array.isArray(report.rows) ? report.rows : [];
-        const fieldSummaryMap = new Map();
-
-        for (const row of rows) {
-            const comparisons = Array.isArray(row?.comparisons) ? row.comparisons : [];
-            for (const comparison of comparisons) {
-                const field = String(comparison?.field || '').trim();
-                if (!field) continue;
-
-                const pdfValue = String(comparison?.pdf ?? '').trim();
-                const hasPdfValue = pdfValue !== '' && pdfValue !== '-';
-
-                if (!fieldSummaryMap.has(field)) {
-                    fieldSummaryMap.set(field, { field, detected: 0, empty: 0, total: 0 });
-                }
-
-                const summary = fieldSummaryMap.get(field);
-                summary.total += 1;
-                if (hasPdfValue) {
-                    summary.detected += 1;
-                } else {
-                    summary.empty += 1;
-                }
-            }
-        }
-
-        const fieldSummary = Array.from(fieldSummaryMap.values())
-            .sort((a, b) => {
-                const detectedDelta = Number(b.detected) - Number(a.detected);
-                if (detectedDelta !== 0) return detectedDelta;
-                return String(a.field).localeCompare(String(b.field));
-            });
-
-        const result = {
-            file,
-            mode: id ? 'single-id' : 'full-book',
-            id: id || null,
-            dryRun,
-            scanned: Number(report.scanned_rows) || 0,
-            changedRows: Number(report.changed_pdf_fields_rows) || 0,
-            missingPages: Array.isArray(report.missing_pages) ? report.missing_pages.length : 0,
-            wroteFile: Boolean(report.wrote_engine_file),
-            output: String(comparisonResult?.outputPath || ''),
-            fieldsWithDetectedValues: fieldSummary.filter((entry) => Number(entry.detected) > 0).length,
-            totalComparedFields: fieldSummary.length,
-            fieldSummary
-        };
-
-        return res.json({ ok: true, result });
-    } catch (error) {
-        const message = String(error?.message || error || 'Error desconocido');
-        const isNotFound = /no se encontro ningun registro con id=/i.test(message);
-        return res.status(isNotFound ? 404 : 500).json({ ok: false, error: message });
-    }
+    return res.status(410).json({
+        ok: false,
+        legacy: true,
+        error: 'Endpoint legacy desactivado. Use /recompute-pdf-auto-visual.'
+    });
 });
 
 app.post('/recompute-pdf-auto-visual', async (req, res) => {
@@ -808,6 +727,201 @@ app.post('/copy-pdf-to-pdf-all-books', async (req, res) => {
     } catch (error) {
         if (isValidationError(error)) {
             return sendValidationError(res, error, { endpoint: '/copy-pdf-to-pdf-all-books' });
+        }
+
+        const message = String(error?.message || error || 'Error desconocido');
+        return res.status(400).json({ ok: false, error: message });
+    }
+});
+
+const PDF_TO_FINAL_FIELD_MAPPINGS_BACKEND = [
+    { pdfKey: 'pos_pdf', finalKey: 'pos_final', label: 'POS' },
+    { pdfKey: 'pn_pdf', finalKey: 'pn_final', label: 'PART NO.' },
+    { pdfKey: 'designation_pdf', finalKey: 'designation_final', label: 'DESIGNATION' },
+    { pdfKey: 'model_type_pdf', finalKey: 'model_type_final', label: 'MODEL/TYPE' },
+    { pdfKey: 'qty_pdf', finalKey: 'qty_final', label: 'QTY' },
+    { pdfKey: 'units_pdf', finalKey: 'units_final', label: 'UNITS' },
+    { pdfKey: 'weight_pdf', finalKey: 'weight_final', label: 'WEIGHT' },
+    { pdfKey: 'fn_pdf', finalKey: 'fn_final', label: 'FN' },
+    { pdfKey: 'measure_pdf', finalKey: 'measure_final', label: 'MEASUREMENT / STANDARD' },
+    { pdfKey: 'fg_fgs_pdf', finalKey: 'fg_fgs_final', label: 'FG/FGS' },
+    { pdfKey: 'bom_pdf', finalKey: 'bom_final', label: 'BOM-No.' },
+    { pdfKey: 'gesa_pdf', finalKey: 'gesa_final', label: 'GESA' },
+    { pdfKey: 'nsn_pdf', finalKey: 'nsn_final', label: 'NSN' },
+    { pdfKey: 'normalizado_pdf', finalKey: 'normalizado_final', label: 'NORMALIZADO' },
+    { pdfKey: 'norma_pdf', finalKey: 'norma_final', label: 'NORMA' },
+    { pdfKey: 'sust_status_pdf', finalKey: 'sust_status_final', label: 'SUST_STATUS' },
+    { pdfKey: 'hierarchi_pdf', finalKey: 'hierarchie_final', label: 'HIERARCHI' },
+    { pdfKey: 'sust_new_part_number_pdf', finalKey: 'new_pn_final', label: 'SUST_NEW_PART_NUMBER' },
+    { pdfKey: 'sust_superseded_list_pdf', finalKey: 'subst_pnlist_final', label: 'SUST_SUPERSEDED_LIST' }
+];
+
+const GESA_TO_FINAL_FIELD_MAPPINGS_BACKEND = new Map([
+    ['designation_final', 'designation_gesa'],
+    ['measure_final', 'dimensions_gesa'],
+    ['weight_final', 'weight_gesa'],
+    ['nsn_final', 'nsn'],
+    ['normalizado_final', 'normalizado'],
+    ['norma_final', 'norma']
+]);
+
+function normalizePdfFinalValue(value) {
+    return String(value == null ? '' : value).trim().replace(/\s+/g, ' ');
+}
+
+function normalizePdfFinalCompareValue(value) {
+    const normalized = normalizePdfFinalValue(value);
+    if (!normalized) return '';
+    const upper = normalized.toUpperCase();
+    if (upper === '-' || upper === 'N/A' || upper === 'NA' || upper === 'NULL') return '';
+    return normalized.toLowerCase();
+}
+
+function getGesaWeightWithUnitsBackend(row) {
+    const weight = normalizePdfFinalValue(row?.weight_gesa);
+    const units = normalizePdfFinalValue(row?.units);
+    return `${weight} ${units}`.trim();
+}
+
+function resolvePdfToFinalUpdatesForRow(row) {
+    const isGesaSi = normalizePdfFinalValue(row?.gesa).toUpperCase() === 'SI';
+
+    return PDF_TO_FINAL_FIELD_MAPPINGS_BACKEND
+        .map(({ pdfKey, finalKey, label }) => {
+            const gesaKey = GESA_TO_FINAL_FIELD_MAPPINGS_BACKEND.get(finalKey);
+            const gesaValue = finalKey === 'weight_final'
+                ? normalizePdfFinalValue(getGesaWeightWithUnitsBackend(row))
+                : (gesaKey
+                    ? normalizePdfFinalValue(row?.[gesaKey])
+                    : '');
+            const pdfValue = normalizePdfFinalValue(row?.[pdfKey]);
+            const resolvedValue = (isGesaSi && gesaKey) ? gesaValue : pdfValue;
+
+            if (isGesaSi && gesaKey && !resolvedValue) {
+                return null;
+            }
+
+            const finalValue = normalizePdfFinalValue(row?.[finalKey]);
+            if (normalizePdfFinalCompareValue(resolvedValue) === normalizePdfFinalCompareValue(finalValue)) {
+                return null;
+            }
+
+            return {
+                finalKey,
+                label,
+                value: resolvedValue,
+                source: isGesaSi && gesaKey ? 'GESA' : 'PDF'
+            };
+        })
+        .filter(Boolean);
+}
+
+app.post('/copy-pdf-to-final-all-books', async (req, res) => {
+    const payload = req.body || {};
+
+    try {
+        assertPlainObject(payload, 'payload');
+        assertPayloadSize(payload, 12288, 'payload');
+
+        const file = String(payload.file || '').trim();
+        const files = Array.isArray(payload.files)
+            ? payload.files.map((value) => String(value || '').trim()).filter(Boolean)
+            : [];
+        const backup = assertBooleanLike(payload.backup ?? true, 'backup');
+
+        const requestedFiles = files.length > 0
+            ? [...new Set(files)]
+            : (file ? [file] : [...ENGINE_JSON_FILES]);
+
+        const invalidFiles = requestedFiles.filter((entry) => !ENGINE_JSON_FILES.includes(entry));
+        if (invalidFiles.length > 0) {
+            throw validationError({
+                code: 'FILE_NOT_ALLOWED',
+                field: 'files',
+                message: `Archivo(s) no permitido(s): ${invalidFiles.join(', ')}`
+            });
+        }
+
+        const perFile = [];
+        let scannedRows = 0;
+        let changedRows = 0;
+        let updatedFields = 0;
+        let filesWritten = 0;
+
+        for (const targetFile of requestedFiles) {
+            const filePath = path.join(__dirname, targetFile);
+            let fileScannedRows = 0;
+            let fileChangedRows = 0;
+            let fileUpdatedFields = 0;
+            let wroteFile = false;
+            const sourceCounts = { PDF: 0, GESA: 0 };
+
+            await withSaveJsonFileLock(targetFile, async () => {
+                const raw = await fs.promises.readFile(filePath, 'utf8');
+                const json = JSON.parse(raw);
+                if (!Array.isArray(json)) {
+                    throw new Error(`Formato invalido en ${targetFile}: se esperaba un array de registros`);
+                }
+
+                fileScannedRows = json.length;
+
+                for (const row of json) {
+                    const updates = resolvePdfToFinalUpdatesForRow(row);
+                    if (!updates.length) continue;
+
+                    fileChangedRows += 1;
+                    for (const update of updates) {
+                        setWriteField(row, update.finalKey, update.value);
+                        fileUpdatedFields += 1;
+                        sourceCounts[update.source] = (sourceCounts[update.source] || 0) + 1;
+                    }
+                }
+
+                if (fileUpdatedFields > 0) {
+                    if (backup) {
+                        const backupPath = `${filePath}.backup.${Date.now()}`;
+                        await fs.promises.copyFile(filePath, backupPath);
+                    }
+                    stripLegacyQaFields(json);
+                    await writeJsonAtomic(filePath, json);
+                    pnReviewQaCacheService.invalidate();
+                    wroteFile = true;
+                }
+            });
+
+            scannedRows += fileScannedRows;
+            changedRows += fileChangedRows;
+            updatedFields += fileUpdatedFields;
+            if (wroteFile) filesWritten += 1;
+
+            perFile.push({
+                file: targetFile,
+                scannedRows: fileScannedRows,
+                changedRows: fileChangedRows,
+                updatedFields: fileUpdatedFields,
+                wroteFile,
+                sourceCounts
+            });
+        }
+
+        return res.json({
+            ok: true,
+            result: {
+                files: requestedFiles,
+                backup,
+                totals: {
+                    filesProcessed: requestedFiles.length,
+                    filesWritten,
+                    scannedRows,
+                    changedRows,
+                    updatedFields
+                },
+                perFile
+            }
+        });
+    } catch (error) {
+        if (isValidationError(error)) {
+            return sendValidationError(res, error, { endpoint: '/copy-pdf-to-final-all-books' });
         }
 
         const message = String(error?.message || error || 'Error desconocido');
@@ -2257,10 +2371,20 @@ app.post('/copy-pdf-to-pdf', async (req, res) => {
         await withSaveJsonFileLock(file, async () => {
             const data = await fs.promises.readFile(filePath, 'utf8');
             let json;
-            try { json = JSON.parse(data); } catch (_) { const e = new Error('JSON inválido'); e.status = 500; throw e; }
+            try {
+                json = JSON.parse(data);
+            } catch (_) {
+                const e = new Error('JSON invalido');
+                e.status = 500;
+                throw e;
+            }
 
             const row = json.find(r => String(r.ID) === String(id));
-            if (!row) { const e = new Error('Registro no encontrado'); e.status = 404; throw e; }
+            if (!row) {
+                const e = new Error('Registro no encontrado');
+                e.status = 404;
+                throw e;
+            }
 
             if (clearPdfBeforeCopy) {
                 for (const key of Object.keys(row)) {
