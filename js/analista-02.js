@@ -770,6 +770,198 @@ function findMarkedPdfRowForCurrentRow(debug, row = currentRow) {
 
 }
 
+function buildPdfPageRowPreviewFromGroup(rowGroup = {}, options = {}) {
+
+    const sourcePage = Number(options?.sourcePage || 0);
+    const rowIndex = Number(options?.rowIndex || 0);
+    const bomPdf = normalizeString(options?.bomPdf);
+    const fgFgsPdf = normalizeString(options?.fgFgsPdf);
+
+    const values = buildMarkedRowValuesFromGroup(rowGroup);
+    const items = Array.isArray(rowGroup?.items) ? rowGroup.items : [];
+    const columnsSeen = new Set(items.map((item) => String(item?.column || '').trim()).filter(Boolean));
+
+    const warnings = [];
+    if (!values.pn_pdf) warnings.push('pn-missing');
+    if (!values.pos_pdf) warnings.push('pos-missing');
+    if (!values.designation_pdf) warnings.push('designation-missing');
+    if (items.some((item) => Boolean(item?.multilineCandidate))) warnings.push('multiline-candidate');
+
+    let confidence = 0.2;
+    if (values.pn_pdf) confidence += 0.35;
+    if (values.pos_pdf) confidence += 0.25;
+    if (values.designation_pdf) confidence += 0.1;
+    if (values.qty_pdf || values.units_pdf || values.weight_pdf) confidence += 0.1;
+    confidence += Math.min(0.2, columnsSeen.size * 0.02);
+    confidence = Number(Math.max(0, Math.min(1, confidence)).toFixed(2));
+
+    if (confidence < 0.55) warnings.push('low-confidence');
+
+    return {
+
+        source_page: sourcePage,
+        row_index: rowIndex,
+        pos_pdf: values.pos_pdf || '',
+        pn_pdf: values.pn_pdf || '',
+        designation_pdf: values.designation_pdf || '',
+        model_type_pdf: values.model_type_pdf || '',
+        qty_pdf: values.qty_pdf || '',
+        units_pdf: values.units_pdf || '',
+        weight_pdf: values.weight_pdf || '',
+        fn_pdf: values.fn_pdf || '',
+        measure_pdf: values.measure_pdf || '',
+        norma_pdf: values.norma_pdf || '',
+        bom_pdf: bomPdf,
+        fg_fgs_pdf: fgFgsPdf,
+        confidence,
+        warnings: Array.from(new Set(warnings))
+
+    };
+
+}
+
+async function extractAllPdfRowsFromCurrentPage(options = {}) {
+
+    const silent = options?.silent === true;
+
+    let headerColumnBodyDebug = getPdfHeaderColumnBodyDebug();
+    const hasRectDebug = Array.isArray(headerColumnBodyDebug?.rectDebug) && headerColumnBodyDebug.rectDebug.length > 0;
+
+    if (!hasRectDebug) {
+        headerColumnBodyDebug = buildHeaderColumnBodyHighlights();
+        requestPdfRelayout();
+    }
+
+    const rectDebug = Array.isArray(headerColumnBodyDebug?.rectDebug) ? headerColumnBodyDebug.rectDebug : [];
+    if (!rectDebug.length) {
+        if (!silent) setPdfActionStatus('No hay filas detectadas en la pagina actual. Ejecuta CABECERAS + TABLA.', 'error');
+        return { ok: false, reason: 'missing-rect-debug', rows: [] };
+    }
+
+    const rowGroups = groupMarkedPdfRectsByRow(rectDebug);
+    if (!rowGroups.length) {
+        if (!silent) setPdfActionStatus('No se pudieron agrupar filas en la pagina actual.', 'error');
+        return { ok: false, reason: 'missing-row-groups', rows: [] };
+    }
+
+    let fgFgsPdf = '';
+    let bomPdf = '';
+    try {
+        const topDetection = await detectTopBomAndFgInPdf(currentRow);
+        const topEntries = Array.isArray(topDetection?.entries) ? topDetection.entries : [];
+        const fgEntry = topEntries.find((entry) => String(entry?.key || '').trim() === 'fg_fgs');
+        const bomEntry = topEntries.find((entry) => String(entry?.key || '').trim() === 'bom');
+        fgFgsPdf = normalizeString(fgEntry?.value);
+        bomPdf = normalizeString(bomEntry?.value);
+    } catch (error) {
+        console.warn('No se pudo detectar BOM/FG durante extractAllPdfRowsFromCurrentPage:', error);
+    }
+
+    const sourcePage = Number(state.currentPdfPageNumber || resolvePdfPageNumber(currentRow?.['Source Page']) || 0);
+    const rows = rowGroups.map((group, index) => buildPdfPageRowPreviewFromGroup(group, {
+        sourcePage,
+        rowIndex: index + 1,
+        bomPdf,
+        fgFgsPdf
+    }));
+
+    const preview = {
+        source_page: sourcePage,
+        rows_detected: rows.length,
+        rows
+    };
+
+    window.__miluPdfPageRowsPreview = preview;
+    console.info('[pdf-preview] extractAllPdfRowsFromCurrentPage ->', preview);
+    console.table(rows.map((row) => ({
+        row_index: row.row_index,
+        pos_pdf: row.pos_pdf,
+        pn_pdf: row.pn_pdf,
+        designation_pdf: row.designation_pdf,
+        confidence: row.confidence,
+        warnings: row.warnings.join('|')
+    })));
+
+    if (!silent) {
+        setPdfActionStatus(`Preview PDF pagina ${sourcePage}: ${rows.length} filas detectadas (ver consola / __miluPdfPageRowsPreview).`, 'ok');
+    }
+
+    return {
+        ok: true,
+        reason: 'preview-ready',
+        ...preview
+    };
+
+}
+
+function downloadJsonPreview(data, filename) {
+
+    const blob = new Blob([`${JSON.stringify(data, null, 2)}\n`], { type: 'application/json;charset=utf-8' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = filename;
+    document.body.appendChild(link);
+    link.click();
+    link.remove();
+    URL.revokeObjectURL(url);
+
+}
+
+async function runExtractPdfPageRowsPreview() {
+
+    const result = await extractAllPdfRowsFromCurrentPage({ silent: true });
+    if (!result?.ok) {
+        setPdfActionStatus('Primero ejecuta CABECERAS + TABLA o carga la vista PDF.', 'error');
+        return { ok: false, reason: result?.reason || 'preview-not-ready' };
+    }
+
+    const rows = Array.isArray(result.rows) ? result.rows : [];
+    const rowsWithPn = rows.filter((row) => normalizeString(row?.pn_pdf)).length;
+    const warningsCount = rows.reduce((total, row) => {
+        const warnings = Array.isArray(row?.warnings) ? row.warnings : [];
+        return total + warnings.length;
+    }, 0);
+    const sourcePage = Number(result.source_page || state.currentPdfPageNumber || 0);
+
+    const previewPayload = {
+        source_page: sourcePage,
+        generated_at: new Date().toISOString(),
+        rows_count: rows.length,
+        rows_with_pn: rowsWithPn,
+        warnings_count: warningsCount,
+        rows
+    };
+
+    window.__miluPdfPageRowsPreview = previewPayload;
+
+    console.info('[pdf-preview] EXTRAER PAGINA resumen ->', {
+        source_page: sourcePage,
+        rows_count: rows.length,
+        rows_with_pn: rowsWithPn,
+        warnings_count: warningsCount
+    });
+    console.table(rows.map((row) => ({
+        row_index: row.row_index,
+        pos_pdf: row.pos_pdf,
+        pn_pdf: row.pn_pdf,
+        designation_pdf: row.designation_pdf,
+        confidence: row.confidence,
+        warnings: Array.isArray(row.warnings) ? row.warnings.join('|') : ''
+    })));
+
+    downloadJsonPreview(previewPayload, `pdf_page_rows_preview_p${sourcePage || 0}.json`);
+    setPdfActionStatus(
+        `Preview pagina ${sourcePage}: filas=${rows.length}, con PN=${rowsWithPn}, warnings=${warningsCount}. JSON descargado.`,
+        'ok'
+    );
+
+    return { ok: true, payload: previewPayload };
+
+}
+
+window.extractAllPdfRowsFromCurrentPage = extractAllPdfRowsFromCurrentPage;
+
 
 function getPdfBlueTextsArea() {
 
@@ -916,6 +1108,7 @@ const PDF_FEATURE_HEADERS_ENABLED = true;
 const PDF_FEATURE_BLUE_TEXT_PANEL_ENABLED = false;
 const PDF_FEATURE_PN_ROW_DEBUG_ENABLED = false;
 const PDF_FEATURE_BACKGROUND_TOKEN_SCAN_ENABLED = false;
+const PDF_FEATURE_EXTRACT_PAGE_PREVIEW_ENABLED = true;
 const PDF_FEATURE_AUTO_PDF_ENABLED = true;
 const PDF_FEATURE_AUTO_SYNC_ON_RECORD_EVENTS = true;
 const AUTO_RECOMPUTE_ON_EDIT_ENABLED = false;
@@ -10551,6 +10744,12 @@ function applyPdfFeatureFlagsToUi() {
         if (!PDF_FEATURE_HEADERS_ENABLED) paintBodyBtn.title = 'Requiere Detectar Headers habilitado (experimental)';
     }
 
+    const extractPageRowsBtn = $('pdfExtractPageRowsBtn');
+    if (extractPageRowsBtn instanceof HTMLButtonElement) {
+        extractPageRowsBtn.disabled = !PDF_FEATURE_EXTRACT_PAGE_PREVIEW_ENABLED;
+        if (!PDF_FEATURE_EXTRACT_PAGE_PREVIEW_ENABLED) extractPageRowsBtn.title = 'Preview de extraccion por pagina desactivado';
+    }
+
     const copyPdfReadBtn = $('copyPdfReadToPdfBtn');
     if (copyPdfReadBtn instanceof HTMLButtonElement) {
         copyPdfReadBtn.disabled = !PDF_FEATURE_AUTO_PDF_ENABLED;
@@ -11110,6 +11309,17 @@ bindClick('paintBodyByHeadersBtn', () => {
     const result = buildHeaderColumnBodyHighlights();
     renderBodyColumnHighlightPanel(result);
     requestPdfRelayout();
+});
+
+bindClick('pdfExtractPageRowsBtn', () => {
+    if (!PDF_FEATURE_EXTRACT_PAGE_PREVIEW_ENABLED) {
+        return;
+    }
+
+    runExtractPdfPageRowsPreview().catch((error) => {
+        console.warn('No se pudo extraer el preview de filas de la pagina PDF:', error);
+        setPdfActionStatus('Primero ejecuta CABECERAS + TABLA o carga la vista PDF.', 'error');
+    });
 });
 
 bindClick('bodyColumnHighlightCloseBtn', () => {
