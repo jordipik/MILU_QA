@@ -481,12 +481,14 @@
                         </label>
                     </label>
                     <button id="extractBookBtn" class="ip-btn ip-btn-primary" type="button">EXTRAER LIBRO</button>
+                    <button id="extractAllBooksBtn" class="ip-btn ip-btn-primary" type="button" title="Procesa todos los libros del select uno tras otro hasta el final">EXTRAER TODOS</button>
                     <button id="cancelBookBtn" class="ip-btn ip-btn-secondary" type="button" disabled>CANCELAR</button>
                 </div>
 
                 <div id="bookProgress" class="ip-status" role="status" aria-live="polite"
                     style="display:none;flex-direction:column;align-items:stretch;gap:6px;">
                     <div style="display:flex;justify-content:space-between;gap:12px;flex-wrap:wrap;font-size:12px;">
+                        <span><strong>Libro:</strong> <span id="bookProgressBook">-</span> <span id="bookProgressBookIndex" style="color:var(--muted);"></span></span>
                         <span><strong>Página actual:</strong> <span id="bookProgressPage">-</span></span>
                         <span><strong>Procesadas:</strong> <span id="bookProgressProcessed">0</span>/<span
                                 id="bookProgressTotal">0</span></span>

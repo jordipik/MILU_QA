@@ -495,21 +495,23 @@ function updateBookProgress({ page, processed, total, withRows, rows, warnings }
 
 function setBookButtonsBusy(busy) {
     const extractBtn = $('extractBookBtn');
+    const extractAllBtn = $('extractAllBooksBtn');
     const cancelBtn = $('cancelBookBtn');
     if (extractBtn instanceof HTMLButtonElement) extractBtn.disabled = busy;
+    if (extractAllBtn instanceof HTMLButtonElement) extractAllBtn.disabled = busy;
     if (cancelBtn instanceof HTMLButtonElement) cancelBtn.disabled = !busy;
 }
 
-async function extractWholeBook() {
+async function extractWholeBook(bookOverride = null) {
     if (bookExtractRunning) {
         setActionStatus('Ya hay una extracción de libro en curso.', 'busy');
-        return;
+        return null;
     }
 
-    const book = getSelectedEngineModel();
+    const book = bookOverride || getSelectedEngineModel();
     if (!book) {
         setActionStatus('Selecciona un libro antes de extraer.', 'error');
-        return;
+        return null;
     }
 
     bookExtractRunning = true;
@@ -517,6 +519,8 @@ async function extractWholeBook() {
     setBookButtonsBusy(true);
     setBookProgressVisible(true);
     updateBookProgress({ page: '-', processed: 0, total: 0, withRows: 0, rows: 0, warnings: 0 });
+    const bookLabel = $('bookProgressBook');
+    if (bookLabel) bookLabel.textContent = book;
     setActionStatus(`Cargando ${book} para conocer total de páginas...`, 'busy');
 
     try {
@@ -651,11 +655,86 @@ async function extractWholeBook() {
             `Libro ${book}${suffix}: ${processed} páginas procesadas, ${pagesWithRows} con filas, ${rowsTotal} filas totales, ${warningsTotal} warnings. JSON descargado.`,
             bookExtractCancelled ? 'busy' : 'ok'
         );
+        return { payload, cancelled: bookExtractCancelled };
     } catch (error) {
         setActionStatus(`Error en EXTRAER LIBRO: ${String(error?.message || error)}`, 'error');
+        return { payload: null, cancelled: bookExtractCancelled, error };
     } finally {
         bookExtractRunning = false;
         bookExtractCancelled = false;
+        setBookButtonsBusy(false);
+    }
+}
+
+function getAllEngineModels() {
+    const select = $('engineSelect');
+    if (!(select instanceof HTMLSelectElement)) return [];
+    return Array.from(select.options)
+        .map((opt) => String(opt.value || '').trim())
+        .filter(Boolean);
+}
+
+let bookSweepRunning = false;
+let bookSweepCancelled = false;
+
+async function extractAllBooks() {
+    if (bookSweepRunning || bookExtractRunning) {
+        setActionStatus('Ya hay una extracción en curso.', 'busy');
+        return;
+    }
+    const models = getAllEngineModels();
+    if (!models.length) {
+        setActionStatus('No hay libros en el selector.', 'error');
+        return;
+    }
+
+    bookSweepRunning = true;
+    bookSweepCancelled = false;
+    const select = $('engineSelect');
+    const indexLabel = $('bookProgressBookIndex');
+    const totalBooks = models.length;
+    const summaries = [];
+
+    try {
+        for (let i = 0; i < models.length; i++) {
+            if (bookSweepCancelled) {
+                setActionStatus(`Barrido cancelado tras ${i}/${totalBooks} libros.`, 'busy');
+                break;
+            }
+            const book = models[i];
+            if (select instanceof HTMLSelectElement) select.value = book;
+            if (indexLabel) indexLabel.textContent = `(${i + 1}/${totalBooks})`;
+
+            const result = await extractWholeBook(book);
+            summaries.push({
+                book,
+                ok: !!result?.payload,
+                cancelled: !!result?.cancelled,
+                rows_total: result?.payload?.rows_total ?? 0,
+                pages_processed: result?.payload?.pages_processed ?? 0
+            });
+
+            if (result?.cancelled) {
+                bookSweepCancelled = true;
+                setActionStatus(`Cancelado en libro ${book} (${i + 1}/${totalBooks}).`, 'busy');
+                break;
+            }
+            // Pausa breve para que el navegador respire entre PDFs
+            await new Promise((resolve) => setTimeout(resolve, 50));
+        }
+
+        console.info('[import-pdf] EXTRAER TODOS resumen ->', summaries);
+        const done = summaries.length;
+        const totalRows = summaries.reduce((acc, s) => acc + (s.rows_total || 0), 0);
+        const suffix = bookSweepCancelled ? ' (cancelado)' : '';
+        setActionStatus(
+            `Barrido completo${suffix}: ${done}/${totalBooks} libros procesados, ${totalRows} filas totales. Se han descargado ${done} JSON.`,
+            bookSweepCancelled ? 'busy' : 'ok'
+        );
+    } finally {
+        bookSweepRunning = false;
+        bookSweepCancelled = false;
+        if (indexLabel) indexLabel.textContent = '';
         setBookButtonsBusy(false);
     }
 }
@@ -731,12 +810,22 @@ function bindEvents() {
         });
     }
 
+    const extractAllBooksBtn = $('extractAllBooksBtn');
+    if (extractAllBooksBtn instanceof HTMLButtonElement) {
+        extractAllBooksBtn.addEventListener('click', () => {
+            extractAllBooks().catch((error) => {
+                setActionStatus(`No se pudo extraer todos los libros: ${String(error?.message || error)}`, 'error');
+            });
+        });
+    }
+
     const cancelBookBtn = $('cancelBookBtn');
     if (cancelBookBtn instanceof HTMLButtonElement) {
         cancelBookBtn.addEventListener('click', () => {
-            if (bookExtractRunning) {
+            if (bookExtractRunning || bookSweepRunning) {
                 bookExtractCancelled = true;
-                setActionStatus('Cancelando extracción de libro...', 'busy');
+                bookSweepCancelled = true;
+                setActionStatus('Cancelando extracción...', 'busy');
             }
         });
     }
