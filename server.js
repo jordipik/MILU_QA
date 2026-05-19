@@ -715,6 +715,7 @@ app.post('/copy-pdf-to-pdf-all-books', async (req, res) => {
         const files = Array.isArray(payload.files)
             ? payload.files.map((value) => String(value || '').trim()).filter(Boolean)
             : [];
+        const id = assertString(payload.id ?? '', { field: 'id', allowEmpty: true, maxLength: 128 });
 
         const writePdf = assertBooleanLike(payload.writePdf ?? true, 'writePdf');
         const backup = assertBooleanLike(payload.backup ?? true, 'backup');
@@ -724,11 +725,12 @@ app.post('/copy-pdf-to-pdf-all-books', async (req, res) => {
             writePdf,
             backup,
             clearPdfBeforeCopy,
+            id: id || undefined,
             files: files.length > 0 ? files : (file ? [file] : undefined)
         });
 
         console.log(
-            `[pdf-copy] fn=runPdfVisualCopyBatch caller=endpoint endpoint=/copy-pdf-to-pdf-all-books files=${(result?.options?.files || []).length} changedRows=${Number(result?.totals?.changedRows || 0)}`
+            `[pdf-copy] fn=runPdfVisualCopyBatch caller=endpoint endpoint=/copy-pdf-to-pdf-all-books files=${(result?.options?.files || []).length} id=${id || '-'} scanned=${Number(result?.scanned || 0)} changedRows=${Number(result?.changedRows || 0)} errors=${Array.isArray(result?.errors) ? result.errors.length : 0}`
         );
 
         return res.json({ ok: true, result });
