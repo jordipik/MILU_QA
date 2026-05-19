@@ -1,0 +1,510 @@
+<!doctype html>
+<html lang="es">
+
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>MILU - Import PDF Experimental</title>
+    <link rel="icon" type="image/svg+xml" href="favicon.svg" />
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@500;600;700;800&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="styles/pdf_shared.css" />
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
+    <style>
+        :root {
+            color-scheme: light;
+            --bg: #f4f7fb;
+            --panel: rgba(255, 255, 255, 0.92);
+            --panel-border: rgba(130, 150, 175, 0.22);
+            --text: #102033;
+            --muted: #5e7086;
+            --accent: #1e6fe5;
+            --accent-2: #0f9d7a;
+            --shadow: 0 18px 50px rgba(15, 35, 60, 0.12);
+        }
+
+        * { box-sizing: border-box; }
+
+        body {
+            margin: 0;
+            min-height: 100vh;
+            font-family: Manrope, sans-serif;
+            color: var(--text);
+            background:
+                radial-gradient(circle at top left, rgba(30, 111, 229, 0.12), transparent 30%),
+                radial-gradient(circle at top right, rgba(15, 157, 122, 0.12), transparent 26%),
+                linear-gradient(180deg, #ffffff 0%, var(--bg) 100%);
+        }
+
+        a { color: var(--accent); text-decoration: none; }
+        a:hover { text-decoration: underline; }
+
+        .ip-shell {
+            display: grid;
+            grid-template-rows: auto 1fr;
+            min-height: 100vh;
+        }
+
+        .ip-header {
+            padding: 20px 24px 12px;
+        }
+
+        .ip-header-card,
+        .ip-card {
+            background: var(--panel);
+            border: 1px solid var(--panel-border);
+            border-radius: 18px;
+            box-shadow: var(--shadow);
+            backdrop-filter: blur(10px);
+        }
+
+        .ip-header-card {
+            padding: 18px 20px;
+            display: grid;
+            gap: 14px;
+        }
+
+        .ip-title-row {
+            display: flex;
+            align-items: start;
+            justify-content: space-between;
+            gap: 16px;
+            flex-wrap: wrap;
+        }
+
+        .ip-title h1 {
+            margin: 0;
+            font-size: clamp(22px, 2vw, 30px);
+            line-height: 1.1;
+        }
+
+        .ip-title p {
+            margin: 6px 0 0;
+            color: var(--muted);
+            font-size: 13px;
+        }
+
+        .ip-quick-links {
+            display: flex;
+            gap: 12px;
+            flex-wrap: wrap;
+            justify-content: flex-end;
+            font-size: 13px;
+        }
+
+        .ip-controls {
+            display: grid;
+            grid-template-columns: minmax(220px, 280px) minmax(150px, 180px) auto auto auto auto auto;
+            gap: 10px;
+            align-items: end;
+        }
+
+        .ip-field {
+            display: grid;
+            gap: 6px;
+        }
+
+        .ip-field label {
+            font-size: 12px;
+            font-weight: 700;
+            letter-spacing: 0.04em;
+            text-transform: uppercase;
+            color: var(--muted);
+        }
+
+        .ip-field select,
+        .ip-field input,
+        .ip-btn,
+        .ip-status-pill {
+            font: inherit;
+        }
+
+        .ip-field select,
+        .ip-field input {
+            min-height: 42px;
+            border-radius: 12px;
+            border: 1px solid rgba(130, 150, 175, 0.32);
+            background: #ffffff;
+            padding: 10px 12px;
+            color: var(--text);
+            outline: none;
+        }
+
+        .ip-field input { width: 100%; }
+
+        .ip-field select:focus,
+        .ip-field input:focus {
+            border-color: rgba(30, 111, 229, 0.55);
+            box-shadow: 0 0 0 3px rgba(30, 111, 229, 0.12);
+        }
+
+        .ip-btn {
+            min-height: 42px;
+            border: 1px solid transparent;
+            border-radius: 12px;
+            padding: 10px 14px;
+            font-weight: 800;
+            letter-spacing: 0.02em;
+            cursor: pointer;
+            transition: transform 120ms ease, box-shadow 120ms ease, opacity 120ms ease;
+        }
+
+        .ip-btn:hover { transform: translateY(-1px); }
+        .ip-btn:disabled { opacity: 0.5; cursor: not-allowed; transform: none; }
+
+        .ip-btn-primary { background: linear-gradient(135deg, #1e6fe5, #164fb0); color: #fff; box-shadow: 0 12px 24px rgba(30, 111, 229, 0.24); }
+        .ip-btn-secondary { background: #fff; border-color: rgba(130, 150, 175, 0.3); color: var(--text); }
+        .ip-btn-ghost { background: rgba(30, 111, 229, 0.08); color: #184ea6; border-color: rgba(30, 111, 229, 0.18); }
+
+        .ip-main {
+            display: grid;
+            grid-template-columns: minmax(320px, 0.9fr) minmax(0, 1.1fr);
+            gap: 16px;
+            padding: 0 24px 24px;
+            min-height: 0;
+        }
+
+        .ip-left,
+        .ip-right {
+            min-height: 0;
+            display: flex;
+            flex-direction: column;
+            gap: 16px;
+        }
+
+        .ip-card {
+            padding: 16px;
+        }
+
+        .ip-card h2 {
+            margin: 0 0 12px;
+            font-size: 14px;
+            text-transform: uppercase;
+            letter-spacing: 0.08em;
+            color: var(--muted);
+        }
+
+        .ip-summary-grid {
+            display: grid;
+            grid-template-columns: repeat(2, minmax(0, 1fr));
+            gap: 10px;
+        }
+
+        .ip-summary-item {
+            padding: 12px;
+            border-radius: 14px;
+            background: linear-gradient(180deg, rgba(255, 255, 255, 0.8), rgba(245, 249, 255, 0.95));
+            border: 1px solid rgba(130, 150, 175, 0.22);
+        }
+
+        .ip-summary-item .label {
+            display: block;
+            font-size: 12px;
+            text-transform: uppercase;
+            letter-spacing: 0.06em;
+            color: var(--muted);
+        }
+
+        .ip-summary-item .value {
+            display: block;
+            margin-top: 6px;
+            font-size: 22px;
+            font-weight: 800;
+        }
+
+        .ip-summary-wide {
+            grid-column: 1 / -1;
+        }
+
+        .ip-status {
+            margin-top: 10px;
+            padding: 10px 12px;
+            border-radius: 12px;
+            background: rgba(30, 111, 229, 0.08);
+            color: #184ea6;
+            font-size: 13px;
+            line-height: 1.45;
+            min-height: 42px;
+            display: flex;
+            align-items: center;
+        }
+
+        .ip-status.is-error {
+            background: rgba(220, 38, 38, 0.08);
+            color: #991b1b;
+        }
+
+        .ip-status.is-ok {
+            background: rgba(15, 157, 122, 0.09);
+            color: #0f766e;
+        }
+
+        .ip-status.is-busy {
+            background: rgba(245, 158, 11, 0.12);
+            color: #92400e;
+        }
+
+        .ip-preview-wrap {
+            display: flex;
+            flex-direction: column;
+            min-height: 0;
+        }
+
+        .ip-preview-table-wrap {
+            overflow: auto;
+            max-height: 430px;
+            border-radius: 14px;
+            border: 1px solid rgba(130, 150, 175, 0.24);
+            background: #fff;
+        }
+
+        .ip-preview-table {
+            width: 100%;
+            border-collapse: collapse;
+            font-family: "IBM Plex Mono", monospace;
+            font-size: 12px;
+        }
+
+        .ip-preview-table th,
+        .ip-preview-table td {
+            border-bottom: 1px solid rgba(130, 150, 175, 0.18);
+            padding: 8px 10px;
+            text-align: left;
+            vertical-align: top;
+            white-space: nowrap;
+        }
+
+        .ip-preview-table thead th {
+            position: sticky;
+            top: 0;
+            z-index: 1;
+            background: #eff5ff;
+            color: #173a66;
+            font-weight: 800;
+        }
+
+        .ip-preview-table tbody tr:nth-child(even) { background: #fafcff; }
+
+        .ip-preview-empty {
+            padding: 18px;
+            color: var(--muted);
+            text-align: center;
+            font-size: 13px;
+        }
+
+        .ip-viewer-card {
+            display: flex;
+            flex-direction: column;
+            min-height: 0;
+        }
+
+        .ip-viewer-toolbar {
+            display: flex;
+            justify-content: space-between;
+            gap: 12px;
+            flex-wrap: wrap;
+            align-items: center;
+            margin-bottom: 12px;
+        }
+
+        .ip-viewer-metadata {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px;
+            color: var(--muted);
+            font-size: 13px;
+        }
+
+        .ip-status-pill {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            padding: 8px 12px;
+            border-radius: 999px;
+            background: rgba(30, 111, 229, 0.08);
+            color: #184ea6;
+            border: 1px solid rgba(30, 111, 229, 0.15);
+        }
+
+        .ip-pdf-stage {
+            min-height: 0;
+            display: flex;
+            flex-direction: column;
+            flex: 1;
+        }
+
+        .ip-pdf-stage .pdf-toolbar {
+            border-radius: 14px 14px 0 0;
+            border: 1px solid rgba(130, 150, 175, 0.24);
+            border-bottom: none;
+            background: #f7faff;
+            padding: 10px 12px;
+        }
+
+        .ip-pdf-stage .pre-panel-wrap {
+            border-radius: 0 0 14px 14px;
+            border: 1px solid rgba(130, 150, 175, 0.24);
+            overflow: hidden;
+            min-height: 0;
+            background: #fff;
+        }
+
+        .ip-pdf-stage #pdfViewer {
+            min-height: 520px;
+        }
+
+        @media (max-width: 1180px) {
+            .ip-main { grid-template-columns: 1fr; }
+        }
+
+        @media (max-width: 760px) {
+            .ip-header { padding-inline: 12px; }
+            .ip-main { padding-inline: 12px; }
+            .ip-controls { grid-template-columns: 1fr; }
+            .ip-summary-grid { grid-template-columns: 1fr; }
+            .ip-preview-table { font-size: 11px; }
+        }
+    </style>
+</head>
+
+<body>
+    <div class="ip-shell">
+        <header class="ip-header">
+            <section class="ip-header-card">
+                <div class="ip-title-row">
+                    <div class="ip-title">
+                        <h1>Import PDF experimental</h1>
+                        <p>Vista de solo lectura para cargar un libro, navegar por página y extraer filas del PDF sin tocar JSON ni revisiones.</p>
+                    </div>
+                    <div class="ip-quick-links">
+                        <a href="analista_02.html">Abrir analista_02</a>
+                        <a href="qa_milu.html">Abrir QA</a>
+                    </div>
+                </div>
+
+                <div class="ip-controls" aria-label="Controles principales">
+                    <label class="ip-field">
+                        <span>Libro / engine</span>
+                        <select id="engineSelect" aria-label="Selector de libro"></select>
+                    </label>
+
+                    <label class="ip-field">
+                        <span>Página PDF</span>
+                        <input id="pdfPageInput" type="number" min="1" step="1" inputmode="numeric" value="13" aria-label="Página PDF">
+                    </label>
+
+                    <button id="goToPageBtn" class="ip-btn ip-btn-primary" type="button">IR A PÁGINA</button>
+                    <button id="detectHeadersBtn" class="ip-btn ip-btn-secondary" type="button">CABECERAS</button>
+                    <button id="paintBodyByHeadersBtn" class="ip-btn ip-btn-secondary" type="button">TABLA</button>
+                    <button id="extractPageRowsBtn" class="ip-btn ip-btn-ghost" type="button">EXTRAER PÁGINA</button>
+                    <button id="downloadJsonBtn" class="ip-btn ip-btn-secondary" type="button" disabled>DESCARGAR JSON</button>
+                </div>
+            </section>
+        </header>
+
+        <main class="ip-main">
+            <section class="ip-left">
+                <article class="ip-card">
+                    <h2>Resumen</h2>
+                    <div class="ip-summary-grid">
+                        <div class="ip-summary-item">
+                            <span class="label">Página</span>
+                            <span class="value" id="summaryPage">-</span>
+                        </div>
+                        <div class="ip-summary-item">
+                            <span class="label">Filas detectadas</span>
+                            <span class="value" id="summaryRowsDetected">0</span>
+                        </div>
+                        <div class="ip-summary-item">
+                            <span class="label">Filas con PN</span>
+                            <span class="value" id="summaryRowsWithPn">0</span>
+                        </div>
+                        <div class="ip-summary-item">
+                            <span class="label">Warnings</span>
+                            <span class="value" id="summaryWarnings">0</span>
+                        </div>
+                        <div class="ip-summary-item ip-summary-wide">
+                            <span class="label">Estado</span>
+                            <span class="value" id="summaryStatus" style="font-size:16px;">Lista para cargar un PDF.</span>
+                        </div>
+                    </div>
+                    <div id="actionStatus" class="ip-status" role="status" aria-live="polite"></div>
+                </article>
+
+                <article class="ip-card ip-preview-wrap">
+                    <h2>Tabla preview</h2>
+                    <div class="ip-preview-table-wrap">
+                        <table class="ip-preview-table">
+                            <thead>
+                                <tr>
+                                    <th>row_index</th>
+                                    <th>pos_pdf</th>
+                                    <th>pn_pdf</th>
+                                    <th>designation_pdf</th>
+                                    <th>model_type_pdf</th>
+                                    <th>qty_pdf</th>
+                                    <th>units_pdf</th>
+                                    <th>weight_pdf</th>
+                                    <th>fn_pdf</th>
+                                    <th>measure_pdf</th>
+                                    <th>norma_pdf</th>
+                                    <th>bom_pdf</th>
+                                    <th>fg_fgs_pdf</th>
+                                    <th>confidence</th>
+                                    <th>warnings</th>
+                                </tr>
+                            </thead>
+                            <tbody id="previewBody">
+                                <tr>
+                                    <td colspan="15" class="ip-preview-empty">No hay filas extraídas todavía.</td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </article>
+            </section>
+
+            <section class="ip-right">
+                <article class="ip-card ip-viewer-card">
+                    <div class="ip-viewer-toolbar">
+                        <div class="ip-viewer-metadata">
+                            <span class="ip-status-pill" id="pdfLabel">—</span>
+                            <span class="ip-status-pill" id="pdfMeta">Selecciona libro y página</span>
+                            <span class="ip-status-pill" id="pdfActionStatusText"></span>
+                        </div>
+                    </div>
+
+                    <div class="ip-pdf-stage">
+                        <div class="pdf-toolbar">
+                            <label class="pdf-zoom-wrap" for="pdfZoomSelect">
+                                <button id="pdfZoomOutBtn" class="pdf-zoom-btn" type="button" aria-label="Reducir zoom PDF">-</button>
+                                <select id="pdfZoomSelect" class="pdf-zoom-select" aria-label="Zoom del visor PDF">
+                                    <option value="fit">Ajustar</option>
+                                    <option value="height">Ajustar vertical</option>
+                                    <option value="50">50%</option>
+                                    <option value="75">75%</option>
+                                    <option value="100">100%</option>
+                                    <option value="125">125%</option>
+                                    <option value="150">150%</option>
+                                    <option value="200">200%</option>
+                                </select>
+                                <button id="pdfZoomInBtn" class="pdf-zoom-btn" type="button" aria-label="Aumentar zoom PDF">+</button>
+                            </label>
+                        </div>
+
+                        <div id="pdfViewer" class="pre-panel-wrap" style="display:flex;flex-direction:column;flex:1;min-height:0;">
+                            <div class="pdfviewer-inner" style="position:relative;flex:1;min-height:0;overflow:auto;">
+                                <canvas id="pdfCanvas"></canvas>
+                            </div>
+                        </div>
+                    </div>
+                </article>
+            </section>
+        </main>
+    </div>
+
+    <script type="module" src="./js/import-pdf.js"></script>
+</body>
+
+</html>
