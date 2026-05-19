@@ -7,7 +7,7 @@ const bodyParser = require('body-parser');
 const cors = require('cors');
 const { ENGINE_JSON_FILES } = require('./engine_files');
 const { recomputeEngineErrors } = require('./recompute_engine_errors');
-const { runVisualCopyComparison } = require('./scripts/qa_pdf_visual_copy');
+const { runVisualCopyComparison, applyCanonicalPdfCopyToRow } = require('./scripts/qa_pdf_visual_copy');
 const { runPdfVisualCopyBatch } = require('./server/services/pdf-copy-batch');
 const { createRevisionSyncService } = require('./server/services/revision-sync');
 const { createRevisionApplyService } = require('./server/services/revision-apply');
@@ -671,11 +671,13 @@ app.post('/recompute-pdf-auto-visual', async (req, res) => {
     }
 
     try {
+        console.log(`[pdf-copy] fn=runVisualCopyComparison caller=endpoint endpoint=/recompute-pdf-auto-visual file=${file} id=${id || '-'} dryRun=${Boolean(dryRun)}`);
         const comparisonResult = await runVisualCopyComparison({
             file,
             id,
             writePdf: !dryRun,
-            backup
+            backup,
+            endpointName: '/recompute-pdf-auto-visual'
         });
 
         const report = comparisonResult?.report || {};
@@ -724,6 +726,10 @@ app.post('/copy-pdf-to-pdf-all-books', async (req, res) => {
             clearPdfBeforeCopy,
             files: files.length > 0 ? files : (file ? [file] : undefined)
         });
+
+        console.log(
+            `[pdf-copy] fn=runPdfVisualCopyBatch caller=endpoint endpoint=/copy-pdf-to-pdf-all-books files=${(result?.options?.files || []).length} changedRows=${Number(result?.totals?.changedRows || 0)}`
+        );
 
         return res.json({ ok: true, result });
     } catch (error) {
@@ -2493,31 +2499,24 @@ app.post('/copy-pdf-to-pdf', async (req, res) => {
                 throw e;
             }
 
-            if (clearPdfBeforeCopy) {
-                for (const key of Object.keys(row)) {
-                    if (String(key).endsWith('_pdf') && String(row[key] ?? '') !== '') {
-                        setWriteField(row, key, '');
-                        changedFields.push(key);
-                    }
-                }
-            }
-
-            let normaChanged = false;
+            const normalizedValues = {};
             for (const [rawField, value] of Object.entries(rawValues)) {
                 const field = canonicalFieldName(rawField);
                 if (!field || !isAllowedSaveJsonField(field)) continue;
                 const normalized = normalizeEditableFieldValue(field, value);
                 if (normalized === undefined || normalized === null) continue;
-                if (String(row[field] ?? '') === String(normalized)) continue;
-                setWriteField(row, field, normalized);
-                changedFields.push(field);
-                if (field === 'norma_pdf') normaChanged = true;
+                normalizedValues[field] = normalized;
             }
 
-            if (normaChanged && String(row['normalizado_pdf'] ?? '') !== 'SI') {
-                setWriteField(row, 'normalizado_pdf', 'SI');
-                changedFields.push('normalizado_pdf');
-            }
+            const appliedFields = applyCanonicalPdfCopyToRow(row, {
+                valuesToCopy: normalizedValues,
+                clearPdfBeforeCopy
+            });
+            changedFields.push(...appliedFields);
+
+            console.log(
+                `[pdf-copy] fn=applyCanonicalPdfCopyToRow caller=endpoint endpoint=/copy-pdf-to-pdf file=${file} book=${String(row?.engine_model || '').trim() || '-'} id=${id} changedFields=${appliedFields.length}`
+            );
 
             stripLegacyQaFields(json);
             await writeJsonAtomic(filePath, json);

@@ -205,6 +205,19 @@ function assignIfChanged(target, key, nextValue) {
     return true;
 }
 
+function logPdfCopyEvent(event = {}) {
+    const fn = String(event.fn || '').trim() || 'unknown';
+    const caller = String(event.caller || '').trim() || 'unknown';
+    const endpoint = String(event.endpoint || '').trim() || '-';
+    const file = String(event.file || '').trim() || '-';
+    const book = String(event.book || '').trim() || '-';
+    const id = String(event.id || '').trim() || '-';
+    const changedFields = Array.isArray(event.changedFields) ? event.changedFields : [];
+    console.log(
+        `[pdf-copy] fn=${fn} caller=${caller} endpoint=${endpoint} file=${file} book=${book} id=${id} changedFields=${changedFields.length}`
+    );
+}
+
 function clearPdfFieldsForRow(row) {
     if (!row || typeof row !== 'object') return [];
     const changed = [];
@@ -215,6 +228,46 @@ function clearPdfFieldsForRow(row) {
         changed.push(key);
     }
     return changed;
+}
+
+function applyCanonicalPdfCopyToRow(row, valuesOrOptions = {}, maybeOptions = undefined) {
+    const hasThirdArg = maybeOptions !== undefined;
+    const normalizedOptions = hasThirdArg
+        ? {
+            ...(maybeOptions && typeof maybeOptions === 'object' ? maybeOptions : {}),
+            valuesToCopy: valuesOrOptions && typeof valuesOrOptions === 'object' ? valuesOrOptions : {}
+        }
+        : (valuesOrOptions && typeof valuesOrOptions === 'object' ? valuesOrOptions : {});
+
+    const valuesToCopy = normalizedOptions?.valuesToCopy && typeof normalizedOptions.valuesToCopy === 'object'
+        ? normalizedOptions.valuesToCopy
+        : {};
+    const clearPdfBeforeCopy = normalizedOptions?.clearPdfBeforeCopy !== false;
+    const changedFieldsSet = new Set();
+    let normaWrittenFromIncomingValues = false;
+
+    if (clearPdfBeforeCopy) {
+        const clearedFields = clearPdfFieldsForRow(row);
+        for (const key of clearedFields) changedFieldsSet.add(key);
+    }
+
+    for (const fieldKey of Object.values(PDF_FIELD_TO_JSON_KEY)) {
+        if (!Object.prototype.hasOwnProperty.call(valuesToCopy, fieldKey)) continue;
+        const value = normalizeString(valuesToCopy[fieldKey]);
+        if (!value) continue;
+        if (assignIfChanged(row, fieldKey, value)) {
+            changedFieldsSet.add(fieldKey);
+            if (fieldKey === 'norma_pdf') normaWrittenFromIncomingValues = true;
+        }
+    }
+
+    if (normaWrittenFromIncomingValues && txt(row?.normalizado_pdf).toUpperCase() !== 'SI') {
+        if (assignIfChanged(row, 'normalizado_pdf', 'SI')) {
+            changedFieldsSet.add('normalizado_pdf');
+        }
+    }
+
+    return Array.from(changedFieldsSet);
 }
 
 async function getPdfPageData(pdfjsLib, caches, book, sourcePage) {
@@ -640,35 +693,23 @@ async function runVisualCopyComparison(options) {
         }, row);
 
         let rowChanged = false;
-        const changedFieldsSet = new Set();
+        let changedFields = [];
         if (options.writePdf) {
-            if (options.clearPdfBeforeCopy) {
-                const clearedFields = clearPdfFieldsForRow(row);
-                if (clearedFields.length > 0) {
-                    rowChanged = true;
-                    for (const key of clearedFields) changedFieldsSet.add(key);
-                }
-            }
-
-            for (const fieldKey of Object.values(PDF_FIELD_TO_JSON_KEY)) {
-                if (!Object.prototype.hasOwnProperty.call(mergedValues, fieldKey)) continue;
-                const value = normalizeString(mergedValues[fieldKey]);
-                if (!value) continue;
-                if (assignIfChanged(row, fieldKey, value)) {
-                    rowChanged = true;
-                    changedFieldsSet.add(fieldKey);
-                }
-            }
-
-            if (changedFieldsSet.has('norma_pdf') && txt(row?.normalizado_pdf).toUpperCase() !== 'SI') {
-                if (assignIfChanged(row, 'normalizado_pdf', 'SI')) {
-                    rowChanged = true;
-                    changedFieldsSet.add('normalizado_pdf');
-                }
-            }
+            changedFields = applyCanonicalPdfCopyToRow(row, {
+                valuesToCopy: mergedValues,
+                clearPdfBeforeCopy: options.clearPdfBeforeCopy !== false
+            });
+            rowChanged = changedFields.length > 0;
+            logPdfCopyEvent({
+                fn: 'applyCanonicalPdfCopyToRow',
+                caller: 'runVisualCopyComparison',
+                endpoint: options.endpointName || 'batch-or-cli',
+                file: options.file,
+                book: rowBook,
+                id: String(row?.ID ?? ''),
+                changedFields
+            });
         }
-
-        const changedFields = Array.from(changedFieldsSet);
 
         if (rowChanged) changedPdfFieldsRows += 1;
 
@@ -708,5 +749,6 @@ async function runVisualCopyComparison(options) {
 }
 
 module.exports = {
-    runVisualCopyComparison
+    runVisualCopyComparison,
+    applyCanonicalPdfCopyToRow
 };

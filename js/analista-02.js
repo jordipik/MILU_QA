@@ -4419,6 +4419,8 @@ async function copyPdfReadValuesForRow(row, options = {}) {
     const silent = options?.silent !== false;
     const reloadAfterSave = options?.reloadAfterSave !== false;
     const clearPdfBeforeCopy = options?.clearPdfBeforeCopy === true;
+    const caller = String(options?.caller || 'copyPdfReadValuesForRow').trim();
+    const endpoint = String(options?.endpoint || 'frontend/local').trim();
 
     if (!PDF_FEATURE_AUTO_PDF_ENABLED) {
         return { ok: false, reason: 'feature-disabled', changedFields: [], valuesToCopy: {} };
@@ -4446,6 +4448,7 @@ async function copyPdfReadValuesForRow(row, options = {}) {
     }
 
     const valuesToCopy = buildMarkedRowValuesFromGroup(markedRow);
+    console.info(`[pdf-copy] fn=copyPdfReadValuesForRow caller=${caller} endpoint=${endpoint} file=${engineFile || '-'} book=${txt(row?.engine_model, '') || '-'} id=${id || '-'} phase=start`);
 
     try {
         const topDetection = await detectTopBomAndFgInPdf(row);
@@ -4519,6 +4522,8 @@ async function copyPdfReadValuesForRow(row, options = {}) {
         alert(`${readSummaryMessage}\n\nCopiados ${changedFields.length} campos _pdf desde la fila del PDF.`);
     }
 
+    console.info(`[pdf-copy] fn=copyPdfReadValuesForRow caller=${caller} endpoint=${endpoint} file=${engineFile || '-'} book=${txt(row?.engine_model, '') || '-'} id=${id || '-'} changedFields=${changedFields.length}`);
+
     return {
         ok: true,
         reason: changedFields.length > 0 ? 'updated' : 'already-synced',
@@ -4540,7 +4545,9 @@ async function copyPdfReadValuesToPdfFields() {
     const result = await copyPdfReadValuesForRow(currentRow, {
         silent: false,
         reloadAfterSave: true,
-        clearPdfBeforeCopy: true
+        clearPdfBeforeCopy: true,
+        caller: 'copyPdfReadValuesToPdfFields',
+        endpoint: 'frontend/local'
     });
 
     if (result.ok) return;
@@ -4573,72 +4580,36 @@ async function copyPdfReadValuesToPdfFieldsBackend() {
 
     if (!PDF_FEATURE_AUTO_PDF_ENABLED) return;
 
-    if (!currentRow) {
-        alert('Primero debes cargar un registro.');
-        return;
-    }
+    const result = await copyPdfReadValuesForRow(currentRow, {
+        silent: false,
+        reloadAfterSave: true,
+        clearPdfBeforeCopy: true,
+        caller: 'copyPdfReadValuesToPdfFieldsBackend',
+        endpoint: '/copy-pdf-to-pdf (delegated to visual core)'
+    });
 
-    const engineFile = resolveEngineFile(currentRow);
-    const id = txt(currentRow?.ID, '');
-    if (!engineFile || !id) {
+    if (result.ok) return;
+
+    if (result.reason === 'missing-engine-or-id') {
         alert('No se pudo resolver archivo engine o ID para copiar la lectura del PDF.');
         return;
     }
 
-    const { textItems, viewport } = getPdfLastPageData();
-    if (!Array.isArray(textItems) || !textItems.length || !viewport) {
+    if (result.reason === 'missing-pdf-page') {
         alert('Primero carga el PDF del registro para poder copiar sus valores.');
         return;
     }
 
-    const headerColumnBodyDebug = getPdfHeaderColumnBodyDebug();
-    const markedRow = findMarkedPdfRowForCurrentRow(headerColumnBodyDebug, currentRow);
-    if (!markedRow) {
+    if (result.reason === 'missing-marked-row') {
         alert('No se pudo identificar la fila de rectangulos de color para copiar sus valores. Ejecuta Detectar Headers y Pintar Cuerpo en la pagina actual.');
         return;
     }
 
-    const valuesToCopy = buildMarkedRowValuesFromGroup(markedRow);
-
-    try {
-        const topDetection = await detectTopBomAndFgInPdf(currentRow);
-        const topEntries = Array.isArray(topDetection?.entries) ? topDetection.entries : [];
-        const detectedFg = topEntries.find((entry) => String(entry?.key || '').trim() === 'fg_fgs');
-        const detectedBom = topEntries.find((entry) => String(entry?.key || '').trim() === 'bom');
-        const fgValue = normalizeString(detectedFg?.value);
-        const bomValue = normalizeString(detectedBom?.value);
-        if (fgValue) valuesToCopy.fg_fgs_pdf = fgValue;
-        if (bomValue) valuesToCopy.bom_pdf = bomValue;
-    } catch (error) {
-        console.warn('No se pudo detectar FG/FGS + BOM superior durante la copia backend:', error);
-    }
-
-    let response;
-    try {
-        const res = await fetch('/copy-pdf-to-pdf', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ file: engineFile, id, valuesToCopy, clearPdfBeforeCopy: true })
-        });
-        response = await res.json();
-        if (!res.ok || !response?.ok) {
-            throw new Error(response?.error || `HTTP ${res.status}`);
-        }
-    } catch (error) {
-        alert(`Error al llamar al backend: ${String(error?.message || error)}`);
+    if (result.reason === 'feature-disabled') {
         return;
     }
 
-    const changedFields = Array.isArray(response.changedFields) ? response.changedFields : [];
-
-    if (changedFields.length > 0) {
-        await reloadEditedRecord(engineFile, id);
-        renderReviewStats();
-        notifyPdfDataChangedFromAnalista(currentRow);
-        alert(`Copiados ${changedFields.length} campos _pdf desde el backend.`);
-    } else {
-        alert('Los campos _pdf ya estaban sincronizados con la lectura del PDF.');
-    }
+    alert('No se pudo copiar la lectura del PDF para el registro actual.');
 
 }
 

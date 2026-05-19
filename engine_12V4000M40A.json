@@ -493,7 +493,7 @@
     "pos_pdf": "145",
     "pn_pdf": "000125010524",
     "designation_pdf": "WASHER",
-    "model_type_pdf": "A 10,5",
+    "model_type_pdf": "",
     "qty_pdf": "25",
     "units_pdf": "PC",
     "weight_pdf": "3,100 G",
@@ -503,7 +503,7 @@
     "normalizado_pdf": "SI",
     "measurement_final": "10",
     "pn_excel": "000125010524",
-    "measure_pdf": ""
+    "measure_pdf": "A 10,5"
   },
   {
     "ID": "1100646",
@@ -625,7 +625,7 @@
     "pos_pdf": "70",
     "pn_pdf": "000912008115",
     "designation_pdf": "BOLT HEX SOC HD",
-    "model_type_pdf": "M 8 X 16",
+    "model_type_pdf": "",
     "qty_pdf": "2",
     "units_pdf": "PC",
     "weight_pdf": "12 G",
@@ -633,7 +633,7 @@
     "fg_fgs_pdf": "011-05",
     "bom_pdf": "010.00475",
     "normalizado_pdf": "SI",
-    "measure_pdf": "",
+    "measure_pdf": "M 8 X 16",
     "measurement_final": "M 8 X 16",
     "pn_excel": "000912008115"
   },
@@ -6795,7 +6795,7 @@
     "pos_pdf": "190",
     "pn_pdf": "000125008427",
     "designation_pdf": "WASHER",
-    "model_type_pdf": "A 8,4",
+    "model_type_pdf": "",
     "qty_pdf": "4",
     "units_pdf": "PC",
     "weight_pdf": "1,500 G",
@@ -6804,7 +6804,8 @@
     "bom_pdf": "010.00061",
     "normalizado_pdf": "SI",
     "measurement_final": "8",
-    "pn_excel": "000125008427"
+    "pn_excel": "000125008427",
+    "measure_pdf": "A 8,4"
   },
   {
     "ID": "1100600",
@@ -16118,7 +16119,7 @@
     "pos_pdf": "50",
     "pn_pdf": "000835008061",
     "designation_pdf": "STUD",
-    "model_type_pdf": "M 8 X 20",
+    "model_type_pdf": "",
     "qty_pdf": "4",
     "units_pdf": "PC",
     "weight_pdf": "12 G",
@@ -16127,7 +16128,8 @@
     "bom_pdf": "010.00367",
     "normalizado_pdf": "SI",
     "measurement_final": "M 8 X 20",
-    "pn_excel": "000835008061"
+    "pn_excel": "000835008061",
+    "measure_pdf": "M 8 X 20"
   },
   {
     "ID": "1100668",

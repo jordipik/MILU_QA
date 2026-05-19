@@ -41,6 +41,7 @@
     "check": "npm run lint && npm test",
     "test": "npm run test:all-smoke",
     "test:smoke": "node --test tests/smoke/http-smoke.test.js",
+    "test:pdf-copy-contract": "node --test tests/pdf-copy-contract.test.js",
     "test:security": "node --test tests/security/write-validation.test.js",
     "validate:engines": "node scripts/validate_engine_contracts.js",
     "db:import": "node scripts/db/import_engines_to_sqlite.js",
