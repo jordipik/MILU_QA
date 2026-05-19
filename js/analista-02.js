@@ -4678,7 +4678,7 @@ function resolveEngineFileFromFilter(engineFilter) {
 
 
 
-const LOCAL_ONLY_BACKEND_ENDPOINTS = new Set(['recompute-qa-errors', 'recompute-pdf-auto', 'recompute-pdf-auto-visual', 'calculate-final-fields', 'recalculate-revision-status', 'copy-pdf-to-pdf', 'copy-pdf-to-pdf-all-books', 'clear-engine-fields']);
+const LOCAL_ONLY_BACKEND_ENDPOINTS = new Set(['recompute-qa-errors', 'recompute-pdf-auto', 'recompute-pdf-auto-visual', 'calculate-final-fields', 'recalculate-revision-status', 'copy-pdf-to-pdf', 'copy-pdf-to-pdf-all-books', 'copy-pdf-to-final-all-books', 'clear-engine-fields']);
 
 
 
@@ -10623,90 +10623,63 @@ function applyPdfFeatureFlagsToUi() {
 
 }
 
-// Calcula campos FINAL desde GESA ejecutando el script Python en el backend
+// Copia a FINAL en lote con la misma regla del boton FINAL del registro actual
+// (si gesa=SI usa GESA en campos mapeados; en otro caso usa campos _pdf).
 async function runBackendCalculateFinal() {
-    const recomputeEngineSelect = $('recomputeEngineSelect');
     const recomputeCalculateFinalBtn = $('recomputeCalculateFinalBtn');
     const engineFilterSelect = $('engineFilterSelect');
 
-    if (!(recomputeEngineSelect instanceof HTMLSelectElement)
-        || !(recomputeCalculateFinalBtn instanceof HTMLButtonElement)
+    if (!(recomputeCalculateFinalBtn instanceof HTMLButtonElement)
         || !(engineFilterSelect instanceof HTMLSelectElement)) {
         return;
     }
 
-    const selectedModel = String(recomputeEngineSelect.value || '').trim();
+    if (!isBackendEndpointAllowed('copy-pdf-to-final-all-books')) {
+        setRecomputeStatus(getLocalOnlyBackendMessage('copy-pdf-to-final-all-books'), 'error');
+        return;
+    }
 
-    if (!isBackendEndpointAllowed('calculate-final-fields')) {
-        setRecomputeStatus(getLocalOnlyBackendMessage('calculate-final-fields'), 'error');
+    const confirmed = await simpleConfirm(
+        'Vas a aplicar FINAL en lote para TODOS los libros.\n\nSe copiaran los campos a *_final usando la misma regla del boton FINAL (GESA cuando gesa=SI, o _pdf en caso contrario) y se guardaran los JSON con copia de seguridad.\n\n¿Deseas continuar?'
+    );
+
+    if (!confirmed) {
+        setRecomputeStatus('Operacion cancelada por el usuario.', '');
         return;
     }
 
     recomputeCalculateFinalBtn.disabled = true;
-    setRecomputeStatus('Calculando campos FINAL desde GESA...', '');
+    setRecomputeStatus('Aplicando FINAL en todos los libros...', '');
 
-    const urls = getBackendCandidateUrls('calculate-final-fields');
-    let lastError = '';
-    let result = null;
+    try {
+        const result = await postJsonToBackendCandidates('copy-pdf-to-final-all-books', {
+            backup: true
+        });
 
-    for (const url of urls) {
-        try {
-            const response = await fetch(url, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({})
-            });
-            const rawBody = await response.text();
-            let data = null;
-            try {
-                data = rawBody ? JSON.parse(rawBody) : null;
-            } catch (_parseError) {
-                data = null;
-            }
+        const totals = result?.totals || {};
+        const changedRows = Number(totals.changedRows) || 0;
+        const updatedFields = Number(totals.updatedFields) || 0;
+        const scannedRows = Number(totals.scannedRows) || 0;
+        const filesWritten = Number(totals.filesWritten) || 0;
 
-            if (!response.ok) {
-                lastError = String(data?.error || `HTTP ${response.status}`).trim();
-                continue;
-            }
+        const statusMessage = changedRows === 0
+            ? `Sin cambios en FINAL | alcance=TODOS scanned=${scannedRows}`
+            : `OK FINAL alcance=TODOS | scanned=${scannedRows} changedRows=${changedRows} updatedFields=${updatedFields} filesWritten=${filesWritten}`;
 
-            if (!data || data.ok !== true || !data.result) {
-                const snippet = rawBody ? rawBody.replace(/\s+/g, ' ').trim().slice(0, 140) : '';
-                lastError = snippet
-                    ? `Respuesta invalida: ${snippet}`
-                    : `Respuesta invalida (esperado JSON con { ok: true, result })`;
-                continue;
-            }
+        setRecomputeStatus(statusMessage, 'ok');
 
-            result = data.result;
-            break;
-        } catch (error) {
-            lastError = String(error?.message || error || 'Error de red');
-        }
-    }
-
-    recomputeCalculateFinalBtn.disabled = false;
-
-    if (!result) {
-        setRecomputeStatus(`Error calculando FINAL: ${lastError}`, 'error');
-        return;
-    }
-
-    const affectedRecords = Number(result.affectedRecords) || 0;
-    const updatedFields = Number(result.updatedFields) || 0;
-    setRecomputeStatus(
-        `OK | Registros afectados: ${affectedRecords}, Campos actualizados: ${updatedFields}`,
-        'ok'
-    );
-
-    // Recargar el engine si está activo
-    if (selectedModel) {
         const activeModel = engineFilterSelect instanceof HTMLSelectElement
             ? String(engineFilterSelect.value || '').trim()
             : '';
-        if (activeModel === selectedModel) {
-            await loadEngineForFilter(selectedModel);
+
+        if (filesWritten > 0 && activeModel) {
+            await loadEngineForFilter(activeModel);
             updateRecordSearchSuggestions();
         }
+    } catch (error) {
+        setRecomputeStatus(`Error aplicando FINAL en lote: ${String(error?.message || error)}`, 'error');
+    } finally {
+        recomputeCalculateFinalBtn.disabled = false;
     }
 }
 
@@ -10976,6 +10949,12 @@ bindClick('recomputePdfRunBtn', () => {
 bindClick('recomputeCopyBookBtn', () => {
     runBulkCopyPdfToBook().catch((error) => {
         setRecomputeStatus(`Error al copiar PDF para todos los libros: ${String(error?.message || error)}`, 'error');
+    });
+});
+
+bindClick('recomputeCalculateFinalBtn', () => {
+    runBackendCalculateFinal().catch((error) => {
+        setRecomputeStatus(`Error al calcular FINAL para todos los libros: ${String(error?.message || error)}`, 'error');
     });
 });
 
