@@ -1,0 +1,92 @@
+PROCESO: IMPORT PDF -> BOOK PREVIEW -> APLICACION A ENGINES
+
+Objetivo
+- Extraer datos PDF en cadena para todos los motores.
+- Aplicar los campos *_pdf a los engine_*.json de forma controlada.
+- Mantener seguridad con dry-run y backups automaticos.
+
+Prerequisitos
+- Servidor local levantado en http://localhost:3000
+- Vista import PDF disponible en:
+  http://localhost:3000/milu_shell.html?view=importpdf
+- Scripts disponibles en la raiz del repo:
+  - apply_book_preview_to_engine.py
+  - apply_all_book_previews.py
+
+------------------------------------------------------------
+1) EXTRAER TODOS LOS LIBROS DESDE LA UI
+------------------------------------------------------------
+1. Abrir la vista importpdf.
+2. Pulsar "EXTRAER TODOS".
+3. Verificar progreso por libro (indice i/total).
+4. Esperar descargas de:
+   book_preview_<MODELO>.json
+5. Guardar/copiar todos los book_preview_*.json en:
+   json_originales/
+
+Notas
+- "CANCELAR" detiene tanto la extraccion del libro actual como el barrido completo.
+- Se genera 1 JSON por libro procesado.
+
+------------------------------------------------------------
+2) VALIDACION EN SECO (DRY-RUN)
+------------------------------------------------------------
+Comando:
+python apply_all_book_previews.py
+
+Que hace
+- Recorre json_originales/book_preview_*.json
+- Empareja con engine_<MODELO>.json de la raiz
+- Ejecuta el script unitario sin escribir en disco
+- Muestra resumen OK/FAIL/SKIP
+
+------------------------------------------------------------
+3) APLICACION REAL (WRITE + OVERWRITE)
+------------------------------------------------------------
+Comando:
+python apply_all_book_previews.py --write --overwrite
+
+Comportamiento
+- Aplica cambios a cada engine_<MODELO>.json existente.
+- Crea backup automatico por engine antes de escribir:
+  engine_<MODELO>.json.bak.<timestamp>
+
+------------------------------------------------------------
+4) EJECUCION PARCIAL (SOLO ALGUNOS MODELOS)
+------------------------------------------------------------
+Comando ejemplo:
+python apply_all_book_previews.py --write --overwrite --only 12V4000M40A 12V4000M53
+
+------------------------------------------------------------
+5) DETENER EN PRIMER ERROR (OPCIONAL)
+------------------------------------------------------------
+Comando ejemplo:
+python apply_all_book_previews.py --write --overwrite --stop-on-error
+
+------------------------------------------------------------
+6) CONSOLIDACION FINAL
+------------------------------------------------------------
+Despues de aplicar *_pdf, ejecutar:
+python depuracion_json.py
+
+Regla del proyecto
+- measurement_final prioriza dimensions_gesa.
+- Si no existe, usa fallback MEASUREMENT / STANDARD.
+
+------------------------------------------------------------
+CHECKLIST RAPIDO
+------------------------------------------------------------
+[ ] Se generaron todos los book_preview_*.json
+[ ] Estan en json_originales/
+[ ] Dry-run sin fallos criticos
+[ ] Write+overwrite ejecutado
+[ ] Se generaron backups .bak
+[ ] depuracion_json.py ejecutado
+
+------------------------------------------------------------
+COMANDOS COPIAR/PEGAR
+------------------------------------------------------------
+python apply_all_book_previews.py
+python apply_all_book_previews.py --write --overwrite
+python apply_all_book_previews.py --write --overwrite --only 12V4000M40A 12V4000M53
+python depuracion_json.py
