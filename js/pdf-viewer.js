@@ -2825,6 +2825,17 @@ export function getPdfLastPageData() {
 }
 
 /**
+ * Devuelve el número total de páginas del PDF actualmente cargado.
+ * Devuelve 0 si todavía no hay documento PDF cargado.
+ */
+export function getCurrentPdfPageCount() {
+    const doc = state.currentPdfDocument;
+    if (!doc) return 0;
+    const num = Number(doc.numPages || 0);
+    return Number.isFinite(num) && num > 0 ? num : 0;
+}
+
+/**
  * Devuelve el resultado completo del último parse tabular.
  */
 export function getPdfTableParseResult() {

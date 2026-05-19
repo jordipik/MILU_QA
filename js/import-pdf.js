@@ -5,6 +5,7 @@ import {
     clearPdfAllOverlays,
     clearPdfHeaderColumnBodyHighlights,
     clearPdfHeaderOnlyOverlay,
+    getCurrentPdfPageCount,
     getPdfHeaderColumnBodyDebug,
     initPdfZoomControls,
     loadPdfClear,
@@ -464,6 +465,201 @@ async function runExtractPdfPageRowsPreview() {
     return { ok: true, payload: previewPayload };
 }
 
+let bookExtractRunning = false;
+let bookExtractCancelled = false;
+
+function setBookProgressVisible(visible) {
+    const el = $('bookProgress');
+    if (el) el.style.display = visible ? 'flex' : 'none';
+}
+
+function updateBookProgress({ page, processed, total, withRows, rows, warnings }) {
+    const set = (id, value) => {
+        const el = $(id);
+        if (el) el.textContent = String(value);
+    };
+    if (page !== undefined) set('bookProgressPage', page);
+    if (processed !== undefined) set('bookProgressProcessed', processed);
+    if (total !== undefined) set('bookProgressTotal', total);
+    if (withRows !== undefined) set('bookProgressWithRows', withRows);
+    if (rows !== undefined) set('bookProgressRows', rows);
+    if (warnings !== undefined) set('bookProgressWarnings', warnings);
+    if (processed !== undefined && total) {
+        const bar = $('bookProgressBar');
+        if (bar) {
+            const pct = Math.max(0, Math.min(100, Math.round((processed / total) * 100)));
+            bar.style.right = `${100 - pct}%`;
+        }
+    }
+}
+
+function setBookButtonsBusy(busy) {
+    const extractBtn = $('extractBookBtn');
+    const cancelBtn = $('cancelBookBtn');
+    if (extractBtn instanceof HTMLButtonElement) extractBtn.disabled = busy;
+    if (cancelBtn instanceof HTMLButtonElement) cancelBtn.disabled = !busy;
+}
+
+async function extractWholeBook() {
+    if (bookExtractRunning) {
+        setActionStatus('Ya hay una extracción de libro en curso.', 'busy');
+        return;
+    }
+
+    const book = getSelectedEngineModel();
+    if (!book) {
+        setActionStatus('Selecciona un libro antes de extraer.', 'error');
+        return;
+    }
+
+    bookExtractRunning = true;
+    bookExtractCancelled = false;
+    setBookButtonsBusy(true);
+    setBookProgressVisible(true);
+    updateBookProgress({ page: '-', processed: 0, total: 0, withRows: 0, rows: 0, warnings: 0 });
+    setActionStatus(`Cargando ${book} para conocer total de páginas...`, 'busy');
+
+    try {
+        // Cargar página 1 para forzar carga del documento PDF
+        await loadPdfWithPage(book, 1);
+        const totalPages = getCurrentPdfPageCount();
+        if (!totalPages) {
+            setActionStatus('No se pudo determinar el número de páginas del PDF.', 'error');
+            return;
+        }
+
+        const fromInput = $('bookPageFromInput');
+        const toInput = $('bookPageToInput');
+        const skipEmptyChk = $('bookSkipEmptyChk');
+
+        let pageFrom = 1;
+        let pageTo = totalPages;
+        if (fromInput instanceof HTMLInputElement && fromInput.value) {
+            const n = Number(fromInput.value);
+            if (Number.isFinite(n) && n >= 1) pageFrom = Math.min(totalPages, Math.floor(n));
+        }
+        if (toInput instanceof HTMLInputElement && toInput.value) {
+            const n = Number(toInput.value);
+            if (Number.isFinite(n) && n >= 1) pageTo = Math.min(totalPages, Math.floor(n));
+        }
+        if (pageTo < pageFrom) pageTo = pageFrom;
+        const skipEmpty = !(skipEmptyChk instanceof HTMLInputElement) || skipEmptyChk.checked;
+
+        const totalToProcess = pageTo - pageFrom + 1;
+        updateBookProgress({ processed: 0, total: totalToProcess });
+
+        const pagesOut = [];
+        let rowsTotal = 0;
+        let warningsTotal = 0;
+        let pagesWithRows = 0;
+        let processed = 0;
+
+        for (let p = pageFrom; p <= pageTo; p++) {
+            if (bookExtractCancelled) {
+                setActionStatus(`Cancelado en página ${p}. Procesadas ${processed}/${totalToProcess}.`, 'busy');
+                break;
+            }
+
+            updateBookProgress({ page: p });
+            setActionStatus(`Procesando página ${p}/${pageTo}...`, 'busy');
+
+            try {
+                clearPdfAllOverlays();
+                clearPdfHeaderOnlyOverlay();
+                clearPdfHeaderColumnBodyHighlights();
+                setPdfSelection(null);
+
+                await loadPdfWithPage(book, p);
+                // Sincronizar el input visual (para que getSelectedPageNumber dentro de la extracción use p)
+                const pageInput = $('pdfPageInput');
+                if (pageInput instanceof HTMLInputElement) pageInput.value = String(p);
+
+                runPdfHeaderOnlyDetection();
+                buildHeaderColumnBodyHighlights();
+                requestPdfRelayout();
+
+                const result = await extractAllPdfRowsFromCurrentPage({ silent: true });
+                const rows = Array.isArray(result?.rows) ? result.rows : [];
+                const rowsWithPn = rows.filter((row) => normalizeString(row?.pn_pdf)).length;
+                const warningsCount = countWarnings(rows);
+
+                if (rows.length > 0 || !skipEmpty) {
+                    pagesOut.push({
+                        source_page: p,
+                        rows_count: rows.length,
+                        rows_with_pn: rowsWithPn,
+                        warnings_count: warningsCount,
+                        rows
+                    });
+                    if (rows.length > 0) pagesWithRows++;
+                    rowsTotal += rows.length;
+                    warningsTotal += warningsCount;
+                }
+            } catch (pageError) {
+                console.warn(`[import-pdf] Error en página ${p}:`, pageError);
+                pagesOut.push({
+                    source_page: p,
+                    rows_count: 0,
+                    rows_with_pn: 0,
+                    warnings_count: 0,
+                    error: String(pageError?.message || pageError),
+                    rows: []
+                });
+            }
+
+            processed++;
+            updateBookProgress({
+                processed,
+                total: totalToProcess,
+                withRows: pagesWithRows,
+                rows: rowsTotal,
+                warnings: warningsTotal
+            });
+
+            // Ceder al event loop para no bloquear UI
+            await new Promise((resolve) => setTimeout(resolve, 0));
+        }
+
+        const payload = {
+            book,
+            generated_at: new Date().toISOString(),
+            pages_total: totalPages,
+            range_from: pageFrom,
+            range_to: pageTo,
+            pages_processed: processed,
+            pages_with_rows: pagesWithRows,
+            rows_total: rowsTotal,
+            warnings_total: warningsTotal,
+            cancelled: bookExtractCancelled,
+            pages: pagesOut
+        };
+
+        window.__miluPdfBookPreview = payload;
+        console.info('[import-pdf] EXTRAER LIBRO resumen ->', {
+            book,
+            pages_processed: processed,
+            pages_with_rows: pagesWithRows,
+            rows_total: rowsTotal,
+            warnings_total: warningsTotal,
+            cancelled: bookExtractCancelled
+        });
+
+        downloadJsonPreview(payload, `book_preview_${book}.json`);
+
+        const suffix = bookExtractCancelled ? ' (cancelado)' : '';
+        setActionStatus(
+            `Libro ${book}${suffix}: ${processed} páginas procesadas, ${pagesWithRows} con filas, ${rowsTotal} filas totales, ${warningsTotal} warnings. JSON descargado.`,
+            bookExtractCancelled ? 'busy' : 'ok'
+        );
+    } catch (error) {
+        setActionStatus(`Error en EXTRAER LIBRO: ${String(error?.message || error)}`, 'error');
+    } finally {
+        bookExtractRunning = false;
+        bookExtractCancelled = false;
+        setBookButtonsBusy(false);
+    }
+}
+
 function bindEvents() {
     const goToPageBtn = $('goToPageBtn');
     const detectHeadersBtn = $('detectHeadersBtn');
@@ -523,6 +719,25 @@ function bindEvents() {
             }
             downloadJsonPreview(payload, `pdf_page_rows_preview_p${Number(payload?.source_page || 0)}.json`);
             setActionStatus('JSON descargado desde el preview actual.', 'ok');
+        });
+    }
+
+    const extractBookBtn = $('extractBookBtn');
+    if (extractBookBtn instanceof HTMLButtonElement) {
+        extractBookBtn.addEventListener('click', () => {
+            extractWholeBook().catch((error) => {
+                setActionStatus(`No se pudo extraer el libro: ${String(error?.message || error)}`, 'error');
+            });
+        });
+    }
+
+    const cancelBookBtn = $('cancelBookBtn');
+    if (cancelBookBtn instanceof HTMLButtonElement) {
+        cancelBookBtn.addEventListener('click', () => {
+            if (bookExtractRunning) {
+                bookExtractCancelled = true;
+                setActionStatus('Cancelando extracción de libro...', 'busy');
+            }
         });
     }
 }
