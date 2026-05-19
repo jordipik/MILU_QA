@@ -25,8 +25,8 @@ function isEmbeddedMode() {
 
 function getNavTargetHref(pageKey) {
     const allowedViews = ENABLE_EXPORT_VIEW
-        ? ['pdf', 'export', 'analisis', 'imagenes', 'exportwp']
-        : ['pdf', 'analisis', 'imagenes', 'exportwp'];
+        ? ['importpdf', 'pdf', 'export', 'analisis', 'imagenes', 'exportwp']
+        : ['importpdf', 'pdf', 'analisis', 'imagenes', 'exportwp'];
     const view = allowedViews.includes(pageKey) ? pageKey : 'pdf';
     return `${appUrl('/milu_shell.html')}?view=${encodeURIComponent(view)}`;
 }
@@ -139,6 +139,11 @@ function initBackendStatusMonitor() {
 
 export function createTopbar(page) {
     const pages = {
+        importpdf: {
+            title: 'Import PDF experimental',
+            subtitle: 'Extracción visual por página, solo lectura y preview JSON reutilizando el flujo PDF actual.',
+            active: 'IMPORT PDF'
+        },
         pdf: {
             title: 'Panel de revisión visual',
             subtitle: 'Flujo rápido para filtrar, validar y revisar artículos con contexto de esquemas y posición, todo en la misma vista.',
@@ -193,6 +198,7 @@ export function createTopbar(page) {
             </div>
         </div>
         <nav class="a2-nav" aria-label="Navegacion">
+            <a href="${getNavTargetHref('importpdf')}" data-page="importpdf" class="${pageConfig.active === 'IMPORT PDF' ? 'active' : ''}">IMPORT PDF</a>
             <a href="${getNavTargetHref('pdf')}" data-page="pdf" class="${pageConfig.active === 'PDF' ? 'active' : ''}">PDF</a>
             <a href="${getNavTargetHref('analisis')}" data-page="analisis" class="${pageConfig.active === 'ANALISIS' ? 'active' : ''}">ANALISIS</a>
             <a href="${getNavTargetHref('imagenes')}" data-page="imagenes" class="${pageConfig.active === 'IMAGENES' ? 'active' : ''}">IMAGENES</a>

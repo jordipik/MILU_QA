@@ -496,13 +496,13 @@ function bindEvents() {
 
     if (detectHeadersBtn instanceof HTMLButtonElement) {
         detectHeadersBtn.addEventListener('click', () => {
-            runHeadersOnly().catch(() => {});
+            runHeadersOnly().catch(() => { });
         });
     }
 
     if (paintBodyByHeadersBtn instanceof HTMLButtonElement) {
         paintBodyByHeadersBtn.addEventListener('click', () => {
-            runTableDetection().catch(() => {});
+            runTableDetection().catch(() => { });
         });
     }
 

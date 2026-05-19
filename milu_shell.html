@@ -671,6 +671,8 @@
 
         const VIEW_TO_PAGE = {
 
+            importpdf: 'import_pdf.html',
+
             pdf: 'qa_milu.html',
 
             analisis: 'analista_02.html',
@@ -692,6 +694,8 @@
 
 
         const TITLES = {
+
+            importpdf: 'MILU • IMPORT PDF',
 
             pdf: 'MILU • PDF',
 
@@ -999,7 +1003,7 @@
 
             const raw = String(value || '').trim().toLowerCase();
 
-            if (raw === 'pdf' || raw === 'analisis' || raw === 'imagenes' || raw === 'exportwp') return raw;
+            if (raw === 'importpdf' || raw === 'pdf' || raw === 'analisis' || raw === 'imagenes' || raw === 'exportwp') return raw;
 
             if (ENABLE_EXPORT_VIEW && raw === 'export') return raw;
 

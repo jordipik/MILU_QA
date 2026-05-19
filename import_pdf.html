@@ -8,7 +8,9 @@
     <link rel="icon" type="image/svg+xml" href="favicon.svg" />
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@500;600;700;800&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
+    <link
+        href="https://fonts.googleapis.com/css2?family=Manrope:wght@500;600;700;800&family=IBM+Plex+Mono:wght@400;500&display=swap"
+        rel="stylesheet">
     <link rel="stylesheet" href="styles/pdf_shared.css" />
     <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
     <style>
@@ -24,7 +26,9 @@
             --shadow: 0 18px 50px rgba(15, 35, 60, 0.12);
         }
 
-        * { box-sizing: border-box; }
+        * {
+            box-sizing: border-box;
+        }
 
         body {
             margin: 0;
@@ -37,8 +41,14 @@
                 linear-gradient(180deg, #ffffff 0%, var(--bg) 100%);
         }
 
-        a { color: var(--accent); text-decoration: none; }
-        a:hover { text-decoration: underline; }
+        a {
+            color: var(--accent);
+            text-decoration: none;
+        }
+
+        a:hover {
+            text-decoration: underline;
+        }
 
         .ip-shell {
             display: grid;
@@ -131,7 +141,9 @@
             outline: none;
         }
 
-        .ip-field input { width: 100%; }
+        .ip-field input {
+            width: 100%;
+        }
 
         .ip-field select:focus,
         .ip-field input:focus {
@@ -150,12 +162,33 @@
             transition: transform 120ms ease, box-shadow 120ms ease, opacity 120ms ease;
         }
 
-        .ip-btn:hover { transform: translateY(-1px); }
-        .ip-btn:disabled { opacity: 0.5; cursor: not-allowed; transform: none; }
+        .ip-btn:hover {
+            transform: translateY(-1px);
+        }
 
-        .ip-btn-primary { background: linear-gradient(135deg, #1e6fe5, #164fb0); color: #fff; box-shadow: 0 12px 24px rgba(30, 111, 229, 0.24); }
-        .ip-btn-secondary { background: #fff; border-color: rgba(130, 150, 175, 0.3); color: var(--text); }
-        .ip-btn-ghost { background: rgba(30, 111, 229, 0.08); color: #184ea6; border-color: rgba(30, 111, 229, 0.18); }
+        .ip-btn:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+            transform: none;
+        }
+
+        .ip-btn-primary {
+            background: linear-gradient(135deg, #1e6fe5, #164fb0);
+            color: #fff;
+            box-shadow: 0 12px 24px rgba(30, 111, 229, 0.24);
+        }
+
+        .ip-btn-secondary {
+            background: #fff;
+            border-color: rgba(130, 150, 175, 0.3);
+            color: var(--text);
+        }
+
+        .ip-btn-ghost {
+            background: rgba(30, 111, 229, 0.08);
+            color: #184ea6;
+            border-color: rgba(30, 111, 229, 0.18);
+        }
 
         .ip-main {
             display: grid;
@@ -284,7 +317,9 @@
             font-weight: 800;
         }
 
-        .ip-preview-table tbody tr:nth-child(even) { background: #fafcff; }
+        .ip-preview-table tbody tr:nth-child(even) {
+            background: #fafcff;
+        }
 
         .ip-preview-empty {
             padding: 18px;
@@ -355,27 +390,49 @@
         }
 
         @media (max-width: 1180px) {
-            .ip-main { grid-template-columns: 1fr; }
+            .ip-main {
+                grid-template-columns: 1fr;
+            }
         }
 
         @media (max-width: 760px) {
-            .ip-header { padding-inline: 12px; }
-            .ip-main { padding-inline: 12px; }
-            .ip-controls { grid-template-columns: 1fr; }
-            .ip-summary-grid { grid-template-columns: 1fr; }
-            .ip-preview-table { font-size: 11px; }
+            .ip-header {
+                padding-inline: 12px;
+            }
+
+            .ip-main {
+                padding-inline: 12px;
+            }
+
+            .ip-controls {
+                grid-template-columns: 1fr;
+            }
+
+            .ip-summary-grid {
+                grid-template-columns: 1fr;
+            }
+
+            .ip-preview-table {
+                font-size: 11px;
+            }
         }
     </style>
 </head>
 
 <body>
+    <script type="module">
+        import { initTopbar } from './js/topbar.js';
+        initTopbar('importpdf');
+    </script>
+
     <div class="ip-shell">
         <header class="ip-header">
             <section class="ip-header-card">
                 <div class="ip-title-row">
                     <div class="ip-title">
                         <h1>Import PDF experimental</h1>
-                        <p>Vista de solo lectura para cargar un libro, navegar por página y extraer filas del PDF sin tocar JSON ni revisiones.</p>
+                        <p>Vista de solo lectura para cargar un libro, navegar por página y extraer filas del PDF sin
+                            tocar JSON ni revisiones.</p>
                     </div>
                     <div class="ip-quick-links">
                         <a href="analista_02.html">Abrir analista_02</a>
@@ -391,14 +448,16 @@
 
                     <label class="ip-field">
                         <span>Página PDF</span>
-                        <input id="pdfPageInput" type="number" min="1" step="1" inputmode="numeric" value="13" aria-label="Página PDF">
+                        <input id="pdfPageInput" type="number" min="1" step="1" inputmode="numeric" value="13"
+                            aria-label="Página PDF">
                     </label>
 
                     <button id="goToPageBtn" class="ip-btn ip-btn-primary" type="button">IR A PÁGINA</button>
                     <button id="detectHeadersBtn" class="ip-btn ip-btn-secondary" type="button">CABECERAS</button>
                     <button id="paintBodyByHeadersBtn" class="ip-btn ip-btn-secondary" type="button">TABLA</button>
                     <button id="extractPageRowsBtn" class="ip-btn ip-btn-ghost" type="button">EXTRAER PÁGINA</button>
-                    <button id="downloadJsonBtn" class="ip-btn ip-btn-secondary" type="button" disabled>DESCARGAR JSON</button>
+                    <button id="downloadJsonBtn" class="ip-btn ip-btn-secondary" type="button" disabled>DESCARGAR
+                        JSON</button>
                 </div>
             </section>
         </header>
@@ -426,7 +485,8 @@
                         </div>
                         <div class="ip-summary-item ip-summary-wide">
                             <span class="label">Estado</span>
-                            <span class="value" id="summaryStatus" style="font-size:16px;">Lista para cargar un PDF.</span>
+                            <span class="value" id="summaryStatus" style="font-size:16px;">Lista para cargar un
+                                PDF.</span>
                         </div>
                     </div>
                     <div id="actionStatus" class="ip-status" role="status" aria-live="polite"></div>
@@ -478,7 +538,8 @@
                     <div class="ip-pdf-stage">
                         <div class="pdf-toolbar">
                             <label class="pdf-zoom-wrap" for="pdfZoomSelect">
-                                <button id="pdfZoomOutBtn" class="pdf-zoom-btn" type="button" aria-label="Reducir zoom PDF">-</button>
+                                <button id="pdfZoomOutBtn" class="pdf-zoom-btn" type="button"
+                                    aria-label="Reducir zoom PDF">-</button>
                                 <select id="pdfZoomSelect" class="pdf-zoom-select" aria-label="Zoom del visor PDF">
                                     <option value="fit">Ajustar</option>
                                     <option value="height">Ajustar vertical</option>
@@ -489,11 +550,13 @@
                                     <option value="150">150%</option>
                                     <option value="200">200%</option>
                                 </select>
-                                <button id="pdfZoomInBtn" class="pdf-zoom-btn" type="button" aria-label="Aumentar zoom PDF">+</button>
+                                <button id="pdfZoomInBtn" class="pdf-zoom-btn" type="button"
+                                    aria-label="Aumentar zoom PDF">+</button>
                             </label>
                         </div>
 
-                        <div id="pdfViewer" class="pre-panel-wrap" style="display:flex;flex-direction:column;flex:1;min-height:0;">
+                        <div id="pdfViewer" class="pre-panel-wrap"
+                            style="display:flex;flex-direction:column;flex:1;min-height:0;">
                             <div class="pdfviewer-inner" style="position:relative;flex:1;min-height:0;overflow:auto;">
                                 <canvas id="pdfCanvas"></canvas>
                             </div>
