@@ -997,9 +997,8 @@ app.post('/clear-engine-fields', async (req, res) => {
                 for (const key of Object.keys(record)) {
                     if (!suffixes.some((suf) => key.endsWith(suf))) continue;
                     if (exclude.has(key)) continue;
-                    if (record[key] === '') continue;
+                    if (record[key] !== '') touched += 1;
                     record[key] = '';
-                    touched += 1;
                 }
                 if (touched > 0) {
                     records += 1;
