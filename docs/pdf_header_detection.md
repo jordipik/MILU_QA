@@ -101,3 +101,53 @@ Ajusta `left/width` proporcionalmente eliminando espacios en blanco al inicio/fi
 - `engine_*.json`
 - Exportadores
 - Parser principal de columnas (`pdf-table-parser.js`)
+
+---
+
+## Actualización 2026-05-20: robustez UNITS/WEIGHT/FN
+
+### Incidencia observada
+
+En algunas paginas (ej. source_page 387) el OCR devuelve headers combinados como `UNITS WEIGHT FN` dentro del mismo bloque.
+
+Efecto colateral en debug:
+- headers distintos quedaban con el mismo `x0`
+- al construir columnas con `x1 = nextHeader.x0` aparecian columnas de ancho cero (`x0 == x1`)
+- la asignacion del cuerpo se desplazaba, especialmente entre `weight` y `fn`
+
+### Causa raiz
+
+1. La deteccion por `contains` permitia matches multiples sobre una misma caja OCR.
+2. El refinado de bounds separaba algunos pares, pero no contemplaba explicitamente el par `weight/fn`.
+3. La construccion de columnas asumia monotonia estricta de `x0` y no defendia empates.
+
+### Fix aplicado
+
+Archivo: `js/pdf-viewer.js`
+
+1. Se agrego el split de par fusionado `weight` -> `fn` en `HEADER_SPLIT_PAIRS`.
+2. En `buildHeaderColumnBodyHighlights()`, la construccion de `rawColumns` se rehizo para:
+       - ordenar headers por `x0` y orden canonico de key
+       - agrupar headers con `x0` igual (o casi igual)
+       - repartir esos grupos en ranuras con ancho minimo
+       - garantizar `x1 > x0` en todas las columnas
+
+### Resultado esperado
+
+- No se generan columnas con ancho cero en paneles de debug.
+- Mejora la separacion visual y semantica entre `UNITS`, `WEIGHT` y `FN`.
+- Se reduce el arrastre de tokens `FN` hacia columnas vecinas.
+
+### Verificación manual recomendada
+
+1. Abrir `analista_02.html` o `qa_milu.html` con un registro de la pagina afectada.
+2. Pulsar `Recalcular Tabla`.
+3. Abrir `Estadísticas`.
+4. Confirmar en `Headers detectados` y `Cuerpo por Columnas` que:
+       - `UNITS`, `WEIGHT` y `FN` tienen rangos `x0/x1` distintos
+       - no aparece ninguna columna con `x0 == x1`
+
+### Riesgo y alcance
+
+- Cambio acotado a deteccion/pintado experimental en frontend PDF.
+- Sin impacto en backend, persistencia JSON ni endpoints.

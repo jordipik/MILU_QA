@@ -2904,6 +2904,12 @@ const HEADER_SPLIT_PAIRS = [
         rightTokens: ['measurement', 'measure', 'meas', 'measurement / standard', 'measurement/standard']
     },
     {
+        leftKey: 'weight',
+        rightKey: 'fn',
+        leftTokens: ['weight', 'wt', 'wgt'],
+        rightTokens: ['fn', 'footnote', 'f.n.', 'f n', 'f.n']
+    },
+    {
         leftKey: 'units',
         rightKey: 'weight',
         leftTokens: ['units', 'unit'],
@@ -3920,20 +3926,65 @@ export function buildHeaderColumnBodyHighlights() {
         return state.currentPdfHeaderColumnBodyDebug;
     }
 
-    // Definir columnas a partir del x0 de cada header
-    const rawColumns = foundHeaders.map((header, idx) => {
-        const nextHeader = foundHeaders[idx + 1];
-        const x1 = nextHeader ? nextHeader.x0 : Math.max(1, viewport.width);
-        return {
-            key: header.key,
-            label: header.label,
-            x0: header.x0,
-            x1: x1,
-            headerY0: header.y0,
-            headerY1: header.y1,
-            kind: HEADER_KEY_TO_KIND[header.key] || 'orange-header-token'
-        };
+    // Definir columnas a partir del x0 de cada header.
+    // Si hay x0 duplicados (header OCR combinado), repartir el ancho en ranuras
+    // para evitar columnas con ancho cero.
+    const viewportWidth = Math.max(1, Number(viewport.width || 1));
+    const minColumnWidth = Math.max(10, Math.round(viewportWidth * 0.012));
+    const keyOrder = new Map(HEADER_DETECTION_ALL_KEYS.map((key, idx) => [key, idx]));
+
+    const sortedHeaders = [...foundHeaders].sort((a, b) => {
+        const ax0 = Number(a?.x0 || 0);
+        const bx0 = Number(b?.x0 || 0);
+        const dx = ax0 - bx0;
+        if (Math.abs(dx) > 1) return dx;
+        const aOrder = keyOrder.has(a?.key) ? keyOrder.get(a.key) : 999;
+        const bOrder = keyOrder.has(b?.key) ? keyOrder.get(b.key) : 999;
+        return aOrder - bOrder;
     });
+
+    const rawColumns = [];
+    for (let i = 0; i < sortedHeaders.length;) {
+        const groupStart = i;
+        const groupX0 = Number(sortedHeaders[i]?.x0 || 0);
+        i += 1;
+        while (i < sortedHeaders.length) {
+            const currentX0 = Number(sortedHeaders[i]?.x0 || 0);
+            if (Math.abs(currentX0 - groupX0) > 1) break;
+            i += 1;
+        }
+
+        const groupEnd = i;
+        const groupSize = groupEnd - groupStart;
+        const nextX0 = groupEnd < sortedHeaders.length
+            ? Number(sortedHeaders[groupEnd]?.x0 || viewportWidth)
+            : viewportWidth;
+
+        const groupX1 = Math.min(
+            viewportWidth,
+            Math.max(groupX0 + (minColumnWidth * groupSize), nextX0)
+        );
+        const slotWidth = Math.max(minColumnWidth, (groupX1 - groupX0) / groupSize);
+
+        for (let j = groupStart; j < groupEnd; j += 1) {
+            const slotIndex = j - groupStart;
+            const header = sortedHeaders[j];
+            const slotX0 = Math.max(0, Math.min(viewportWidth - 1, groupX0 + (slotWidth * slotIndex)));
+            const slotX1 = j === groupEnd - 1
+                ? groupX1
+                : Math.min(viewportWidth, groupX0 + (slotWidth * (slotIndex + 1)));
+
+            rawColumns.push({
+                key: header.key,
+                label: header.label,
+                x0: Math.round(slotX0),
+                x1: Math.max(Math.round(slotX0) + 1, Math.round(slotX1)),
+                headerY0: header.y0,
+                headerY1: header.y1,
+                kind: HEADER_KEY_TO_KIND[header.key] || 'orange-header-token'
+            });
+        }
+    }
 
     // Filtrar columna decorativa izquierda (flecha/icono antes de POS)
     const { filteredColumns: columns, decorativeColumnIgnored, decorativeColumn } =
