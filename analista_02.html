@@ -242,40 +242,38 @@
                     </label>
                     <div class="pdf-quick-actions" aria-label="Acciones rápidas PDF">
                         <button id="pdfLoadCurrentBtn" class="pdf-row-debug-btn is-step-load" type="button"
-                            title="Paso 0: cargar el PDF del registro actual"><span class="pdf-btn-icon"
-                                aria-hidden="true">◫</span><span class="pdf-btn-label">0.PDF</span></button>
+                            title="Paso 0: cargar el PDF del registro actual"><span
+                                class="pdf-btn-label">PDF</span></button>
                         <button id="detectHeadersBtn" class="pdf-row-debug-btn is-step-read" type="button"
-                            title="Paso 1: detectar cabeceras BOM"><span class="pdf-btn-icon"
-                                aria-hidden="true">▤</span><span class="pdf-btn-label">1.Header</span></button>
+                            title="Paso 1: detectar cabeceras BOM"><span class="pdf-btn-label">CABECERAS</span></button>
                         <button id="paintBodyByHeadersBtn" class="pdf-row-debug-btn is-step-read" type="button"
-                            title="Paso 2: pintar cuerpo por columnas detectadas"><span class="pdf-btn-icon"
-                                aria-hidden="true">▥</span><span class="pdf-btn-label">2.Tabla</span></button>
+                            title="Paso 2: pintar cuerpo por columnas detectadas"><span
+                                class="pdf-btn-label">TABLA</span></button>
                         <button id="pdfPaintSelectedRowRedBtn" class="pdf-row-debug-btn is-step-mark" type="button"
-                            title="Pintar en rojo la fila del registro seleccionado"><span class="pdf-btn-icon"
-                                aria-hidden="true">■</span><span class="pdf-btn-label">3.Fila</span></button>
+                            title="Pintar en rojo la fila del registro seleccionado"><span
+                                class="pdf-btn-label">FILA</span></button>
                         <button id="detectTopBomFgBtn" class="pdf-row-debug-btn is-step-read" type="button"
-                            title="Paso 9: detectar BOM y FG/FGS en cabecera superior"><span class="pdf-btn-icon"
-                                aria-hidden="true">⌃</span><span class="pdf-btn-label">4.BOM</span></button>
+                            title="Paso 9: detectar BOM y FG/FGS en cabecera superior"><span
+                                class="pdf-btn-label">BOM</span></button>
+                        <button id="pdfClearOverlaysBtn" class="pdf-row-debug-btn is-step-clear" type="button"
+                            title="Limpiar todo lo pintado sobre el PDF"><span
+                                class="pdf-btn-label">LIMPIAR</span></button>
+                        <span class="pdf-quick-break" aria-hidden="true"></span>
                         <button id="copyPdfReadToPdfBtn" class="pdf-row-debug-btn is-step-copy" type="button"
-                            title="Paso 3: copiar lectura del PDF a campos _pdf"><span class="pdf-btn-icon"
-                                aria-hidden="true">▣</span><span class="pdf-btn-label">COPIAR</span></button>
+                            title="Paso 3: copiar lectura del PDF a campos _pdf"><span
+                                class="pdf-btn-label">COPIAR</span></button>
                         <button id="copyPdfReadToPdfBackendBtn" class="pdf-row-debug-btn is-step-copy" type="button"
                             title="Paso 3 (Backend): enviar lectura del PDF al backend para copiar campos _pdf en bloque"><span
-                                class="pdf-btn-icon" aria-hidden="true">▣</span><span class="pdf-btn-label">COPIAR
-                                (Backend)</span></button>
+                                class="pdf-btn-label">COPIAR BACKEND</span></button>
                         <button id="copyPdfReadToFinalBtn" class="pdf-row-debug-btn is-step-copy" type="button"
                             title="Paso 3b: copiar campos _pdf del registro actual a campos _final"><span
-                                class="pdf-btn-icon" aria-hidden="true">◩</span><span
                                 class="pdf-btn-label">FINAL</span></button>
                         <button id="pdfRecomputeErrorsBtn" class="pdf-row-debug-btn is-step-check" type="button"
-                            title="Paso 4: recalcular errores del registro actual"><span class="pdf-btn-icon"
-                                aria-hidden="true">▲</span><span class="pdf-btn-label">ERROR</span></button>
+                            title="Paso 4: recalcular errores del registro actual"><span
+                                class="pdf-btn-label">ERRORES</span></button>
                         <button id="pdfRecomputeRevisionBtn" class="pdf-row-debug-btn is-step-revision" type="button"
-                            title="Paso 5: recalcular estado y acción del registro actual"><span class="pdf-btn-icon"
-                                aria-hidden="true">◆</span><span class="pdf-btn-label">ESTADO</span></button>
-                        <button id="pdfClearOverlaysBtn" class="pdf-row-debug-btn is-step-clear" type="button"
-                            title="Limpiar todo lo pintado sobre el PDF"><span class="pdf-btn-icon"
-                                aria-hidden="true">✕</span><span class="pdf-btn-label">Clear</span></button>
+                            title="Paso 5: recalcular estado y acción del registro actual"><span
+                                class="pdf-btn-label">ESTADO</span></button>
                     </div>
                 </div>
                 <p id="pdfActionStatusText" class="pdf-action-status" aria-live="polite"></p>
