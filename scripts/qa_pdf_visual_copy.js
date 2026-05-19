@@ -205,6 +205,18 @@ function assignIfChanged(target, key, nextValue) {
     return true;
 }
 
+function clearPdfFieldsForRow(row) {
+    if (!row || typeof row !== 'object') return [];
+    const changed = [];
+    for (const key of Object.keys(row)) {
+        if (!String(key).endsWith('_pdf')) continue;
+        if (String(row[key] ?? '') === '') continue;
+        row[key] = '';
+        changed.push(key);
+    }
+    return changed;
+}
+
 async function getPdfPageData(pdfjsLib, caches, book, sourcePage) {
     const bookClean = txt(book);
     const pageNum = resolvePdfPageNumber(sourcePage);
@@ -628,25 +640,35 @@ async function runVisualCopyComparison(options) {
         }, row);
 
         let rowChanged = false;
-        const changedFields = [];
+        const changedFieldsSet = new Set();
         if (options.writePdf) {
+            if (options.clearPdfBeforeCopy) {
+                const clearedFields = clearPdfFieldsForRow(row);
+                if (clearedFields.length > 0) {
+                    rowChanged = true;
+                    for (const key of clearedFields) changedFieldsSet.add(key);
+                }
+            }
+
             for (const fieldKey of Object.values(PDF_FIELD_TO_JSON_KEY)) {
                 if (!Object.prototype.hasOwnProperty.call(mergedValues, fieldKey)) continue;
                 const value = normalizeString(mergedValues[fieldKey]);
                 if (!value) continue;
                 if (assignIfChanged(row, fieldKey, value)) {
                     rowChanged = true;
-                    changedFields.push(fieldKey);
+                    changedFieldsSet.add(fieldKey);
                 }
             }
 
-            if (changedFields.includes('norma_pdf') && txt(row?.normalizado_pdf).toUpperCase() !== 'SI') {
+            if (changedFieldsSet.has('norma_pdf') && txt(row?.normalizado_pdf).toUpperCase() !== 'SI') {
                 if (assignIfChanged(row, 'normalizado_pdf', 'SI')) {
                     rowChanged = true;
-                    changedFields.push('normalizado_pdf');
+                    changedFieldsSet.add('normalizado_pdf');
                 }
             }
         }
+
+        const changedFields = Array.from(changedFieldsSet);
 
         if (rowChanged) changedPdfFieldsRows += 1;
 

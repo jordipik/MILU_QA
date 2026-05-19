@@ -5696,10 +5696,11 @@ async function runBackendRecompute() {
 
 
 
-// Vacia campos *_pdf y *_final en los 9 engine_*.json mediante /clear-engine-fields.
+// Vacia campos *_pdf y *_final en los 9 engine_*.json mediante /clear-engine-fields,
+// respetando pn_pdf y pn_final.
 async function runClearPdfFinalFields() {
     console.info('[clear-engine-fields] click recibido');
-    setRecomputeStatus('Preparando vaciado de campos _pdf y _final...', '');
+    setRecomputeStatus('Preparando vaciado de campos _pdf y _final (excepto pn_pdf y pn_final)...', '');
 
     if (!isBackendEndpointAllowed('clear-engine-fields')) {
         setRecomputeStatus(getLocalOnlyBackendMessage('clear-engine-fields'), 'error');
@@ -5707,7 +5708,7 @@ async function runClearPdfFinalFields() {
     }
 
     const confirmed = await simpleConfirm(
-        'ATENCION: Esta accion vaciara TODOS los campos cuyo nombre termina en _pdf o _final en los 9 engine_*.json.\n\nEs una operacion DESTRUCTIVA e irreversible.\n\n¿Deseas continuar?'
+        'ATENCION: Esta accion vaciara TODOS los campos cuyo nombre termina en _pdf o _final en los 9 engine_*.json, EXCEPTO pn_pdf y pn_final.\n\nEs una operacion DESTRUCTIVA e irreversible.\n\n¿Deseas continuar?'
     );
     if (!confirmed) {
         setRecomputeStatus('Operacion cancelada por el usuario.', '');
@@ -5731,14 +5732,15 @@ async function runClearPdfFinalFields() {
     if (progressFill instanceof HTMLElement) progressFill.style.width = '20%';
     if (progressText instanceof HTMLElement) progressText.textContent = 'Enviando peticion al backend...';
 
-    setRecomputeStatus('Vaciando campos _pdf y _final en los 9 libros (puede tardar unos segundos)...', '');
+    setRecomputeStatus('Vaciando campos _pdf y _final en los 9 libros (excepto pn_pdf y pn_final)...', '');
 
     try {
         if (progressFill instanceof HTMLElement) progressFill.style.width = '45%';
         if (progressText instanceof HTMLElement) progressText.textContent = 'Procesando engine_*.json...';
 
         const result = await postJsonToBackendCandidates('clear-engine-fields', {
-            suffixes: ['_pdf', '_final']
+            suffixes: ['_pdf', '_final'],
+            exclude: ['pn_pdf', 'pn_final']
         });
 
         if (progressFill instanceof HTMLElement) progressFill.style.width = '100%';
@@ -5774,7 +5776,7 @@ async function runClearPdfFinalFields() {
 }
 
 
-// Copia lectura PDF a campos *_pdf para todos los registros del libro seleccionado (backend batch).
+// Copia lectura PDF a campos *_pdf para todos los registros de todos los libros (backend batch).
 async function runBulkCopyPdfToBook() {
 
     if (!PDF_FEATURE_AUTO_PDF_ENABLED) {
@@ -5788,28 +5790,10 @@ async function runBulkCopyPdfToBook() {
         return;
     }
 
-    const recomputeEngineSelect = $('recomputeEngineSelect');
     const engineFilterSelect = $('engineFilterSelect');
 
-    const selectedModel = (recomputeEngineSelect instanceof HTMLSelectElement
-        ? String(recomputeEngineSelect.value || '').trim()
-        : '') || (engineFilterSelect instanceof HTMLSelectElement
-            ? String(engineFilterSelect.value || '').trim()
-            : '');
-
-    if (!selectedModel) {
-        setRecomputeStatus('Selecciona un libro antes de copiar PDF.', 'error');
-        return;
-    }
-
-    const file = resolveEngineFileFromFilter(selectedModel);
-    if (!file) {
-        setRecomputeStatus('No se pudo resolver el archivo engine para el libro seleccionado.', 'error');
-        return;
-    }
-
     const confirmed = await simpleConfirm(
-        `Vas a importar la lectura PDF en lote para los libros seleccionados (actual: "${selectedModel}").\n\nSe actualizarán los campos *_pdf de todos sus registros y se guardará el JSON con copia de seguridad.\n\nEsta acción puede tardar unos minutos.\n\n¿Deseas continuar?`
+        'Vas a importar la lectura PDF en lote para TODOS los libros.\n\nSe actualizaran los campos *_pdf de todos sus registros y se guardaran los JSON con copia de seguridad.\n\nEsta accion puede tardar varios minutos.\n\n¿Deseas continuar?'
     );
 
     if (!confirmed) {
@@ -5824,7 +5808,7 @@ async function runBulkCopyPdfToBook() {
     if (recomputeCopyBookBtn instanceof HTMLButtonElement) recomputeCopyBookBtn.disabled = true;
     if (recomputeRunBtn instanceof HTMLButtonElement) recomputeRunBtn.disabled = true;
     if (recomputePdfRunBtn instanceof HTMLButtonElement) recomputePdfRunBtn.disabled = true;
-    setRecomputeStatus(`Copiando lectura PDF a todo el libro "${selectedModel}"...`, '');
+    setRecomputeStatus('Copiando lectura PDF a todos los libros...', '');
 
     // Mostrar barra de progreso
     const progressContainer = $('recomputeProgressContainer');
@@ -5848,7 +5832,7 @@ async function runBulkCopyPdfToBook() {
         result = await postJsonToBackendCandidates('copy-pdf-to-pdf-all-books', {
             writePdf: true,
             backup: true,
-            file
+            clearPdfBeforeCopy: true
         });
 
         const fillElDone = $('recomputeProgressFill');
@@ -5885,22 +5869,22 @@ async function runBulkCopyPdfToBook() {
     const summaryMissingMarkedRowRows = Number(totals.pnAnchorMissing) || 0;
     const summaryUnchangedRows = Number(totals.unchangedRows) || Math.max(0, summaryScannedRows - summaryChangedRows);
     const statusMessage = summaryChangedRows === 0
-        ? `Sin cambios: campos *_pdf ya sincronizados | libro="${selectedModel}" scanned=${summaryScannedRows} missingPages=${summaryFailedRows} sinAnclaPN=${summaryMissingMarkedRowRows}`
-        : `OK libro "${selectedModel}" | scanned=${summaryScannedRows} changed=${summaryChangedRows} unchanged=${summaryUnchangedRows} missingPages=${summaryFailedRows} sinAnclaPN=${summaryMissingMarkedRowRows}`;
+        ? `Sin cambios: campos *_pdf ya sincronizados | alcance=TODOS scanned=${summaryScannedRows} missingPages=${summaryFailedRows} sinAnclaPN=${summaryMissingMarkedRowRows}`
+        : `OK alcance=TODOS | scanned=${summaryScannedRows} changed=${summaryChangedRows} unchanged=${summaryUnchangedRows} missingPages=${summaryFailedRows} sinAnclaPN=${summaryMissingMarkedRowRows}`;
 
     setRecomputeStatus(statusMessage, 'ok');
-    renderRecomputePdfBatchDetail(result, selectedModel);
+    renderRecomputePdfBatchDetail(result, 'TODOS LOS LIBROS');
 
     const wroteFile = Number(totals.filesWritten) > 0;
     if (wroteFile) {
         const activeModel = engineFilterSelect instanceof HTMLSelectElement
             ? String(engineFilterSelect.value || '').trim()
             : '';
-        if (activeModel === selectedModel) {
+        if (activeModel) {
             const keepId = previousCurrentId || (currentRow ? txt(currentRow?.ID, '') : '');
-            await loadEngineForFilter(selectedModel);
+            await loadEngineForFilter(activeModel);
             if (keepId) {
-                const reloaded = findRecordByPrimaryKey(keepId, selectedModel);
+                const reloaded = findRecordByPrimaryKey(keepId, activeModel);
                 if (reloaded) {
                     currentRow = reloaded;
                     $('recordIdInput').value = getDisplayPnForInput(reloaded);
@@ -10991,7 +10975,7 @@ bindClick('recomputePdfRunBtn', () => {
 
 bindClick('recomputeCopyBookBtn', () => {
     runBulkCopyPdfToBook().catch((error) => {
-        setRecomputeStatus(`Error al copiar PDF para el libro: ${String(error?.message || error)}`, 'error');
+        setRecomputeStatus(`Error al copiar PDF para todos los libros: ${String(error?.message || error)}`, 'error');
     });
 });
 

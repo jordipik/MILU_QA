@@ -27,6 +27,7 @@ function resolveFiles(fileOrFiles) {
 async function runPdfVisualCopyBatch(options = {}) {
     const writePdf = toBoolean(options.writePdf, true);
     const backup = toBoolean(options.backup, true);
+    const clearPdfBeforeCopy = toBoolean(options.clearPdfBeforeCopy, true);
     const files = resolveFiles(options.files || options.file);
 
     const perFile = [];
@@ -37,7 +38,8 @@ async function runPdfVisualCopyBatch(options = {}) {
         const { report } = await runVisualCopyComparison({
             file,
             writePdf,
-            backup
+            backup,
+            clearPdfBeforeCopy
         });
 
         const rows = Array.isArray(report?.rows) ? report.rows : [];
@@ -96,6 +98,7 @@ async function runPdfVisualCopyBatch(options = {}) {
         options: {
             writePdf,
             backup,
+            clearPdfBeforeCopy,
             files
         },
         totals,

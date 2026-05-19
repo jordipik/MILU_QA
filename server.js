@@ -716,10 +716,12 @@ app.post('/copy-pdf-to-pdf-all-books', async (req, res) => {
 
         const writePdf = assertBooleanLike(payload.writePdf ?? true, 'writePdf');
         const backup = assertBooleanLike(payload.backup ?? true, 'backup');
+        const clearPdfBeforeCopy = assertBooleanLike(payload.clearPdfBeforeCopy ?? true, 'clearPdfBeforeCopy');
 
         const result = await runPdfVisualCopyBatch({
             writePdf,
             backup,
+            clearPdfBeforeCopy,
             files: files.length > 0 ? files : (file ? [file] : undefined)
         });
 
