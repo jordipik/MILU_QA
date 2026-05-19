@@ -929,6 +929,112 @@ app.post('/copy-pdf-to-final-all-books', async (req, res) => {
     }
 });
 
+// Vacia campos cuyo nombre termina en alguno de los sufijos indicados
+// (por defecto _pdf y _final) en los engine_*.json seleccionados.
+app.post('/clear-engine-fields', async (req, res) => {
+    const payload = req.body || {};
+
+    try {
+        assertPlainObject(payload, 'payload');
+        assertPayloadSize(payload, 8192, 'payload');
+
+        const rawSuffixes = Array.isArray(payload.suffixes) && payload.suffixes.length > 0
+            ? payload.suffixes
+            : ['_pdf', '_final'];
+
+        const suffixes = rawSuffixes
+            .map((value) => String(value || '').trim())
+            .filter((value) => value.length > 0 && value.startsWith('_'));
+
+        if (suffixes.length === 0) {
+            return res.status(400).json({ ok: false, error: 'Debes indicar al menos un sufijo valido (ej: _pdf).' });
+        }
+
+        const exclude = new Set(
+            (Array.isArray(payload.exclude) ? payload.exclude : [])
+                .map((value) => String(value || '').trim())
+                .filter(Boolean)
+        );
+
+        const requestedFiles = Array.isArray(payload.files)
+            ? payload.files.map((value) => String(value || '').trim()).filter(Boolean)
+            : [];
+
+        const allowedFiles = new Set(ENGINE_JSON_FILES);
+        const targetFiles = requestedFiles.length > 0
+            ? requestedFiles.filter((name) => allowedFiles.has(name))
+            : ENGINE_JSON_FILES;
+
+        if (targetFiles.length === 0) {
+            return res.status(400).json({ ok: false, error: 'Ningun archivo engine valido en la peticion.' });
+        }
+
+        const dryRun = assertBooleanLike(payload.dryRun ?? false, 'dryRun');
+
+        const perFile = [];
+        let grandRecords = 0;
+        let grandFields = 0;
+
+        for (const fileName of targetFiles) {
+            const filePath = path.join(__dirname, fileName);
+            if (!fs.existsSync(filePath)) {
+                perFile.push({ file: fileName, missing: true, records: 0, fields: 0 });
+                continue;
+            }
+
+            const data = readJsonFileSafe(filePath, null);
+            if (!Array.isArray(data)) {
+                perFile.push({ file: fileName, error: 'Formato inesperado (se esperaba array)', records: 0, fields: 0 });
+                continue;
+            }
+
+            let records = 0;
+            let fields = 0;
+
+            for (const record of data) {
+                if (!record || typeof record !== 'object') continue;
+                let touched = 0;
+                for (const key of Object.keys(record)) {
+                    if (!suffixes.some((suf) => key.endsWith(suf))) continue;
+                    if (exclude.has(key)) continue;
+                    if (record[key] === '') continue;
+                    record[key] = '';
+                    touched += 1;
+                }
+                if (touched > 0) {
+                    records += 1;
+                    fields += touched;
+                }
+            }
+
+            if (!dryRun && fields > 0) {
+                await writeJsonAtomic(filePath, data);
+            }
+
+            grandRecords += records;
+            grandFields += fields;
+            perFile.push({ file: fileName, records, fields });
+        }
+
+        return res.json({
+            ok: true,
+            result: {
+                dryRun,
+                suffixes,
+                exclude: Array.from(exclude),
+                summary: { totalRecords: grandRecords, totalFields: grandFields },
+                perFile
+            }
+        });
+    } catch (error) {
+        if (isValidationError(error)) {
+            return sendValidationError(res, error, { endpoint: '/clear-engine-fields' });
+        }
+        const message = String(error?.message || error || 'Error desconocido');
+        return res.status(400).json({ ok: false, error: message });
+    }
+});
+
 app.get('/qa_revision_sync.php', async (_req, res) => {
     try {
         const payload = await readRevisionSyncPayload();

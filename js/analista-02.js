@@ -4678,7 +4678,7 @@ function resolveEngineFileFromFilter(engineFilter) {
 
 
 
-const LOCAL_ONLY_BACKEND_ENDPOINTS = new Set(['recompute-qa-errors', 'recompute-pdf-auto', 'recompute-pdf-auto-visual', 'calculate-final-fields', 'recalculate-revision-status', 'copy-pdf-to-pdf', 'copy-pdf-to-pdf-all-books']);
+const LOCAL_ONLY_BACKEND_ENDPOINTS = new Set(['recompute-qa-errors', 'recompute-pdf-auto', 'recompute-pdf-auto-visual', 'calculate-final-fields', 'recalculate-revision-status', 'copy-pdf-to-pdf', 'copy-pdf-to-pdf-all-books', 'clear-engine-fields']);
 
 
 
@@ -5694,6 +5694,84 @@ async function runBackendRecompute() {
 
 }
 
+
+
+// Vacia campos *_pdf y *_final en los 9 engine_*.json mediante /clear-engine-fields.
+async function runClearPdfFinalFields() {
+    console.info('[clear-engine-fields] click recibido');
+    setRecomputeStatus('Preparando vaciado de campos _pdf y _final...', '');
+
+    if (!isBackendEndpointAllowed('clear-engine-fields')) {
+        setRecomputeStatus(getLocalOnlyBackendMessage('clear-engine-fields'), 'error');
+        return;
+    }
+
+    const confirmed = await simpleConfirm(
+        'ATENCION: Esta accion vaciara TODOS los campos cuyo nombre termina en _pdf o _final en los 9 engine_*.json.\n\nEs una operacion DESTRUCTIVA e irreversible.\n\n¿Deseas continuar?'
+    );
+    if (!confirmed) {
+        setRecomputeStatus('Operacion cancelada por el usuario.', '');
+        return;
+    }
+
+    const clearBtn = $('recomputeClearPdfFinalBtn');
+    const recomputeCopyBookBtn = $('recomputeCopyBookBtn');
+    const recomputeRunBtn = $('recomputeRunBtn');
+    const recomputePdfRunBtn = $('recomputePdfRunBtn');
+
+    if (clearBtn instanceof HTMLButtonElement) clearBtn.disabled = true;
+    if (recomputeCopyBookBtn instanceof HTMLButtonElement) recomputeCopyBookBtn.disabled = true;
+    if (recomputeRunBtn instanceof HTMLButtonElement) recomputeRunBtn.disabled = true;
+    if (recomputePdfRunBtn instanceof HTMLButtonElement) recomputePdfRunBtn.disabled = true;
+
+    const progressContainer = $('recomputeProgressContainer');
+    const progressFill = $('recomputeProgressFill');
+    const progressText = $('recomputeProgressText');
+    if (progressContainer instanceof HTMLElement) progressContainer.hidden = false;
+    if (progressFill instanceof HTMLElement) progressFill.style.width = '20%';
+    if (progressText instanceof HTMLElement) progressText.textContent = 'Enviando peticion al backend...';
+
+    setRecomputeStatus('Vaciando campos _pdf y _final en los 9 libros (puede tardar unos segundos)...', '');
+
+    try {
+        if (progressFill instanceof HTMLElement) progressFill.style.width = '45%';
+        if (progressText instanceof HTMLElement) progressText.textContent = 'Procesando engine_*.json...';
+
+        const result = await postJsonToBackendCandidates('clear-engine-fields', {
+            suffixes: ['_pdf', '_final']
+        });
+
+        if (progressFill instanceof HTMLElement) progressFill.style.width = '100%';
+        if (progressText instanceof HTMLElement) progressText.textContent = 'Completado.';
+
+        const summary = result?.summary || {};
+        const perFile = Array.isArray(result?.perFile) ? result.perFile : [];
+        const fileLines = perFile
+            .map((entry) => `${entry?.file || '?'}: ${entry?.fields ?? 0} campos / ${entry?.records ?? 0} reg.`)
+            .join(' | ');
+        console.info('[clear-engine-fields] resultado', result);
+        setRecomputeStatus(
+            `OK: ${summary.totalFields ?? 0} campos vaciados en ${summary.totalRecords ?? 0} registros.${fileLines ? ' [' + fileLines + ']' : ''}`,
+            'ok'
+        );
+    } catch (error) {
+        console.error('[clear-engine-fields] error', error);
+        if (progressText instanceof HTMLElement) progressText.textContent = 'Error.';
+        setRecomputeStatus(
+            `Error vaciando _pdf/_final (backend): ${String(error?.message || error)}. Verifica que server.js este reiniciado y exponga /clear-engine-fields.`,
+            'error'
+        );
+    } finally {
+        if (clearBtn instanceof HTMLButtonElement) clearBtn.disabled = false;
+        if (recomputeCopyBookBtn instanceof HTMLButtonElement) recomputeCopyBookBtn.disabled = false;
+        if (recomputeRunBtn instanceof HTMLButtonElement) recomputeRunBtn.disabled = false;
+        if (recomputePdfRunBtn instanceof HTMLButtonElement) recomputePdfRunBtn.disabled = false;
+        setTimeout(() => {
+            if (progressContainer instanceof HTMLElement) progressContainer.hidden = true;
+            if (progressFill instanceof HTMLElement) progressFill.style.width = '0%';
+        }, 1500);
+    }
+}
 
 
 // Copia lectura PDF a campos *_pdf para todos los registros del libro seleccionado (backend batch).
@@ -10858,6 +10936,12 @@ bindClick('recomputeRunBtn', () => {
 
     });
 
+});
+
+bindClick('recomputeClearPdfFinalBtn', () => {
+    runClearPdfFinalFields().catch((error) => {
+        setRecomputeStatus(`Error al vaciar _pdf/_final: ${String(error?.message || error)}`, 'error');
+    });
 });
 
 bindClick('recomputeCopyCurrentBtn', () => {
