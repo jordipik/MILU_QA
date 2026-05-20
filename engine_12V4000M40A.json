@@ -296193,7 +296193,8 @@
     "model_type_pdf": "BFI",
     "qty_pdf": "1",
     "weight_pdf": "11,900 G",
-    "measure_pdf": "PC KE IG=1\"-20 / DN17 IP54"
+    "measure_pdf": "KE IG=1\"-20 / DN17 IP54",
+    "units_pdf": "PC"
   },
   {
     "ID": "1100097",
@@ -296314,7 +296315,8 @@
     "designation_pdf": "PIPE",
     "qty_pdf": "1",
     "weight_pdf": "26 G",
-    "measure_pdf": "PC AB T-ABZWEIG 17-17-17"
+    "measure_pdf": "AB T-ABZWEIG 17-17-17",
+    "units_pdf": "PC"
   },
   {
     "ID": "1100104",
@@ -296440,7 +296442,7 @@
     "qty_pdf": "2",
     "units_pdf": "PC",
     "weight_pdf": "4,300 G",
-    "measure_pdf": "PC 32MM DURCHM.X50MM LG.",
+    "measure_pdf": "32MM DURCHM.X50MM LG.",
     "bom_pdf": "5275302925",
     "measurement_final": "32MM DURCHM. X50MM LG.",
     "pn_excel": "0001592283"
@@ -296572,7 +296574,7 @@
     "bom_pdf": "5275302925",
     "measurement_final": "T-ABZWEIG 10-10-10",
     "pn_excel": "0005331443",
-    "measure_pdf": "PC T-ABZWEIG 10-10-10"
+    "measure_pdf": "T-ABZWEIG 10-10-10"
   },
   {
     "ID": "1100202",
@@ -296702,7 +296704,7 @@
     "bom_pdf": "5275302925",
     "measurement_final": "ROHRAUFSATZ NW 17-10",
     "pn_excel": "0005336143",
-    "measure_pdf": "PC AB REDUZIERSTUECK 17-10"
+    "measure_pdf": "AB REDUZIERSTUECK 17-10"
   },
   {
     "ID": "1100206",
@@ -296828,10 +296830,11 @@
     "model_type_pdf": "359.",
     "qty_pdf": "2,600",
     "fn_pdf": "M",
-    "measure_pdf": "M WELLROHR NW10",
+    "measure_pdf": "WELLROHR NW10",
     "bom_pdf": "5275302925",
     "measurement_final": "WELLROHR NW10",
-    "pn_excel": "0005337043"
+    "pn_excel": "0005337043",
+    "units_pdf": "M"
   },
   {
     "ID": "1100207",
@@ -296956,10 +296959,11 @@
     "model_type_pdf": "359.",
     "qty_pdf": "0,700",
     "fn_pdf": "M",
-    "measure_pdf": "M WELLROHR NW17",
+    "measure_pdf": "WELLROHR NW17",
     "bom_pdf": "5275302925",
     "measurement_final": "WELLROHR NW17",
-    "pn_excel": "0005337143"
+    "pn_excel": "0005337143",
+    "units_pdf": "M"
   },
   {
     "ID": "1100221",
@@ -297215,7 +297219,7 @@
     "bom_pdf": "5275302925",
     "measurement_final": "47X135MM, BEDRUCKBAR 47X25MM",
     "pn_excel": "0035337089",
-    "measure_pdf": "PC 47X135MM, BEDRUCKBAR 47X25MM"
+    "measure_pdf": "47X135MM, BEDRUCKBAR 47X25MM"
   },
   {
     "ID": "1100454",
@@ -297344,7 +297348,8 @@
     "bom_pdf": "5275302925",
     "measurement_final": "1X2X0,5QMM / WS / NUMMERIERT",
     "pn_excel": "0095318880",
-    "measure_pdf": "M ADERLEITUNG RADOX 2X0,5QMM"
+    "measure_pdf": "ADERLEITUNG RADOX 2X0,5QMM",
+    "units_pdf": "M"
   },
   {
     "ID": "1100455",
@@ -297472,7 +297477,8 @@
     "bom_pdf": "5275302925",
     "measurement_final": "1X3X0,5QMM / WS / NUMMERIERT",
     "pn_excel": "0095318980",
-    "measure_pdf": "M ADERLEITUNG RADOX 3X0,5QMM"
+    "measure_pdf": "ADERLEITUNG RADOX 3X0,5QMM",
+    "units_pdf": "M"
   },
   {
     "ID": "1100457",
@@ -297603,7 +297609,8 @@
     "normalizado_pdf": "SI",
     "measurement_final": "1X2X1,0QMM / WS / NUMMERIERT",
     "pn_excel": "0095319080",
-    "measure_pdf": "M ADERLEITUNG RADOX 2X1,0QMM"
+    "measure_pdf": "ADERLEITUNG RADOX 2X1,0QMM",
+    "units_pdf": "M"
   },
   {
     "ID": "1100556",
@@ -297724,8 +297731,9 @@
     "model_type_pdf": "KPSE06A16-26P",
     "qty_pdf": "1",
     "weight_pdf": "40 G",
-    "measure_pdf": "PC GR.16;26POL;PIN;AWG20",
-    "norma_pdf": "VG95328"
+    "measure_pdf": "GR.16;26POL;PIN;AWG20",
+    "norma_pdf": "VG95328",
+    "units_pdf": "PC"
   },
   {
     "ID": "1100558",
@@ -297852,7 +297860,7 @@
     "qty_pdf": "3",
     "units_pdf": "PC",
     "weight_pdf": "11,500 G",
-    "measure_pdf": "PC STECKER 4POL. CODE 1",
+    "measure_pdf": "STECKER 4POL. CODE 1",
     "bom_pdf": "5275302925",
     "measurement_final": "4POL. CODE 1 / DIN 72585 BU",
     "pn_excel": "0165313283"
@@ -297985,7 +297993,7 @@
     "bom_pdf": "5275302925",
     "measurement_final": "0,5-1,0 MMÂ² / D=2,5MM",
     "pn_excel": "0165313383",
-    "measure_pdf": "PC BUCHSENKONTAKT 0,5-1,0"
+    "measure_pdf": "BUCHSENKONTAKT 0,5-1,0"
   },
   {
     "ID": "1100570",
@@ -298111,7 +298119,7 @@
     "qty_pdf": "1",
     "units_pdf": "PC",
     "weight_pdf": "12 G",
-    "measure_pdf": "PC STECKER 4POL. CODE 2",
+    "measure_pdf": "STECKER 4POL. CODE 2",
     "bom_pdf": "5275302925",
     "measurement_final": "4POL. CODE 2 / DIN 72585 BU",
     "pn_excel": "0165314083"
@@ -298245,7 +298253,7 @@
     "normalizado_pdf": "SI",
     "measurement_final": "5/B",
     "pn_excel": "700461105001 MARKER SLEEVE",
-    "measure_pdf": "PC 5/B"
+    "measure_pdf": "5/B"
   },
   {
     "ID": "1102153",
@@ -298375,7 +298383,7 @@
     "normalizado_pdf": "SI",
     "measurement_final": "5/F",
     "pn_excel": "700461105005 MARKER SLEEVE",
-    "measure_pdf": "PC 5/F"
+    "measure_pdf": "5/F"
   },
   {
     "ID": "1102154",
@@ -298505,7 +298513,7 @@
     "normalizado_pdf": "SI",
     "measurement_final": "5/M",
     "pn_excel": "700461105012 MARKER SLEEVE",
-    "measure_pdf": "PC 5/M"
+    "measure_pdf": "5/M"
   },
   {
     "ID": "1102155",
@@ -298630,7 +298638,7 @@
     "qty_pdf": "4",
     "units_pdf": "PC",
     "weight_pdf": "1 G",
-    "measure_pdf": "PC 5/3",
+    "measure_pdf": "5/3",
     "norma_pdf": "MMN461",
     "bom_pdf": "5275302925",
     "normalizado_pdf": "SI",
@@ -298760,7 +298768,7 @@
     "qty_pdf": "1",
     "units_pdf": "PC",
     "weight_pdf": "0,920 G",
-    "measure_pdf": "PC 5/4",
+    "measure_pdf": "5/4",
     "norma_pdf": "MMN461",
     "bom_pdf": "5275302925",
     "normalizado_pdf": "SI",
@@ -298890,7 +298898,7 @@
     "qty_pdf": "2",
     "units_pdf": "PC",
     "weight_pdf": "0,600 G",
-    "measure_pdf": "PC 5/8",
+    "measure_pdf": "5/8",
     "norma_pdf": "MMN461",
     "bom_pdf": "5275302925",
     "normalizado_pdf": "SI",
@@ -299025,7 +299033,7 @@
     "bom_pdf": "5275302925",
     "measurement_final": "1,2-2,1MM/D=2,5MM/GR",
     "pn_excel": "0165313483",
-    "measure_pdf": "PC EINZELADERABD. 1.4-2,0 D2,5MM"
+    "measure_pdf": "EINZELADERABD. 1.4-2,0 D2,5MM"
   },
   {
     "ID": "1100564",
@@ -299157,7 +299165,7 @@
     "normalizado_pdf": "SI",
     "measurement_final": "SYSTEM 2,5MM / 2,8MM",
     "pn_excel": "0165313583",
-    "measure_pdf": "PC BLINDSTOPFEN"
+    "measure_pdf": "BLINDSTOPFEN"
   },
   {
     "ID": "1100566",
@@ -299284,7 +299292,7 @@
     "qty_pdf": "4",
     "units_pdf": "PC",
     "weight_pdf": "5,760 G",
-    "measure_pdf": "PC STECKERKAPPE 90 GRAD",
+    "measure_pdf": "STECKERKAPPE 90 GRAD",
     "bom_pdf": "5275302925",
     "measurement_final": "NW10/090Â°/HDSCS GR.B/DIN 72585",
     "pn_excel": "0165313683"
@@ -336481,7 +336489,8 @@
     "model_type_pdf": "7MS10R",
     "qty_pdf": "1",
     "weight_pdf": "1 G",
-    "measure_pdf": "PC 13X25"
+    "measure_pdf": "13X25",
+    "units_pdf": "PC"
   },
   {
     "ID": "1100136",
@@ -336608,7 +336617,7 @@
     "qty_pdf": "1",
     "units_pdf": "PC",
     "fn_pdf": "MN",
-    "measure_pdf": "PC T5,5K, 24VDC,",
+    "measure_pdf": "T5,5K, 24VDC,",
     "bom_pdf": "5105302438",
     "measurement_final": "T5,5K, 24VDC,",
     "pn_excel": "0005311339"
@@ -336740,7 +336749,7 @@
     "bom_pdf": "5105302438",
     "measurement_final": "4S/20A",
     "pn_excel": "0005313560",
-    "measure_pdf": "PC 4S/20A"
+    "measure_pdf": "4S/20A"
   },
   {
     "ID": "1100175",
@@ -336863,7 +336872,7 @@
     "weight_pdf": "0,100 G",
     "bom_pdf": "5105302438",
     "pn_excel": "0005331190",
-    "measure_pdf": "PC ERDUNGSZEICHEN 1BOGEN=80ZEICHEN"
+    "measure_pdf": "ERDUNGSZEICHEN 1BOGEN=80ZEICHEN"
   },
   {
     "ID": "1100327",
@@ -337117,7 +337126,7 @@
     "model_type_pdf": "MTU-LOGO GR.3",
     "qty_pdf": "1",
     "units_pdf": "PC",
-    "measure_pdf": "PC 30X72 MTU-LOGO GR.3",
+    "measure_pdf": "30X72 MTU-LOGO GR.3",
     "bom_pdf": "5105302438",
     "measurement_final": "30X72",
     "pn_excel": "0025336690"
@@ -337246,7 +337255,7 @@
     "qty_pdf": "1",
     "units_pdf": "PC",
     "fn_pdf": "AB",
-    "measure_pdf": "PC 1,6-2,4A, F. DILEM",
+    "measure_pdf": "1,6-2,4A, F. DILEM",
     "bom_pdf": "5105302438",
     "measurement_final": "1,6-2,4A, F. DILEM",
     "pn_excel": "0035311060"
@@ -337375,7 +337384,7 @@
     "model_type_pdf": "ABSCHL.PLATTE 280",
     "qty_pdf": "1",
     "units_pdf": "PC",
-    "measure_pdf": "PC 2-STOCK, 2,5 MM DICK, ORANGE,",
+    "measure_pdf": "2-STOCK, 2,5 MM DICK, ORANGE,",
     "bom_pdf": "5105302438",
     "measurement_final": "2-STOCK, 2,5 MM, ORANGE,",
     "pn_excel": "0035319981"
@@ -337504,7 +337513,7 @@
     "model_type_pdf": "280_2,5QMM",
     "qty_pdf": "16",
     "units_pdf": "PC",
-    "measure_pdf": "PC 0,08 - 2,5 QMM",
+    "measure_pdf": "0,08 - 2,5 QMM",
     "bom_pdf": "5105302438",
     "measurement_final": "0,08 - 2,5 QMM",
     "pn_excel": "0045310081"
@@ -337633,7 +337642,7 @@
     "qty_pdf": "1",
     "units_pdf": "PC",
     "fn_pdf": "AB",
-    "measure_pdf": "PC 1S, 250V/16A, MODUL",
+    "measure_pdf": "1S, 250V/16A, MODUL",
     "bom_pdf": "5105302438",
     "measurement_final": "1S, 250V/16A, MODUL",
     "pn_excel": "0055342210"
@@ -337762,7 +337771,7 @@
     "qty_pdf": "1",
     "units_pdf": "PC",
     "fn_pdf": "AB",
-    "measure_pdf": "PC F. 3 MODULE",
+    "measure_pdf": "F. 3 MODULE",
     "bom_pdf": "5105302438",
     "measurement_final": "F. 3 MODULE",
     "pn_excel": "0055342310"
@@ -337891,7 +337900,7 @@
     "qty_pdf": "1",
     "units_pdf": "PC",
     "fn_pdf": "AB",
-    "measure_pdf": "PC F. EINLEGSCHILDER D=22",
+    "measure_pdf": "F. EINLEGSCHILDER D=22",
     "bom_pdf": "5105302438",
     "measurement_final": "F. EINLEGSCHILDER D=22",
     "pn_excel": "0055342410"
@@ -338020,7 +338029,7 @@
     "qty_pdf": "1",
     "units_pdf": "PC",
     "fn_pdf": "AB",
-    "measure_pdf": "PC 1OE, 250V/16A, MODUL",
+    "measure_pdf": "1OE, 250V/16A, MODUL",
     "bom_pdf": "5105302438",
     "measurement_final": "1OE, 250V/16A, MODUL",
     "pn_excel": "0055343010"
@@ -338149,7 +338158,7 @@
     "qty_pdf": "1",
     "units_pdf": "PC",
     "fn_pdf": "AB",
-    "measure_pdf": "PC 3-STELL. RUECKZUG RECHTS",
+    "measure_pdf": "3-STELL. RUECKZUG RECHTS",
     "bom_pdf": "5105302438",
     "measurement_final": "3-STELL. RUECKZUG RECHTS",
     "pn_excel": "0055343710"
@@ -338278,7 +338287,7 @@
     "qty_pdf": "1",
     "units_pdf": "PC",
     "fn_pdf": "AB",
-    "measure_pdf": "PC GRAVIERT \"AUTO 0 MAN\"",
+    "measure_pdf": "GRAVIERT \"AUTO 0 MAN\"",
     "bom_pdf": "5105302438",
     "measurement_final": "19X27 MM, GRAV. \"0 AUTO MAN\"",
     "pn_excel": "0055343810"
@@ -338407,7 +338416,7 @@
     "qty_pdf": "6",
     "units_pdf": "PC",
     "fn_pdf": "AB",
-    "measure_pdf": "PC 0,08-4MM2, 800V/32A GRAU 6",
+    "measure_pdf": "0,08-4MM2, 800V/32A GRAU 6",
     "bom_pdf": "5105302438",
     "measurement_final": "0,08-4MM2, 800V/32A GRAU 6",
     "pn_excel": "0065314881"
@@ -338536,7 +338545,7 @@
     "qty_pdf": "2",
     "units_pdf": "PC",
     "fn_pdf": "AB",
-    "measure_pdf": "PC 0,08-4MM2, 800V/32A BLAU 6",
+    "measure_pdf": "0,08-4MM2, 800V/32A BLAU 6",
     "bom_pdf": "5105302438",
     "measurement_final": "0,08-4MM2, 800V/32A BLAU 6",
     "pn_excel": "0065314981"
@@ -338665,7 +338674,7 @@
     "qty_pdf": "1",
     "units_pdf": "PC",
     "fn_pdf": "AB",
-    "measure_pdf": "PC 2,5MM ORANGE",
+    "measure_pdf": "2,5MM ORANGE",
     "bom_pdf": "5105302438",
     "measurement_final": "2,5MM ORANGE",
     "pn_excel": "0065315081"
@@ -338794,7 +338803,7 @@
     "qty_pdf": "2",
     "units_pdf": "PC",
     "fn_pdf": "AB",
-    "measure_pdf": "PC 0,08-4MM2, GRUEN/GELB 6MM",
+    "measure_pdf": "0,08-4MM2, GRUEN/GELB 6MM",
     "bom_pdf": "5105302438",
     "measurement_final": "0,08-4MM2, GRUEN/GELB 6MM",
     "pn_excel": "0065315181"
@@ -338926,7 +338935,7 @@
     "bom_pdf": "5105302438",
     "measurement_final": "WEISS",
     "pn_excel": "0105364502",
-    "measure_pdf": "PC WEISS"
+    "measure_pdf": "WEISS"
   },
   {
     "ID": "1100460",
@@ -339051,7 +339060,7 @@
     "model_type_pdf": "T20F/GRUEN",
     "qty_pdf": "1",
     "units_pdf": "PC",
-    "measure_pdf": "PC FUER 183 STANDARD",
+    "measure_pdf": "FUER 183 STANDARD",
     "bom_pdf": "5105302438",
     "measurement_final": "FUER 183 STANDARD",
     "pn_excel": "0105364602"
@@ -339182,7 +339191,7 @@
     "measurement_final": "VORSCHMIERPUMPENSTEUERUNG PPC",
     "pn_excel": "5285307669",
     "model_type_pdf": "PIM2",
-    "measure_pdf": "PC VORSCHMIERPUMPENSTEUERUNG PPC"
+    "measure_pdf": "VORSCHMIERPUMPENSTEUERUNG PPC"
   },
   {
     "ID": "1102483",
@@ -339303,7 +339312,7 @@
     "qty_pdf": "1",
     "units_pdf": "PC",
     "weight_pdf": "10 KG",
-    "measure_pdf": "PC 360X380X210 RAL9010",
+    "measure_pdf": "360X380X210 RAL9010",
     "bom_pdf": "5105302438",
     "pn_excel": "X00024645",
     "measurement_final": "360X380X210 RAL9010"
@@ -339437,7 +339446,7 @@
     "normalizado_pdf": "SI",
     "measurement_final": "M 3 X 6",
     "pn_excel": "000000000611 OVAL-HEAD SCREW",
-    "measure_pdf": "PC M 3 X 6"
+    "measure_pdf": "M 3 X 6"
   },
   {
     "ID": "1100132",
@@ -339565,7 +339574,8 @@
     "bom_pdf": "5105302438",
     "measurement_final": "LK4 60015, VERDRAHTUNG 60X15MM",
     "pn_excel": "0005311282",
-    "measure_pdf": "M LK4 60015, VERDRAHTUNG 60X15MM"
+    "measure_pdf": "LK4 60015, VERDRAHTUNG 60X15MM",
+    "units_pdf": "M"
   },
   {
     "ID": "1100145",
@@ -339953,7 +339963,8 @@
     "bom_pdf": "5105302438",
     "measurement_final": "LK4 60025, VERDRAHTUNG 60X25MM",
     "pn_excel": "0005312582",
-    "measure_pdf": "M LK4 60025, VERDRAHTUNG 60X25MM"
+    "measure_pdf": "LK4 60025, VERDRAHTUNG 60X25MM",
+    "units_pdf": "M"
   },
   {
     "ID": "1100170",
@@ -340081,7 +340092,7 @@
     "units_pdf": "PC",
     "bom_pdf": "5105302438",
     "pn_excel": "0005330732",
-    "measure_pdf": "PC A=88, H=32, D=8"
+    "measure_pdf": "A=88, H=32, D=8"
   },
   {
     "ID": "1100225",
@@ -340209,7 +340220,7 @@
     "bom_pdf": "5105302438",
     "measurement_final": "SCHALTPLANTASCHE",
     "pn_excel": "0005850903",
-    "measure_pdf": "PC SCHALTPLANTASCHE"
+    "measure_pdf": "SCHALTPLANTASCHE"
   },
   {
     "ID": "1100251",
@@ -340334,7 +340345,7 @@
     "model_type_pdf": "MB 3A",
     "qty_pdf": "2",
     "units_pdf": "PC",
-    "measure_pdf": "PC TYP MB 3 A",
+    "measure_pdf": "TYP MB 3 A",
     "bom_pdf": "5105302438",
     "pn_excel": "0015318481",
     "measurement_final": "TYP MB 3 A"
@@ -340466,7 +340477,7 @@
     "bom_pdf": "5105302438",
     "measurement_final": "F.8MM KABELBINDER",
     "pn_excel": "0025315781",
-    "measure_pdf": "PC F.8MM KABELBINDER"
+    "measure_pdf": "F.8MM KABELBINDER"
   },
   {
     "ID": "1100368",
@@ -340595,7 +340606,7 @@
     "bom_pdf": "5105302438",
     "measurement_final": "QUERBRÃœCKER",
     "pn_excel": "0035315781",
-    "measure_pdf": "PC QUERBRÜCKER ISOLIERT GRAU"
+    "measure_pdf": "QUERBRÜCKER ISOLIERT GRAU"
   },
   {
     "ID": "1100372",
@@ -340721,7 +340732,7 @@
     "model_type_pdf": "280-285/780-785",
     "qty_pdf": "1",
     "units_pdf": "PC",
-    "measure_pdf": "PC NUMMER 001-050 (2X)",
+    "measure_pdf": "NUMMER 001-050 (2X)",
     "bom_pdf": "5105302438",
     "measurement_final": "NUMMER 001-050 (2X)",
     "pn_excel": "0035319481"
@@ -340850,7 +340861,7 @@
     "model_type_pdf": "249",
     "qty_pdf": "2",
     "units_pdf": "PC",
-    "measure_pdf": "PC B = 6 MM",
+    "measure_pdf": "B = 6 MM",
     "bom_pdf": "5105302438",
     "measurement_final": "B = 6 MM",
     "pn_excel": "0045315281"
@@ -340979,7 +340990,7 @@
     "model_type_pdf": "249",
     "qty_pdf": "4",
     "units_pdf": "PC",
-    "measure_pdf": "PC B = 10 MM",
+    "measure_pdf": "B = 10 MM",
     "bom_pdf": "5105302438",
     "measurement_final": "B = 10 MM",
     "pn_excel": "0045318081"
@@ -341108,7 +341119,7 @@
     "qty_pdf": "1",
     "units_pdf": "PC",
     "fn_pdf": "AB",
-    "measure_pdf": "PC 1 AUF 5, 32A ISOLIERT",
+    "measure_pdf": "1 AUF 5, 32A ISOLIERT",
     "norma_pdf": "1 AUF 5, 32A ISOLIERT",
     "bom_pdf": "5105302438",
     "normalizado_pdf": "SI",
@@ -341239,7 +341250,7 @@
     "qty_pdf": "1",
     "units_pdf": "PC",
     "fn_pdf": "AB",
-    "measure_pdf": "PC \"L1,L2,L3,N,PE\" 20X/KARTE",
+    "measure_pdf": "\"L1,L2,L3,N,PE\" 20X/KARTE",
     "bom_pdf": "5105302438",
     "measurement_final": "\"L1,L2,L3,N,PE\" 20X/KARTE",
     "pn_excel": "0065315381"
@@ -341368,7 +341379,7 @@
     "qty_pdf": "1",
     "units_pdf": "PC",
     "fn_pdf": "AB",
-    "measure_pdf": "PC \"U,V,W,N,PE\" 20X/KARTE",
+    "measure_pdf": "\"U,V,W,N,PE\" 20X/KARTE",
     "bom_pdf": "5105302438",
     "measurement_final": "\"U,V,W,N,PE\" 20X/KARTE",
     "pn_excel": "0065315481"
@@ -341500,7 +341511,7 @@
     "bom_pdf": "5105302438",
     "measurement_final": "L",
     "pn_excel": "0075313180",
-    "measure_pdf": "PC L"
+    "measure_pdf": "L"
   },
   {
     "ID": "1100475",
@@ -341631,7 +341642,7 @@
     "normalizado_pdf": "SI",
     "measurement_final": "5",
     "pn_excel": "000125005322 WASHER",
-    "measure_pdf": "PC A 5,3"
+    "measure_pdf": "A 5,3"
   },
   {
     "ID": "1100790",
@@ -341762,7 +341773,7 @@
     "normalizado_pdf": "SI",
     "measurement_final": "M 3",
     "pn_excel": "000934003002 HEX NUT",
-    "measure_pdf": "PC M 3"
+    "measure_pdf": "M 3"
   },
   {
     "ID": "1100817",
@@ -341893,7 +341904,7 @@
     "normalizado_pdf": "SI",
     "measurement_final": "M 6",
     "pn_excel": "000934006034 HEX NUT",
-    "measure_pdf": "PC M 6"
+    "measure_pdf": "M 6"
   },
   {
     "ID": "1101389",
@@ -342014,7 +342025,7 @@
     "qty_pdf": "2",
     "units_pdf": "PC",
     "fn_pdf": "AB",
-    "measure_pdf": "PC HUTSCHIENE, 3 BOHRUNGEN 4,5",
+    "measure_pdf": "HUTSCHIENE, 3 BOHRUNGEN 4,5",
     "bom_pdf": "5105302438",
     "pn_excel": "5265330335",
     "measurement_final": "HUTSCHIENE, 3 BOHRUNGEN 4,5"
@@ -342147,7 +342158,7 @@
     "normalizado_pdf": "SI",
     "measurement_final": "3",
     "pn_excel": "200125003201 WASHER",
-    "measure_pdf": "PC A 3,2"
+    "measure_pdf": "A 3,2"
   },
   {
     "ID": "1101745",
@@ -342278,7 +342289,7 @@
     "normalizado_pdf": "SI",
     "measurement_final": "6",
     "pn_excel": "200125006400 WASHER",
-    "measure_pdf": "PC A 6,4"
+    "measure_pdf": "A 6,4"
   },
   {
     "ID": "1101765",
@@ -342409,7 +342420,7 @@
     "normalizado_pdf": "SI",
     "measurement_final": "M 6 X 25",
     "pn_excel": "200933006011 HEX SCREW",
-    "measure_pdf": "PC M 6 X 25"
+    "measure_pdf": "M 6 X 25"
   },
   {
     "ID": "1101790",
@@ -342540,7 +342551,7 @@
     "normalizado_pdf": "SI",
     "measurement_final": "J 6,4",
     "pn_excel": "206797006200 TOOTHED WASHER",
-    "measure_pdf": "PC J 6,4"
+    "measure_pdf": "J 6,4"
   },
   {
     "ID": "1101798",
@@ -342670,7 +342681,7 @@
     "normalizado_pdf": "SI",
     "measurement_final": "M 4 X 8",
     "pn_excel": "207985004102 OVAL-HEAD SCREW",
-    "measure_pdf": "PC M 4 X 8"
+    "measure_pdf": "M 4 X 8"
   },
   {
     "ID": "1101802",
@@ -342801,7 +342812,7 @@
     "normalizado_pdf": "SI",
     "measurement_final": "M 5 X 12",
     "pn_excel": "207985005101 OVAL-HEAD SCREW",
-    "measure_pdf": "PC M 5 X 12"
+    "measure_pdf": "M 5 X 12"
   },
   {
     "ID": "1102270",
@@ -342931,7 +342942,7 @@
     "bom_pdf": "5105302438",
     "measurement_final": "AK 4 X 7,87",
     "pn_excel": "910001004107 RIVET",
-    "measure_pdf": "PC AK 4 X 7,87",
+    "measure_pdf": "AK 4 X 7,87",
     "norma_pdf": "N10001"
   },
   {
@@ -343055,7 +343066,7 @@
     "fn_pdf": "KE",
     "bom_pdf": "5105302438",
     "pn_excel": "RIVET",
-    "measure_pdf": "PC FUER KABELKANAL"
+    "measure_pdf": "FUER KABELKANAL"
   },
   {
     "ID": "1100036",
@@ -348796,7 +348807,8 @@
     "model_type_pdf": "ECU",
     "qty_pdf": "1",
     "weight_pdf": "0,005 KG",
-    "measure_pdf": "PC 52X33/50X25/20X6"
+    "measure_pdf": "52X33/50X25/20X6",
+    "units_pdf": "PC"
   },
   {
     "ID": "1100042",
@@ -348916,7 +348928,8 @@
     "designation_pdf": "CAPACITOR",
     "model_type_pdf": "ELKO_4700UF",
     "qty_pdf": "1",
-    "measure_pdf": "PC 63V, +50%-10%, 107,5X35,7MM,M8"
+    "measure_pdf": "63V, +50%-10%, 107,5X35,7MM,M8",
+    "units_pdf": "PC"
   },
   {
     "ID": "1100043",
@@ -349036,8 +349049,9 @@
     "designation_pdf": "SCREW",
     "qty_pdf": "1",
     "weight_pdf": "2,780 G",
-    "measure_pdf": "PC CE M4 X 25",
-    "norma_pdf": "DIN7500"
+    "measure_pdf": "CE M4 X 25",
+    "norma_pdf": "DIN7500",
+    "units_pdf": "PC"
   },
   {
     "ID": "1100044",
@@ -349157,8 +349171,9 @@
     "designation_pdf": "RIVET",
     "qty_pdf": "1",
     "weight_pdf": "0,840 G",
-    "measure_pdf": "PC AK 3,2X 7,49",
-    "norma_pdf": "N10001"
+    "measure_pdf": "AK 3,2X 7,49",
+    "norma_pdf": "N10001",
+    "units_pdf": "PC"
   },
   {
     "ID": "1100083",
@@ -349278,12 +349293,13 @@
     "model_type_pdf": "KG",
     "qty_pdf": "0,002",
     "weight_pdf": "1 KG",
-    "measure_pdf": "KG 0,5 - 0,3",
+    "measure_pdf": "0,5 - 0,3",
     "norma_pdf": "DIN1367",
     "bom_pdf": "5275307654",
     "normalizado_pdf": "SI",
     "pn_excel": "41458",
-    "measurement_final": "0,5 - 0,3"
+    "measurement_final": "0,5 - 0,3",
+    "units_pdf": "KG"
   },
   {
     "ID": "1100125",
@@ -349409,7 +349425,7 @@
     "qty_pdf": "1",
     "units_pdf": "PC",
     "fn_pdf": "AB",
-    "measure_pdf": "PC 2XKABEL AWG14 VERDRILLT L",
+    "measure_pdf": "2XKABEL AWG14 VERDRILLT L",
     "bom_pdf": "5275307654",
     "measurement_final": "2XKABEL AWG14 VERDRILLT L",
     "pn_excel": "0005302034"
@@ -349535,7 +349551,7 @@
     "weight_pdf": "0,100 G",
     "bom_pdf": "5275307654",
     "pn_excel": "0005331190",
-    "measure_pdf": "PC ERDUNGSZEICHEN 1BOGEN=80ZEICHEN"
+    "measure_pdf": "ERDUNGSZEICHEN 1BOGEN=80ZEICHEN"
   },
   {
     "ID": "1100179",
@@ -349661,7 +349677,7 @@
     "qty_pdf": "1",
     "units_pdf": "PC",
     "weight_pdf": "4,500 G",
-    "measure_pdf": "PC FUER FESTE STECKVERB GR18",
+    "measure_pdf": "FUER FESTE STECKVERB GR18",
     "bom_pdf": "5275307654",
     "measurement_final": "FUER FESTE STECKVERB GR18",
     "pn_excel": "0005332731"
@@ -349789,7 +349805,7 @@
     "model_type_pdf": "GR.20",
     "qty_pdf": "2",
     "units_pdf": "PC",
-    "measure_pdf": "PC FUER STECKDOSE GR20",
+    "measure_pdf": "FUER STECKDOSE GR20",
     "bom_pdf": "5275307654",
     "measurement_final": "FUER STECKDOSE GR20",
     "pn_excel": "0005338131"
@@ -350044,7 +350060,7 @@
     "model_type_pdf": "KPT/KPSE",
     "qty_pdf": "1",
     "units_pdf": "PC",
-    "measure_pdf": "PC FUER BAJO-DOSE GR12",
+    "measure_pdf": "FUER BAJO-DOSE GR12",
     "bom_pdf": "5275307654",
     "measurement_final": "FUER BAJO-DOSE GR12",
     "pn_excel": "0015333031"
@@ -350167,7 +350183,7 @@
     "model_type_pdf": "KPT/KPSE",
     "qty_pdf": "1",
     "units_pdf": "PC",
-    "measure_pdf": "PC FUER BAJO-DOSE GR.16",
+    "measure_pdf": "FUER BAJO-DOSE GR.16",
     "bom_pdf": "5275307654",
     "measurement_final": "FUER BAJO-DOSE GR.16",
     "pn_excel": "0015335431"
@@ -350299,7 +350315,7 @@
     "bom_pdf": "5275307654",
     "measurement_final": "L",
     "pn_excel": "0025317481",
-    "measure_pdf": "PC L"
+    "measure_pdf": "L"
   },
   {
     "ID": "1100366",
@@ -350428,7 +350444,7 @@
     "bom_pdf": "5275307654",
     "measurement_final": "F.8MM KABELBINDER",
     "pn_excel": "0035314481",
-    "measure_pdf": "PC F.8MM KABELBINDER"
+    "measure_pdf": "F.8MM KABELBINDER"
   },
   {
     "ID": "1100461",
@@ -350559,7 +350575,7 @@
     "normalizado_pdf": "SI",
     "measurement_final": "CE M4 X 8",
     "pn_excel": "0109909901",
-    "measure_pdf": "PC CE M4 X 8"
+    "measure_pdf": "CE M4 X 8"
   },
   {
     "ID": "1100874",
@@ -350685,7 +350701,7 @@
     "qty_pdf": "1",
     "units_pdf": "PC",
     "fn_pdf": "KF",
-    "measure_pdf": "PC 56X26X16,",
+    "measure_pdf": "56X26X16,",
     "bom_pdf": "5275307654",
     "pn_excel": "5005317674",
     "measurement_final": "56X26X16,"
@@ -351202,7 +351218,7 @@
     "bom_pdf": "5275307654",
     "measurement_final": "423X270X76 (LXBXH)",
     "pn_excel": "5275334402",
-    "measure_pdf": "PC 423X270X76 (LXBXH)"
+    "measure_pdf": "423X270X76 (LXBXH)"
   },
   {
     "ID": "1101438",
@@ -351331,7 +351347,7 @@
     "bom_pdf": "5275307654",
     "measurement_final": "427X275X11 (LXBXH)",
     "pn_excel": "5275351291",
-    "measure_pdf": "PC 427X275X11 (LXBXH)"
+    "measure_pdf": "427X275X11 (LXBXH)"
   },
   {
     "ID": "1101804",
@@ -351462,7 +351478,7 @@
     "normalizado_pdf": "SI",
     "measurement_final": "M 6 X 16",
     "pn_excel": "207985006102",
-    "measure_pdf": "PC M 6 X 16"
+    "measure_pdf": "M 6 X 16"
   },
   {
     "ID": "1102146",
@@ -351593,7 +351609,7 @@
     "normalizado_pdf": "SI",
     "measurement_final": "A 380 X 4",
     "pn_excel": "700429380002",
-    "measure_pdf": "PC 380 X 4"
+    "measure_pdf": "380 X 4"
   },
   {
     "ID": "1100045",
@@ -352483,7 +352499,8 @@
     "qty_pdf": "1",
     "weight_pdf": "1,780 KG",
     "fn_pdf": "KE",
-    "measure_pdf": "PC"
+    "measure_pdf": "PC",
+    "units_pdf": "PC"
   },
   {
     "ID": "1100177",
@@ -352606,7 +352623,7 @@
     "weight_pdf": "0,100 G",
     "bom_pdf": "5275304360",
     "pn_excel": "0005331190",
-    "measure_pdf": "PC ERDUNGSZEICHEN 1BOGEN=80ZEICHEN"
+    "measure_pdf": "ERDUNGSZEICHEN 1BOGEN=80ZEICHEN"
   },
   {
     "ID": "1100180",
@@ -352733,7 +352750,7 @@
     "qty_pdf": "1",
     "units_pdf": "PC",
     "weight_pdf": "4,500 G",
-    "measure_pdf": "PC FUER FESTE STECKVERB GR18",
+    "measure_pdf": "FUER FESTE STECKVERB GR18",
     "bom_pdf": "5275304360",
     "measurement_final": "FUER FESTE STECKVERB GR18",
     "pn_excel": "0005332731"
@@ -352857,7 +352874,7 @@
     "model_type_pdf": "KPT/KPSE",
     "qty_pdf": "1",
     "units_pdf": "PC",
-    "measure_pdf": "PC FUER BAJO-DOSE GR.16",
+    "measure_pdf": "FUER BAJO-DOSE GR.16",
     "bom_pdf": "5275304360",
     "measurement_final": "FUER BAJO-DOSE GR.16",
     "pn_excel": "0015335431"
@@ -352980,7 +352997,7 @@
     "model_type_pdf": "KPT/KPSE",
     "qty_pdf": "1",
     "units_pdf": "PC",
-    "measure_pdf": "PC FUER BAJO-DOSE GR.20",
+    "measure_pdf": "FUER BAJO-DOSE GR.20",
     "bom_pdf": "5275304360",
     "measurement_final": "FUER BAJO-DOSE GR.20",
     "pn_excel": "0015335531"
@@ -353111,7 +353128,7 @@
     "units_pdf": "PC",
     "bom_pdf": "5275304360",
     "pn_excel": "0095314348",
-    "measure_pdf": "PC DIP-8, EEPROM_8KX8_SER,TWR_10MS,"
+    "measure_pdf": "DIP-8, EEPROM_8KX8_SER,TWR_10MS,"
   },
   {
     "ID": "1100462",
@@ -353243,7 +353260,7 @@
     "normalizado_pdf": "SI",
     "measurement_final": "CE M4 X 8",
     "pn_excel": "0109909901",
-    "measure_pdf": "PC CE M4 X 8"
+    "measure_pdf": "CE M4 X 8"
   },
   {
     "ID": "1100818",
@@ -353375,7 +353392,7 @@
     "normalizado_pdf": "SI",
     "measurement_final": "M 6",
     "pn_excel": "000934006034",
-    "measure_pdf": "PC M 6"
+    "measure_pdf": "M 6"
   },
   {
     "ID": "1101433",
@@ -353501,7 +353518,7 @@
     "qty_pdf": "1",
     "units_pdf": "PC",
     "fn_pdf": "AB",
-    "measure_pdf": "PC EMB1-01/A,",
+    "measure_pdf": "EMB1-01/A,",
     "bom_pdf": "5275304360",
     "pn_excel": "5275307212",
     "measurement_final": "EMB1-01/A,"
@@ -353764,7 +353781,7 @@
     "normalizado_pdf": "SI",
     "measurement_final": "6",
     "pn_excel": "200125006400",
-    "measure_pdf": "PC A 6,4"
+    "measure_pdf": "A 6,4"
   },
   {
     "ID": "1101805",
@@ -353896,7 +353913,7 @@
     "normalizado_pdf": "SI",
     "measurement_final": "M 6 X 16",
     "pn_excel": "207985006102",
-    "measure_pdf": "PC M 6 X 16"
+    "measure_pdf": "M 6 X 16"
   },
   {
     "ID": "1102145",
@@ -354028,7 +354045,7 @@
     "normalizado_pdf": "SI",
     "measurement_final": "A 290 X 4",
     "pn_excel": "700429290000",
-    "measure_pdf": "PC 290 X 4"
+    "measure_pdf": "290 X 4"
   },
   {
     "ID": "1102434",
