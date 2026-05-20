@@ -8529,7 +8529,15 @@ function initHeaderDetectionHandlers() {
 
     if (recalculateTableBtn instanceof HTMLButtonElement) {
 
-        recalculateTableBtn.addEventListener('click', () => {
+        recalculateTableBtn.addEventListener('click', async () => {
+
+            const selectedBook = String(document.getElementById('bookFilterSelect')?.value || state.filters?.book || '').trim();
+            const selectedPage = String(document.getElementById('pageFilterSelect')?.value || state.filters?.page || '').trim();
+
+            if (selectedBook && selectedPage) {
+                await loadPdfWithPageAndAutoRender(selectedBook, selectedPage);
+                return;
+            }
 
             // Ejecutar detección de headers
 
@@ -8623,12 +8631,32 @@ function initHeaderDetectionHandlers() {
 
 async function loadPdfWithPageAndAutoRender(book, page) {
 
+    loadPdfClear();
+
     await loadPdfWithPage(book, page);
 
-    // La caché de texto ya está lista (renderPdfPage espera el overlay).
-    runPdfHeaderOnlyDetection();
-    buildHeaderColumnBodyHighlights();
-    requestPdfRelayout();
+    await rebuildPdfOverlaysAfterReload();
+
+}
+
+
+async function rebuildPdfOverlaysAfterReload(maxAttempts = 5) {
+
+    const attempts = Number.isFinite(maxAttempts) ? Math.max(1, Math.trunc(maxAttempts)) : 5;
+
+    for (let attempt = 0; attempt < attempts; attempt += 1) {
+
+        const headerResult = runPdfHeaderOnlyDetection();
+        const bodyResult = buildHeaderColumnBodyHighlights();
+        requestPdfRelayout();
+
+        const hasHeaderError = Boolean(headerResult?.error);
+        const hasBodyError = Boolean(bodyResult?.error);
+        if (!hasHeaderError && !hasBodyError) return;
+
+        await new Promise((resolve) => setTimeout(resolve, 80));
+
+    }
 
 }
 
