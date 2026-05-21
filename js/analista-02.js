@@ -10793,6 +10793,106 @@ function applyPdfFeatureFlagsToUi() {
 
 }
 
+// Aplica book_preview_*.json a engine_*.json mediante el script Python oficial.
+// Sustituye al antiguo flujo runBulkCopyPdfToBook() para el boton "1. Importar de PDF"
+// del modal de recalculo. Llama al endpoint backend POST /api/pdf-preview/apply-to-engine,
+// que ejecuta:
+//   - apply_book_preview_to_engine.py --write --overwrite  (si hay engine seleccionado)
+//   - apply_all_book_previews.py --write --overwrite       (si no hay engine, todos los libros)
+async function runApplyBookPreviewToEngines() {
+    const TAG = '[recomputeCopyBookBtn]';
+    clearRecomputePdfDetail();
+
+    const recomputeCopyBookBtn = $('recomputeCopyBookBtn');
+    const recomputeRunBtn = $('recomputeRunBtn');
+    const recomputePdfRunBtn = $('recomputePdfRunBtn');
+    const engineFilterSelect = $('engineFilterSelect');
+
+    const selectedModel = (engineFilterSelect instanceof HTMLSelectElement)
+        ? String(engineFilterSelect.value || '').trim()
+        : '';
+    const scope = selectedModel ? `engine_${selectedModel}.json` : 'TODOS los libros';
+
+    console.log(`${TAG} engine=${scope}`);
+
+    const confirmed = await simpleConfirm(
+        `Vas a aplicar la lectura PDF (book_preview_*.json) al engine ejecutando el script Python oficial.\n\n` +
+        `Alcance: ${scope}\n` +
+        `Modo: --write --overwrite (persiste y sobrescribe valores no vacios)\n\n` +
+        `Se crearan ficheros .bak.<timestamp> junto al engine modificado.\n\n` +
+        `Esta accion puede tardar varios minutos. ¿Continuar?`
+    );
+    if (!confirmed) {
+        setRecomputeStatus('Operacion cancelada por el usuario.', '');
+        return;
+    }
+
+    if (recomputeCopyBookBtn instanceof HTMLButtonElement) recomputeCopyBookBtn.disabled = true;
+    if (recomputeRunBtn instanceof HTMLButtonElement) recomputeRunBtn.disabled = true;
+    if (recomputePdfRunBtn instanceof HTMLButtonElement) recomputePdfRunBtn.disabled = true;
+    setRecomputeStatus(`Ejecutando apply_book_preview_to_engine.py sobre ${scope}...`, '');
+
+    const progressContainer = $('recomputeProgressContainer');
+    const fillEl = $('recomputeProgressFill');
+    const textEl = $('recomputeProgressText');
+    if (progressContainer instanceof HTMLElement) progressContainer.hidden = false;
+    if (fillEl instanceof HTMLElement) fillEl.style.width = '20%';
+    if (textEl instanceof HTMLElement) textEl.textContent = `Lanzando script Python (${scope})...`;
+
+    let payload;
+    try {
+        const response = await fetch('/api/pdf-preview/apply-to-engine', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(selectedModel ? { engine: selectedModel } : {})
+        });
+        const text = await response.text();
+        try { payload = JSON.parse(text); } catch { payload = { ok: false, error: text }; }
+        if (!response.ok && payload?.ok !== false) {
+            payload.ok = false;
+            payload.error = payload.error || `HTTP ${response.status}`;
+        }
+    } catch (error) {
+        console.error(`${TAG} fetch error:`, error);
+        if (progressContainer instanceof HTMLElement) progressContainer.hidden = true;
+        if (recomputeCopyBookBtn instanceof HTMLButtonElement) recomputeCopyBookBtn.disabled = false;
+        if (recomputeRunBtn instanceof HTMLButtonElement) recomputeRunBtn.disabled = false;
+        if (recomputePdfRunBtn instanceof HTMLButtonElement) recomputePdfRunBtn.disabled = false;
+        setRecomputeStatus(`Error de red llamando al endpoint: ${String(error?.message || error)}`, 'error');
+        return;
+    }
+
+    if (fillEl instanceof HTMLElement) fillEl.style.width = '100%';
+    if (textEl instanceof HTMLElement) textEl.textContent = 'Finalizado.';
+    if (progressContainer instanceof HTMLElement) progressContainer.hidden = true;
+    if (recomputeCopyBookBtn instanceof HTMLButtonElement) recomputeCopyBookBtn.disabled = false;
+    if (recomputeRunBtn instanceof HTMLButtonElement) recomputeRunBtn.disabled = false;
+    if (recomputePdfRunBtn instanceof HTMLButtonElement) recomputePdfRunBtn.disabled = false;
+
+    console.log(`${TAG} response`, payload);
+
+    if (!payload?.ok) {
+        const msg = String(payload?.error || `exitCode=${payload?.exitCode ?? '?'}`);
+        setRecomputeStatus(`Script fallo: ${msg}`, 'error');
+        return;
+    }
+
+    const stats = payload.stats || {};
+    const warnings = Array.isArray(payload.warnings) ? payload.warnings : [];
+    const fieldsLabel = `${stats.fields_changed || 0} campos modificados`;
+    const rowsLabel = `${stats.rows_changed || 0} filas con cambios`;
+    const scopeLabel = payload.engine || 'todos los libros';
+    const warnLabel = warnings.length ? ` · ${warnings.length} aviso(s)` : '';
+    setRecomputeStatus(
+        `OK: ${scopeLabel} · ${rowsLabel} · ${fieldsLabel}${warnLabel}.`,
+        'ok'
+    );
+
+    if (warnings.length) {
+        console.warn(`${TAG} warnings:`, warnings);
+    }
+}
+
 // Copia a FINAL en lote con la misma regla del boton FINAL del registro actual
 // (si gesa=SI usa GESA en campos mapeados; en otro caso usa campos _pdf).
 async function runBackendCalculateFinal() {
@@ -11117,8 +11217,9 @@ bindClick('recomputePdfRunBtn', () => {
 });
 
 bindClick('recomputeCopyBookBtn', () => {
-    runBulkCopyPdfToBook().catch((error) => {
-        setRecomputeStatus(`Error al copiar PDF para todos los libros: ${String(error?.message || error)}`, 'error');
+    console.log('[recomputeCopyBookBtn] click -> runApplyBookPreviewToEngines()');
+    runApplyBookPreviewToEngines().catch((error) => {
+        setRecomputeStatus(`Error en apply_book_preview_to_engine.py: ${String(error?.message || error)}`, 'error');
     });
 });
 

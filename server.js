@@ -591,6 +591,113 @@ app.post('/calculate-final-fields', async (req, res) => {
     }
 });
 
+// ── Aplica book_preview_*.json a engine_*.json mediante el script Python oficial ──
+// Reemplaza el flujo del boton "1. Importar de PDF" del modal de recalculo.
+// Ejecuta:
+//   - apply_book_preview_to_engine.py --book-preview ... --engine ... --write --overwrite  (si engine)
+//   - apply_all_book_previews.py --write --overwrite                                       (si todos)
+app.post('/api/pdf-preview/apply-to-engine', async (req, res) => {
+    const tag = '[apply_book_preview_to_engine]';
+    try {
+        const path = require('path');
+        const fs = require('fs');
+        const engineRaw = typeof req.body?.engine === 'string' ? req.body.engine.trim() : '';
+        const previewsDir = 'json_originales';
+
+        // Validacion estricta para evitar inyeccion via argumentos (aunque no usemos shell).
+        if (engineRaw && !/^[A-Za-z0-9._-]+$/.test(engineRaw)) {
+            return res.status(400).json({ ok: false, error: `Engine no valido: ${engineRaw}` });
+        }
+
+        // Normaliza el nombre de engine: acepta "12V4000M40A" o "engine_12V4000M40A.json".
+        let engineModel = '';
+        let engineFile = '';
+        let previewFile = '';
+        if (engineRaw) {
+            const m = engineRaw.match(/^(?:engine_)?(.+?)(?:\.json)?$/);
+            engineModel = m ? m[1] : engineRaw;
+            engineFile = `engine_${engineModel}.json`;
+            previewFile = path.join(previewsDir, `book_preview_${engineModel}.json`);
+
+            if (!ENGINE_JSON_FILES.includes(engineFile)) {
+                return res.status(400).json({ ok: false, error: `Engine desconocido: ${engineFile}` });
+            }
+            if (!fs.existsSync(path.join(__dirname, previewFile))) {
+                return res.status(404).json({ ok: false, error: `No existe book preview: ${previewFile}` });
+            }
+        }
+
+        const script = engineRaw ? 'apply_book_preview_to_engine.py' : 'apply_all_book_previews.py';
+        const args = engineRaw
+            ? [script, '--book-preview', previewFile, '--engine', engineFile, '--write', '--overwrite']
+            : [script, '--write', '--overwrite'];
+
+        console.log(`${tag} script=${script} engine=${engineFile || '(all)'} preview=${previewFile || '(all)'}`);
+
+        const python = spawn('python', args, {
+            cwd: __dirname,
+            stdio: ['pipe', 'pipe', 'pipe'],
+            env: { ...process.env, PYTHONIOENCODING: 'utf-8' }
+        });
+
+        let stdout = '';
+        let stderr = '';
+        python.stdout.on('data', (d) => { stdout += d.toString(); });
+        python.stderr.on('data', (d) => { stderr += d.toString(); });
+
+        python.on('close', (code) => {
+            const out = stdout;
+            // Parseo del informe del script unitario (apply_book_preview_to_engine.py).
+            const num = (re) => {
+                const m = out.match(re);
+                return m ? Number(m[1]) : 0;
+            };
+            const stats = {
+                preview_pages: num(/P[áa]ginas en preview\s*:\s*(\d+)/i),
+                preview_rows: num(/Filas en preview\s*:\s*(\d+)/i),
+                matched_unique: num(/Match [úu]nico\s*:\s*(\d+)/i),
+                matched_tiebreak_pn: num(/Match desempate por PN\s*:\s*(\d+)/i),
+                ambiguous: num(/Ambiguos[^:]*:\s*(\d+)/i),
+                not_found: num(/No encontrados\s*:\s*(\d+)/i),
+                rows_changed: num(/Filas con cambios\s*:\s*(\d+)/i),
+                fields_changed: num(/Campos modificados\s*:\s*(\d+)/i),
+                fields_skipped_nonempty: num(/Campos no vac[íi]os saltados\s*:\s*(\d+)/i)
+            };
+            // Warnings: lineas [WARN]/[SKIP] del barrido o stderr no vacio.
+            const warnings = [];
+            for (const line of out.split(/\r?\n/)) {
+                if (/^\[(WARN|SKIP|INFO)\]/i.test(line)) warnings.push(line.trim());
+            }
+            if (stderr.trim()) warnings.push(`stderr: ${stderr.trim().slice(0, 500)}`);
+
+            const ok = code === 0;
+            console.log(`${tag} done code=${code} engine=${engineFile || '(all)'} rows_changed=${stats.rows_changed} fields_changed=${stats.fields_changed} warnings=${warnings.length}`);
+
+            const status = ok ? 200 : 500;
+            return res.status(status).json({
+                ok,
+                exitCode: code,
+                script,
+                engine: engineFile || null,
+                preview: previewFile || null,
+                stats,
+                warnings,
+                stdout: out,
+                stderr,
+                error: ok ? null : `python ${script} salio con code=${code}`
+            });
+        });
+
+        python.on('error', (err) => {
+            console.error(`${tag} spawn error:`, err);
+            res.status(500).json({ ok: false, error: `No se pudo lanzar python: ${String(err?.message || err)}` });
+        });
+    } catch (error) {
+        console.error(`${tag} backend error:`, error);
+        res.status(500).json({ ok: false, error: String(error?.message || error || 'Unknown error') });
+    }
+});
+
 app.post('/recalculate-revision-status', async (req, res) => {
     try {
         let totalRecords = 0;

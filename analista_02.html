@@ -369,11 +369,13 @@
                             <span class="a2-step-index">1</span>
                             <div>
                                 <span class="a2-step-title">Importar de PDF</span>
-                                <p class="a2-step-desc">Ejecuta la funcion <strong>runBulkCopyPdfToBook()</strong>,
-                                    que llama al endpoint backend <code>POST /copy-pdf-to-pdf-all-books</code> para
-                                    aplicar la lectura automatica del PDF a todos los registros de todos los libros y
-                                    guardar en JSON. Campos: POS, PART NO., DESIGNATION, MODEL/TYPE, QTY, UNITS,
-                                    WEIGHT, FN, MEASUREMENT / STANDARD, NORMA, FG/FGS y BOM-No.</p>
+                                <p class="a2-step-desc">Ejecuta el script Python oficial
+                                    <strong>apply_book_preview_to_engine.py --write --overwrite</strong> a traves
+                                    del endpoint backend <code>POST /api/pdf-preview/apply-to-engine</code>. Si hay
+                                    libro seleccionado en el filtro superior, aplica el book_preview correspondiente
+                                    al engine; en caso contrario barre todos los libros usando
+                                    <strong>apply_all_book_previews.py --write --overwrite</strong>. Crea backup
+                                    <code>.bak.&lt;timestamp&gt;</code> de cada engine modificado.</p>
                             </div>
                         </h3>
                         <button id="recomputeCopyBookBtn" type="button">IMPORTAR PDF</button>
