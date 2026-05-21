@@ -370,12 +370,9 @@
                             <div>
                                 <span class="a2-step-title">Importar de PDF</span>
                                 <p class="a2-step-desc">Ejecuta el script Python oficial
-                                    <strong>apply_book_preview_to_engine.py --write --overwrite</strong> a traves
-                                    del endpoint backend <code>POST /api/pdf-preview/apply-to-engine</code>. Si hay
-                                    libro seleccionado en el filtro superior, aplica el book_preview correspondiente
-                                    al engine; en caso contrario barre todos los libros usando
                                     <strong>apply_all_book_previews.py --write --overwrite</strong>. Crea backup
-                                    <code>.bak.&lt;timestamp&gt;</code> de cada engine modificado.
+                                    <code>.bak.&lt;timestamp&gt;</code> de cada engine modificado y barre todos los
+                                    libros desde el backend mediante <code>POST /api/pdf-preview/apply-to-engine</code>.
                                 </p>
                             </div>
                         </h3>

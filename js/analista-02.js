@@ -10821,10 +10821,10 @@ async function runApplyBookPreviewToEngines() {
     const recomputeCopyBookBtn = $('recomputeCopyBookBtn');
     const recomputeRunBtn = $('recomputeRunBtn');
     const recomputePdfRunBtn = $('recomputePdfRunBtn');
-    const engineFilterSelect = $('engineFilterSelect');
+    const recomputeEngineSelect = $('recomputeEngineSelect');
 
-    const selectedModel = (engineFilterSelect instanceof HTMLSelectElement)
-        ? String(engineFilterSelect.value || '').trim()
+    const selectedModel = (recomputeEngineSelect instanceof HTMLSelectElement)
+        ? String(recomputeEngineSelect.value || '').trim()
         : '';
     const scope = selectedModel ? `engine_${selectedModel}.json` : 'TODOS los libros';
 
