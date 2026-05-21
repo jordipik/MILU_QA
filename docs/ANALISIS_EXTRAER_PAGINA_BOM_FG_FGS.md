@@ -140,3 +140,11 @@ Validación manual recomendada:
 1. Probar EXTRAER PÁGINA en [analista_02.html](analista_02.html#L255) con PDFs que tengan `B.O.M.` y `FG-FGS`.
 2. Probar EXTRAER PÁGINA en [import_pdf.html](import_pdf.html#L458) y revisar `bom_pdf`/`fg_fgs_pdf` en tabla y JSON descargado.
 3. Verificar en consola logs `[pdf-preview][diagnostico]` y `[import-pdf][diagnostico]`.
+
+## Corrección export CSV import_pdf
+
+- Causa raíz: [js/import-pdf.js](js/import-pdf.js#L489) solo descargaba JSON del preview y no existía un export CSV real en `import_pdf`; por eso el flujo no serializaba `bom_pdf` ni `fg_fgs_pdf` a ningún CSV descargable desde esa página.
+- Archivo modificado: [js/import-pdf.js](js/import-pdf.js) y [import_pdf.html](import_pdf.html).
+- Función modificada: [js/import-pdf.js](js/import-pdf.js#L489) mantiene `downloadJsonPreview(...)` y añade `downloadCsvPreview(...)` con columnas fijas basadas en `PREVIEW_COLUMNS`.
+- Columnas añadidas: `bom_pdf` y `fg_fgs_pdf` quedan exportadas en el CSV en el bloque `fn_pdf`, `measure_pdf`, `norma_pdf`, `bom_pdf`, `fg_fgs_pdf`.
+- Validación realizada: revisión del flujo de filas en [js/import-pdf.js](js/import-pdf.js#L399), comprobación de que `bom_pdf` y `fg_fgs_pdf` ya existen en cada fila antes de exportar, validación sintáctica posterior de los archivos tocados y añadido de logs temporales previos a la generación del CSV para inspeccionar filas, columnas y primera fila exportada.

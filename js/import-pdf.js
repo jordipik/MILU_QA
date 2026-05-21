@@ -435,6 +435,7 @@ function updateSummary(payload = null) {
     const warningsEl = $('summaryWarnings');
     const statusEl = $('summaryStatus');
     const downloadBtn = $('downloadJsonBtn');
+    const downloadCsvBtn = $('downloadCsvBtn');
 
     const rows = Array.isArray(payload?.rows) ? payload.rows : [];
     const sourcePage = Number(payload?.source_page || getSelectedPageNumber() || 0);
@@ -452,6 +453,9 @@ function updateSummary(payload = null) {
     }
     if (downloadBtn instanceof HTMLButtonElement) {
         downloadBtn.disabled = !rows.length;
+    }
+    if (downloadCsvBtn instanceof HTMLButtonElement) {
+        downloadCsvBtn.disabled = !rows.length;
     }
 }
 
@@ -488,6 +492,58 @@ function renderPreviewTable(rows = []) {
 
 function downloadJsonPreview(data, filename) {
     const blob = new Blob([`${JSON.stringify(data, null, 2)}\n`], { type: 'application/json;charset=utf-8' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = filename;
+    document.body.appendChild(link);
+    link.click();
+    link.remove();
+    URL.revokeObjectURL(url);
+}
+
+function toCsvCell(value) {
+    return `"${String(value ?? '').replace(/"/g, '""')}"`;
+}
+
+function buildCsvExportRows(rows = []) {
+    return rows.map((row) => ({
+        row_index: row?.row_index ?? '',
+        pos_pdf: row?.pos_pdf ?? '',
+        pn_pdf: row?.pn_pdf ?? '',
+        designation_pdf: row?.designation_pdf ?? '',
+        model_type_pdf: row?.model_type_pdf ?? '',
+        qty_pdf: row?.qty_pdf ?? '',
+        units_pdf: row?.units_pdf ?? '',
+        weight_pdf: row?.weight_pdf ?? '',
+        fn_pdf: row?.fn_pdf ?? '',
+        measure_pdf: row?.measure_pdf ?? '',
+        norma_pdf: row?.norma_pdf ?? '',
+        bom_pdf: row?.bom_pdf ?? '',
+        fg_fgs_pdf: row?.fg_fgs_pdf ?? '',
+        confidence: row?.confidence ?? '',
+        warnings: Array.isArray(row?.warnings) ? row.warnings.join('|') : ''
+    }));
+}
+
+function downloadCsvPreview(payload, filename) {
+    const rows = Array.isArray(payload?.rows) ? payload.rows : [];
+    const exportRows = buildCsvExportRows(rows);
+    const firstRow = exportRows[0] || null;
+
+    console.log('[import-pdf][csv] filas exportadas:', exportRows.length);
+    console.log('[import-pdf][csv] columnas CSV:', PREVIEW_COLUMNS);
+    console.log('[import-pdf][csv] primera fila exportada:', firstRow);
+    console.log('[import-pdf][csv] bom_pdf y fg_fgs_pdf primera fila:', {
+        bom_pdf: firstRow?.bom_pdf ?? '',
+        fg_fgs_pdf: firstRow?.fg_fgs_pdf ?? ''
+    });
+
+    const lines = [
+        PREVIEW_COLUMNS.join(';'),
+        ...exportRows.map((row) => PREVIEW_COLUMNS.map((column) => toCsvCell(row?.[column] ?? '')).join(';'))
+    ];
+    const blob = new Blob([`\uFEFF${lines.join('\n')}\n`], { type: 'text/csv;charset=utf-8' });
     const url = URL.createObjectURL(blob);
     const link = document.createElement('a');
     link.href = url;
@@ -981,6 +1037,7 @@ function bindEvents() {
     const paintBodyByHeadersBtn = $('paintBodyByHeadersBtn');
     const extractPageRowsBtn = $('extractPageRowsBtn');
     const downloadJsonBtn = $('downloadJsonBtn');
+    const downloadCsvBtn = $('downloadCsvBtn');
     const select = $('engineSelect');
     const pageInput = $('pdfPageInput');
 
@@ -1034,6 +1091,18 @@ function bindEvents() {
             }
             downloadJsonPreview(payload, `pdf_page_rows_preview_p${Number(payload?.source_page || 0)}.json`);
             setActionStatus('JSON descargado desde el preview actual.', 'ok');
+        });
+    }
+
+    if (downloadCsvBtn instanceof HTMLButtonElement) {
+        downloadCsvBtn.addEventListener('click', () => {
+            const payload = currentPreviewPayload || window.__miluPdfPageRowsPreview;
+            if (!payload?.rows?.length) {
+                setActionStatus('No hay un CSV de preview para descargar.', 'error');
+                return;
+            }
+            downloadCsvPreview(payload, `pdf_page_rows_preview_p${Number(payload?.source_page || 0)}.csv`);
+            setActionStatus('CSV descargado desde el preview actual.', 'ok');
         });
     }
 
