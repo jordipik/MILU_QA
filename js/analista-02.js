@@ -3141,6 +3141,7 @@ function initComparisonDebugToggle() {
 
 let recomputeModalListenersBound = false;
 let recomputeErrorsInFlight = false;
+const RECOMPUTE_ALL_BOOKS_VALUE = '__all__';
 
 function getRecomputeScopeLabel(scope) {
     switch (String(scope || '').trim()) {
@@ -3186,8 +3187,16 @@ function updateRecomputeScopeUi() {
     const runBtn = $('recomputeRunBtn');
 
     if (engineSelect instanceof HTMLSelectElement) {
-        engineSelect.disabled = scope === 'all';
-        engineSelect.title = scope === 'all' ? 'Todos los libros se procesan sin seleccionar uno concreto.' : '';
+        const engineFilterSelect = $('engineFilterSelect');
+        if (scope === 'all') {
+            if (engineSelect.value !== RECOMPUTE_ALL_BOOKS_VALUE) engineSelect.value = RECOMPUTE_ALL_BOOKS_VALUE;
+        } else if (engineSelect.value === RECOMPUTE_ALL_BOOKS_VALUE && engineFilterSelect instanceof HTMLSelectElement) {
+            engineSelect.value = String(engineFilterSelect.value || '').trim() || (ENGINE_BOOK_MODELS[0] || RECOMPUTE_ALL_BOOKS_VALUE);
+        }
+        engineSelect.disabled = false;
+        engineSelect.title = scope === 'all'
+            ? 'Selecciona un libro concreto o deja Todos los libros para procesar todo.'
+            : 'Selecciona un libro concreto o Todos los libros.';
     }
 
     if (idInput instanceof HTMLInputElement) {
@@ -3439,7 +3448,16 @@ function initRecomputeModal() {
         recomputeEngineSelect?.addEventListener('change', () => {
             const engineFilterSelect = $('engineFilterSelect');
             if (engineFilterSelect instanceof HTMLSelectElement && recomputeEngineSelect instanceof HTMLSelectElement) {
-                engineFilterSelect.value = recomputeEngineSelect.value;
+                const selectedValue = String(recomputeEngineSelect.value || '').trim();
+                if (selectedValue === RECOMPUTE_ALL_BOOKS_VALUE) {
+                    setRecomputeSelectedScope('all');
+                } else {
+                    engineFilterSelect.value = selectedValue;
+                    if (getRecomputeSelectedScope() === 'all') {
+                        setRecomputeSelectedScope('book');
+                    }
+                }
+                updateRecomputeScopeUi();
             }
         });
 
@@ -5340,6 +5358,72 @@ function setRecomputeStatus(message, status = '') {
 
 }
 
+let _lastRecomputeNotFoundResult = null;
+let _lastRecomputeNotFoundModel = '';
+let _lastRecomputeNotFoundFilters = { reason: 'all', query: '' };
+
+function normalizeRecomputeNotFoundFilterValue(value) {
+    return String(value ?? '')
+        .trim()
+        .toLowerCase()
+        .normalize('NFD')
+        .replace(/[\u0300-\u036f]/g, '');
+}
+
+function escapeCsvValue(value) {
+    const text = String(value ?? '');
+    return `"${text.replace(/"/g, '""')}"`;
+}
+
+function downloadTextFile(content, filename, mimeType) {
+    const blob = new Blob([content], { type: mimeType });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = filename;
+    document.body.appendChild(link);
+    link.click();
+    link.remove();
+    URL.revokeObjectURL(url);
+}
+
+function getFilteredRecomputeNotFoundRows(result) {
+    const rows = Array.isArray(result?.not_found_rows) ? result.not_found_rows : [];
+    const selectedReason = String(_lastRecomputeNotFoundFilters?.reason || 'all').trim() || 'all';
+    const query = normalizeRecomputeNotFoundFilterValue(_lastRecomputeNotFoundFilters?.query || '');
+
+    return rows.filter((row) => {
+        const rowReason = String(row?.reason || '').trim();
+        if (selectedReason !== 'all' && rowReason !== selectedReason) return false;
+        if (!query) return true;
+        const haystack = normalizeRecomputeNotFoundFilterValue([row?.page, row?.pos, row?.pn_pdf, row?.reason].join(' '));
+        return haystack.includes(query);
+    });
+}
+
+function downloadRecomputeNotFoundCsv(result, selectedModel = '') {
+    const body = $('recomputePdfDetailBody');
+    const tableRows = body instanceof HTMLElement
+        ? Array.from(body.querySelectorAll('tbody tr'))
+        : [];
+    const header = ['model', 'page', 'pos', 'pn_pdf', 'reason'];
+    const lines = [header.join(';')];
+    tableRows.forEach((tr) => {
+        const cells = Array.from(tr.querySelectorAll('td')).map((cell) => String(cell.textContent || '').trim());
+        lines.push([
+            escapeCsvValue(selectedModel || _lastRecomputeNotFoundModel || ''),
+            escapeCsvValue(cells[0] || ''),
+            escapeCsvValue(cells[1] || ''),
+            escapeCsvValue(cells[2] || ''),
+            escapeCsvValue(cells[3] || '')
+        ].join(';'));
+    });
+
+    const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
+    downloadTextFile(`\uFEFF${lines.join('\n')}\n`, `milu_not_found_${selectedModel || 'all'}_${timestamp}.csv`, 'text/csv;charset=utf-8');
+    setRecomputeStatus(`CSV descargado (${tableRows.length} filas filtradas).`, 'ok');
+}
+
 let _pdfActionStatusTimer = null;
 
 function setPdfActionStatus(message, status = '') {
@@ -5746,10 +5830,10 @@ function syncRecomputeEngineSelect() {
     const target = $('recomputeEngineSelect');
     if (!(source instanceof HTMLSelectElement) || !(target instanceof HTMLSelectElement)) return;
 
-    target.innerHTML = ENGINE_BOOK_MODELS
-        .map((model) => `<option value="${escapeHtml(model)}">${escapeHtml(model)}</option>`)
+    target.innerHTML = [`<option value="${RECOMPUTE_ALL_BOOKS_VALUE}">Todos los libros</option>`]
+        .concat(ENGINE_BOOK_MODELS.map((model) => `<option value="${escapeHtml(model)}">${escapeHtml(model)}</option>`))
         .join('');
-    target.value = source.value;
+    target.value = source.value || RECOMPUTE_ALL_BOOKS_VALUE;
 }
 
 
@@ -5995,7 +6079,7 @@ async function runClearPdfFinalFields() {
 
         const summary = result?.summary || {};
 
-            recomputeErrorsInFlight = false;
+        recomputeErrorsInFlight = false;
         const perFile = Array.isArray(result?.perFile) ? result.perFile : [];
         const fileLines = perFile
             .map((entry) => `${entry?.file || '?'}: ${entry?.fields ?? 0} campos / ${entry?.records ?? 0} reg.`)
@@ -6182,9 +6266,11 @@ async function runBackendRecomputePdfAuto() {
 
 
 
-    const selectedModel = String(recomputeEngineSelect.value || '').trim();
+    const selectedModelRaw = String(recomputeEngineSelect.value || '').trim();
+    const selectedModel = selectedModelRaw === RECOMPUTE_ALL_BOOKS_VALUE ? '' : selectedModelRaw;
+    const scopeEffective = selectedModelRaw === RECOMPUTE_ALL_BOOKS_VALUE ? 'all' : scope;
 
-    const file = resolveEngineFileFromFilter(selectedModel);
+    const file = scopeEffective === 'all' ? '' : resolveEngineFileFromFilter(selectedModel);
 
     const id = String(recomputeIdInput.value || '').trim();
 
@@ -6198,7 +6284,7 @@ async function runBackendRecomputePdfAuto() {
 
 
 
-    if (!file) {
+    if (!file && scopeEffective !== 'all') {
 
         alert('No se pudo resolver el archivo engine para recalcular PDF_AUTO.');
 
@@ -6220,6 +6306,8 @@ async function runBackendRecomputePdfAuto() {
 
     const payload = {
 
+        scope: scopeEffective,
+
         file,
 
         dryRun,
@@ -6236,7 +6324,7 @@ async function runBackendRecomputePdfAuto() {
 
     recomputePdfRunBtn.disabled = true;
 
-    setRecomputeStatus('Ejecutando recalculo PDF_AUTO en backend...', '');
+    setRecomputeStatus(`Ejecutando recalculo PDF_AUTO en backend (${getRecomputeScopeLabel(scopeEffective)})...`, '');
 
     clearRecomputePdfDetail();
 
@@ -6342,7 +6430,7 @@ async function runBackendRecomputePdfAuto() {
 
         const idHint = id
 
-            ? ` Verifica si el ID ${id} existe en ${selectedModel} o deja el ID vacio para recalcular el libro completo.`
+            ? ` Verifica si el ID ${id} existe en ${selectedModel || 'todos los libros'} o deja el ID vacio para recalcular el libro completo.`
 
             : '';
 
@@ -6360,7 +6448,7 @@ async function runBackendRecomputePdfAuto() {
 
 
 
-    const modeLabel = result.mode === 'single-id' ? `ID ${result.id}` : 'libro completo';
+    const modeLabel = result.mode === 'single-id' ? `ID ${result.id}` : (scopeEffective === 'all' ? 'todos los libros' : 'libro completo');
 
     setRecomputeStatus(
 
@@ -10899,7 +10987,9 @@ async function runApplyBookPreviewToEngines() {
         : '';
     const scope = selectedModel ? `engine_${selectedModel}.json` : 'TODOS los libros';
 
-    console.log(`${TAG} engine=${scope}`);
+    console.log(`${TAG} button pulsado`);
+    console.log(`${TAG} engine seleccionado=${selectedModel || '(todos)'}`);
+    console.log(`${TAG} scope=${scope}`);
 
     const confirmed = await simpleConfirm(
         `Vas a aplicar la lectura PDF (book_preview_*.json) al engine ejecutando el script Python oficial.\n\n` +
@@ -10927,6 +11017,7 @@ async function runApplyBookPreviewToEngines() {
 
     let payload;
     try {
+        console.log(`${TAG} endpoint=/api/pdf-preview/apply-to-engine payload=`, selectedModel ? { engine: selectedModel } : {});
         const response = await fetch('/api/pdf-preview/apply-to-engine', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
@@ -10974,6 +11065,8 @@ async function runApplyBookPreviewToEngines() {
         'ok'
     );
 
+    console.log(`${TAG} response stats rows_changed=${Number(stats.rows_changed) || 0} fields_changed=${Number(stats.fields_changed) || 0} ambiguous=${Number(stats.ambiguous) || 0} not_found=${Number(stats.not_found) || 0}`);
+    renderRecomputePdfNotFoundDetail(payload, selectedModel);
     if (warnings.length) {
         console.warn(`${TAG} warnings:`, warnings);
     }
@@ -11303,7 +11396,7 @@ bindClick('recomputePdfRunBtn', () => {
 });
 
 bindClick('recomputeCopyBookBtn', () => {
-    console.log('[recomputeCopyBookBtn] click -> runApplyBookPreviewToEngines()');
+    console.log('[recomputeCopyBookBtn] button pulsado -> runApplyBookPreviewToEngines()');
     runApplyBookPreviewToEngines().catch((error) => {
         setRecomputeStatus(`Error en apply_book_preview_to_engine.py: ${String(error?.message || error)}`, 'error');
     });
@@ -11709,6 +11802,162 @@ function renderBodyColumnHighlightPanel(result) {
     }
 
     body.innerHTML = columnsHtml + decorativeHtml + splitPnDesignationHtml + measurementStandardSummaryHtml + footerNoiseHtml + multilineHtml + rectDebugHtml + warningsHtml;
+    panel.hidden = false;
+}
+
+
+function renderRecomputePdfNotFoundDetail(result, selectedModel = '') {
+
+    const panel = $('recomputePdfDetailPanel');
+
+    const title = $('recomputePdfDetailTitle');
+
+    const meta = $('recomputePdfDetailMeta');
+
+    const body = $('recomputePdfDetailBody');
+
+
+
+    if (!(panel instanceof HTMLElement)
+        || !(title instanceof HTMLElement)
+        || !(meta instanceof HTMLElement)
+        || !(body instanceof HTMLElement)) {
+
+        return;
+
+    }
+
+
+
+    _lastRecomputeNotFoundResult = result || null;
+    _lastRecomputeNotFoundModel = String(selectedModel || '').trim();
+
+    const rows = Array.isArray(result?.not_found_rows) ? result.not_found_rows : [];
+    const stats = result?.stats || {};
+    const modelLabel = txt(selectedModel, 'N/A');
+    const filteredRows = getFilteredRecomputeNotFoundRows(result);
+
+    title.textContent = `Registros sin match PDF · ${modelLabel}`;
+    meta.textContent = `Endpoint: POST /api/pdf-preview/apply-to-engine | not_found=${Number(stats.not_found) || rows.length} | visibles=${filteredRows.length}`;
+
+    const reasonCounts = rows.reduce((acc, row) => {
+        const reason = String(row?.reason || 'unknown');
+        acc[reason] = (acc[reason] || 0) + 1;
+        return acc;
+    }, {});
+
+    const summaryCards = [
+        { label: 'No encontrados', value: String(Number(stats.not_found) || rows.length) },
+        { label: 'Filtrados', value: String(filteredRows.length) },
+        { label: 'Sin POS', value: String(reasonCounts['missing-pos'] || 0) },
+        { label: 'Sin match engine', value: String(reasonCounts['no-engine-match'] || 0) },
+        { label: 'Total filas', value: String(rows.length) }
+    ];
+
+    const controlsHtml = `
+        <div class="recompute-notfound-controls" style="display:flex;flex-wrap:wrap;gap:8px;align-items:end;margin:10px 0 14px;">
+            <label style="display:flex;flex-direction:column;gap:4px;font-size:12px;color:#475569;">
+                <span>Motivo</span>
+                <select id="recomputeNotFoundReasonFilter" style="min-width:180px;padding:6px 8px;border:1px solid #cbd5e1;border-radius:8px;background:#fff;">
+                    <option value="all">Todos</option>
+                    <option value="missing-pos">Sin POS</option>
+                    <option value="no-engine-match">Sin match engine</option>
+                </select>
+            </label>
+            <label style="display:flex;flex-direction:column;gap:4px;font-size:12px;color:#475569;flex:1;min-width:220px;">
+                <span>Buscar</span>
+                <input id="recomputeNotFoundTextFilter" type="search" placeholder="Page, POS, PN o reason" style="width:100%;padding:6px 8px;border:1px solid #cbd5e1;border-radius:8px;" />
+            </label>
+            <button id="recomputeNotFoundExportCsvBtn" type="button" class="is-success" style="height:34px;padding:0 14px;">Exportar CSV</button>
+        </div>
+    `;
+
+    const summaryHtml = `
+
+        <div class="recompute-result-summary">
+
+            ${summaryCards.map((card) => `
+
+                <div class="recompute-result-kpi">
+
+                    <div class="recompute-result-kpi-label">${escapeHtml(card.label)}</div>
+
+                    <div class="recompute-result-kpi-value">${escapeHtml(card.value)}</div>
+
+                </div>
+
+            `).join('')}
+
+        </div>
+
+    `;
+
+    if (!rows.length) {
+        body.innerHTML = `${summaryHtml}${controlsHtml}<p class="recompute-result-empty">No hay registros no encontrados para este run.</p>`;
+        panel.hidden = false;
+        return;
+    }
+
+    const rowsHtml = filteredRows.map((row) => {
+        return `
+
+            <tr>
+                <td>${escapeHtml(txt(row?.page, ''))}</td>
+                <td>${escapeHtml(txt(row?.pos, ''))}</td>
+                <td>${escapeHtml(txt(row?.pn_pdf, ''))}</td>
+                <td>${escapeHtml(txt(row?.reason, ''))}</td>
+            </tr>
+
+        `;
+    }).join('');
+
+    body.innerHTML = `${summaryHtml}${controlsHtml}
+
+        <div class="recompute-result-table-wrap">
+
+            <table class="recompute-result-table">
+
+                <thead>
+
+                    <tr>
+                        <th>Page</th>
+                        <th>POS</th>
+                        <th>PN PDF</th>
+                        <th>Reason</th>
+                    </tr>
+
+                </thead>
+
+                <tbody>${rowsHtml}</tbody>
+
+            </table>
+
+        </div>`;
+
+    const reasonFilter = $('recomputeNotFoundReasonFilter');
+    const textFilter = $('recomputeNotFoundTextFilter');
+    const exportBtn = $('recomputeNotFoundExportCsvBtn');
+
+    if (reasonFilter instanceof HTMLSelectElement) {
+        reasonFilter.value = String(_lastRecomputeNotFoundFilters?.reason || 'all');
+        reasonFilter.onchange = () => {
+            _lastRecomputeNotFoundFilters.reason = String(reasonFilter.value || 'all').trim() || 'all';
+            renderRecomputePdfNotFoundDetail(_lastRecomputeNotFoundResult, _lastRecomputeNotFoundModel);
+        };
+    }
+
+    if (textFilter instanceof HTMLInputElement) {
+        textFilter.value = String(_lastRecomputeNotFoundFilters?.query || '');
+        textFilter.oninput = () => {
+            _lastRecomputeNotFoundFilters.query = String(textFilter.value || '');
+            renderRecomputePdfNotFoundDetail(_lastRecomputeNotFoundResult, _lastRecomputeNotFoundModel);
+        };
+    }
+
+    if (exportBtn instanceof HTMLButtonElement) {
+        exportBtn.onclick = () => downloadRecomputeNotFoundCsv(_lastRecomputeNotFoundResult, _lastRecomputeNotFoundModel);
+    }
+
     panel.hidden = false;
 }
 

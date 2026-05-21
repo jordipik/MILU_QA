@@ -139,6 +139,7 @@ def apply_preview(
         "fields_changed": 0,
         "fields_skipped_nonempty": 0,
     }
+    not_found_rows: list[dict] = []
     unmatched_samples: list[dict] = []
     ambiguous_samples: list[dict] = []
     changes_log: list[dict] = []
@@ -162,6 +163,7 @@ def apply_preview(
             pn = _norm(row.get("pn_pdf"))
             if not pos:
                 stats["not_found"] += 1
+                not_found_rows.append({"page": page_num, "pos": pos, "pn_pdf": pn, "reason": "missing-pos"})
                 continue
             engine_i, status = select_engine_row(idx, engine_rows, page_num, pos, pn)
             if status == "unique":
@@ -177,6 +179,7 @@ def apply_preview(
                 continue
             else:
                 stats["not_found"] += 1
+                not_found_rows.append({"page": page_num, "pos": pos, "pn_pdf": pn, "reason": "no-engine-match"})
                 if len(unmatched_samples) < 20:
                     unmatched_samples.append(
                         {"page": page_num, "pos": pos, "pn_pdf": pn}
@@ -215,6 +218,7 @@ def apply_preview(
 
     return {
         "stats": stats,
+        "not_found_rows": not_found_rows,
         "unmatched_samples": unmatched_samples,
         "ambiguous_samples": ambiguous_samples,
         "changes_sample": changes_log,

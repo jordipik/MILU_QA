@@ -16,7 +16,11 @@ Documentar el flujo oficial de MILU v1 por motor, desde PDF origen hasta export 
 - Export WordPress en `data/output/wordpress/` via `scripts/export_wordpress_milu.js`.
 
 ## Scripts implicados
-- PDF a engine: `apply_book_preview_to_engine.py`, `apply_all_book_previews.py`.
+- PDF a engine (flujo oficial IMPORTAR PDF):
+  - UI: `recomputeCopyBookBtn` -> `runApplyBookPreviewToEngines()` en `js/analista-02.js`.
+  - backend: `POST /api/pdf-preview/apply-to-engine` en `server.js`.
+  - script principal ejecutado por backend: `apply_book_preview_to_engine.py --write --overwrite` (cuando hay engine seleccionado).
+  - script batch alternativo (cuando no se selecciona engine): `apply_all_book_previews.py --write --overwrite`.
 - Final fields:
   - endpoint principal actual del modal: `POST /copy-pdf-to-final-all-books` (backend en `server.js`).
   - endpoint legacy aun disponible: `POST /calculate-final-fields` ejecuta `copy_gesa_fields_to_final.py`.
@@ -27,6 +31,9 @@ Documentar el flujo oficial de MILU v1 por motor, desde PDF origen hasta export 
 ## Endpoints implicados
 - Salud y persistencia: `GET /health`, `POST /save-json`, `POST /save-json.php`.
 - PDF import: `POST /api/pdf-preview/apply-to-engine`.
+- PDF import (legacy/alternativo, no usado por IMPORTAR PDF actual):
+  - `POST /copy-pdf-to-pdf-all-books` (legacy para import masivo previo).
+  - `POST /recompute-pdf-auto` (legacy/desactivado para este flujo).
 - Final: `POST /copy-pdf-to-final-all-books`, `POST /calculate-final-fields`.
 - Errores: `POST /recompute-qa-errors`.
 - Revision: `POST /recalculate-revision-status`, `GET/POST /qa_revision_sync.php`, `POST /apply-revision-to-engines`.
@@ -52,23 +59,69 @@ Documentar el flujo oficial de MILU v1 por motor, desde PDF origen hasta export 
 ## Flujo paso a paso
 1. PDF original por motor.
 2. Extraccion PDF -> `book_preview_<MODEL>.json` desde `import_pdf.html` (`downloadJsonPreview`).
-3. Enriquecimiento `_pdf` en `engine_<MODEL>.json` con `POST /api/pdf-preview/apply-to-engine` (usa scripts Python oficiales de apply).
-4. Enriquecimiento de catalogos (GESA/SUST/FG-FGS) no se ejecuta hoy con un endpoint unico dedicado en runtime; los campos se consumen desde datos ya presentes en `engine_*.json` y se usan en calculo final/export.
-5. Calculo final masivo con `POST /copy-pdf-to-final-all-books`:
+3. En modal de recalculo, `recomputeCopyBookBtn` ejecuta `runApplyBookPreviewToEngines()`.
+4. `runApplyBookPreviewToEngines()` llama al endpoint oficial `POST /api/pdf-preview/apply-to-engine`.
+5. Backend ejecuta apply oficial con `--write --overwrite` (`apply_book_preview_to_engine.py` por engine, o `apply_all_book_previews.py` en modo batch).
+6. Enriquecimiento de catalogos (GESA/SUST/FG-FGS) no se ejecuta hoy con un endpoint unico dedicado en runtime; los campos se consumen desde datos ya presentes en `engine_*.json` y se usan en calculo final/export.
+7. Calculo final masivo con `POST /copy-pdf-to-final-all-books`:
    - si `gesa=SI` y el campo mapea a GESA, toma valor GESA;
    - en otro caso, toma valor `_pdf`.
-6. Vinculacion assets visuales:
+8. Vinculacion assets visuales:
    - esquemas generales por carpeta `esquemas/<BOOK>_esquemas/`;
    - esquemas POS por `esquemas_pos_circulos/<BOOK>-POS/`;
    - imagenes por `ruta_foto` y consolidacion en `exp_imagenes`.
-7. Calculo errores con `POST /recompute-qa-errors` (reglas en `recompute_engine_errors.js`).
-8. Recalculo QA estado/accion con `POST /recalculate-revision-status`.
-9. Sincronizacion/volcado revision con `/qa_revision_sync.php` y aplicacion masiva con `/apply-revision-to-engines`.
-10. Export WordPress con `POST /export/run-wordpress` y artefactos en `data/output/wordpress/`.
+9. Calculo errores con `POST /recompute-qa-errors` (reglas en `recompute_engine_errors.js`).
+10. Recalculo QA estado/accion con `POST /recalculate-revision-status`.
+11. Sincronizacion/volcado revision con `/qa_revision_sync.php` y aplicacion masiva con `/apply-revision-to-engines`.
+12. Export WordPress con `POST /export/run-wordpress` y artefactos en `data/output/wordpress/`.
+
+## Logs y diagnostico (IMPORTAR PDF)
+- Logs UI en `js/analista-02.js`:
+  - boton pulsado;
+  - engine seleccionado;
+  - endpoint llamado;
+  - respuesta: `rows_changed`, `fields_changed`, `ambiguous`, `not_found`.
+- Logs backend en `server.js`:
+  - comando Python exacto lanzado;
+  - resumen final (`rows_changed`, `fields_changed`, `ambiguous`, `not_found`).
+- Evidencia de matching/reporting en `apply_book_preview_to_engine.py`:
+  - salida de `not_found`, `ambiguous` y muestras de filas sin match.
+
+## not_found y matching
+- `not_found` NO significa error de escritura ni fallo de persistencia.
+- `not_found` significa que una fila del preview no encontro match en engine.
+- Matching real actual:
+  - clave principal: `Source Page` + `POS`;
+  - desempate secundario: `PN`.
+
+## Panel de no-match en modal
+- El modal de recalculo muestra diagnostico de no-match para IMPORTAR PDF:
+  - metricas de resumen;
+  - tabla de filas no encontradas;
+  - filtro por motivo;
+  - busqueda libre;
+  - export CSV de la vista filtrada.
+
+## Selector TODOS LOS LIBROS (modal errores)
+- El selector `Libro` permite:
+  - libro individual;
+  - `Todos los libros`.
+- Al seleccionar `Todos los libros`, el scope de errores pasa automaticamente a `all`.
+- El boton de ejecucion cambia a `ERRORES TODOS`.
+
+## Estado operativo actual
+- Flujo IMPORTAR PDF estabilizado.
+- Endpoint oficial unificado (`/api/pdf-preview/apply-to-engine`).
+- Logs y diagnostico activos (UI + backend + script).
+- Persistencia validada en backend Express y escritura en JSON.
+- Validado en navegador y backend real.
+- Matching ambiguo pendiente de revision futura.
+- Casos `not_found` aceptados temporalmente como parte del diagnostico actual.
 
 ## Riesgos / problemas conocidos
 - Entorno local requerido para varios endpoints de recompute (`js/analista-02.js` marca endpoints local-only).
 - `POST /recompute-pdf-auto` esta desactivado (410); usar `/recompute-pdf-auto-visual`.
+- `POST /copy-pdf-to-pdf-all-books` y `POST /recompute-pdf-auto` no forman parte del flujo oficial actual de IMPORTAR PDF en modal.
 - `POST /calculate-final-fields` y `POST /copy-pdf-to-final-all-books` coexisten; no son equivalentes exactos.
 - Catalogos EXCEL origen (ficheros `EXCEL_*`) no estan versionados en este repo; se opera con datos ya integrados en `engine_*.json`.
 - Flujo depende de JSON en disco (sin DB transaccional), con riesgo de concurrencia mitigado por lock en `handleSaveJson`.

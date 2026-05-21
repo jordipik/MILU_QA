@@ -622,6 +622,7 @@ app.post('/api/pdf-preview/apply-to-engine', async (req, res) => {
     try {
         const path = require('path');
         const fs = require('fs');
+        const os = require('os');
         const engineRaw = typeof req.body?.engine === 'string' ? req.body.engine.trim() : '';
         const previewsDir = 'json_originales';
 
@@ -649,11 +650,13 @@ app.post('/api/pdf-preview/apply-to-engine', async (req, res) => {
         }
 
         const script = engineRaw ? 'apply_book_preview_to_engine.py' : 'apply_all_book_previews.py';
+        const reportPath = path.join(os.tmpdir(), `milu_apply_book_preview_report_${Date.now()}_${process.pid}.json`);
         const args = engineRaw
-            ? [script, '--book-preview', previewFile, '--engine', engineFile, '--write', '--overwrite']
-            : [script, '--write', '--overwrite'];
+            ? [script, '--book-preview', previewFile, '--engine', engineFile, '--write', '--overwrite', '--report', reportPath]
+            : [script, '--write', '--overwrite', '--report', reportPath];
 
         console.log(`${tag} script=${script} engine=${engineFile || '(all)'} preview=${previewFile || '(all)'}`);
+        console.log(`${tag} spawn python ${args.join(' ')}`);
 
         const python = spawn('python', args, {
             cwd: __dirname,
@@ -668,6 +671,15 @@ app.post('/api/pdf-preview/apply-to-engine', async (req, res) => {
 
         python.on('close', (code) => {
             const out = stdout;
+            let reportData = null;
+            try {
+                if (fs.existsSync(reportPath)) {
+                    reportData = JSON.parse(fs.readFileSync(reportPath, 'utf8'));
+                    fs.unlinkSync(reportPath);
+                }
+            } catch (reportError) {
+                console.warn(`${tag} report parse error:`, reportError);
+            }
             // Parseo del informe del script unitario (apply_book_preview_to_engine.py).
             const num = (re) => {
                 const m = out.match(re);
@@ -692,7 +704,7 @@ app.post('/api/pdf-preview/apply-to-engine', async (req, res) => {
             if (stderr.trim()) warnings.push(`stderr: ${stderr.trim().slice(0, 500)}`);
 
             const ok = code === 0;
-            console.log(`${tag} done code=${code} engine=${engineFile || '(all)'} rows_changed=${stats.rows_changed} fields_changed=${stats.fields_changed} warnings=${warnings.length}`);
+            console.log(`${tag} done code=${code} engine=${engineFile || '(all)'} rows_changed=${stats.rows_changed} fields_changed=${stats.fields_changed} ambiguous=${stats.ambiguous} not_found=${stats.not_found} warnings=${warnings.length}`);
 
             const status = ok ? 200 : 500;
             return res.status(status).json({
@@ -702,6 +714,7 @@ app.post('/api/pdf-preview/apply-to-engine', async (req, res) => {
                 engine: engineFile || null,
                 preview: previewFile || null,
                 stats,
+                not_found_rows: Array.isArray(reportData?.not_found_rows) ? reportData.not_found_rows : [],
                 warnings,
                 stdout: out,
                 stderr,

@@ -17,6 +17,8 @@ Documentar el flujo de extraccion de tablas PDF y su aplicacion sobre `engine_*.
 
 ## Endpoints implicados
 - `POST /api/pdf-preview/apply-to-engine`.
+- `POST /copy-pdf-to-pdf-all-books` (legacy/alternativo, no usado por IMPORTAR PDF actual del modal).
+- `POST /recompute-pdf-auto` (legacy/desactivado, no usado por IMPORTAR PDF actual del modal).
 
 ## Botones UI relacionados
 - `extractWholeBookBtn` (extraer libro actual).
@@ -30,12 +32,46 @@ Documentar el flujo de extraccion de tablas PDF y su aplicacion sobre `engine_*.
 1. `import_pdf.html` carga PDF y ejecuta deteccion por pagina (`extractAllPdfRowsFromCurrentPage`).
 2. `extractWholeBook` recorre paginas y compone payload `pages[]` con `rows_total` y `warnings_total`.
 3. El frontend descarga `book_preview_<MODEL>.json` con `downloadJsonPreview(...)`.
-4. En analista, `recomputeCopyBookBtn` llama `POST /api/pdf-preview/apply-to-engine`.
-5. Backend ejecuta script Python oficial con `--write --overwrite`.
+4. En analista, `recomputeCopyBookBtn` ejecuta `runApplyBookPreviewToEngines()`.
+5. `runApplyBookPreviewToEngines()` llama `POST /api/pdf-preview/apply-to-engine`.
+6. Backend ejecuta apply oficial con `--write --overwrite`.
+
+## Logs y diagnostico
+- En `js/analista-02.js` se registran:
+	- boton pulsado;
+	- engine seleccionado;
+	- endpoint llamado;
+	- `rows_changed`, `fields_changed`, `ambiguous`, `not_found`.
+- En `server.js` se registra:
+	- comando Python ejecutado;
+	- resumen final de stats.
+- En `apply_book_preview_to_engine.py` se consolida el reporte de matching y no-match.
+
+## not_found y matching
+- `not_found` NO es error de persistencia.
+- `not_found` indica fila preview sin match contra engine.
+- Matching real actual:
+	- principal: `Source Page` + `POS`.
+	- secundario (desempate): `PN`.
+
+## Panel de no-match en modal
+- El modal de recálculo muestra diagnostico de no-match:
+	- metricas;
+	- tabla;
+	- filtro por motivo;
+	- busqueda libre;
+	- export CSV de filas visibles.
 
 ## Riesgos / problemas conocidos
 - Extraccion depende de deteccion visual; puede generar `warnings` y filas ambiguas/no encontradas.
 - Apply oficial con `--overwrite` puede reemplazar valores no vacios en `_pdf`.
+- `not_found` puede mantenerse aunque la ejecucion sea correcta; se trata como diagnostico de matching.
+
+## Estado operativo actual
+- Flujo IMPORTAR PDF estabilizado sobre endpoint oficial unico.
+- Diagnostico activo en UI y backend.
+- Persistencia validada en disco.
+- `not_found` aceptado temporalmente como estado operativo esperado en parte del dataset.
 
 ## TODO pendiente
 - Definir test de regresion por muestra de paginas para validar estabilidad de extraccion.

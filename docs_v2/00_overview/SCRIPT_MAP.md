@@ -41,8 +41,16 @@ Inventario operativo de scripts y endpoints usados por el flujo MILU v1.
 ## Ejemplo real
 - `POST /api/pdf-preview/apply-to-engine` ejecuta `apply_book_preview_to_engine.py` o `apply_all_book_previews.py` con `--write --overwrite`.
 
+## Notas operativas vigentes
+- IMPORTAR PDF en modal se dispara desde `recomputeCopyBookBtn` -> `runApplyBookPreviewToEngines()` (`js/analista-02.js`).
+- Flujo oficial IMPORTAR PDF usa solo `POST /api/pdf-preview/apply-to-engine` para aplicar preview a engine.
+- Para este flujo, `POST /copy-pdf-to-pdf-all-books` y `POST /recompute-pdf-auto` quedan marcados como legacy/alternativo y no oficiales.
+- Diagnostico activo en `analista-02.js`, `server.js` y `apply_book_preview_to_engine.py` (boton, engine, endpoint, comando Python, `rows_changed`, `fields_changed`, `ambiguous`, `not_found`).
+- En modal de errores, selector `Libro` admite libro individual o `Todos los libros`; al elegir `Todos los libros`, el scope pasa a `all` y el boton muestra `ERRORES TODOS`.
+
 | Script | Tipo | Entrada | Salida | Modifica | Estado |
 | ------ | ---- | ------- | ------ | -------- | ------ |
+| `js/analista-02.js::runApplyBookPreviewToEngines` | UI handler | click `recomputeCopyBookBtn`, selector libro | `fetch` a endpoint oficial + logs de diagnostico | no escribe directo; orquesta apply backend | Activo oficial |
 | `apply_book_preview_to_engine.py` | Python CLI | `book_preview_<MODEL>.json`, `engine_<MODEL>.json` | reporte en stdout y cambios en engine | `*_pdf` en `engine_*.json` | Activo oficial |
 | `apply_all_book_previews.py` | Python CLI | carpeta `json_originales/book_preview_*.json` + `engine_*.json` | ejecucion por lote de apply unitario | `*_pdf` en multiples engines | Activo oficial |
 | `POST /api/pdf-preview/apply-to-engine` | Endpoint Express | JSON opcional `{engine}` | JSON `stats` + `warnings` | dispara apply Python oficial | Activo oficial |
@@ -57,6 +65,7 @@ Inventario operativo de scripts y endpoints usados por el flujo MILU v1.
 | `POST /apply-revision-to-engines` | Endpoint Express | payload revision | resumen de aplicacion | aplica revision masiva a engines | Activo oficial |
 | `scripts/export_wordpress_milu.js` | Node script | todos los `engine_*.json` | JSON/CSV en `data/output/wordpress/` | genera salidas de export | Activo oficial |
 | `POST /export/run-wordpress` | Endpoint Express | vacio | resultado + resumen import/pending/discard | ejecuta script export | Activo oficial |
-| `POST /recompute-pdf-auto` | Endpoint Express | n/a | 410 legacy | no aplica | Desactivado |
+| `POST /copy-pdf-to-pdf-all-books` | Endpoint Express | writePdf/backup/clear flags | resultado batch `_pdf` | copia `_pdf` por backend batch previo | Legacy (no usado por IMPORTAR PDF actual) |
+| `POST /recompute-pdf-auto` | Endpoint Express | n/a | 410 legacy | no aplica | Legacy desactivado (no usado por IMPORTAR PDF actual) |
 | `POST /recompute-pdf-auto-visual` | Endpoint Express | file/id/dryRun | resumen de copia visual | actualiza `_pdf` via comparacion visual | Activo alternativo |
 | Scripts R | R | n/a | n/a | n/a | No detectados en repo |
