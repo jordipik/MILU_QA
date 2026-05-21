@@ -356,9 +356,29 @@
                     <p class="recompute-modal-subtitle">Orquesta la limpieza completa del libro: importa lectura PDF,
                         recalcula reglas QA y deja el estado de revisión al día.</p>
                 </div>
-                <label class="a2-recompute-book-picker" for="recomputeEngineSelect">
-                    <span>Todos los libros</span>
-                </label>
+                <div class="a2-auto-recompute-controls"
+                    style="display:flex;align-items:flex-end;gap:0.75rem;flex-wrap:wrap;justify-content:flex-end;">
+                    <label class="a2-recompute-book-picker" for="recomputeErrorScopeSelect"
+                        style="display:flex;flex-direction:column;gap:0.25rem;min-width:170px;">
+                        <span>Alcance errores</span>
+                        <select id="recomputeErrorScopeSelect" aria-label="Alcance del cálculo de errores">
+                            <option value="current">Registro actual</option>
+                            <option value="book" selected>Libro actual</option>
+                            <option value="all">Todos los libros</option>
+                        </select>
+                    </label>
+                    <label class="a2-recompute-book-picker" for="recomputeEngineSelect"
+                        style="display:flex;flex-direction:column;gap:0.25rem;min-width:170px;">
+                        <span>Libro</span>
+                        <select id="recomputeEngineSelect" aria-label="Libro para recálculo"></select>
+                    </label>
+                    <label class="a2-recompute-book-picker" for="recomputeIdInput"
+                        style="display:flex;flex-direction:column;gap:0.25rem;min-width:170px;">
+                        <span>ID puntual</span>
+                        <input id="recomputeIdInput" type="search" value="" placeholder="Solo para registro actual"
+                            autocomplete="off">
+                    </label>
+                </div>
                 <button id="recomputeModalClose" class="recompute-modal-close" type="button"
                     aria-label="Cerrar">&times;</button>
             </header>
@@ -416,7 +436,6 @@
                     </article>
                 </section>
 
-                <input id="recomputeIdInput" type="hidden" value="">
                 <input id="recomputeUpdateRevisionInput" type="checkbox" hidden>
                 <input id="recomputeForceRevisionInput" type="checkbox" hidden>
                 <button id="recomputePdfRunBtn" type="button" hidden aria-hidden="true">Recalcular PDF_AUTO</button>
@@ -428,6 +447,13 @@
                     </div>
                     <div id="recomputeProgressText" class="a2-progress-text"></div>
                 </div>
+                <section id="recomputeErrorsSummaryPanel" class="recompute-result-panel" hidden>
+                    <div class="recompute-result-head">
+                        <h3 id="recomputeErrorsSummaryTitle">Resumen de errores</h3>
+                        <p id="recomputeErrorsSummaryMeta" class="recompute-result-meta"></p>
+                    </div>
+                    <div id="recomputeErrorsSummaryBody" class="recompute-result-body"></div>
+                </section>
                 <section id="recomputePdfDetailPanel" class="recompute-result-panel" hidden>
                     <div class="recompute-result-head">
                         <h3 id="recomputePdfDetailTitle">Detalle del registro</h3>

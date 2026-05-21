@@ -3140,6 +3140,155 @@ function initComparisonDebugToggle() {
 
 
 let recomputeModalListenersBound = false;
+let recomputeErrorsInFlight = false;
+
+function getRecomputeScopeLabel(scope) {
+    switch (String(scope || '').trim()) {
+        case 'current':
+            return 'registro actual';
+        case 'all':
+            return 'todos los libros';
+        case 'book':
+        default:
+            return 'libro actual';
+    }
+}
+
+function getRecomputeSelectedScope() {
+    const scopeSelect = $('recomputeErrorScopeSelect');
+    if (scopeSelect instanceof HTMLSelectElement) {
+        const value = String(scopeSelect.value || '').trim().toLowerCase();
+        if (value === 'current' || value === 'book' || value === 'all') return value;
+    }
+    return 'book';
+}
+
+function setRecomputeSelectedScope(scope) {
+    const scopeSelect = $('recomputeErrorScopeSelect');
+    if (!(scopeSelect instanceof HTMLSelectElement)) return;
+    const normalized = String(scope || '').trim().toLowerCase();
+    scopeSelect.value = normalized === 'current' || normalized === 'all' ? normalized : 'book';
+}
+
+function clearRecomputeErrorsSummary() {
+    const panel = $('recomputeErrorsSummaryPanel');
+    const meta = $('recomputeErrorsSummaryMeta');
+    const body = $('recomputeErrorsSummaryBody');
+    if (panel instanceof HTMLElement) panel.hidden = true;
+    if (meta instanceof HTMLElement) meta.textContent = '';
+    if (body instanceof HTMLElement) body.innerHTML = '';
+}
+
+function updateRecomputeScopeUi() {
+    const scope = getRecomputeSelectedScope();
+    const engineSelect = $('recomputeEngineSelect');
+    const idInput = $('recomputeIdInput');
+    const runBtn = $('recomputeRunBtn');
+
+    if (engineSelect instanceof HTMLSelectElement) {
+        engineSelect.disabled = scope === 'all';
+        engineSelect.title = scope === 'all' ? 'Todos los libros se procesan sin seleccionar uno concreto.' : '';
+    }
+
+    if (idInput instanceof HTMLInputElement) {
+        if (scope !== 'current') idInput.value = '';
+        idInput.disabled = scope !== 'current';
+        idInput.placeholder = scope === 'current' ? 'ID obligatorio para registro actual' : 'No aplica para este alcance';
+        idInput.title = scope === 'current'
+            ? 'Introduce el ID del registro actual'
+            : 'Solo disponible cuando el alcance es registro actual';
+    }
+
+    if (runBtn instanceof HTMLButtonElement) {
+        runBtn.textContent = scope === 'all'
+            ? 'ERRORES TODOS'
+            : (scope === 'current' ? 'ERRORES REGISTRO' : 'ERRORES LIBRO');
+        runBtn.title = `Recalcular errores para ${getRecomputeScopeLabel(scope)}.`;
+    }
+}
+
+function buildRecomputeErrorTypeList(typeCounts, emptyMessage) {
+    const entries = Object.entries(typeCounts || {})
+        .map(([code, count]) => ({ code, count: Number(count) || 0 }))
+        .filter((item) => item.count > 0)
+        .sort((left, right) => right.count - left.count || left.code.localeCompare(right.code));
+
+    if (!entries.length) return `<p style="margin:0;color:#64748b;">${escapeHtml(emptyMessage)}</p>`;
+
+    return `<ul style="margin:0;padding-left:1.1rem;display:grid;gap:0.3rem;">${entries
+        .map((item) => `<li><strong>${escapeHtml(item.code)}</strong>: ${item.count}</li>`)
+        .join('')}</ul>`;
+}
+
+function buildRecomputeTopRulesList(ruleSummary) {
+    const entries = Array.isArray(ruleSummary) ? ruleSummary.slice(0, 10) : [];
+    if (!entries.length) return '<p style="margin:0;color:#64748b;">No se detectaron reglas con errores.</p>';
+
+    return `<ol style="margin:0;padding-left:1.1rem;display:grid;gap:0.3rem;">${entries
+        .map((item) => `<li><strong>${escapeHtml(String(item?.label || item?.code || ''))}</strong> <span style="color:#64748b;">(${escapeHtml(String(item?.code || ''))})</span>: ${Number(item?.count) || 0}</li>`)
+        .join('')}</ol>`;
+}
+
+function renderRecomputeErrorsSummary(result, context = {}) {
+    const panel = $('recomputeErrorsSummaryPanel');
+    const meta = $('recomputeErrorsSummaryMeta');
+    const body = $('recomputeErrorsSummaryBody');
+    if (!(panel instanceof HTMLElement) || !(meta instanceof HTMLElement) || !(body instanceof HTMLElement)) return;
+
+    const scope = String(context.scope || result?.scope || '').trim() || 'book';
+    const bookRows = Array.isArray(result?.books) ? result.books : [];
+    const booksProcessed = Number(result?.booksProcessed) || (bookRows.length || (result?.file ? 1 : 0));
+    const recordsProcessed = Number(result?.scanned) || 0;
+    const recordsWithErrors = Number(result?.koRows) || 0;
+    const errorsFound = Number(result?.errorsFound) || 0;
+    const warningsFound = Number(result?.warningsFound) || 0;
+    const booksLabel = bookRows.length
+        ? bookRows.map((item) => escapeHtml(String(item?.file || ''))).join(', ')
+        : escapeHtml(String(result?.file || ''));
+
+    meta.textContent = `Alcance: ${getRecomputeScopeLabel(scope)} · Libros: ${booksProcessed} · Registros: ${recordsProcessed}`;
+    body.innerHTML = `
+        <div style="display:grid;gap:1rem;">
+            <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:0.75rem;">
+                <div><strong>Libros procesados</strong><div>${booksProcessed}</div></div>
+                <div><strong>Registros procesados</strong><div>${recordsProcessed}</div></div>
+                <div><strong>Registros con errores</strong><div>${recordsWithErrors}</div></div>
+                <div><strong>Errores encontrados</strong><div>${errorsFound}</div></div>
+                <div><strong>Warnings encontrados</strong><div>${warningsFound}</div></div>
+            </div>
+            <div><strong>Libros procesados</strong><div style="margin-top:0.3rem;color:#475569;">${booksLabel || '—'}</div></div>
+            <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:1rem;align-items:start;">
+                <div>
+                    <strong>Total errores por tipo</strong>
+                    <div style="margin-top:0.45rem;">${buildRecomputeErrorTypeList(result?.errorTypeCounts || {}, 'No hay errores acumulados.')}</div>
+                </div>
+                <div>
+                    <strong>Top 10 leyes/reglas</strong>
+                    <div style="margin-top:0.45rem;">${buildRecomputeTopRulesList(result?.ruleSummary)}</div>
+                </div>
+            </div>
+        </div>
+    `;
+    panel.hidden = false;
+}
+
+function logRecomputeErrorsSummary(result, context = {}) {
+    const scope = String(context.scope || result?.scope || '').trim() || 'book';
+    const elapsedMs = Number(context.elapsedMs) || 0;
+    const books = Array.isArray(result?.books)
+        ? result.books.map((item) => String(item?.file || '').trim()).filter(Boolean)
+        : [String(result?.file || '').trim()].filter(Boolean);
+
+    console.groupCollapsed('[MILU][recomputeModal][errors]');
+    console.log('scope usado:', scope);
+    console.log('libros procesados:', books);
+    console.log('registros procesados:', Number(result?.scanned) || 0);
+    console.log('errores encontrados:', Number(result?.errorsFound) || 0);
+    console.log('warnings encontrados:', Number(result?.warningsFound) || 0);
+    console.log('tiempo total:', `${elapsedMs.toFixed(1)} ms`);
+    console.log('top reglas:', Array.isArray(result?.ruleSummary) ? result.ruleSummary.slice(0, 10) : []);
+    console.groupEnd();
+}
 
 function initRecomputeModal() {
 
@@ -3150,6 +3299,8 @@ function initRecomputeModal() {
     const modal = $('recomputeModal');
 
     const closeBtn = $('recomputeModalClose');
+    const scopeSelect = $('recomputeErrorScopeSelect');
+    const recomputeEngineSelect = $('recomputeEngineSelect');
 
     const backdrop = modal?.querySelector('.recompute-modal-backdrop');
 
@@ -3196,12 +3347,23 @@ function initRecomputeModal() {
         recomputeIdInput.value = String(currentRow?.ID ?? '').trim();
 
     }
+    if (scopeSelect instanceof HTMLSelectElement && !scopeSelect.value) {
+        scopeSelect.value = 'book';
+    }
+    if (recomputeEngineSelect instanceof HTMLSelectElement && !(recomputeEngineSelect.value || '').trim()) {
+        const engineFilterSelect = $('engineFilterSelect');
+        if (engineFilterSelect instanceof HTMLSelectElement) {
+            recomputeEngineSelect.value = String(engineFilterSelect.value || '').trim();
+        }
+    }
+    updateRecomputeScopeUi();
 
 
 
     const closeModal = () => {
 
         modal.hidden = true;
+        clearRecomputeErrorsSummary();
 
     };
 
@@ -3273,6 +3435,13 @@ function initRecomputeModal() {
     if (!recomputeModalListenersBound) {
         closeBtn?.addEventListener('click', closeModal);
         backdrop?.addEventListener('click', closeModal);
+        scopeSelect?.addEventListener('change', updateRecomputeScopeUi);
+        recomputeEngineSelect?.addEventListener('change', () => {
+            const engineFilterSelect = $('engineFilterSelect');
+            if (engineFilterSelect instanceof HTMLSelectElement && recomputeEngineSelect instanceof HTMLSelectElement) {
+                engineFilterSelect.value = recomputeEngineSelect.value;
+            }
+        });
 
         document.addEventListener('keydown', (event) => {
             if (!modal.hidden && event.key === 'Escape') closeModal();
@@ -5573,9 +5742,14 @@ async function fetchRecomputePdfDetailRow(outputPath, requestUrl) {
 
 
 function syncRecomputeEngineSelect() {
+    const source = $('engineFilterSelect');
+    const target = $('recomputeEngineSelect');
+    if (!(source instanceof HTMLSelectElement) || !(target instanceof HTMLSelectElement)) return;
 
-    // El select del modal muestra siempre "Todos los libros" y está desvinculado del filtro activo.
-
+    target.innerHTML = ENGINE_BOOK_MODELS
+        .map((model) => `<option value="${escapeHtml(model)}">${escapeHtml(model)}</option>`)
+        .join('');
+    target.value = source.value;
 }
 
 
@@ -5583,294 +5757,188 @@ function syncRecomputeEngineSelect() {
 // Recalcula errores y, opcionalmente, estado/accion en backend (libro completo o ID puntual).
 async function runBackendRecompute() {
 
+    if (recomputeErrorsInFlight) return null;
+
     const recomputeEngineSelect = $('recomputeEngineSelect');
-
     const recomputeIdInput = $('recomputeIdInput');
-
     const recomputeUpdateRevisionInput = $('recomputeUpdateRevisionInput');
-
     const recomputeForceRevisionInput = $('recomputeForceRevisionInput');
-
     const recomputeRunBtn = $('recomputeRunBtn');
-
     const recomputePdfRunBtn = $('recomputePdfRunBtn');
-
     const engineFilterSelect = $('engineFilterSelect');
-
-
+    const scope = getRecomputeSelectedScope();
 
     if (!(recomputeIdInput instanceof HTMLInputElement)
-
         || !(recomputeRunBtn instanceof HTMLButtonElement)
-
         || !(engineFilterSelect instanceof HTMLSelectElement)) {
-
-        return;
-
+        return null;
     }
 
-
-
+    const selectedMainModel = String(engineFilterSelect.value || '').trim();
+    const selectedMainFile = resolveEngineFileFromFilter(selectedMainModel);
     const selectedModel = recomputeEngineSelect instanceof HTMLSelectElement
         ? String(recomputeEngineSelect.value || '').trim()
-        : String(engineFilterSelect.value || '').trim();
-
-    const file = resolveEngineFileFromFilter(selectedModel);
-
-    const id = String(recomputeIdInput.value || '').trim();
-
+        : selectedMainModel;
+    const file = scope === 'all' ? '' : resolveEngineFileFromFilter(selectedModel);
+    const id = scope === 'current' ? String(recomputeIdInput.value || '').trim() : '';
     const dryRun = false;
-
     const updateRevision = recomputeUpdateRevisionInput instanceof HTMLInputElement ? recomputeUpdateRevisionInput.checked : false;
-
     const forceRevision = recomputeForceRevisionInput instanceof HTMLInputElement ? recomputeForceRevisionInput.checked : false;
 
-
-
-    if (!file) {
-
+    if (scope !== 'all' && !file) {
         alert('No se pudo resolver el archivo engine para el recálculo.');
-
-        return;
-
+        return null;
     }
 
-
+    if (scope === 'current' && !id) {
+        setRecomputeStatus('El alcance "registro actual" requiere un ID puntual.', 'error');
+        return null;
+    }
 
     if (!isBackendEndpointAllowed('recompute-qa-errors')) {
-
         setRecomputeStatus(getLocalOnlyBackendMessage('recompute-qa-errors'), 'error');
-
-        return;
-
+        return null;
     }
-
-
 
     const payload = {
-
-        file,
-
+        scope,
         dryRun,
-
         updateRevision,
-
         forceRevision,
-
         backup: true
-
     };
-
+    if (file) payload.file = file;
     if (id) payload.id = id;
 
-
-
-    recomputeRunBtn.disabled = true;
-
-    if (recomputePdfRunBtn instanceof HTMLButtonElement) recomputePdfRunBtn.disabled = true;
-
-    setRecomputeStatus('Ejecutando recálculo en backend...', '');
-
-
-
+    const keepRecord = currentRow ? txt(currentRow?.ID, '') : '';
+    const startedAt = performance.now();
     const urls = getBackendCandidateUrls('recompute-qa-errors');
-
     let lastError = '';
-
     let lastTriedUrl = '';
-
     let result = null;
 
+    recomputeErrorsInFlight = true;
+    recomputeRunBtn.disabled = true;
+    if (recomputePdfRunBtn instanceof HTMLButtonElement) recomputePdfRunBtn.disabled = true;
+    clearRecomputeErrorsSummary();
+    setRecomputeStatus(`Ejecutando recálculo de errores para ${getRecomputeScopeLabel(scope)}...`, '');
 
-
-    for (const url of urls) {
-
-        lastTriedUrl = url;
-
-        try {
-
-            const response = await fetch(url, {
-
-                method: 'POST',
-
-                headers: { 'Content-Type': 'application/json' },
-
-                body: JSON.stringify(payload)
-
-            });
-
-            const rawBody = await response.text();
-
-            let data = null;
-
+    try {
+        for (const url of urls) {
+            lastTriedUrl = url;
             try {
-
-                data = rawBody ? JSON.parse(rawBody) : null;
-
-            } catch (_parseError) {
-
-                data = null;
-
-            }
-
-
-
-            if (!response.ok) {
-
-                lastError = String(data?.error || `HTTP ${response.status} en ${url}`).trim();
-
-                continue;
-
-            }
-
-
-
-            const legacyTotals = data?.totals;
-
-            const hasLegacyPayload = data?.ok === true && legacyTotals && typeof legacyTotals === 'object';
-
-
-
-            if (!data || data.ok !== true || (!data.result && !hasLegacyPayload)) {
-
-                const snippet = rawBody
-
-                    ? rawBody.replace(/\s+/g, ' ').trim().slice(0, 140)
-
-                    : '';
-
-                lastError = snippet
-
-                    ? `Respuesta invalida desde ${url}: ${snippet}`
-
-                    : `Respuesta invalida desde ${url} (esperado JSON con { ok: true, result }).`;
-
-                continue;
-
-            }
-
-
-
-            if (data.result && typeof data.result === 'object') {
-
-                result = data.result;
-
-            } else {
-
-                result = {
-
-                    file,
-
-                    mode: id ? 'single-id' : 'full-book',
-
-                    id: id || null,
-
-                    dryRun,
-
-                    updateRevision,
-
-                    scanned: Number(legacyTotals.totalRows) || 0,
-
-                    changedRows: Number(legacyTotals.changedRows) || 0,
-
-                    okRows: Math.max((Number(legacyTotals.totalRows) || 0) - (Number(legacyTotals.rowsWithErrors) || 0), 0),
-
-                    koRows: Number(legacyTotals.rowsWithErrors) || 0,
-
-                    wroteFile: !dryRun && (Number(legacyTotals.changedRows) || 0) > 0
-
-                };
-
-            }
-
-            break;
-
-        } catch (error) {
-
-            lastError = String(error?.message || error || 'Error de red');
-
-        }
-
-    }
-
-
-
-    recomputeRunBtn.disabled = false;
-
-    if (recomputePdfRunBtn instanceof HTMLButtonElement) recomputePdfRunBtn.disabled = false;
-
-
-
-    if (!result) {
-
-        const idHint = id
-
-            ? ` Verifica si el ID ${id} existe en ${selectedModel} o deja el ID vacio para recalcular el libro completo.`
-
-            : '';
-
-        setRecomputeStatus(
-
-            `Error: ${lastError || `No se pudo ejecutar el recálculo (ultimo endpoint: ${lastTriedUrl || 'sin URL'}). Comprueba que server.js este activo en http://localhost:3000 y responde en /health.`}${idHint}`,
-
-            'error'
-
-        );
-
-        return null;
-
-    }
-
-
-
-    const modeLabel = result.mode === 'single-id' ? `ID ${result.id}` : 'libro completo';
-
-    setRecomputeStatus(
-
-        `OK ${modeLabel} | scanned=${result.scanned} changed=${result.changedRows} ok=${result.okRows} ko=${result.koRows} dryRun=${result.dryRun ? 'si' : 'no'}`,
-
-        'ok'
-
-    );
-
-
-
-    if (!result.dryRun && result.wroteFile) {
-
-        const selectedMainModel = String(engineFilterSelect.value || '').trim();
-
-        if (selectedMainModel === selectedModel) {
-
-            const keepRecord = currentRow ? txt(currentRow?.ID, '') : '';
-
-            await loadEngineForFilter(selectedMainModel);
-
-            if (keepRecord) {
-
-                const reloaded = findRecordByPrimaryKey(keepRecord, selectedMainModel);
-
-                if (reloaded) {
-
-                    currentRow = reloaded;
-
-                    $('recordIdInput').value = getDisplayPnForInput(reloaded);
-
-                    currentProcessIndex = 0;
-
-                    await revalidateCurrentRow();
-
+                const response = await fetch(url, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(payload)
+                });
+
+                const rawBody = await response.text();
+                let data = null;
+                try {
+                    data = rawBody ? JSON.parse(rawBody) : null;
+                } catch (_parseError) {
+                    data = null;
                 }
 
+                if (!response.ok) {
+                    lastError = String(data?.error || `HTTP ${response.status} en ${url}`).trim();
+                    continue;
+                }
+
+                const legacyTotals = data?.totals;
+                const hasLegacyPayload = data?.ok === true && legacyTotals && typeof legacyTotals === 'object';
+
+                if (!data || data.ok !== true || (!data.result && !hasLegacyPayload)) {
+                    const snippet = rawBody
+                        ? rawBody.replace(/\s+/g, ' ').trim().slice(0, 140)
+                        : '';
+                    lastError = snippet
+                        ? `Respuesta invalida desde ${url}: ${snippet}`
+                        : `Respuesta invalida desde ${url} (esperado JSON con { ok: true, result }).`;
+                    continue;
+                }
+
+                if (data.result && typeof data.result === 'object') {
+                    result = data.result;
+                } else {
+                    result = {
+                        scope,
+                        file,
+                        mode: id ? 'single-id' : 'full-book',
+                        id: id || null,
+                        dryRun,
+                        updateRevision,
+                        scanned: Number(legacyTotals.totalRows) || 0,
+                        changedRows: Number(legacyTotals.changedRows) || 0,
+                        okRows: Math.max((Number(legacyTotals.totalRows) || 0) - (Number(legacyTotals.rowsWithErrors) || 0), 0),
+                        koRows: Number(legacyTotals.rowsWithErrors) || 0,
+                        warningsFound: 0,
+                        wroteFile: !dryRun && (Number(legacyTotals.changedRows) || 0) > 0
+                    };
+                }
+
+                break;
+            } catch (error) {
+                lastError = String(error?.message || error || 'Error de red');
             }
-
-            updateRecordSearchSuggestions();
-
         }
 
+        if (!result) {
+            const idHint = id
+                ? ` Verifica si el ID ${id} existe en ${selectedModel} o deja el ID vacio para recalcular el libro completo.`
+                : '';
+            setRecomputeStatus(
+                `Error: ${lastError || `No se pudo ejecutar el recálculo (ultimo endpoint: ${lastTriedUrl || 'sin URL'}). Comprueba que server.js este activo en http://localhost:3000 y responde en /health.`}${idHint}`,
+                'error'
+            );
+            return null;
+        }
+
+        const elapsedMs = performance.now() - startedAt;
+        const modeLabel = scope === 'all'
+            ? 'todos los libros'
+            : (result.mode === 'single-id' ? `ID ${result.id}` : 'libro completo');
+        const booksProcessed = Number(result.booksProcessed) || (Array.isArray(result.books) ? result.books.length : (result.file ? 1 : 0));
+
+        setRecomputeStatus(
+            `OK ${modeLabel} | libros=${booksProcessed} scanned=${Number(result.scanned) || 0} changed=${Number(result.changedRows) || 0} ok=${Number(result.okRows) || 0} ko=${Number(result.koRows) || 0} warnings=${Number(result.warningsFound) || 0} dryRun=${result.dryRun ? 'si' : 'no'}`,
+            'ok'
+        );
+
+        renderRecomputeErrorsSummary(result, { scope });
+        logRecomputeErrorsSummary(result, { scope, elapsedMs });
+
+        if (!result.dryRun && result.wroteFile) {
+            const shouldReloadCurrentBook = scope === 'all'
+                ? (Array.isArray(result.books)
+                    ? result.books.some((item) => String(item?.file || '').trim() === selectedMainFile)
+                    : Boolean(selectedMainFile))
+                : selectedMainModel === selectedModel;
+
+            if (shouldReloadCurrentBook && selectedMainModel) {
+                await loadEngineForFilter(selectedMainModel);
+
+                if (keepRecord) {
+                    const reloaded = findRecordByPrimaryKey(keepRecord, selectedMainModel);
+                    if (reloaded) {
+                        currentRow = reloaded;
+                        $('recordIdInput').value = getDisplayPnForInput(reloaded);
+                        currentProcessIndex = 0;
+                        await revalidateCurrentRow();
+                    }
+                }
+
+                updateRecordSearchSuggestions();
+            }
+        }
+
+        return result;
+    } finally {
+        recomputeErrorsInFlight = false;
+        recomputeRunBtn.disabled = false;
+        if (recomputePdfRunBtn instanceof HTMLButtonElement) recomputePdfRunBtn.disabled = false;
     }
-
-    return result;
-
 }
 
 
@@ -5926,6 +5994,8 @@ async function runClearPdfFinalFields() {
         if (progressText instanceof HTMLElement) progressText.textContent = 'Completado.';
 
         const summary = result?.summary || {};
+
+            recomputeErrorsInFlight = false;
         const perFile = Array.isArray(result?.perFile) ? result.perFile : [];
         const fileLines = perFile
             .map((entry) => `${entry?.file || '?'}: ${entry?.fields ?? 0} campos / ${entry?.records ?? 0} reg.`)
@@ -6086,15 +6156,21 @@ async function runBackendRecomputePdfAuto() {
 
     }
 
-    const recomputeEngineSelect = $('recomputeEngineSelect');
+    const elapsedMs = performance.now() - startedAt;
+    const modeLabel = scope === 'all'
+        ? 'todos los libros'
+        : (result.mode === 'single-id' ? `ID ${result.id}` : 'libro completo');
 
     const recomputeIdInput = $('recomputeIdInput');
 
-    const recomputeRunBtn = $('recomputeRunBtn');
+        `OK ${modeLabel} | libros=${Number(result.booksProcessed) || (result.file ? 1 : 0)} scanned=${result.scanned} changed=${result.changedRows} ok=${result.okRows} ko=${result.koRows} warnings=${Number(result.warningsFound) || 0} dryRun=${result.dryRun ? 'si' : 'no'}`,
 
     const recomputePdfRunBtn = $('recomputePdfRunBtn');
 
     const engineFilterSelect = $('engineFilterSelect');
+
+    renderRecomputeErrorsSummary(result, { scope });
+    logRecomputeErrorsSummary(result, { scope, elapsedMs });
 
 
 
@@ -6102,7 +6178,7 @@ async function runBackendRecomputePdfAuto() {
 
         || !(recomputeIdInput instanceof HTMLInputElement)
 
-        || !(recomputeRunBtn instanceof HTMLButtonElement)
+        if (scope === 'all' || selectedMainModel === selectedModel) {
 
         || !(recomputePdfRunBtn instanceof HTMLButtonElement)
 
@@ -6439,6 +6515,9 @@ function setRecomputeModalInputsForAction(selectedModel, id = '') {
         recomputeIdInput.value = String(id || '').trim();
 
     }
+
+    setRecomputeSelectedScope(id ? 'current' : 'book');
+    updateRecomputeScopeUi();
 
     if (recomputeUpdateRevisionInput instanceof HTMLInputElement) recomputeUpdateRevisionInput.checked = false;
 

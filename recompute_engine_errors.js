@@ -19,6 +19,10 @@ const FIELD_TO_ERROR_KEY = {
     'NORMA': 'norma_error'
 };
 
+const ERROR_KEY_TO_FIELD = Object.fromEntries(
+    Object.entries(FIELD_TO_ERROR_KEY).map(([field, errorKey]) => [errorKey, field])
+);
+
 function printUsage() {
     console.log('Uso:');
     console.log('  node recompute_engine_errors.js --file=<engine_file.json> [--id=<ID>] [--dry-run] [--update-revision] [--no-backup]');
@@ -362,6 +366,108 @@ function applyToRow(row, options) {
     };
 }
 
+function createAggregateSummary() {
+    return {
+        booksProcessed: 0,
+        recordsProcessed: 0,
+        recordsWithErrors: 0,
+        errorsFound: 0,
+        warningsFound: 0,
+        changedRows: 0,
+        wroteFiles: 0,
+        errorTypes: {},
+        warningTypes: {}
+    };
+}
+
+function mergeBookResultIntoSummary(summary, bookResult) {
+    summary.booksProcessed += 1;
+    summary.recordsProcessed += Number(bookResult?.scanned) || 0;
+    summary.recordsWithErrors += Number(bookResult?.koRows) || 0;
+    summary.changedRows += Number(bookResult?.changedRows) || 0;
+    summary.wroteFiles += bookResult?.wroteFile ? 1 : 0;
+
+    const errorTypeCounts = bookResult?.errorTypeCounts;
+    if (errorTypeCounts && typeof errorTypeCounts === 'object') {
+        Object.entries(errorTypeCounts).forEach(([errorKey, count]) => {
+            const safeCount = Number(count) || 0;
+            if (safeCount <= 0) return;
+            summary.errorTypes[errorKey] = (summary.errorTypes[errorKey] || 0) + safeCount;
+            summary.errorsFound += safeCount;
+        });
+    }
+
+    return summary;
+}
+
+function buildRuleSummaryMap(counterMap) {
+    return Object.entries(counterMap || {})
+        .map(([errorKey, count]) => ({
+            code: errorKey,
+            label: ERROR_KEY_TO_FIELD[errorKey] || errorKey,
+            count: Number(count) || 0,
+            severity: 'error'
+        }))
+        .filter((item) => item.count > 0)
+        .sort((left, right) => right.count - left.count || left.label.localeCompare(right.label));
+}
+
+function recomputeAllEngineErrors(optionsInput = {}) {
+    const options = {
+        id: String(optionsInput.id ?? '').trim(),
+        dryRun: Boolean(optionsInput.dryRun),
+        updateRevision: optionsInput.updateRevision === true,
+        forceRevision: optionsInput.forceRevision === true,
+        backup: optionsInput.backup !== false,
+        rootDir: String(optionsInput.rootDir ?? __dirname).trim() || __dirname
+    };
+
+    if (options.id) {
+        throw new Error('El alcance global no admite ID puntual. Usa scope=current o scope=book.');
+    }
+
+    const startedAt = new Date().toISOString();
+    const summary = createAggregateSummary();
+    const books = [];
+
+    ENGINE_JSON_FILES.forEach((file) => {
+        const result = recomputeEngineErrors({
+            file,
+            dryRun: options.dryRun,
+            updateRevision: options.updateRevision,
+            forceRevision: options.forceRevision,
+            backup: options.backup,
+            rootDir: options.rootDir
+        });
+        books.push(result);
+        mergeBookResultIntoSummary(summary, result);
+    });
+
+    return {
+        scope: 'all',
+        mode: 'all-books',
+        id: null,
+        dryRun: options.dryRun,
+        updateRevision: options.updateRevision,
+        backup: options.backup,
+        startedAt,
+        finishedAt: new Date().toISOString(),
+        books,
+        booksProcessed: summary.booksProcessed,
+        scanned: summary.recordsProcessed,
+        changedRows: summary.changedRows,
+        okRows: Math.max(summary.recordsProcessed - summary.recordsWithErrors, 0),
+        koRows: summary.recordsWithErrors,
+        wroteFile: summary.wroteFiles > 0,
+        wroteFiles: summary.wroteFiles,
+        errorsFound: summary.errorsFound,
+        warningsFound: summary.warningsFound,
+        errorTypeCounts: summary.errorTypes,
+        warningTypeCounts: summary.warningTypes,
+        ruleSummary: buildRuleSummaryMap(summary.errorTypes)
+    };
+}
+
 function recomputeEngineErrors(optionsInput = {}) {
     const options = {
         file: String(optionsInput.file ?? '').trim(),
@@ -409,6 +515,7 @@ function recomputeEngineErrors(optionsInput = {}) {
     let changedRows = 0;
     let koRows = 0;
     let okRows = 0;
+    const errorTypeCounts = {};
 
     targetRows.forEach((row) => {
         const result = applyToRow(row, options);
@@ -416,6 +523,10 @@ function recomputeEngineErrors(optionsInput = {}) {
         if (result.changed) changedRows += 1;
         if (result.totalError > 0) koRows += 1;
         else okRows += 1;
+        Object.values(FIELD_TO_ERROR_KEY).forEach((errorKey) => {
+            const count = Number(row?.[errorKey]) || 0;
+            if (count > 0) errorTypeCounts[errorKey] = (errorTypeCounts[errorKey] || 0) + count;
+        });
     });
 
     stripLegacyQaFields(rows);
@@ -437,7 +548,12 @@ function recomputeEngineErrors(optionsInput = {}) {
         changedRows,
         okRows,
         koRows,
-        wroteFile: !options.dryRun && changedRows > 0
+        wroteFile: !options.dryRun && changedRows > 0,
+        errorsFound: Object.values(errorTypeCounts).reduce((total, count) => total + (Number(count) || 0), 0),
+        warningsFound: 0,
+        errorTypeCounts,
+        warningTypeCounts: {},
+        ruleSummary: buildRuleSummaryMap(errorTypeCounts)
     };
 }
 
@@ -462,5 +578,6 @@ if (require.main === module) {
 }
 
 module.exports = {
-    recomputeEngineErrors
+    recomputeEngineErrors,
+    recomputeAllEngineErrors
 };

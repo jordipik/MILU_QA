@@ -6,7 +6,7 @@ const { spawn } = require('child_process');
 const bodyParser = require('body-parser');
 const cors = require('cors');
 const { ENGINE_JSON_FILES } = require('./engine_files');
-const { recomputeEngineErrors } = require('./recompute_engine_errors');
+const { recomputeEngineErrors, recomputeAllEngineErrors } = require('./recompute_engine_errors');
 const { runVisualCopyComparison, applyCanonicalPdfCopyToRow } = require('./scripts/qa_pdf_visual_copy');
 const { runPdfVisualCopyBatch } = require('./server/services/pdf-copy-batch');
 const { createRevisionSyncService } = require('./server/services/revision-sync');
@@ -492,6 +492,7 @@ try {
 }
 
 app.post('/recompute-qa-errors', async (req, res) => {
+    let scope;
     let file;
     let id;
     let dryRun;
@@ -500,12 +501,24 @@ app.post('/recompute-qa-errors', async (req, res) => {
     let backup;
 
     try {
-        const validated = validateEngineFilePayload(req.body, { maxBytes: 12288 });
-        file = validated.file;
-        if (!ENGINE_JSON_FILES.includes(file)) {
-            throw validationError({ code: 'FILE_NOT_ALLOWED', field: 'file', message: 'Archivo no permitido' });
+        assertPayloadSize(req.body, { maxBytes: 12288 });
+        scope = assertString(req.body?.scope ?? 'book', { field: 'scope', allowEmpty: false, maxLength: 32 }).toLowerCase();
+        if (!['current', 'book', 'all'].includes(scope)) {
+            throw validationError({ code: 'INVALID_SCOPE', field: 'scope', message: 'scope debe ser current, book o all' });
+        }
+
+        if (scope !== 'all') {
+            const validated = validateEngineFilePayload(req.body, { maxBytes: 12288 });
+            file = validated.file;
+            if (!ENGINE_JSON_FILES.includes(file)) {
+                throw validationError({ code: 'FILE_NOT_ALLOWED', field: 'file', message: 'Archivo no permitido' });
+            }
         }
         id = assertString(req.body?.id ?? '', { field: 'id', allowEmpty: true, maxLength: 128 });
+        if (scope === 'book') id = '';
+        if (scope === 'all' && id) {
+            throw validationError({ code: 'ID_NOT_ALLOWED_FOR_ALL_SCOPE', field: 'id', message: 'scope=all no admite id puntual' });
+        }
         dryRun = assertBooleanLike(req.body?.dryRun ?? false, 'dryRun');
         updateRevision = assertBooleanLike(req.body?.updateRevision ?? false, 'updateRevision');
         forceRevision = assertBooleanLike(req.body?.forceRevision ?? false, 'forceRevision');
@@ -517,15 +530,23 @@ app.post('/recompute-qa-errors', async (req, res) => {
     }
 
     try {
-        const result = recomputeEngineErrors({
-            file,
-            id,
-            dryRun,
-            updateRevision,
-            forceRevision,
-            backup,
-            rootDir: __dirname
-        });
+        const result = scope === 'all'
+            ? recomputeAllEngineErrors({
+                dryRun,
+                updateRevision,
+                forceRevision,
+                backup,
+                rootDir: __dirname
+            })
+            : recomputeEngineErrors({
+                file,
+                id,
+                dryRun,
+                updateRevision,
+                forceRevision,
+                backup,
+                rootDir: __dirname
+            });
         return res.json({ ok: true, result });
     } catch (error) {
         const message = String(error?.message || error || 'Error desconocido');
