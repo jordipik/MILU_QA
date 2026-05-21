@@ -1,0 +1,9 @@
+flowchart TD
+    A[Seleccion de libro y rango] --> B[loadPdfWithPage + deteccion visual]
+    B --> C[extractAllPdfRowsFromCurrentPage]
+    C --> D[Payload pages[] con rows[]]
+    D --> E[downloadJsonPreview]
+    E --> F[book_preview_MODEL.json]
+    F --> G[POST /api/pdf-preview/apply-to-engine]
+    G --> H[apply_book_preview_to_engine.py]
+    H --> I[Campos _pdf en engine]

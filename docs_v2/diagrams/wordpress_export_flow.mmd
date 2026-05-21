@@ -1,0 +1,12 @@
+flowchart TD
+    A[engine_*.json] --> B[run export_wordpress_milu.js]
+    B --> C[Agrupar por pn_final]
+    C --> D{QA ok/importar?}
+    D -- Si --> E[decision import]
+    D -- No --> F{QA pendiente/revisar?}
+    F -- Si --> G[decision pending_review]
+    F -- No --> H[decision discard]
+    E --> I[Generar JSON/CSV salida]
+    G --> I
+    H --> I
+    I --> J[data/output/wordpress]

@@ -1,0 +1,12 @@
+flowchart TD
+    A[recompute_qa_errors por fila] --> B{has_error}
+    B -- true --> C[pendiente/revisar]
+    B -- false --> D[ok/importar]
+    A --> E{noise/footer}
+    E -- true --> F[ok/eliminar]
+    C --> G[qa_revision_sync.php]
+    D --> G
+    F --> G
+    G --> H[qa_revision_server_data.json]
+    H --> I[/apply-revision-to-engines]
+    I --> J[qa_revision_* aplicado en engines]

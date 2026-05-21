@@ -1,0 +1,8 @@
+flowchart TD
+    A[engine con _pdf y catalogos] --> B[POST /copy-pdf-to-final-all-books]
+    B --> C{gesa == SI y campo mapeado}
+    C -- Si --> D[Tomar valor GESA]
+    C -- No --> E[Tomar valor _pdf]
+    D --> F[Actualizar _final si cambia]
+    E --> F
+    F --> G[Persistir engine + backup]

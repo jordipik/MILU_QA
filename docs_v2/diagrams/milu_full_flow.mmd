@@ -1,0 +1,13 @@
+flowchart TD
+    A[PDF origen por motor] --> B[import_pdf.html: extractWholeBook/extractAllBooks]
+    B --> C[book_preview_MODEL.json]
+    C --> D[POST /api/pdf-preview/apply-to-engine]
+    D --> E[engine_MODEL.json con campos _pdf]
+    E --> F[POST /copy-pdf-to-final-all-books]
+    F --> G[engine_MODEL.json con campos _final]
+    G --> H[POST /recompute-qa-errors]
+    H --> I[campos _error y has_error]
+    I --> J[POST /recalculate-revision-status]
+    J --> K[qa_revision_estado / qa_revision_accion]
+    K --> L[POST /export/run-wordpress]
+    L --> M[data/output/wordpress/*]

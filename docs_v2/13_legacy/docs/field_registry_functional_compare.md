@@ -1,0 +1,380 @@
+﻿# LEGACY DOCUMENT
+
+⚠️ Documento histórico. Puede estar obsoleto.
+Consultar docs_v2 para versión actual.
+
+# Field Registry Functional Compare
+
+Date: 2026-05-16
+
+## Global
+
+- engines compared: 9
+- engines OK: 9
+- engines CHECK: 0
+- total source records: 67884
+- total normalized records: 67884
+- total record count diff: 0
+- total ids missing in normalized: 0
+- total ids missing in source: 0
+- total legacy moved fields: 1157234
+- total new fields with null: 4548228
+- total records without pn_final: 1976
+- total records with empty qa_revision_estado: 0
+- total records with empty qa_revision_accion: 0
+- total records with ruta_esquemas_pos diff: 0
+- total records with ruta_foto diff: 0
+- total status_legacy_moved_or_ignored_count: 67883
+
+## engine_12V4000M40A.json
+
+- verdict: OK
+- records source: 2760
+- records normalized: 2760
+- record count diff: 0
+- ids source: 2760
+- ids normalized: 2760
+- ids shared: 2760
+- ids missing in normalized: 0
+- ids missing in source: 0
+- legacy fields moved total: 48569
+- new fields with null total: 184920
+- functional fields with differences: (none)
+- records without pn_final: 50
+- records with empty qa_revision_estado: 0
+- records with empty qa_revision_accion: 0
+- records with ruta_esquemas_pos diff: 0
+- records with ruta_foto diff: 0
+- status_legacy_moved_or_ignored_count: 2759
+- critical validation:
+  - pn_final: OK
+  - pos_final: OK
+  - designation_final: OK
+  - qty_final: OK
+  - qty_units_final: OK
+  - weight_final: OK
+  - measure_final: OK
+  - norma_final: OK
+  - model_type_final: OK
+  - qa_revision_estado: OK
+  - qa_revision_accion: OK
+  - ruta_foto: OK
+  - ruta_esquemas_pos: OK
+  - is_subst_excel_vs_sust_status: OK
+  - is_subst_final_vs_sust_status: OK
+  - hierarchie_excel_vs_source: OK
+  - hierarchie_final_vs_source: OK
+
+## engine_12V4000M53.json
+
+- verdict: OK
+- records source: 6580
+- records normalized: 6580
+- record count diff: 0
+- ids source: 6580
+- ids normalized: 6580
+- ids shared: 6580
+- ids missing in normalized: 0
+- ids missing in source: 0
+- legacy fields moved total: 111570
+- new fields with null total: 440860
+- functional fields with differences: (none)
+- records without pn_final: 99
+- records with empty qa_revision_estado: 0
+- records with empty qa_revision_accion: 0
+- records with ruta_esquemas_pos diff: 0
+- records with ruta_foto diff: 0
+- status_legacy_moved_or_ignored_count: 6580
+- critical validation:
+  - pn_final: OK
+  - pos_final: OK
+  - designation_final: OK
+  - qty_final: OK
+  - qty_units_final: OK
+  - weight_final: OK
+  - measure_final: OK
+  - norma_final: OK
+  - model_type_final: OK
+  - qa_revision_estado: OK
+  - qa_revision_accion: OK
+  - ruta_foto: OK
+  - ruta_esquemas_pos: OK
+  - is_subst_excel_vs_sust_status: OK
+  - is_subst_final_vs_sust_status: OK
+  - hierarchie_excel_vs_source: OK
+  - hierarchie_final_vs_source: OK
+
+## engine_12V4000M70.json
+
+- verdict: OK
+- records source: 5358
+- records normalized: 5358
+- record count diff: 0
+- ids source: 5358
+- ids normalized: 5358
+- ids shared: 5358
+- ids missing in normalized: 0
+- ids missing in source: 0
+- legacy fields moved total: 93862
+- new fields with null total: 358986
+- functional fields with differences: (none)
+- records without pn_final: 357
+- records with empty qa_revision_estado: 0
+- records with empty qa_revision_accion: 0
+- records with ruta_esquemas_pos diff: 0
+- records with ruta_foto diff: 0
+- status_legacy_moved_or_ignored_count: 5358
+- critical validation:
+  - pn_final: OK
+  - pos_final: OK
+  - designation_final: OK
+  - qty_final: OK
+  - qty_units_final: OK
+  - weight_final: OK
+  - measure_final: OK
+  - norma_final: OK
+  - model_type_final: OK
+  - qa_revision_estado: OK
+  - qa_revision_accion: OK
+  - ruta_foto: OK
+  - ruta_esquemas_pos: OK
+  - is_subst_excel_vs_sust_status: OK
+  - is_subst_final_vs_sust_status: OK
+  - hierarchie_excel_vs_source: OK
+  - hierarchie_final_vs_source: OK
+
+## engine_16V4000M61.json
+
+- verdict: OK
+- records source: 4987
+- records normalized: 4987
+- record count diff: 0
+- ids source: 4987
+- ids normalized: 4987
+- ids shared: 4987
+- ids missing in normalized: 0
+- ids missing in source: 0
+- legacy fields moved total: 86189
+- new fields with null total: 334129
+- functional fields with differences: (none)
+- records without pn_final: 173
+- records with empty qa_revision_estado: 0
+- records with empty qa_revision_accion: 0
+- records with ruta_esquemas_pos diff: 0
+- records with ruta_foto diff: 0
+- status_legacy_moved_or_ignored_count: 4987
+- critical validation:
+  - pn_final: OK
+  - pos_final: OK
+  - designation_final: OK
+  - qty_final: OK
+  - qty_units_final: OK
+  - weight_final: OK
+  - measure_final: OK
+  - norma_final: OK
+  - model_type_final: OK
+  - qa_revision_estado: OK
+  - qa_revision_accion: OK
+  - ruta_foto: OK
+  - ruta_esquemas_pos: OK
+  - is_subst_excel_vs_sust_status: OK
+  - is_subst_final_vs_sust_status: OK
+  - hierarchie_excel_vs_source: OK
+  - hierarchie_final_vs_source: OK
+
+## engine_16V4000M73.json
+
+- verdict: OK
+- records source: 12445
+- records normalized: 12445
+- record count diff: 0
+- ids source: 12445
+- ids normalized: 12445
+- ids shared: 12445
+- ids missing in normalized: 0
+- ids missing in source: 0
+- legacy fields moved total: 211407
+- new fields with null total: 833815
+- functional fields with differences: (none)
+- records without pn_final: 285
+- records with empty qa_revision_estado: 0
+- records with empty qa_revision_accion: 0
+- records with ruta_esquemas_pos diff: 0
+- records with ruta_foto diff: 0
+- status_legacy_moved_or_ignored_count: 12445
+- critical validation:
+  - pn_final: OK
+  - pos_final: OK
+  - designation_final: OK
+  - qty_final: OK
+  - qty_units_final: OK
+  - weight_final: OK
+  - measure_final: OK
+  - norma_final: OK
+  - model_type_final: OK
+  - qa_revision_estado: OK
+  - qa_revision_accion: OK
+  - ruta_foto: OK
+  - ruta_esquemas_pos: OK
+  - is_subst_excel_vs_sust_status: OK
+  - is_subst_final_vs_sust_status: OK
+  - hierarchie_excel_vs_source: OK
+  - hierarchie_final_vs_source: OK
+
+## engine_16V4000M73L.json
+
+- verdict: OK
+- records source: 11128
+- records normalized: 11128
+- record count diff: 0
+- ids source: 11128
+- ids normalized: 11128
+- ids shared: 11128
+- ids missing in normalized: 0
+- ids missing in source: 0
+- legacy fields moved total: 183437
+- new fields with null total: 745576
+- functional fields with differences: (none)
+- records without pn_final: 366
+- records with empty qa_revision_estado: 0
+- records with empty qa_revision_accion: 0
+- records with ruta_esquemas_pos diff: 0
+- records with ruta_foto diff: 0
+- status_legacy_moved_or_ignored_count: 11128
+- critical validation:
+  - pn_final: OK
+  - pos_final: OK
+  - designation_final: OK
+  - qty_final: OK
+  - qty_units_final: OK
+  - weight_final: OK
+  - measure_final: OK
+  - norma_final: OK
+  - model_type_final: OK
+  - qa_revision_estado: OK
+  - qa_revision_accion: OK
+  - ruta_foto: OK
+  - ruta_esquemas_pos: OK
+  - is_subst_excel_vs_sust_status: OK
+  - is_subst_final_vs_sust_status: OK
+  - hierarchie_excel_vs_source: OK
+  - hierarchie_final_vs_source: OK
+
+## engine_16V4000M90.json
+
+- verdict: OK
+- records source: 2851
+- records normalized: 2851
+- record count diff: 0
+- ids source: 2851
+- ids normalized: 2851
+- ids shared: 2851
+- ids missing in normalized: 0
+- ids missing in source: 0
+- legacy fields moved total: 51043
+- new fields with null total: 191017
+- functional fields with differences: (none)
+- records without pn_final: 63
+- records with empty qa_revision_estado: 0
+- records with empty qa_revision_accion: 0
+- records with ruta_esquemas_pos diff: 0
+- records with ruta_foto diff: 0
+- status_legacy_moved_or_ignored_count: 2851
+- critical validation:
+  - pn_final: OK
+  - pos_final: OK
+  - designation_final: OK
+  - qty_final: OK
+  - qty_units_final: OK
+  - weight_final: OK
+  - measure_final: OK
+  - norma_final: OK
+  - model_type_final: OK
+  - qa_revision_estado: OK
+  - qa_revision_accion: OK
+  - ruta_foto: OK
+  - ruta_esquemas_pos: OK
+  - is_subst_excel_vs_sust_status: OK
+  - is_subst_final_vs_sust_status: OK
+  - hierarchie_excel_vs_source: OK
+  - hierarchie_final_vs_source: OK
+
+## engine_20V4000M93.json
+
+- verdict: OK
+- records source: 14643
+- records normalized: 14643
+- record count diff: 0
+- ids source: 14643
+- ids normalized: 14643
+- ids shared: 14643
+- ids missing in normalized: 0
+- ids missing in source: 0
+- legacy fields moved total: 249099
+- new fields with null total: 981081
+- functional fields with differences: (none)
+- records without pn_final: 361
+- records with empty qa_revision_estado: 0
+- records with empty qa_revision_accion: 0
+- records with ruta_esquemas_pos diff: 0
+- records with ruta_foto diff: 0
+- status_legacy_moved_or_ignored_count: 14643
+- critical validation:
+  - pn_final: OK
+  - pos_final: OK
+  - designation_final: OK
+  - qty_final: OK
+  - qty_units_final: OK
+  - weight_final: OK
+  - measure_final: OK
+  - norma_final: OK
+  - model_type_final: OK
+  - qa_revision_estado: OK
+  - qa_revision_accion: OK
+  - ruta_foto: OK
+  - ruta_esquemas_pos: OK
+  - is_subst_excel_vs_sust_status: OK
+  - is_subst_final_vs_sust_status: OK
+  - hierarchie_excel_vs_source: OK
+  - hierarchie_final_vs_source: OK
+
+## engine_20V4000M93L.json
+
+- verdict: OK
+- records source: 7132
+- records normalized: 7132
+- record count diff: 0
+- ids source: 7132
+- ids normalized: 7132
+- ids shared: 7132
+- ids missing in normalized: 0
+- ids missing in source: 0
+- legacy fields moved total: 122058
+- new fields with null total: 477844
+- functional fields with differences: (none)
+- records without pn_final: 222
+- records with empty qa_revision_estado: 0
+- records with empty qa_revision_accion: 0
+- records with ruta_esquemas_pos diff: 0
+- records with ruta_foto diff: 0
+- status_legacy_moved_or_ignored_count: 7132
+- critical validation:
+  - pn_final: OK
+  - pos_final: OK
+  - designation_final: OK
+  - qty_final: OK
+  - qty_units_final: OK
+  - weight_final: OK
+  - measure_final: OK
+  - norma_final: OK
+  - model_type_final: OK
+  - qa_revision_estado: OK
+  - qa_revision_accion: OK
+  - ruta_foto: OK
+  - ruta_esquemas_pos: OK
+  - is_subst_excel_vs_sust_status: OK
+  - is_subst_final_vs_sust_status: OK
+  - hierarchie_excel_vs_source: OK
+  - hierarchie_final_vs_source: OK
+
+
