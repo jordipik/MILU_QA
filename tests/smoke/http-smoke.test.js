@@ -9,8 +9,12 @@
 
 'use strict';
 
-const { test, describe } = require('node:test');
+const { test, describe, before, after } = require('node:test');
 const assert = require('node:assert/strict');
+const { spawn } = require('node:child_process');
+const net = require('node:net');
+const path = require('node:path');
+const { once } = require('node:events');
 
 const { getTimeout } = require('../helpers/smoke-config');
 const { requestText, postJson } = require('../helpers/fetch-json');
@@ -18,7 +22,69 @@ const { parseJsonOrThrow, assertJsonContentType } = require('../helpers/assert-j
 
 const TIMEOUT_MS = getTimeout(10000);
 
+// ---------- helpers de arranque ------------------------------------------
+
+const SERVER_PORT = 3000;
+const ROOT_DIR = path.resolve(__dirname, '..', '..');
+
+/**
+ * Devuelve true si ya hay algo escuchando en el puerto (servidor externo).
+ */
+function probePort(port, timeoutMs = 800) {
+    return new Promise((resolve) => {
+        const sock = net.createConnection(port, '127.0.0.1');
+        const tid = setTimeout(() => { sock.destroy(); resolve(false); }, timeoutMs);
+        sock.once('connect', () => { clearTimeout(tid); sock.destroy(); resolve(true); });
+        sock.once('error', () => { clearTimeout(tid); resolve(false); });
+    });
+}
+
+/**
+ * Espera hasta que el puerto acepte conexiones o lanza un error.
+ */
+async function waitForPort(port, timeoutMs = 20000) {
+    const deadline = Date.now() + timeoutMs;
+    while (Date.now() < deadline) {
+        if (await probePort(port, 400)) return;
+        await new Promise((r) => setTimeout(r, 300));
+    }
+    throw new Error(`El servidor no arrancó en el puerto ${port} en ${timeoutMs} ms`);
+}
+
+// -------------------------------------------------------------------------
+
+let _serverProcess = null;
+
 describe('MILU smoke HTTP', () => {
+    before(async () => {
+        // Si el servidor ya está corriendo (dev local), no arrancamos uno nuevo.
+        if (await probePort(SERVER_PORT)) return;
+
+        _serverProcess = spawn(process.execPath, ['server.js'], {
+            cwd: ROOT_DIR,
+            stdio: 'pipe',
+            env: { ...process.env, NODE_ENV: 'test' },
+        });
+
+        _serverProcess.once('error', (err) => {
+            throw new Error(`No se pudo arrancar server.js: ${err.message}`);
+        });
+
+        // Capturar stderr para facilitar debug en caso de fallo.
+        _serverProcess.stderr.on('data', (chunk) => {
+            process.stderr.write(`[server.js] ${chunk}`);
+        });
+
+        await waitForPort(SERVER_PORT, 20000);
+    });
+
+    after(async () => {
+        if (_serverProcess) {
+            _serverProcess.kill('SIGTERM');
+            await once(_serverProcess, 'exit').catch(() => {});
+            _serverProcess = null;
+        }
+    });
     describe('Sistema', () => {
         test('GET /health -> 200 JSON con ok/service', async () => {
             const res = await requestText('/health', { method: 'GET' }, TIMEOUT_MS);
