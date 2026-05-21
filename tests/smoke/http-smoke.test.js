@@ -81,7 +81,7 @@ describe('MILU smoke HTTP', () => {
     after(async () => {
         if (_serverProcess) {
             _serverProcess.kill('SIGTERM');
-            await once(_serverProcess, 'exit').catch(() => {});
+            await once(_serverProcess, 'exit').catch(() => { });
             _serverProcess = null;
         }
     });
