@@ -865,6 +865,21 @@ async function extractAllPdfRowsFromCurrentPage(options = {}) {
         fgFgsPdf
     }));
 
+    const headerDebug = getPdfHeaderColumnBodyDebug();
+    const detectedHeaders = Array.isArray(headerDebug?.entries)
+        ? headerDebug.entries.filter((entry) => entry?.found).map((entry) => entry.key)
+        : [];
+    const detectedColumns = headerDebug?.columnStats ? Object.keys(headerDebug.columnStats) : [];
+    const firstRow = rows[0] || null;
+
+    console.info('[pdf-preview][diagnostico] EXTRAER PAGINA', {
+        source_page: sourcePage,
+        headers_detectados: detectedHeaders,
+        columnas_detectadas: detectedColumns,
+        primera_fila_parseada: firstRow,
+        bom_fg_detectados: { bom_pdf: bomPdf, fg_fgs_pdf: fgFgsPdf }
+    });
+
     const preview = {
         source_page: sourcePage,
         rows_detected: rows.length,
@@ -1920,7 +1935,7 @@ function extractTopLabeledValue(lines, config = {}) {
 
 function extractTopBomValue(lines, rejectNextLineRegex = null) {
 
-    const labelRegex = /\bbom(?:\s*[-\s]?(?:no\.?|nr\.?|number))?\b/i;
+    const labelRegex = /\b(?:b\.?o\.?m\.?)(?:\s*[-\s]?(?:no\.?|nr\.?|number))?\b/i;
 
     const parseBomCandidate = (text) => {
         const cleaned = cleanupTopPdfFieldValue(text);
@@ -1940,7 +1955,7 @@ function extractTopBomValue(lines, rejectNextLineRegex = null) {
         if (!lineText || !labelRegex.test(lineText)) continue;
 
 
-        const remainder = lineText.replace(/^.*?\bbom(?:\s*[-\s]?(?:no\.?|nr\.?|number))?\b\s*[:\-]?\s*/i, '');
+        const remainder = lineText.replace(/^.*?\b(?:b\.?o\.?m\.?)(?:\s*[-\s]?(?:no\.?|nr\.?|number))?\b\s*[:\-]?\s*/i, '');
 
         let value = parseBomCandidate(remainder);
 
@@ -2146,9 +2161,9 @@ async function detectTopBomAndFgInPdf(record = currentRow) {
 
     const fgDetection = extractTopLabeledValue(topLines, {
 
-        labelRegex: /\bfg\s*\/?\s*fgs\b/i,
+        labelRegex: /\b(?:fg(?:\s*(?:\/|-)\s*|\s+)fgs|fg\/fgs|fgs|fg)\b/i,
 
-        valueRegex: /\bfg\s*\/?\s*fgs\b\s*[:\-]?\s*(.+)$/i,
+        valueRegex: /\b(?:fg(?:\s*(?:\/|-)\s*|\s+)fgs|fg\/fgs|fgs|fg)\b\s*[:\-]?\s*(.+)$/i,
 
         rejectNextLineRegex: tableHeaderRegex,
 

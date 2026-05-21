@@ -1078,6 +1078,8 @@ const PDF_HEADER_COLUMN_PATTERNS = [
     { key: 'fn', label: 'FN', variants: ['fn', 'footnote', 'f.n.', 'f n', 'f.n'] },
     { key: 'measurement', label: 'MEASUREMENT', variants: ['measurement', 'measure', 'meas', 'measurement / standard', 'measurement/standard'] },
     { key: 'standard', label: 'STANDARD', variants: ['standard', 'std', 'norma'] },
+    { key: 'fg_fgs', label: 'FG/FGS', variants: ['fg/fgs', 'fg / fgs', 'fg-fgs', 'fg fgs', 'fg', 'fgs'] },
+    { key: 'bom', label: 'BOM', variants: ['bom', 'b.o.m.', 'bom no', 'bom-no', 'bom no.', 'bom number', 'bom nr'] },
     { key: 'remarks', label: 'REMARKS', variants: ['remark', 'remarks', 'note', 'notes'] },
     { key: 'dimensions', label: 'DIMENSIONS', variants: ['dimensions', 'dimension', 'dims', 'dim'] }
 ];
@@ -1375,6 +1377,8 @@ function assignTokensToColumnRegions(rowTokens, columnRegions) {
         fn: [],
         measurement: [],
         standard: [],
+        fg_fgs: [],
+        bom: [],
         remarks: [],
         unknown: []
     };
@@ -2868,7 +2872,7 @@ export function getPdfHeaderDetection() {
 }
 
 // All expected header keys, used to report missing headers.
-const HEADER_DETECTION_ALL_KEYS = ['pos', 'part_no', 'designation', 'model_type', 'qty', 'units', 'weight', 'fn', 'measurement', 'standard'];
+const HEADER_DETECTION_ALL_KEYS = ['pos', 'part_no', 'designation', 'model_type', 'qty', 'units', 'weight', 'fn', 'measurement', 'standard', 'fg_fgs', 'bom'];
 
 // Maps each header key to a CSS kind token.
 const HEADER_KEY_TO_KIND = {
@@ -2881,7 +2885,9 @@ const HEADER_KEY_TO_KIND = {
     weight: 'header-weight',
     fn: 'header-fn',
     measurement: 'header-measurement',
-    standard: 'header-standard'
+    standard: 'header-standard',
+    fg_fgs: 'header-remarks',
+    bom: 'header-dimensions'
 };
 
 const HEADER_SPLIT_PAIRS = [

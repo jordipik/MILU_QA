@@ -6,6 +6,7 @@ import {
     clearPdfHeaderColumnBodyHighlights,
     clearPdfHeaderOnlyOverlay,
     getCurrentPdfPageCount,
+    getPdfLastPageData,
     getPdfHeaderColumnBodyDebug,
     initPdfZoomControls,
     loadPdfClear,
@@ -39,6 +40,214 @@ let currentPreviewPayload = null;
 
 function normalizeString(value) {
     return String(value ?? '').trim().replace(/\s+/g, ' ');
+}
+
+function cleanupTopPdfFieldValue(value) {
+    return String(value ?? '')
+        .replace(/^[\s:\-]+/, '')
+        .replace(/[\s,;:.!?]+$/, '')
+        .replace(/\s+/g, ' ')
+        .trim();
+}
+
+function normalizeTopPdfLineText(value) {
+    return String(value ?? '')
+        .replace(/\s+/g, ' ')
+        .trim();
+}
+
+function extractTopLabeledValue(lines, config = {}) {
+    const labelRegex = config.labelRegex instanceof RegExp ? config.labelRegex : null;
+    const valueRegex = config.valueRegex instanceof RegExp ? config.valueRegex : null;
+    const rejectNextLineRegex = config.rejectNextLineRegex instanceof RegExp ? config.rejectNextLineRegex : null;
+    const sameLineOnly = config.sameLineOnly === true;
+    if (!labelRegex || !valueRegex || !Array.isArray(lines) || !lines.length) return null;
+
+    for (let index = 0; index < lines.length; index += 1) {
+        const line = lines[index];
+        const lineText = normalizeTopPdfLineText(line?.text);
+        if (!lineText || !labelRegex.test(lineText)) continue;
+
+        const sameLineMatch = lineText.match(valueRegex);
+        let value = cleanupTopPdfFieldValue(sameLineMatch?.[1] || '');
+        let method = 'same-line';
+        let valueLineIndex = Number(line?.lineIndex);
+
+        if (!value && !sameLineOnly) {
+            const nextLine = lines[index + 1] || null;
+            const nextText = normalizeTopPdfLineText(nextLine?.text);
+            if (nextText) {
+                const blocked = rejectNextLineRegex ? rejectNextLineRegex.test(nextText) : false;
+                if (!blocked) {
+                    value = cleanupTopPdfFieldValue(nextText);
+                    method = 'next-line';
+                    valueLineIndex = Number(nextLine?.lineIndex);
+                }
+            }
+        }
+
+        if (value) {
+            return {
+                value,
+                lineIndex: Number(line?.lineIndex),
+                valueLineIndex: Number.isFinite(valueLineIndex) ? valueLineIndex : Number(line?.lineIndex),
+                method,
+                lineText
+            };
+        }
+    }
+
+    return null;
+}
+
+function extractTopBomValue(lines, rejectNextLineRegex = null) {
+    const labelRegex = /\b(?:b\.?o\.?m\.?)(?:\s*[-\s]?(?:no\.?|nr\.?|number))?\b/i;
+    const parseBomCandidate = (text) => {
+        const cleaned = cleanupTopPdfFieldValue(text);
+        if (!cleaned) return '';
+        const match = cleaned.match(/\b(?=[a-z0-9./\-]*\d)[a-z0-9][a-z0-9./\-]*\b/i);
+        return cleanupTopPdfFieldValue(match?.[0] || '');
+    };
+
+    for (let index = 0; index < lines.length; index += 1) {
+        const line = lines[index];
+        const lineText = normalizeTopPdfLineText(line?.text);
+        if (!lineText || !labelRegex.test(lineText)) continue;
+
+        const remainder = lineText.replace(/^.*?\b(?:b\.?o\.?m\.?)(?:\s*[-\s]?(?:no\.?|nr\.?|number))?\b\s*[:\-]?\s*/i, '');
+        let value = parseBomCandidate(remainder);
+        let method = 'same-line';
+        let valueLineIndex = Number(line?.lineIndex);
+
+        if (!value) {
+            const nextLine = lines[index + 1] || null;
+            const nextText = normalizeTopPdfLineText(nextLine?.text);
+            if (nextText) {
+                const blocked = rejectNextLineRegex instanceof RegExp ? rejectNextLineRegex.test(nextText) : false;
+                if (!blocked) {
+                    value = parseBomCandidate(nextText);
+                    if (value) {
+                        method = 'next-line';
+                        valueLineIndex = Number(nextLine?.lineIndex);
+                    }
+                }
+            }
+        }
+
+        if (value) {
+            return {
+                value,
+                lineIndex: Number(line?.lineIndex),
+                valueLineIndex: Number.isFinite(valueLineIndex) ? valueLineIndex : Number(line?.lineIndex),
+                method,
+                lineText
+            };
+        }
+    }
+
+    return null;
+}
+
+function buildRenderedPdfItemsWithLineIndex(textItems, viewport) {
+    if (!Array.isArray(textItems) || !textItems.length || !viewport || !window.pdfjsLib?.Util?.transform) {
+        return [];
+    }
+
+    const baseItems = textItems.map((item) => {
+        const text = String(item?.str || '').trim();
+        if (!text) return null;
+
+        const tx = window.pdfjsLib.Util.transform(viewport.transform, item.transform);
+        return {
+            text,
+            left: Number(tx?.[4] || 0),
+            top: Number(tx?.[5] || 0),
+            height: (Number(item?.height || 0) * Number(viewport?.scale || 1)) || 12,
+            lineIndex: -1
+        };
+    }).filter(Boolean);
+
+    const HEADER_LINE_Y_TOLERANCE = 5;
+    const lines = [];
+    baseItems.forEach((item) => {
+        const existing = lines.find((line) => Math.abs(Number(line.top) - Number(item.top)) <= HEADER_LINE_Y_TOLERANCE);
+        if (existing) {
+            existing.items.push(item);
+            existing.top = (existing.top + item.top) / 2;
+        } else {
+            lines.push({ top: item.top, items: [item] });
+        }
+    });
+
+    lines.sort((a, b) => Number(a.top) - Number(b.top));
+    lines.forEach((line, idx) => {
+        line.items.forEach((item) => {
+            item.lineIndex = idx;
+        });
+    });
+
+    return baseItems;
+}
+
+function detectTopBomAndFgFromCurrentPage() {
+    const { textItems, viewport } = getPdfLastPageData();
+    const pageItems = buildRenderedPdfItemsWithLineIndex(textItems, viewport);
+    if (!pageItems.length) {
+        return { bomPdf: '', fgFgsPdf: '', topLines: [], entries: [] };
+    }
+
+    const topLineMap = new Map();
+    const allTops = pageItems.map((item) => Number(item?.top || 0));
+    const pageMaxTop = allTops.length ? Math.max(...allTops) : 0;
+    const pageMinTop = allTops.length ? Math.min(...allTops) : 0;
+    const pageTopThreshold = pageMinTop + (pageMaxTop - pageMinTop) * 0.30;
+
+    pageItems
+        .filter((item) => Number.isInteger(Number(item?.lineIndex)))
+        .filter((item) => Number(item?.top || 0) <= pageTopThreshold)
+        .sort((a, b) => Number(a?.lineIndex || 0) - Number(b?.lineIndex || 0) || Number(a?.left || 0) - Number(b?.left || 0))
+        .forEach((item) => {
+            const lineIndex = Number(item?.lineIndex);
+            if (!topLineMap.has(lineIndex)) topLineMap.set(lineIndex, []);
+            topLineMap.get(lineIndex).push(item);
+        });
+
+    const topLines = Array.from(topLineMap.entries())
+        .sort((a, b) => a[0] - b[0])
+        .map(([lineIndex, items]) => ({
+            lineIndex,
+            text: items.map((item) => String(item?.text || '').trim()).filter(Boolean).join(' ').replace(/\s+/g, ' ').trim()
+        }))
+        .filter((line) => line.text);
+
+    const tableHeaderRegex = /\b(pos|part\s*no\.?|designation|model\s*\/\s*type|qty\.?|units|weight|fn|measurement|standard)\b/i;
+    const fgLabelRegex = /\b(?:fg(?:\s*(?:\/|-)\s*|\s+)fgs|fg\/fgs|fgs|fg)\b/i;
+
+    const fgDetection = extractTopLabeledValue(topLines, {
+        labelRegex: fgLabelRegex,
+        valueRegex: /\b(?:fg(?:\s*(?:\/|-)\s*|\s+)fgs|fg\/fgs|fgs|fg)\b\s*[:\-]?\s*(.+)$/i,
+        rejectNextLineRegex: tableHeaderRegex,
+        sameLineOnly: true
+    });
+
+    const bomDetection = extractTopBomValue(topLines, tableHeaderRegex);
+
+    let fgFgsPdf = cleanupTopPdfFieldValue(fgDetection?.value || '');
+    if (fgFgsPdf) {
+        fgFgsPdf = String(fgFgsPdf).replace(/^([^\s]+)\s+([^\s]+)$/, '$1-$2');
+    }
+
+    const bomPdf = cleanupTopPdfFieldValue(bomDetection?.value || '');
+
+    return {
+        bomPdf,
+        fgFgsPdf,
+        topLines,
+        entries: [
+            { key: 'fg_fgs', found: Boolean(fgFgsPdf), value: fgFgsPdf, method: fgDetection?.method || '' },
+            { key: 'bom', found: Boolean(bomPdf), value: bomPdf, method: bomDetection?.method || '' }
+        ]
+    };
 }
 
 function looksLikeFnValue(value) {
@@ -389,13 +598,40 @@ async function extractAllPdfRowsFromCurrentPage(options = {}) {
         return { ok: false, reason: 'missing-row-groups', rows: [] };
     }
 
+    let fgFgsPdf = '';
+    let bomPdf = '';
+    let topDetection = null;
+    try {
+        topDetection = detectTopBomAndFgFromCurrentPage();
+        fgFgsPdf = normalizeString(topDetection?.fgFgsPdf);
+        bomPdf = normalizeString(topDetection?.bomPdf);
+    } catch (error) {
+        console.warn('No se pudo detectar BOM/FG durante extractAllPdfRowsFromCurrentPage (import-pdf):', error);
+    }
+
     const sourcePage = Number(getSelectedPageNumber() || 0);
     const rows = rowGroups.map((group, index) => buildPdfPageRowPreviewFromGroup(group, {
         sourcePage,
         rowIndex: index + 1,
-        bomPdf: '',
-        fgFgsPdf: ''
+        bomPdf,
+        fgFgsPdf
     }));
+
+    const headerDebug = getPdfHeaderColumnBodyDebug();
+    const detectedHeaders = Array.isArray(headerDebug?.entries)
+        ? headerDebug.entries.filter((entry) => entry?.found).map((entry) => entry.key)
+        : [];
+    const detectedColumns = headerDebug?.columnStats ? Object.keys(headerDebug.columnStats) : [];
+    const firstRow = rows[0] || null;
+
+    console.info('[import-pdf][diagnostico] EXTRAER PAGINA', {
+        source_page: sourcePage,
+        headers_detectados: detectedHeaders,
+        columnas_detectadas: detectedColumns,
+        primera_fila_parseada: firstRow,
+        bom_fg_detectados: { bom_pdf: bomPdf, fg_fgs_pdf: fgFgsPdf },
+        top_detection_entries: topDetection?.entries || []
+    });
 
     const preview = {
         source_page: sourcePage,
