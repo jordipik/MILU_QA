@@ -6156,29 +6156,21 @@ async function runBackendRecomputePdfAuto() {
 
     }
 
-    const elapsedMs = performance.now() - startedAt;
-    const modeLabel = scope === 'all'
-        ? 'todos los libros'
-        : (result.mode === 'single-id' ? `ID ${result.id}` : 'libro completo');
+    const recomputeEngineSelect = $('recomputeEngineSelect');
 
     const recomputeIdInput = $('recomputeIdInput');
 
-        `OK ${modeLabel} | libros=${Number(result.booksProcessed) || (result.file ? 1 : 0)} scanned=${result.scanned} changed=${result.changedRows} ok=${result.okRows} ko=${result.koRows} warnings=${Number(result.warningsFound) || 0} dryRun=${result.dryRun ? 'si' : 'no'}`,
+    const recomputeRunBtn = $('recomputeRunBtn');
 
     const recomputePdfRunBtn = $('recomputePdfRunBtn');
 
     const engineFilterSelect = $('engineFilterSelect');
 
-    renderRecomputeErrorsSummary(result, { scope });
-    logRecomputeErrorsSummary(result, { scope, elapsedMs });
-
-
-
     if (!(recomputeEngineSelect instanceof HTMLSelectElement)
 
         || !(recomputeIdInput instanceof HTMLInputElement)
 
-        if (scope === 'all' || selectedMainModel === selectedModel) {
+        || !(recomputeRunBtn instanceof HTMLButtonElement)
 
         || !(recomputePdfRunBtn instanceof HTMLButtonElement)
 
