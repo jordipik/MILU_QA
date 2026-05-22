@@ -358,15 +358,6 @@
                 </div>
                 <div class="a2-auto-recompute-controls"
                     style="display:flex;align-items:flex-end;gap:0.75rem;flex-wrap:wrap;justify-content:flex-end;">
-                    <label class="a2-recompute-book-picker" for="recomputeErrorScopeSelect"
-                        style="display:flex;flex-direction:column;gap:0.25rem;min-width:170px;">
-                        <span>Alcance errores</span>
-                        <select id="recomputeErrorScopeSelect" aria-label="Alcance del cálculo de errores">
-                            <option value="current">Registro actual</option>
-                            <option value="book" selected>Libro actual</option>
-                            <option value="all">Todos los libros</option>
-                        </select>
-                    </label>
                     <label class="a2-recompute-book-picker" for="recomputeEngineSelect"
                         style="display:flex;flex-direction:column;gap:0.25rem;min-width:170px;">
                         <span>Libro</span>
@@ -377,6 +368,15 @@
                         <span>ID puntual</span>
                         <input id="recomputeIdInput" type="search" value="" placeholder="Solo para registro actual"
                             autocomplete="off">
+                    </label>
+                    <label class="a2-recompute-book-picker" for="recomputeErrorScopeSelect"
+                        style="display:flex;flex-direction:column;gap:0.25rem;min-width:170px;">
+                        <span>Alcance</span>
+                        <select id="recomputeErrorScopeSelect" aria-label="Alcance">
+                            <option value="current">Registro actual</option>
+                            <option value="book" selected>Libro actual</option>
+                            <option value="all">Todos los libros</option>
+                        </select>
                     </label>
                 </div>
                 <button id="recomputeModalClose" class="recompute-modal-close" type="button"

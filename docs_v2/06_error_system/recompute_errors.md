@@ -44,21 +44,24 @@ Documentar la ejecucion operativa del recompute QA persistente a nivel registro/
 - Modo resultante: `all-books`.
 
 ## Flujo paso a paso
-1. Frontend arma payload desde modal (`runBackendRecompute`).
-2. `POST /recompute-qa-errors` valida:
+1. Frontend lee filtros unificados del modal con `getRecomputeModalFilters()` y registra:
+	- `console.info('[RecomputeModal] action', 'ERRORES')`
+	- `console.info('[RecomputeModal] filters', filters)`
+2. Frontend arma payload desde modal (`runBackendRecompute`).
+3. `POST /recompute-qa-errors` valida:
 	- `scope` permitido (`current|book|all`)
 	- `file` permitido para `current|book`
 	- `id` prohibido en `all`
-3. Backend enruta a:
+4. Backend enruta a:
 	- `recomputeEngineErrors` para `current|book`
 	- `recomputeAllEngineErrors` para `all`
-4. Motor por fila (`applyToRow`):
+5. Motor por fila (`applyToRow`):
 	- recalcula `*_error`, `total_error`, `has_error`
 	- opcional: si `updateRevision=true`, ajusta `qa_revision_estado/qa_revision_accion`
-5. Si `dryRun=false` y hubo cambios:
+6. Si `dryRun=false` y hubo cambios:
 	- escribe `engine_*.json`
 	- crea backup si `backup=true`
-6. Devuelve resumen operativo a UI.
+7. Devuelve resumen operativo a UI.
 
 ## Regla de revision (solo cuando updateRevision=true)
 - Fila marcada como ruido/footer (`criterio_pn=C_NOISE_FOOTER` o `status=NOISE`):

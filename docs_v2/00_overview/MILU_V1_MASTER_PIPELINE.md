@@ -131,6 +131,10 @@ Documentar el flujo oficial de MILU v1 por motor, desde PDF origen hasta export 
 - Publicar contrato formal de entrada para catalogos GESA/SUST/FG-FGS en runtime v1.
 - Añadir smoke tests automatizados por etapa (PDF->FINAL->ERROR->EXPORT).
 
+## Referencias relacionadas (doc v2)
+- Recompute modal V1 (filtros superiores, objeto unificado de filtros y cobertura por boton): `docs_v2/04_final_calculation/recompute_system.md`.
+- Contrato operativo de ERRORES (`/recompute-qa-errors`): `docs_v2/06_error_system/recompute_errors.md`.
+
 ## Ejemplo real
 - En `engine_12V4000M40A.json`, un registro real (`ID=1102759`) contiene simultaneamente:
   - campos base (`POS`, `PART NO.`, `DESIGNATION`),

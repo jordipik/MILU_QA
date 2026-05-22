@@ -3171,6 +3171,45 @@ function setRecomputeSelectedScope(scope) {
     scopeSelect.value = normalized === 'current' || normalized === 'all' ? normalized : 'book';
 }
 
+function getRecomputeModalFilters() {
+    const recomputeEngineSelect = $('recomputeEngineSelect');
+    const recomputeIdInput = $('recomputeIdInput');
+    const recomputeErrorScopeSelect = $('recomputeErrorScopeSelect');
+    const recomputeUpdateRevisionInput = $('recomputeUpdateRevisionInput');
+    const recomputeForceRevisionInput = $('recomputeForceRevisionInput');
+
+    const book = recomputeEngineSelect instanceof HTMLSelectElement
+        ? String(recomputeEngineSelect.value || '').trim()
+        : '';
+    const scopeRaw = recomputeErrorScopeSelect instanceof HTMLSelectElement
+        ? String(recomputeErrorScopeSelect.value || '').trim().toLowerCase()
+        : 'book';
+    const scope = scopeRaw === 'current' || scopeRaw === 'all' ? scopeRaw : 'book';
+    const id = recomputeIdInput instanceof HTMLInputElement
+        ? String(recomputeIdInput.value || '').trim()
+        : '';
+
+    return {
+        book,
+        scope,
+        page: '',
+        id,
+        dryRun: false,
+        backup: true,
+        updateRevision: recomputeUpdateRevisionInput instanceof HTMLInputElement
+            ? Boolean(recomputeUpdateRevisionInput.checked)
+            : false,
+        forceRevision: recomputeForceRevisionInput instanceof HTMLInputElement
+            ? Boolean(recomputeForceRevisionInput.checked)
+            : false
+    };
+}
+
+function logRecomputeModalAction(actionName, filters) {
+    console.info('[RecomputeModal] action', actionName);
+    console.info('[RecomputeModal] filters', filters);
+}
+
 function clearRecomputeErrorsSummary() {
     const panel = $('recomputeErrorsSummaryPanel');
     const meta = $('recomputeErrorsSummaryMeta');
@@ -5833,41 +5872,41 @@ function syncRecomputeEngineSelect() {
     target.innerHTML = [`<option value="${RECOMPUTE_ALL_BOOKS_VALUE}">Todos los libros</option>`]
         .concat(ENGINE_BOOK_MODELS.map((model) => `<option value="${escapeHtml(model)}">${escapeHtml(model)}</option>`))
         .join('');
-    target.value = source.value || RECOMPUTE_ALL_BOOKS_VALUE;
+    const selectedMainModel = String(source.value || '').trim();
+    target.value = ENGINE_BOOK_MODELS.includes(selectedMainModel)
+        ? selectedMainModel
+        : RECOMPUTE_ALL_BOOKS_VALUE;
 }
 
 
 
 // Recalcula errores y, opcionalmente, estado/accion en backend (libro completo o ID puntual).
-async function runBackendRecompute() {
+async function runBackendRecompute(inputFilters = null) {
 
     if (recomputeErrorsInFlight) return null;
 
-    const recomputeEngineSelect = $('recomputeEngineSelect');
-    const recomputeIdInput = $('recomputeIdInput');
-    const recomputeUpdateRevisionInput = $('recomputeUpdateRevisionInput');
-    const recomputeForceRevisionInput = $('recomputeForceRevisionInput');
     const recomputeRunBtn = $('recomputeRunBtn');
     const recomputePdfRunBtn = $('recomputePdfRunBtn');
     const engineFilterSelect = $('engineFilterSelect');
-    const scope = getRecomputeSelectedScope();
+    const filters = inputFilters || getRecomputeModalFilters();
+    const scopeRequested = String(filters.scope || 'book').trim();
 
-    if (!(recomputeIdInput instanceof HTMLInputElement)
-        || !(recomputeRunBtn instanceof HTMLButtonElement)
+    if (!(recomputeRunBtn instanceof HTMLButtonElement)
         || !(engineFilterSelect instanceof HTMLSelectElement)) {
         return null;
     }
 
     const selectedMainModel = String(engineFilterSelect.value || '').trim();
     const selectedMainFile = resolveEngineFileFromFilter(selectedMainModel);
-    const selectedModel = recomputeEngineSelect instanceof HTMLSelectElement
-        ? String(recomputeEngineSelect.value || '').trim()
-        : selectedMainModel;
+    const selectedModelRaw = String(filters.book || '').trim();
+    const selectedModel = selectedModelRaw === RECOMPUTE_ALL_BOOKS_VALUE ? '' : selectedModelRaw;
+    const scope = selectedModelRaw === RECOMPUTE_ALL_BOOKS_VALUE ? 'all' : scopeRequested;
     const file = scope === 'all' ? '' : resolveEngineFileFromFilter(selectedModel);
-    const id = scope === 'current' ? String(recomputeIdInput.value || '').trim() : '';
-    const dryRun = false;
-    const updateRevision = recomputeUpdateRevisionInput instanceof HTMLInputElement ? recomputeUpdateRevisionInput.checked : false;
-    const forceRevision = recomputeForceRevisionInput instanceof HTMLInputElement ? recomputeForceRevisionInput.checked : false;
+    const id = scope === 'current' ? String(filters.id || '').trim() : '';
+    const dryRun = Boolean(filters.dryRun);
+    const updateRevision = Boolean(filters.updateRevision);
+    const forceRevision = Boolean(filters.forceRevision);
+    const backup = filters.backup !== false;
 
     if (scope !== 'all' && !file) {
         alert('No se pudo resolver el archivo engine para el recálculo.');
@@ -5889,7 +5928,7 @@ async function runBackendRecompute() {
         dryRun,
         updateRevision,
         forceRevision,
-        backup: true
+        backup
     };
     if (file) payload.file = file;
     if (id) payload.id = id;
@@ -10973,19 +11012,22 @@ function applyPdfFeatureFlagsToUi() {
 // que ejecuta:
 //   - apply_book_preview_to_engine.py --write --overwrite  (si hay engine seleccionado)
 //   - apply_all_book_previews.py --write --overwrite       (si no hay engine, todos los libros)
-async function runApplyBookPreviewToEngines() {
+async function runApplyBookPreviewToEngines(inputFilters = null) {
     const TAG = '[recomputeCopyBookBtn]';
     clearRecomputePdfDetail();
 
     const recomputeCopyBookBtn = $('recomputeCopyBookBtn');
     const recomputeRunBtn = $('recomputeRunBtn');
     const recomputePdfRunBtn = $('recomputePdfRunBtn');
-    const recomputeEngineSelect = $('recomputeEngineSelect');
-
-    const selectedModel = (recomputeEngineSelect instanceof HTMLSelectElement)
-        ? String(recomputeEngineSelect.value || '').trim()
-        : '';
+    const filters = inputFilters || getRecomputeModalFilters();
+    const selectedModelRaw = String(filters.book || '').trim();
+    const selectedModel = selectedModelRaw === RECOMPUTE_ALL_BOOKS_VALUE ? '' : selectedModelRaw;
     const scope = selectedModel ? `engine_${selectedModel}.json` : 'TODOS los libros';
+
+    if (String(filters.scope || 'book').trim() === 'current') {
+        setRecomputeStatus('IMPORTAR PDF no soporta alcance "registro actual". Usa "Libro actual" o "Todos los libros".', 'error');
+        return;
+    }
 
     console.log(`${TAG} button pulsado`);
     console.log(`${TAG} engine seleccionado=${selectedModel || '(todos)'}`);
@@ -11074,9 +11116,10 @@ async function runApplyBookPreviewToEngines() {
 
 // Copia a FINAL en lote usando FINAL_FIELDS_V1 oficial
 // con prioridad simple A/B por campo (PDF, GESA, SUST o base segun mapping).
-async function runBackendCalculateFinal() {
+async function runBackendCalculateFinal(inputFilters = null) {
     const recomputeCalculateFinalBtn = $('recomputeCalculateFinalBtn');
     const engineFilterSelect = $('engineFilterSelect');
+    const filters = inputFilters || getRecomputeModalFilters();
 
     if (!(recomputeCalculateFinalBtn instanceof HTMLButtonElement)
         || !(engineFilterSelect instanceof HTMLSelectElement)) {
@@ -11088,8 +11131,23 @@ async function runBackendCalculateFinal() {
         return;
     }
 
+    if (String(filters.scope || 'book').trim() === 'current') {
+        setRecomputeStatus('CÁLCULO FINAL no soporta alcance "registro actual". Usa "Libro actual" o "Todos los libros".', 'error');
+        return;
+    }
+
+    const selectedModelRaw = String(filters.book || '').trim();
+    const selectedModel = selectedModelRaw === RECOMPUTE_ALL_BOOKS_VALUE ? '' : selectedModelRaw;
+    const targetFile = selectedModel ? resolveEngineFileFromFilter(selectedModel) : '';
+
+    if (selectedModel && !targetFile) {
+        setRecomputeStatus('No se pudo resolver el archivo engine del libro seleccionado para CÁLCULO FINAL.', 'error');
+        return;
+    }
+
     const confirmed = await simpleConfirm(
-        'Vas a aplicar FINAL_FIELDS_V1 en lote para TODOS los libros.\n\nSe copiaran los campos a *_final usando la prioridad oficial por campo (GESA/SUST/base/PDF segun mapping) y se guardaran los JSON con copia de seguridad.\n\n¿Deseas continuar?'
+        `Vas a aplicar FINAL_FIELDS_V1 en lote para ${selectedModel ? `el libro ${selectedModel}` : 'TODOS los libros'}.\n\n`
+        + 'Se copiaran los campos a *_final usando la prioridad oficial por campo (GESA/SUST/base/PDF segun mapping) y se guardaran los JSON con copia de seguridad.\n\n¿Deseas continuar?'
     );
 
     if (!confirmed) {
@@ -11098,11 +11156,17 @@ async function runBackendCalculateFinal() {
     }
 
     recomputeCalculateFinalBtn.disabled = true;
-    setRecomputeStatus('Aplicando FINAL en todos los libros...', '');
+    setRecomputeStatus(
+        selectedModel
+            ? `Aplicando FINAL en libro ${selectedModel}...`
+            : 'Aplicando FINAL en todos los libros...',
+        ''
+    );
 
     try {
         const result = await postJsonToBackendCandidates('copy-pdf-to-final-all-books', {
-            backup: true
+            file: targetFile || undefined,
+            backup: filters.backup !== false
         });
 
         const totals = result?.totals || {};
@@ -11111,9 +11175,10 @@ async function runBackendCalculateFinal() {
         const scannedRows = Number(totals.scannedRows) || 0;
         const filesWritten = Number(totals.filesWritten) || 0;
 
+        const scopeLabel = selectedModel ? `LIBRO:${selectedModel}` : 'TODOS';
         const statusMessage = changedRows === 0
-            ? `Sin cambios en FINAL | alcance=TODOS scanned=${scannedRows}`
-            : `OK FINAL alcance=TODOS | scanned=${scannedRows} changedRows=${changedRows} updatedFields=${updatedFields} filesWritten=${filesWritten}`;
+            ? `Sin cambios en FINAL | alcance=${scopeLabel} scanned=${scannedRows}`
+            : `OK FINAL alcance=${scopeLabel} | scanned=${scannedRows} changedRows=${changedRows} updatedFields=${updatedFields} filesWritten=${filesWritten}`;
 
         setRecomputeStatus(statusMessage, 'ok');
 
@@ -11133,9 +11198,10 @@ async function runBackendCalculateFinal() {
 }
 
 // Recalcula estado y acción de revisión para todos los registros de todos los libros
-async function runBackendRecalculateRevisionStatus() {
+async function runBackendRecalculateRevisionStatus(inputFilters = null) {
     const recomputeRevisionStatusBtn = $('recomputeRevisionStatusBtn');
     const engineFilterSelect = $('engineFilterSelect');
+    const filters = inputFilters || getRecomputeModalFilters();
 
     if (!(recomputeRevisionStatusBtn instanceof HTMLButtonElement)
         || !(engineFilterSelect instanceof HTMLSelectElement)) {
@@ -11144,6 +11210,15 @@ async function runBackendRecalculateRevisionStatus() {
 
     if (!isBackendEndpointAllowed('recalculate-revision-status')) {
         setRecomputeStatus(getLocalOnlyBackendMessage('recalculate-revision-status'), 'error');
+        return;
+    }
+
+    const selectedModelRaw = String(filters.book || '').trim();
+    const selectedModel = selectedModelRaw === RECOMPUTE_ALL_BOOKS_VALUE ? '' : selectedModelRaw;
+    const scopeRequested = String(filters.scope || 'book').trim();
+    const scopeEffective = selectedModel ? scopeRequested : (scopeRequested === 'current' ? 'current' : 'all');
+    if (scopeEffective !== 'all' || selectedModel) {
+        setRecomputeStatus('ESTADOS actualmente solo soporta "Todos los libros" en este endpoint (/recalculate-revision-status).', 'error');
         return;
     }
 
@@ -11336,7 +11411,10 @@ bindClick('recomputeAllBtn', () => {
 
 bindClick('recomputeRunBtn', () => {
 
-    runBackendRecompute().catch((error) => {
+    const filters = getRecomputeModalFilters();
+    logRecomputeModalAction('ERRORES', filters);
+
+    runBackendRecompute(filters).catch((error) => {
 
         setRecomputeStatus(`Error: ${String(error?.message || error)}`, 'error');
 
@@ -11396,21 +11474,30 @@ bindClick('recomputePdfRunBtn', () => {
 });
 
 bindClick('recomputeCopyBookBtn', () => {
+
+    const filters = getRecomputeModalFilters();
+    logRecomputeModalAction('IMPORTAR PDF', filters);
     console.log('[recomputeCopyBookBtn] button pulsado -> runApplyBookPreviewToEngines()');
-    runApplyBookPreviewToEngines().catch((error) => {
+    runApplyBookPreviewToEngines(filters).catch((error) => {
         setRecomputeStatus(`Error en apply_book_preview_to_engine.py: ${String(error?.message || error)}`, 'error');
     });
 });
 
 bindClick('recomputeCalculateFinalBtn', () => {
-    runBackendCalculateFinal().catch((error) => {
-        setRecomputeStatus(`Error al calcular FINAL para todos los libros: ${String(error?.message || error)}`, 'error');
+
+    const filters = getRecomputeModalFilters();
+    logRecomputeModalAction('CÁLCULO FINAL', filters);
+    runBackendCalculateFinal(filters).catch((error) => {
+        setRecomputeStatus(`Error al calcular FINAL: ${String(error?.message || error)}`, 'error');
     });
 });
 
 // Recalcula estado y acción de revisión para todos
 bindClick('recomputeRevisionStatusBtn', () => {
-    runBackendRecalculateRevisionStatus().catch((error) => {
+
+    const filters = getRecomputeModalFilters();
+    logRecomputeModalAction('ESTADOS', filters);
+    runBackendRecalculateRevisionStatus(filters).catch((error) => {
         setRecomputeStatus(`Error: ${String(error?.message || error)}`, 'error');
     });
 });
