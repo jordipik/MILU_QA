@@ -7775,7 +7775,7 @@ function buildComparisonRows(row) {
 
             pdfAutoAction: 'pos',
 
-            fieldKeys: { excel: 'POS', gesa: null, subst: null, pdf: 'pos_pdf', final: 'pos_final', error: 'pos_error' },
+            fieldKeys: { excel: 'pos_excel / POS', gesa: null, subst: null, pdf: 'pos_pdf', final: 'pos_final', error: 'pos_error' },
 
             errFields: ['POS'],
 
@@ -7801,7 +7801,7 @@ function buildComparisonRows(row) {
 
             pdfAutoAction: 'pn',
 
-            fieldKeys: { excel: 'PART NO.', gesa: 'pn_gesa', subst: 'pn_subst', pdf: 'pn_pdf', final: 'pn_final', error: 'pn_error' },
+            fieldKeys: { excel: 'pn_excel / PART NO.', gesa: 'pn_final (si gesa=SI)', subst: 'pn_final (si sust_status=SI)', pdf: 'pn_pdf', final: 'pn_final', error: 'pn_error' },
 
             errFields: ['PART NO.', 'pn_final'],
 
@@ -7827,7 +7827,7 @@ function buildComparisonRows(row) {
 
             pdfAutoAction: 'designation',
 
-            fieldKeys: { excel: 'DESIGNATION', gesa: 'designation_gesa', subst: null, pdf: 'designation_pdf', final: 'designation_final', error: 'designation_error' },
+            fieldKeys: { excel: 'designation_excel / DESIGNATION', gesa: 'designation_gesa', subst: null, pdf: 'designation_pdf', final: 'designation_final', error: 'designation_error' },
 
             errFields: ['designation_final'],
 
@@ -7851,7 +7851,7 @@ function buildComparisonRows(row) {
 
             errorKey: 'model_type_error',
 
-            fieldKeys: { excel: 'MODEL/TYPE', gesa: null, subst: null, pdf: 'model_type_pdf', final: 'model_type_final', error: 'model_type_error' },
+            fieldKeys: { excel: 'model_type_excel / MODEL/TYPE', gesa: null, subst: null, pdf: 'model_type_pdf', final: 'model_type_final', error: 'model_type_error' },
 
             errFields: [],
 
@@ -7875,7 +7875,7 @@ function buildComparisonRows(row) {
 
             errorKey: 'qty_error',
 
-            fieldKeys: { excel: 'QTY', gesa: null, subst: null, pdf: 'qty_pdf', final: 'qty_final', error: 'qty_error' },
+            fieldKeys: { excel: 'qty_excel / QTY', gesa: null, subst: null, pdf: 'qty_pdf', final: 'qty_final', error: 'qty_error' },
 
             errFields: [],
 
@@ -7899,7 +7899,7 @@ function buildComparisonRows(row) {
 
             errorKey: 'units_error',
 
-            fieldKeys: { excel: 'UNITS', gesa: null, subst: null, pdf: 'units_pdf', final: 'units_final', error: 'units_error' },
+            fieldKeys: { excel: 'qty_units_excel / UNITS', gesa: null, subst: null, pdf: 'units_pdf', final: 'units_final', error: 'units_error' },
 
             errFields: [],
 
@@ -7923,7 +7923,7 @@ function buildComparisonRows(row) {
 
             errorKey: 'weight_error',
 
-            fieldKeys: { excel: 'WEIGHT', gesa: 'weight_gesa', subst: null, pdf: 'weight_pdf', final: 'weight_final', error: 'weight_error' },
+            fieldKeys: { excel: 'weight_excel / WEIGHT', gesa: 'weight_gesa + units', subst: null, pdf: 'weight_pdf', final: 'weight_final', error: 'weight_error' },
 
             errFields: [],
 
@@ -7947,7 +7947,7 @@ function buildComparisonRows(row) {
 
             errorKey: 'fn_error',
 
-            fieldKeys: { excel: 'FN', gesa: null, subst: null, pdf: 'fn_pdf', final: 'fn_final', error: 'fn_error' },
+            fieldKeys: { excel: 'fn_excel / FN', gesa: null, subst: null, pdf: 'fn_pdf', final: 'fn_final', error: 'fn_error' },
 
             errFields: [],
 
@@ -7972,7 +7972,7 @@ function buildComparisonRows(row) {
 
             errorKey: 'measure_error',
 
-            fieldKeys: { excel: 'MEASUREMENT / STANDARD', gesa: 'dimensions_gesa', subst: null, pdf: 'measure_pdf', final: 'measure_final', error: 'measure_error' },
+            fieldKeys: { excel: 'measure_excel / MEASUREMENT / STANDARD', gesa: 'measure_gesa / dimensions_gesa', subst: null, pdf: 'measure_pdf', final: 'measure_final', error: 'measure_error' },
 
             errFields: [],
 
@@ -7996,7 +7996,7 @@ function buildComparisonRows(row) {
 
             errorKey: 'fg_fgs_error',
 
-            fieldKeys: { excel: 'FG/FGS', gesa: null, subst: null, pdf: 'fg_fgs_pdf', final: 'fg_fgs_final', error: 'fg_fgs_error' },
+            fieldKeys: { excel: 'fg_fgs_excel / FG/FGS', gesa: null, subst: null, pdf: 'fg_fgs_pdf', final: 'fg_fgs_final', error: 'fg_fgs_error' },
 
             errFields: [],
 
@@ -8020,7 +8020,7 @@ function buildComparisonRows(row) {
 
             errorKey: 'bom_error',
 
-            fieldKeys: { excel: 'BOM-No.', gesa: null, subst: null, pdf: 'bom_pdf', final: 'bom_final', error: 'bom_error' },
+            fieldKeys: { excel: 'bom_excel / BOM-No.', gesa: null, subst: null, pdf: 'bom_pdf', final: 'bom_final', error: 'bom_error' },
 
             errFields: [],
 
@@ -8169,7 +8169,7 @@ function buildComparisonRows(row) {
 
             errorKey: null,
 
-            fieldKeys: { excel: null, gesa: null, subst: 'hierarchie_subst', pdf: 'hierarchi_pdf', final: 'hierarchie_final', error: null },
+            fieldKeys: { excel: null, gesa: null, subst: 'hierarchie_subst / sust_hierarchie / hierarchi', pdf: 'hierarchi_pdf', final: 'hierarchie_final', error: null },
 
             errFields: [],
 
@@ -8194,7 +8194,7 @@ function buildComparisonRows(row) {
 
             errorKey: null,
 
-            fieldKeys: { excel: null, gesa: null, subst: 'new_pn_subst', pdf: 'sust_new_part_number_pdf', final: 'new_pn_final', error: null },
+            fieldKeys: { excel: null, gesa: null, subst: 'new_pn_subst / sust_new_part_number', pdf: 'sust_new_part_number_pdf', final: 'new_pn_final', error: null },
 
             errFields: [],
 
@@ -8219,7 +8219,7 @@ function buildComparisonRows(row) {
 
             errorKey: null,
 
-            fieldKeys: { excel: null, gesa: null, subst: 'subst_pnlist_subst', pdf: 'sust_superseded_list_pdf', final: 'subst_pnlist_final', error: null },
+            fieldKeys: { excel: null, gesa: null, subst: 'subst_pnlist_subst / sust_superseded_list', pdf: 'sust_superseded_list_pdf', final: 'subst_pnlist_final', error: null },
 
             errFields: [],
 
@@ -11072,8 +11072,8 @@ async function runApplyBookPreviewToEngines() {
     }
 }
 
-// Copia a FINAL en lote con la misma regla del boton FINAL del registro actual
-// (si gesa=SI usa GESA en campos mapeados; en otro caso usa campos _pdf).
+// Copia a FINAL en lote usando FINAL_FIELDS_V1 oficial
+// con prioridad simple A/B por campo (PDF, GESA, SUST o base segun mapping).
 async function runBackendCalculateFinal() {
     const recomputeCalculateFinalBtn = $('recomputeCalculateFinalBtn');
     const engineFilterSelect = $('engineFilterSelect');
@@ -11089,7 +11089,7 @@ async function runBackendCalculateFinal() {
     }
 
     const confirmed = await simpleConfirm(
-        'Vas a aplicar FINAL en lote para TODOS los libros.\n\nSe copiaran los campos a *_final usando la misma regla del boton FINAL (GESA cuando gesa=SI, o _pdf en caso contrario) y se guardaran los JSON con copia de seguridad.\n\n¿Deseas continuar?'
+        'Vas a aplicar FINAL_FIELDS_V1 en lote para TODOS los libros.\n\nSe copiaran los campos a *_final usando la prioridad oficial por campo (GESA/SUST/base/PDF segun mapping) y se guardaran los JSON con copia de seguridad.\n\n¿Deseas continuar?'
     );
 
     if (!confirmed) {

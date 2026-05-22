@@ -555,6 +555,7 @@ app.post('/recompute-qa-errors', async (req, res) => {
     }
 });
 
+// LEGACY: mantiene compatibilidad con el flujo historico basado en Python.
 app.post('/calculate-final-fields', async (req, res) => {
     try {
         // Ejecutar el script Python copy_gesa_fields_to_final.py
@@ -595,6 +596,7 @@ app.post('/calculate-final-fields', async (req, res) => {
 
             res.json({
                 ok: true,
+                legacy: true,
                 result: {
                     affectedRecords,
                     updatedFields,
@@ -885,88 +887,123 @@ app.post('/copy-pdf-to-pdf-all-books', async (req, res) => {
     }
 });
 
-const PDF_TO_FINAL_FIELD_MAPPINGS_BACKEND = [
-    { pdfKey: 'pos_pdf', finalKey: 'pos_final', label: 'POS' },
-    { pdfKey: 'pn_pdf', finalKey: 'pn_final', label: 'PART NO.' },
-    { pdfKey: 'designation_pdf', finalKey: 'designation_final', label: 'DESIGNATION' },
-    { pdfKey: 'model_type_pdf', finalKey: 'model_type_final', label: 'MODEL/TYPE' },
-    { pdfKey: 'qty_pdf', finalKey: 'qty_final', label: 'QTY' },
-    { pdfKey: 'units_pdf', finalKey: 'units_final', label: 'UNITS' },
-    { pdfKey: 'weight_pdf', finalKey: 'weight_final', label: 'WEIGHT' },
-    { pdfKey: 'fn_pdf', finalKey: 'fn_final', label: 'FN' },
-    { pdfKey: 'measure_pdf', finalKey: 'measure_final', label: 'MEASUREMENT / STANDARD' },
-    { pdfKey: 'fg_fgs_pdf', finalKey: 'fg_fgs_final', label: 'FG/FGS' },
-    { pdfKey: 'bom_pdf', finalKey: 'bom_final', label: 'BOM-No.' },
-    { pdfKey: 'gesa_pdf', finalKey: 'gesa_final', label: 'GESA' },
-    { pdfKey: 'nsn_pdf', finalKey: 'nsn_final', label: 'NSN' },
-    { pdfKey: 'normalizado_pdf', finalKey: 'normalizado_final', label: 'NORMALIZADO' },
-    { pdfKey: 'norma_pdf', finalKey: 'norma_final', label: 'NORMA' },
-    { pdfKey: 'sust_status_pdf', finalKey: 'sust_status_final', label: 'SUST_STATUS' },
-    { pdfKey: 'hierarchi_pdf', finalKey: 'hierarchie_final', label: 'HIERARCHI' },
-    { pdfKey: 'sust_new_part_number_pdf', finalKey: 'new_pn_final', label: 'SUST_NEW_PART_NUMBER' },
-    { pdfKey: 'sust_superseded_list_pdf', finalKey: 'subst_pnlist_final', label: 'SUST_SUPERSEDED_LIST' }
+const FINAL_FIELDS_V1_MAPPINGS_BACKEND = [
+    { finalKey: 'pos_final', label: 'POS', sources: [{ key: 'pos_pdf', source: 'PDF' }, { key: 'POS', source: 'BASE' }] },
+    { finalKey: 'pn_final', label: 'PART NO.', sources: [{ key: 'pn_pdf', source: 'PDF' }, { key: 'PART NO.', source: 'BASE' }] },
+    { finalKey: 'designation_final', label: 'DESIGNATION', sources: [{ key: 'designation_gesa', source: 'GESA' }, { key: 'designation_pdf', source: 'PDF' }] },
+    { finalKey: 'model_type_final', label: 'MODEL/TYPE', sources: [{ key: 'model_type_pdf', source: 'PDF' }, { key: 'MODEL/TYPE', source: 'BASE' }] },
+    { finalKey: 'qty_final', label: 'QTY', sources: [{ key: 'qty_pdf', source: 'PDF' }, { key: 'QTY', source: 'BASE' }] },
+    { finalKey: 'units_final', label: 'UNITS', sources: [{ key: 'units_pdf', source: 'PDF' }, { key: 'UNITS', source: 'BASE' }] },
+    { finalKey: 'weight_final', label: 'WEIGHT', sources: [{ key: 'weight_gesa', source: 'GESA' }, { key: 'weight_pdf', source: 'PDF' }] },
+    { finalKey: 'fn_final', label: 'FN', sources: [{ key: 'fn_pdf', source: 'PDF' }] },
+    { finalKey: 'measure_final', label: 'MEASUREMENT / STANDARD', sources: [{ key: 'dimensions_gesa', source: 'GESA' }, { key: 'measure_pdf', source: 'PDF' }] },
+    { finalKey: 'fg_fgs_final', label: 'FG/FGS', sources: [{ key: 'fg_fgs_pdf', source: 'PDF' }, { key: 'FG/FGS', source: 'BASE' }] },
+    { finalKey: 'bom_final', label: 'BOM-No.', sources: [{ key: 'bom_pdf', source: 'PDF' }, { key: 'BOM-No.', source: 'BASE' }] },
+    { finalKey: 'gesa_final', label: 'GESA', sources: [{ key: 'gesa', source: 'GESA' }] },
+    { finalKey: 'nsn_final', label: 'NSN', sources: [{ key: 'nsn', source: 'GESA' }] },
+    { finalKey: 'normalizado_final', label: 'NORMALIZADO', sources: [{ key: 'normalizado', source: 'GESA' }] },
+    { finalKey: 'norma_final', label: 'NORMA', sources: [{ key: 'norma', source: 'GESA' }, { key: 'norma_pdf', source: 'PDF' }] },
+    { finalKey: 'sust_status_final', label: 'SUST_STATUS', sources: [{ key: 'sust_status', source: 'SUST' }] },
+    { finalKey: 'hierarchie_final', label: 'SUST_HIERARCHIE', sources: [{ key: 'sust_hierarchie', source: 'SUST' }] },
+    { finalKey: 'new_pn_final', label: 'SUST_NEW_PART_NUMBER', sources: [{ key: 'sust_new_part_number', source: 'SUST' }] },
+    { finalKey: 'subst_pnlist_final', label: 'SUST_SUPERSEDED_LIST', sources: [{ key: 'sust_superseded_list', source: 'SUST' }] }
 ];
 
-const GESA_TO_FINAL_FIELD_MAPPINGS_BACKEND = new Map([
-    ['designation_final', 'designation_gesa'],
-    ['measure_final', 'dimensions_gesa'],
-    ['weight_final', 'weight_gesa'],
-    ['nsn_final', 'nsn'],
-    ['normalizado_final', 'normalizado'],
-    ['norma_final', 'norma']
-]);
-
-function normalizePdfFinalValue(value) {
-    return String(value == null ? '' : value).trim().replace(/\s+/g, ' ');
+function stringifyFinalFieldValue(value) {
+    return value == null ? '' : String(value);
 }
 
-function normalizePdfFinalCompareValue(value) {
-    const normalized = normalizePdfFinalValue(value);
-    if (!normalized) return '';
-    const upper = normalized.toUpperCase();
-    if (upper === '-' || upper === 'N/A' || upper === 'NA' || upper === 'NULL') return '';
-    return normalized.toLowerCase();
+function hasNonEmptyFinalFieldValue(value) {
+    return stringifyFinalFieldValue(value).trim() !== '';
 }
 
-function getGesaWeightWithUnitsBackend(row) {
-    const weight = normalizePdfFinalValue(row?.weight_gesa);
-    const units = normalizePdfFinalValue(row?.units);
-    return `${weight} ${units}`.trim();
+function compareFinalFieldValue(value) {
+    return stringifyFinalFieldValue(value).trim();
+}
+
+function collapseInnerSpaces(value) {
+    return compareFinalFieldValue(value).replace(/\s+/g, ' ');
+}
+
+function removeAllSpaces(value) {
+    return compareFinalFieldValue(value).replace(/\s+/g, '');
+}
+
+function getWeightFinalFromGesa(row) {
+    const weight = compareFinalFieldValue(row?.weight_gesa);
+    if (!weight) return '';
+    const units = compareFinalFieldValue(row?.units);
+    return units ? `${weight} ${units}` : weight;
+}
+
+function resolveFinalFieldValueForRow(row, mapping) {
+    if (mapping.finalKey === 'designation_final') {
+        const gesaDesignation = compareFinalFieldValue(row?.designation_gesa);
+        const pdfDesignation = compareFinalFieldValue(row?.designation_pdf);
+        if (gesaDesignation && pdfDesignation) {
+            const sameWords = collapseInnerSpaces(gesaDesignation) === collapseInnerSpaces(pdfDesignation);
+            const sameWithoutSpaces = removeAllSpaces(gesaDesignation) === removeAllSpaces(pdfDesignation);
+            const rawDifferent = gesaDesignation !== pdfDesignation;
+            if ((sameWords || sameWithoutSpaces) && rawDifferent) {
+                return {
+                    value: pdfDesignation,
+                    source: 'PDF',
+                    sourceKey: 'designation_pdf'
+                };
+            }
+        }
+    }
+
+    if (mapping.finalKey === 'weight_final') {
+        const weightWithUnits = getWeightFinalFromGesa(row);
+        if (weightWithUnits) {
+            return {
+                value: weightWithUnits,
+                source: 'GESA',
+                sourceKey: 'weight_gesa+units'
+            };
+        }
+    }
+
+    for (const candidate of mapping.sources) {
+        const rawValue = row?.[candidate.key];
+        if (!hasNonEmptyFinalFieldValue(rawValue)) continue;
+        return {
+            value: stringifyFinalFieldValue(rawValue),
+            source: candidate.source,
+            sourceKey: candidate.key
+        };
+    }
+
+    return {
+        value: '',
+        source: 'EMPTY',
+        sourceKey: null
+    };
 }
 
 function resolvePdfToFinalUpdatesForRow(row) {
-    const isGesaSi = normalizePdfFinalValue(row?.gesa).toUpperCase() === 'SI';
-
-    return PDF_TO_FINAL_FIELD_MAPPINGS_BACKEND
-        .map(({ pdfKey, finalKey, label }) => {
-            const gesaKey = GESA_TO_FINAL_FIELD_MAPPINGS_BACKEND.get(finalKey);
-            const gesaValue = finalKey === 'weight_final'
-                ? normalizePdfFinalValue(getGesaWeightWithUnitsBackend(row))
-                : (gesaKey
-                    ? normalizePdfFinalValue(row?.[gesaKey])
-                    : '');
-            const pdfValue = normalizePdfFinalValue(row?.[pdfKey]);
-            const resolvedValue = (isGesaSi && gesaKey) ? gesaValue : pdfValue;
-
-            if (isGesaSi && gesaKey && !resolvedValue) {
-                return null;
-            }
-
-            const finalValue = normalizePdfFinalValue(row?.[finalKey]);
-            if (normalizePdfFinalCompareValue(resolvedValue) === normalizePdfFinalCompareValue(finalValue)) {
+    return FINAL_FIELDS_V1_MAPPINGS_BACKEND
+        .map((mapping) => {
+            const resolved = resolveFinalFieldValueForRow(row, mapping);
+            const finalValue = compareFinalFieldValue(row?.[mapping.finalKey]);
+            const nextValue = compareFinalFieldValue(resolved.value);
+            if (finalValue === nextValue) {
                 return null;
             }
 
             return {
-                finalKey,
-                label,
-                value: resolvedValue,
-                source: isGesaSi && gesaKey ? 'GESA' : 'PDF'
+                finalKey: mapping.finalKey,
+                label: mapping.label,
+                value: resolved.value,
+                source: resolved.source,
+                sourceKey: resolved.sourceKey
             };
         })
         .filter(Boolean);
 }
 
+// OFFICIAL: aplica FINAL_FIELDS_V1 con prioridad simple A/B por campo.
 app.post('/copy-pdf-to-final-all-books', async (req, res) => {
     const payload = req.body || {};
 
@@ -1005,7 +1042,9 @@ app.post('/copy-pdf-to-final-all-books', async (req, res) => {
             let fileChangedRows = 0;
             let fileUpdatedFields = 0;
             let wroteFile = false;
-            const sourceCounts = { PDF: 0, GESA: 0 };
+            const sourceCounts = { PDF: 0, GESA: 0, SUST: 0, BASE: 0, EMPTY: 0 };
+            const fieldCounts = {};
+            const changedRecordIdsPreview = [];
 
             await withSaveJsonFileLock(targetFile, async () => {
                 const raw = await fs.promises.readFile(filePath, 'utf8');
@@ -1021,10 +1060,14 @@ app.post('/copy-pdf-to-final-all-books', async (req, res) => {
                     if (!updates.length) continue;
 
                     fileChangedRows += 1;
+                    if (changedRecordIdsPreview.length < 25) {
+                        changedRecordIdsPreview.push(String(row?.ID ?? row?.id ?? ''));
+                    }
                     for (const update of updates) {
                         setWriteField(row, update.finalKey, update.value);
                         fileUpdatedFields += 1;
                         sourceCounts[update.source] = (sourceCounts[update.source] || 0) + 1;
+                        fieldCounts[update.finalKey] = (fieldCounts[update.finalKey] || 0) + 1;
                     }
                 }
 
@@ -1045,18 +1088,26 @@ app.post('/copy-pdf-to-final-all-books', async (req, res) => {
             updatedFields += fileUpdatedFields;
             if (wroteFile) filesWritten += 1;
 
+            console.log(
+                `[final-fields-v1] file=${targetFile} scannedRows=${fileScannedRows} changedRows=${fileChangedRows} updatedFields=${fileUpdatedFields} `
+                + `sources=${JSON.stringify(sourceCounts)} fields=${JSON.stringify(fieldCounts)} changedIds=${JSON.stringify(changedRecordIdsPreview)}`
+            );
+
             perFile.push({
                 file: targetFile,
                 scannedRows: fileScannedRows,
                 changedRows: fileChangedRows,
                 updatedFields: fileUpdatedFields,
                 wroteFile,
-                sourceCounts
+                sourceCounts,
+                fieldCounts,
+                changedRecordIdsPreview
             });
         }
 
         return res.json({
             ok: true,
+            official: true,
             result: {
                 files: requestedFiles,
                 backup,

@@ -17,7 +17,7 @@ Describir la orquestacion de recalculate/recompute desde el modal de analista.
 
 ## Endpoints implicados
 - `POST /api/pdf-preview/apply-to-engine`
-- `POST /copy-pdf-to-final-all-books`
+- OFFICIAL: `POST /copy-pdf-to-final-all-books`
 - `POST /recompute-qa-errors`
 - `POST /recalculate-revision-status`
 
@@ -31,7 +31,8 @@ Describir la orquestacion de recalculate/recompute desde el modal de analista.
 1. Usuario abre modal recompute en `analista_02.html`.
 2. UI valida si endpoint es local-only (`isBackendEndpointAllowed`).
 3. Ejecuta fetch a endpoint candidato (`postJsonToBackendCandidates`).
-4. Actualiza estado y, si procede, recarga libro activo.
+4. Para FINAL usa FINAL_FIELDS_V1 oficial en backend, con prioridad simple por campo.
+5. Actualiza estado y, si procede, recarga libro activo.
 
 ## Riesgos / problemas conocidos
 - En remoto varios botones quedan bloqueados por restriccion local-only.
@@ -41,4 +42,4 @@ Describir la orquestacion de recalculate/recompute desde el modal de analista.
 - Exponer en UI un mapa de endpoint efectivo utilizado por cada accion.
 
 ## Ejemplo real
-- `runBackendCalculateFinal()` en `js/analista-02.js` usa `POST /copy-pdf-to-final-all-books` con `backup: true`.
+- `runBackendCalculateFinal()` en `js/analista-02.js` usa `POST /copy-pdf-to-final-all-books` con `backup: true` y ya no documenta la regla legacy basada en `gesa=SI`.

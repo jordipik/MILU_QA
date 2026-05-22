@@ -10,13 +10,13 @@ Documentar como se consumen datos GESA en MILU v1 para enriquecer y calcular cam
 - Campos `_final` resueltos con prioridad GESA en reglas concretas.
 
 ## Scripts implicados
-- `copy_gesa_fields_to_final.py` (legacy conviviente).
+- `copy_gesa_fields_to_final.py` (LEGACY).
 - `depuracion_json.py` (proceso oficial offline).
-- backend `POST /copy-pdf-to-final-all-books` (mapeo GESA/PDF).
+- backend OFFICIAL `POST /copy-pdf-to-final-all-books` (mapeo FINAL_FIELDS_V1).
 
 ## Endpoints implicados
-- `POST /copy-pdf-to-final-all-books`.
-- `POST /calculate-final-fields` (ejecuta `copy_gesa_fields_to_final.py`).
+- OFFICIAL: `POST /copy-pdf-to-final-all-books`.
+- LEGACY: `POST /calculate-final-fields` (ejecuta `copy_gesa_fields_to_final.py`).
 
 ## Botones UI relacionados
 - `recomputeCalculateFinalBtn`.
@@ -25,10 +25,10 @@ Documentar como se consumen datos GESA en MILU v1 para enriquecer y calcular cam
 - `designation_final`, `measure_final`, `weight_final`, `nsn_final`, `normalizado_final`, `norma_final`.
 
 ## Flujo paso a paso
-1. El sistema detecta si `gesa=SI` en cada fila.
-2. Para campos mapeados a GESA, toma valor GESA cuando existe.
-3. Para no mapeados o vacios en GESA, usa fallback PDF/base.
-4. `depuracion_json.py` aplica limpieza adicional de espacios y normalizacion textual.
+1. La ruta oficial evalua por campo si existe valor GESA antes de su fallback.
+2. `designation_final`, `measure_final`, `weight_final`, `nsn_final`, `normalizado_final` y `norma_final` consumen GESA segun FINAL_FIELDS_V1.
+3. La decision no depende de `gesa=SI`; depende solo de si el valor origen existe y no esta vacio.
+4. `depuracion_json.py` aplica limpieza adicional de espacios y normalizacion textual en el proceso offline.
 
 ## Riesgos / problemas conocidos
 - No se detecto en runtime un importador unico de `EXCEL_GESA*.json` dentro del repo actual.
@@ -38,4 +38,4 @@ Documentar como se consumen datos GESA en MILU v1 para enriquecer y calcular cam
 - Publicar pipeline formal de carga de catalogo GESA desde origen externo a `engine_*.json`.
 
 ## Ejemplo real
-- `copy_gesa_fields_to_final.py` copia a `_final` solo cuando `gesa=SI` y el valor origen no esta vacio.
+- `POST /copy-pdf-to-final-all-books` prioriza `designation_gesa` sobre `designation_pdf`, `dimensions_gesa` sobre `measure_pdf` y `weight_gesa + units` sobre `weight_pdf`.

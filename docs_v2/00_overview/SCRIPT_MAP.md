@@ -36,7 +36,7 @@ Inventario operativo de scripts y endpoints usados por el flujo MILU v1.
 - Dependencia de archivos externos no versionados para algunos pasos historicos.
 
 ## TODO pendiente
-- Etiquetar formalmente cada script como `official`, `legacy` o `offline` en una convencion unica.
+- Retirar rutas legacy cuando ya no haya consumidores activos.
 
 ## Ejemplo real
 - `POST /api/pdf-preview/apply-to-engine` ejecuta `apply_book_preview_to_engine.py` o `apply_all_book_previews.py` con `--write --overwrite`.
@@ -56,9 +56,9 @@ Inventario operativo de scripts y endpoints usados por el flujo MILU v1.
 | `POST /api/pdf-preview/apply-to-engine` | Endpoint Express | JSON opcional `{engine}` | JSON `stats` + `warnings` | dispara apply Python oficial | Activo oficial |
 | `recompute_engine_errors.js` | Node CLI/modulo | `engine_*.json` (+ scope/id flags) | resumen por archivo/libro | `*_error`, `total_error`, `has_error`, QA opcional | Activo oficial |
 | `POST /recompute-qa-errors` | Endpoint Express | `scope`, `file`, `id`, flags | resultado de recompute | `*_error` y QA segun flags | Activo oficial |
-| `copy_gesa_fields_to_final.py` | Python CLI | `engine_*.json` | resumen de registros/campos | subset de `*_final` si `gesa=SI` | Activo (legacy conviviente) |
-| `POST /calculate-final-fields` | Endpoint Express | sin payload relevante | ejecuta script Python | usa `copy_gesa_fields_to_final.py` | Legacy conviviente |
-| `POST /copy-pdf-to-final-all-books` | Endpoint Express | files opcionales + backup | totales por lote | `*_final` desde PDF/GESA por mapeo | Activo oficial modal |
+| `copy_gesa_fields_to_final.py` | Python CLI | `engine_*.json` | resumen de registros/campos | subset de `*_final` si `gesa=SI` | LEGACY |
+| `POST /calculate-final-fields` | Endpoint Express | sin payload relevante | ejecuta script Python | usa `copy_gesa_fields_to_final.py` | LEGACY |
+| `POST /copy-pdf-to-final-all-books` | Endpoint Express | files opcionales + backup | totales por lote | `*_final` con FINAL_FIELDS_V1 y prioridad simple por campo | OFFICIAL |
 | `depuracion_json.py` | Python offline | `engine_*.json` | engines normalizados | recalcula finales, errores, `exp_imagenes` | Proceso oficial offline |
 | `POST /recalculate-revision-status` | Endpoint Express | vacio | totales procesados | `qa_revision_estado`, `qa_revision_accion` | Activo oficial |
 | `GET/POST /qa_revision_sync.php` | Endpoint Express | snapshot revision | payload normalizado | `qa_revision_server_data.json` | Activo oficial |

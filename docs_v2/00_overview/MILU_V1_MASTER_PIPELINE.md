@@ -22,8 +22,8 @@ Documentar el flujo oficial de MILU v1 por motor, desde PDF origen hasta export 
   - script principal ejecutado por backend: `apply_book_preview_to_engine.py --write --overwrite` (cuando hay engine seleccionado).
   - script batch alternativo (cuando no se selecciona engine): `apply_all_book_previews.py --write --overwrite`.
 - Final fields:
-  - endpoint principal actual del modal: `POST /copy-pdf-to-final-all-books` (backend en `server.js`).
-  - endpoint legacy aun disponible: `POST /calculate-final-fields` ejecuta `copy_gesa_fields_to_final.py`.
+  - OFFICIAL: `POST /copy-pdf-to-final-all-books` (backend en `server.js`, FINAL_FIELDS_V1).
+  - LEGACY: `POST /calculate-final-fields` ejecuta `copy_gesa_fields_to_final.py`.
   - proceso oficial de consistencia global: `depuracion_json.py`.
 - Error system: `recompute_engine_errors.js`.
 - Export: `scripts/export_wordpress_milu.js`.
@@ -34,7 +34,7 @@ Documentar el flujo oficial de MILU v1 por motor, desde PDF origen hasta export 
 - PDF import (legacy/alternativo, no usado por IMPORTAR PDF actual):
   - `POST /copy-pdf-to-pdf-all-books` (legacy para import masivo previo).
   - `POST /recompute-pdf-auto` (legacy/desactivado para este flujo).
-- Final: `POST /copy-pdf-to-final-all-books`, `POST /calculate-final-fields`.
+- Final: OFFICIAL `POST /copy-pdf-to-final-all-books`, LEGACY `POST /calculate-final-fields`.
 - Errores: `POST /recompute-qa-errors`.
 - Revision: `POST /recalculate-revision-status`, `GET/POST /qa_revision_sync.php`, `POST /apply-revision-to-engines`.
 - Export: `POST /export/run-wordpress`, `GET /export/wordpress-decisions`, `GET /export/files`, `GET /export/file`, `GET /export/download`, `GET /export/status`.
@@ -64,8 +64,8 @@ Documentar el flujo oficial de MILU v1 por motor, desde PDF origen hasta export 
 5. Backend ejecuta apply oficial con `--write --overwrite` (`apply_book_preview_to_engine.py` por engine, o `apply_all_book_previews.py` en modo batch).
 6. Enriquecimiento de catalogos (GESA/SUST/FG-FGS) no se ejecuta hoy con un endpoint unico dedicado en runtime; los campos se consumen desde datos ya presentes en `engine_*.json` y se usan en calculo final/export.
 7. Calculo final masivo con `POST /copy-pdf-to-final-all-books`:
-   - si `gesa=SI` y el campo mapea a GESA, toma valor GESA;
-   - en otro caso, toma valor `_pdf`.
+  - aplica FINAL_FIELDS_V1 con prioridad simple `A / B` por campo;
+  - consume segun mapping campos PDF, GESA, SUST o base ya presentes en `engine_*.json`.
 8. Vinculacion assets visuales:
    - esquemas generales por carpeta `esquemas/<BOOK>_esquemas/`;
    - esquemas POS por `esquemas_pos_circulos/<BOOK>-POS/`;
@@ -122,7 +122,7 @@ Documentar el flujo oficial de MILU v1 por motor, desde PDF origen hasta export 
 - Entorno local requerido para varios endpoints de recompute (`js/analista-02.js` marca endpoints local-only).
 - `POST /recompute-pdf-auto` esta desactivado (410); usar `/recompute-pdf-auto-visual`.
 - `POST /copy-pdf-to-pdf-all-books` y `POST /recompute-pdf-auto` no forman parte del flujo oficial actual de IMPORTAR PDF en modal.
-- `POST /calculate-final-fields` y `POST /copy-pdf-to-final-all-books` coexisten; no son equivalentes exactos.
+- `POST /calculate-final-fields` y `POST /copy-pdf-to-final-all-books` coexisten; la primera queda marcada como LEGACY y la segunda como OFFICIAL.
 - Catalogos EXCEL origen (ficheros `EXCEL_*`) no estan versionados en este repo; se opera con datos ya integrados en `engine_*.json`.
 - Flujo depende de JSON en disco (sin DB transaccional), con riesgo de concurrencia mitigado por lock en `handleSaveJson`.
 
