@@ -4,8 +4,8 @@
 Describir la orquestacion de recalculate/recompute desde el modal de analista.
 
 ## Inputs
-- Engine seleccionado o alcance global.
-- Flags de backup y alcance (`book`, `all`, `current`).
+- Libro seleccionado (`recomputeBookSelect`) o todos los libros (`all`).
+- ID puntual opcional (`recomputeIdInput`).
 
 ## Outputs
 - JSON actualizados en disco.
@@ -27,9 +27,8 @@ Describir la orquestacion de recalculate/recompute desde el modal de analista.
 ## MILU V1 - Filtros superiores de RecomputeModal
 
 ### Orden visual oficial (modal)
-1. Libro (`recomputeEngineSelect`)
+1. Libro (`recomputeBookSelect`)
 2. ID puntual (`recomputeIdInput`)
-3. Alcance (`recomputeErrorScopeSelect`)
 
 Nota:
 - El selector Libro es un select real con opcion Todos los libros + una opcion por engine.
@@ -41,13 +40,7 @@ La UI usa una funcion unica para leer filtros del modal:
 
 Estructura normalizada del objeto:
 - `book`
-- `scope` (`current|book|all`)
-- `page` (reservado, actualmente vacio)
 - `id`
-- `dryRun` (actualmente `false`)
-- `backup` (actualmente `true`)
-- `updateRevision`
-- `forceRevision`
 
 ### Logging minimo por accion
 Antes de ejecutar cada accion del modal se registran:
@@ -58,25 +51,28 @@ Antes de ejecutar cada accion del modal se registran:
 
 1) IMPORTAR PDF (`recomputeCopyBookBtn` -> `POST /api/pdf-preview/apply-to-engine`)
 - Soporta libro concreto y todos los libros.
-- Si alcance es `current`, la UI bloquea la accion con mensaje claro (endpoint no soporta registro puntual).
+- `id` no participa en este endpoint.
 
 2) CALCULO FINAL (`recomputeCalculateFinalBtn` -> `POST /copy-pdf-to-final-all-books`)
 - Soporta todos los libros o libro concreto.
 - Para libro concreto, frontend envia `file` al endpoint oficial.
-- Si alcance es `current`, la UI bloquea la accion con mensaje claro.
+- `id` no participa en este endpoint.
 
 3) ERRORES (`recomputeRunBtn` -> `POST /recompute-qa-errors`)
-- Soporta `current`, `book` y `all`.
-- Esta accion queda explicitamente gobernada por los filtros del modal.
+- Deriva alcance desde los dos filtros del modal:
+	- `book=all` + `id=''` -> `scope=all`
+	- `book=<MODEL>` + `id=''` -> `scope=book`
+	- `book=<MODEL>` + `id=<VALOR>` -> `scope=current`
+- La combinacion `book=all` + `id=<VALOR>` se bloquea en UI para evitar payload ambiguo.
 
 4) ESTADOS (`recomputeRevisionStatusBtn` -> `POST /recalculate-revision-status`)
 - Actualmente solo soporta todos los libros.
-- Si se intenta libro concreto o `current`, la UI muestra aviso y no ejecuta.
+- Si se intenta libro concreto o `id` puntual, la UI muestra aviso y no ejecuta.
 
 ## Limitaciones actuales (sin refactor grande)
 - No se cambian reglas de calculo.
 - No se cambian endpoints oficiales.
-- `page` queda reservado para futuro (sin uso operativo en V1).
+- El modal superior no expone controles de alcance/pagina/rango.
 
 ## Campos afectados
 - Todos los de pipeline segun paso (`_pdf`, `_final`, `_error`, `qa_revision_*`).

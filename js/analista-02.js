@@ -3141,7 +3141,7 @@ function initComparisonDebugToggle() {
 
 let recomputeModalListenersBound = false;
 let recomputeErrorsInFlight = false;
-const RECOMPUTE_ALL_BOOKS_VALUE = '__all__';
+const RECOMPUTE_ALL_BOOKS_VALUE = 'all';
 
 function getRecomputeScopeLabel(scope) {
     switch (String(scope || '').trim()) {
@@ -3155,53 +3155,25 @@ function getRecomputeScopeLabel(scope) {
     }
 }
 
-function getRecomputeSelectedScope() {
-    const scopeSelect = $('recomputeErrorScopeSelect');
-    if (scopeSelect instanceof HTMLSelectElement) {
-        const value = String(scopeSelect.value || '').trim().toLowerCase();
-        if (value === 'current' || value === 'book' || value === 'all') return value;
-    }
-    return 'book';
-}
-
-function setRecomputeSelectedScope(scope) {
-    const scopeSelect = $('recomputeErrorScopeSelect');
-    if (!(scopeSelect instanceof HTMLSelectElement)) return;
-    const normalized = String(scope || '').trim().toLowerCase();
-    scopeSelect.value = normalized === 'current' || normalized === 'all' ? normalized : 'book';
+function getRecomputeBookSelect() {
+    const next = $('recomputeBookSelect');
+    if (next instanceof HTMLSelectElement) return next;
+    const legacy = $('recomputeEngineSelect');
+    if (legacy instanceof HTMLSelectElement) return legacy;
+    return null;
 }
 
 function getRecomputeModalFilters() {
-    const recomputeEngineSelect = $('recomputeEngineSelect');
+    const recomputeBookSelect = getRecomputeBookSelect();
     const recomputeIdInput = $('recomputeIdInput');
-    const recomputeErrorScopeSelect = $('recomputeErrorScopeSelect');
-    const recomputeUpdateRevisionInput = $('recomputeUpdateRevisionInput');
-    const recomputeForceRevisionInput = $('recomputeForceRevisionInput');
-
-    const book = recomputeEngineSelect instanceof HTMLSelectElement
-        ? String(recomputeEngineSelect.value || '').trim()
-        : '';
-    const scopeRaw = recomputeErrorScopeSelect instanceof HTMLSelectElement
-        ? String(recomputeErrorScopeSelect.value || '').trim().toLowerCase()
-        : 'book';
-    const scope = scopeRaw === 'current' || scopeRaw === 'all' ? scopeRaw : 'book';
-    const id = recomputeIdInput instanceof HTMLInputElement
-        ? String(recomputeIdInput.value || '').trim()
-        : '';
 
     return {
-        book,
-        scope,
-        page: '',
-        id,
-        dryRun: false,
-        backup: true,
-        updateRevision: recomputeUpdateRevisionInput instanceof HTMLInputElement
-            ? Boolean(recomputeUpdateRevisionInput.checked)
-            : false,
-        forceRevision: recomputeForceRevisionInput instanceof HTMLInputElement
-            ? Boolean(recomputeForceRevisionInput.checked)
-            : false
+        book: recomputeBookSelect instanceof HTMLSelectElement
+            ? String(recomputeBookSelect.value || '').trim() || RECOMPUTE_ALL_BOOKS_VALUE
+            : RECOMPUTE_ALL_BOOKS_VALUE,
+        id: recomputeIdInput instanceof HTMLInputElement
+            ? String(recomputeIdInput.value || '').trim()
+            : ''
     };
 }
 
@@ -3217,42 +3189,6 @@ function clearRecomputeErrorsSummary() {
     if (panel instanceof HTMLElement) panel.hidden = true;
     if (meta instanceof HTMLElement) meta.textContent = '';
     if (body instanceof HTMLElement) body.innerHTML = '';
-}
-
-function updateRecomputeScopeUi() {
-    const scope = getRecomputeSelectedScope();
-    const engineSelect = $('recomputeEngineSelect');
-    const idInput = $('recomputeIdInput');
-    const runBtn = $('recomputeRunBtn');
-
-    if (engineSelect instanceof HTMLSelectElement) {
-        const engineFilterSelect = $('engineFilterSelect');
-        if (scope === 'all') {
-            if (engineSelect.value !== RECOMPUTE_ALL_BOOKS_VALUE) engineSelect.value = RECOMPUTE_ALL_BOOKS_VALUE;
-        } else if (engineSelect.value === RECOMPUTE_ALL_BOOKS_VALUE && engineFilterSelect instanceof HTMLSelectElement) {
-            engineSelect.value = String(engineFilterSelect.value || '').trim() || (ENGINE_BOOK_MODELS[0] || RECOMPUTE_ALL_BOOKS_VALUE);
-        }
-        engineSelect.disabled = false;
-        engineSelect.title = scope === 'all'
-            ? 'Selecciona un libro concreto o deja Todos los libros para procesar todo.'
-            : 'Selecciona un libro concreto o Todos los libros.';
-    }
-
-    if (idInput instanceof HTMLInputElement) {
-        if (scope !== 'current') idInput.value = '';
-        idInput.disabled = scope !== 'current';
-        idInput.placeholder = scope === 'current' ? 'ID obligatorio para registro actual' : 'No aplica para este alcance';
-        idInput.title = scope === 'current'
-            ? 'Introduce el ID del registro actual'
-            : 'Solo disponible cuando el alcance es registro actual';
-    }
-
-    if (runBtn instanceof HTMLButtonElement) {
-        runBtn.textContent = scope === 'all'
-            ? 'ERRORES TODOS'
-            : (scope === 'current' ? 'ERRORES REGISTRO' : 'ERRORES LIBRO');
-        runBtn.title = `Recalcular errores para ${getRecomputeScopeLabel(scope)}.`;
-    }
 }
 
 function buildRecomputeErrorTypeList(typeCounts, emptyMessage) {
@@ -3347,8 +3283,7 @@ function initRecomputeModal() {
     const modal = $('recomputeModal');
 
     const closeBtn = $('recomputeModalClose');
-    const scopeSelect = $('recomputeErrorScopeSelect');
-    const recomputeEngineSelect = $('recomputeEngineSelect');
+    const recomputeBookSelect = getRecomputeBookSelect();
 
     const backdrop = modal?.querySelector('.recompute-modal-backdrop');
 
@@ -3386,25 +3321,20 @@ function initRecomputeModal() {
 
 
 
-    syncRecomputeEngineSelect();
+    syncRecomputeBookSelect();
 
     const recomputeIdInput = $('recomputeIdInput');
 
     if (recomputeIdInput instanceof HTMLInputElement) {
-
-        recomputeIdInput.value = String(currentRow?.ID ?? '').trim();
-
+        recomputeIdInput.placeholder = 'ID puntual';
     }
-    if (scopeSelect instanceof HTMLSelectElement && !scopeSelect.value) {
-        scopeSelect.value = 'book';
-    }
-    if (recomputeEngineSelect instanceof HTMLSelectElement && !(recomputeEngineSelect.value || '').trim()) {
+    if (recomputeBookSelect instanceof HTMLSelectElement && !(recomputeBookSelect.value || '').trim()) {
         const engineFilterSelect = $('engineFilterSelect');
         if (engineFilterSelect instanceof HTMLSelectElement) {
-            recomputeEngineSelect.value = String(engineFilterSelect.value || '').trim();
+            const selectedMainModel = String(engineFilterSelect.value || '').trim();
+            recomputeBookSelect.value = selectedMainModel || RECOMPUTE_ALL_BOOKS_VALUE;
         }
     }
-    updateRecomputeScopeUi();
 
 
 
@@ -3483,20 +3413,13 @@ function initRecomputeModal() {
     if (!recomputeModalListenersBound) {
         closeBtn?.addEventListener('click', closeModal);
         backdrop?.addEventListener('click', closeModal);
-        scopeSelect?.addEventListener('change', updateRecomputeScopeUi);
-        recomputeEngineSelect?.addEventListener('change', () => {
+        recomputeBookSelect?.addEventListener('change', () => {
             const engineFilterSelect = $('engineFilterSelect');
-            if (engineFilterSelect instanceof HTMLSelectElement && recomputeEngineSelect instanceof HTMLSelectElement) {
-                const selectedValue = String(recomputeEngineSelect.value || '').trim();
-                if (selectedValue === RECOMPUTE_ALL_BOOKS_VALUE) {
-                    setRecomputeSelectedScope('all');
-                } else {
+            if (engineFilterSelect instanceof HTMLSelectElement && recomputeBookSelect instanceof HTMLSelectElement) {
+                const selectedValue = String(recomputeBookSelect.value || '').trim();
+                if (selectedValue && selectedValue !== RECOMPUTE_ALL_BOOKS_VALUE) {
                     engineFilterSelect.value = selectedValue;
-                    if (getRecomputeSelectedScope() === 'all') {
-                        setRecomputeSelectedScope('book');
-                    }
                 }
-                updateRecomputeScopeUi();
             }
         });
 
@@ -5864,18 +5787,35 @@ async function fetchRecomputePdfDetailRow(outputPath, requestUrl) {
 
 
 
-function syncRecomputeEngineSelect() {
+function getRecomputeModalBooks() {
+    const fromConfigured = Array.isArray(ENGINE_BOOK_MODELS) ? ENGINE_BOOK_MODELS : [];
+    const fromRows = Array.isArray(state?.allData)
+        ? state.allData.map((row) => String(row?.engine_model || row?.book_set || '').trim()).filter(Boolean)
+        : [];
+    return Array.from(new Set([...fromConfigured, ...fromRows]))
+        .filter(Boolean)
+        .sort((left, right) => left.localeCompare(right, 'es', { numeric: true, sensitivity: 'base' }));
+}
+
+function syncRecomputeBookSelect() {
     const source = $('engineFilterSelect');
-    const target = $('recomputeEngineSelect');
+    const target = getRecomputeBookSelect();
     if (!(source instanceof HTMLSelectElement) || !(target instanceof HTMLSelectElement)) return;
 
+    const books = getRecomputeModalBooks();
+
     target.innerHTML = [`<option value="${RECOMPUTE_ALL_BOOKS_VALUE}">Todos los libros</option>`]
-        .concat(ENGINE_BOOK_MODELS.map((model) => `<option value="${escapeHtml(model)}">${escapeHtml(model)}</option>`))
+        .concat(books.map((model) => `<option value="${escapeHtml(model)}">${escapeHtml(model)}</option>`))
         .join('');
     const selectedMainModel = String(source.value || '').trim();
-    target.value = ENGINE_BOOK_MODELS.includes(selectedMainModel)
+    target.disabled = false;
+    target.value = books.includes(selectedMainModel)
         ? selectedMainModel
         : RECOMPUTE_ALL_BOOKS_VALUE;
+}
+
+function syncRecomputeEngineSelect() {
+    syncRecomputeBookSelect();
 }
 
 
@@ -5889,7 +5829,6 @@ async function runBackendRecompute(inputFilters = null) {
     const recomputePdfRunBtn = $('recomputePdfRunBtn');
     const engineFilterSelect = $('engineFilterSelect');
     const filters = inputFilters || getRecomputeModalFilters();
-    const scopeRequested = String(filters.scope || 'book').trim();
 
     if (!(recomputeRunBtn instanceof HTMLButtonElement)
         || !(engineFilterSelect instanceof HTMLSelectElement)) {
@@ -5898,23 +5837,24 @@ async function runBackendRecompute(inputFilters = null) {
 
     const selectedMainModel = String(engineFilterSelect.value || '').trim();
     const selectedMainFile = resolveEngineFileFromFilter(selectedMainModel);
-    const selectedModelRaw = String(filters.book || '').trim();
+    const selectedModelRaw = String(filters.book || RECOMPUTE_ALL_BOOKS_VALUE).trim();
     const selectedModel = selectedModelRaw === RECOMPUTE_ALL_BOOKS_VALUE ? '' : selectedModelRaw;
-    const scope = selectedModelRaw === RECOMPUTE_ALL_BOOKS_VALUE ? 'all' : scopeRequested;
+    const id = String(filters.id || '').trim();
+    if (!selectedModel && id) {
+        setRecomputeStatus('Para filtrar por ID en ERRORES, selecciona un libro concreto.', 'error');
+        return null;
+    }
+    const scope = !selectedModel ? 'all' : (id ? 'current' : 'book');
     const file = scope === 'all' ? '' : resolveEngineFileFromFilter(selectedModel);
-    const id = scope === 'current' ? String(filters.id || '').trim() : '';
-    const dryRun = Boolean(filters.dryRun);
-    const updateRevision = Boolean(filters.updateRevision);
-    const forceRevision = Boolean(filters.forceRevision);
-    const backup = filters.backup !== false;
+    const dryRun = false;
+    const recomputeUpdateRevisionInput = $('recomputeUpdateRevisionInput');
+    const recomputeForceRevisionInput = $('recomputeForceRevisionInput');
+    const updateRevision = recomputeUpdateRevisionInput instanceof HTMLInputElement ? recomputeUpdateRevisionInput.checked : false;
+    const forceRevision = recomputeForceRevisionInput instanceof HTMLInputElement ? recomputeForceRevisionInput.checked : false;
+    const backup = true;
 
     if (scope !== 'all' && !file) {
         alert('No se pudo resolver el archivo engine para el recálculo.');
-        return null;
-    }
-
-    if (scope === 'current' && !id) {
-        setRecomputeStatus('El alcance "registro actual" requiere un ID puntual.', 'error');
         return null;
     }
 
@@ -6279,7 +6219,7 @@ async function runBackendRecomputePdfAuto() {
 
     }
 
-    const recomputeEngineSelect = $('recomputeEngineSelect');
+    const recomputeBookSelect = getRecomputeBookSelect();
 
     const recomputeIdInput = $('recomputeIdInput');
 
@@ -6289,7 +6229,7 @@ async function runBackendRecomputePdfAuto() {
 
     const engineFilterSelect = $('engineFilterSelect');
 
-    if (!(recomputeEngineSelect instanceof HTMLSelectElement)
+    if (!(recomputeBookSelect instanceof HTMLSelectElement)
 
         || !(recomputeIdInput instanceof HTMLInputElement)
 
@@ -6305,9 +6245,11 @@ async function runBackendRecomputePdfAuto() {
 
 
 
-    const selectedModelRaw = String(recomputeEngineSelect.value || '').trim();
+    const selectedModelRaw = String(recomputeBookSelect.value || '').trim();
     const selectedModel = selectedModelRaw === RECOMPUTE_ALL_BOOKS_VALUE ? '' : selectedModelRaw;
-    const scopeEffective = selectedModelRaw === RECOMPUTE_ALL_BOOKS_VALUE ? 'all' : scope;
+    const scopeEffective = selectedModelRaw === RECOMPUTE_ALL_BOOKS_VALUE
+        ? 'all'
+        : (String(recomputeIdInput.value || '').trim() ? 'current' : 'book');
 
     const file = scopeEffective === 'all' ? '' : resolveEngineFileFromFilter(selectedModel);
 
@@ -6613,7 +6555,7 @@ function setQuickRecomputeBusyUi(busy) {
 
 function setRecomputeModalInputsForAction(selectedModel, id = '') {
 
-    const recomputeEngineSelect = $('recomputeEngineSelect');
+    const recomputeBookSelect = getRecomputeBookSelect();
 
     const recomputeIdInput = $('recomputeIdInput');
 
@@ -6623,9 +6565,9 @@ function setRecomputeModalInputsForAction(selectedModel, id = '') {
 
 
 
-    if (recomputeEngineSelect instanceof HTMLSelectElement && selectedModel) {
+    if (recomputeBookSelect instanceof HTMLSelectElement) {
 
-        recomputeEngineSelect.value = selectedModel;
+        recomputeBookSelect.value = selectedModel || RECOMPUTE_ALL_BOOKS_VALUE;
 
     }
 
@@ -6634,9 +6576,6 @@ function setRecomputeModalInputsForAction(selectedModel, id = '') {
         recomputeIdInput.value = String(id || '').trim();
 
     }
-
-    setRecomputeSelectedScope(id ? 'current' : 'book');
-    updateRecomputeScopeUi();
 
     if (recomputeUpdateRevisionInput instanceof HTMLInputElement) recomputeUpdateRevisionInput.checked = false;
 
@@ -11020,14 +10959,9 @@ async function runApplyBookPreviewToEngines(inputFilters = null) {
     const recomputeRunBtn = $('recomputeRunBtn');
     const recomputePdfRunBtn = $('recomputePdfRunBtn');
     const filters = inputFilters || getRecomputeModalFilters();
-    const selectedModelRaw = String(filters.book || '').trim();
+    const selectedModelRaw = String(filters.book || RECOMPUTE_ALL_BOOKS_VALUE).trim();
     const selectedModel = selectedModelRaw === RECOMPUTE_ALL_BOOKS_VALUE ? '' : selectedModelRaw;
     const scope = selectedModel ? `engine_${selectedModel}.json` : 'TODOS los libros';
-
-    if (String(filters.scope || 'book').trim() === 'current') {
-        setRecomputeStatus('IMPORTAR PDF no soporta alcance "registro actual". Usa "Libro actual" o "Todos los libros".', 'error');
-        return;
-    }
 
     console.log(`${TAG} button pulsado`);
     console.log(`${TAG} engine seleccionado=${selectedModel || '(todos)'}`);
@@ -11131,12 +11065,7 @@ async function runBackendCalculateFinal(inputFilters = null) {
         return;
     }
 
-    if (String(filters.scope || 'book').trim() === 'current') {
-        setRecomputeStatus('CÁLCULO FINAL no soporta alcance "registro actual". Usa "Libro actual" o "Todos los libros".', 'error');
-        return;
-    }
-
-    const selectedModelRaw = String(filters.book || '').trim();
+    const selectedModelRaw = String(filters.book || RECOMPUTE_ALL_BOOKS_VALUE).trim();
     const selectedModel = selectedModelRaw === RECOMPUTE_ALL_BOOKS_VALUE ? '' : selectedModelRaw;
     const targetFile = selectedModel ? resolveEngineFileFromFilter(selectedModel) : '';
 
@@ -11166,7 +11095,7 @@ async function runBackendCalculateFinal(inputFilters = null) {
     try {
         const result = await postJsonToBackendCandidates('copy-pdf-to-final-all-books', {
             file: targetFile || undefined,
-            backup: filters.backup !== false
+            backup: true
         });
 
         const totals = result?.totals || {};
@@ -11213,11 +11142,10 @@ async function runBackendRecalculateRevisionStatus(inputFilters = null) {
         return;
     }
 
-    const selectedModelRaw = String(filters.book || '').trim();
+    const selectedModelRaw = String(filters.book || RECOMPUTE_ALL_BOOKS_VALUE).trim();
     const selectedModel = selectedModelRaw === RECOMPUTE_ALL_BOOKS_VALUE ? '' : selectedModelRaw;
-    const scopeRequested = String(filters.scope || 'book').trim();
-    const scopeEffective = selectedModel ? scopeRequested : (scopeRequested === 'current' ? 'current' : 'all');
-    if (scopeEffective !== 'all' || selectedModel) {
+    const id = String(filters.id || '').trim();
+    if (selectedModel || id) {
         setRecomputeStatus('ESTADOS actualmente solo soporta "Todos los libros" en este endpoint (/recalculate-revision-status).', 'error');
         return;
     }
@@ -12314,11 +12242,11 @@ if (engineFilterSelect instanceof HTMLSelectElement) {
 
         const selectedModel = String(engineFilterSelect.value || '').trim();
 
-        const recomputeEngineSelect = $('recomputeEngineSelect');
+        const recomputeBookSelect = getRecomputeBookSelect();
 
-        if (recomputeEngineSelect instanceof HTMLSelectElement) {
+        if (recomputeBookSelect instanceof HTMLSelectElement) {
 
-            recomputeEngineSelect.value = selectedModel;
+            recomputeBookSelect.value = selectedModel;
 
         }
 

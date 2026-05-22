@@ -106,8 +106,11 @@ Documentar el flujo oficial de MILU v1 por motor, desde PDF origen hasta export 
 - El selector `Libro` permite:
   - libro individual;
   - `Todos los libros`.
-- Al seleccionar `Todos los libros`, el scope de errores pasa automaticamente a `all`.
-- El boton de ejecucion cambia a `ERRORES TODOS`.
+- El modal superior usa solo dos filtros: `Libro` + `ID puntual`.
+- En ERRORES, el scope se deriva internamente:
+  - `book=all` + `id=''` -> `all`
+  - `book=<MODEL>` + `id=''` -> `book`
+  - `book=<MODEL>` + `id=<VALOR>` -> `current`
 
 ## Estado operativo actual
 - Flujo IMPORTAR PDF estabilizado.

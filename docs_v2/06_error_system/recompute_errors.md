@@ -47,7 +47,11 @@ Documentar la ejecucion operativa del recompute QA persistente a nivel registro/
 1. Frontend lee filtros unificados del modal con `getRecomputeModalFilters()` y registra:
 	- `console.info('[RecomputeModal] action', 'ERRORES')`
 	- `console.info('[RecomputeModal] filters', filters)`
-2. Frontend arma payload desde modal (`runBackendRecompute`).
+2. Frontend deriva `scope` a partir de `book` + `id` y arma payload en `runBackendRecompute`:
+	- `book=all`, `id=''` -> `scope=all`
+	- `book=<MODEL>`, `id=''` -> `scope=book`
+	- `book=<MODEL>`, `id=<VALOR>` -> `scope=current`
+	- `book=all`, `id=<VALOR>` -> bloqueado en UI
 3. `POST /recompute-qa-errors` valida:
 	- `scope` permitido (`current|book|all`)
 	- `file` permitido para `current|book`
@@ -88,7 +92,7 @@ Documentar la ejecucion operativa del recompute QA persistente a nivel registro/
 ## Riesgos / problemas conocidos
 - `scope=all` no admite `id` puntual.
 - Para registros manualmente validados en `ok`, reglas intentan respetar decision salvo `forceRevision`.
-- `scope=current` con `id` vacio no esta bloqueado estrictamente en backend; UI si lo controla.
+- El frontend controla combinaciones ambiguas (`book=all` con `id` puntual).
 - Comparacion de valores por igualdad textual estricta puede generar discrepancias por formato.
 
 ## TODO pendiente
