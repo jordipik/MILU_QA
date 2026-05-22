@@ -9,6 +9,23 @@ Alcance auditado:
 
 ## 1) Flujo funcional (boton ERRORES)
 
+### Contrato oficial de filtros del RecomputeModal
+
+Filtros oficiales del modal:
+- selector libro: `Todos los libros` o motor concreto.
+- `ID puntual` opcional.
+
+| Boton | Endpoint | Soporta libro | Soporta ID | Comportamiento |
+|---|---|---|---|---|
+| IMPORTAR PDF | `POST /api/pdf-preview/apply-to-engine` | Si | No | Ignora ID puntual, muestra aviso y trabaja por libro o todos. |
+| CALCULO FINAL | `POST /copy-pdf-to-final-all-books` | Si | No | Ignora ID puntual, muestra aviso y trabaja por libro o todos. |
+| ERRORES | `POST /recompute-qa-errors` | Si | Si | Respeta libro+ID; bloquea `Todos + ID`. |
+| ESTADOS | `POST /recalculate-revision-status` | No (global) | No | Solo global; bloquea libro concreto o ID. |
+
+Nota de separacion QA:
+- ERRORES ejecuta con `updateRevision:false` y `forceRevision:false`.
+- ESTADOS queda como paso separado para recalcular `qa_revision_estado` y `qa_revision_accion`.
+
 ### Boton del modal que dispara el calculo
 - En el modal de recalculo, el boton es `#recomputeRunBtn` con texto ERRORES.
 - El click esta enlazado con `bindClick('recomputeRunBtn', ...)` y ejecuta `runBackendRecompute()`.
@@ -20,8 +37,8 @@ Alcance auditado:
   - `file`: solo cuando scope != `all`
   - `id`: solo cuando scope == `current`
   - `dryRun`: `false`
-  - `updateRevision`: checkbox oculto (normalmente `false`)
-  - `forceRevision`: checkbox oculto (normalmente `false`)
+  - `updateRevision`: `false` (fijo en ERRORES)
+  - `forceRevision`: `false` (fijo en ERRORES)
   - `backup`: `true`
 
 ### Modulo que calcula realmente los *_error

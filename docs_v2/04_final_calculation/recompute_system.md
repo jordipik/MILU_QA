@@ -34,6 +34,15 @@ Nota:
 - El selector Libro es un select real con opcion Todos los libros + una opcion por engine.
 - El valor inicial intenta heredar el libro activo en la pantalla principal (`engineFilterSelect`).
 
+### Contrato oficial de filtros del RecomputeModal
+
+| Boton | Endpoint | Soporta libro | Soporta ID | Comportamiento |
+|---|---|---|---|---|
+| IMPORTAR PDF | `POST /api/pdf-preview/apply-to-engine` | Si | No | Ignora ID puntual, muestra aviso y trabaja por libro/todos. |
+| CALCULO FINAL | `POST /copy-pdf-to-final-all-books` | Si | No | Ignora ID puntual, muestra aviso y trabaja por libro/todos. |
+| ERRORES | `POST /recompute-qa-errors` | Si | Si | Respeta libro+ID y bloquea `Todos + ID`. |
+| ESTADOS | `POST /recalculate-revision-status` | No (global) | No | Solo global; bloquea libro o ID. |
+
 ### Fuente unica de filtros
 La UI usa una funcion unica para leer filtros del modal:
 - `getRecomputeModalFilters()` en `js/analista-02.js`
@@ -52,11 +61,13 @@ Antes de ejecutar cada accion del modal se registran:
 1) IMPORTAR PDF (`recomputeCopyBookBtn` -> `POST /api/pdf-preview/apply-to-engine`)
 - Soporta libro concreto y todos los libros.
 - `id` no participa en este endpoint.
+- Si el usuario informa `id`, la UI muestra aviso de que el ID se ignora en este paso.
 
 2) CALCULO FINAL (`recomputeCalculateFinalBtn` -> `POST /copy-pdf-to-final-all-books`)
 - Soporta todos los libros o libro concreto.
 - Para libro concreto, frontend envia `file` al endpoint oficial.
 - `id` no participa en este endpoint.
+- Si el usuario informa `id`, la UI muestra aviso de que el ID se ignora en este paso.
 
 3) ERRORES (`recomputeRunBtn` -> `POST /recompute-qa-errors`)
 - Deriva alcance desde los dos filtros del modal:
@@ -64,6 +75,8 @@ Antes de ejecutar cada accion del modal se registran:
 	- `book=<MODEL>` + `id=''` -> `scope=book`
 	- `book=<MODEL>` + `id=<VALOR>` -> `scope=current`
 - La combinacion `book=all` + `id=<VALOR>` se bloquea en UI para evitar payload ambiguo.
+- En este paso, `updateRevision` y `forceRevision` van fijos en `false`.
+- ESTADOS queda como paso separado para recalculo de `qa_revision_estado` y `qa_revision_accion`.
 
 4) ESTADOS (`recomputeRevisionStatusBtn` -> `POST /recalculate-revision-status`)
 - Actualmente solo soporta todos los libros.
@@ -73,6 +86,7 @@ Antes de ejecutar cada accion del modal se registran:
 - No se cambian reglas de calculo.
 - No se cambian endpoints oficiales.
 - El modal superior no expone controles de alcance/pagina/rango.
+- Se elimino la dependencia de checkboxes ocultos para activar revision desde ERRORES.
 
 ## Campos afectados
 - Todos los de pipeline segun paso (`_pdf`, `_final`, `_error`, `qa_revision_*`).
@@ -87,6 +101,8 @@ Antes de ejecutar cada accion del modal se registran:
 ## Riesgos / problemas conocidos
 - En remoto varios botones quedan bloqueados por restriccion local-only.
 - Errores de red en candidatos backend pueden devolver mensajes heterogeneos.
+- ESTADOS sigue siendo global mientras `/recalculate-revision-status` no soporte filtro por libro.
+- IMPORTAR PDF y CALCULO FINAL no soportan ID puntual (solo aviso de ID ignorado).
 
 ## TODO pendiente
 - Exponer en UI un mapa de endpoint efectivo utilizado por cada accion.

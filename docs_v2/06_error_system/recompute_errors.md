@@ -21,6 +21,15 @@ Documentar la ejecucion operativa del recompute QA persistente a nivel registro/
 - `pdfRecomputeErrorsBtn` (atajo registro actual; termina usando el mismo endpoint).
 - `recomputeErrorsCurrentBtn` (segun configuracion, registro actual o libro completo).
 
+## Contrato oficial de filtros del RecomputeModal (resumen)
+
+| Boton | Endpoint | Soporta libro | Soporta ID | Comportamiento |
+|---|---|---|---|---|
+| IMPORTAR PDF | `POST /api/pdf-preview/apply-to-engine` | Si | No | Ignora ID puntual (con aviso) y trabaja por libro/todos. |
+| CALCULO FINAL | `POST /copy-pdf-to-final-all-books` | Si | No | Ignora ID puntual (con aviso) y trabaja por libro/todos. |
+| ERRORES | `POST /recompute-qa-errors` | Si | Si | Respeta libro+ID y bloquea `Todos + ID`. |
+| ESTADOS | `POST /recalculate-revision-status` | No (global) | No | Solo global; bloquea libro o ID. |
+
 ## Campos afectados
 - Todos los `*_error`, `total_error`, `has_error` y opcionalmente `qa_revision_*`.
 
@@ -52,6 +61,8 @@ Documentar la ejecucion operativa del recompute QA persistente a nivel registro/
 	- `book=<MODEL>`, `id=''` -> `scope=book`
 	- `book=<MODEL>`, `id=<VALOR>` -> `scope=current`
 	- `book=all`, `id=<VALOR>` -> bloqueado en UI
+   - `updateRevision=false` (fijo)
+   - `forceRevision=false` (fijo)
 3. `POST /recompute-qa-errors` valida:
 	- `scope` permitido (`current|book|all`)
 	- `file` permitido para `current|book`
@@ -94,6 +105,7 @@ Documentar la ejecucion operativa del recompute QA persistente a nivel registro/
 - Para registros manualmente validados en `ok`, reglas intentan respetar decision salvo `forceRevision`.
 - El frontend controla combinaciones ambiguas (`book=all` con `id` puntual).
 - Comparacion de valores por igualdad textual estricta puede generar discrepancias por formato.
+- ESTADOS permanece como paso separado y global para `qa_revision_*`.
 
 ## TODO pendiente
 - Incluir dry-run detallado por campo para depuracion en UI.

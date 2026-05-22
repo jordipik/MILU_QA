@@ -3421,6 +3421,7 @@ function initRecomputeModal() {
                     engineFilterSelect.value = selectedValue;
                 }
             }
+            updateRecomputeModalTitle();
         });
 
         document.addEventListener('keydown', (event) => {
@@ -5797,6 +5798,16 @@ function getRecomputeModalBooks() {
         .sort((left, right) => left.localeCompare(right, 'es', { numeric: true, sensitivity: 'base' }));
 }
 
+function updateRecomputeModalTitle() {
+    const title = $('recomputeModalTitle');
+    if (!(title instanceof HTMLElement)) return;
+    const select = getRecomputeBookSelect();
+    const value = select instanceof HTMLSelectElement ? String(select.value || '').trim() : '';
+    title.textContent = (!value || value === RECOMPUTE_ALL_BOOKS_VALUE)
+        ? 'Recalcular todos los libros'
+        : `Recalcular libro ${value}`;
+}
+
 function syncRecomputeBookSelect() {
     const source = $('engineFilterSelect');
     const target = getRecomputeBookSelect();
@@ -5812,6 +5823,7 @@ function syncRecomputeBookSelect() {
     target.value = books.includes(selectedMainModel)
         ? selectedMainModel
         : RECOMPUTE_ALL_BOOKS_VALUE;
+    updateRecomputeModalTitle();
 }
 
 function syncRecomputeEngineSelect() {
@@ -5847,10 +5859,9 @@ async function runBackendRecompute(inputFilters = null) {
     const scope = !selectedModel ? 'all' : (id ? 'current' : 'book');
     const file = scope === 'all' ? '' : resolveEngineFileFromFilter(selectedModel);
     const dryRun = false;
-    const recomputeUpdateRevisionInput = $('recomputeUpdateRevisionInput');
-    const recomputeForceRevisionInput = $('recomputeForceRevisionInput');
-    const updateRevision = recomputeUpdateRevisionInput instanceof HTMLInputElement ? recomputeUpdateRevisionInput.checked : false;
-    const forceRevision = recomputeForceRevisionInput instanceof HTMLInputElement ? recomputeForceRevisionInput.checked : false;
+    // ERRORES recalcula *_error/has_error; ESTADOS es el paso separado para qa_revision_*.
+    const updateRevision = false;
+    const forceRevision = false;
     const backup = true;
 
     if (scope !== 'all' && !file) {
@@ -10961,7 +10972,14 @@ async function runApplyBookPreviewToEngines(inputFilters = null) {
     const filters = inputFilters || getRecomputeModalFilters();
     const selectedModelRaw = String(filters.book || RECOMPUTE_ALL_BOOKS_VALUE).trim();
     const selectedModel = selectedModelRaw === RECOMPUTE_ALL_BOOKS_VALUE ? '' : selectedModelRaw;
+    const id = String(filters.id || '').trim();
     const scope = selectedModel ? `engine_${selectedModel}.json` : 'TODOS los libros';
+
+    if (id) {
+        const warningMessage = 'IMPORTAR PDF ignora el ID puntual y trabaja por libro o todos los libros.';
+        showToast(warningMessage, 'warning');
+        setRecomputeStatus(warningMessage, 'warning');
+    }
 
     console.log(`${TAG} button pulsado`);
     console.log(`${TAG} engine seleccionado=${selectedModel || '(todos)'}`);
@@ -11067,7 +11085,14 @@ async function runBackendCalculateFinal(inputFilters = null) {
 
     const selectedModelRaw = String(filters.book || RECOMPUTE_ALL_BOOKS_VALUE).trim();
     const selectedModel = selectedModelRaw === RECOMPUTE_ALL_BOOKS_VALUE ? '' : selectedModelRaw;
+    const id = String(filters.id || '').trim();
     const targetFile = selectedModel ? resolveEngineFileFromFilter(selectedModel) : '';
+
+    if (id) {
+        const warningMessage = 'CÁLCULO FINAL ignora el ID puntual y trabaja por libro o todos los libros.';
+        showToast(warningMessage, 'warning');
+        setRecomputeStatus(warningMessage, 'warning');
+    }
 
     if (selectedModel && !targetFile) {
         setRecomputeStatus('No se pudo resolver el archivo engine del libro seleccionado para CÁLCULO FINAL.', 'error');
@@ -11146,7 +11171,7 @@ async function runBackendRecalculateRevisionStatus(inputFilters = null) {
     const selectedModel = selectedModelRaw === RECOMPUTE_ALL_BOOKS_VALUE ? '' : selectedModelRaw;
     const id = String(filters.id || '').trim();
     if (selectedModel || id) {
-        setRecomputeStatus('ESTADOS actualmente solo soporta "Todos los libros" en este endpoint (/recalculate-revision-status).', 'error');
+        setRecomputeStatus('ESTADOS actualmente solo recalcula todos los libros.', 'error');
         return;
     }
 

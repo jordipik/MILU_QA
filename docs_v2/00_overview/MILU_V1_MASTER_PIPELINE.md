@@ -112,6 +112,32 @@ Documentar el flujo oficial de MILU v1 por motor, desde PDF origen hasta export 
   - `book=<MODEL>` + `id=''` -> `book`
   - `book=<MODEL>` + `id=<VALOR>` -> `current`
 
+## Contrato oficial de filtros del RecomputeModal
+
+Estado: OFFICIAL (comportamiento validado en `analista_02.html` + `js/analista-02.js`).
+
+Filtros oficiales del modal:
+- selector `Libro`: `Todos los libros` o motor concreto.
+- `ID puntual` opcional.
+
+Tabla de contrato por boton:
+
+| Boton | Endpoint | Soporta libro | Soporta ID | Comportamiento |
+|---|---|---|---|---|
+| IMPORTAR PDF (`recomputeCopyBookBtn`) | `POST /api/pdf-preview/apply-to-engine` | Si (libro o todos) | No | Ignora ID puntual y muestra aviso; aplica por libro o todos. |
+| CALCULO FINAL (`recomputeCalculateFinalBtn`) | `POST /copy-pdf-to-final-all-books` | Si (libro o todos) | No | Ignora ID puntual y muestra aviso; aplica por libro o todos. |
+| ERRORES (`recomputeRunBtn`) | `POST /recompute-qa-errors` | Si | Si | Respeta libro+ID; bloquea `Todos + ID` con mensaje claro. |
+| ESTADOS (`recomputeRevisionStatusBtn`) | `POST /recalculate-revision-status` | No (solo global) | No | Solo recalcula todos los libros; bloquea libro concreto o ID. |
+
+Detalles operativos de ERRORES:
+- `updateRevision: false`
+- `forceRevision: false`
+- ESTADOS queda como paso separado para actualizar `qa_revision_estado`/`qa_revision_accion`.
+
+Nota UX (cerrado):
+- Modal simplificado a dos filtros visibles (`Libro` + `ID puntual`).
+- Eliminada dependencia de checkboxes ocultos para activar revision desde ERRORES.
+
 ## Estado operativo actual
 - Flujo IMPORTAR PDF estabilizado.
 - Endpoint oficial unificado (`/api/pdf-preview/apply-to-engine`).

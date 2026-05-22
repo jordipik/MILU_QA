@@ -48,6 +48,30 @@ Inventario operativo de scripts y endpoints usados por el flujo MILU v1.
 - Diagnostico activo en `analista-02.js`, `server.js` y `apply_book_preview_to_engine.py` (boton, engine, endpoint, comando Python, `rows_changed`, `fields_changed`, `ambiguous`, `not_found`).
 - En modal de errores, selector `Libro` admite libro individual o `Todos los libros`; al elegir `Todos los libros`, el scope pasa a `all` y el boton muestra `ERRORES TODOS`.
 
+## Contrato oficial de filtros del RecomputeModal
+
+Estado: OFFICIAL (UI validada en `analista_02.html` + handlers en `js/analista-02.js`).
+
+Filtros oficiales:
+- `Libro`: `Todos los libros` o motor concreto.
+- `ID puntual`: opcional.
+
+| Boton | Endpoint | Soporta libro | Soporta ID | Comportamiento | Estado |
+| --- | --- | --- | --- | --- | --- |
+| `recomputeCopyBookBtn` (IMPORTAR PDF) | `POST /api/pdf-preview/apply-to-engine` | Si | No | Ignora ID puntual y muestra aviso; ejecuta por libro o todos. | OFFICIAL |
+| `recomputeCalculateFinalBtn` (CALCULO FINAL) | `POST /copy-pdf-to-final-all-books` | Si | No | Ignora ID puntual y muestra aviso; ejecuta por libro o todos. | OFFICIAL |
+| `recomputeRunBtn` (ERRORES) | `POST /recompute-qa-errors` | Si | Si | Respeta libro/ID y bloquea `Todos + ID`. | OFFICIAL |
+| `recomputeRevisionStatusBtn` (ESTADOS) | `POST /recalculate-revision-status` | No (solo global) | No | Bloquea libro o ID; solo recalcula todos los libros. | OFFICIAL (limitado) |
+
+Notas de implementacion vigentes:
+- ERRORES envia `updateRevision:false` y `forceRevision:false`.
+- ESTADOS se mantiene como paso separado para `qa_revision_estado` y `qa_revision_accion`.
+- Dependencia de checkboxes ocultos removida del flujo ERRORES.
+
+Riesgos pendientes:
+- PENDIENTE: ESTADOS sigue siendo global mientras `/recalculate-revision-status` no soporte filtro por libro.
+- PENDIENTE: IMPORTAR PDF y CALCULO FINAL no soportan ID puntual (solo aviso de ID ignorado).
+
 | Script | Tipo | Entrada | Salida | Modifica | Estado |
 | ------ | ---- | ------- | ------ | -------- | ------ |
 | `js/analista-02.js::runApplyBookPreviewToEngines` | UI handler | click `recomputeCopyBookBtn`, selector libro | `fetch` a endpoint oficial + logs de diagnostico | no escribe directo; orquesta apply backend | Activo oficial |
