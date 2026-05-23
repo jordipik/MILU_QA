@@ -7715,6 +7715,13 @@ function getGesaWeightWithUnits(row) {
 
 }
 
+// Visualizacion exacta para columnas GESA/SUST/PDF/FINAL en analista_02:
+// devuelve solo el valor del campo solicitado, sin lookup ni fallback.
+function getExactField(row, fieldName) {
+    if (!row || typeof row !== 'object') return undefined;
+    return row[fieldName];
+}
+
 
 
 // ─── MAPA DE CAMPOS – FIELD REGISTRY REFACTORIZADO ──────────────────────────────────────────────
@@ -7764,13 +7771,14 @@ function buildComparisonRows(row) {
 
             excel: firstNonEmpty(row?.pn_excel, row?.['PART NO.']),
 
-            gesa: getGesaPn(row),
+            // En GESA/SUST/PDF/FINAL se muestra solo campo exacto, sin fallbacks.
+            gesa: getExactField(row, 'pn_gesa'),
 
-            subst: getSustPn(row),
+            subst: getExactField(row, 'pn_subst'),
 
-            pdf: row?.pn_pdf,
+            pdf: getExactField(row, 'pn_pdf'),
 
-            final: row?.pn_final,
+            final: getExactField(row, 'pn_final'),
 
             errorKey: 'pn_error',
 
@@ -7790,13 +7798,13 @@ function buildComparisonRows(row) {
 
             excel: firstNonEmpty(row?.designation_excel, row?.DESIGNATION),
 
-            gesa: row?.designation_gesa,
+            gesa: getExactField(row, 'designation_gesa'),
 
-            subst: null,
+            subst: getExactField(row, 'designation_subst'),
 
-            pdf: row?.designation_pdf,
+            pdf: getExactField(row, 'designation_pdf'),
 
-            final: row?.designation_final,
+            final: getExactField(row, 'designation_final'),
 
             errorKey: 'designation_error',
 
@@ -7816,13 +7824,13 @@ function buildComparisonRows(row) {
 
             excel: firstNonEmpty(row?.model_type_excel, row?.['MODEL/TYPE']),
 
-            gesa: null,
+            gesa: getExactField(row, 'model_type_gesa'),
 
-            subst: null,
+            subst: getExactField(row, 'model_type_subst'),
 
-            pdf: row?.model_type_pdf,
+            pdf: getExactField(row, 'model_type_pdf'),
 
-            final: firstNonEmpty(row?.model_type_final, row?.['MODEL/TYPE']),
+            final: getExactField(row, 'model_type_final'),
 
             errorKey: 'model_type_error',
 
@@ -7840,13 +7848,13 @@ function buildComparisonRows(row) {
 
             excel: firstNonEmpty(row?.qty_excel, row?.QTY),
 
-            gesa: null,
+            gesa: getExactField(row, 'qty_gesa'),
 
-            subst: null,
+            subst: getExactField(row, 'qty_subst'),
 
-            pdf: row?.qty_pdf,
+            pdf: getExactField(row, 'qty_pdf'),
 
-            final: row?.qty_final,
+            final: getExactField(row, 'qty_final'),
 
             errorKey: 'qty_error',
 
@@ -7864,13 +7872,13 @@ function buildComparisonRows(row) {
 
             excel: firstNonEmpty(row?.qty_units_excel, row?.UNITS),
 
-            gesa: null,
+            gesa: getExactField(row, 'units_gesa'),
 
-            subst: null,
+            subst: getExactField(row, 'units_subst'),
 
-            pdf: row?.units_pdf,
+            pdf: getExactField(row, 'units_pdf'),
 
-            final: firstNonEmpty(row?.units_final, row?.UNITS),
+            final: getExactField(row, 'units_final'),
 
             errorKey: 'units_error',
 
@@ -7888,13 +7896,13 @@ function buildComparisonRows(row) {
 
             excel: firstNonEmpty(row?.weight_excel, row?.WEIGHT),
 
-            gesa: getGesaWeightWithUnits(row),
+            gesa: getExactField(row, 'weight_gesa'),
 
-            subst: null,
+            subst: getExactField(row, 'weight_subst'),
 
-            pdf: row?.weight_pdf,
+            pdf: getExactField(row, 'weight_pdf'),
 
-            final: row?.weight_final,
+            final: getExactField(row, 'weight_final'),
 
             errorKey: 'weight_error',
 
@@ -7912,13 +7920,13 @@ function buildComparisonRows(row) {
 
             excel: firstNonEmpty(row?.fn_excel, row?.FN),
 
-            gesa: null,
+            gesa: getExactField(row, 'fn_gesa'),
 
-            subst: null,
+            subst: getExactField(row, 'fn_subst'),
 
-            pdf: row?.fn_pdf,
+            pdf: getExactField(row, 'fn_pdf'),
 
-            final: firstNonEmpty(row?.fn_final, row?.FN),
+            final: getExactField(row, 'fn_final'),
 
             errorKey: 'fn_error',
 
@@ -7936,14 +7944,13 @@ function buildComparisonRows(row) {
 
             excel: firstNonEmpty(row?.measure_excel, row?.['MEASUREMENT / STANDARD']),
 
-            gesa: firstNonEmpty(row?.measure_gesa, row?.dimensions_gesa),
+            gesa: getExactField(row, 'dimensions_gesa'),
 
-            subst: null,
+            subst: getExactField(row, 'measure_subst'),
 
-            pdf: row?.measure_pdf,
+            pdf: getExactField(row, 'measure_pdf'),
 
-            // measure_final con alias legacy measurement_final (ver fieldAdapter.js FALLBACK_ALIASES)
-            final: firstNonEmpty(row?.measure_final, row?.measurement_final),
+            final: getExactField(row, 'measure_final'),
 
             errorKey: 'measure_error',
 
@@ -7961,13 +7968,13 @@ function buildComparisonRows(row) {
 
             excel: firstNonEmpty(row?.fg_fgs_excel, row?.['FG/FGS']),
 
-            gesa: null,
+            gesa: getExactField(row, 'fg_fgs_gesa'),
 
-            subst: null,
+            subst: getExactField(row, 'fg_fgs_subst'),
 
-            pdf: row?.fg_fgs_pdf,
+            pdf: getExactField(row, 'fg_fgs_pdf'),
 
-            final: firstNonEmpty(row?.fg_fgs_final, row?.['FG/FGS']),
+            final: getExactField(row, 'fg_fgs_final'),
 
             errorKey: 'fg_fgs_error',
 
@@ -7985,13 +7992,13 @@ function buildComparisonRows(row) {
 
             excel: firstNonEmpty(row?.bom_excel, row?.['BOM-No.']),
 
-            gesa: null,
+            gesa: getExactField(row, 'bom_gesa'),
 
-            subst: null,
+            subst: getExactField(row, 'bom_subst'),
 
-            pdf: row?.bom_pdf,
+            pdf: getExactField(row, 'bom_pdf'),
 
-            final: firstNonEmpty(row?.bom_final, row?.['BOM-No.']),
+            final: getExactField(row, 'bom_final'),
 
             errorKey: 'bom_error',
 
@@ -8009,13 +8016,13 @@ function buildComparisonRows(row) {
 
             excel: null,
 
-            gesa: row?.gesa,
+            gesa: getExactField(row, 'gesa'),
 
-            subst: null,
+            subst: getExactField(row, 'gesa_subst'),
 
-            pdf: row?.gesa_pdf,
+            pdf: getExactField(row, 'gesa_pdf'),
 
-            final: firstNonEmpty(row?.gesa_final, row?.gesa),
+            final: getExactField(row, 'gesa_final'),
 
             errorKey: 'gesa_error',
 
@@ -8035,13 +8042,13 @@ function buildComparisonRows(row) {
 
             excel: null,
 
-            gesa: row?.nsn,
+            gesa: getExactField(row, 'nsn'),
 
-            subst: null,
+            subst: getExactField(row, 'nsn_subst'),
 
-            pdf: row?.nsn_pdf,
+            pdf: getExactField(row, 'nsn_pdf'),
 
-            final: firstNonEmpty(row?.nsn_final, row?.nsn),
+            final: getExactField(row, 'nsn_final'),
 
             errorKey: 'nsn_error',
 
@@ -8059,13 +8066,13 @@ function buildComparisonRows(row) {
 
             excel: null,
 
-            gesa: row?.normalizado,
+            gesa: getExactField(row, 'normalizado'),
 
-            subst: null,
+            subst: getExactField(row, 'normalizado_subst'),
 
-            pdf: row?.normalizado_pdf,
+            pdf: getExactField(row, 'normalizado_pdf'),
 
-            final: firstNonEmpty(row?.normalizado_final, row?.normalizado),
+            final: getExactField(row, 'normalizado_final'),
 
             errorKey: 'normalizado_error',
 
@@ -8083,13 +8090,13 @@ function buildComparisonRows(row) {
 
             excel: null,
 
-            gesa: row?.norma,
+            gesa: getExactField(row, 'norma'),
 
-            subst: null,
+            subst: getExactField(row, 'norma_subst'),
 
-            pdf: row?.norma_pdf,
+            pdf: getExactField(row, 'norma_pdf'),
 
-            final: firstNonEmpty(row?.norma_final, row?.norma),
+            final: getExactField(row, 'norma_final'),
 
             errorKey: 'norma_error',
 
@@ -8107,13 +8114,13 @@ function buildComparisonRows(row) {
 
             excel: null,
 
-            gesa: null,
+            gesa: getExactField(row, 'sust_status_gesa'),
 
-            subst: row?.sust_status,
+            subst: getExactField(row, 'sust_status'),
 
-            pdf: row?.sust_status_pdf,
+            pdf: getExactField(row, 'sust_status_pdf'),
 
-            final: firstNonEmpty(row?.sust_status_final, row?.sust_status),
+            final: getExactField(row, 'sust_status_final'),
 
             errorKey: null,
 
@@ -8135,12 +8142,11 @@ function buildComparisonRows(row) {
 
             gesa: null,
 
-            // hierarchie_subst → sust_hierarchie → hierarchi (fallbacks legacy)
-            subst: firstNonEmpty(row?.hierarchie_subst, row?.sust_hierarchie, row?.hierarchi),
+            subst: getExactField(row, 'sust_hierarchie'),
 
-            pdf: row?.hierarchi_pdf,
+            pdf: getExactField(row, 'hierarchi_pdf'),
 
-            final: firstNonEmpty(row?.hierarchie_final, row?.sust_hierarchie, row?.hierarchi),
+            final: getExactField(row, 'hierarchie_final'),
 
             errorKey: null,
 
@@ -8148,7 +8154,7 @@ function buildComparisonRows(row) {
 
             errFields: [],
 
-            raw: null, sust: firstNonEmpty(row?.sust_hierarchie, row?.hierarchi)
+            raw: null, sust: getExactField(row, 'sust_hierarchie')
 
         },
 
@@ -8160,12 +8166,11 @@ function buildComparisonRows(row) {
 
             gesa: null,
 
-            // new_pn_subst → sust_new_part_number (fallback legacy)
-            subst: firstNonEmpty(row?.new_pn_subst, row?.sust_new_part_number),
+            subst: getExactField(row, 'sust_new_part_number'),
 
-            pdf: row?.sust_new_part_number_pdf,
+            pdf: getExactField(row, 'sust_new_part_number_pdf'),
 
-            final: firstNonEmpty(row?.new_pn_final, row?.sust_new_part_number),
+            final: getExactField(row, 'new_pn_final'),
 
             errorKey: null,
 
@@ -8173,7 +8178,7 @@ function buildComparisonRows(row) {
 
             errFields: [],
 
-            raw: null, sust: firstNonEmpty(row?.sust_new_part_number)
+            raw: null, sust: getExactField(row, 'sust_new_part_number')
 
         },
 
@@ -8185,12 +8190,11 @@ function buildComparisonRows(row) {
 
             gesa: null,
 
-            // subst_pnlist_subst → sust_superseded_list (fallback legacy)
-            subst: firstNonEmpty(row?.subst_pnlist_subst, row?.sust_superseded_list),
+            subst: getExactField(row, 'sust_superseded_list'),
 
-            pdf: row?.sust_superseded_list_pdf,
+            pdf: getExactField(row, 'sust_superseded_list_pdf'),
 
-            final: firstNonEmpty(row?.subst_pnlist_final, row?.sust_superseded_list),
+            final: getExactField(row, 'subst_pnlist_final'),
 
             errorKey: null,
 
@@ -8198,7 +8202,7 @@ function buildComparisonRows(row) {
 
             errFields: [],
 
-            raw: null, sust: firstNonEmpty(row?.sust_superseded_list)
+            raw: null, sust: getExactField(row, 'sust_superseded_list')
 
         }
 

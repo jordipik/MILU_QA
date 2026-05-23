@@ -72,3 +72,25 @@ Documentar como se decide el color de cada celda en la tabla comparativa de anal
 
 ## Nota
 La logica de color depende de clases CSS, no de pintar colores inline en JS. Si se cambia una regla en JS o una clase en CSS, cambia el resultado visual.
+
+## Modo exacto de visualizacion (GESA/SUST/PDF/FINAL)
+
+En `analista_02`, las columnas `GESA`, `SUST`, `PDF` y `FINAL` se muestran en modo exacto para la tabla comparativa:
+
+- No hay lookup por alias.
+- No hay fallback entre columnas.
+- No se infiere valor desde otros campos cuando el campo objetivo esta vacio.
+
+### Fuente de verdad en codigo
+- `js/analista-02.js`: helper `getExactField(row, fieldName)`.
+- `js/analista-02.js`: constructor de filas `buildComparisonRows(row)`.
+
+### Regla operativa
+Para esas cuatro columnas, cada celda toma unicamente `row[fieldName]` del campo tecnico definido en el mapping de `buildComparisonRows`.
+
+Si el campo no existe o esta vacio, la UI no busca alternativas y se mantiene el estado vacio (representado en pantalla segun renderer).
+
+### Alcance
+- Este cambio es de visualizacion de frontend.
+- No modifica reglas de persistencia ni calculo backend de `_final`.
+- No altera el contrato de endpoints.
