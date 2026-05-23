@@ -6048,9 +6048,11 @@ async function runClearPdfFinalFields() {
             .join(' | ');
         console.info('[clear-engine-fields] resultado', result);
         setRecomputeStatus(
-            `OK: ${summary.totalFields ?? 0} campos vaciados en ${summary.totalRecords ?? 0} registros; revisión pendiente aplicada en ${summary.totalRevisionRecords ?? 0} registros${revisionUpdatedAt ? ` (ts=${revisionUpdatedAt})` : ''}.${fileLines ? ' [' + fileLines + ']' : ''}`,
+            `OK: ${summary.totalFields ?? 0} campos vaciados en ${summary.totalRecords ?? 0} registros; revisión pendiente aplicada en ${summary.totalRevisionRecords ?? 0} registros${revisionUpdatedAt ? ` (ts=${revisionUpdatedAt})` : ''}. Recarga web obligatoria.${fileLines ? ' [' + fileLines + ']' : ''}`,
             'ok'
         );
+        window.alert('Vaciado completado correctamente.\n\nEs obligatorio recargar la web para continuar.');
+        window.location.reload();
     } catch (error) {
         console.error('[clear-engine-fields] error', error);
         if (progressText instanceof HTMLElement) progressText.textContent = 'Error.';

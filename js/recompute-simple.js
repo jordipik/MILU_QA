@@ -700,7 +700,9 @@ async function runClearPdfFinal() {
     setStatus(scope.isAll ? 'Vaciando campos _pdf/_final/_error y marcando revisión en todos los libros...' : `Vaciando campos _pdf/_final/_error y marcando revisión en ${scope.model}...`, '');
     const data = await postJson('/clear-engine-fields', payload);
     renderResponseSummary('Vaciar _pdf/_final/_error y marcar revisión', '/clear-engine-fields', data);
-    setStatus('VACIAR + MARCAR REVISION finalizado correctamente.', 'ok');
+    setStatus('VACIAR + MARCAR REVISION finalizado correctamente. Es obligatorio recargar la web.', 'ok');
+    window.alert('Vaciado completado correctamente.\n\nEs obligatorio recargar la web para continuar.');
+    window.location.reload();
 }
 
 async function runAction(action) {
