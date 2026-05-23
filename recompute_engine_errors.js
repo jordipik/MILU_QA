@@ -87,6 +87,29 @@ function isCompareMatch(left, right) {
     return normalizedLeft !== '' && normalizedRight !== '' && normalizedLeft === normalizedRight;
 }
 
+function normalizeTokenSet(value) {
+    const normalized = normalizeCompareValue(value).toUpperCase();
+    if (!normalized) return new Set();
+    return new Set(
+        normalized
+            .split(/[^A-Z0-9]+/)
+            .map((token) => token.trim())
+            .filter(Boolean)
+    );
+}
+
+function isFnCompareMatch(left, right) {
+    if (isCompareMatch(left, right)) return true;
+
+    const leftTokens = normalizeTokenSet(left);
+    const rightTokens = normalizeTokenSet(right);
+    if (!leftTokens.size || !rightTokens.size) return false;
+
+    const leftInRight = [...leftTokens].every((token) => rightTokens.has(token));
+    const rightInLeft = [...rightTokens].every((token) => leftTokens.has(token));
+    return leftInRight || rightInLeft;
+}
+
 function getGesaPn(row) {
     const isGesaSi = text(row?.gesa).toUpperCase() === 'SI';
     if (!isGesaSi) return null;
@@ -238,7 +261,7 @@ const QA_FIELD_CHECKS = {
             const finalValue = normalizeCompareValue(entry?.final);
             const pdfValue = normalizeCompareValue(entry?.pdf);
             if (!finalValue && !pdfValue) return true;
-            if (pdfValue !== '') return isCompareMatch(entry?.final, entry?.pdf);
+            if (pdfValue !== '') return isFnCompareMatch(entry?.final, entry?.pdf);
             return true;
         }
     ],
