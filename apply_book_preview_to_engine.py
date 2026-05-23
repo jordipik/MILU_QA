@@ -70,9 +70,21 @@ def _is_empty(value: Any) -> bool:
 
 
 def _is_other_row(row: dict) -> bool:
-    # Agrupadores/headers del preview pueden traer solo designation_pdf (y a veces fg_fgs/bom),
-    # pero siguen sin ser registros importables si el resto de campos clave esta vacio.
-    return all(_is_empty(row.get(field)) for field in OTHER_EMPTY_FIELDS)
+    # Agrupadores/headers del preview pueden traer solo designation_pdf o solo pn_pdf
+    # (y a veces fg_fgs/bom), pero siguen sin ser registros importables si el resto
+    # de campos clave esta vacio.
+    if all(_is_empty(row.get(field)) for field in OTHER_EMPTY_FIELDS):
+        return True
+
+    only_pn_pdf_filled = (
+        not _is_empty(row.get("pn_pdf"))
+        and all(
+            _is_empty(row.get(field))
+            for field in OTHER_EMPTY_FIELDS
+            if field != "pn_pdf"
+        )
+    )
+    return only_pn_pdf_filled
 
 
 def _build_not_found_row(page_num: int, row: dict, reason: str) -> dict:
