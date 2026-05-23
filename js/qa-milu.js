@@ -3659,6 +3659,10 @@ function fillRecordModal(row, revisionKey) {
 
     $('qaModalPage').value = String(row?.['Source Page'] ?? '');
 
+    $('qaModalPosExcel').value = String(row?.pos_excel ?? row?.POS ?? '');
+
+    $('qaModalPnExcel').value = String(row?.pn_excel ?? row?.['PART NO.'] ?? '');
+
     $('qaModalPos').value = String(row?.pos_final ?? '');
 
     $('qaModalGesa').value = String(row?.gesa ?? '');
@@ -3730,6 +3734,10 @@ function fillSideRecordForm(row, revisionKey) {
     $('qaSideBook').value = String(row?.engine_model ?? '');
 
     $('qaSidePage').value = String(row?.['Source Page'] ?? '');
+
+    $('qaSidePosExcel').value = String(row?.pos_excel ?? row?.POS ?? '');
+
+    $('qaSidePnExcel').value = String(row?.pn_excel ?? row?.['PART NO.'] ?? '');
 
     $('qaSidePos').value = String(row?.pos_final ?? '');
 
@@ -3852,6 +3860,10 @@ function getRecordFormValues(scope) {
     const prefix = scope === 'side' ? 'qaSide' : 'qaModal';
 
     return {
+
+        pos_excel: String($(`${prefix}PosExcel`)?.value || ''),
+
+        pn_excel: String($(`${prefix}PnExcel`)?.value || ''),
 
         pos_final: String($(`${prefix}Pos`)?.value || ''),
 

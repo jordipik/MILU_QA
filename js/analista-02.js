@@ -4061,15 +4061,31 @@ function populateEditRecordForm(row) {
 
     }
 
-    if (row?.pn_final) $('editRecordPnFinal').value = String(row.pn_final);
+    const assignInputValue = (inputId, value) => {
 
-    if (row?.designation_final) $('editRecordDesignationFinal').value = String(row.designation_final);
+        const input = $(inputId);
 
-    if (row?.weight_final) $('editRecordWeightFinal').value = String(row.weight_final);
+        if (input instanceof HTMLInputElement) {
 
-    if (row?.measure_final ?? row?.measurement_final) $('editRecordMeasurementFinal').value = String(row?.measure_final ?? row?.measurement_final);
+            input.value = String(value ?? '');
 
-    if (row?.norma) $('editRecordNorma').value = String(row.norma);
+        }
+
+    };
+
+    assignInputValue('editRecordPosExcel', row?.pos_excel);
+
+    assignInputValue('editRecordPnExcel', row?.pn_excel);
+
+    assignInputValue('editRecordPnFinal', row?.pn_final);
+
+    assignInputValue('editRecordDesignationFinal', row?.designation_final);
+
+    assignInputValue('editRecordWeightFinal', row?.weight_final);
+
+    assignInputValue('editRecordMeasurementFinal', row?.measure_final ?? row?.measurement_final);
+
+    assignInputValue('editRecordNorma', row?.norma);
 
     const statusSelect = $('editRecordStatus');
 
@@ -4132,6 +4148,10 @@ async function saveEditRecordForm() {
 
 
         const updates = {
+
+            pos_excel: String($('editRecordPosExcel')?.value || '').trim(),
+
+            pn_excel: String($('editRecordPnExcel')?.value || '').trim(),
 
             pn_final: String($('editRecordPnFinal')?.value || '').trim(),
 

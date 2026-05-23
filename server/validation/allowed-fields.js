@@ -7,6 +7,8 @@ const QA_EDITABLE_FIELDS = new Set([
 ]);
 
 const OPERATIONAL_EDITABLE_FIELDS = new Set([
+    'pos_excel',
+    'pn_excel',
     'designation_final',
     'model_type_final',
     'measure_final',

@@ -464,6 +464,22 @@
 
                     <div class="shell-shared-field">
 
+                        <label for="shellSharedPosExcel">POS EXCEL (pos_excel)</label>
+
+                        <input id="shellSharedPosExcel" type="text" />
+
+                    </div>
+
+                    <div class="shell-shared-field">
+
+                        <label for="shellSharedPnExcel">PN EXCEL (pn_excel)</label>
+
+                        <input id="shellSharedPnExcel" type="text" />
+
+                    </div>
+
+                    <div class="shell-shared-field">
+
                         <label for="shellSharedPos">POS (pos_final)</label>
 
                         <input id="shellSharedPos" type="text" />
@@ -717,6 +733,10 @@
 
         const EDITABLE_FIELDS = [
 
+            'pos_excel',
+
+            'pn_excel',
+
             'pos_final',
 
             'pn_final',
@@ -892,6 +912,10 @@
                 status: document.getElementById('shellSharedStatus'),
 
                 saveBtn: document.getElementById('shellSharedSaveBtn'),
+
+                posExcel: document.getElementById('shellSharedPosExcel'),
+
+                pnExcel: document.getElementById('shellSharedPnExcel'),
 
                 pnFinal: document.getElementById('shellSharedPnFinal'),
 
@@ -1313,6 +1337,10 @@
 
                 meta,
 
+                posExcel,
+
+                pnExcel,
+
                 pnFinal,
 
                 designationFinal,
@@ -1367,6 +1395,10 @@
 
                 values: {
 
+                    pos_excel: txt(payload.pos_excel || payload.POS),
+
+                    pn_excel: txt(payload.pn_excel || payload['PART NO.']),
+
                     pos_final: txt(payload.pos_final || payload.pos || payload.POS),
 
                     pn_final: txt(payload.pn_final),
@@ -1408,6 +1440,11 @@
                 }
 
             };
+
+
+                            if (posExcel instanceof HTMLInputElement) posExcel.value = sharedEditorContext.values.pos_excel;
+
+                            if (pnExcel instanceof HTMLInputElement) pnExcel.value = sharedEditorContext.values.pn_excel;
 
 
 
@@ -1487,6 +1524,10 @@
 
                 saveBtn,
 
+                posExcel,
+
+                pnExcel,
+
                 pos,
 
                 pnFinal,
@@ -1528,6 +1569,10 @@
             } = getSharedModalElements();
 
             const nextValues = {
+
+                pos_excel: txt(posExcel instanceof HTMLInputElement ? posExcel.value : ''),
+
+                pn_excel: txt(pnExcel instanceof HTMLInputElement ? pnExcel.value : ''),
 
                 pos_final: txt(pos instanceof HTMLInputElement ? pos.value : ''),
 
