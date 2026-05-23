@@ -2179,7 +2179,7 @@ function openRecordModalFromShell(request = {}) {
 
     const targetBook = String(row?.engine_model ?? '').trim();
 
-    const targetPage = normalizePageNumber(row?.['Source Page']);
+    const targetPage = resolvePdfPage(row);
 
 
 
@@ -5519,11 +5519,16 @@ function syncPdfWithSelectedRow(revisionKey) {
 
 
 
-    setPdfSelection(selectedRow);
+    const resolvedPage = resolvePdfPage(selectedRow);
+    const selectedRowForPdfSelection = resolvedPage
+        ? { ...selectedRow, 'Source Page': resolvedPage, __active_pdf_row_overlay: true }
+        : { ...selectedRow, __active_pdf_row_overlay: true };
+
+    setPdfSelection(selectedRowForPdfSelection);
 
     const book = String(val(selectedRow, 'engine_model', '') || '').trim();
 
-    const page = String(val(selectedRow, 'Source Page', '') || '').trim();
+    const page = resolvedPage;
 
     if (book && page) {
 
@@ -5543,13 +5548,55 @@ function syncPdfWithSelectedRow(revisionKey) {
 
 function normalizePageNumber(value) {
 
-    const digits = String(value || '').replace(/[^0-9]/g, '');
+    const match = String(value || '').match(/\d+/);
 
-    if (!digits) return '';
+    if (!match) return '';
 
-    const parsed = Number(digits);
+    const parsed = Number(match[0]);
 
     return Number.isFinite(parsed) && !Number.isNaN(parsed) ? String(parsed) : '';
+
+}
+
+
+function resolvePdfPage(record) {
+
+    const row = record && typeof record === 'object' ? record : {};
+
+    const candidates = [
+        ['Source Page', row?.['Source Page']],
+        ['source_page', row?.source_page],
+        ['page4', row?.page4],
+        ['libro_pag', row?.libro_pag],
+        ['pages', row?.pages]
+    ];
+
+    for (const [source, value] of candidates) {
+        const page = normalizePageNumber(value);
+        if (!page) continue;
+        if (source !== 'Source Page') {
+            console.debug('[PDF Fallback] Página resuelta con fallback', {
+                source,
+                page,
+                id: String(row?.ID ?? '').trim(),
+                engine_model: String(row?.engine_model ?? '').trim(),
+                rawValue: String(value ?? '').trim()
+            });
+        }
+        return page;
+    }
+
+    console.warn('[PDF Fallback] No se pudo resolver página PDF para registro', {
+        id: String(row?.ID ?? '').trim(),
+        engine_model: String(row?.engine_model ?? '').trim(),
+        sourcePage: String(row?.['Source Page'] ?? '').trim(),
+        source_page: String(row?.source_page ?? '').trim(),
+        page4: String(row?.page4 ?? '').trim(),
+        libro_pag: String(row?.libro_pag ?? '').trim(),
+        pages: String(row?.pages ?? '').trim()
+    });
+
+    return '';
 
 }
 
@@ -5677,7 +5724,7 @@ function runSideQuickSearch() {
 
     const targetBook = String(targetRow?.engine_model ?? '').trim();
 
-    const targetPage = normalizePageNumber(targetRow?.['Source Page']);
+    const targetPage = resolvePdfPage(targetRow);
 
     applyBookSelection(targetBook, {
 

@@ -16,6 +16,8 @@ const PDF_FIT_HEIGHT_MARGIN = 8;
 
 const PDF_SELECTION_MAX_HIGHLIGHTS = 40;
 
+const PDF_OVERLAY_DEBUG_ENABLED = Boolean(window?.MILU_PDF_OVERLAY_DEBUG);
+
 const PDF_HEADER_DEBUG_ENABLED = false;
 
 // Deprecated experimental column/header parser path. Kept disabled until a clean reimplementation.
@@ -26,6 +28,10 @@ const PDF_ZOOM_PERCENTAGES = new Set([50, 75, 100, 125, 150, 200]);
 const PDF_ZOOM_STEPS = ['fit', 'height', 50, 75, 100, 125, 150, 200];
 
 let pdfRelayoutRafId = 0;
+let pdfResizeObserver = null;
+let pdfResizeEventsBound = false;
+let pdfResizeLastKey = '';
+let pdfResizeRelayoutRafId = 0;
 
 // Sistema de debug para detección de cabecera
 let headerDetectionDebugLog = [];
@@ -39,6 +45,11 @@ function debugLog(stage, data) {
     if (window.updateHeaderDetectionDebugPanel) {
         window.updateHeaderDetectionDebugPanel();
     }
+}
+
+function overlayDebugLog(stage, data) {
+    if (!PDF_OVERLAY_DEBUG_ENABLED) return;
+    console.debug(`[PDF Overlay Debug] ${stage}`, data);
 }
 function getHeaderDetectionDebug() {
     return headerDetectionDebugLog;
@@ -151,8 +162,84 @@ function getNextPdfZoom(currentZoom, direction) {
 }
 
 
+function schedulePdfRelayoutFromResize() {
+
+    if (pdfResizeRelayoutRafId) {
+        cancelAnimationFrame(pdfResizeRelayoutRafId);
+        pdfResizeRelayoutRafId = 0;
+    }
+
+    pdfResizeRelayoutRafId = requestAnimationFrame(() => {
+        pdfResizeRelayoutRafId = 0;
+        if (state.rightPanelTab !== 'pdf') return;
+        if (!state.currentPdfSource || state.currentPdfPageNumber <= 0) return;
+        requestPdfRelayout();
+    });
+
+}
+
+
+function computePdfViewerResizeKey() {
+
+    const viewer = document.getElementById('pdfViewer');
+    const viewerInner = document.querySelector('.pdfviewer-inner');
+    const viewerRect = viewer instanceof HTMLElement ? viewer.getBoundingClientRect() : null;
+    const innerRect = viewerInner instanceof HTMLElement ? viewerInner.getBoundingClientRect() : null;
+
+    const vw = viewerRect ? Math.round(viewerRect.width) : 0;
+    const vh = viewerRect ? Math.round(viewerRect.height) : 0;
+    const iw = innerRect ? Math.round(innerRect.width) : 0;
+    const ih = innerRect ? Math.round(innerRect.height) : 0;
+
+    return `${vw}x${vh}|${iw}x${ih}`;
+
+}
+
+
+function handlePdfViewerResized() {
+
+    const nextKey = computePdfViewerResizeKey();
+    if (!nextKey || nextKey === pdfResizeLastKey) return;
+    pdfResizeLastKey = nextKey;
+    schedulePdfRelayoutFromResize();
+
+}
+
+
+function ensurePdfRelayoutOnResize() {
+
+    const viewer = document.getElementById('pdfViewer');
+    const viewerInner = document.querySelector('.pdfviewer-inner');
+
+    if (!(viewer instanceof HTMLElement) || !(viewerInner instanceof HTMLElement)) return;
+
+    if (!pdfResizeEventsBound) {
+        window.addEventListener('resize', handlePdfViewerResized);
+        pdfResizeEventsBound = true;
+    }
+
+    if (!pdfResizeObserver && typeof ResizeObserver !== 'undefined') {
+        pdfResizeObserver = new ResizeObserver(() => {
+            handlePdfViewerResized();
+        });
+    }
+
+    if (pdfResizeObserver) {
+        pdfResizeObserver.disconnect();
+        pdfResizeObserver.observe(viewer);
+        pdfResizeObserver.observe(viewerInner);
+    }
+
+    // Inicializa estado para evitar un salto inicial falso.
+    pdfResizeLastKey = computePdfViewerResizeKey();
+
+}
+
+
 
 export function initPdfZoomControls() {
+
+    ensurePdfRelayoutOnResize();
 
     const zoomSelect = document.getElementById('pdfZoomSelect');
 
@@ -393,25 +480,37 @@ function syncPdfSelectionLayerBounds(viewportWidth, viewportHeight, canvas) {
 
 
 
+    const cssCanvasWidth = canvas instanceof HTMLCanvasElement
+
+        ? (parseFloat(canvas.style.width) || canvas.getBoundingClientRect().width || canvas.clientWidth || 0)
+
+        : 0;
+
+    const cssCanvasHeight = canvas instanceof HTMLCanvasElement
+
+        ? (parseFloat(canvas.style.height) || canvas.getBoundingClientRect().height || canvas.clientHeight || 0)
+
+        : 0;
+
     const hasCanvasBox = canvas instanceof HTMLCanvasElement
 
-        && canvas.clientWidth > 0
+        && cssCanvasWidth > 0
 
-        && canvas.clientHeight > 0;
+        && cssCanvasHeight > 0;
 
 
 
     const width = hasCanvasBox
 
-        ? Math.max(1, Math.round(canvas.clientWidth))
+        ? Math.max(1, cssCanvasWidth)
 
-        : Math.max(1, Math.floor(viewportWidth));
+        : Math.max(1, Number(viewportWidth) || 0);
 
     const height = hasCanvasBox
 
-        ? Math.max(1, Math.round(canvas.clientHeight))
+        ? Math.max(1, cssCanvasHeight)
 
-        : Math.max(1, Math.floor(viewportHeight));
+        : Math.max(1, Number(viewportHeight) || 0);
 
     const left = hasCanvasBox
 
@@ -434,6 +533,17 @@ function syncPdfSelectionLayerBounds(viewportWidth, viewportHeight, canvas) {
     layer.style.width = `${width}px`;
 
     layer.style.height = `${height}px`;
+
+    overlayDebugLog('syncPdfSelectionLayerBounds', {
+        viewportWidth,
+        viewportHeight,
+        canvasCssWidth: cssCanvasWidth,
+        canvasCssHeight: cssCanvasHeight,
+        layerLeft: left,
+        layerTop: top,
+        layerWidth: width,
+        layerHeight: height
+    });
 
 }
 
@@ -1657,6 +1767,167 @@ function extractPdfTextRects(textItems, viewport) {
 }
 
 
+function normalizeOverlayBox(input) {
+
+    if (!input || typeof input !== 'object') return null;
+
+    const x = Number(input.x ?? input.left);
+    const y = Number(input.y ?? input.top);
+    const width = Number(input.width);
+    const height = Number(input.height);
+    if (!Number.isFinite(x) || !Number.isFinite(y) || !Number.isFinite(width) || !Number.isFinite(height)) return null;
+    if (width <= 0 || height <= 0) return null;
+
+    return {
+        x,
+        y,
+        width,
+        height,
+        kind: String(input.kind || '').trim().toLowerCase(),
+        field: String(input.field || '').trim().toLowerCase(),
+        centerY: Number.isFinite(Number(input.centerY)) ? Number(input.centerY) : (y + (height / 2)),
+        pageWidth: Number.isFinite(Number(input.pageWidth)) ? Number(input.pageWidth) : 0
+    };
+
+}
+
+
+function buildActiveRowOverlay(record, overlayBoxes) {
+
+    const normalizedBoxes = Array.isArray(overlayBoxes)
+        ? overlayBoxes.map(normalizeOverlayBox).filter(Boolean)
+        : [];
+
+    const clampBox = (box, source) => {
+        const pageWidth = Math.max(...normalizedBoxes.map((item) => Number(item.pageWidth) || 0), 0);
+        const useFullWidth = pageWidth > 0;
+        const x = useFullWidth ? 0 : Math.max(0, Number(box.x) || 0);
+        const y = Math.max(0, Number(box.y) || 0);
+        const widthRaw = Math.max(1, Number(box.width) || 1);
+        const height = Math.max(1, Number(box.height) || 1);
+        const width = useFullWidth ? Math.max(1, pageWidth) : widthRaw;
+        return { x, y, width, height, source };
+    };
+
+    const rowBox = normalizedBoxes.find((box) => box.kind === 'red-row' || box.kind === 'orange-row' || box.kind === 'row-box');
+    if (rowBox) {
+        return clampBox({ x: rowBox.x, y: rowBox.y, width: rowBox.width, height: rowBox.height }, 'row-box');
+    }
+
+    const targetFields = new Set(['pos', 'part_no', 'designation', 'qty', 'units', 'weight', 'measurement', 'standard']);
+    const fieldBoxes = normalizedBoxes.filter((box) => targetFields.has(box.field));
+
+    const rowAnchor = (() => {
+        if (!fieldBoxes.length) return null;
+        const priority = ['part_no', 'pos', 'designation', 'measurement', 'qty', 'units', 'weight', 'standard'];
+        for (const name of priority) {
+            const found = fieldBoxes.find((box) => box.field === name);
+            if (found) return found;
+        }
+        return fieldBoxes[0] || null;
+    })();
+
+    const sameRowFieldBoxes = rowAnchor
+        ? fieldBoxes.filter((box) => Math.abs((Number(box.centerY) || 0) - (Number(rowAnchor.centerY) || 0)) <= Math.max(8, (Number(rowAnchor.height) || 12) * 0.9 + 4))
+        : [];
+
+    if (sameRowFieldBoxes.length >= 2) {
+        const minX = Math.min(...sameRowFieldBoxes.map((box) => box.x));
+        const minY = Math.min(...sameRowFieldBoxes.map((box) => box.y));
+        const maxX = Math.max(...sameRowFieldBoxes.map((box) => box.x + box.width));
+        const maxY = Math.max(...sameRowFieldBoxes.map((box) => box.y + box.height));
+        const padX = 6;
+        const padY = 4;
+        return clampBox({
+            x: minX - padX,
+            y: minY - padY,
+            width: (maxX - minX) + (padX * 2),
+            height: (maxY - minY) + (padY * 2)
+        }, 'field-boxes');
+    }
+
+    if (rowAnchor) {
+        const pageWidth = Math.max(...normalizedBoxes.map((box) => Number(box.pageWidth) || 0), 0);
+        const padY = 4;
+        const padX = 8;
+        const x = pageWidth > 0 ? 0 : Math.max(0, rowAnchor.x - padX);
+        const width = pageWidth > 0
+            ? pageWidth
+            : Math.max(160, rowAnchor.width + 240);
+        return clampBox({
+            x,
+            y: Math.max(0, rowAnchor.y - padY),
+            width,
+            height: rowAnchor.height + (padY * 2)
+        }, 'anchor-box');
+    }
+
+    return null;
+
+}
+
+
+function getSelectionFieldSearchSpecs(selection) {
+
+    if (!selection || typeof selection !== 'object') return [];
+
+    const specs = [
+        { field: 'pos', value: selection.pos, allowContains: false },
+        { field: 'part_no', value: selection.pn, allowContains: false },
+        { field: 'designation', value: selection.designationFinal, allowContains: true },
+        { field: 'qty', value: selection.qty, allowContains: false },
+        { field: 'units', value: selection.units, allowContains: false },
+        { field: 'weight', value: selection.weight, allowContains: false },
+        { field: 'measurement', value: selection.measurement, allowContains: true },
+        { field: 'standard', value: selection.standard, allowContains: true }
+    ];
+
+    return specs
+        .map((entry) => ({
+            ...entry,
+            token: normalizePdfToken(entry.value)
+        }))
+        .filter((entry) => Boolean(entry.token));
+
+}
+
+
+function collectSelectionFieldOverlayBoxes(rects, selection, viewport) {
+
+    if (!Array.isArray(rects) || !rects.length) return [];
+
+    const specs = getSelectionFieldSearchSpecs(selection);
+    if (!specs.length) return [];
+
+    const result = [];
+
+    specs.forEach((spec) => {
+        let foundCount = 0;
+        for (const rect of rects) {
+            if (!tokenMatches(rect.normalizedText, spec.token, spec.allowContains)) continue;
+            const tokenRect = getTokenHighlightRect(rect, spec.token) || rect;
+            const normalized = normalizeOverlayBox({
+                x: tokenRect.left,
+                y: tokenRect.top - tokenRect.height,
+                width: tokenRect.width,
+                height: tokenRect.height,
+                centerY: tokenRect.centerY,
+                field: spec.field,
+                kind: 'field-box',
+                pageWidth: Number(viewport?.width || 0)
+            });
+            if (!normalized) continue;
+            result.push(normalized);
+            foundCount += 1;
+            if (foundCount >= 3) break;
+        }
+    });
+
+    return result;
+
+}
+
+
 
 function buildExperimentalRowHighlightsFromSearch(textItems, viewport, search) {
 
@@ -1846,10 +2117,18 @@ function renderPdfSelectionHighlights(highlights, viewport) {
     state.currentPdfSelectionRects = [];
 
     const canvas = document.getElementById('pdfCanvas');
-    const canvasWidth = canvas instanceof HTMLCanvasElement ? canvas.clientWidth : 0;
-    const canvasHeight = canvas instanceof HTMLCanvasElement ? canvas.clientHeight : 0;
-    const scaleX = viewport?.width > 0 && canvasWidth > 0 ? (canvasWidth / viewport.width) : 1;
-    const scaleY = viewport?.height > 0 && canvasHeight > 0 ? (canvasHeight / viewport.height) : 1;
+    const layerWidth = parseFloat(layer.style.width) || (layer.getBoundingClientRect().width || layer.clientWidth || 0);
+    const layerHeight = parseFloat(layer.style.height) || (layer.getBoundingClientRect().height || layer.clientHeight || 0);
+    const canvasWidth = canvas instanceof HTMLCanvasElement
+        ? (parseFloat(canvas.style.width) || canvas.getBoundingClientRect().width || canvas.clientWidth || 0)
+        : 0;
+    const canvasHeight = canvas instanceof HTMLCanvasElement
+        ? (parseFloat(canvas.style.height) || canvas.getBoundingClientRect().height || canvas.clientHeight || 0)
+        : 0;
+    const baseWidth = layerWidth > 0 ? layerWidth : canvasWidth;
+    const baseHeight = layerHeight > 0 ? layerHeight : canvasHeight;
+    const scaleX = viewport?.width > 0 && baseWidth > 0 ? (baseWidth / viewport.width) : 1;
+    const scaleY = viewport?.height > 0 && baseHeight > 0 ? (baseHeight / viewport.height) : 1;
 
     const rowHighlights = [
         ...normalizeExperimentalRowHighlights(state.currentPdfExperimentalRowHighlights),
@@ -1869,6 +2148,20 @@ function renderPdfSelectionHighlights(highlights, viewport) {
         viewportHeight: viewport?.height
     });
 
+    overlayDebugLog('renderPdfSelectionHighlights:start', {
+        viewportWidth: viewport?.width,
+        viewportHeight: viewport?.height,
+        canvasWidth,
+        canvasHeight,
+        layerWidth,
+        layerHeight,
+        scaleX,
+        scaleY,
+        dpr: window.devicePixelRatio || 1,
+        rowHighlightCount: rowHighlights.length,
+        standardHighlightCount: highlights.length
+    });
+
     let focusHighlight = null;
 
 
@@ -1881,6 +2174,8 @@ function renderPdfSelectionHighlights(highlights, viewport) {
 
         if (rect.kind === 'red-row') {
             box.classList.add('pdf-row-highlight-red-row');
+        } else if (rect.kind === 'active-row-overlay') {
+            box.classList.add('active-pdf-row-overlay');
         } else if (rect.kind === 'violet-row') {
             box.classList.add('pdf-row-highlight-violet-row');
         } else if (rect.kind === 'violet-column') {
@@ -1934,6 +2229,23 @@ function renderPdfSelectionHighlights(highlights, viewport) {
         }
 
         layer.appendChild(box);
+
+        overlayDebugLog('renderPdfSelectionHighlights:box', {
+            kind: rect.kind,
+            originalBox: {
+                left: rect.left,
+                top: rect.top,
+                width: rect.width,
+                height: rect.height,
+                text: rect.text
+            },
+            transformedBox: {
+                left: Math.max(0, rect.left * scaleX),
+                top: Math.max(0, rect.top * scaleY),
+                width: Math.max(18, rect.width * scaleX),
+                height: Math.max(12, rect.height * scaleY)
+            }
+        });
 
         if (!focusHighlight) focusHighlight = box;
 
@@ -2139,6 +2451,51 @@ async function renderPdfSelectionOverlay(page, viewport, requestToken = state.cu
         const viewport2 = state.currentPdfLastViewport || viewport;
 
         let rowHighlights = buildExperimentalRowHighlightsFromSearch(textItems, viewport2, state.currentPdfExperimentalRowSearch);
+        const rects = extractPdfTextRects(textItems, viewport2);
+
+        if (selection.activeRowOverlayEnabled) {
+            const normalizedRowHighlights = Array.isArray(rowHighlights)
+                ? rowHighlights.map((item) => normalizeOverlayBox({
+                    x: item?.left,
+                    y: item?.top,
+                    width: item?.width,
+                    height: item?.height,
+                    kind: item?.kind,
+                    pageWidth: Number(viewport2?.width || 0)
+                })).filter(Boolean)
+                : [];
+            const fieldOverlayBoxes = collectSelectionFieldOverlayBoxes(rects, selection, viewport2);
+            const activeOverlay = buildActiveRowOverlay(selection, [...normalizedRowHighlights, ...fieldOverlayBoxes]);
+
+            if (activeOverlay) {
+                rowHighlights = [
+                    ...rowHighlights,
+                    {
+                        left: activeOverlay.x,
+                        top: activeOverlay.y,
+                        width: activeOverlay.width,
+                        height: activeOverlay.height,
+                        text: 'Fila activa',
+                        kind: 'active-row-overlay'
+                    }
+                ];
+                console.debug('[MILU_QA PDF] active row overlay', {
+                    id: selection.id,
+                    page: selection.page,
+                    overlaySource: activeOverlay.source,
+                    box: activeOverlay,
+                    boxesCount: normalizedRowHighlights.length + fieldOverlayBoxes.length
+                });
+            } else {
+                const reason = (normalizedRowHighlights.length + fieldOverlayBoxes.length) > 0
+                    ? 'unable-to-build-overlay-box'
+                    : 'no-overlay-boxes';
+                console.warn('[MILU_QA PDF] active row overlay skipped', {
+                    id: selection.id,
+                    reason
+                });
+            }
+        }
 
         state.currentPdfExperimentalRowHighlights = rowHighlights;
 
@@ -2190,7 +2547,11 @@ export function setPdfSelection(row) {
 
         qty: String(row?.qty_final ?? row?.QTY ?? '').trim(),
 
+        units: String(row?.qty_units_final ?? row?.UNITS ?? row?.units ?? '').trim(),
+
         measurement: String(row?.measure_final ?? row?.measurement_final ?? row?.['MEASUREMENT / STANDARD'] ?? '').trim(),
+
+        standard: String(row?.norma_final ?? row?.norma ?? row?.STANDARD ?? '').trim(),
 
         weight: String(row?.weight_final ?? row?.WEIGHT ?? '').trim(),
 
@@ -2198,6 +2559,8 @@ export function setPdfSelection(row) {
         book: String(row?.engine_model ?? '').trim(),
 
         page: String(row?.['Source Page'] ?? '').trim(),
+
+        activeRowOverlayEnabled: Boolean(row?.__active_pdf_row_overlay),
 
         renderBook: '',
 
@@ -2463,13 +2826,35 @@ export async function renderPdfPage(pdfUrl, pageNum, options = {}) {
 
 
 
-    canvas.width = Math.max(1, Math.floor(viewport.width * outputScale));
+    const canvasDeviceWidth = Math.max(1, Math.round(viewport.width * outputScale));
 
-    canvas.height = Math.max(1, Math.floor(viewport.height * outputScale));
+    const canvasDeviceHeight = Math.max(1, Math.round(viewport.height * outputScale));
 
-    canvas.style.width = `${Math.floor(viewport.width)}px`;
+    canvas.width = canvasDeviceWidth;
 
-    canvas.style.height = `${Math.floor(viewport.height)}px`;
+    canvas.height = canvasDeviceHeight;
+
+    canvas.style.width = `${viewport.width}px`;
+
+    canvas.style.height = `${viewport.height}px`;
+
+    overlayDebugLog('renderPdfPage:metrics', {
+        viewportWidth: viewport.width,
+        viewportHeight: viewport.height,
+        baseViewportWidth: baseViewport.width,
+        baseViewportHeight: baseViewport.height,
+        effectiveScale,
+        currentZoom,
+        fitWidthScale,
+        fitHeightScale,
+        outputScale,
+        canvasDeviceWidth,
+        canvasDeviceHeight,
+        canvasCssWidth: canvas.style.width,
+        canvasCssHeight: canvas.style.height,
+        viewerEffectiveWidth,
+        viewerEffectiveHeight
+    });
 
     syncPdfSelectionLayerBounds(viewport.width, viewport.height, canvas);
 
