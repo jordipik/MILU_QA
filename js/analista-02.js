@@ -4142,56 +4142,7 @@ async function saveEditRecordForm() {
 
 
 
-            const mustAutoRecompute = AUTO_RECOMPUTE_ON_EDIT_ENABLED
-                && [...changedFields].some((field) => AUTO_RECOMPUTE_TRIGGER_FIELDS.has(field));
-
-            const recomputeErrors = ($('editRecordRecomputeErrors') instanceof HTMLInputElement)
-
-                ? $('editRecordRecomputeErrors').checked
-
-                : mustAutoRecompute;
-
-            const recomputePdf = ($('editRecordRecomputePdf') instanceof HTMLInputElement)
-
-                ? $('editRecordRecomputePdf').checked
-
-                : mustAutoRecompute;
-
-
-
-            if (recomputeErrors || recomputePdf) {
-
-                setEditRecordStatus('Registro guardado. Recalculando...', '');
-
-                if (recomputeErrors) {
-
-                    await postJsonToBackendCandidates('recompute-qa-errors', {
-
-                        file: engineFile, id, dryRun: false, updateRevision: false, backup: true
-
-                    });
-
-                }
-
-                if (recomputePdf) {
-
-                    await postJsonToBackendCandidates('recompute-pdf-auto', {
-
-                        file: engineFile, id, dryRun: false, backup: true
-
-                    });
-
-                }
-
-                await reloadEditedRecord(engineFile, id);
-
-                setEditRecordStatus('Registro guardado y recalculado correctamente.', 'ok');
-
-            } else {
-
-                setEditRecordStatus('Registro guardado correctamente.', 'ok');
-
-            }
+            setEditRecordStatus('Registro guardado correctamente.', 'ok');
 
 
 
@@ -7637,8 +7588,6 @@ function renderMeta(row) {
 
 <button id="openEditRecordBtn" type="button" class="a2-meta-edit-btn">EDITAR</button>
 
-<button id="openRecomputeModalBtn" type="button" class="a2-meta-edit-btn" title="Abrir módulo de recálculo">RECALCULAR</button>
-
 </div>`;
 
 
@@ -7654,28 +7603,6 @@ function renderMeta(row) {
         });
 
     }
-
-    const recomputeBtn = $('openRecomputeModalBtn');
-    if (recomputeBtn instanceof HTMLButtonElement) {
-        recomputeBtn.addEventListener('click', () => {
-            const modal = $('recomputeModal');
-            const engineFilterSelect = $('engineFilterSelect');
-            if (!(modal instanceof HTMLElement) || !(engineFilterSelect instanceof HTMLSelectElement)) return;
-
-            const selectedModel = String(engineFilterSelect.value || '').trim();
-            const currentId = String(currentRow?.ID || '').trim();
-
-            if (selectedModel) {
-                setRecomputeModalInputsForAction(selectedModel, currentId);
-            } else {
-                syncRecomputeEngineSelect();
-            }
-
-            modal.hidden = false;
-        });
-    }
-
-
 
 }
 
@@ -10784,8 +10711,6 @@ async function initialize() {
 
         initComparisonDebugToggle();
 
-        initRecomputeModal();
-
         initHermanosProgressModal();
 
         initEditRecordModal();
@@ -10823,8 +10748,6 @@ async function initialize() {
         const initialModel = String($('engineFilterSelect')?.value || '').trim() || ENGINE_BOOK_MODELS[0] || '';
 
         await loadEngineForFilter(initialModel);
-
-        syncRecomputeEngineSelect();
 
         updateRecordSearchSuggestions();
 
