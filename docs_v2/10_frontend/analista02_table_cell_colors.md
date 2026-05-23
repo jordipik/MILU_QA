@@ -80,13 +80,15 @@ En `analista_02`, las columnas `GESA`, `SUST`, `PDF` y `FINAL` se muestran en mo
 - No hay lookup por alias.
 - No hay fallback entre columnas.
 - No se infiere valor desde otros campos cuando el campo objetivo esta vacio.
+- Excepcion en `WEIGHT` (columna GESA): se muestra `weight_gesa + " " + units` mediante `getGesaWeightWithUnits(row)`.
 
 ### Fuente de verdad en codigo
 - `js/analista-02.js`: helper `getExactField(row, fieldName)`.
+- `js/analista-02.js`: helper `getGesaWeightWithUnits(row)` para WEIGHT en GESA.
 - `js/analista-02.js`: constructor de filas `buildComparisonRows(row)`.
 
 ### Regla operativa
-Para esas cuatro columnas, cada celda toma unicamente `row[fieldName]` del campo tecnico definido en el mapping de `buildComparisonRows`.
+Para esas cuatro columnas, cada celda toma unicamente `row[fieldName]` del campo tecnico definido en el mapping de `buildComparisonRows`, salvo `WEIGHT` en GESA que usa la composicion `weight_gesa + units`.
 
 Si el campo no existe o esta vacio, la UI no busca alternativas y se mantiene el estado vacio (representado en pantalla segun renderer).
 

@@ -7896,7 +7896,8 @@ function buildComparisonRows(row) {
 
             excel: firstNonEmpty(row?.weight_excel, row?.WEIGHT),
 
-            gesa: getExactField(row, 'weight_gesa'),
+            // Excepcion acordada: en GESA se muestra weight_gesa concatenado con units.
+            gesa: getGesaWeightWithUnits(row),
 
             subst: getExactField(row, 'weight_subst'),
 
