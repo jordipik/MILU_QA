@@ -1,0 +1,273 @@
+<!doctype html>
+<html lang="es">
+
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <link rel="icon" type="image/svg+xml" href="favicon.svg" />
+    <title>MILU - Recompute Simple</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link
+        href="https://fonts.googleapis.com/css2?family=Manrope:wght@500;600;700;800&family=IBM+Plex+Mono:wght@400;500&display=swap"
+        rel="stylesheet">
+    <link rel="stylesheet" href="styles/analista_02.css" />
+    <style>
+        body {
+            margin: 0;
+            background: linear-gradient(180deg, #e8eef6 0%, #f5f8fc 55%, #ecf2fa 100%);
+            font-family: Manrope, sans-serif;
+            color: #17344f;
+        }
+
+        .recompute-simple-wrap {
+            max-width: 1240px;
+            margin: 24px auto;
+            padding: 0 14px 18px;
+        }
+
+        .recompute-simple-head {
+            margin-bottom: 12px;
+        }
+
+        .recompute-simple-head h1 {
+            margin: 0;
+            font-size: 24px;
+        }
+
+        .recompute-simple-head p {
+            margin: 6px 0 0;
+            color: #4c6a82;
+            font-size: 14px;
+        }
+
+        .recompute-simple-controls {
+            display: grid;
+            grid-template-columns: minmax(230px, 320px) minmax(180px, 240px) 1fr;
+            gap: 12px;
+            margin-bottom: 12px;
+            background: #eaf1f8;
+            border: 1px solid #ccddec;
+            border-radius: 14px;
+            padding: 12px;
+        }
+
+        .recompute-simple-field {
+            display: flex;
+            flex-direction: column;
+            gap: 6px;
+        }
+
+        .recompute-simple-field label {
+            font-size: 12px;
+            font-weight: 700;
+            color: #2a4b66;
+        }
+
+        .recompute-simple-field select,
+        .recompute-simple-field input {
+            border: 1px solid #b7ccdf;
+            border-radius: 10px;
+            height: 38px;
+            padding: 0 10px;
+            font-size: 14px;
+            color: #18364f;
+            background: #ffffff;
+        }
+
+        .recompute-simple-scope {
+            display: flex;
+            align-items: flex-end;
+            font-size: 12px;
+            color: #55738c;
+            font-family: 'IBM Plex Mono', Consolas, monospace;
+        }
+
+        .recompute-simple-log {
+            margin-top: 12px;
+            border: 1px solid #cfdce9;
+            border-radius: 10px;
+            background: #f8fbff;
+            overflow: hidden;
+        }
+
+        .recompute-simple-log-head {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 10px;
+            border-bottom: 1px solid #dbe7f3;
+            padding: 8px 10px;
+            background: #edf4fb;
+        }
+
+        .recompute-simple-log-head strong {
+            font-size: 13px;
+            color: #1f4769;
+        }
+
+        .recompute-simple-log-head button {
+            border: 1px solid #a6bdd1;
+            border-radius: 8px;
+            height: 28px;
+            padding: 0 10px;
+            cursor: pointer;
+            background: #ffffff;
+            color: #234b6c;
+            font-size: 11px;
+            font-weight: 700;
+        }
+
+        #recomputeSimpleStatus {
+            margin: 0;
+            padding: 9px 11px;
+            border-bottom: 1px solid #dbe7f3;
+            font-size: 12px;
+            color: #36536d;
+            font-family: 'IBM Plex Mono', Consolas, monospace;
+            background: #f2f8ff;
+        }
+
+        #recomputeSimpleStatus.is-ok {
+            color: #16613f;
+            background: #eefaf2;
+        }
+
+        #recomputeSimpleStatus.is-error {
+            color: #9f2f23;
+            background: #fff3f1;
+        }
+
+        #recomputeSimpleStatus.is-warning {
+            color: #8a6110;
+            background: #fff9ea;
+        }
+
+        #recomputeSimpleLogPanel {
+            margin: 0;
+            padding: 10px;
+            min-height: 170px;
+            max-height: 330px;
+            overflow: auto;
+            white-space: pre-wrap;
+            word-break: break-word;
+            font-size: 12px;
+            line-height: 1.45;
+            color: #183247;
+            font-family: 'IBM Plex Mono', Consolas, monospace;
+        }
+
+        @media (max-width: 980px) {
+            .recompute-simple-controls {
+                grid-template-columns: 1fr 1fr;
+            }
+
+            .recompute-simple-scope {
+                grid-column: 1 / -1;
+            }
+        }
+
+        @media (max-width: 640px) {
+            .recompute-simple-wrap {
+                margin: 12px auto;
+                padding: 0 10px 14px;
+            }
+
+            .recompute-simple-controls {
+                grid-template-columns: 1fr;
+            }
+        }
+    </style>
+</head>
+
+<body>
+    <main class="recompute-simple-wrap">
+        <header class="recompute-simple-head">
+            <h1>Recompute MILU Simple</h1>
+            <p>Página independiente para ejecutar recálculos oficiales por libro o todos los libros.</p>
+        </header>
+
+        <section class="recompute-simple-controls" aria-label="Filtros de alcance">
+            <div class="recompute-simple-field">
+                <label for="bookSelect">Libro</label>
+                <select id="bookSelect" aria-label="Selector de libro"></select>
+            </div>
+            <div class="recompute-simple-field">
+                <label for="idInput">ID puntual (opcional)</label>
+                <input id="idInput" type="search" placeholder="Ej: 1199999" autocomplete="off" />
+            </div>
+            <div id="scopeSummary" class="recompute-simple-scope" aria-live="polite">Cargando motores...</div>
+        </section>
+
+        <section class="a2-recompute-compact" aria-label="Acciones de recálculo">
+            <article class="a2-recompute-card" aria-label="Copiar datos leídos del PDF">
+                <h3>
+                    <span class="a2-step-index">1</span>
+                    <div>
+                        <span class="a2-step-title">Importar de PDF</span>
+                        <p class="a2-step-desc">POST /api/pdf-preview/apply-to-engine</p>
+                        <p class="a2-step-desc">El ID puntual no aplica a este paso.</p>
+                    </div>
+                </h3>
+                <button id="btnImportPdf" type="button">IMPORTAR PDF</button>
+            </article>
+
+            <article class="a2-recompute-card" aria-label="Calcular campos FINAL desde GESA">
+                <h3>
+                    <span class="a2-step-index">2</span>
+                    <div>
+                        <span class="a2-step-title">Cálculo FINAL</span>
+                        <p class="a2-step-desc">POST /copy-pdf-to-final-all-books</p>
+                        <p class="a2-step-desc">El ID puntual no aplica a este paso.</p>
+                    </div>
+                </h3>
+                <button id="btnFinal" type="button" class="is-success">CÁLCULO FINAL</button>
+            </article>
+
+            <article class="a2-recompute-card" aria-label="Recalcular errores">
+                <h3>
+                    <span class="a2-step-index">3</span>
+                    <div>
+                        <span class="a2-step-title">Errores</span>
+                        <p class="a2-step-desc">POST /recompute-qa-errors con scope/libro/id.</p>
+                    </div>
+                </h3>
+                <button id="btnErrors" type="button">ERRORES</button>
+            </article>
+
+            <article class="a2-recompute-card" aria-label="Recalcular estado y acción de revisión">
+                <h3>
+                    <span class="a2-step-index">4</span>
+                    <div>
+                        <span class="a2-step-title">Estados</span>
+                        <p class="a2-step-desc">POST /recalculate-revision-status.</p>
+                        <p class="a2-step-desc">Si hay filtros, se avisa y se recalcula todo.</p>
+                    </div>
+                </h3>
+                <button id="btnStatuses" type="button" class="is-warning">ESTADOS</button>
+            </article>
+        </section>
+
+        <section class="a2-recompute-danger" aria-label="Vaciar campos _pdf y _final"
+            style="margin-top:12px;padding:9px 12px;border:1px solid #d1d5db;background:#f9fafb;border-radius:10px;display:flex;align-items:center;justify-content:space-between;gap:12px;">
+            <span class="a2-step-title">Vaciar campos _pdf y _final</span>
+            <button id="btnClearPdfFinal" type="button"
+                style="border:1px solid #6b7280;border-radius:10px;height:34px;padding:0 14px;cursor:pointer;color:#fff;font-size:11px;font-weight:700;letter-spacing:0.01em;background:linear-gradient(135deg,#9ca3af,#6b7280);">
+                VACIAR _PDF Y _FINAL
+            </button>
+        </section>
+
+        <section class="recompute-simple-log" aria-label="Estado y log">
+            <div class="recompute-simple-log-head">
+                <strong>Estado y log</strong>
+                <button id="btnClearLog" type="button">LIMPIAR LOG</button>
+            </div>
+            <p id="recomputeSimpleStatus">Listo para ejecutar.</p>
+            <pre id="recomputeSimpleLogPanel">Inicializando...</pre>
+        </section>
+    </main>
+
+    <script type="module" src="./js/recompute-simple.js"></script>
+</body>
+
+</html>
