@@ -48244,7 +48244,7 @@
   {
     "ID": "1100004",
     "POS": "5",
-    "PART NO.": null,
+    "PART NO.": "5260500001",
     "DESIGNATION": "CAMSHAFT",
     "MODEL/TYPE": null,
     "QTY": "1",
@@ -48259,7 +48259,7 @@
     "source_file": "12V4000M40A.xlsx",
     "source_sheet": "1",
     "pn_raw": null,
-    "pn_final": "",
+    "pn_final": "5260500001",
     "criterio_pn": "EMPTY",
     "detalle_cambio": null,
     "existeix_gesa": false,
@@ -48326,15 +48326,15 @@
     "depuracion_ts": "2026-04-27T00:11:37Z",
     "exp_imagenes": "https://milu-naval.mystagingwebsite.com/wp-content/uploads/2026/02/12V4000M40A-0070-01-5.webp",
     "pos_error": 0,
-    "pn_error": 1,
+    "pn_error": 0,
     "designation_error": 0,
     "weight_error": 0,
     "norma_error": 0,
     "bom_error": 0,
-    "total_error": 2,
-    "has_error": true,
-    "qa_revision_estado": "pendiente",
-    "qa_revision_accion": "revisar",
+    "total_error": 0,
+    "has_error": false,
+    "qa_revision_estado": "ok",
+    "qa_revision_accion": "importar",
     "qa_revision_updated_at": "2026-05-23T02:32:35.296Z",
     "model_type_final": "",
     "model_type_error": 0,
@@ -48354,13 +48354,14 @@
     "normalizado_error": "",
     "sust_status_final": "",
     "qa_action": "importar",
-    "measure_error": 1,
+    "measure_error": 0,
     "bom_pdf": "5260500001",
     "pos_pdf": "5",
     "designation_pdf": "CAMSHAFT",
     "qty_pdf": "1",
     "units_pdf": "PC",
-    "fn_pdf": "KE EM"
+    "fn_pdf": "KE EM",
+    "pn_excel": "5260500001"
   },
   {
     "ID": "1100227",
@@ -49022,7 +49023,8 @@
     "hierarchie_final": "Superseded",
     "SUST_TIPO": "Superseded",
     "new_pn_final": "X52405500212",
-    "qa_revision_updated_at": "2026-05-23T02:32:35.296Z"
+    "qa_revision_updated_at": "2026-05-23T02:32:35.296Z",
+    "measure_excel": ""
   },
   {
     "ID": "1100587",
@@ -145669,7 +145671,8 @@
     "measurement_final": "35/M 45 X 1,5",
     "pn_excel": "718363232002",
     "measure_pdf": "35/M 45 X 1,5",
-    "qa_revision_updated_at": "2026-05-23T02:32:35.296Z"
+    "qa_revision_updated_at": "2026-05-23T02:32:35.296Z",
+    "pos_excel": "20"
   },
   {
     "ID": "1100542",
@@ -173208,7 +173211,8 @@
     "SUST_TIPO": "New",
     "new_pn_final": "5241880180",
     "subst_pnlist_final": "X599009-108968",
-    "qa_revision_updated_at": "2026-05-23T02:32:35.296Z"
+    "qa_revision_updated_at": "2026-05-23T02:32:35.296Z",
+    "fn_excel": ""
   },
   {
     "ID": "1101243",
@@ -188456,7 +188460,8 @@
     "bom_pdf": "X00030235",
     "pn_excel": "0049971341",
     "norma_pdf": "MMN375(NBR)",
-    "qa_revision_updated_at": "2026-05-23T02:32:35.296Z"
+    "qa_revision_updated_at": "2026-05-23T02:32:35.296Z",
+    "measure_excel": ""
   },
   {
     "ID": "1100497",
@@ -193111,7 +193116,9 @@
     "SUST_TIPO": "New",
     "new_pn_final": "5242000674",
     "subst_pnlist_final": "5242000374",
-    "qa_revision_updated_at": "2026-05-23T02:32:35.296Z"
+    "qa_revision_updated_at": "2026-05-23T02:32:35.296Z",
+    "measure_excel": "",
+    "qty_excel": ""
   },
   {
     "ID": "1101279",
@@ -239797,7 +239804,8 @@
     "measurement_final": "M64X2",
     "pn_excel": "5242030852",
     "measure_pdf": "M64-2.0X15",
-    "qa_revision_updated_at": "2026-05-23T02:32:35.296Z"
+    "qa_revision_updated_at": "2026-05-23T02:32:35.296Z",
+    "fn_excel": ""
   },
   {
     "ID": "1102184",
@@ -287522,7 +287530,8 @@
     "hierarchie_final": "New",
     "SUST_TIPO": "New",
     "new_pn_final": "5511530050",
-    "subst_pnlist_final": "5242370053"
+    "subst_pnlist_final": "5242370053",
+    "fn_excel": ""
   },
   {
     "ID": "1101728",
@@ -288294,7 +288303,8 @@
     "bom_pdf": "",
     "measurement_final": "HC008",
     "pn_excel": "6200 X52450700028 RETAINER F. WIRING HARNESS",
-    "qa_revision_updated_at": "2026-05-23T02:32:35.296Z"
+    "qa_revision_updated_at": "2026-05-23T02:32:35.296Z",
+    "fn_excel": ""
   },
   {
     "ID": "1100194",
@@ -332585,7 +332595,8 @@
     "units_pdf": "PC",
     "fn_pdf": "MN",
     "bom_pdf": "5105306662",
-    "pn_excel": "0015341801"
+    "pn_excel": "0015341801",
+    "measure_excel": ""
   },
   {
     "ID": "1100897",
@@ -341123,7 +341134,8 @@
     "fn_pdf": "UB",
     "bom_pdf": "5105301808",
     "pn_excel": "5105331440",
-    "qa_revision_updated_at": "2026-05-23T02:32:35.296Z"
+    "qa_revision_updated_at": "2026-05-23T02:32:35.296Z",
+    "measure_excel": ""
   },
   {
     "ID": "1101386",
@@ -341254,7 +341266,8 @@
     "hierarchie_final": "Superseded",
     "SUST_TIPO": "Superseded",
     "new_pn_final": "5265300213/76",
-    "qa_revision_updated_at": "2026-05-23T02:32:35.296Z"
+    "qa_revision_updated_at": "2026-05-23T02:32:35.296Z",
+    "measure_excel": ""
   },
   {
     "ID": "1101793",
@@ -353486,7 +353499,8 @@
     "bom_pdf": "XK00E500.746010-12",
     "measurement_final": "24VDC/25MA",
     "pn_excel": "5005310289",
-    "qa_revision_updated_at": "2026-05-23T02:32:35.296Z"
+    "qa_revision_updated_at": "2026-05-23T02:32:35.296Z",
+    "fn_excel": ""
   },
   {
     "ID": "1102588",
@@ -362010,7 +362024,8 @@
     "hierarchie_final": "Superseded",
     "SUST_TIPO": "Superseded",
     "new_pn_final": "5275385880/S0004",
-    "qa_revision_updated_at": "2026-05-23T02:32:35.296Z"
+    "qa_revision_updated_at": "2026-05-23T02:32:35.296Z",
+    "measure_excel": ""
   },
   {
     "ID": "1100173",

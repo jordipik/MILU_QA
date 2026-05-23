@@ -145615,7 +145615,7 @@
     "book_set": "12V4000M40A",
     "measure_raw": "35 M 45 X 1 5",
     "norma_raw": "MMN18363.2",
-    "pos_final": "",
+    "pos_final": "20",
     "qty_final": "2",
     "qty_units_final": "",
     "norma_final": "MMN18363.2",
@@ -288173,7 +288173,7 @@
   {
     "ID": "1102625",
     "POS": "6200",
-    "PART NO.": "6200 X52450700028 RETAINER F. WIRING HARNESS",
+    "PART NO.": "X52450700028",
     "DESIGNATION": "RETAINER F. WIRING HARNESS",
     "MODEL/TYPE": null,
     "QTY": "2",
@@ -288188,7 +288188,7 @@
     "source_file": "12V4000M40A.xlsx",
     "source_sheet": "1",
     "pn_raw": "X52450700028",
-    "pn_final": "6200 X52450700028 RETAINER F. WIRING HARNESS",
+    "pn_final": "X52450700028",
     "criterio_pn": "MATCH_CATALOGO",
     "detalle_cambio": "match: X52450700028",
     "existeix_gesa": true,
@@ -288295,7 +288295,7 @@
     "fg_fgs_pdf": "",
     "bom_pdf": "",
     "measurement_final": "HC008",
-    "pn_excel": "6200 X52450700028 RETAINER F. WIRING HARNESS",
+    "pn_excel": "X52450700028",
     "qa_revision_updated_at": "2026-05-23T02:32:35.296Z"
   },
   {
