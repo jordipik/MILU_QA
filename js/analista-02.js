@@ -4287,51 +4287,8 @@ function isEditableComparisonField(fieldName) {
 
 function initComparisonEditTriggers() {
 
-    const body = $('comparisonBody');
-
-    if (!(body instanceof HTMLElement)) return;
-
-
-
-    body.addEventListener('dblclick', async (event) => {
-
-        const target = event.target;
-
-        if (!(target instanceof HTMLElement)) return;
-
-
-
-        const copyPdfCell = target.closest('td[data-copy-pdf-to-final="true"]');
-
-        if (copyPdfCell && currentRow) {
-
-            event.preventDefault();
-
-            const pdfKey = copyPdfCell.getAttribute('data-pdf-key') || '';
-
-            const finalKey = copyPdfCell.getAttribute('data-final-key') || '';
-
-            const fieldLabel = copyPdfCell.getAttribute('data-field-label') || pdfKey;
-
-            await copyPdfToFinalGeneric(pdfKey, finalKey, fieldLabel);
-
-            return;
-
-        }
-
-
-
-        const editableCell = target.closest('td[data-open-edit-record-modal="true"]');
-
-        if (!editableCell || !currentRow) return;
-
-
-
-        event.preventDefault();
-
-        openEditRecordModalForRow(currentRow);
-
-    });
+    // Requerimiento UI: desactivar todos los doble click sobre celdas de la tabla.
+    return;
 
 }
 
@@ -8398,19 +8355,9 @@ async function renderComparisonTable(row) {
 
         const finalFullClass = [cellClasses.finalClass].filter(Boolean).join(' ');
 
-        const finalEditAttrs = isEditableComparisonField(entry.field)
+        const finalEditAttrs = '';
 
-            ? ' data-open-edit-record-modal="true" title="Doble clic para editar en modal"'
-
-            : '';
-
-        // data-copy-pdf-to-final: doble clic copia el valor _pdf almacenado al campo _final correspondiente
-
-        const pdfActionAttrs = (entry.fieldKeys?.pdf && entry.fieldKeys?.final)
-
-            ? ` data-copy-pdf-to-final="true" data-pdf-key="${escapeHtml(entry.fieldKeys.pdf)}" data-final-key="${escapeHtml(entry.fieldKeys.final)}" data-field-label="${escapeHtml(entry.field)}" title="Doble clic para copiar PDF a FINAL"`
-
-            : '';
+        const pdfActionAttrs = '';
 
         // Aviso discreto en celda PDF cuando el valor está vacío para cualquier
         // campo que tenga mapeo PDF en la tabla comparativa.
