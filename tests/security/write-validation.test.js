@@ -256,7 +256,16 @@ describe('MILU write validation', () => {
     test('campos EXCEL de analista_02 -> permitidos', () => {
         const excelFields = [
             'pos_excel',
-            'pn_excel'
+            'pn_excel',
+            'designation_excel',
+            'model_type_excel',
+            'qty_excel',
+            'qty_units_excel',
+            'weight_excel',
+            'fn_excel',
+            'measure_excel',
+            'fg_fgs_excel',
+            'bom_excel'
         ];
 
         for (const field of excelFields) {

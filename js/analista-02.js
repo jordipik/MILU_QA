@@ -4077,6 +4077,24 @@ function populateEditRecordForm(row) {
 
     assignInputValue('editRecordPnExcel', row?.pn_excel);
 
+    assignInputValue('editRecordDesignationExcel', row?.designation_excel);
+
+    assignInputValue('editRecordModelTypeExcel', row?.model_type_excel);
+
+    assignInputValue('editRecordQtyExcel', row?.qty_excel);
+
+    assignInputValue('editRecordQtyUnitsExcel', row?.qty_units_excel);
+
+    assignInputValue('editRecordWeightExcel', row?.weight_excel);
+
+    assignInputValue('editRecordFnExcel', row?.fn_excel);
+
+    assignInputValue('editRecordMeasureExcel', row?.measure_excel);
+
+    assignInputValue('editRecordFgFgsExcel', row?.fg_fgs_excel);
+
+    assignInputValue('editRecordBomExcel', row?.bom_excel);
+
     assignInputValue('editRecordPnFinal', row?.pn_final);
 
     assignInputValue('editRecordDesignationFinal', row?.designation_final);
@@ -4152,6 +4170,24 @@ async function saveEditRecordForm() {
             pos_excel: String($('editRecordPosExcel')?.value || '').trim(),
 
             pn_excel: String($('editRecordPnExcel')?.value || '').trim(),
+
+            designation_excel: String($('editRecordDesignationExcel')?.value || '').trim(),
+
+            model_type_excel: String($('editRecordModelTypeExcel')?.value || '').trim(),
+
+            qty_excel: String($('editRecordQtyExcel')?.value || '').trim(),
+
+            qty_units_excel: String($('editRecordQtyUnitsExcel')?.value || '').trim(),
+
+            weight_excel: String($('editRecordWeightExcel')?.value || '').trim(),
+
+            fn_excel: String($('editRecordFnExcel')?.value || '').trim(),
+
+            measure_excel: String($('editRecordMeasureExcel')?.value || '').trim(),
+
+            fg_fgs_excel: String($('editRecordFgFgsExcel')?.value || '').trim(),
+
+            bom_excel: String($('editRecordBomExcel')?.value || '').trim(),
 
             pn_final: String($('editRecordPnFinal')?.value || '').trim(),
 
