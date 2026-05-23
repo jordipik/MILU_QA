@@ -333,13 +333,31 @@ function renderResponseSummary(actionLabel, endpoint, responseData) {
         return;
     }
 
-    if (endpoint === '/recalculate-revision-status') {
+    if (endpoint === '/api/recompute-simple/update-states') {
         const cards = [
-            { label: 'Total registros', value: String(Number(result?.totalRecords) || 0) },
-            { label: 'Registros actualizados', value: String(Number(result?.changedRecords) || 0) },
-            { label: 'Mensaje', value: String(result?.message || '-') }
+            { label: 'Motores procesados', value: String(Number(data?.enginesProcessed) || 0) },
+            { label: 'Registros procesados', value: String(Number(data?.recordsProcessed) || 0) },
+            { label: 'Actualizados', value: String(Number(data?.updated) || 0) },
+            { label: 'Importar', value: String(Number(data?.importar) || 0) },
+            { label: 'Eliminar', value: String(Number(data?.eliminar) || 0) },
+            { label: 'Revisar', value: String(Number(data?.revisar) || 0) },
+            { label: 'Sin cambios', value: String(Number(data?.unchanged) || 0) }
         ];
-        renderResultPanel(actionLabel, endpoint, cards);
+
+        const errors = Array.isArray(data?.errors) ? data.errors : [];
+        const rows = errors.map((entry) => [
+            String(entry?.engine || '-'),
+            String(entry?.message || '')
+        ]);
+
+        renderResultPanel(
+            actionLabel,
+            endpoint,
+            cards,
+            ['Engine', 'Error'],
+            rows,
+            errors.length ? 'Se detectaron errores parciales. Revisa el detalle técnico.' : ''
+        );
         return;
     }
 
@@ -668,15 +686,31 @@ async function runErrors() {
 
 async function runStatuses() {
     const scope = getScope();
-    if (!scope.isAll || scope.id) {
-        appendLog('[AVISO] ESTADOS no soporta filtro por libro/ID actualmente en backend. Se ejecuta global.');
-        setStatus('ESTADOS no soporta filtro por libro/ID. Se ejecuta para todos los libros.', 'warning');
+
+    const payload = {
+        engine: scope.isAll ? 'ALL' : scope.model,
+        id: scope.isAll ? '' : scope.id,
+        backup: true
+    };
+
+    if (scope.isAll) {
+        setStatus('Recalculando ESTADOS para todos los libros...', '');
+    } else if (scope.id) {
+        setStatus(`Recalculando ESTADOS para ${scope.model} (ID ${scope.id})...`, '');
+    } else {
+        setStatus(`Recalculando ESTADOS para ${scope.model}...`, '');
     }
 
-    setStatus('Recalculando ESTADOS para todos los libros...', '');
-    const data = await postJson('/recalculate-revision-status', {});
-    renderResponseSummary('Recalcular estados', '/recalculate-revision-status', data);
+    const data = await postJson('/api/recompute-simple/update-states', payload);
+    renderResponseSummary('Recalcular estados', '/api/recompute-simple/update-states', data);
+    if (Array.isArray(data?.errors) && data.errors.length) {
+        setStatus('ESTADOS recalculados con incidencias parciales. Revisa el log.', 'warning');
+        window.alert(`ESTADOS completado con ${data.errors.length} incidencia(s). Revisa el panel de resultados.`);
+        return;
+    }
+
     setStatus('ESTADOS recalculados correctamente.', 'ok');
+    window.alert('ESTADOS recalculados correctamente.');
 }
 
 async function runClearPdfFinal() {

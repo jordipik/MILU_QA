@@ -7,6 +7,7 @@ const bodyParser = require('body-parser');
 const cors = require('cors');
 const { ENGINE_JSON_FILES } = require('./engine_files');
 const { recomputeEngineErrors, recomputeAllEngineErrors } = require('./recompute_engine_errors');
+const { updateRevisionStates, normalizeEngineToken } = require('./scripts/update_revision_states');
 const { runVisualCopyComparison, applyCanonicalPdfCopyToRow } = require('./scripts/qa_pdf_visual_copy');
 const { runPdfVisualCopyBatch } = require('./server/services/pdf-copy-batch');
 const { createRevisionSyncService } = require('./server/services/revision-sync');
@@ -552,6 +553,49 @@ app.post('/recompute-qa-errors', async (req, res) => {
         const message = String(error?.message || error || 'Error desconocido');
         const isNotFound = /no se encontro ningun registro con id=/i.test(message);
         return res.status(isNotFound ? 404 : 500).json({ ok: false, error: message });
+    }
+});
+
+app.post('/api/recompute-simple/update-states', async (req, res) => {
+    let engine;
+    let id;
+    let backup;
+
+    try {
+        assertPayloadSize(req.body, { maxBytes: 12288 });
+        engine = assertString(req.body?.engine ?? 'ALL', { field: 'engine', allowEmpty: false, maxLength: 64 });
+        id = assertString(req.body?.id ?? '', { field: 'id', allowEmpty: true, maxLength: 128 });
+        backup = req.body?.backup === false ? false : true;
+
+        const normalizedEngine = normalizeEngineToken(engine);
+        if (!normalizedEngine) {
+            throw validationError({ code: 'INVALID_ENGINE', field: 'engine', message: 'engine es obligatorio' });
+        }
+
+        if (normalizedEngine === 'ALL' && id) {
+            throw validationError({ code: 'ID_NOT_ALLOWED_FOR_ALL_SCOPE', field: 'id', message: 'engine=ALL no admite id puntual' });
+        }
+    } catch (error) {
+        return isValidationError(error)
+            ? sendValidationError(res, error, { endpoint: '/api/recompute-simple/update-states' })
+            : res.status(400).json({ ok: false, error: String(error?.message || error) });
+    }
+
+    try {
+        const result = updateRevisionStates({
+            engine,
+            id,
+            backup,
+            rootDir: __dirname
+        });
+
+        const statusCode = result.ok ? 200 : 207;
+        return res.status(statusCode).json(result);
+    } catch (error) {
+        return res.status(500).json({
+            ok: false,
+            error: String(error?.message || error || 'Error desconocido')
+        });
     }
 });
 
