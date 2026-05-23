@@ -253,12 +253,15 @@
             </article>
         </section>
 
-        <section class="a2-recompute-danger" aria-label="Vaciar campos _pdf y _final"
+        <section class="a2-recompute-danger" aria-label="Vaciar campos _pdf, _final y _error y marcar revision"
             style="margin-top:12px;padding:9px 12px;border:1px solid #d1d5db;background:#f9fafb;border-radius:10px;display:flex;align-items:center;justify-content:space-between;gap:12px;">
-            <span class="a2-step-title">Vaciar campos _pdf y _final</span>
+            <div>
+                <span class="a2-step-title">Vaciar _pdf/_final/_error y marcar revisión</span>
+                <p class="a2-step-desc" style="margin-top:4px;">qa_revision_estado=pendiente, qa_revision_accion=revisar y qa_revision_updated_at=timestamp actual.</p>
+            </div>
             <button id="btnClearPdfFinal" type="button"
                 style="border:1px solid #6b7280;border-radius:10px;height:34px;padding:0 14px;cursor:pointer;color:#fff;font-size:11px;font-weight:700;letter-spacing:0.01em;background:linear-gradient(135deg,#9ca3af,#6b7280);">
-                VACIAR _PDF Y _FINAL
+                VACIAR + MARCAR REVISION
             </button>
         </section>
 

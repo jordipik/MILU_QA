@@ -1173,10 +1173,13 @@ app.post('/clear-engine-fields', async (req, res) => {
         }
 
         const dryRun = assertBooleanLike(payload.dryRun ?? false, 'dryRun');
+        const resetQaRevision = assertBooleanLike(payload.resetQaRevision ?? false, 'resetQaRevision');
+        const qaRevisionUpdatedAt = new Date().toISOString();
 
         const perFile = [];
         let grandRecords = 0;
         let grandFields = 0;
+        let grandRevisionRecords = 0;
 
         for (const fileName of targetFiles) {
             const filePath = path.join(__dirname, fileName);
@@ -1193,6 +1196,7 @@ app.post('/clear-engine-fields', async (req, res) => {
 
             let records = 0;
             let fields = 0;
+            let revisionRecords = 0;
 
             for (const record of data) {
                 if (!record || typeof record !== 'object') continue;
@@ -1203,19 +1207,40 @@ app.post('/clear-engine-fields', async (req, res) => {
                     if (record[key] !== '') touched += 1;
                     record[key] = '';
                 }
+
+                let revisionTouched = false;
+                if (resetQaRevision) {
+                    if (record.qa_revision_estado !== 'pendiente') {
+                        record.qa_revision_estado = 'pendiente';
+                        revisionTouched = true;
+                    }
+                    if (record.qa_revision_accion !== 'revisar') {
+                        record.qa_revision_accion = 'revisar';
+                        revisionTouched = true;
+                    }
+                    if (record.qa_revision_updated_at !== qaRevisionUpdatedAt) {
+                        record.qa_revision_updated_at = qaRevisionUpdatedAt;
+                        revisionTouched = true;
+                    }
+                }
+
                 if (touched > 0) {
                     records += 1;
                     fields += touched;
                 }
+                if (revisionTouched) {
+                    revisionRecords += 1;
+                }
             }
 
-            if (!dryRun && fields > 0) {
+            if (!dryRun && (fields > 0 || revisionRecords > 0)) {
                 await writeJsonAtomic(filePath, data);
             }
 
             grandRecords += records;
             grandFields += fields;
-            perFile.push({ file: fileName, records, fields });
+            grandRevisionRecords += revisionRecords;
+            perFile.push({ file: fileName, records, fields, revisionRecords });
         }
 
         return res.json({
@@ -1224,7 +1249,13 @@ app.post('/clear-engine-fields', async (req, res) => {
                 dryRun,
                 suffixes,
                 exclude: Array.from(exclude),
-                summary: { totalRecords: grandRecords, totalFields: grandFields },
+                resetQaRevision,
+                qaRevisionUpdatedAt: resetQaRevision ? qaRevisionUpdatedAt : null,
+                summary: {
+                    totalRecords: grandRecords,
+                    totalFields: grandFields,
+                    totalRevisionRecords: grandRevisionRecords
+                },
                 perFile
             }
         });

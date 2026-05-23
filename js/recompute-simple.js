@@ -681,10 +681,10 @@ async function runStatuses() {
 
 async function runClearPdfFinal() {
     const scope = getScope();
-    if (scope.id) showIdIgnoredWarning('VACIAR _PDF Y _FINAL');
+    if (scope.id) showIdIgnoredWarning('VACIAR _PDF, _FINAL Y _ERROR');
 
     const confirmed = await requestTypedConfirmation(
-        'Acción destructiva. Se vaciarán campos *_pdf y *_final (excepto pn_pdf y pn_final).\n\nEscribe VACIAR para continuar.',
+        'Acción destructiva. Se vaciarán campos *_pdf, *_final y *_error (excepto pn_pdf y pn_final). Además, se marcará revisión pendiente (qa_revision_estado=pendiente, qa_revision_accion=revisar) y qa_revision_updated_at con timestamp actual.\n\nEscribe VACIAR para continuar.',
         'VACIAR'
     );
     if (!confirmed) {
@@ -694,13 +694,13 @@ async function runClearPdfFinal() {
     }
 
     const payload = scope.isAll
-        ? { suffixes: ['_pdf', '_final'], exclude: ['pn_pdf', 'pn_final'] }
-        : { files: [scope.file], suffixes: ['_pdf', '_final'], exclude: ['pn_pdf', 'pn_final'] };
+        ? { suffixes: ['_pdf', '_final', '_error'], exclude: ['pn_pdf', 'pn_final'], resetQaRevision: true }
+        : { files: [scope.file], suffixes: ['_pdf', '_final', '_error'], exclude: ['pn_pdf', 'pn_final'], resetQaRevision: true };
 
-    setStatus(scope.isAll ? 'Vaciando campos _pdf/_final en todos los libros...' : `Vaciando campos _pdf/_final en ${scope.model}...`, '');
+    setStatus(scope.isAll ? 'Vaciando campos _pdf/_final/_error y marcando revisión en todos los libros...' : `Vaciando campos _pdf/_final/_error y marcando revisión en ${scope.model}...`, '');
     const data = await postJson('/clear-engine-fields', payload);
-    renderResponseSummary('Vaciar campos _pdf/_final', '/clear-engine-fields', data);
-    setStatus('VACIAR _PDF Y _FINAL finalizado correctamente.', 'ok');
+    renderResponseSummary('Vaciar _pdf/_final/_error y marcar revisión', '/clear-engine-fields', data);
+    setStatus('VACIAR + MARCAR REVISION finalizado correctamente.', 'ok');
 }
 
 async function runAction(action) {

@@ -5987,11 +5987,11 @@ async function runBackendRecompute(inputFilters = null) {
 
 
 
-// Vacia campos *_pdf y *_final en los 9 engine_*.json mediante /clear-engine-fields,
-// respetando pn_pdf y pn_final.
+// Vacia campos *_pdf, *_final y *_error en los 9 engine_*.json mediante /clear-engine-fields,
+// respetando pn_pdf y pn_final, y marca revisión pendiente.
 async function runClearPdfFinalFields() {
     console.info('[clear-engine-fields] click recibido');
-    setRecomputeStatus('Preparando vaciado de campos _pdf y _final (excepto pn_pdf y pn_final)...', '');
+    setRecomputeStatus('Preparando vaciado de campos _pdf/_final/_error y marcado de revisión pendiente...', '');
 
     if (!isBackendEndpointAllowed('clear-engine-fields')) {
         setRecomputeStatus(getLocalOnlyBackendMessage('clear-engine-fields'), 'error');
@@ -5999,7 +5999,7 @@ async function runClearPdfFinalFields() {
     }
 
     const confirmed = await simpleConfirm(
-        'ATENCION: Esta accion vaciara TODOS los campos cuyo nombre termina en _pdf o _final en los 9 engine_*.json, EXCEPTO pn_pdf y pn_final.\n\nEs una operacion DESTRUCTIVA e irreversible.\n\n¿Deseas continuar?'
+        'ATENCION: Esta accion vaciara TODOS los campos cuyo nombre termina en _pdf, _final o _error en los 9 engine_*.json, EXCEPTO pn_pdf y pn_final.\n\nAdemas, pondra qa_revision_estado=pendiente, qa_revision_accion=revisar y qa_revision_updated_at al timestamp actual.\n\nEs una operacion DESTRUCTIVA e irreversible.\n\n¿Deseas continuar?'
     );
     if (!confirmed) {
         setRecomputeStatus('Operacion cancelada por el usuario.', '');
@@ -6023,21 +6023,23 @@ async function runClearPdfFinalFields() {
     if (progressFill instanceof HTMLElement) progressFill.style.width = '20%';
     if (progressText instanceof HTMLElement) progressText.textContent = 'Enviando peticion al backend...';
 
-    setRecomputeStatus('Vaciando campos _pdf y _final en los 9 libros (excepto pn_pdf y pn_final)...', '');
+    setRecomputeStatus('Vaciando _pdf/_final/_error y marcando revisión pendiente en los 9 libros...', '');
 
     try {
         if (progressFill instanceof HTMLElement) progressFill.style.width = '45%';
         if (progressText instanceof HTMLElement) progressText.textContent = 'Procesando engine_*.json...';
 
         const result = await postJsonToBackendCandidates('clear-engine-fields', {
-            suffixes: ['_pdf', '_final'],
-            exclude: ['pn_pdf', 'pn_final']
+            suffixes: ['_pdf', '_final', '_error'],
+            exclude: ['pn_pdf', 'pn_final'],
+            resetQaRevision: true
         });
 
         if (progressFill instanceof HTMLElement) progressFill.style.width = '100%';
         if (progressText instanceof HTMLElement) progressText.textContent = 'Completado.';
 
         const summary = result?.summary || {};
+        const revisionUpdatedAt = String(result?.qaRevisionUpdatedAt || '').trim();
 
         recomputeErrorsInFlight = false;
         const perFile = Array.isArray(result?.perFile) ? result.perFile : [];
@@ -6046,14 +6048,14 @@ async function runClearPdfFinalFields() {
             .join(' | ');
         console.info('[clear-engine-fields] resultado', result);
         setRecomputeStatus(
-            `OK: ${summary.totalFields ?? 0} campos vaciados en ${summary.totalRecords ?? 0} registros.${fileLines ? ' [' + fileLines + ']' : ''}`,
+            `OK: ${summary.totalFields ?? 0} campos vaciados en ${summary.totalRecords ?? 0} registros; revisión pendiente aplicada en ${summary.totalRevisionRecords ?? 0} registros${revisionUpdatedAt ? ` (ts=${revisionUpdatedAt})` : ''}.${fileLines ? ' [' + fileLines + ']' : ''}`,
             'ok'
         );
     } catch (error) {
         console.error('[clear-engine-fields] error', error);
         if (progressText instanceof HTMLElement) progressText.textContent = 'Error.';
         setRecomputeStatus(
-            `Error vaciando _pdf/_final (backend): ${String(error?.message || error)}. Verifica que server.js este reiniciado y exponga /clear-engine-fields.`,
+            `Error vaciando _pdf/_final/_error y marcando revisión (backend): ${String(error?.message || error)}. Verifica que server.js este reiniciado y exponga /clear-engine-fields.`,
             'error'
         );
     } finally {
@@ -11316,7 +11318,7 @@ bindClick('recomputeRunBtn', () => {
 
 bindClick('recomputeClearPdfFinalBtn', () => {
     runClearPdfFinalFields().catch((error) => {
-        setRecomputeStatus(`Error al vaciar _pdf/_final: ${String(error?.message || error)}`, 'error');
+        setRecomputeStatus(`Error al vaciar _pdf/_final/_error y marcar revisión: ${String(error?.message || error)}`, 'error');
     });
 });
 
