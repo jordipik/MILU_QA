@@ -46,6 +46,18 @@ PDF_FIELDS = (
     "fg_fgs_pdf",
 )
 
+OTHER_EMPTY_FIELDS = (
+    "pos_pdf",
+    "pn_pdf",
+    "model_type_pdf",
+    "qty_pdf",
+    "units_pdf",
+    "weight_pdf",
+    "fn_pdf",
+    "measure_pdf",
+    "norma_pdf",
+)
+
 
 def _norm(value: Any) -> str:
     if value is None:
@@ -55,6 +67,27 @@ def _norm(value: Any) -> str:
 
 def _is_empty(value: Any) -> bool:
     return _norm(value) == ""
+
+
+def _is_other_row(row: dict) -> bool:
+    # Agrupadores/headers del preview pueden traer solo designation_pdf (y a veces fg_fgs/bom),
+    # pero siguen sin ser registros importables si el resto de campos clave esta vacio.
+    return all(_is_empty(row.get(field)) for field in OTHER_EMPTY_FIELDS)
+
+
+def _build_not_found_row(page_num: int, row: dict, reason: str) -> dict:
+    pos = _norm(row.get("pos_pdf"))
+    pn = _norm(row.get("pn_pdf"))
+    designation = _norm(row.get("designation_pdf"))
+    return {
+        "page": page_num,
+        "row_index": row.get("row_index"),
+        "pos": pos,
+        "pos_pdf": pos,
+        "pn_pdf": pn,
+        "designation_pdf": designation,
+        "reason": reason,
+    }
 
 
 def _engine_page(row: dict) -> int | None:
@@ -95,6 +128,18 @@ def build_engine_index(engine_rows: list[dict]) -> dict[tuple[int, str], list[in
     return idx
 
 
+def build_engine_page_pn_index(engine_rows: list[dict]) -> dict[tuple[int, str], list[int]]:
+    """Indexa engine por (page, pn) para fallback cuando preview no trae POS."""
+    idx: dict[tuple[int, str], list[int]] = defaultdict(list)
+    for i, row in enumerate(engine_rows):
+        page = _engine_page(row)
+        if page is None:
+            continue
+        for pn in set(_engine_pn_candidates(row)):
+            idx[(page, pn)].append(i)
+    return idx
+
+
 def select_engine_row(
     idx: dict[tuple[int, str], list[int]],
     engine_rows: list[dict],
@@ -119,6 +164,22 @@ def select_engine_row(
     return None, "ambiguous"
 
 
+def select_engine_row_without_pos(
+    pn_idx: dict[tuple[int, str], list[int]],
+    page: int,
+    pn_pdf: str,
+) -> tuple[int | None, str]:
+    """Fallback por (page, pn) cuando el preview no trae POS."""
+    if not pn_pdf:
+        return None, "not-found"
+    candidates = pn_idx.get((page, pn_pdf), [])
+    if not candidates:
+        return None, "not-found"
+    if len(candidates) == 1:
+        return candidates[0], "page-pn"
+    return None, "ambiguous"
+
+
 def apply_preview(
     engine_rows: list[dict],
     preview: dict,
@@ -127,12 +188,14 @@ def apply_preview(
     only_fields: tuple[str, ...] = PDF_FIELDS,
 ) -> dict:
     idx = build_engine_index(engine_rows)
+    pn_idx = build_engine_page_pn_index(engine_rows)
 
     stats = {
         "preview_pages": 0,
         "preview_rows": 0,
         "matched_unique": 0,
         "matched_tiebreak_pn": 0,
+        "matched_page_pn_no_pos": 0,
         "ambiguous": 0,
         "not_found": 0,
         "rows_changed": 0,
@@ -159,17 +222,36 @@ def apply_preview(
             if not isinstance(row, dict):
                 continue
             stats["preview_rows"] += 1
+            if _is_other_row(row):
+                stats["not_found"] += 1
+                not_found_rows.append(_build_not_found_row(page_num, row, "other"))
+                continue
             pos = _norm(row.get("pos_pdf"))
             pn = _norm(row.get("pn_pdf"))
             if not pos:
-                stats["not_found"] += 1
-                not_found_rows.append({"page": page_num, "pos": pos, "pn_pdf": pn, "reason": "missing-pos"})
-                continue
-            engine_i, status = select_engine_row(idx, engine_rows, page_num, pos, pn)
+                engine_i, status = select_engine_row_without_pos(pn_idx, page_num, pn)
+                if status == "page-pn":
+                    stats["matched_page_pn_no_pos"] += 1
+                elif status == "ambiguous":
+                    stats["ambiguous"] += 1
+                    if len(ambiguous_samples) < 20:
+                        ambiguous_samples.append(
+                            {"page": page_num, "pos": pos, "pn_pdf": pn, "reason": "missing-pos-page-pn-ambiguous"}
+                        )
+                    continue
+                else:
+                    stats["not_found"] += 1
+                    reason = "missing-pos" if not pn else "missing-pos-no-pn-match"
+                    not_found_rows.append(_build_not_found_row(page_num, row, reason))
+                    continue
+            else:
+                engine_i, status = select_engine_row(idx, engine_rows, page_num, pos, pn)
             if status == "unique":
                 stats["matched_unique"] += 1
             elif status == "tiebreak-pn":
                 stats["matched_tiebreak_pn"] += 1
+            elif status == "page-pn":
+                stats["matched_page_pn_no_pos"] += 1
             elif status == "ambiguous":
                 stats["ambiguous"] += 1
                 if len(ambiguous_samples) < 20:
@@ -179,7 +261,7 @@ def apply_preview(
                 continue
             else:
                 stats["not_found"] += 1
-                not_found_rows.append({"page": page_num, "pos": pos, "pn_pdf": pn, "reason": "no-engine-match"})
+                not_found_rows.append(_build_not_found_row(page_num, row, "no-engine-match"))
                 if len(unmatched_samples) < 20:
                     unmatched_samples.append(
                         {"page": page_num, "pos": pos, "pn_pdf": pn}
@@ -281,6 +363,7 @@ def main(argv: list[str] | None = None) -> int:
     print(f"Filas en preview         : {stats['preview_rows']}")
     print(f"Match único              : {stats['matched_unique']}")
     print(f"Match desempate por PN   : {stats['matched_tiebreak_pn']}")
+    print(f"Match page+PN sin POS    : {stats['matched_page_pn_no_pos']}")
     print(f"Ambiguos (no aplicado)   : {stats['ambiguous']}")
     print(f"No encontrados           : {stats['not_found']}")
     print(f"Filas con cambios        : {stats['rows_changed']}")

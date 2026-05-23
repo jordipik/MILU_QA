@@ -52,7 +52,8 @@ Documentar el flujo de extraccion de tablas PDF y su aplicacion sobre `engine_*.
 - `not_found` indica fila preview sin match contra engine.
 - Matching real actual:
 	- principal: `Source Page` + `POS`.
-	- secundario (desempate): `PN`.
+	- fallback si falta `POS`: `Source Page` + `PN`, limitado a la misma pagina y solo si el candidato es unico.
+	- secundario (desempate del matching por `POS`): `PN`.
 
 ## Panel de no-match en modal
 - El modal de recálculo muestra diagnostico de no-match:
@@ -65,7 +66,7 @@ Documentar el flujo de extraccion de tablas PDF y su aplicacion sobre `engine_*.
 ## Riesgos / problemas conocidos
 - Extraccion depende de deteccion visual; puede generar `warnings` y filas ambiguas/no encontradas.
 - Apply oficial con `--overwrite` puede reemplazar valores no vacios en `_pdf`.
-- `not_found` puede mantenerse aunque la ejecucion sea correcta; se trata como diagnostico de matching.
+- `not_found` puede mantenerse aunque la ejecucion sea correcta; se trata como diagnostico de matching cuando no hay match por pagina+POS ni por el fallback pagina+PN sin `POS`.
 
 ## Estado operativo actual
 - Flujo IMPORTAR PDF estabilizado sobre endpoint oficial unico.

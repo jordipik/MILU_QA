@@ -174,10 +174,11 @@ function renderImportNotFoundInteractive(rowsInput) {
                 <thead>
                     <tr>
                         <th>Libro</th>
-                        <th>ID</th>
                         <th>Página</th>
-                        <th>POS</th>
-                        <th>PN</th>
+                        <th>Row</th>
+                        <th>POS PDF</th>
+                        <th>PN PDF</th>
+                        <th>Designation PDF</th>
                         <th>Motivo</th>
                     </tr>
                 </thead>
@@ -224,10 +225,11 @@ function renderImportNotFoundInteractive(rowsInput) {
         bodyEl.innerHTML = pageRows.map((row) => `
             <tr>
                 <td>${escapeHtml(row.book)}</td>
-                <td>${escapeHtml(row.id)}</td>
                 <td>${escapeHtml(row.page)}</td>
-                <td>${escapeHtml(row.pos)}</td>
-                <td>${escapeHtml(row.pn)}</td>
+                <td>${escapeHtml(row.row_index)}</td>
+                <td>${escapeHtml(row.pos_pdf)}</td>
+                <td>${escapeHtml(row.pn_pdf)}</td>
+                <td>${escapeHtml(row.designation_pdf)}</td>
                 <td>${escapeHtml(row.reason)}</td>
             </tr>
         `).join('');
@@ -358,8 +360,10 @@ function renderResponseSummary(actionLabel, endpoint, responseData) {
             book: String(item?.engine || item?.book || defaultBook),
             id: String(item?.id ?? item?.ID ?? ''),
             page: String(item?.page ?? ''),
-            pos: String(item?.pos ?? ''),
-            pn: String(item?.pn_pdf ?? item?.pn ?? ''),
+            row_index: String(item?.row_index ?? ''),
+            pos_pdf: String(item?.pos_pdf ?? item?.pos ?? ''),
+            pn_pdf: String(item?.pn_pdf ?? item?.pn ?? ''),
+            designation_pdf: String(item?.designation_pdf ?? ''),
             reason: String(item?.reason ?? '')
         }));
         renderResultPanel(actionLabel, endpoint, cards);

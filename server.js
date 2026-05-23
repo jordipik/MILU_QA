@@ -692,6 +692,7 @@ app.post('/api/pdf-preview/apply-to-engine', async (req, res) => {
                 preview_rows: num(/Filas en preview\s*:\s*(\d+)/i),
                 matched_unique: num(/Match [úu]nico\s*:\s*(\d+)/i),
                 matched_tiebreak_pn: num(/Match desempate por PN\s*:\s*(\d+)/i),
+                matched_page_pn_no_pos: num(/Match page\+PN sin POS\s*:\s*(\d+)/i),
                 ambiguous: num(/Ambiguos[^:]*:\s*(\d+)/i),
                 not_found: num(/No encontrados\s*:\s*(\d+)/i),
                 rows_changed: num(/Filas con cambios\s*:\s*(\d+)/i),

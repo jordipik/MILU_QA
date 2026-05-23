@@ -49,7 +49,8 @@ Resumir en una sola pieza navegable el pipeline operativo de MILU por motor.
 - Logs en `js/analista-02.js` y `server.js` para el flujo IMPORTAR PDF.
 - Matching documentado en `apply_book_preview_to_engine.py`:
 	- principal: `Source Page` + `POS`;
-	- desempate: `PN`.
+	- fallback si falta `POS`: `Source Page` + `PN` en la misma pagina, solo con match unico;
+	- desempate del matching por `POS`: `PN`.
 - `not_found` se interpreta como fila preview sin match, no como error de escritura.
 - Modal incluye panel de no-match con metricas, tabla, filtro, busqueda y export CSV.
 

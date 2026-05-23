@@ -5324,7 +5324,12 @@ function getFilteredRecomputeNotFoundRows(result) {
         const rowReason = String(row?.reason || '').trim();
         if (selectedReason !== 'all' && rowReason !== selectedReason) return false;
         if (!query) return true;
-        const haystack = normalizeRecomputeNotFoundFilterValue([row?.page, row?.pos, row?.pn_pdf, row?.reason].join(' '));
+        const haystack = normalizeRecomputeNotFoundFilterValue([
+            row?.page,
+            row?.pos_pdf ?? row?.pos,
+            row?.pn_pdf,
+            row?.reason
+        ].join(' '));
         return haystack.includes(query);
     });
 }
@@ -5334,7 +5339,7 @@ function downloadRecomputeNotFoundCsv(result, selectedModel = '') {
     const tableRows = body instanceof HTMLElement
         ? Array.from(body.querySelectorAll('tbody tr'))
         : [];
-    const header = ['model', 'page', 'pos', 'pn_pdf', 'reason'];
+    const header = ['model', 'page', 'pos_pdf', 'pn_pdf', 'reason'];
     const lines = [header.join(';')];
     tableRows.forEach((tr) => {
         const cells = Array.from(tr.querySelectorAll('td')).map((cell) => String(cell.textContent || '').trim());
@@ -11823,6 +11828,7 @@ function renderRecomputePdfNotFoundDetail(result, selectedModel = '') {
     const summaryCards = [
         { label: 'No encontrados', value: String(Number(stats.not_found) || rows.length) },
         { label: 'Filtrados', value: String(filteredRows.length) },
+        { label: 'Other', value: String(reasonCounts['other'] || 0) },
         { label: 'Sin POS', value: String(reasonCounts['missing-pos'] || 0) },
         { label: 'Sin match engine', value: String(reasonCounts['no-engine-match'] || 0) },
         { label: 'Total filas', value: String(rows.length) }
@@ -11834,6 +11840,7 @@ function renderRecomputePdfNotFoundDetail(result, selectedModel = '') {
                 <span>Motivo</span>
                 <select id="recomputeNotFoundReasonFilter" style="min-width:180px;padding:6px 8px;border:1px solid #cbd5e1;border-radius:8px;background:#fff;">
                     <option value="all">Todos</option>
+                    <option value="other">Other</option>
                     <option value="missing-pos">Sin POS</option>
                     <option value="no-engine-match">Sin match engine</option>
                 </select>
@@ -11877,7 +11884,7 @@ function renderRecomputePdfNotFoundDetail(result, selectedModel = '') {
 
             <tr>
                 <td>${escapeHtml(txt(row?.page, ''))}</td>
-                <td>${escapeHtml(txt(row?.pos, ''))}</td>
+                <td>${escapeHtml(txt(row?.pos_pdf ?? row?.pos, ''))}</td>
                 <td>${escapeHtml(txt(row?.pn_pdf, ''))}</td>
                 <td>${escapeHtml(txt(row?.reason, ''))}</td>
             </tr>
@@ -11895,7 +11902,7 @@ function renderRecomputePdfNotFoundDetail(result, selectedModel = '') {
 
                     <tr>
                         <th>Page</th>
-                        <th>POS</th>
+                        <th>POS PDF</th>
                         <th>PN PDF</th>
                         <th>Reason</th>
                     </tr>
