@@ -20,7 +20,7 @@ Inventario operativo de scripts y endpoints usados por el flujo MILU v1.
 - Ver tabla principal para endpoints HTTP.
 
 ## Botones UI relacionados
-- `extractWholeBookBtn`, `extractAllBooksBtn`, `recomputeCopyBookBtn`, `recomputeCalculateFinalBtn`, `recomputeRunBtn`, `recomputeRevisionStatusBtn`, `expBtnRunWordpress`.
+- `extractWholeBookBtn`, `extractAllBooksBtn`, `recomputeCopyBookBtn`, `recomputeCalculateFinalBtn`, `recomputeRunBtn`, `recomputeRevisionStatusBtn`, `btnClearPdfFinal`, `expBtnRunWordpress`.
 
 ## Campos afectados
 - `_pdf`, `_final`, `_error`, QA, campos de export y de imagenes.
@@ -62,6 +62,7 @@ Filtros oficiales:
 | `recomputeCalculateFinalBtn` (CALCULO FINAL) | `POST /copy-pdf-to-final-all-books` | Si | No | Ignora ID puntual y muestra aviso; ejecuta por libro o todos. | OFFICIAL |
 | `recomputeRunBtn` (ERRORES) | `POST /recompute-qa-errors` | Si | Si | Respeta libro/ID y bloquea `Todos + ID`. | OFFICIAL |
 | `recomputeRevisionStatusBtn` (ESTADOS) | `POST /recalculate-revision-status` | No (solo global) | No | Bloquea libro o ID; solo recalcula todos los libros. | OFFICIAL (limitado) |
+| `btnClearPdfFinal` (VACIAR + MARCAR REVISION, en `recompute_simple.html`) | `POST /clear-engine-fields` | Si | No | Requiere confirmacion `VACIAR`; vacia `*_pdf`, `*_final`, `*_error` (excepto `pn_pdf`, `pn_final`) y marca QA pendiente. | OFFICIAL |
 
 Notas de implementacion vigentes:
 - ERRORES envia `updateRevision:false` y `forceRevision:false`.
@@ -83,6 +84,7 @@ Riesgos pendientes:
 | `copy_gesa_fields_to_final.py` | Python CLI | `engine_*.json` | resumen de registros/campos | subset de `*_final` si `gesa=SI` | LEGACY |
 | `POST /calculate-final-fields` | Endpoint Express | sin payload relevante | ejecuta script Python | usa `copy_gesa_fields_to_final.py` | LEGACY |
 | `POST /copy-pdf-to-final-all-books` | Endpoint Express | files opcionales + backup | totales por lote | `*_final` con FINAL_FIELDS_V1 y prioridad simple por campo | OFFICIAL |
+| `POST /clear-engine-fields` | Endpoint Express | `files?`, `suffixes`, `exclude`, `resetQaRevision` | resumen de limpieza por archivos/filas/campos | vacia `*_pdf`, `*_final`, `*_error` (segun payload) y opcionalmente resetea `qa_revision_*` | OFFICIAL |
 | `depuracion_json.py` | Python offline | `engine_*.json` | engines normalizados | recalcula finales, errores, `exp_imagenes` | Proceso oficial offline |
 | `POST /recalculate-revision-status` | Endpoint Express | vacio | totales procesados | `qa_revision_estado`, `qa_revision_accion` | Activo oficial |
 | `GET/POST /qa_revision_sync.php` | Endpoint Express | snapshot revision | payload normalizado | `qa_revision_server_data.json` | Activo oficial |
