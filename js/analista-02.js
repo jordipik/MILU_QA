@@ -31,6 +31,63 @@ import { showToast } from './toast.js';
 
 const $ = (id) => document.getElementById(id);
 
+function ensureLegacyToolbarControls() {
+    const ids = ['engineFilterSelect', 'recordIdInput', 'recordSearchList', 'loadRecordBtn', 'recordMeta'];
+    const hasAll = ids.every((id) => Boolean($(id)));
+    if (hasAll) return;
+
+    let host = $('a2LegacyToolbarGhost');
+    if (!(host instanceof HTMLElement)) {
+        host = document.createElement('div');
+        host.id = 'a2LegacyToolbarGhost';
+        host.setAttribute('aria-hidden', 'true');
+        host.style.display = 'none';
+        document.body.appendChild(host);
+    }
+
+    if (!$('engineFilterSelect')) {
+        const engineFilterSelect = document.createElement('select');
+        engineFilterSelect.id = 'engineFilterSelect';
+        engineFilterSelect.setAttribute('aria-label', 'Filtro de libro');
+        host.appendChild(engineFilterSelect);
+    }
+
+    if (!$('recordIdInput')) {
+        const recordIdInput = document.createElement('input');
+        recordIdInput.id = 'recordIdInput';
+        recordIdInput.type = 'search';
+        recordIdInput.setAttribute('list', 'recordSearchList');
+        recordIdInput.setAttribute('autocomplete', 'off');
+        recordIdInput.placeholder = 'PART NO.';
+        host.appendChild(recordIdInput);
+    }
+
+    if (!$('recordSearchList')) {
+        const recordSearchList = document.createElement('datalist');
+        recordSearchList.id = 'recordSearchList';
+        host.appendChild(recordSearchList);
+    }
+
+    if (!$('loadRecordBtn')) {
+        const loadRecordBtn = document.createElement('button');
+        loadRecordBtn.id = 'loadRecordBtn';
+        loadRecordBtn.type = 'button';
+        loadRecordBtn.setAttribute('aria-label', 'Buscar');
+        loadRecordBtn.title = 'Buscar';
+        host.appendChild(loadRecordBtn);
+    }
+
+    if (!$('recordMeta')) {
+        const recordMeta = document.createElement('div');
+        recordMeta.id = 'recordMeta';
+        recordMeta.className = 'a2-meta';
+        recordMeta.textContent = 'Sin registro cargado.';
+        host.appendChild(recordMeta);
+    }
+}
+
+ensureLegacyToolbarControls();
+
 
 
 function legacyAlertType(message) {
@@ -7574,13 +7631,15 @@ function renderMeta(row) {
 
 
 
+    const rowId = row?.ID ?? row?.id ?? '';
+
     target.innerHTML = `<div class="a2-meta-inline" aria-label="Resumen de registro">
 
 <span class="a2-meta-item"><span class="a2-meta-k">Pag</span><strong class="a2-meta-v">${escapeHtml(txt(row?.['Source Page']))}</strong></span>
 
 <span class="a2-meta-sep" aria-hidden="true">|</span>
 
-<span class="a2-meta-item"><span class="a2-meta-k">Pos</span><strong class="a2-meta-v">${escapeHtml(txt(row?.POS))}</strong></span>
+<span class="a2-meta-item"><span class="a2-meta-k">ID</span><strong class="a2-meta-v">${escapeHtml(txt(rowId))}</strong></span>
 
 <span class="a2-meta-sep" aria-hidden="true">|</span>
 
