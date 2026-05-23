@@ -1,7 +1,7 @@
 # Recompute System
 
 ## Objetivo
-Describir la orquestacion de recalculate/recompute desde el modal de analista.
+Describir la orquestacion de recalculate/recompute desde `analista_02.html` y desde la pagina operativa `recompute_simple.html`, incluyendo el flujo destructivo de vaciado.
 
 ## Inputs
 - Libro seleccionado (`recomputeBookSelect`) o todos los libros (`all`).
@@ -13,6 +13,8 @@ Describir la orquestacion de recalculate/recompute desde el modal de analista.
 
 ## Scripts implicados
 - `js/analista-02.js`.
+- `recompute_simple.html`.
+- `js/recompute-simple.js`.
 - Endpoints backend de recompute (`recompute-qa-errors`, `copy-pdf-to-final-all-books`, `recalculate-revision-status`, `api/pdf-preview/apply-to-engine`).
 
 ## Endpoints implicados
@@ -20,9 +22,11 @@ Describir la orquestacion de recalculate/recompute desde el modal de analista.
 - OFFICIAL: `POST /copy-pdf-to-final-all-books`
 - `POST /recompute-qa-errors`
 - `POST /recalculate-revision-status`
+- `POST /clear-engine-fields`
 
 ## Botones UI relacionados
 - `recomputeCopyBookBtn`, `recomputeCalculateFinalBtn`, `recomputeRunBtn`, `recomputeRevisionStatusBtn`.
+- En `recompute_simple.html`: `btnImportPdf`, `btnFinal`, `btnErrors`, `btnStatuses`, `btnClearPdfFinal`.
 
 ## MILU V1 - Filtros superiores de RecomputeModal
 
@@ -42,6 +46,7 @@ Nota:
 | CALCULO FINAL | `POST /copy-pdf-to-final-all-books` | Si | No | Ignora ID puntual, muestra aviso y trabaja por libro/todos. |
 | ERRORES | `POST /recompute-qa-errors` | Si | Si | Respeta libro+ID y bloquea `Todos + ID`. |
 | ESTADOS | `POST /recalculate-revision-status` | No (global) | No | Solo global; bloquea libro o ID. |
+| VACIAR + MARCAR REVISION | `POST /clear-engine-fields` | Si | No | ID puntual no aplica; vacia `*_pdf`, `*_final`, `*_error` (excepto `pn_pdf`, `pn_final`) y opcionalmente marca revision pendiente. |
 
 ### Fuente unica de filtros
 La UI usa una funcion unica para leer filtros del modal:
@@ -82,6 +87,36 @@ Antes de ejecutar cada accion del modal se registran:
 - Actualmente solo soporta todos los libros.
 - Si se intenta libro concreto o `id` puntual, la UI muestra aviso y no ejecuta.
 
+5) VACIAR + MARCAR REVISION (`btnClearPdfFinal` en `recompute_simple.html` -> `POST /clear-engine-fields`)
+- Requiere confirmacion tipada: el usuario debe escribir `VACIAR`.
+- Alcance:
+	- Todos los libros: sin `files`.
+	- Libro concreto: envia `files: [engine_*.json]`.
+- Payload operativo actual:
+	- `suffixes: ['_pdf', '_final', '_error']`
+	- `exclude: ['pn_pdf', 'pn_final']`
+	- `resetQaRevision: true`
+- Cuando `resetQaRevision=true`, backend fuerza por registro:
+	- `qa_revision_estado='pendiente'`
+	- `qa_revision_accion='revisar'`
+	- `qa_revision_updated_at=<timestamp ISO comun de ejecucion>`
+- Al finalizar en UI, se informa que es obligatorio recargar y se ejecuta `window.location.reload()`.
+
+## Recompute Simple (pagina dedicada)
+
+`recompute_simple.html` centraliza las 5 acciones del recompute con resumen tabular y log tecnico, usando `js/recompute-simple.js`.
+
+Comportamiento oficial por accion:
+- IMPORTAR PDF: `POST /api/pdf-preview/apply-to-engine` con `{}` (todos) o `{ engine }` (libro).
+- CALCULO FINAL: `POST /copy-pdf-to-final-all-books` con `{ backup: true }` (todos) o `{ file, backup: true }`.
+- ERRORES: `POST /recompute-qa-errors` con `scope=all|book|current` y `dryRun=false`.
+- ESTADOS: `POST /recalculate-revision-status` global (si hay filtro, avisa y continua global).
+- VACIAR + MARCAR REVISION: `POST /clear-engine-fields` con sufijos/exclusiones oficiales.
+
+Reglas de alcance comunes en la pagina:
+- Selector de libro: `Todos los libros` o libro concreto.
+- ID puntual: solo aplica a ERRORES; en el resto se muestra aviso de ID ignorado.
+
 ## Limitaciones actuales (sin refactor grande)
 - No se cambian reglas de calculo.
 - No se cambian endpoints oficiales.
@@ -103,6 +138,7 @@ Antes de ejecutar cada accion del modal se registran:
 - Errores de red en candidatos backend pueden devolver mensajes heterogeneos.
 - ESTADOS sigue siendo global mientras `/recalculate-revision-status` no soporte filtro por libro.
 - IMPORTAR PDF y CALCULO FINAL no soportan ID puntual (solo aviso de ID ignorado).
+- VACIAR + MARCAR REVISION es destructivo sobre multiples campos y requiere control estricto de confirmacion operativa.
 
 ## TODO pendiente
 - Exponer en UI un mapa de endpoint efectivo utilizado por cada accion.
