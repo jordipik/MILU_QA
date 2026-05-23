@@ -707,46 +707,56 @@ body.a2-resizing * {
     outline-offset: 1px;
 }
 
-.a2-stat-inline-total {
-    display: inline-flex;
+.a2-stat-main,
+.a2-stat-inline-total,
+.a2-stat-total-row {
+    display: flex;
     align-items: baseline;
-    gap: 6px;
+    gap: 4px;
+    line-height: 1;
     color: var(--text);
     font-family: 'IBM Plex Mono', Consolas, monospace;
 }
 
-.a2-stat-total-row {
-    display: inline-flex;
-    align-items: baseline;
-    gap: 4px;
+.a2-stat-main {
+    min-height: 22px;
 }
 
-.a2-stat-card strong {
-    font-size: 14px;
-    line-height: 1;
-    color: var(--text);
-}
-
+.a2-stat-current,
 .a2-stat-inline-number {
-    font-size: 14px;
+    font-size: 13px;
+    font-weight: 600;
+    opacity: 0.75;
     line-height: 1;
-    font-weight: 700;
     color: var(--text);
 }
 
+.a2-stat-of,
 .a2-stat-inline-separator {
-    font-size: 10px;
-    line-height: 1.1;
-    font-weight: 600;
+    font-size: 11px;
+    opacity: 0.5;
+    font-weight: 500;
+    line-height: 1;
     color: var(--muted);
 }
 
+.a2-stat-total,
+.a2-stat-card strong {
+    font-size: 22px;
+    font-weight: 800;
+    letter-spacing: -0.5px;
+    line-height: 1;
+    color: var(--text);
+}
+
+.a2-stat-unique,
 .a2-stat-inline-unique {
-    font-size: 8px;
+    margin-top: 2px;
+    font-size: 11px;
+    opacity: 0.7;
     line-height: 1.1;
     font-weight: 500;
     color: #6c7e92;
-    opacity: 0.82;
     font-family: 'IBM Plex Mono', Consolas, monospace;
 }
 
@@ -2939,7 +2949,6 @@ body.a2-resizing * {
         bottom: 8px;
     }
 }
-}
 
 .pdfviewer {
     flex: 1;
@@ -3196,6 +3205,26 @@ body.a2-resizing * {
         grid-template-columns: 1fr 1fr;
     }
 
+    .a2-stat-main {
+        min-height: 20px;
+    }
+
+    .a2-stat-total {
+        font-size: 20px;
+    }
+
+    .a2-stat-current {
+        font-size: 12px;
+    }
+
+    .a2-stat-of {
+        font-size: 10px;
+    }
+
+    .a2-stat-unique {
+        font-size: 10px;
+    }
+
     .a2-auto-recompute-controls {
         grid-template-columns: 1fr;
         grid-template-areas:
@@ -3254,6 +3283,22 @@ body.a2-resizing * {
 
     .a2-stats-row {
         grid-template-columns: 1fr;
+    }
+
+    .a2-stat-main {
+        min-height: 18px;
+    }
+
+    .a2-stat-total {
+        font-size: 18px;
+    }
+
+    .a2-stat-current {
+        font-size: 11px;
+    }
+
+    .a2-stat-of {
+        font-size: 9px;
     }
 }
 

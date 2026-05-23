@@ -7369,23 +7369,121 @@ function renderReviewStats(rows = getQueueRows(), row = currentRow) {
 
     const importOkEl = $('statsTotalImportOk');
 
+    const importOkCurrentEl = $('statsCurrentImportOk');
+
     const importOkUniqueEl = $('statsUniqueTotalImportOk');
 
     const copyOkEl = $('statsTotalCopyOk');
+
+    const copyOkCurrentEl = $('statsCurrentCopyOk');
 
     const copyOkUniqueEl = $('statsUniqueTotalCopyOk');
 
     const reviewOkEl = $('statsTotalReviewOk');
 
+    const reviewOkCurrentEl = $('statsCurrentReviewOk');
+
     const reviewOkUniqueEl = $('statsUniqueTotalReviewOk');
 
     const deleteOkEl = $('statsTotalDeleteOk');
+
+    const deleteOkCurrentEl = $('statsCurrentDeleteOk');
 
     const deleteOkUniqueEl = $('statsUniqueTotalDeleteOk');
 
     const pendingEl = $('statsTotalPending');
 
+    const pendingCurrentEl = $('statsCurrentPending');
+
     const pendingUniqueEl = $('statsUniqueTotalPending');
+
+
+
+    const listRows = Array.isArray(rows) ? rows : [];
+
+    const getSafeCount = (value) => {
+
+        const num = Number(value);
+
+        if (!Number.isFinite(num) || num <= 0) return 0;
+
+        return Math.trunc(num);
+
+    };
+
+    const getCurrentIndexInSubset = (entries, currentRecord, predicate) => {
+
+        if (!currentRecord || !Array.isArray(entries) || !entries.length || typeof predicate !== 'function') {
+
+            return 0;
+
+        }
+
+        const currentKey = getRevisionKey(currentRecord);
+
+        let visibleIndex = 0;
+
+        for (const entry of entries) {
+
+            if (!predicate(entry)) continue;
+
+            visibleIndex += 1;
+
+            if (getRevisionKey(entry) === currentKey) {
+
+                return visibleIndex;
+
+            }
+
+        }
+
+        return 0;
+
+    };
+
+    const isPendingStat = (entry) => normalizeEstadoToNew(entry?.qa_revision_estado) !== 'ok';
+
+    const isReviewOkStat = (entry) => {
+
+        const estado = normalizeEstadoToNew(entry?.qa_revision_estado);
+
+        const accion = normalizeAccionToNew(entry?.qa_revision_accion);
+
+        return estado === 'ok' && accion === 'revisar';
+
+    };
+
+    const isDeleteOkStat = (entry) => {
+
+        const estado = normalizeEstadoToNew(entry?.qa_revision_estado);
+
+        const accion = normalizeAccionToNew(entry?.qa_revision_accion);
+
+        return estado === 'ok' && accion === 'eliminar';
+
+    };
+
+    const isCopyOkStat = (entry) => {
+
+        const estado = normalizeEstadoToNew(entry?.qa_revision_estado);
+
+        const accion = normalizeAccionToNew(entry?.qa_revision_accion);
+
+        return estado === 'ok' && accion === 'copia';
+
+    };
+
+    const isImportOkStat = (entry) => {
+
+        const estado = normalizeEstadoToNew(entry?.qa_revision_estado);
+
+        if (estado !== 'ok') return false;
+
+        const accion = normalizeAccionToNew(entry?.qa_revision_accion);
+
+        return accion !== 'revisar' && accion !== 'eliminar' && accion !== 'copia';
+
+    };
 
 
 
@@ -7393,7 +7491,7 @@ function renderReviewStats(rows = getQueueRows(), row = currentRow) {
 
     if (row && stats.total > 0) {
 
-        const idx = rows.findIndex(item => getRevisionKey(item) === getRevisionKey(row));
+        const idx = listRows.findIndex(item => getRevisionKey(item) === getRevisionKey(row));
 
         currentIndex = idx >= 0 ? idx + 1 : 0;
 
@@ -7401,31 +7499,53 @@ function renderReviewStats(rows = getQueueRows(), row = currentRow) {
 
 
 
-    if (totalEl instanceof HTMLElement) totalEl.textContent = String(stats.total);
+    const currentImportIndex = getCurrentIndexInSubset(listRows, row, isImportOkStat);
 
-    if (currentEl instanceof HTMLElement) currentEl.textContent = String(currentIndex);
+    const currentCopyIndex = getCurrentIndexInSubset(listRows, row, isCopyOkStat);
 
-    if (totalUniqueEl instanceof HTMLElement) totalUniqueEl.textContent = `· ${uniqueStats.total.size} únicos`;
+    const currentReviewIndex = getCurrentIndexInSubset(listRows, row, isReviewOkStat);
 
-    if (importOkEl instanceof HTMLElement) importOkEl.textContent = String(stats.importOk);
+    const currentDeleteIndex = getCurrentIndexInSubset(listRows, row, isDeleteOkStat);
 
-    if (importOkUniqueEl instanceof HTMLElement) importOkUniqueEl.textContent = `· ${uniqueStats.importOk.size} únicos`;
+    const currentPendingIndex = getCurrentIndexInSubset(listRows, row, isPendingStat);
 
-    if (copyOkEl instanceof HTMLElement) copyOkEl.textContent = String(stats.copyOk);
 
-    if (copyOkUniqueEl instanceof HTMLElement) copyOkUniqueEl.textContent = `· ${uniqueStats.copyOk.size} únicos`;
 
-    if (reviewOkEl instanceof HTMLElement) reviewOkEl.textContent = String(stats.reviewOk);
+    if (totalEl instanceof HTMLElement) totalEl.textContent = String(getSafeCount(stats.total));
 
-    if (reviewOkUniqueEl instanceof HTMLElement) reviewOkUniqueEl.textContent = `· ${uniqueStats.reviewOk.size} únicos`;
+    if (currentEl instanceof HTMLElement) currentEl.textContent = String(getSafeCount(currentIndex));
 
-    if (deleteOkEl instanceof HTMLElement) deleteOkEl.textContent = String(stats.deleteOk);
+    if (totalUniqueEl instanceof HTMLElement) totalUniqueEl.textContent = `${getSafeCount(uniqueStats.total.size)} únicos`;
 
-    if (deleteOkUniqueEl instanceof HTMLElement) deleteOkUniqueEl.textContent = `· ${uniqueStats.deleteOk.size} únicos`;
+    if (importOkEl instanceof HTMLElement) importOkEl.textContent = String(getSafeCount(stats.importOk));
 
-    if (pendingEl instanceof HTMLElement) pendingEl.textContent = String(stats.pending);
+    if (importOkCurrentEl instanceof HTMLElement) importOkCurrentEl.textContent = String(getSafeCount(currentImportIndex));
 
-    if (pendingUniqueEl instanceof HTMLElement) pendingUniqueEl.textContent = `· ${uniqueStats.pending.size} únicos`;
+    if (importOkUniqueEl instanceof HTMLElement) importOkUniqueEl.textContent = `${getSafeCount(uniqueStats.importOk.size)} únicos`;
+
+    if (copyOkEl instanceof HTMLElement) copyOkEl.textContent = String(getSafeCount(stats.copyOk));
+
+    if (copyOkCurrentEl instanceof HTMLElement) copyOkCurrentEl.textContent = String(getSafeCount(currentCopyIndex));
+
+    if (copyOkUniqueEl instanceof HTMLElement) copyOkUniqueEl.textContent = `${getSafeCount(uniqueStats.copyOk.size)} únicos`;
+
+    if (reviewOkEl instanceof HTMLElement) reviewOkEl.textContent = String(getSafeCount(stats.reviewOk));
+
+    if (reviewOkCurrentEl instanceof HTMLElement) reviewOkCurrentEl.textContent = String(getSafeCount(currentReviewIndex));
+
+    if (reviewOkUniqueEl instanceof HTMLElement) reviewOkUniqueEl.textContent = `${getSafeCount(uniqueStats.reviewOk.size)} únicos`;
+
+    if (deleteOkEl instanceof HTMLElement) deleteOkEl.textContent = String(getSafeCount(stats.deleteOk));
+
+    if (deleteOkCurrentEl instanceof HTMLElement) deleteOkCurrentEl.textContent = String(getSafeCount(currentDeleteIndex));
+
+    if (deleteOkUniqueEl instanceof HTMLElement) deleteOkUniqueEl.textContent = `${getSafeCount(uniqueStats.deleteOk.size)} únicos`;
+
+    if (pendingEl instanceof HTMLElement) pendingEl.textContent = String(getSafeCount(stats.pending));
+
+    if (pendingCurrentEl instanceof HTMLElement) pendingCurrentEl.textContent = String(getSafeCount(currentPendingIndex));
+
+    if (pendingUniqueEl instanceof HTMLElement) pendingUniqueEl.textContent = `${getSafeCount(uniqueStats.pending.size)} únicos`;
 
 
 
