@@ -1763,21 +1763,21 @@
 
                         <input id="qaModalPn" type="hidden">
 
-                        <div class="qa-modal-row qa-modal-row-primary">
+                        <div class="qa-modal-meta-row">
 
                             <label>
 
-                                <span>POS EXCEL (pos_excel)</span>
+                                <span>LIBRO</span>
 
-                                <input id="qaModalPosExcel" type="text" name="pos_excel">
+                                <input id="qaModalBook" type="text">
 
                             </label>
 
                             <label>
 
-                                <span>PN EXCEL (pn_excel)</span>
+                                <span>PAGINA</span>
 
-                                <input id="qaModalPnExcel" type="text" name="pn_excel">
+                                <input id="qaModalPage" type="text">
 
                             </label>
 
@@ -1785,183 +1785,178 @@
 
 
 
-                        <div class="qa-modal-row qa-modal-row-primary">
+                        <section class="qa-modal-edit-table" aria-label="Comparativa de campos Excel y Final">
 
-                            <label class="qa-modal-field-span-4">
+                            <div class="qa-modal-edit-head" aria-hidden="true">
 
-                                <span>DESIGNATION EXCEL (designation_excel)</span>
+                                <span class="qa-modal-edit-head-campo">CAMPO</span>
 
-                                <input id="qaModalDesignationExcel" type="text" name="designation_excel">
+                                <span>EXCEL</span>
 
-                            </label>
+                                <span>FINAL</span>
+
+                            </div>
+
+
+
+                            <div class="qa-modal-edit-row">
+
+                                <span class="qa-modal-edit-label">POS</span>
+
+                                <input id="qaModalPosExcel" type="text" name="pos_excel" aria-label="POS Excel">
+
+                                <input id="qaModalPos" type="text" name="pos_final" aria-label="POS Final">
+
+                            </div>
+
+                            <div class="qa-modal-edit-row">
+
+                                <span class="qa-modal-edit-label">PN.</span>
+
+                                <input id="qaModalPnExcel" type="text" name="pn_excel" aria-label="PN Excel">
+
+                                <input id="qaModalPnFinal" type="text" name="pn_final" aria-label="PN Final">
+
+                            </div>
+
+                            <div class="qa-modal-edit-row">
+
+                                <span class="qa-modal-edit-label">DESIGNATION</span>
+
+                                <input id="qaModalDesignationExcel" type="text" name="designation_excel"
+                                    aria-label="Designation Excel">
+
+                                <input id="qaModalDesignationFinal" type="text" name="designation_final"
+                                    aria-label="Designation Final">
+
+                            </div>
+
+                            <div class="qa-modal-edit-row">
+
+                                <span class="qa-modal-edit-label">MODEL TYPE</span>
+
+                                <input id="qaModalModelTypeExcel" type="text" name="model_type_excel"
+                                    aria-label="Model Type Excel">
+
+                                <input id="qaModalModelType" type="text" name="model_type_final"
+                                    aria-label="Model Type Final">
+
+                            </div>
+
+                            <div class="qa-modal-edit-row">
+
+                                <span class="qa-modal-edit-label">QTY</span>
+
+                                <input id="qaModalQtyExcel" type="text" name="qty_excel" aria-label="Qty Excel">
+
+                                <input id="qaModalQty" type="text" name="qty_final" aria-label="Qty Final">
+
+                            </div>
+
+                            <div class="qa-modal-edit-row">
+
+                                <span class="qa-modal-edit-label">UNITS</span>
+
+                                <input id="qaModalQtyUnitsExcel" type="text" name="qty_units_excel"
+                                    aria-label="Units Excel">
+
+                                <input id="qaModalUnits" type="text" name="qty_units_final" aria-label="Units Final">
+
+                            </div>
+
+                            <div class="qa-modal-edit-row">
+
+                                <span class="qa-modal-edit-label">WEIGHT</span>
+
+                                <input id="qaModalWeightExcel" type="text" name="weight_excel"
+                                    aria-label="Weight Excel">
+
+                                <input id="qaModalWeightFinal" type="text" name="weight_final"
+                                    aria-label="Weight Final">
+
+                            </div>
+
+                            <div class="qa-modal-edit-row">
+
+                                <span class="qa-modal-edit-label">FN</span>
+
+                                <input id="qaModalFnExcel" type="text" name="fn_excel" aria-label="FN Excel">
+
+                                <input id="qaModalFn" type="text" name="fn_final" aria-label="FN Final">
+
+                            </div>
+
+                            <div class="qa-modal-edit-row">
+
+                                <span class="qa-modal-edit-label">MEASURE</span>
+
+                                <input id="qaModalMeasureExcel" type="text" name="measure_excel"
+                                    aria-label="Measure Excel">
+
+                                <input id="qaModalMeasurementFinal" type="text" name="measure_final"
+                                    aria-label="Measure Final">
+
+                            </div>
+
+                            <div class="qa-modal-edit-row">
+
+                                <span class="qa-modal-edit-label">FG FGS</span>
+
+                                <input id="qaModalFgFgsExcel" type="text" name="fg_fgs_excel" aria-label="FG FGS Excel">
+
+                                <input id="qaModalFgFgsFinal" type="text" name="fg_fgs_final" aria-label="FG FGS Final">
+
+                            </div>
+
+                            <div class="qa-modal-edit-row">
+
+                                <span class="qa-modal-edit-label">BOM</span>
+
+                                <input id="qaModalBomExcel" type="text" name="bom_excel" aria-label="BOM Excel">
+
+                                <input id="qaModalBomFinal" type="text" name="bom_final" aria-label="BOM Final">
+
+                            </div>
+
+                            <div class="qa-modal-edit-row qa-modal-edit-row-final-only">
+
+                                <span class="qa-modal-edit-label">GESA</span>
+
+                                <div class="qa-modal-edit-empty" aria-hidden="true"></div>
+
+                                <input id="qaModalGesa" type="text" aria-label="GESA Final">
+
+                            </div>
+
+                            <div class="qa-modal-edit-row qa-modal-edit-row-final-only">
+
+                                <span class="qa-modal-edit-label">NORMALIZADO</span>
+
+                                <div class="qa-modal-edit-empty" aria-hidden="true"></div>
+
+                                <input id="qaModalNormalizado" type="text" aria-label="Normalizado Final">
+
+                            </div>
+
+                            <div class="qa-modal-edit-row qa-modal-edit-row-final-only">
+
+                                <span class="qa-modal-edit-label">NORMA</span>
+
+                                <div class="qa-modal-edit-empty" aria-hidden="true"></div>
+
+                                <input id="qaModalNorma" type="text" name="norma_final" aria-label="Norma Final">
+
+                            </div>
+
+                        </section>
+
+
+
+                        <div class="qa-modal-mini-grid">
 
                             <label>
 
-                                <span>MODEL/TYPE EXCEL (model_type_excel)</span>
-
-                                <input id="qaModalModelTypeExcel" type="text" name="model_type_excel">
-
-                            </label>
-
-                        </div>
-
-
-
-                        <div class="qa-modal-row qa-modal-row-secondary">
-
-                            <label>
-
-                                <span>QTY EXCEL (qty_excel)</span>
-
-                                <input id="qaModalQtyExcel" type="text" name="qty_excel">
-
-                            </label>
-
-                            <label>
-
-                                <span>UNITS EXCEL (qty_units_excel)</span>
-
-                                <input id="qaModalQtyUnitsExcel" type="text" name="qty_units_excel">
-
-                            </label>
-
-                            <label>
-
-                                <span>WEIGHT EXCEL (weight_excel)</span>
-
-                                <input id="qaModalWeightExcel" type="text" name="weight_excel">
-
-                            </label>
-
-                            <label>
-
-                                <span>FN EXCEL (fn_excel)</span>
-
-                                <input id="qaModalFnExcel" type="text" name="fn_excel">
-
-                            </label>
-
-                            <label>
-
-                                <span>MEASURE EXCEL (measure_excel)</span>
-
-                                <input id="qaModalMeasureExcel" type="text" name="measure_excel">
-
-                            </label>
-
-                            <label>
-
-                                <span>FG/FGS EXCEL (fg_fgs_excel)</span>
-
-                                <input id="qaModalFgFgsExcel" type="text" name="fg_fgs_excel">
-
-                            </label>
-
-                            <label class="qa-modal-field-span-4">
-
-                                <span>BOM-NO. EXCEL (bom_excel)</span>
-
-                                <input id="qaModalBomExcel" type="text" name="bom_excel">
-
-                            </label>
-
-                        </div>
-
-
-
-                        <div class="qa-modal-row qa-modal-row-primary">
-
-                            <label>
-
-                                <span>PN FINAL (pn_final)</span>
-
-                                <input id="qaModalPnFinal" type="text" name="pn_final">
-
-                            </label>
-
-                            <label class="qa-modal-field-span-4">
-
-                                <span>DESIGN FINAL (designation_final)</span>
-
-                                <input id="qaModalDesignationFinal" type="text" name="designation_final">
-
-                            </label>
-
-                            <label>
-
-                                <span>Model Final (model_type_final)</span>
-
-                                <input id="qaModalModelType" type="text" name="model_type_final">
-
-                            </label>
-
-                        </div>
-
-
-
-                        <div class="qa-modal-row qa-modal-row-secondary">
-
-                            <label>
-
-                                <span>QTY Final (qty_final)</span>
-
-                                <input id="qaModalQty" type="text" name="qty_final">
-
-                            </label>
-
-                            <label>
-
-                                <span>Units Final (qty_units_final)</span>
-
-                                <input id="qaModalUnits" type="text" name="qty_units_final">
-
-                            </label>
-
-                            <label>
-
-                                <span>Weight Final (weight_final)</span>
-
-                                <input id="qaModalWeightFinal" type="text" name="weight_final">
-
-                            </label>
-
-                            <label>
-
-                                <span>FN Final (fn_final)</span>
-
-                                <input id="qaModalFn" type="text" name="fn_final">
-
-                            </label>
-
-                            <label>
-
-                                <span>Measure Final (measure_final)</span>
-
-                                <input id="qaModalMeasurementFinal" type="text" name="measure_final">
-
-                            </label>
-
-                            <label>
-
-                                <span>Norma Final (norma_final)</span>
-
-                                <input id="qaModalNorma" type="text" name="norma_final">
-
-                            </label>
-
-                        </div>
-
-
-
-                        <div class="qa-modal-row-spacer" aria-hidden="true"></div>
-
-
-
-                        <div class="qa-modal-row qa-modal-row-status">
-
-                            <label>
-
-                                <span>Revision (qa_revision_estado)</span>
+                                <span>Revision</span>
 
                                 <select id="qaModalRevisionEstado" name="qa_revision_estado">
 
@@ -1975,7 +1970,7 @@
 
                             <label>
 
-                                <span>Accion (qa_revision_accion)</span>
+                                <span>Accion</span>
 
                                 <select id="qaModalRevisionAccion" name="qa_revision_accion">
 
@@ -1989,31 +1984,9 @@
 
                             </label>
 
-                        </div>
-
-
-
-                        <div class="qa-modal-row qa-modal-row-flags">
-
                             <label>
 
-                                <span>Gesa (gesa)</span>
-
-                                <input id="qaModalGesa" type="text">
-
-                            </label>
-
-                            <label>
-
-                                <span>Norm. (normalizado)</span>
-
-                                <input id="qaModalNormalizado" type="text">
-
-                            </label>
-
-                            <label>
-
-                                <span>New/Sup (sust_hierarchie)</span>
+                                <span>New/Sup</span>
 
                                 <input id="qaModalSustHierarchie" type="text">
 
@@ -2021,7 +1994,7 @@
 
                             <label>
 
-                                <span>Foto (has_img)</span>
+                                <span>Foto</span>
 
                                 <input id="qaModalHasImg" type="text">
 
@@ -2029,39 +2002,9 @@
 
                             <label>
 
-                                <span>En Web (EN_WEB)</span>
+                                <span>En Web</span>
 
                                 <input id="qaModalEnWeb" type="text">
-
-                            </label>
-
-                        </div>
-
-
-
-                        <div class="qa-modal-row qa-modal-row-book">
-
-                            <label class="qa-modal-field-span-4">
-
-                                <span>Libro (engine_model)</span>
-
-                                <input id="qaModalBook" type="text">
-
-                            </label>
-
-                            <label>
-
-                                <span>Pagina (Source Page)</span>
-
-                                <input id="qaModalPage" type="text">
-
-                            </label>
-
-                            <label>
-
-                                <span>Pos Final (pos_final)</span>
-
-                                <input id="qaModalPos" type="text" name="pos_final">
 
                             </label>
 

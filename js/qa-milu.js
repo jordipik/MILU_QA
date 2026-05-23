@@ -1,95 +1,56 @@
 /**
-
  * Punto de entrada principal de qa_milu.
-
  */
 
-
-
 import { state } from './state.js';
-
 import { escapeHtml, getRowErrors, getRowErrorType, getRowValueForColumn, val } from './helpers.js';
-
-import { showToast } from './toast.js';
-
 import { evaluateRowQaChecks, getQaActiveSignature } from './qa-checks.js';
-
 import { checkSaveBackendConnection, fetchJsonSafe, loadPartitionedEngineData, saveCellToServer, fetchEngineCatalog, loadEnginesByFileNames } from './data-loader.js';
-
 import {
-
     applyRevisionDataToRows,
-
     assignRevisionKeys,
-
     buildGlobalPnCopyTargets,
-
-        const values = {
-
-        pos_excel: String($(`${prefix}PosExcel`)?.value || ''),
-
-        pn_excel: String($(`${prefix}PnExcel`)?.value || ''),
-
-        pos_final: String($(`${prefix}Pos`)?.value || ''),
-
-        pn_final: String($(`${prefix}PnFinal`)?.value || ''),
-
-        designation_final: String($(`${prefix}DesignationFinal`)?.value || ''),
-
-        model_type_final: String($(`${prefix}ModelType`)?.value || ''),
-
-        qty_final: String($(`${prefix}Qty`)?.value || ''),
-
-        qty_units_final: String($(`${prefix}Units`)?.value || ''),
-
-        weight_final: String($(`${prefix}WeightFinal`)?.value || ''),
-
-        fn_final: String($(`${prefix}Fn`)?.value || ''),
-
-        measure_final: String($(`${prefix}MeasurementFinal`)?.value || ''),
-
-        norma_final: String($(`${prefix}Norma`)?.value || ''),
-
-        gesa: String($(`${prefix}Gesa`)?.value || ''),
-
-        normalizado: String($(`${prefix}Normalizado`)?.value || ''),
-
-        sust_hierarchie: String($(`${prefix}SustHierarchie`)?.value || ''),
-
-        has_img: String($(`${prefix}HasImg`)?.value || ''),
-
-        EN_WEB: String($(`${prefix}EnWeb`)?.value || ''),
-
-        engine_model: String($(`${prefix}Book`)?.value || ''),
-
-        'Source Page': String($(`${prefix}Page`)?.value || '')
-
-    };
-
-if (scope !== 'side') {
-    values.designation_excel = String($(`${prefix}DesignationExcel`)?.value || '');
-    values.model_type_excel = String($(`${prefix}ModelTypeExcel`)?.value || '');
-    values.qty_excel = String($(`${prefix}QtyExcel`)?.value || '');
-    values.qty_units_excel = String($(`${prefix}QtyUnitsExcel`)?.value || '');
-    values.weight_excel = String($(`${prefix}WeightExcel`)?.value || '');
-    values.fn_excel = String($(`${prefix}FnExcel`)?.value || '');
-    values.measure_excel = String($(`${prefix}MeasureExcel`)?.value || '');
-    values.fg_fgs_excel = String($(`${prefix}FgFgsExcel`)?.value || '');
-    values.bom_excel = String($(`${prefix}BomExcel`)?.value || '');
-}
-
-return values;
-
-
+    denormalizeAccionFromNew,
+    denormalizeEstadoFromNew,
+    getRevisionKey,
+    normalizeAccionToNew,
+    normalizeEstadoToNew,
+    rebuildGlobalPartNumberIndex,
+    updateRevisionSelectVisual
+} from './revision.js';
+import { subscribeRevisionSync } from './revision-sync.js';
+import { createChangeControl } from './change-control.js';
+import {
+    applyColumnView,
+    initColumnResize,
+    loadColumnViewPreference,
+    loadColumnWidths,
+    saveColumnViewPreference
+} from './column-view.js';
+import { isInlineEditableTarget, cancelInlineEdit } from './cell-editor.js';
+import { initPdfZoomControls, loadPdfClear, loadPdfWithPage, renderPdfPage, requestPdfRelayout, setPdfSelection } from './pdf-viewer.js';
+import { updateSchemasInline, renderSelectedRowPosPanel, renderSelectedRowPosTop } from './schemas.js';
+import { getEngineJsonForRow } from './helpers.js';
+import {
+    applyFilters,
+    changePage,
+    focusRevisionRowInMainTable,
+    getCurrentFilteredSortedRows,
+    getPersistedHasError,
+    getRowsForBulkScope,
+    jumpToPage,
+    moveSelectionBy,
+    refreshVisibleRowByRevisionKey,
+    renderPagination,
+    renderTable,
+    syncAutoPageSize,
+    refreshSelectedRowVisual
+} from './qa-table.js';
 
 const $ = (id) => document.getElementById(id);
-
 let filterTimeout = null;
-
 let resizeTimer = null;
-
 let backendStatusTimer = null;
-
 let lastReadonlyAlertAt = 0;
 
 
@@ -162,1117 +123,865 @@ function queueColumnViewRefresh() {
 
         applyColumnView();
 
-        requestAnimationFrame(() => applyColumnView());
+        const values = {
+            pos_excel: String($(`${prefix}PosExcel`)?.value || ''),
+            pn_excel: String($(`${prefix}PnExcel`)?.value || ''),
+            pos_final: String($(`${prefix}Pos`)?.value || ''),
+            pn_final: String($(`${prefix}PnFinal`)?.value || ''),
+            designation_final: String($(`${prefix}DesignationFinal`)?.value || ''),
+            model_type_final: String($(`${prefix}ModelType`)?.value || ''),
+            qty_final: String($(`${prefix}Qty`)?.value || ''),
+            qty_units_final: String($(`${prefix}Units`)?.value || ''),
+            weight_final: String($(`${prefix}WeightFinal`)?.value || ''),
+            fn_final: String($(`${prefix}Fn`)?.value || ''),
+            measure_final: String($(`${prefix}MeasurementFinal`)?.value || ''),
+            norma_final: String($(`${prefix}Norma`)?.value || ''),
+            gesa: String($(`${prefix}Gesa`)?.value || ''),
+            normalizado: String($(`${prefix}Normalizado`)?.value || ''),
+            sust_hierarchie: String($(`${prefix}SustHierarchie`)?.value || ''),
+            has_img: String($(`${prefix}HasImg`)?.value || ''),
+            EN_WEB: String($(`${prefix}EnWeb`)?.value || ''),
+            engine_model: String($(`${prefix}Book`)?.value || ''),
+            'Source Page': String($(`${prefix}Page`)?.value || '')
+        };
 
-    });
+        if (scope !== 'side') {
+            values.designation_excel = String($(`${prefix}DesignationExcel`)?.value || '');
+            values.model_type_excel = String($(`${prefix}ModelTypeExcel`)?.value || '');
+            values.qty_excel = String($(`${prefix}QtyExcel`)?.value || '');
+            values.qty_units_excel = String($(`${prefix}QtyUnitsExcel`)?.value || '');
+            values.weight_excel = String($(`${prefix}WeightExcel`)?.value || '');
+            values.fn_excel = String($(`${prefix}FnExcel`)?.value || '');
+            values.measure_excel = String($(`${prefix}MeasureExcel`)?.value || '');
+            values.fg_fgs_excel = String($(`${prefix}FgFgsExcel`)?.value || '');
+            values.bom_excel = String($(`${prefix}BomExcel`)?.value || '');
+        }
 
-}
+        return values;
 
+        'designation',
 
+            'engine',
 
-const MODAL_FIELD_KEYS = [
+            'model_type',
 
-    'pos_excel',
+            'type',
 
-    'pn_excel',
+            'pn',
 
-    'designation_excel',
+            'nsn',
 
-    'model_type_excel',
+            'GESA_NORM',
 
-    'qty_excel',
+            'GESA_NORMALIZADO',
 
-    'qty_units_excel',
+            'fg_code',
 
-    'weight_excel',
+            'fg_description',
 
-    'fn_excel',
+            'fg_code_description',
 
-    'measure_excel',
+            'weight',
 
-    'fg_fgs_excel',
+            'weight_txt',
 
-    'bom_excel',
+            'measurement',
 
-    'pos_final',
+            'TIPOARTICULO',
 
-    'pn_final',
+            'PAG',
 
-    'designation_final',
+            'BOM_no',
 
-    'model_type_final',
+            'esquema_general',
 
-    'qty_final',
+            'exp_motor',
 
-    'qty_units_final',
+            'exp_categorias',
 
-    'weight_final',
+            'atributo',
 
-    'fn_final',
+            'SUST_TIPO',
 
-    'measure_final',
+            'new_pn_relacionado',
 
-    'norma_final',
+            'old_pn_relacionados',
 
-    'gesa',
+            'EN_EXCEL_SUSTITUCION',
 
-    'normalizado',
+            'ruta_foto',
 
-    'sust_hierarchie',
-
-    'has_img',
-
-    'EN_WEB',
-
-    'engine_model',
-
-    'Source Page'
+            'exp_imagenes'
 
 ];
 
-const SYNTHETIC_NEW_EXPORT_COLUMNS = [
+        const SYNTHETIC_SUPERSEDED_EXPORT_COLUMNS = [
 
-    'Id',
+            ...SYNTHETIC_NEW_EXPORT_COLUMNS,
 
-    'fecha_version',
+            'vinculo'
 
-    'POS',
+        ];
 
-    'designation',
+        const modalUiState = {
 
-    'engine',
+            tableScrollTop: 0,
 
-    'model_type',
+            tableScrollLeft: 0,
 
-    'type',
+            windowScrollX: 0,
 
-    'pn',
+            windowScrollY: 0
 
-    'nsn',
+        };
 
-    'GESA_NORM',
+        let activeMatchesModalRevisionKey = '';
 
-    'GESA_NORMALIZADO',
+        let pendingShellRecordModalRequest = null;
 
-    'fg_code',
+        let syncQaSplitterLayout = () => { };
 
-    'fg_description',
 
-    'fg_code_description',
 
-    'weight',
+        const QA_ROW_PATCH_CHANGE_TYPE = 'qa-row-patch';
 
-    'weight_txt',
+        const QA_BULK_ROW_PATCH_CHANGE_TYPE = 'qa-bulk-row-patch';
 
-    'measurement',
 
-    'TIPOARTICULO',
 
-    'PAG',
+        function getAuditBackendCandidateUrls() {
 
-    'BOM_no',
+            const currentOrigin = window.location.origin && window.location.origin !== 'null'
 
-    'esquema_general',
+                ? window.location.origin
 
-    'exp_motor',
+                : '';
 
-    'exp_categorias',
+            const currentHostname = String(window.location.hostname || '').trim();
 
-    'atributo',
+            const isLocalhost = currentHostname === 'localhost' || currentHostname === '127.0.0.1' || currentHostname === '';
 
-    'SUST_TIPO',
+            const sameDirectoryCandidate = new URL('audit-log', new URL('.', window.location.href)).href;
 
-    'new_pn_relacionado',
+            const localPortCandidate = isLocalhost && currentHostname ? `http://${currentHostname}:3000/audit-log` : '';
 
-    'old_pn_relacionados',
+            const sameOriginCandidate = currentOrigin ? `${currentOrigin}/audit-log` : '/audit-log';
 
-    'EN_EXCEL_SUSTITUCION',
+            return [
 
-    'ruta_foto',
+                localPortCandidate,
 
-    'exp_imagenes'
+                isLocalhost ? 'http://localhost:3000/audit-log' : '',
 
-];
+                sameDirectoryCandidate,
 
-const SYNTHETIC_SUPERSEDED_EXPORT_COLUMNS = [
+                sameOriginCandidate
 
-    ...SYNTHETIC_NEW_EXPORT_COLUMNS,
-
-    'vinculo'
-
-];
-
-const modalUiState = {
-
-    tableScrollTop: 0,
-
-    tableScrollLeft: 0,
-
-    windowScrollX: 0,
-
-    windowScrollY: 0
-
-};
-
-let activeMatchesModalRevisionKey = '';
-
-let pendingShellRecordModalRequest = null;
-
-let syncQaSplitterLayout = () => { };
-
-
-
-const QA_ROW_PATCH_CHANGE_TYPE = 'qa-row-patch';
-
-const QA_BULK_ROW_PATCH_CHANGE_TYPE = 'qa-bulk-row-patch';
-
-
-
-function getAuditBackendCandidateUrls() {
-
-    const currentOrigin = window.location.origin && window.location.origin !== 'null'
-
-        ? window.location.origin
-
-        : '';
-
-    const currentHostname = String(window.location.hostname || '').trim();
-
-    const isLocalhost = currentHostname === 'localhost' || currentHostname === '127.0.0.1' || currentHostname === '';
-
-    const sameDirectoryCandidate = new URL('audit-log', new URL('.', window.location.href)).href;
-
-    const localPortCandidate = isLocalhost && currentHostname ? `http://${currentHostname}:3000/audit-log` : '';
-
-    const sameOriginCandidate = currentOrigin ? `${currentOrigin}/audit-log` : '/audit-log';
-
-    return [
-
-        localPortCandidate,
-
-        isLocalhost ? 'http://localhost:3000/audit-log' : '',
-
-        sameDirectoryCandidate,
-
-        sameOriginCandidate
-
-    ].filter((url, index, arr) => url && arr.indexOf(url) === index);
-
-}
-
-
-
-async function persistAuditEntryToServer(entry) {
-
-    const urls = getAuditBackendCandidateUrls();
-
-    let lastError = null;
-
-    for (const url of urls) {
-
-        try {
-
-            const response = await fetch(url, {
-
-                method: 'POST',
-
-                headers: { 'Content-Type': 'application/json' },
-
-                body: JSON.stringify(entry),
-
-                keepalive: true
-
-            });
-
-            if (response.ok) return true;
-
-            lastError = new Error(`HTTP ${response.status} en ${url}`);
-
-        } catch (error) {
-
-            lastError = error;
-
-            // Continue with next candidate.
+            ].filter((url, index, arr) => url && arr.indexOf(url) === index);
 
         }
 
-    }
 
-    throw new Error(String(lastError?.message || 'No se pudo persistir la auditoria en servidor'));
 
-}
+        async function persistAuditEntryToServer(entry) {
 
+            const urls = getAuditBackendCandidateUrls();
 
+            let lastError = null;
 
-const changeControl = createChangeControl({
+            for (const url of urls) {
 
-    namespace: 'milu:qa',
+                try {
 
-    eventPrefix: 'milu:change-control',
+                    const response = await fetch(url, {
 
-    maxUndoEntries: 200,
+                        method: 'POST',
 
-    maxAuditEntries: 2000,
+                        headers: { 'Content-Type': 'application/json' },
 
-    onAuditEntry: persistAuditEntryToServer
+                        body: JSON.stringify(entry),
 
-});
+                        keepalive: true
 
+                    });
 
+                    if (response.ok) return true;
 
-function updateUndoButtonState() {
+                    lastError = new Error(`HTTP ${response.status} en ${url}`);
 
-    const undoBtn = $('qaUndoLastChangeBtn');
+                } catch (error) {
 
-    if (!(undoBtn instanceof HTMLButtonElement)) return;
+                    lastError = error;
 
-    const historyState = changeControl.getUndoState();
+                    // Continue with next candidate.
 
-    undoBtn.disabled = !historyState.canUndo;
-
-    undoBtn.textContent = historyState.undoCount > 0
-
-        ? `Deshacer (${historyState.undoCount})`
-
-        : 'Deshacer';
-
-}
-
-
-
-function getPersistedValueForField(fieldKey, value) {
-
-    if (fieldKey === 'qa_revision_estado') return denormalizeEstadoFromNew(value);
-
-    if (fieldKey === 'qa_revision_accion') return denormalizeAccionFromNew(value);
-
-    return value;
-
-}
-
-
-
-async function applySinglePatchTarget(target, changes, direction) {
-
-    const revisionKey = String(target?.revisionKey || '').trim();
-
-    const engineFile = String(target?.engineFile || '').trim();
-
-    const rowId = String(target?.id || '').trim();
-
-    if (!revisionKey || !engineFile || !rowId) {
-
-        throw new Error('Patch invalido: falta revisionKey/engineFile/id.');
-
-    }
-
-
-
-    const row = getRowByRevisionKey(revisionKey);
-
-    if (!row) {
-
-        throw new Error(`No se encontro la fila para revisionKey ${revisionKey}`);
-
-    }
-
-
-
-    const useBefore = direction === 'before';
-
-    const touchedFields = [];
-
-    for (const [fieldKey, change] of Object.entries(changes || {})) {
-
-        const nextValue = useBefore ? change?.before : change?.after;
-
-        const prevValue = String(row?.[fieldKey] ?? '');
-
-        const nextAsString = String(nextValue ?? '');
-
-        if (prevValue === nextAsString) continue;
-
-
-
-        await saveCellToServer(engineFile, rowId, fieldKey, getPersistedValueForField(fieldKey, nextValue));
-
-        row[fieldKey] = nextValue;
-
-        touchedFields.push(fieldKey);
-
-    }
-
-
-
-    if (!touchedFields.length) return;
-
-
-
-    if (touchedFields.includes('qa_revision_estado') || touchedFields.includes('qa_revision_accion')) {
-
-        row.qa_revision_updated_at = new Date().toISOString();
-
-    }
-
-
-
-    if (touchedFields.some((fieldKey) => MODAL_FIELD_KEYS.includes(fieldKey))) {
-
-        invalidateRowActiveQaErrors(row);
-
-    }
-
-
-
-    state.selectedRevisionRowKey = revisionKey;
-
-    const updatedVisibleRow = refreshVisibleRowByRevisionKey(revisionKey);
-
-    if (!updatedVisibleRow) renderTable();
-
-    renderPagination();
-
-
-
-    const modalForm = $('qaRecordModalForm');
-
-    if (modalForm instanceof HTMLFormElement && String(modalForm.dataset.revisionKey || '') === revisionKey) {
-
-        fillRecordModal(row, revisionKey);
-
-    }
-
-    fillSideRecordForm(row, revisionKey);
-
-}
-
-
-
-async function applyBulkPatchTargets(targets, direction) {
-
-    const appliedTargets = [];
-
-    try {
-
-        for (const targetPatch of targets) {
-
-            await applySinglePatchTarget(targetPatch.target, targetPatch.changes, direction);
-
-            appliedTargets.push(targetPatch);
-
-        }
-
-    } catch (error) {
-
-        const rollbackDirection = direction === 'before' ? 'after' : 'before';
-
-        for (let index = appliedTargets.length - 1; index >= 0; index -= 1) {
-
-            const targetPatch = appliedTargets[index];
-
-            try {
-
-                await applySinglePatchTarget(targetPatch.target, targetPatch.changes, rollbackDirection);
-
-            } catch (_) {
-
-                // Keep original error and stop best-effort rollback failures from hiding it.
+                }
 
             }
 
-        }
-
-        throw error;
-
-    }
-
-}
-
-
-
-function registerChangeControlTypes() {
-
-    changeControl.registerType(QA_ROW_PATCH_CHANGE_TYPE, {
-
-        apply: async (entry) => {
-
-            const target = entry?.data?.target;
-
-            const changes = entry?.data?.changes || {};
-
-            await applySinglePatchTarget(target, changes, 'after');
-
-        },
-
-        revert: async (entry) => {
-
-            const target = entry?.data?.target;
-
-            const changes = entry?.data?.changes || {};
-
-            await applySinglePatchTarget(target, changes, 'before');
+            throw new Error(String(lastError?.message || 'No se pudo persistir la auditoria en servidor'));
 
         }
 
-    });
 
 
+        const changeControl = createChangeControl({
 
-    changeControl.registerType(QA_BULK_ROW_PATCH_CHANGE_TYPE, {
+            namespace: 'milu:qa',
 
-        apply: async (entry) => {
+            eventPrefix: 'milu:change-control',
 
-            const targets = Array.isArray(entry?.data?.targets) ? entry.data.targets : [];
+            maxUndoEntries: 200,
 
-            await applyBulkPatchTargets(targets, 'after');
+            maxAuditEntries: 2000,
 
-        },
-
-        revert: async (entry) => {
-
-            const targets = Array.isArray(entry?.data?.targets) ? entry.data.targets : [];
-
-            await applyBulkPatchTargets(targets, 'before');
-
-        }
-
-    });
-
-}
-
-
-
-function buildPatchTargetForRow(row) {
-
-    const revisionKey = String(getRevisionKey(row) || '').trim();
-
-    const engineFile = String(getEngineJsonForRow(row) || '').trim();
-
-    const id = String(row?.ID ?? '').trim();
-
-    if (!revisionKey || !engineFile || !id) {
-
-        throw new Error('No se pudo construir patch target para la fila.');
-
-    }
-
-    return { revisionKey, engineFile, id };
-
-}
-
-
-
-function collectRowChanges(row, nextValues, nextEstado, nextAccion) {
-
-    const changes = {};
-
-
-
-    MODAL_FIELD_KEYS.forEach((fieldKey) => {
-
-        if (!Object.prototype.hasOwnProperty.call(nextValues || {}, fieldKey)) return;
-
-        const beforeValue = String(row?.[fieldKey] ?? '');
-
-        const afterValue = String(nextValues?.[fieldKey] ?? '');
-
-        if (beforeValue === afterValue) return;
-
-        changes[fieldKey] = {
-
-            before: row?.[fieldKey] ?? '',
-
-            after: nextValues?.[fieldKey] ?? ''
-
-        };
-
-    });
-
-
-
-    const normalizedEstadoBefore = normalizeEstadoToNew(row?.qa_revision_estado);
-
-    const normalizedEstadoAfter = normalizeEstadoToNew(nextEstado);
-
-    if (normalizedEstadoBefore !== normalizedEstadoAfter) {
-
-        changes.qa_revision_estado = {
-
-            before: normalizedEstadoBefore,
-
-            after: normalizedEstadoAfter
-
-        };
-
-    }
-
-
-
-    const normalizedAccionBefore = normalizeAccionToNew(row?.qa_revision_accion);
-
-    const normalizedAccionAfter = normalizeAccionToNew(nextAccion);
-
-    if (normalizedAccionBefore !== normalizedAccionAfter) {
-
-        changes.qa_revision_accion = {
-
-            before: normalizedAccionBefore,
-
-            after: normalizedAccionAfter
-
-        };
-
-    }
-
-
-
-    return changes;
-
-}
-
-
-
-function buildRowPatchEntryWithPnCopyPropagation(row, changes, meta = {}) {
-
-    rebuildGlobalPartNumberIndex(state.allData);
-
-
-
-    const primaryTarget = buildPatchTargetForRow(row);
-
-    const primaryPatch = { target: primaryTarget, changes };
-
-
-
-    const nextEstado = Object.prototype.hasOwnProperty.call(changes, 'qa_revision_estado')
-
-        ? changes.qa_revision_estado.after
-
-        : normalizeEstadoToNew(row?.qa_revision_estado);
-
-    const nextAccion = Object.prototype.hasOwnProperty.call(changes, 'qa_revision_accion')
-
-        ? changes.qa_revision_accion.after
-
-        : normalizeAccionToNew(row?.qa_revision_accion);
-
-
-
-    const copyTargets = buildGlobalPnCopyTargets(row, {
-
-        rows: state.allData,
-
-        nextEstado,
-
-        nextAccion
-
-    });
-
-
-
-    if (!copyTargets.length) {
-
-        return {
-
-            type: QA_ROW_PATCH_CHANGE_TYPE,
-
-            module: 'qa_milu',
-
-            action: meta.action || 'save-row',
-
-            description: meta.description || `Guardar fila ID ${row?.ID}`,
-
-            target: { revisionKey: primaryTarget.revisionKey },
-
-            data: {
-
-                target: primaryTarget,
-
-                changes
-
-            }
-
-        };
-
-    }
-
-
-
-    return {
-
-        type: QA_BULK_ROW_PATCH_CHANGE_TYPE,
-
-        module: 'qa_milu',
-
-        action: meta.action || 'save-row-with-global-pn-copy',
-
-        description: meta.description || `Guardar fila ID ${row?.ID} y propagar copias PN`,
-
-        target: {
-
-            revisionKey: primaryTarget.revisionKey,
-
-            size: copyTargets.length + 1,
-
-            reason: 'global-pn-copy'
-
-        },
-
-        data: {
-
-            targets: [primaryPatch, ...copyTargets]
-
-        }
-
-    };
-
-}
-
-
-
-async function undoLastQaChange() {
-
-    if (!ensureBackendWritable('deshacer cambios')) return;
-
-    try {
-
-        const entry = await changeControl.undoLast();
-
-        if (!entry) {
-
-            const status = $('qaSideStatus');
-
-            if (status) status.textContent = 'No hay cambios para deshacer.';
-
-            return;
-
-        }
-
-        const status = $('qaSideStatus');
-
-        if (status) status.textContent = `Deshecho: ${entry.description || entry.action || entry.type}`;
-
-    } catch (error) {
-
-        console.error('No se pudo deshacer el ultimo cambio:', error);
-
-        alert(`No se pudo deshacer el ultimo cambio: ${error.message}`);
-
-    } finally {
-
-        updateUndoButtonState();
-
-    }
-
-}
-
-
-
-async function redoLastQaChange() {
-
-    if (!ensureBackendWritable('rehacer cambios')) return;
-
-    try {
-
-        const entry = await changeControl.redoLast();
-
-        if (!entry) return;
-
-        const status = $('qaSideStatus');
-
-        if (status) status.textContent = `Rehecho: ${entry.description || entry.action || entry.type}`;
-
-    } catch (error) {
-
-        console.error('No se pudo rehacer el ultimo cambio:', error);
-
-        alert(`No se pudo rehacer el ultimo cambio: ${error.message}`);
-
-    } finally {
-
-        updateUndoButtonState();
-
-    }
-
-}
-
-
-
-function setRightPanelTab(tabName) {
-
-    const validTabs = new Set(['pdf', 'record', 'export', 'schemas']);
-
-    const resolvedTab = validTabs.has(tabName) ? tabName : 'pdf';
-
-    state.rightPanelTab = resolvedTab;
-
-
-
-    document.querySelectorAll('[data-pdf-tab]').forEach(btn => {
-
-        const isActive = btn.dataset.pdfTab === resolvedTab;
-
-        btn.classList.toggle('is-active', isActive);
-
-        btn.setAttribute('aria-selected', isActive ? 'true' : 'false');
-
-    });
-
-
-
-    document.querySelectorAll('[data-pdf-panel]').forEach(panel => {
-
-        const isActive = panel.dataset.pdfPanel === resolvedTab;
-
-        panel.classList.toggle('is-active', isActive);
-
-        panel.toggleAttribute('hidden', !isActive);
-
-    });
-
-
-
-    if (resolvedTab === 'pdf') {
-
-        requestPdfRelayout();
-
-    } else if (resolvedTab === 'export') {
-
-        loadExportPreview().catch(() => {
-
-            // Keep current panel state if preview is unavailable.
+            onAuditEntry: persistAuditEntryToServer
 
         });
 
-    }
-
-}
 
 
+        function updateUndoButtonState() {
 
-function setBackendStatusBadge(status, message) {
+            const undoBtn = $('qaUndoLastChangeBtn');
 
-    const statusWrap = $('backendStatus');
+            if (!(undoBtn instanceof HTMLButtonElement)) return;
 
-    const statusText = $('backendStatusText');
+            const historyState = changeControl.getUndoState();
 
-    if (!statusWrap || !statusText) return;
+            undoBtn.disabled = !historyState.canUndo;
 
+            undoBtn.textContent = historyState.undoCount > 0
 
+                ? `Deshacer (${historyState.undoCount})`
 
-    statusWrap.classList.remove('checking', 'online', 'offline');
-
-    statusWrap.classList.add(status);
-
-    statusText.textContent = message;
-
-    state.backendStatusMessage = message;
-
-}
-
-
-
-function applyBackendWriteMode() {
-
-    const writable = state.backendWritable !== false;
-
-
-
-    WRITE_ACTION_BUTTON_IDS.forEach((id) => {
-
-        const button = $(id);
-
-        if (button instanceof HTMLButtonElement) {
-
-            button.disabled = !writable;
+                : 'Deshacer';
 
         }
 
-    });
 
 
+        function getPersistedValueForField(fieldKey, value) {
 
-    document.querySelectorAll('#tbody select[data-revision-field], #errorViewTbody select[data-revision-field]').forEach((elem) => {
+            if (fieldKey === 'qa_revision_estado') return denormalizeEstadoFromNew(value);
 
-        if (elem instanceof HTMLSelectElement) {
+            if (fieldKey === 'qa_revision_accion') return denormalizeAccionFromNew(value);
 
-            elem.disabled = !writable;
-
-            elem.title = writable ? '' : 'Modo solo lectura: backend sin conexion.';
-
-        }
-
-    });
-
-
-
-    const sideStatus = $('qaSideStatus');
-
-    if (!writable && sideStatus instanceof HTMLElement) {
-
-        sideStatus.textContent = 'Modo solo lectura: backend sin conexion. Los cambios no se guardan.';
-
-    }
-
-}
-
-
-
-function ensureBackendWritable(actionLabel = 'guardar cambios') {
-
-    if (state.backendWritable !== false) return true;
-
-
-
-    const now = Date.now();
-
-    if (now - lastReadonlyAlertAt > 1500) {
-
-        alert(`Modo solo lectura: no se puede ${actionLabel} porque el backend no esta disponible.`);
-
-        lastReadonlyAlertAt = now;
-
-    }
-
-    return false;
-
-}
-
-
-
-async function refreshBackendStatus() {
-
-    setBackendStatusBadge('checking', 'Backend: comprobando...');
-
-    try {
-
-        const result = await checkSaveBackendConnection();
-
-        if (result.ok) {
-
-            state.backendWritable = true;
-
-            setBackendStatusBadge('online', 'Backend: conectado');
-
-            applyBackendWriteMode();
-
-            return;
+            return value;
 
         }
 
 
 
-        state.backendWritable = false;
+        async function applySinglePatchTarget(target, changes, direction) {
 
-        setBackendStatusBadge('offline', 'Backend: sin conexion (solo lectura)');
+            const revisionKey = String(target?.revisionKey || '').trim();
 
-        applyBackendWriteMode();
+            const engineFile = String(target?.engineFile || '').trim();
 
-    } catch (_) {
+            const rowId = String(target?.id || '').trim();
 
-        state.backendWritable = false;
+            if (!revisionKey || !engineFile || !rowId) {
 
-        setBackendStatusBadge('offline', 'Backend: sin conexion (solo lectura)');
+                throw new Error('Patch invalido: falta revisionKey/engineFile/id.');
 
-        applyBackendWriteMode();
+            }
 
-    }
 
-}
 
+            const row = getRowByRevisionKey(revisionKey);
 
+            if (!row) {
 
-function initBackendStatusMonitor() {
+                throw new Error(`No se encontro la fila para revisionKey ${revisionKey}`);
 
-    refreshBackendStatus().catch(() => setBackendStatusBadge('offline', 'Backend: sin conexion'));
+            }
 
 
 
-    if (backendStatusTimer) clearInterval(backendStatusTimer);
+            const useBefore = direction === 'before';
 
-    backendStatusTimer = setInterval(() => {
+            const touchedFields = [];
 
-        refreshBackendStatus().catch(() => setBackendStatusBadge('offline', 'Backend: sin conexion'));
+            for (const [fieldKey, change] of Object.entries(changes || {})) {
 
-    }, 30000);
+                const nextValue = useBefore ? change?.before : change?.after;
 
+                const prevValue = String(row?.[fieldKey] ?? '');
 
+                const nextAsString = String(nextValue ?? '');
 
-    window.addEventListener('focus', () => {
+                if (prevValue === nextAsString) continue;
 
-        refreshBackendStatus().catch(() => setBackendStatusBadge('offline', 'Backend: sin conexion'));
 
-    });
 
-}
+                await saveCellToServer(engineFile, rowId, fieldKey, getPersistedValueForField(fieldKey, nextValue));
 
+                row[fieldKey] = nextValue;
 
+                touchedFields.push(fieldKey);
 
-function isRecordModalOpen() {
+            }
 
-    const modal = $('qaRecordModal');
 
-    return !!modal && !modal.hasAttribute('hidden');
 
-}
+            if (!touchedFields.length) return;
 
 
 
-function isMatchesModalOpen() {
+            if (touchedFields.includes('qa_revision_estado') || touchedFields.includes('qa_revision_accion')) {
 
-    const modal = $('qaMatchesModal');
+                row.qa_revision_updated_at = new Date().toISOString();
 
-    return !!modal && !modal.hasAttribute('hidden');
+            }
 
-}
 
 
+            if (touchedFields.some((fieldKey) => MODAL_FIELD_KEYS.includes(fieldKey))) {
 
-function isExportModalOpen() {
+                invalidateRowActiveQaErrors(row);
 
-    const modal = $('qaExportModal');
+            }
 
-    return !!modal && !modal.hasAttribute('hidden');
 
-}
 
+            state.selectedRevisionRowKey = revisionKey;
 
+            const updatedVisibleRow = refreshVisibleRowByRevisionKey(revisionKey);
 
-function getExportEndpointUrl(pathname) {
+            if (!updatedVisibleRow) renderTable();
 
-    return apiUrl(pathname);
+            renderPagination();
 
-}
 
 
+            const modalForm = $('qaRecordModalForm');
 
-async function fetchExportJson(pathname, options = {}) {
+            if (modalForm instanceof HTMLFormElement && String(modalForm.dataset.revisionKey || '') === revisionKey) {
 
-    const response = await fetch(getExportEndpointUrl(pathname), {
+                fillRecordModal(row, revisionKey);
 
-        cache: 'no-store',
+            }
 
-        ...options
+            fillSideRecordForm(row, revisionKey);
 
-    });
+        }
 
 
 
-    let payload = null;
+        async function applyBulkPatchTargets(targets, direction) {
 
-    try {
+            const appliedTargets = [];
 
-        payload = await response.json();
+            try {
 
-    } catch (_) {
+                for (const targetPatch of targets) {
 
-        payload = null;
+                    await applySinglePatchTarget(targetPatch.target, targetPatch.changes, direction);
 
-    }
+                    appliedTargets.push(targetPatch);
 
+                }
 
+            } catch (error) {
 
-    if (!response.ok) {
+                const rollbackDirection = direction === 'before' ? 'after' : 'before';
 
-        const errorText = String(payload?.error || `HTTP ${response.status}`).trim();
+                for (let index = appliedTargets.length - 1; index >= 0; index -= 1) {
 
-        throw new Error(errorText || 'Error de backend');
+                    const targetPatch = appliedTargets[index];
 
-    }
+                    try {
 
+                        await applySinglePatchTarget(targetPatch.target, targetPatch.changes, rollbackDirection);
 
+                    } catch (_) {
 
-    return payload;
+                        // Keep original error and stop best-effort rollback failures from hiding it.
 
-}
+                    }
 
+                }
 
+                throw error;
 
-function setExportRunStatus(message, kind = '') {
+            }
 
-    const elem = $('qaExportRunStatus');
+        }
 
-    if (!(elem instanceof HTMLElement)) return;
 
-    elem.classList.remove('ok', 'warn', 'bad');
 
-    if (kind) elem.classList.add(kind);
+        function registerChangeControlTypes() {
 
-    elem.textContent = String(message || 'Sin ejecutar');
+            changeControl.registerType(QA_ROW_PATCH_CHANGE_TYPE, {
 
-}
+                apply: async (entry) => {
 
+                    const target = entry?.data?.target;
 
+                    const changes = entry?.data?.changes || {};
 
-function renderExportSummary(summary = {}) {
+                    await applySinglePatchTarget(target, changes, 'after');
 
-    const total = $('qaExportSummaryTotal');
+                },
 
-    const importCount = $('qaExportSummaryImport');
+                revert: async (entry) => {
 
-    const pending = $('qaExportSummaryPending');
+                    const target = entry?.data?.target;
 
-    const discarded = $('qaExportSummaryDiscarded');
+                    const changes = entry?.data?.changes || {};
 
-    const occurrences = $('qaExportSummaryOccurrences');
+                    await applySinglePatchTarget(target, changes, 'before');
 
+                }
 
+            });
 
-    if (total) total.textContent = String(Number(summary.preview_total || 0));
 
-    if (importCount) importCount.textContent = String(Number(summary.preview_import || 0));
 
-    if (pending) pending.textContent = String(Number(summary.preview_pending || 0));
+            changeControl.registerType(QA_BULK_ROW_PATCH_CHANGE_TYPE, {
 
-    if (discarded) discarded.textContent = String(Number(summary.preview_discarded || 0));
+                apply: async (entry) => {
 
+                    const targets = Array.isArray(entry?.data?.targets) ? entry.data.targets : [];
 
+                    await applyBulkPatchTargets(targets, 'after');
 
-    if (occurrences) {
+                },
 
-        const rows = Array.isArray(state.exportPreviewRows) ? state.exportPreviewRows : [];
+                revert: async (entry) => {
 
-        const sum = rows.reduce((acc, row) => acc + (Number(row?.total_occurrences_global) || 0), 0);
+                    const targets = Array.isArray(entry?.data?.targets) ? entry.data.targets : [];
 
-        occurrences.textContent = String(sum);
+                    await applyBulkPatchTargets(targets, 'before');
 
-    }
+                }
 
-}
+            });
 
+        }
 
 
-function getExportPreviewFilterState() {
 
-    const decisionFilter = String($('qaExportDecisionFilter')?.value || '__all__').trim().toLowerCase();
+        function buildPatchTargetForRow(row) {
 
-    const query = String($('qaExportSearchInput')?.value || '').trim().toLowerCase();
+            const revisionKey = String(getRevisionKey(row) || '').trim();
 
-    return {
+            const engineFile = String(getEngineJsonForRow(row) || '').trim();
 
-        decision: decisionFilter || '__all__',
+            const id = String(row?.ID ?? '').trim();
 
-        query
+            if (!revisionKey || !engineFile || !id) {
 
-    };
+                throw new Error('No se pudo construir patch target para la fila.');
 
-}
+            }
 
+            return { revisionKey, engineFile, id };
 
+        }
 
-function applyExportPreviewFilters(rows) {
 
-    const sourceRows = Array.isArray(rows) ? rows : [];
 
-    const filters = getExportPreviewFilterState();
+        function collectRowChanges(row, nextValues, nextEstado, nextAccion) {
 
+            const changes = {};
 
 
-    return sourceRows.filter((row) => {
 
-        const decision = String(row?.import_decision || '').trim().toLowerCase();
+            MODAL_FIELD_KEYS.forEach((fieldKey) => {
 
-        if (filters.decision !== '__all__' && decision !== filters.decision) {
+                if (!Object.prototype.hasOwnProperty.call(nextValues || {}, fieldKey)) return;
+
+                const beforeValue = String(row?.[fieldKey] ?? '');
+
+                const afterValue = String(nextValues?.[fieldKey] ?? '');
+
+                if (beforeValue === afterValue) return;
+
+                changes[fieldKey] = {
+
+                    before: row?.[fieldKey] ?? '',
+
+                    after: nextValues?.[fieldKey] ?? ''
+
+                };
+
+            });
+
+
+
+            ['fg_fgs_final', 'bom_final'].forEach((fieldKey) => {
+
+                if (!Object.prototype.hasOwnProperty.call(nextValues || {}, fieldKey)) return;
+
+                if (Object.prototype.hasOwnProperty.call(changes, fieldKey)) return;
+
+
+
+                const beforeValue = String(row?.[fieldKey] ?? '');
+
+                const afterValue = String(nextValues?.[fieldKey] ?? '');
+
+                if (beforeValue === afterValue) return;
+
+
+
+                changes[fieldKey] = {
+
+                    before: row?.[fieldKey] ?? '',
+
+                    after: nextValues?.[fieldKey] ?? ''
+
+                };
+
+            });
+
+
+
+            const normalizedEstadoBefore = normalizeEstadoToNew(row?.qa_revision_estado);
+
+            const normalizedEstadoAfter = normalizeEstadoToNew(nextEstado);
+
+            if (normalizedEstadoBefore !== normalizedEstadoAfter) {
+
+                changes.qa_revision_estado = {
+
+                    before: normalizedEstadoBefore,
+
+                    after: normalizedEstadoAfter
+
+                };
+
+            }
+
+
+
+            const normalizedAccionBefore = normalizeAccionToNew(row?.qa_revision_accion);
+
+            const normalizedAccionAfter = normalizeAccionToNew(nextAccion);
+
+            if (normalizedAccionBefore !== normalizedAccionAfter) {
+
+                changes.qa_revision_accion = {
+
+                    before: normalizedAccionBefore,
+
+                    after: normalizedAccionAfter
+
+                };
+
+            }
+
+
+
+            return changes;
+
+        }
+
+
+
+        function buildRowPatchEntryWithPnCopyPropagation(row, changes, meta = {}) {
+
+            rebuildGlobalPartNumberIndex(state.allData);
+
+
+
+            const primaryTarget = buildPatchTargetForRow(row);
+
+            const primaryPatch = { target: primaryTarget, changes };
+
+
+
+            const nextEstado = Object.prototype.hasOwnProperty.call(changes, 'qa_revision_estado')
+
+                ? changes.qa_revision_estado.after
+
+                : normalizeEstadoToNew(row?.qa_revision_estado);
+
+            const nextAccion = Object.prototype.hasOwnProperty.call(changes, 'qa_revision_accion')
+
+                ? changes.qa_revision_accion.after
+
+                : normalizeAccionToNew(row?.qa_revision_accion);
+
+
+
+            const copyTargets = buildGlobalPnCopyTargets(row, {
+
+                rows: state.allData,
+
+                nextEstado,
+
+                nextAccion
+
+            });
+
+
+
+            if (!copyTargets.length) {
+
+                return {
+
+                    type: QA_ROW_PATCH_CHANGE_TYPE,
+
+                    module: 'qa_milu',
+
+                    action: meta.action || 'save-row',
+
+                    description: meta.description || `Guardar fila ID ${row?.ID}`,
+
+                    target: { revisionKey: primaryTarget.revisionKey },
+
+                    data: {
+
+                        target: primaryTarget,
+
+                        changes
+
+                    }
+
+                };
+
+            }
+
+
+
+            return {
+
+                type: QA_BULK_ROW_PATCH_CHANGE_TYPE,
+
+                module: 'qa_milu',
+
+                action: meta.action || 'save-row-with-global-pn-copy',
+
+                description: meta.description || `Guardar fila ID ${row?.ID} y propagar copias PN`,
+
+                target: {
+
+                    revisionKey: primaryTarget.revisionKey,
+
+                    size: copyTargets.length + 1,
+
+                    reason: 'global-pn-copy'
+
+                },
+
+                data: {
+
+                    targets: [primaryPatch, ...copyTargets]
+
+                }
+
+            };
+
+        }
+
+
+
+        async function undoLastQaChange() {
+
+            if (!ensureBackendWritable('deshacer cambios')) return;
+
+            try {
+
+                const entry = await changeControl.undoLast();
+
+                if (!entry) {
+
+                    const status = $('qaSideStatus');
+
+                    if (status) status.textContent = 'No hay cambios para deshacer.';
+
+                    return;
+
+                }
+
+                const status = $('qaSideStatus');
+
+                if (status) status.textContent = `Deshecho: ${entry.description || entry.action || entry.type}`;
+
+            } catch (error) {
+
+                console.error('No se pudo deshacer el ultimo cambio:', error);
+
+                alert(`No se pudo deshacer el ultimo cambio: ${error.message}`);
+
+            } finally {
+
+                updateUndoButtonState();
+
+            }
+
+        }
+
+
+
+        async function redoLastQaChange() {
+
+            if (!ensureBackendWritable('rehacer cambios')) return;
+
+            try {
+
+                const entry = await changeControl.redoLast();
+
+                if (!entry) return;
+
+                const status = $('qaSideStatus');
+
+                if (status) status.textContent = `Rehecho: ${entry.description || entry.action || entry.type}`;
+
+            } catch (error) {
+
+                console.error('No se pudo rehacer el ultimo cambio:', error);
+
+                alert(`No se pudo rehacer el ultimo cambio: ${error.message}`);
+
+            } finally {
+
+                updateUndoButtonState();
+
+            }
+
+        }
+
+
+
+        function setRightPanelTab(tabName) {
+
+            const validTabs = new Set(['pdf', 'record', 'export', 'schemas']);
+
+            const resolvedTab = validTabs.has(tabName) ? tabName : 'pdf';
+
+            state.rightPanelTab = resolvedTab;
+
+
+
+            document.querySelectorAll('[data-pdf-tab]').forEach(btn => {
+
+                const isActive = btn.dataset.pdfTab === resolvedTab;
+
+                btn.classList.toggle('is-active', isActive);
+
+                btn.setAttribute('aria-selected', isActive ? 'true' : 'false');
+
+            });
+
+
+
+            document.querySelectorAll('[data-pdf-panel]').forEach(panel => {
+
+                const isActive = panel.dataset.pdfPanel === resolvedTab;
+
+                panel.classList.toggle('is-active', isActive);
+
+                panel.toggleAttribute('hidden', !isActive);
+
+            });
+
+
+
+            if (resolvedTab === 'pdf') {
+
+                requestPdfRelayout();
+
+            } else if (resolvedTab === 'export') {
+
+                loadExportPreview().catch(() => {
+
+                    // Keep current panel state if preview is unavailable.
+
+                });
+
+            }
+
+        }
+
+
+
+        function setBackendStatusBadge(status, message) {
+
+            const statusWrap = $('backendStatus');
+
+            const statusText = $('backendStatusText');
+
+            if (!statusWrap || !statusText) return;
+
+
+
+            statusWrap.classList.remove('checking', 'online', 'offline');
+
+            statusWrap.classList.add(status);
+
+            statusText.textContent = message;
+
+            state.backendStatusMessage = message;
+
+        }
+
+
+
+        function applyBackendWriteMode() {
+
+            const writable = state.backendWritable !== false;
+
+
+
+            WRITE_ACTION_BUTTON_IDS.forEach((id) => {
+
+                const button = $(id);
+
+                if (button instanceof HTMLButtonElement) {
+
+                    button.disabled = !writable;
+
+                }
+
+            });
+
+
+
+            document.querySelectorAll('#tbody select[data-revision-field], #errorViewTbody select[data-revision-field]').forEach((elem) => {
+
+                if (elem instanceof HTMLSelectElement) {
+
+                    elem.disabled = !writable;
+
+                    elem.title = writable ? '' : 'Modo solo lectura: backend sin conexion.';
+
+                }
+
+            });
+
+
+
+            const sideStatus = $('qaSideStatus');
+
+            if (!writable && sideStatus instanceof HTMLElement) {
+
+                sideStatus.textContent = 'Modo solo lectura: backend sin conexion. Los cambios no se guardan.';
+
+            }
+
+        }
+
+
+
+        function ensureBackendWritable(actionLabel = 'guardar cambios') {
+
+            if (state.backendWritable !== false) return true;
+
+
+
+            const now = Date.now();
+
+            if (now - lastReadonlyAlertAt > 1500) {
+
+                alert(`Modo solo lectura: no se puede ${actionLabel} porque el backend no esta disponible.`);
+
+                lastReadonlyAlertAt = now;
+
+            }
 
             return false;
 
@@ -1280,2305 +989,2545 @@ function applyExportPreviewFilters(rows) {
 
 
 
-        if (!filters.query) return true;
+        async function refreshBackendStatus() {
 
+            setBackendStatusBadge('checking', 'Backend: comprobando...');
 
+            try {
 
-        const haystack = [
+                const result = await checkSaveBackendConnection();
 
-            row?.sku,
+                if (result.ok) {
 
-            row?.designation_final,
+                    state.backendWritable = true;
 
-            row?.import_reason,
+                    setBackendStatusBadge('online', 'Backend: conectado');
 
-            row?.engine_models_all,
+                    applyBackendWriteMode();
 
-            row?.source_ids_all
+                    return;
 
-        ].map((item) => String(item || '').toLowerCase()).join(' | ');
+                }
 
 
 
-        return haystack.includes(filters.query);
+                state.backendWritable = false;
 
-    });
+                setBackendStatusBadge('offline', 'Backend: sin conexion (solo lectura)');
 
-}
+                applyBackendWriteMode();
 
+            } catch (_) {
 
+                state.backendWritable = false;
 
-function renderExportFilteredCount(visible, total) {
+                setBackendStatusBadge('offline', 'Backend: sin conexion (solo lectura)');
 
-    const elem = $('qaExportFilteredCount');
-
-    if (!(elem instanceof HTMLElement)) return;
-
-    elem.textContent = `${Number(visible || 0)} / ${Number(total || 0)}`;
-
-}
-
-
-
-function applyExportPreviewSort(rows) {
-
-    const key = String(state.exportPreviewSortKey || '').trim();
-
-    if (!key) return rows;
-
-    const asc = state.exportPreviewSortAsc !== false;
-
-    const numericKeys = new Set(['total_occurrences_global']);
-
-
-
-    const sorted = [...rows].sort((a, b) => {
-
-        const va = a?.[key];
-
-        const vb = b?.[key];
-
-        if (numericKeys.has(key)) {
-
-            return (Number(va) || 0) - (Number(vb) || 0);
-
-        }
-
-        return String(va || '').localeCompare(String(vb || ''), 'es', { numeric: true, sensitivity: 'base' });
-
-    });
-
-
-
-    return asc ? sorted : sorted.reverse();
-
-}
-
-
-
-function updateExportSortHeaderClasses() {
-
-    document.querySelectorAll('th[data-export-sort]').forEach((th) => {
-
-        th.classList.remove('is-sorted-asc', 'is-sorted-desc');
-
-        if (th.getAttribute('data-export-sort') === state.exportPreviewSortKey) {
-
-            th.classList.add(state.exportPreviewSortAsc !== false ? 'is-sorted-asc' : 'is-sorted-desc');
-
-        }
-
-    });
-
-}
-
-
-
-function toggleExportPreviewSort(key) {
-
-    const normalized = String(key || '').trim();
-
-    if (!normalized) return;
-
-    if (state.exportPreviewSortKey === normalized) {
-
-        state.exportPreviewSortAsc = !state.exportPreviewSortAsc;
-
-    } else {
-
-        state.exportPreviewSortKey = normalized;
-
-        state.exportPreviewSortAsc = true;
-
-    }
-
-    updateExportSortHeaderClasses();
-
-    renderExportPreviewRows(state.exportPreviewRows || []);
-
-}
-
-
-
-function toCsvCell(value) {
-
-    const text = String(value == null ? '' : value);
-
-    if (text.includes('"') || text.includes(';') || text.includes('\n') || text.includes('\r')) {
-
-        return `"${text.replace(/"/g, '""')}"`;
-
-    }
-
-    return text;
-
-}
-
-
-
-function downloadExportPreviewCsv() {
-
-    const rows = applyExportPreviewSort(applyExportPreviewFilters(state.exportPreviewRows || []));
-
-    if (!rows.length) {
-
-        setExportRunStatus('No hay filas para exportar', 'warn');
-
-        return;
-
-    }
-
-
-
-    // Columnas exactas que aparecen en pantalla (SYNTHETIC_NEW_EXPORT_COLUMNS)
-
-    const headers = [
-
-        'Id',
-
-        'fecha_version',
-
-        'POS',
-
-        'designation',
-
-        'engine',
-
-        'model_type',
-
-        'type',
-
-        'pn',
-
-        'nsn',
-
-        'GESA_NORM',
-
-        'GESA_NORMALIZADO',
-
-        'fg_code',
-
-        'fg_description',
-
-        'fg_code_description',
-
-        'weight',
-
-        'weight_txt',
-
-        'measurement',
-
-        'TIPOARTICULO',
-
-        'PAG',
-
-        'BOM_no',
-
-        'esquema_general',
-
-        'exp_motor',
-
-        'exp_categorias',
-
-        'atributo',
-
-        'SUST_TIPO',
-
-        'new_pn_relacionado',
-
-        'old_pn_relacionados',
-
-        'EN_EXCEL_SUSTITUCION',
-
-        'ruta_foto',
-
-        'exp_imagenes'
-
-    ];
-
-
-
-    const lines = [headers.join(';')];
-
-    for (const row of rows) {
-
-        lines.push(headers.map((h) => toCsvCell(row?.[h])).join(';'));
-
-    }
-
-
-
-    const blob = new Blob([`\uFEFF${lines.join('\n')}\n`], { type: 'text/csv;charset=utf-8' });
-
-    const url = URL.createObjectURL(blob);
-
-    const link = document.createElement('a');
-
-    link.href = url;
-
-    const timestamp = new Date().toISOString().slice(0, 19).replace('T', '_').replace(/:/g, '-');
-
-    link.download = `wordpress_export_preview_filtered_${timestamp}.csv`;
-
-    document.body.appendChild(link);
-
-    link.click();
-
-    document.body.removeChild(link);
-
-    URL.revokeObjectURL(url);
-
-
-
-    setExportRunStatus(`CSV descargado (${rows.length} filas)`, 'ok');
-
-}
-
-
-
-function renderExportTrace(trace, sku) {
-
-    const traceSku = $('qaExportTraceSku');
-
-    const body = $('qaExportTraceBody');
-
-    if (!(body instanceof HTMLElement)) return;
-
-
-
-    const safeSku = String(sku || '').trim();
-
-    if (traceSku) traceSku.textContent = safeSku || 'Sin selección';
-
-
-
-    if (!trace || typeof trace !== 'object') {
-
-        body.textContent = 'No hay traza para este SKU.';
-
-        return;
-
-    }
-
-
-
-    const compacted = trace.compacted || {};
-
-    const sourceRecords = Array.isArray(trace.source_records) ? trace.source_records : [];
-
-    const preview = trace.preview || {};
-
-
-
-    const sourcePreviewRows = sourceRecords.slice(0, 30).map((row) => (`<tr>`
-
-        + `<td>${escapeHtml(String(row?.id || '-'))}</td>`
-
-        + `<td>${escapeHtml(String(row?.engine_model || '-'))}</td>`
-
-        + `<td>${escapeHtml(String(row?.source_page || '-'))}</td>`
-
-        + `<td>${escapeHtml(String(row?.pos || '-'))}</td>`
-
-        + `<td>${escapeHtml(String(row?.designation_final || '-'))}</td>`
-
-        + `<td>${escapeHtml(String(row?.measure_final || '-'))}</td>`
-
-        + `<td>${escapeHtml(String(row?.weight_final || '-'))}</td>`
-
-        + `</tr>`)).join('');
-
-
-
-    body.innerHTML = ''
-
-        + '<div class="qa-export-trace-kpis">'
-
-        + `<div class="qa-export-trace-kpi"><span>Decision</span><strong>${escapeHtml(String(preview.import_decision || '-'))}</strong></div>`
-
-        + `<div class="qa-export-trace-kpi"><span>Ocurrencias</span><strong>${escapeHtml(String(compacted.total_occurrences_global || 0))}</strong></div>`
-
-        + `<div class="qa-export-trace-kpi"><span>Registros fuente</span><strong>${escapeHtml(String(sourceRecords.length))}</strong></div>`
-
-        + '</div>'
-
-        + `<p><b>Motivo:</b> ${escapeHtml(String(preview.import_reason || '-'))}</p>`
-
-        + `<p><b>Motores:</b> ${escapeHtml(String(compacted.engine_models_all || '-'))}</p>`
-
-        + `<p><b>Páginas:</b> ${escapeHtml(String(compacted.source_pages_all || '-'))}</p>`
-
-        + `<p><b>IDs:</b> ${escapeHtml(String(compacted.source_ids_all || '-'))}</p>`
-
-        + '<p><b>Provenance (máx. 30 filas):</b></p>'
-
-        + '<div class="qa-export-trace-table-wrap">'
-
-        + '<table class="qa-export-trace-table" aria-label="Registros fuente del SKU">'
-
-        + '<thead><tr><th>ID</th><th>Motor</th><th>Página</th><th>POS</th><th>Designation</th><th>Measure</th><th>Weight</th></tr></thead>'
-
-        + `<tbody>${sourcePreviewRows || '<tr><td colspan="7">Sin registros fuente</td></tr>'}</tbody>`
-
-        + '</table>'
-
-        + '</div>';
-
-}
-
-
-
-function renderExportPreviewRows(rows) {
-
-    const body = $('qaExportPreviewBody');
-
-    if (!(body instanceof HTMLElement)) return;
-
-
-
-    const totalRows = Array.isArray(rows) ? rows : [];
-
-    const filteredRows = applyExportPreviewFilters(totalRows);
-
-    const visibleRows = applyExportPreviewSort(filteredRows);
-
-    renderExportFilteredCount(visibleRows.length, totalRows.length);
-
-
-
-    if (!visibleRows.length) {
-
-        const emptyMessage = totalRows.length
-
-            ? 'No hay filas para los filtros actuales.'
-
-            : 'No hay preview cargado.';
-
-        body.innerHTML = `<tr><td colspan="4">${emptyMessage}</td></tr>`;
-
-        return;
-
-    }
-
-
-
-    body.innerHTML = visibleRows.map((row) => {
-
-        const sku = String(row?.sku || '').trim();
-
-        const isSelected = sku && sku === state.selectedExportSku;
-
-        return `<tr data-export-sku="${escapeHtml(sku)}" class="${isSelected ? 'qa-export-preview-selected' : ''}">`
-
-            + `<td>${escapeHtml(sku || '-')}</td>`
-
-            + `<td>${escapeHtml(String(row?.import_decision || '-'))}</td>`
-
-            + `<td>${escapeHtml(String(row?.designation_final || '-'))}</td>`
-
-            + `<td>${escapeHtml(String(row?.total_occurrences_global || 0))}</td>`
-
-            + '</tr>';
-
-    }).join('');
-
-}
-
-
-
-async function loadExportTraceForSku(sku) {
-
-    const normalizedSku = String(sku || '').trim();
-
-    if (!normalizedSku) {
-
-        renderExportTrace(null, '');
-
-        return;
-
-    }
-
-
-
-    if (state.exportTraceCache && state.exportTraceCache[normalizedSku]) {
-
-        renderExportTrace(state.exportTraceCache[normalizedSku], normalizedSku);
-
-        return;
-
-    }
-
-
-
-    try {
-
-        const payload = await fetchExportJson(`/export/trace/${encodeURIComponent(normalizedSku)}`);
-
-        if (!state.exportTraceCache || typeof state.exportTraceCache !== 'object') {
-
-            state.exportTraceCache = {};
-
-        }
-
-        state.exportTraceCache[normalizedSku] = payload.trace || null;
-
-        renderExportTrace(payload.trace || null, normalizedSku);
-
-    } catch (error) {
-
-        renderExportTrace(null, normalizedSku);
-
-        setExportRunStatus(`Error de traza: ${error.message}`, 'bad');
-
-    }
-
-}
-
-
-
-async function loadExportPreview() {
-
-    try {
-
-        const payload = await fetchExportJson('/export/preview');
-
-        const rows = Array.isArray(payload?.rows) ? payload.rows : [];
-
-        state.exportPreviewRows = rows;
-
-        renderExportSummary(payload?.summary || {});
-
-        renderExportPreviewRows(rows);
-
-
-
-        if (rows.length && !state.selectedExportSku) {
-
-            state.selectedExportSku = String(rows[0].sku || '').trim();
-
-        }
-
-
-
-        if (state.selectedExportSku) {
-
-            await loadExportTraceForSku(state.selectedExportSku);
-
-            renderExportPreviewRows(rows);
-
-        }
-
-    } catch (error) {
-
-        setExportRunStatus(`Error al cargar preview: ${error.message}`, 'bad');
-
-    }
-
-}
-
-
-
-function resetExportPreviewFilters() {
-
-    const decision = $('qaExportDecisionFilter');
-
-    if (decision instanceof HTMLSelectElement) decision.value = '__all__';
-
-
-
-    const search = $('qaExportSearchInput');
-
-    if (search instanceof HTMLInputElement) search.value = '';
-
-}
-
-
-
-async function runExportPipeline(endpoint, label) {
-
-    const actionButtons = [
-
-        $('qaExportRunWordpressBtn'),
-
-        $('qaExportReloadPreviewBtn')
-
-    ].filter((item) => item instanceof HTMLButtonElement);
-
-
-
-    actionButtons.forEach((button) => {
-
-        button.disabled = true;
-
-    });
-
-
-
-    setExportRunStatus(`${label} en ejecución...`, 'warn');
-
-    try {
-
-        await fetchExportJson(endpoint, {
-
-            method: 'POST',
-
-            headers: { 'Content-Type': 'application/json' },
-
-            body: '{}'
-
-        });
-
-        await loadExportPreview();
-
-        setExportRunStatus(`${label} completado`, 'ok');
-
-    } catch (error) {
-
-        setExportRunStatus(`${label} falló: ${error.message}`, 'bad');
-
-    } finally {
-
-        actionButtons.forEach((button) => {
-
-            button.disabled = false;
-
-        });
-
-    }
-
-}
-
-
-
-function getBookEngineCode(row) {
-
-    const sourceFile = String(row?.source_file ?? '').trim();
-
-    if (sourceFile) return sourceFile.replace(/\.xlsx$/i, '');
-
-
-
-    const engineModel = String(row?.engine_model ?? '').trim();
-
-    if (!engineModel) return '';
-
-
-
-    return engineModel
-
-        .replace(/^engine_/i, '')
-
-        .replace(/\.json$/i, '')
-
-        .trim();
-
-}
-
-
-
-function openAnalisisForRow(row) {
-
-    if (!row) return;
-
-
-
-    const book = String(row?.engine_model ?? '').trim();
-
-    const id = String(row?.ID ?? '').trim();
-
-    if (!id) {
-
-        alert('El registro no tiene ID para abrir analisis.');
-
-        return;
-
-    }
-
-
-
-    const params = new URLSearchParams();
-
-    const isEmbedded = new URLSearchParams(window.location.search || '').get('embedded') === '1';
-
-    if (book) params.set('engine', book);
-
-    params.set('id', id);
-
-    if (isEmbedded) {
-
-        params.set('embedded', '1');
-
-        try {
-
-            const openViaShell = window.parent?.miluShellOpenAnalisisRecord;
-
-            if (typeof openViaShell === 'function') {
-
-                const opened = openViaShell({ engine: book, id });
-
-                if (opened !== false) return;
+                applyBackendWriteMode();
 
             }
 
-        } catch (_) {
+        }
 
-            // Fallback to direct navigation.
+
+
+        function initBackendStatusMonitor() {
+
+            refreshBackendStatus().catch(() => setBackendStatusBadge('offline', 'Backend: sin conexion'));
+
+
+
+            if (backendStatusTimer) clearInterval(backendStatusTimer);
+
+            backendStatusTimer = setInterval(() => {
+
+                refreshBackendStatus().catch(() => setBackendStatusBadge('offline', 'Backend: sin conexion'));
+
+            }, 30000);
+
+
+
+            window.addEventListener('focus', () => {
+
+                refreshBackendStatus().catch(() => setBackendStatusBadge('offline', 'Backend: sin conexion'));
+
+            });
 
         }
 
-    }
 
 
+        function isRecordModalOpen() {
 
-    const targetUrl = `analista_02.html?${params.toString()}`;
+            const modal = $('qaRecordModal');
 
-    window.location.assign(targetUrl);
-
-}
-
-
-
-function getStartupRecordModalRequestFromUrl() {
-
-    const params = new URLSearchParams(window.location.search || '');
-
-    const openRecordRaw = String(params.get('openRecord') || '').trim().toLowerCase();
-
-    const shouldOpenRecord = openRecordRaw === '1' || openRecordRaw === 'true';
-
-    if (!shouldOpenRecord) return null;
-
-
-
-    const request = {
-
-        engine: String(params.get('engine') || '').trim(),
-
-        id: String(params.get('id') || '').trim(),
-
-        record: String(params.get('record') || '').trim(),
-
-        mode: String(params.get('mode') || '').trim().toLowerCase() === 'export' ? 'export' : 'record'
-
-    };
-
-
-
-    if (!request.engine && !request.id && !request.record) return null;
-
-    return request;
-
-}
-
-
-
-
-
-function getModalMatchesByPn(row) {
-
-    const pn = normModalMatch(row?.['PART NO.'] ?? row?.pn ?? '');
-
-    if (!pn) return [];
-
-    return state.allData
-
-        .filter(item => normModalMatch(item?.['PART NO.'] ?? item?.pn ?? '') === pn)
-
-        .map(item => ({
-
-            revisionKey: getRevisionKey(item),
-
-            page: String(item?.['Source Page'] ?? ''),
-
-            pos: String(item?.POS ?? ''),
-
-            id: String(item?.ID ?? ''),
-
-            partNumber: String(item?.['PART NO.'] ?? item?.pn ?? ''),
-
-            estado: String(item?.qa_revision_estado ?? ''),
-
-            designationFinal: String(item?.designation_final ?? item?.DESIGNATION ?? ''),
-
-            weightFinal: String(item?.weight_final ?? ''),
-
-            measurementFinal: String(item?.measure_final ?? item?.measurement_final ?? ''),
-
-            fgsCodeDescription: String(item?.fgs_code_description ?? ''),
-
-            accion: String(item?.qa_revision_accion ?? ''),
-
-            book: getBookEngineCode(item)
-
-        }));
-
-}
-
-
-
-function syncRecordModalBookFilter(row, matches, selectId = 'qaModalMatchesBookFilter') {
-
-    const select = $(selectId);
-
-    if (!(select instanceof HTMLSelectElement)) return;
-
-
-
-    const currentBook = getBookEngineCode(row);
-
-    const previousValue = String(select.value || '__current__');
-
-    const books = [...new Set(matches.map(item => String(item.book || '').trim()).filter(Boolean))]
-
-        .sort((a, b) => a.localeCompare(b, 'es', { numeric: true, sensitivity: 'base' }));
-
-
-
-    const options = [
-
-        { value: '__current__', label: currentBook ? `Libro actual (${currentBook})` : 'Libro actual' },
-
-        { value: '__all__', label: 'Todos los libros' },
-
-        ...books.map(book => ({ value: book, label: book }))
-
-    ];
-
-
-
-    select.innerHTML = options
-
-        .map(opt => `<option value="${escapeHtml(opt.value)}">${escapeHtml(opt.label)}</option>`)
-
-        .join('');
-
-
-
-    const hasPrevious = options.some(opt => opt.value === previousValue);
-
-    select.value = hasPrevious ? previousValue : '__current__';
-
-}
-
-function getRowByRevisionKey(revisionKey) {
-
-    return state.allData.find(item => getRevisionKey(item) === revisionKey);
-
-}
-
-
-
-function selectRevisionRowByKey(revisionKey) {
-
-    const key = String(revisionKey || '').trim();
-
-    if (!key) return false;
-
-    const row = getRowByRevisionKey(key);
-
-    if (!row) return false;
-
-    state.selectedRevisionRowKey = key;
-
-    refreshSelectedRowVisual();
-
-    renderSelectedRowPosPanel(row);
-
-    renderSelectedRowPosTop(row);
-
-    document.dispatchEvent(new CustomEvent('qa:selected-row-changed', {
-
-        detail: { revisionKey: key }
-
-    }));
-
-    return true;
-
-}
-
-
-
-function resolveRowForShellRecordModal(request = {}) {
-
-    const requestedRevisionKey = String(request?.revisionKey || '').trim();
-
-    if (requestedRevisionKey) {
-
-        const byRevisionKey = getRowByRevisionKey(requestedRevisionKey);
-
-        if (byRevisionKey) return byRevisionKey;
-
-    }
-
-
-
-    const requestedId = String(request?.id || '').trim().toLowerCase();
-
-    const requestedRecord = String(request?.record || '').trim().toLowerCase();
-
-    const requestedBook = resolveBookValue(request?.engine || request?.book || '').trim().toLowerCase();
-
-
-
-    return state.allData.find(item => {
-
-        const itemBook = String(item?.engine_model ?? '').trim().toLowerCase();
-
-        if (requestedBook && itemBook !== requestedBook) return false;
-
-
-
-        const itemId = String(item?.ID ?? '').trim().toLowerCase();
-
-        const itemPnFinal = String(item?.pn_final ?? '').trim().toLowerCase();
-
-        const itemPartNo = String(item?.['PART NO.'] ?? item?.pn ?? '').trim().toLowerCase();
-
-
-
-        if (requestedId && itemId === requestedId) return true;
-
-        if (requestedRecord && (itemPnFinal === requestedRecord || itemPartNo === requestedRecord)) return true;
-
-        return false;
-
-    }) || null;
-
-}
-
-
-
-function openRecordModalFromShell(request = {}) {
-
-    if (!Array.isArray(state.allData) || state.allData.length === 0) {
-
-        pendingShellRecordModalRequest = { ...request };
-
-        return false;
-
-    }
-
-
-
-    const row = resolveRowForShellRecordModal(request);
-
-    if (!row) return false;
-
-
-
-    const revisionKey = getRevisionKey(row);
-
-    if (!revisionKey) return false;
-
-
-
-    const targetBook = String(row?.engine_model ?? '').trim();
-
-    const targetPage = resolvePdfPage(row);
-
-
-
-    if (targetBook) {
-
-        applyBookSelection(targetBook, {
-
-            pageValue: targetPage,
-
-            fallbackToFirstAvailablePage: true,
-
-            render: true,
-
-            updatePdf: true
-
-        });
-
-    }
-
-
-
-    const moved = focusRevisionRowInMainTable(revisionKey);
-
-    if (!moved) {
-
-        selectRevisionRowByKey(revisionKey);
-
-    }
-
-
-
-    setRightPanelTab('pdf');
-
-    const requestedMode = String(request?.mode || '').trim().toLowerCase();
-
-    if (requestedMode === 'export') {
-
-        openExportModal(revisionKey);
-
-    } else {
-
-        openRecordModal(revisionKey);
-
-    }
-
-    pendingShellRecordModalRequest = null;
-
-    return true;
-
-}
-
-
-
-window.miluOpenPdfRecordModal = (request = {}) => openRecordModalFromShell(request);
-
-
-
-async function refreshDataFromShellUpdate(request = {}) {
-
-    if (!Array.isArray(state.allData) || state.allData.length === 0) return false;
-
-
-
-    const selectedRevisionKeyBefore = String(state.selectedRevisionRowKey || '').trim();
-
-    const currentPageBefore = Number(state.currentPage || 1);
-
-    const recordModal = $('qaRecordModalForm');
-
-    const openModalRevisionKey = recordModal instanceof HTMLFormElement
-
-        ? String(recordModal.dataset.revisionKey || '').trim()
-
-        : '';
-
-
-
-    const requestedId = String(request?.id || '').trim().toLowerCase();
-
-    const requestedBook = String(request?.engine || request?.book || '').trim().toLowerCase();
-
-
-
-    const freshData = await loadPartitionedEngineData();
-
-    if (!Array.isArray(freshData)) return false;
-
-
-
-    state.allData = freshData;
-
-    assignRevisionKeys(state.allData);
-
-    applyRevisionDataToRows(state.allData);
-
-    rebuildGlobalPartNumberIndex(state.allData);
-
-
-
-    state.currentPage = currentPageBefore;
-
-    renderTable();
-
-    renderPagination();
-
-
-
-    let targetRevisionKey = '';
-
-    if (requestedId) {
-
-        const requestedRow = state.allData.find((row) => {
-
-            const rowId = String(row?.ID ?? '').trim().toLowerCase();
-
-            const rowBook = String(row?.engine_model ?? '').trim().toLowerCase();
-
-            if (requestedBook && rowBook !== requestedBook) return false;
-
-            return rowId === requestedId;
-
-        });
-
-        targetRevisionKey = requestedRow ? getRevisionKey(requestedRow) : '';
-
-    }
-
-
-
-    if (!targetRevisionKey && selectedRevisionKeyBefore) {
-
-        const selectedRow = getRowByRevisionKey(selectedRevisionKeyBefore);
-
-        if (selectedRow) targetRevisionKey = selectedRevisionKeyBefore;
-
-    }
-
-
-
-    if (targetRevisionKey) {
-
-        state.selectedRevisionRowKey = targetRevisionKey;
-
-        refreshSelectedRowVisual();
-
-        document.dispatchEvent(new CustomEvent('qa:selected-row-changed', {
-
-            detail: { revisionKey: targetRevisionKey }
-
-        }));
-
-    } else {
-
-        syncSideRecordFormWithSelection();
-
-    }
-
-
-
-    if (openModalRevisionKey) {
-
-        const modalRow = getRowByRevisionKey(openModalRevisionKey);
-
-        if (modalRow) fillRecordModal(modalRow, openModalRevisionKey);
-
-    }
-
-
-
-    return true;
-
-}
-
-
-
-window.miluRefreshPdfData = async (request = {}) => {
-
-    try {
-
-        return await refreshDataFromShellUpdate(request);
-
-    } catch (error) {
-
-        console.warn('No se pudo refrescar QA PDF tras actualización externa:', error);
-
-        return false;
-
-    }
-
-};
-
-
-
-window.miluOnShellActivated = () => {
-
-    try {
-
-        syncQaSplitterLayout();
-
-        if (state.rightPanelTab === 'pdf') {
-
-            requestPdfRelayout();
+            return !!modal && !modal.hasAttribute('hidden');
 
         }
 
-        return true;
 
-    } catch (error) {
 
-        console.warn('No se pudo resincronizar QA PDF tras activar la vista en shell:', error);
+        function isMatchesModalOpen() {
 
-        return false;
+            const modal = $('qaMatchesModal');
 
-    }
+            return !!modal && !modal.hasAttribute('hidden');
 
-};
+        }
 
 
 
-function normModalMatch(value) {
+        function isExportModalOpen() {
 
-    return String(value ?? '').trim().toLowerCase();
+            const modal = $('qaExportModal');
 
-}
+            return !!modal && !modal.hasAttribute('hidden');
 
-
-
-function pageSortValue(page) {
-
-    const raw = String(page ?? '').trim();
-
-    const numeric = Number(raw.replace(/[^0-9]/g, ''));
-
-    return Number.isFinite(numeric) && !Number.isNaN(numeric) ? numeric : Number.MAX_SAFE_INTEGER;
-
-}
+        }
 
 
 
-function formatModalExportValue(value) {
+        function getExportEndpointUrl(pathname) {
 
-    if (value == null) return '';
+            return apiUrl(pathname);
 
-    if (Array.isArray(value)) return value.join(', ');
+        }
 
-    if (typeof value === 'object') {
 
-        try {
 
-            return JSON.stringify(value);
+        async function fetchExportJson(pathname, options = {}) {
 
-        } catch (_) {
+            const response = await fetch(getExportEndpointUrl(pathname), {
+
+                cache: 'no-store',
+
+                ...options
+
+            });
+
+
+
+            let payload = null;
+
+            try {
+
+                payload = await response.json();
+
+            } catch (_) {
+
+                payload = null;
+
+            }
+
+
+
+            if (!response.ok) {
+
+                const errorText = String(payload?.error || `HTTP ${response.status}`).trim();
+
+                throw new Error(errorText || 'Error de backend');
+
+            }
+
+
+
+            return payload;
+
+        }
+
+
+
+        function setExportRunStatus(message, kind = '') {
+
+            const elem = $('qaExportRunStatus');
+
+            if (!(elem instanceof HTMLElement)) return;
+
+            elem.classList.remove('ok', 'warn', 'bad');
+
+            if (kind) elem.classList.add(kind);
+
+            elem.textContent = String(message || 'Sin ejecutar');
+
+        }
+
+
+
+        function renderExportSummary(summary = {}) {
+
+            const total = $('qaExportSummaryTotal');
+
+            const importCount = $('qaExportSummaryImport');
+
+            const pending = $('qaExportSummaryPending');
+
+            const discarded = $('qaExportSummaryDiscarded');
+
+            const occurrences = $('qaExportSummaryOccurrences');
+
+
+
+            if (total) total.textContent = String(Number(summary.preview_total || 0));
+
+            if (importCount) importCount.textContent = String(Number(summary.preview_import || 0));
+
+            if (pending) pending.textContent = String(Number(summary.preview_pending || 0));
+
+            if (discarded) discarded.textContent = String(Number(summary.preview_discarded || 0));
+
+
+
+            if (occurrences) {
+
+                const rows = Array.isArray(state.exportPreviewRows) ? state.exportPreviewRows : [];
+
+                const sum = rows.reduce((acc, row) => acc + (Number(row?.total_occurrences_global) || 0), 0);
+
+                occurrences.textContent = String(sum);
+
+            }
+
+        }
+
+
+
+        function getExportPreviewFilterState() {
+
+            const decisionFilter = String($('qaExportDecisionFilter')?.value || '__all__').trim().toLowerCase();
+
+            const query = String($('qaExportSearchInput')?.value || '').trim().toLowerCase();
+
+            return {
+
+                decision: decisionFilter || '__all__',
+
+                query
+
+            };
+
+        }
+
+
+
+        function applyExportPreviewFilters(rows) {
+
+            const sourceRows = Array.isArray(rows) ? rows : [];
+
+            const filters = getExportPreviewFilterState();
+
+
+
+            return sourceRows.filter((row) => {
+
+                const decision = String(row?.import_decision || '').trim().toLowerCase();
+
+                if (filters.decision !== '__all__' && decision !== filters.decision) {
+
+                    return false;
+
+                }
+
+
+
+                if (!filters.query) return true;
+
+
+
+                const haystack = [
+
+                    row?.sku,
+
+                    row?.designation_final,
+
+                    row?.import_reason,
+
+                    row?.engine_models_all,
+
+                    row?.source_ids_all
+
+                ].map((item) => String(item || '').toLowerCase()).join(' | ');
+
+
+
+                return haystack.includes(filters.query);
+
+            });
+
+        }
+
+
+
+        function renderExportFilteredCount(visible, total) {
+
+            const elem = $('qaExportFilteredCount');
+
+            if (!(elem instanceof HTMLElement)) return;
+
+            elem.textContent = `${Number(visible || 0)} / ${Number(total || 0)}`;
+
+        }
+
+
+
+        function applyExportPreviewSort(rows) {
+
+            const key = String(state.exportPreviewSortKey || '').trim();
+
+            if (!key) return rows;
+
+            const asc = state.exportPreviewSortAsc !== false;
+
+            const numericKeys = new Set(['total_occurrences_global']);
+
+
+
+            const sorted = [...rows].sort((a, b) => {
+
+                const va = a?.[key];
+
+                const vb = b?.[key];
+
+                if (numericKeys.has(key)) {
+
+                    return (Number(va) || 0) - (Number(vb) || 0);
+
+                }
+
+                return String(va || '').localeCompare(String(vb || ''), 'es', { numeric: true, sensitivity: 'base' });
+
+            });
+
+
+
+            return asc ? sorted : sorted.reverse();
+
+        }
+
+
+
+        function updateExportSortHeaderClasses() {
+
+            document.querySelectorAll('th[data-export-sort]').forEach((th) => {
+
+                th.classList.remove('is-sorted-asc', 'is-sorted-desc');
+
+                if (th.getAttribute('data-export-sort') === state.exportPreviewSortKey) {
+
+                    th.classList.add(state.exportPreviewSortAsc !== false ? 'is-sorted-asc' : 'is-sorted-desc');
+
+                }
+
+            });
+
+        }
+
+
+
+        function toggleExportPreviewSort(key) {
+
+            const normalized = String(key || '').trim();
+
+            if (!normalized) return;
+
+            if (state.exportPreviewSortKey === normalized) {
+
+                state.exportPreviewSortAsc = !state.exportPreviewSortAsc;
+
+            } else {
+
+                state.exportPreviewSortKey = normalized;
+
+                state.exportPreviewSortAsc = true;
+
+            }
+
+            updateExportSortHeaderClasses();
+
+            renderExportPreviewRows(state.exportPreviewRows || []);
+
+        }
+
+
+
+        function toCsvCell(value) {
+
+            const text = String(value == null ? '' : value);
+
+            if (text.includes('"') || text.includes(';') || text.includes('\n') || text.includes('\r')) {
+
+                return `"${text.replace(/"/g, '""')}"`;
+
+            }
+
+            return text;
+
+        }
+
+
+
+        function downloadExportPreviewCsv() {
+
+            const rows = applyExportPreviewSort(applyExportPreviewFilters(state.exportPreviewRows || []));
+
+            if (!rows.length) {
+
+                setExportRunStatus('No hay filas para exportar', 'warn');
+
+                return;
+
+            }
+
+
+
+            // Columnas exactas que aparecen en pantalla (SYNTHETIC_NEW_EXPORT_COLUMNS)
+
+            const headers = [
+
+                'Id',
+
+                'fecha_version',
+
+                'POS',
+
+                'designation',
+
+                'engine',
+
+                'model_type',
+
+                'type',
+
+                'pn',
+
+                'nsn',
+
+                'GESA_NORM',
+
+                'GESA_NORMALIZADO',
+
+                'fg_code',
+
+                'fg_description',
+
+                'fg_code_description',
+
+                'weight',
+
+                'weight_txt',
+
+                'measurement',
+
+                'TIPOARTICULO',
+
+                'PAG',
+
+                'BOM_no',
+
+                'esquema_general',
+
+                'exp_motor',
+
+                'exp_categorias',
+
+                'atributo',
+
+                'SUST_TIPO',
+
+                'new_pn_relacionado',
+
+                'old_pn_relacionados',
+
+                'EN_EXCEL_SUSTITUCION',
+
+                'ruta_foto',
+
+                'exp_imagenes'
+
+            ];
+
+
+
+            const lines = [headers.join(';')];
+
+            for (const row of rows) {
+
+                lines.push(headers.map((h) => toCsvCell(row?.[h])).join(';'));
+
+            }
+
+
+
+            const blob = new Blob([`\uFEFF${lines.join('\n')}\n`], { type: 'text/csv;charset=utf-8' });
+
+            const url = URL.createObjectURL(blob);
+
+            const link = document.createElement('a');
+
+            link.href = url;
+
+            const timestamp = new Date().toISOString().slice(0, 19).replace('T', '_').replace(/:/g, '-');
+
+            link.download = `wordpress_export_preview_filtered_${timestamp}.csv`;
+
+            document.body.appendChild(link);
+
+            link.click();
+
+            document.body.removeChild(link);
+
+            URL.revokeObjectURL(url);
+
+
+
+            setExportRunStatus(`CSV descargado (${rows.length} filas)`, 'ok');
+
+        }
+
+
+
+        function renderExportTrace(trace, sku) {
+
+            const traceSku = $('qaExportTraceSku');
+
+            const body = $('qaExportTraceBody');
+
+            if (!(body instanceof HTMLElement)) return;
+
+
+
+            const safeSku = String(sku || '').trim();
+
+            if (traceSku) traceSku.textContent = safeSku || 'Sin selección';
+
+
+
+            if (!trace || typeof trace !== 'object') {
+
+                body.textContent = 'No hay traza para este SKU.';
+
+                return;
+
+            }
+
+
+
+            const compacted = trace.compacted || {};
+
+            const sourceRecords = Array.isArray(trace.source_records) ? trace.source_records : [];
+
+            const preview = trace.preview || {};
+
+
+
+            const sourcePreviewRows = sourceRecords.slice(0, 30).map((row) => (`<tr>`
+
+                + `<td>${escapeHtml(String(row?.id || '-'))}</td>`
+
+                + `<td>${escapeHtml(String(row?.engine_model || '-'))}</td>`
+
+                + `<td>${escapeHtml(String(row?.source_page || '-'))}</td>`
+
+                + `<td>${escapeHtml(String(row?.pos || '-'))}</td>`
+
+                + `<td>${escapeHtml(String(row?.designation_final || '-'))}</td>`
+
+                + `<td>${escapeHtml(String(row?.measure_final || '-'))}</td>`
+
+                + `<td>${escapeHtml(String(row?.weight_final || '-'))}</td>`
+
+                + `</tr>`)).join('');
+
+
+
+            body.innerHTML = ''
+
+                + '<div class="qa-export-trace-kpis">'
+
+                + `<div class="qa-export-trace-kpi"><span>Decision</span><strong>${escapeHtml(String(preview.import_decision || '-'))}</strong></div>`
+
+                + `<div class="qa-export-trace-kpi"><span>Ocurrencias</span><strong>${escapeHtml(String(compacted.total_occurrences_global || 0))}</strong></div>`
+
+                + `<div class="qa-export-trace-kpi"><span>Registros fuente</span><strong>${escapeHtml(String(sourceRecords.length))}</strong></div>`
+
+                + '</div>'
+
+                + `<p><b>Motivo:</b> ${escapeHtml(String(preview.import_reason || '-'))}</p>`
+
+                + `<p><b>Motores:</b> ${escapeHtml(String(compacted.engine_models_all || '-'))}</p>`
+
+                + `<p><b>Páginas:</b> ${escapeHtml(String(compacted.source_pages_all || '-'))}</p>`
+
+                + `<p><b>IDs:</b> ${escapeHtml(String(compacted.source_ids_all || '-'))}</p>`
+
+                + '<p><b>Provenance (máx. 30 filas):</b></p>'
+
+                + '<div class="qa-export-trace-table-wrap">'
+
+                + '<table class="qa-export-trace-table" aria-label="Registros fuente del SKU">'
+
+                + '<thead><tr><th>ID</th><th>Motor</th><th>Página</th><th>POS</th><th>Designation</th><th>Measure</th><th>Weight</th></tr></thead>'
+
+                + `<tbody>${sourcePreviewRows || '<tr><td colspan="7">Sin registros fuente</td></tr>'}</tbody>`
+
+                + '</table>'
+
+                + '</div>';
+
+        }
+
+
+
+        function renderExportPreviewRows(rows) {
+
+            const body = $('qaExportPreviewBody');
+
+            if (!(body instanceof HTMLElement)) return;
+
+
+
+            const totalRows = Array.isArray(rows) ? rows : [];
+
+            const filteredRows = applyExportPreviewFilters(totalRows);
+
+            const visibleRows = applyExportPreviewSort(filteredRows);
+
+            renderExportFilteredCount(visibleRows.length, totalRows.length);
+
+
+
+            if (!visibleRows.length) {
+
+                const emptyMessage = totalRows.length
+
+                    ? 'No hay filas para los filtros actuales.'
+
+                    : 'No hay preview cargado.';
+
+                body.innerHTML = `<tr><td colspan="4">${emptyMessage}</td></tr>`;
+
+                return;
+
+            }
+
+
+
+            body.innerHTML = visibleRows.map((row) => {
+
+                const sku = String(row?.sku || '').trim();
+
+                const isSelected = sku && sku === state.selectedExportSku;
+
+                return `<tr data-export-sku="${escapeHtml(sku)}" class="${isSelected ? 'qa-export-preview-selected' : ''}">`
+
+                    + `<td>${escapeHtml(sku || '-')}</td>`
+
+                    + `<td>${escapeHtml(String(row?.import_decision || '-'))}</td>`
+
+                    + `<td>${escapeHtml(String(row?.designation_final || '-'))}</td>`
+
+                    + `<td>${escapeHtml(String(row?.total_occurrences_global || 0))}</td>`
+
+                    + '</tr>';
+
+            }).join('');
+
+        }
+
+
+
+        async function loadExportTraceForSku(sku) {
+
+            const normalizedSku = String(sku || '').trim();
+
+            if (!normalizedSku) {
+
+                renderExportTrace(null, '');
+
+                return;
+
+            }
+
+
+
+            if (state.exportTraceCache && state.exportTraceCache[normalizedSku]) {
+
+                renderExportTrace(state.exportTraceCache[normalizedSku], normalizedSku);
+
+                return;
+
+            }
+
+
+
+            try {
+
+                const payload = await fetchExportJson(`/export/trace/${encodeURIComponent(normalizedSku)}`);
+
+                if (!state.exportTraceCache || typeof state.exportTraceCache !== 'object') {
+
+                    state.exportTraceCache = {};
+
+                }
+
+                state.exportTraceCache[normalizedSku] = payload.trace || null;
+
+                renderExportTrace(payload.trace || null, normalizedSku);
+
+            } catch (error) {
+
+                renderExportTrace(null, normalizedSku);
+
+                setExportRunStatus(`Error de traza: ${error.message}`, 'bad');
+
+            }
+
+        }
+
+
+
+        async function loadExportPreview() {
+
+            try {
+
+                const payload = await fetchExportJson('/export/preview');
+
+                const rows = Array.isArray(payload?.rows) ? payload.rows : [];
+
+                state.exportPreviewRows = rows;
+
+                renderExportSummary(payload?.summary || {});
+
+                renderExportPreviewRows(rows);
+
+
+
+                if (rows.length && !state.selectedExportSku) {
+
+                    state.selectedExportSku = String(rows[0].sku || '').trim();
+
+                }
+
+
+
+                if (state.selectedExportSku) {
+
+                    await loadExportTraceForSku(state.selectedExportSku);
+
+                    renderExportPreviewRows(rows);
+
+                }
+
+            } catch (error) {
+
+                setExportRunStatus(`Error al cargar preview: ${error.message}`, 'bad');
+
+            }
+
+        }
+
+
+
+        function resetExportPreviewFilters() {
+
+            const decision = $('qaExportDecisionFilter');
+
+            if (decision instanceof HTMLSelectElement) decision.value = '__all__';
+
+
+
+            const search = $('qaExportSearchInput');
+
+            if (search instanceof HTMLInputElement) search.value = '';
+
+        }
+
+
+
+        async function runExportPipeline(endpoint, label) {
+
+            const actionButtons = [
+
+                $('qaExportRunWordpressBtn'),
+
+                $('qaExportReloadPreviewBtn')
+
+            ].filter((item) => item instanceof HTMLButtonElement);
+
+
+
+            actionButtons.forEach((button) => {
+
+                button.disabled = true;
+
+            });
+
+
+
+            setExportRunStatus(`${label} en ejecución...`, 'warn');
+
+            try {
+
+                await fetchExportJson(endpoint, {
+
+                    method: 'POST',
+
+                    headers: { 'Content-Type': 'application/json' },
+
+                    body: '{}'
+
+                });
+
+                await loadExportPreview();
+
+                setExportRunStatus(`${label} completado`, 'ok');
+
+            } catch (error) {
+
+                setExportRunStatus(`${label} falló: ${error.message}`, 'bad');
+
+            } finally {
+
+                actionButtons.forEach((button) => {
+
+                    button.disabled = false;
+
+                });
+
+            }
+
+        }
+
+
+
+        function getBookEngineCode(row) {
+
+            const sourceFile = String(row?.source_file ?? '').trim();
+
+            if (sourceFile) return sourceFile.replace(/\.xlsx$/i, '');
+
+
+
+            const engineModel = String(row?.engine_model ?? '').trim();
+
+            if (!engineModel) return '';
+
+
+
+            return engineModel
+
+                .replace(/^engine_/i, '')
+
+                .replace(/\.json$/i, '')
+
+                .trim();
+
+        }
+
+
+
+        function openAnalisisForRow(row) {
+
+            if (!row) return;
+
+
+
+            const book = String(row?.engine_model ?? '').trim();
+
+            const id = String(row?.ID ?? '').trim();
+
+            if (!id) {
+
+                alert('El registro no tiene ID para abrir analisis.');
+
+                return;
+
+            }
+
+
+
+            const params = new URLSearchParams();
+
+            const isEmbedded = new URLSearchParams(window.location.search || '').get('embedded') === '1';
+
+            if (book) params.set('engine', book);
+
+            params.set('id', id);
+
+            if (isEmbedded) {
+
+                params.set('embedded', '1');
+
+                try {
+
+                    const openViaShell = window.parent?.miluShellOpenAnalisisRecord;
+
+                    if (typeof openViaShell === 'function') {
+
+                        const opened = openViaShell({ engine: book, id });
+
+                        if (opened !== false) return;
+
+                    }
+
+                } catch (_) {
+
+                    // Fallback to direct navigation.
+
+                }
+
+            }
+
+
+
+            const targetUrl = `analista_02.html?${params.toString()}`;
+
+            window.location.assign(targetUrl);
+
+        }
+
+
+
+        function getStartupRecordModalRequestFromUrl() {
+
+            const params = new URLSearchParams(window.location.search || '');
+
+            const openRecordRaw = String(params.get('openRecord') || '').trim().toLowerCase();
+
+            const shouldOpenRecord = openRecordRaw === '1' || openRecordRaw === 'true';
+
+            if (!shouldOpenRecord) return null;
+
+
+
+            const request = {
+
+                engine: String(params.get('engine') || '').trim(),
+
+                id: String(params.get('id') || '').trim(),
+
+                record: String(params.get('record') || '').trim(),
+
+                mode: String(params.get('mode') || '').trim().toLowerCase() === 'export' ? 'export' : 'record'
+
+            };
+
+
+
+            if (!request.engine && !request.id && !request.record) return null;
+
+            return request;
+
+        }
+
+
+
+
+
+        function getModalMatchesByPn(row) {
+
+            const pn = normModalMatch(row?.['PART NO.'] ?? row?.pn ?? '');
+
+            if (!pn) return [];
+
+            return state.allData
+
+                .filter(item => normModalMatch(item?.['PART NO.'] ?? item?.pn ?? '') === pn)
+
+                .map(item => ({
+
+                    revisionKey: getRevisionKey(item),
+
+                    page: String(item?.['Source Page'] ?? ''),
+
+                    pos: String(item?.POS ?? ''),
+
+                    id: String(item?.ID ?? ''),
+
+                    partNumber: String(item?.['PART NO.'] ?? item?.pn ?? ''),
+
+                    estado: String(item?.qa_revision_estado ?? ''),
+
+                    designationFinal: String(item?.designation_final ?? item?.DESIGNATION ?? ''),
+
+                    weightFinal: String(item?.weight_final ?? ''),
+
+                    measurementFinal: String(item?.measure_final ?? item?.measurement_final ?? ''),
+
+                    fgsCodeDescription: String(item?.fgs_code_description ?? ''),
+
+                    accion: String(item?.qa_revision_accion ?? ''),
+
+                    book: getBookEngineCode(item)
+
+                }));
+
+        }
+
+
+
+        function syncRecordModalBookFilter(row, matches, selectId = 'qaModalMatchesBookFilter') {
+
+            const select = $(selectId);
+
+            if (!(select instanceof HTMLSelectElement)) return;
+
+
+
+            const currentBook = getBookEngineCode(row);
+
+            const previousValue = String(select.value || '__current__');
+
+            const books = [...new Set(matches.map(item => String(item.book || '').trim()).filter(Boolean))]
+
+                .sort((a, b) => a.localeCompare(b, 'es', { numeric: true, sensitivity: 'base' }));
+
+
+
+            const options = [
+
+                { value: '__current__', label: currentBook ? `Libro actual (${currentBook})` : 'Libro actual' },
+
+                { value: '__all__', label: 'Todos los libros' },
+
+                ...books.map(book => ({ value: book, label: book }))
+
+            ];
+
+
+
+            select.innerHTML = options
+
+                .map(opt => `<option value="${escapeHtml(opt.value)}">${escapeHtml(opt.label)}</option>`)
+
+                .join('');
+
+
+
+            const hasPrevious = options.some(opt => opt.value === previousValue);
+
+            select.value = hasPrevious ? previousValue : '__current__';
+
+        }
+
+        function getRowByRevisionKey(revisionKey) {
+
+            return state.allData.find(item => getRevisionKey(item) === revisionKey);
+
+        }
+
+
+
+        function selectRevisionRowByKey(revisionKey) {
+
+            const key = String(revisionKey || '').trim();
+
+            if (!key) return false;
+
+            const row = getRowByRevisionKey(key);
+
+            if (!row) return false;
+
+            state.selectedRevisionRowKey = key;
+
+            refreshSelectedRowVisual();
+
+            renderSelectedRowPosPanel(row);
+
+            renderSelectedRowPosTop(row);
+
+            document.dispatchEvent(new CustomEvent('qa:selected-row-changed', {
+
+                detail: { revisionKey: key }
+
+            }));
+
+            return true;
+
+        }
+
+
+
+        function resolveRowForShellRecordModal(request = {}) {
+
+            const requestedRevisionKey = String(request?.revisionKey || '').trim();
+
+            if (requestedRevisionKey) {
+
+                const byRevisionKey = getRowByRevisionKey(requestedRevisionKey);
+
+                if (byRevisionKey) return byRevisionKey;
+
+            }
+
+
+
+            const requestedId = String(request?.id || '').trim().toLowerCase();
+
+            const requestedRecord = String(request?.record || '').trim().toLowerCase();
+
+            const requestedBook = resolveBookValue(request?.engine || request?.book || '').trim().toLowerCase();
+
+
+
+            return state.allData.find(item => {
+
+                const itemBook = String(item?.engine_model ?? '').trim().toLowerCase();
+
+                if (requestedBook && itemBook !== requestedBook) return false;
+
+
+
+                const itemId = String(item?.ID ?? '').trim().toLowerCase();
+
+                const itemPnFinal = String(item?.pn_final ?? '').trim().toLowerCase();
+
+                const itemPartNo = String(item?.['PART NO.'] ?? item?.pn ?? '').trim().toLowerCase();
+
+
+
+                if (requestedId && itemId === requestedId) return true;
+
+                if (requestedRecord && (itemPnFinal === requestedRecord || itemPartNo === requestedRecord)) return true;
+
+                return false;
+
+            }) || null;
+
+        }
+
+
+
+        function openRecordModalFromShell(request = {}) {
+
+            if (!Array.isArray(state.allData) || state.allData.length === 0) {
+
+                pendingShellRecordModalRequest = { ...request };
+
+                return false;
+
+            }
+
+
+
+            const row = resolveRowForShellRecordModal(request);
+
+            if (!row) return false;
+
+
+
+            const revisionKey = getRevisionKey(row);
+
+            if (!revisionKey) return false;
+
+
+
+            const targetBook = String(row?.engine_model ?? '').trim();
+
+            const targetPage = resolvePdfPage(row);
+
+
+
+            if (targetBook) {
+
+                applyBookSelection(targetBook, {
+
+                    pageValue: targetPage,
+
+                    fallbackToFirstAvailablePage: true,
+
+                    render: true,
+
+                    updatePdf: true
+
+                });
+
+            }
+
+
+
+            const moved = focusRevisionRowInMainTable(revisionKey);
+
+            if (!moved) {
+
+                selectRevisionRowByKey(revisionKey);
+
+            }
+
+
+
+            setRightPanelTab('pdf');
+
+            const requestedMode = String(request?.mode || '').trim().toLowerCase();
+
+            if (requestedMode === 'export') {
+
+                openExportModal(revisionKey);
+
+            } else {
+
+                openRecordModal(revisionKey);
+
+            }
+
+            pendingShellRecordModalRequest = null;
+
+            return true;
+
+        }
+
+
+
+        window.miluOpenPdfRecordModal = (request = {}) => openRecordModalFromShell(request);
+
+
+
+        async function refreshDataFromShellUpdate(request = {}) {
+
+            if (!Array.isArray(state.allData) || state.allData.length === 0) return false;
+
+
+
+            const selectedRevisionKeyBefore = String(state.selectedRevisionRowKey || '').trim();
+
+            const currentPageBefore = Number(state.currentPage || 1);
+
+            const recordModal = $('qaRecordModalForm');
+
+            const openModalRevisionKey = recordModal instanceof HTMLFormElement
+
+                ? String(recordModal.dataset.revisionKey || '').trim()
+
+                : '';
+
+
+
+            const requestedId = String(request?.id || '').trim().toLowerCase();
+
+            const requestedBook = String(request?.engine || request?.book || '').trim().toLowerCase();
+
+
+
+            const freshData = await loadPartitionedEngineData();
+
+            if (!Array.isArray(freshData)) return false;
+
+
+
+            state.allData = freshData;
+
+            assignRevisionKeys(state.allData);
+
+            applyRevisionDataToRows(state.allData);
+
+            rebuildGlobalPartNumberIndex(state.allData);
+
+
+
+            state.currentPage = currentPageBefore;
+
+            renderTable();
+
+            renderPagination();
+
+
+
+            let targetRevisionKey = '';
+
+            if (requestedId) {
+
+                const requestedRow = state.allData.find((row) => {
+
+                    const rowId = String(row?.ID ?? '').trim().toLowerCase();
+
+                    const rowBook = String(row?.engine_model ?? '').trim().toLowerCase();
+
+                    if (requestedBook && rowBook !== requestedBook) return false;
+
+                    return rowId === requestedId;
+
+                });
+
+                targetRevisionKey = requestedRow ? getRevisionKey(requestedRow) : '';
+
+            }
+
+
+
+            if (!targetRevisionKey && selectedRevisionKeyBefore) {
+
+                const selectedRow = getRowByRevisionKey(selectedRevisionKeyBefore);
+
+                if (selectedRow) targetRevisionKey = selectedRevisionKeyBefore;
+
+            }
+
+
+
+            if (targetRevisionKey) {
+
+                state.selectedRevisionRowKey = targetRevisionKey;
+
+                refreshSelectedRowVisual();
+
+                document.dispatchEvent(new CustomEvent('qa:selected-row-changed', {
+
+                    detail: { revisionKey: targetRevisionKey }
+
+                }));
+
+            } else {
+
+                syncSideRecordFormWithSelection();
+
+            }
+
+
+
+            if (openModalRevisionKey) {
+
+                const modalRow = getRowByRevisionKey(openModalRevisionKey);
+
+                if (modalRow) fillRecordModal(modalRow, openModalRevisionKey);
+
+            }
+
+
+
+            return true;
+
+        }
+
+
+
+        window.miluRefreshPdfData = async (request = {}) => {
+
+            try {
+
+                return await refreshDataFromShellUpdate(request);
+
+            } catch (error) {
+
+                console.warn('No se pudo refrescar QA PDF tras actualización externa:', error);
+
+                return false;
+
+            }
+
+        };
+
+
+
+        window.miluOnShellActivated = () => {
+
+            try {
+
+                syncQaSplitterLayout();
+
+                if (state.rightPanelTab === 'pdf') {
+
+                    requestPdfRelayout();
+
+                }
+
+                return true;
+
+            } catch (error) {
+
+                console.warn('No se pudo resincronizar QA PDF tras activar la vista en shell:', error);
+
+                return false;
+
+            }
+
+        };
+
+
+
+        function normModalMatch(value) {
+
+            return String(value ?? '').trim().toLowerCase();
+
+        }
+
+
+
+        function pageSortValue(page) {
+
+            const raw = String(page ?? '').trim();
+
+            const numeric = Number(raw.replace(/[^0-9]/g, ''));
+
+            return Number.isFinite(numeric) && !Number.isNaN(numeric) ? numeric : Number.MAX_SAFE_INTEGER;
+
+        }
+
+
+
+        function formatModalExportValue(value) {
+
+            if (value == null) return '';
+
+            if (Array.isArray(value)) return value.join(', ');
+
+            if (typeof value === 'object') {
+
+                try {
+
+                    return JSON.stringify(value);
+
+                } catch (_) {
+
+                    return String(value);
+
+                }
+
+            }
 
             return String(value);
 
         }
 
-    }
 
-    return String(value);
 
-}
+        function normalizeComparisonValue(value) {
 
+            return formatModalExportValue(value)
 
+                .replace(/\s+/g, ' ')
 
-function normalizeComparisonValue(value) {
-
-    return formatModalExportValue(value)
-
-        .replace(/\s+/g, ' ')
-
-        .trim();
-
-}
-
-
-
-function formatExportVersionStamp(date = new Date()) {
-
-    const year = date.getFullYear();
-
-    const month = String(date.getMonth() + 1).padStart(2, '0');
-
-    const day = String(date.getDate()).padStart(2, '0');
-
-    const hour = String(date.getHours()).padStart(2, '0');
-
-    const minute = String(date.getMinutes()).padStart(2, '0');
-
-    return `${year}${month}${day}.${hour}${minute}`;
-
-}
-
-
-
-function escapeRegExp(value) {
-
-    return String(value || '').replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-
-}
-
-
-
-function normalizeModelTypeForExport(row) {
-
-    const rawModel = String(row?.model ?? '').trim();
-
-    if (rawModel) return rawModel;
-
-
-
-    const engineModel = String(row?.engine_model ?? '').trim();
-
-    if (!engineModel) return '';
-
-    return engineModel.replace('4000', '').trim();
-
-}
-
-
-
-function normalizePageLabelForExport(row) {
-
-    const book = String(row?.engine_model ?? '').trim();
-
-    const pageRaw = String(row?.['Source Page'] ?? '').trim();
-
-    if (!book || !pageRaw) return '';
-
-    const digits = pageRaw.replace(/[^0-9]/g, '');
-
-    const page = digits ? digits.padStart(4, '0') : pageRaw;
-
-    return `${book}-${page}`;
-
-}
-
-
-
-function getPreferredRowsForPn(row) {
-
-    const currentPn = String(row?.['PART NO.'] ?? row?.pn ?? '').trim();
-
-    if (!currentPn) return [];
-
-    const normalizedPn = normModalMatch(currentPn);
-
-    return state.allData.filter(item => normModalMatch(item?.['PART NO.'] ?? item?.pn ?? '') === normalizedPn);
-
-}
-
-
-
-function getMiluNewRowForPn(row) {
-
-    const currentPn = String(row?.['PART NO.'] ?? row?.pn ?? '').trim();
-
-    if (!currentPn || !Array.isArray(state.miluNewData) || !state.miluNewData.length) return null;
-
-    const normalizedPn = normModalMatch(currentPn);
-
-    return state.miluNewData.find(item => normModalMatch(item?.pn ?? '') === normalizedPn) || null;
-
-}
-
-
-
-function getArticleHierarchyKind(row) {
-
-    const hierarchyRaw = String(row?.sust_hierarchie ?? '').trim().toUpperCase();
-
-    const hierarchy = hierarchyRaw.replace(/\s+/g, ' ').replace(/[._-]/g, ' ');
-
-    if (hierarchy === 'SUPERSEDED') return 'superseded';
-
-    if (hierarchy === 'NEW') return 'new';
-
-    // Default to New to ensure uncategorized rows are still shown.
-
-    return 'new';
-
-}
-
-
-
-function isSupersededArticle(row) {
-
-    return getArticleHierarchyKind(row) === 'superseded';
-
-}
-
-
-
-function uniqueSortedValues(values, compareAsNumeric = false) {
-
-    const unique = [...new Set(values.map(value => String(value ?? '').trim()).filter(Boolean))];
-
-    return unique.sort((a, b) => {
-
-        if (compareAsNumeric) {
-
-            return a.localeCompare(b, 'es', { numeric: true, sensitivity: 'base' });
+                .trim();
 
         }
 
-        return a.localeCompare(b, 'es', { sensitivity: 'base' });
 
-    });
 
-}
+        function formatExportVersionStamp(date = new Date()) {
 
+            const year = date.getFullYear();
 
+            const month = String(date.getMonth() + 1).padStart(2, '0');
 
-function parseWeightNumber(value) {
+            const day = String(date.getDate()).padStart(2, '0');
 
-    const text = String(value ?? '').trim();
+            const hour = String(date.getHours()).padStart(2, '0');
 
-    if (!text) return null;
+            const minute = String(date.getMinutes()).padStart(2, '0');
 
-
-
-    const normalized = text.replace(/\s+/g, ' ');
-
-    const match = normalized.match(/(\d+[\d.,]*)\s*(KGM|KG|G)\b/i);
-
-    if (!match) return null;
-
-
-
-    let numericText = match[1].replace(/\s/g, '');
-
-    if (numericText.includes(',') && numericText.includes('.')) {
-
-        numericText = numericText.replace(/\./g, '').replace(',', '.');
-
-    } else if (numericText.includes(',')) {
-
-        numericText = numericText.replace(',', '.');
-
-    }
-
-
-
-    const parsed = Number(numericText);
-
-    if (!Number.isFinite(parsed)) return null;
-
-
-
-    const unit = match[2].toUpperCase();
-
-    if (unit === 'G') return parsed / 1000;
-
-    return parsed;
-
-}
-
-
-
-function resolveWeightForExport(row) {
-
-    const gesaWeight = Number(row?.weight_gesa);
-
-    if (Number.isFinite(gesaWeight)) return gesaWeight;
-
-
-
-    const finalWeight = parseWeightNumber(getRowValueForColumn(row, 'weight_final', ''));
-
-    if (Number.isFinite(finalWeight)) return finalWeight;
-
-
-
-    return parseWeightNumber(row?.WEIGHT);
-
-}
-
-
-
-function formatWeightTextForExport(row, weightValue) {
-
-    if (!Number.isFinite(weightValue)) {
-
-        return String(getRowValueForColumn(row, 'weight_final', '') || row?.WEIGHT || '').trim();
-
-    }
-
-    const unit = String(row?.units || 'KGM').trim() || 'KGM';
-
-    return `${weightValue.toFixed(3)} ${unit}`;
-
-}
-
-
-
-function resolveMeasurementForExport(row) {
-
-    const gesaMeasurement = String(row?.dimensions_gesa ?? '').trim().replace(/\s{2,}/g, ' ');
-
-    if (gesaMeasurement) return gesaMeasurement;
-
-
-
-    let rawMeasurement = String(row?.['MEASUREMENT / STANDARD'] ?? '').trim().replace(/\s{2,}/g, ' ');
-
-    const norma = String(row?.norma ?? '').trim();
-
-    if (rawMeasurement && norma) {
-
-        rawMeasurement = rawMeasurement.replace(new RegExp(`\\b${escapeRegExp(norma)}\\b`, 'ig'), '').trim();
-
-    }
-
-    if (rawMeasurement) return rawMeasurement;
-
-
-
-    return String(row?.measure_final ?? row?.measurement_final ?? '').trim().replace(/\s{2,}/g, ' ');
-
-}
-
-
-
-function firstNonEmptyValue(rows, getter) {
-
-    for (const row of rows) {
-
-        const value = getter(row);
-
-        if (value != null && String(value).trim() !== '') return value;
-
-    }
-
-    return null;
-
-}
-
-
-
-function mergeImageValues(primaryValue, secondaryValue) {
-
-    const merged = [];
-
-    const seen = new Set();
-
-
-
-    const addValue = (value) => {
-
-        const parts = String(value ?? '')
-
-            .split(',')
-
-            .map(part => part.trim())
-
-            .filter(Boolean);
-
-        for (const part of parts) {
-
-            const key = normModalMatch(part);
-
-            if (seen.has(key)) continue;
-
-            seen.add(key);
-
-            merged.push(part);
+            return `${year}${month}${day}.${hour}${minute}`;
 
         }
 
-    };
 
 
+        function escapeRegExp(value) {
 
-    addValue(primaryValue);
-
-    addValue(secondaryValue);
-
-    return merged.join(', ');
-
-}
-
-
-
-function buildSyntheticNewExportRow(row) {
-
-    const matches = getPreferredRowsForPn(row);
-
-    if (!matches.length) return null;
-
-    if (isSupersededArticle(row)) return null;
-
-
-
-    const weightValue = resolveWeightForExport(row);
-
-    const pageLabels = uniqueSortedValues(matches.map(item => normalizePageLabelForExport(item)), true);
-
-    const modelTypes = uniqueSortedValues(matches.map(item => normalizeModelTypeForExport(item)), true);
-
-    const engineModels = uniqueSortedValues(matches.map(item => String(item?.engine_model ?? '').trim()), true);
-
-    const categoryValues = uniqueSortedValues(matches.map(item => String(item?.categoria ?? item?.atributo ?? item?.exp_categorias ?? '').trim()));
-
-    const imageValue = firstNonEmptyValue([row, ...matches], item => item?.exp_imagenes || item?.ruta_foto || '');
-
-    const routeFotoValue = firstNonEmptyValue([row, ...matches], item => item?.ruta_foto || '');
-
-    const exportImagesValue = mergeImageValues(routeFotoValue, imageValue);
-
-    const normalizedPn = String(row?.['PART NO.'] ?? row?.pn ?? '').trim();
-
-    const hierarchy = String(row?.sust_hierarchie ?? '').trim();
-
-    const supersededList = String(row?.sust_superseded_list ?? '').trim();
-
-    const hasSubstitution = hierarchy !== '' || supersededList !== '' || String(row?.sust_new_part_number ?? '').trim() !== '';
-
-
-
-    return {
-
-        Id: String(row?.ID ?? '').trim(),
-
-        fecha_version: formatExportVersionStamp(),
-
-        POS: String(row?.POS ?? '').trim(),
-
-        designation: String(getRowValueForColumn(row, 'designation_final', '')).trim(),
-
-        engine: String(row?.engine ?? '').trim() || '4000',
-
-        model_type: modelTypes.join(', '),
-
-        type: '',
-
-        pn: normalizedPn,
-
-        nsn: String(row?.nsn ?? '').trim(),
-
-        GESA_NORM: String(row?.norma ?? '').trim(),
-
-        GESA_NORMALIZADO: String(row?.normalizado ?? '').trim(),
-
-        fg_code: row?.fg_code ?? '',
-
-        fg_description: String(row?.fgs_description ?? '').trim(),
-
-        fg_code_description: String(row?.fgs_code_description ?? '').trim(),
-
-        weight: Number.isFinite(weightValue) ? Number(weightValue.toFixed(3)) : '',
-
-        weight_txt: formatWeightTextForExport(row, weightValue),
-
-        measurement: resolveMeasurementForExport(row),
-
-        TIPOARTICULO: String(row?.TIPOARTICULO ?? '').trim() || 'piezas',
-
-        PAG: pageLabels.join(', '),
-
-        BOM_no: String(row?.['BOM-No.'] ?? '').trim(),
-
-        esquema_general: '',
-
-        exp_motor: engineModels.join(', '),
-
-        exp_categorias: categoryValues.join(', '),
-
-        atributo: categoryValues.join(', '),
-
-        SUST_TIPO: hierarchy || null,
-
-        new_pn_relacionado: hierarchy === 'New'
-
-            ? normalizedPn
-
-            : (String(row?.sust_new_part_number ?? '').trim() || null),
-
-        old_pn_relacionados: supersededList || null,
-
-        EN_EXCEL_SUSTITUCION: hasSubstitution ? 'SI' : '',
-
-        ruta_foto: routeFotoValue,
-
-        exp_imagenes: exportImagesValue
-
-    };
-
-}
-
-
-
-function buildSyntheticSupersededExportRow(row) {
-
-    const matches = getPreferredRowsForPn(row);
-
-    if (!matches.length) return null;
-
-    if (!isSupersededArticle(row)) return null;
-
-
-
-    const hierarchy = String(row?.sust_hierarchie ?? '').trim();
-
-    const relatedNewPn = String(row?.sust_new_part_number ?? '').trim()
-
-        || String(row?.['New Part Number'] ?? '').trim();
-
-    if (!relatedNewPn && hierarchy !== 'Superseded') return null;
-
-
-
-    const weightValue = resolveWeightForExport(row);
-
-    const pageLabels = uniqueSortedValues(matches.map(item => normalizePageLabelForExport(item)), true);
-
-    const modelTypes = uniqueSortedValues(matches.map(item => normalizeModelTypeForExport(item)), true);
-
-    const engineModels = uniqueSortedValues(matches.map(item => String(item?.engine_model ?? '').trim()), true);
-
-    const categoryValues = uniqueSortedValues(matches.map(item => String(item?.categoria ?? item?.atributo ?? item?.exp_categorias ?? '').trim()));
-
-    const imageValue = firstNonEmptyValue([row, ...matches], item => item?.exp_imagenes || item?.ruta_foto || '');
-
-    const routeFotoValue = firstNonEmptyValue([row, ...matches], item => item?.ruta_foto || '');
-
-    const exportImagesValue = mergeImageValues(routeFotoValue, imageValue);
-
-    const normalizedPn = String(row?.['PART NO.'] ?? row?.pn ?? '').trim();
-
-    const resolvedRelatedPn = relatedNewPn || normalizedPn;
-
-    const hasSubstitution = hierarchy === 'Superseded' || resolvedRelatedPn !== '';
-
-
-
-    return {
-
-        Id: String(row?.ID ?? '').trim(),
-
-        fecha_version: formatExportVersionStamp(),
-
-        POS: String(row?.POS ?? '').trim(),
-
-        designation: String(getRowValueForColumn(row, 'designation_final', '')).trim(),
-
-        engine: String(row?.engine ?? '').trim() || '4000',
-
-        model_type: modelTypes.join(', '),
-
-        type: '',
-
-        pn: normalizedPn,
-
-        nsn: String(row?.nsn ?? '').trim(),
-
-        GESA_NORM: String(row?.norma ?? '').trim(),
-
-        GESA_NORMALIZADO: String(row?.normalizado ?? '').trim(),
-
-        fg_code: row?.fg_code ?? '',
-
-        fg_description: String(row?.fgs_description ?? '').trim(),
-
-        fg_code_description: String(row?.fgs_code_description ?? '').trim(),
-
-        weight: Number.isFinite(weightValue) ? Number(weightValue.toFixed(3)) : '',
-
-        weight_txt: formatWeightTextForExport(row, weightValue),
-
-        measurement: resolveMeasurementForExport(row),
-
-        TIPOARTICULO: String(row?.TIPOARTICULO ?? '').trim() || 'piezas',
-
-        PAG: pageLabels.join(', '),
-
-        BOM_no: String(row?.['BOM-No.'] ?? '').trim(),
-
-        esquema_general: '',
-
-        exp_motor: engineModels.join(', '),
-
-        exp_categorias: categoryValues.join(', '),
-
-        atributo: categoryValues.join(', '),
-
-        SUST_TIPO: hierarchy || 'Superseded',
-
-        new_pn_relacionado: resolvedRelatedPn || null,
-
-        old_pn_relacionados: null,
-
-        EN_EXCEL_SUSTITUCION: hasSubstitution ? 'SI' : '',
-
-        ruta_foto: routeFotoValue,
-
-        exp_imagenes: exportImagesValue,
-
-        vinculo: resolvedRelatedPn ? `milu-naval.mystagingwebsite.com/producto/${resolvedRelatedPn}` : ''
-
-    };
-
-}
-
-
-
-function setModalSectionVisibility(tableBodyElement, visible) {
-
-    const section = tableBodyElement?.closest('section.qa-modal-related');
-
-    if (section instanceof HTMLElement) {
-
-        section.hidden = false;
-
-    }
-
-}
-
-
-
-function getModalExportColumns(matches) {
-
-    const columns = [];
-
-    const seen = new Set();
-
-    for (const item of matches) {
-
-        for (const key of Object.keys(item || {})) {
-
-            if (seen.has(key)) continue;
-
-            seen.add(key);
-
-            columns.push(key);
+            return String(value || '').replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 
         }
 
-    }
-
-    return columns;
-
-}
 
 
+        function normalizeModelTypeForExport(row) {
 
-function renderRecordModalExport(row, options = {}) {
+            const rawModel = String(row?.model ?? '').trim();
 
-    const {
-
-        headRowId = 'qaModalExportHeadRow',
-
-        bodyId = 'qaModalExportBody',
-
-        countId = 'qaModalExportCount',
-
-        onlyDiffToggleId = 'qaModalExportOnlyDiffToggle'
-
-    } = options;
-
-    const headRow = $(headRowId);
-
-    const body = $(bodyId);
-
-    const count = $(countId);
-
-    const onlyDiffToggle = $(onlyDiffToggleId);
-
-    const onlyMismatchFields = onlyDiffToggle instanceof HTMLInputElement && onlyDiffToggle.checked;
-
-    if (!(headRow instanceof HTMLElement) || !(body instanceof HTMLElement)) return;
+            if (rawModel) return rawModel;
 
 
 
-    const syntheticRow = buildSyntheticNewExportRow(row);
+            const engineModel = String(row?.engine_model ?? '').trim();
 
-    if (!syntheticRow) {
+            if (!engineModel) return '';
 
-        headRow.innerHTML = '<th>Sin datos</th>';
-
-        body.innerHTML = '<tr><td>No se pudo determinar el codigo PN del registro.</td></tr>';
-
-        if (count) count.textContent = '0 registros';
-
-        setModalSectionVisibility(body, false);
-
-        return;
-
-    }
-
-
-
-    const sourceMatches = getPreferredRowsForPn(row);
-
-    const miluNewRow = getMiluNewRowForPn(row);
-
-    const matches = [
-
-        ...(miluNewRow ? [{ origen: 'MILU_New_v506', ...miluNewRow }] : []),
-
-        { origen: 'Synthetic', ...syntheticRow }
-
-    ];
-
-    const sourceLabels = matches.map(item => String(item?.origen || '-'));
-
-    const fields = [...SYNTHETIC_NEW_EXPORT_COLUMNS];
-
-    const diffColumns = new Set();
-
-    const volatileComparisonColumns = new Set(['Id', 'fecha_version']);
-
-    const warningComparisonColumns = new Set(['exp_categorias', 'atributo']);
-
-    if (matches.length >= 2) {
-
-        const firstRow = matches[0];
-
-        const lastRow = matches[matches.length - 1];
-
-        fields.forEach(col => {
-
-            if (volatileComparisonColumns.has(col)) return;
-
-            const firstValue = normalizeComparisonValue(firstRow?.[col]);
-
-            const lastValue = normalizeComparisonValue(lastRow?.[col]);
-
-            if (firstValue !== lastValue) diffColumns.add(col);
-
-        });
-
-    }
-
-    headRow.innerHTML = ['<th>Campo</th>', ...sourceLabels.map(label => `<th>${escapeHtml(label)}</th>`)].join('');
-
-
-
-    const visibleFields = onlyMismatchFields
-
-        ? fields.filter(field => diffColumns.has(field))
-
-        : fields;
-
-
-
-    if (!visibleFields.length) {
-
-        body.innerHTML = `<tr><td colspan="${sourceLabels.length + 1}">No hay campos no coincidentes para este registro.</td></tr>`;
-
-        if (count) {
-
-            const comparedLabel = miluNewRow ? '2 registros comparados (v506 + synthetic)' : '1 registro (solo synthetic; sin match en v506)';
-
-            count.textContent = `${comparedLabel} · ${sourceMatches.length} aparicion${sourceMatches.length === 1 ? '' : 'es'} · 0 campos no coincidentes`;
+            return engineModel.replace('4000', '').trim();
 
         }
 
-        setModalSectionVisibility(body, true);
 
-        return;
 
-    }
+        function normalizePageLabelForExport(row) {
 
+            const book = String(row?.engine_model ?? '').trim();
 
+            const pageRaw = String(row?.['Source Page'] ?? '').trim();
 
-    body.innerHTML = visibleFields.map((field) => {
+            if (!book || !pageRaw) return '';
 
-        const valueCells = matches.map((item, rowIndex) => {
+            const digits = pageRaw.replace(/[^0-9]/g, '');
 
-            const rawValue = formatModalExportValue(item?.[field]);
+            const page = digits ? digits.padStart(4, '0') : pageRaw;
 
-            const displayValue = rawValue || '-';
+            return `${book}-${page}`;
 
-            const isComparedEdgeRow = rowIndex === 0 || rowIndex === matches.length - 1;
+        }
 
-            const isFieldMismatch = isComparedEdgeRow && diffColumns.has(field);
 
-            const isWarningFieldMismatch = isFieldMismatch && warningComparisonColumns.has(field);
 
-            const isCriticalFieldMismatch = isFieldMismatch && !warningComparisonColumns.has(field);
+        function getPreferredRowsForPn(row) {
 
-            const tdClasses = [
+            const currentPn = String(row?.['PART NO.'] ?? row?.pn ?? '').trim();
 
-                isCriticalFieldMismatch ? 'qa-modal-cell-diff' : '',
+            if (!currentPn) return [];
 
-                isWarningFieldMismatch ? 'qa-modal-cell-diff-warn' : ''
+            const normalizedPn = normModalMatch(currentPn);
 
-            ].filter(Boolean).join(' ');
+            return state.allData.filter(item => normModalMatch(item?.['PART NO.'] ?? item?.pn ?? '') === normalizedPn);
 
-            return `<td class="${tdClasses}" title="${escapeHtml(rawValue)}">${escapeHtml(displayValue)}</td>`;
+        }
 
-        }).join('');
 
 
+        function getMiluNewRowForPn(row) {
 
-        return `<tr><td>${escapeHtml(field)}</td>${valueCells}</tr>`;
+            const currentPn = String(row?.['PART NO.'] ?? row?.pn ?? '').trim();
 
-    }).join('');
+            if (!currentPn || !Array.isArray(state.miluNewData) || !state.miluNewData.length) return null;
 
+            const normalizedPn = normModalMatch(currentPn);
 
+            return state.miluNewData.find(item => normModalMatch(item?.pn ?? '') === normalizedPn) || null;
 
-    if (count) {
+        }
 
-        const comparedLabel = miluNewRow ? '2 registros comparados (v506 + synthetic)' : '1 registro (solo synthetic; sin match en v506)';
 
-        const fieldLabel = onlyMismatchFields
 
-            ? `${visibleFields.length} campo${visibleFields.length === 1 ? '' : 's'} no coincidente${visibleFields.length === 1 ? '' : 's'}`
+        function getArticleHierarchyKind(row) {
 
-            : `${fields.length} campos`;
+            const hierarchyRaw = String(row?.sust_hierarchie ?? '').trim().toUpperCase();
 
-        count.textContent = `${comparedLabel} · ${sourceMatches.length} aparicion${sourceMatches.length === 1 ? '' : 'es'} · ${fieldLabel}`;
+            const hierarchy = hierarchyRaw.replace(/\s+/g, ' ').replace(/[._-]/g, ' ');
 
-    }
+            if (hierarchy === 'SUPERSEDED') return 'superseded';
 
-    setModalSectionVisibility(body, true);
+            if (hierarchy === 'NEW') return 'new';
 
-}
+            // Default to New to ensure uncategorized rows are still shown.
 
+            return 'new';
 
+        }
 
-function renderRecordModalSuperseded(row, options = {}) {
 
-    const {
 
-        headRowId = 'qaModalSupersededHeadRow',
+        function isSupersededArticle(row) {
 
-        bodyId = 'qaModalSupersededBody',
+            return getArticleHierarchyKind(row) === 'superseded';
 
-        countId = 'qaModalSupersededCount'
+        }
 
-    } = options;
 
-    const headRow = $(headRowId);
 
-    const body = $(bodyId);
+        function uniqueSortedValues(values, compareAsNumeric = false) {
 
-    const count = $(countId);
+            const unique = [...new Set(values.map(value => String(value ?? '').trim()).filter(Boolean))];
 
-    if (!(headRow instanceof HTMLElement) || !(body instanceof HTMLElement)) return;
+            return unique.sort((a, b) => {
 
+                if (compareAsNumeric) {
 
+                    return a.localeCompare(b, 'es', { numeric: true, sensitivity: 'base' });
 
-    const syntheticRow = buildSyntheticSupersededExportRow(row);
+                }
 
-    if (!syntheticRow) {
+                return a.localeCompare(b, 'es', { sensitivity: 'base' });
 
-        headRow.innerHTML = '<th>Sin datos</th>';
+            });
 
-        body.innerHTML = '<tr><td>El registro no tiene datos suficientes para reconstruir MILU_Superseded.</td></tr>';
+        }
 
-        if (count) count.textContent = '0 registros';
 
-        setModalSectionVisibility(body, false);
 
-        return;
+        function parseWeightNumber(value) {
 
-    }
+            const text = String(value ?? '').trim();
 
+            if (!text) return null;
 
 
-    const sourceMatches = getPreferredRowsForPn(row);
 
-    const columns = SYNTHETIC_SUPERSEDED_EXPORT_COLUMNS.filter(col => Object.prototype.hasOwnProperty.call(syntheticRow, col));
+            const normalized = text.replace(/\s+/g, ' ');
 
-    headRow.innerHTML = '<th>Campo</th><th>Synthetic</th>';
+            const match = normalized.match(/(\d+[\d.,]*)\s*(KGM|KG|G)\b/i);
 
+            if (!match) return null;
 
 
-    body.innerHTML = columns.map(col => {
 
-        const rawValue = formatModalExportValue(syntheticRow?.[col]);
+            let numericText = match[1].replace(/\s/g, '');
 
-        const displayValue = rawValue || '-';
+            if (numericText.includes(',') && numericText.includes('.')) {
 
-        return `<tr><td>${escapeHtml(col)}</td><td title="${escapeHtml(rawValue)}">${escapeHtml(displayValue)}</td></tr>`;
+                numericText = numericText.replace(/\./g, '').replace(',', '.');
 
-    }).join('');
+            } else if (numericText.includes(',')) {
 
+                numericText = numericText.replace(',', '.');
 
+            }
 
-    if (count) count.textContent = `1 registro reconstruido · ${sourceMatches.length} aparicion${sourceMatches.length === 1 ? '' : 'es'}`;
 
-    setModalSectionVisibility(body, true);
 
-}
+            const parsed = Number(numericText);
 
+            if (!Number.isFinite(parsed)) return null;
 
 
-function renderRecordModalMatches(row, currentRevisionKey, options = {}) {
 
-    const {
+            const unit = match[2].toUpperCase();
 
-        bodyId = 'qaModalMatchesBody',
+            if (unit === 'G') return parsed / 1000;
 
-        countId = 'qaModalMatchesCount',
+            return parsed;
 
-        bookFilterId = 'qaModalMatchesBookFilter',
+        }
 
-        showAction = true
 
-    } = options;
 
-    const body = $(bodyId);
+        function resolveWeightForExport(row) {
 
-    const count = $(countId);
+            const gesaWeight = Number(row?.weight_gesa);
 
-    if (!(body instanceof HTMLElement)) return;
+            if (Number.isFinite(gesaWeight)) return gesaWeight;
 
 
 
-    const matchesByPn = getModalMatchesByPn(row);
+            const finalWeight = parseWeightNumber(getRowValueForColumn(row, 'weight_final', ''));
 
-    const currentBook = normModalMatch(getBookEngineCode(row));
+            if (Number.isFinite(finalWeight)) return finalWeight;
 
 
 
-    const emptyColspan = 5;
+            return parseWeightNumber(row?.WEIGHT);
 
+        }
 
 
-    if (!matchesByPn.length) {
 
-        body.innerHTML = `<tr><td colspan="${emptyColspan}">No se pudo determinar PN/libro del registro.</td></tr>`;
+        function formatWeightTextForExport(row, weightValue) {
 
-        if (count) count.textContent = '0 coincidencias';
+            if (!Number.isFinite(weightValue)) {
 
-        setModalSectionVisibility(body, false);
+                return String(getRowValueForColumn(row, 'weight_final', '') || row?.WEIGHT || '').trim();
 
-        return;
+            }
 
-    }
+            const unit = String(row?.units || 'KGM').trim() || 'KGM';
 
+            return `${weightValue.toFixed(3)} ${unit}`;
 
+        }
 
-    syncRecordModalBookFilter(row, matchesByPn, bookFilterId);
 
-    const selectedBookFilter = String($(bookFilterId)?.value || '__current__');
 
+        function resolveMeasurementForExport(row) {
 
+            const gesaMeasurement = String(row?.dimensions_gesa ?? '').trim().replace(/\s{2,}/g, ' ');
 
-    const filteredMatches = matchesByPn.filter(item => {
+            if (gesaMeasurement) return gesaMeasurement;
 
-        const itemBook = normModalMatch(item.book);
 
-        if (selectedBookFilter === '__all__') return true;
 
-        if (selectedBookFilter === '__current__') return !!currentBook && itemBook === currentBook;
+            let rawMeasurement = String(row?.['MEASUREMENT / STANDARD'] ?? '').trim().replace(/\s{2,}/g, ' ');
 
-        return itemBook === normModalMatch(selectedBookFilter);
+            const norma = String(row?.norma ?? '').trim();
 
-    });
+            if (rawMeasurement && norma) {
 
+                rawMeasurement = rawMeasurement.replace(new RegExp(`\\b${escapeRegExp(norma)}\\b`, 'ig'), '').trim();
 
+            }
 
-    const matches = filteredMatches
+            if (rawMeasurement) return rawMeasurement;
 
-        .sort((a, b) => {
 
-            const byBook = String(a.book || '').localeCompare(String(b.book || ''), 'es', { numeric: true, sensitivity: 'base' });
 
-            if (byBook !== 0) return byBook;
+            return String(row?.measure_final ?? row?.measurement_final ?? '').trim().replace(/\s{2,}/g, ' ');
 
-            const byPage = pageSortValue(a.page) - pageSortValue(b.page);
+        }
 
-            if (byPage !== 0) return byPage;
 
-            const byPos = a.pos.localeCompare(b.pos, 'es', { numeric: true, sensitivity: 'base' });
 
-            if (byPos !== 0) return byPos;
+        function firstNonEmptyValue(rows, getter) {
 
-            return a.id.localeCompare(b.id, 'es', { numeric: true, sensitivity: 'base' });
+            for (const row of rows) {
 
-        });
+                const value = getter(row);
 
+                if (value != null && String(value).trim() !== '') return value;
 
+            }
 
-    if (!matches.length) {
+            return null;
 
-        body.innerHTML = `<tr><td colspan="${emptyColspan}">Sin coincidencias para el filtro seleccionado.</td></tr>`;
+        }
 
-        if (count) count.textContent = '0 coincidencias';
 
-        setModalSectionVisibility(body, false);
 
-        return;
+        function mergeImageValues(primaryValue, secondaryValue) {
 
-    }
+            const merged = [];
 
+            const seen = new Set();
 
 
-    body.innerHTML = matches.map(item => {
 
-        const isCurrent = item.revisionKey === currentRevisionKey;
+            const addValue = (value) => {
 
-        const revisionKeyAttr = escapeHtml(String(item.revisionKey || ''));
+                const parts = String(value ?? '')
 
-        const normalizedEstado = normModalMatch(item.estado);
+                    .split(',')
 
-        const isOkStatus = normalizedEstado === 'ok';
+                    .map(part => part.trim())
 
-        const sideStatusClass = isOkStatus ? 'ok' : 'ko';
+                    .filter(Boolean);
 
-        const sideStatusLabel = isOkStatus ? 'OK' : 'KO';
+                for (const part of parts) {
 
-        return `<tr class="${isCurrent ? 'qa-modal-related-current' : ''}" data-revision-key="${revisionKeyAttr}" title="Doble click para ir al registro en tabla principal">`
+                    const key = normModalMatch(part);
 
-            + `<td>${escapeHtml(item.book || '-')}</td>`
+                    if (seen.has(key)) continue;
 
-            + `<td>${escapeHtml(item.page || '-')}</td>`
+                    seen.add(key);
 
-            + `<td>${escapeHtml(item.pos || '-')}</td>`
+                    merged.push(part);
 
-            + (showAction
+                }
 
-                ? `<td>${escapeHtml(item.designationFinal || '-')}</td><td>${escapeHtml(item.accion || '-')}</td>`
+            };
 
-                : `<td class="qa-side-match-part-number">${escapeHtml(item.partNumber || '-')}</td><td><span class="qa-side-match-st ${sideStatusClass}">${sideStatusLabel}</span></td>`)
 
-            + '</tr>';
 
-    }).join('');
+            addValue(primaryValue);
 
+            addValue(secondaryValue);
 
+            return merged.join(', ');
 
-    if (count) count.textContent = `${matches.length} coincidencias`;
+        }
 
-    setModalSectionVisibility(body, true);
 
-}
 
+        function buildSyntheticNewExportRow(row) {
 
+            const matches = getPreferredRowsForPn(row);
 
-function getQaErrorDefinitionMap() {
+            if (!matches.length) return null;
 
-    return new Map((state.qaErrorCheckDefinitions || [])
+            if (isSupersededArticle(row)) return null;
 
-        .map(def => [String(def?.code || '').trim(), String(def?.label || def?.code || '').trim()])
 
-        .filter(([code]) => code));
 
-}
+            const weightValue = resolveWeightForExport(row);
 
+            const pageLabels = uniqueSortedValues(matches.map(item => normalizePageLabelForExport(item)), true);
 
+            const modelTypes = uniqueSortedValues(matches.map(item => normalizeModelTypeForExport(item)), true);
 
-function buildRowActiveQaErrors(row, activeCodes) {
+            const engineModels = uniqueSortedValues(matches.map(item => String(item?.engine_model ?? '').trim()), true);
 
-    return evaluateRowQaChecks(row, activeCodes);
+            const categoryValues = uniqueSortedValues(matches.map(item => String(item?.categoria ?? item?.atributo ?? item?.exp_categorias ?? '').trim()));
 
-}
+            const imageValue = firstNonEmptyValue([row, ...matches], item => item?.exp_imagenes || item?.ruta_foto || '');
 
+            const routeFotoValue = firstNonEmptyValue([row, ...matches], item => item?.ruta_foto || '');
 
+            const exportImagesValue = mergeImageValues(routeFotoValue, imageValue);
 
-function invalidateRowActiveQaErrors(row) {
+            const normalizedPn = String(row?.['PART NO.'] ?? row?.pn ?? '').trim();
 
-    if (!row || typeof row !== 'object') return;
+            const hierarchy = String(row?.sust_hierarchie ?? '').trim();
 
-    delete row.__qaChecksActive;
+            const supersededList = String(row?.sust_superseded_list ?? '').trim();
 
-}
+            const hasSubstitution = hierarchy !== '' || supersededList !== '' || String(row?.sust_new_part_number ?? '').trim() !== '';
 
 
 
-function applyActiveQaErrorsToClientRows(activeCodes) {
+            return {
 
-    state.allData.forEach(row => {
+                Id: String(row?.ID ?? '').trim(),
 
-        row.__qaChecksActive = buildRowActiveQaErrors(row, activeCodes);
+                fecha_version: formatExportVersionStamp(),
 
-    });
+                POS: String(row?.POS ?? '').trim(),
 
-}
+                designation: String(getRowValueForColumn(row, 'designation_final', '')).trim(),
 
+                engine: String(row?.engine ?? '').trim() || '4000',
 
+                model_type: modelTypes.join(', '),
 
-function applyActiveQaErrorsToSubset(activeCodes, rows) {
+                type: '',
 
-    (rows || []).forEach(row => {
+                pn: normalizedPn,
 
-        row.__qaChecksActive = buildRowActiveQaErrors(row, activeCodes);
+                nsn: String(row?.nsn ?? '').trim(),
 
-    });
+                GESA_NORM: String(row?.norma ?? '').trim(),
 
-}
+                GESA_NORMALIZADO: String(row?.normalizado ?? '').trim(),
 
+                fg_code: row?.fg_code ?? '',
 
+                fg_description: String(row?.fgs_description ?? '').trim(),
 
-function buildQaStatsFromRows(rows, activeCodes) {
+                fg_code_description: String(row?.fgs_code_description ?? '').trim(),
 
-    const activeSet = new Set((activeCodes || []).map(code => String(code || '').trim()).filter(Boolean));
+                weight: Number.isFinite(weightValue) ? Number(weightValue.toFixed(3)) : '',
 
-    const totals = {
+                weight_txt: formatWeightTextForExport(row, weightValue),
 
-        totalRows: 0,
+                measurement: resolveMeasurementForExport(row),
 
-        rowsWithErrors: 0,
+                TIPOARTICULO: String(row?.TIPOARTICULO ?? '').trim() || 'piezas',
 
-        rowsOk: 0,
+                PAG: pageLabels.join(', '),
 
-        severityCount: { critical: 0, warning: 0, none: 0 },
+                BOM_no: String(row?.['BOM-No.'] ?? '').trim(),
 
-        codeCount: {}
+                esquema_general: '',
 
-    };
+                exp_motor: engineModels.join(', '),
 
+                exp_categorias: categoryValues.join(', '),
 
+                atributo: categoryValues.join(', '),
 
-    (rows || []).forEach(row => {
+                SUST_TIPO: hierarchy || null,
 
-        totals.totalRows += 1;
+                new_pn_relacionado: hierarchy === 'New'
 
-        const activeErrors = buildRowActiveQaErrors(row, activeSet);
+                    ? normalizedPn
 
-        const hasErrors = Array.isArray(activeErrors?.codes) && activeErrors.codes.length > 0;
+                    : (String(row?.sust_new_part_number ?? '').trim() || null),
 
-        if (hasErrors) totals.rowsWithErrors += 1;
+                old_pn_relacionados: supersededList || null,
 
-        else totals.rowsOk += 1;
+                EN_EXCEL_SUSTITUCION: hasSubstitution ? 'SI' : '',
 
+                ruta_foto: routeFotoValue,
 
+                exp_imagenes: exportImagesValue
 
-        if (hasErrors) totals.severityCount.critical += 1;
+            };
 
-        else totals.severityCount.none += 1;
+        }
 
 
 
-        (activeErrors.codes || []).forEach(code => {
+        function buildSyntheticSupersededExportRow(row) {
 
-            const normalizedCode = String(code || '').trim();
+            const matches = getPreferredRowsForPn(row);
 
-            if (!normalizedCode) return;
+            if (!matches.length) return null;
 
-            totals.codeCount[normalizedCode] = Number(totals.codeCount[normalizedCode] || 0) + 1;
+            if (!isSupersededArticle(row)) return null;
 
-        });
 
-    });
 
+            const hierarchy = String(row?.sust_hierarchie ?? '').trim();
 
+            const relatedNewPn = String(row?.sust_new_part_number ?? '').trim()
 
-    return totals;
+                || String(row?.['New Part Number'] ?? '').trim();
 
-}
+            if (!relatedNewPn && hierarchy !== 'Superseded') return null;
 
 
 
-function renderRecordQaErrors(row, options = {}) {
+            const weightValue = resolveWeightForExport(row);
 
-    const summaryId = options.summaryId || 'qaModalErrorsSummary';
+            const pageLabels = uniqueSortedValues(matches.map(item => normalizePageLabelForExport(item)), true);
 
-    const listId = options.listId || 'qaModalErrorsList';
+            const modelTypes = uniqueSortedValues(matches.map(item => normalizeModelTypeForExport(item)), true);
 
-    const summary = $(summaryId);
+            const engineModels = uniqueSortedValues(matches.map(item => String(item?.engine_model ?? '').trim()), true);
 
-    const list = $(listId);
+            const categoryValues = uniqueSortedValues(matches.map(item => String(item?.categoria ?? item?.atributo ?? item?.exp_categorias ?? '').trim()));
 
-    if (!(summary instanceof HTMLElement) || !(list instanceof HTMLElement)) return;
+            const imageValue = firstNonEmptyValue([row, ...matches], item => item?.exp_imagenes || item?.ruta_foto || '');
 
+            const routeFotoValue = firstNonEmptyValue([row, ...matches], item => item?.ruta_foto || '');
 
+            const exportImagesValue = mergeImageValues(routeFotoValue, imageValue);
 
-    const activeCodes = state.activeQaErrorChecks instanceof Set ? state.activeQaErrorChecks : new Set();
+            const normalizedPn = String(row?.['PART NO.'] ?? row?.pn ?? '').trim();
 
-    const type = getRowErrorType(row, { activeCodes }) || 'none';
+            const resolvedRelatedPn = relatedNewPn || normalizedPn;
 
-    const definitionMap = getQaErrorDefinitionMap();
+            const hasSubstitution = hierarchy === 'Superseded' || resolvedRelatedPn !== '';
 
-    const sourceErrors = row?.__qaChecksActive && row.__qaChecksActive.signature === getQaActiveSignature([...activeCodes])
 
-        ? row.__qaChecksActive
 
-        : buildRowActiveQaErrors(row, [...activeCodes]);
+            return {
 
-    const rawIssues = Array.isArray(sourceErrors?.issues) ? sourceErrors.issues : [];
+                Id: String(row?.ID ?? '').trim(),
 
-    const filteredIssues = rawIssues.filter(issue => {
+                fecha_version: formatExportVersionStamp(),
 
-        const code = String(issue?.code || '').trim();
+                POS: String(row?.POS ?? '').trim(),
 
-        return code && activeCodes.has(code);
+                designation: String(getRowValueForColumn(row, 'designation_final', '')).trim(),
 
-    });
+                engine: String(row?.engine ?? '').trim() || '4000',
 
+                model_type: modelTypes.join(', '),
 
+                type: '',
 
-    const fallbackCodes = getRowErrors(row, { activeCodes });
+                pn: normalizedPn,
 
-    const issueItems = filteredIssues.length > 0
+                nsn: String(row?.nsn ?? '').trim(),
 
-        ? filteredIssues.map(issue => {
+                GESA_NORM: String(row?.norma ?? '').trim(),
 
-            const code = String(issue?.code || '').trim();
+                GESA_NORMALIZADO: String(row?.normalizado ?? '').trim(),
 
-            const fields = Array.isArray(issue?.fields) ? issue.fields.filter(Boolean).join(', ') : '';
+                fg_code: row?.fg_code ?? '',
 
-            const label = definitionMap.get(code) || code;
+                fg_description: String(row?.fgs_description ?? '').trim(),
 
-            const message = String(issue?.message || '').trim() || label;
+                fg_code_description: String(row?.fgs_code_description ?? '').trim(),
 
-            const severity = type === 'critical' ? 'critical' : String(issue?.severity || type || 'warning').trim();
+                weight: Number.isFinite(weightValue) ? Number(weightValue.toFixed(3)) : '',
 
-            const fieldHtml = fields ? `<span class="qa-record-errors-fields">${escapeHtml(fields)}</span>` : '';
+                weight_txt: formatWeightTextForExport(row, weightValue),
 
-            return `<li class="qa-record-errors-item is-${escapeHtml(severity)}">
+                measurement: resolveMeasurementForExport(row),
+
+                TIPOARTICULO: String(row?.TIPOARTICULO ?? '').trim() || 'piezas',
+
+                PAG: pageLabels.join(', '),
+
+                BOM_no: String(row?.['BOM-No.'] ?? '').trim(),
+
+                esquema_general: '',
+
+                exp_motor: engineModels.join(', '),
+
+                exp_categorias: categoryValues.join(', '),
+
+                atributo: categoryValues.join(', '),
+
+                SUST_TIPO: hierarchy || 'Superseded',
+
+                new_pn_relacionado: resolvedRelatedPn || null,
+
+                old_pn_relacionados: null,
+
+                EN_EXCEL_SUSTITUCION: hasSubstitution ? 'SI' : '',
+
+                ruta_foto: routeFotoValue,
+
+                exp_imagenes: exportImagesValue,
+
+                vinculo: resolvedRelatedPn ? `milu-naval.mystagingwebsite.com/producto/${resolvedRelatedPn}` : ''
+
+            };
+
+        }
+
+
+
+        function setModalSectionVisibility(tableBodyElement, visible) {
+
+            const section = tableBodyElement?.closest('section.qa-modal-related');
+
+            if (section instanceof HTMLElement) {
+
+                section.hidden = false;
+
+            }
+
+        }
+
+
+
+        function getModalExportColumns(matches) {
+
+            const columns = [];
+
+            const seen = new Set();
+
+            for (const item of matches) {
+
+                for (const key of Object.keys(item || {})) {
+
+                    if (seen.has(key)) continue;
+
+                    seen.add(key);
+
+                    columns.push(key);
+
+                }
+
+            }
+
+            return columns;
+
+        }
+
+
+
+        function renderRecordModalExport(row, options = {}) {
+
+            const {
+
+                headRowId = 'qaModalExportHeadRow',
+
+                bodyId = 'qaModalExportBody',
+
+                countId = 'qaModalExportCount',
+
+                onlyDiffToggleId = 'qaModalExportOnlyDiffToggle'
+
+            } = options;
+
+            const headRow = $(headRowId);
+
+            const body = $(bodyId);
+
+            const count = $(countId);
+
+            const onlyDiffToggle = $(onlyDiffToggleId);
+
+            const onlyMismatchFields = onlyDiffToggle instanceof HTMLInputElement && onlyDiffToggle.checked;
+
+            if (!(headRow instanceof HTMLElement) || !(body instanceof HTMLElement)) return;
+
+
+
+            const syntheticRow = buildSyntheticNewExportRow(row);
+
+            if (!syntheticRow) {
+
+                headRow.innerHTML = '<th>Sin datos</th>';
+
+                body.innerHTML = '<tr><td>No se pudo determinar el codigo PN del registro.</td></tr>';
+
+                if (count) count.textContent = '0 registros';
+
+                setModalSectionVisibility(body, false);
+
+                return;
+
+            }
+
+
+
+            const sourceMatches = getPreferredRowsForPn(row);
+
+            const miluNewRow = getMiluNewRowForPn(row);
+
+            const matches = [
+
+                ...(miluNewRow ? [{ origen: 'MILU_New_v506', ...miluNewRow }] : []),
+
+                { origen: 'Synthetic', ...syntheticRow }
+
+            ];
+
+            const sourceLabels = matches.map(item => String(item?.origen || '-'));
+
+            const fields = [...SYNTHETIC_NEW_EXPORT_COLUMNS];
+
+            const diffColumns = new Set();
+
+            const volatileComparisonColumns = new Set(['Id', 'fecha_version']);
+
+            const warningComparisonColumns = new Set(['exp_categorias', 'atributo']);
+
+            if (matches.length >= 2) {
+
+                const firstRow = matches[0];
+
+                const lastRow = matches[matches.length - 1];
+
+                fields.forEach(col => {
+
+                    if (volatileComparisonColumns.has(col)) return;
+
+                    const firstValue = normalizeComparisonValue(firstRow?.[col]);
+
+                    const lastValue = normalizeComparisonValue(lastRow?.[col]);
+
+                    if (firstValue !== lastValue) diffColumns.add(col);
+
+                });
+
+            }
+
+            headRow.innerHTML = ['<th>Campo</th>', ...sourceLabels.map(label => `<th>${escapeHtml(label)}</th>`)].join('');
+
+
+
+            const visibleFields = onlyMismatchFields
+
+                ? fields.filter(field => diffColumns.has(field))
+
+                : fields;
+
+
+
+            if (!visibleFields.length) {
+
+                body.innerHTML = `<tr><td colspan="${sourceLabels.length + 1}">No hay campos no coincidentes para este registro.</td></tr>`;
+
+                if (count) {
+
+                    const comparedLabel = miluNewRow ? '2 registros comparados (v506 + synthetic)' : '1 registro (solo synthetic; sin match en v506)';
+
+                    count.textContent = `${comparedLabel} · ${sourceMatches.length} aparicion${sourceMatches.length === 1 ? '' : 'es'} · 0 campos no coincidentes`;
+
+                }
+
+                setModalSectionVisibility(body, true);
+
+                return;
+
+            }
+
+
+
+            body.innerHTML = visibleFields.map((field) => {
+
+                const valueCells = matches.map((item, rowIndex) => {
+
+                    const rawValue = formatModalExportValue(item?.[field]);
+
+                    const displayValue = rawValue || '-';
+
+                    const isComparedEdgeRow = rowIndex === 0 || rowIndex === matches.length - 1;
+
+                    const isFieldMismatch = isComparedEdgeRow && diffColumns.has(field);
+
+                    const isWarningFieldMismatch = isFieldMismatch && warningComparisonColumns.has(field);
+
+                    const isCriticalFieldMismatch = isFieldMismatch && !warningComparisonColumns.has(field);
+
+                    const tdClasses = [
+
+                        isCriticalFieldMismatch ? 'qa-modal-cell-diff' : '',
+
+                        isWarningFieldMismatch ? 'qa-modal-cell-diff-warn' : ''
+
+                    ].filter(Boolean).join(' ');
+
+                    return `<td class="${tdClasses}" title="${escapeHtml(rawValue)}">${escapeHtml(displayValue)}</td>`;
+
+                }).join('');
+
+
+
+                return `<tr><td>${escapeHtml(field)}</td>${valueCells}</tr>`;
+
+            }).join('');
+
+
+
+            if (count) {
+
+                const comparedLabel = miluNewRow ? '2 registros comparados (v506 + synthetic)' : '1 registro (solo synthetic; sin match en v506)';
+
+                const fieldLabel = onlyMismatchFields
+
+                    ? `${visibleFields.length} campo${visibleFields.length === 1 ? '' : 's'} no coincidente${visibleFields.length === 1 ? '' : 's'}`
+
+                    : `${fields.length} campos`;
+
+                count.textContent = `${comparedLabel} · ${sourceMatches.length} aparicion${sourceMatches.length === 1 ? '' : 'es'} · ${fieldLabel}`;
+
+            }
+
+            setModalSectionVisibility(body, true);
+
+        }
+
+
+
+        function renderRecordModalSuperseded(row, options = {}) {
+
+            const {
+
+                headRowId = 'qaModalSupersededHeadRow',
+
+                bodyId = 'qaModalSupersededBody',
+
+                countId = 'qaModalSupersededCount'
+
+            } = options;
+
+            const headRow = $(headRowId);
+
+            const body = $(bodyId);
+
+            const count = $(countId);
+
+            if (!(headRow instanceof HTMLElement) || !(body instanceof HTMLElement)) return;
+
+
+
+            const syntheticRow = buildSyntheticSupersededExportRow(row);
+
+            if (!syntheticRow) {
+
+                headRow.innerHTML = '<th>Sin datos</th>';
+
+                body.innerHTML = '<tr><td>El registro no tiene datos suficientes para reconstruir MILU_Superseded.</td></tr>';
+
+                if (count) count.textContent = '0 registros';
+
+                setModalSectionVisibility(body, false);
+
+                return;
+
+            }
+
+
+
+            const sourceMatches = getPreferredRowsForPn(row);
+
+            const columns = SYNTHETIC_SUPERSEDED_EXPORT_COLUMNS.filter(col => Object.prototype.hasOwnProperty.call(syntheticRow, col));
+
+            headRow.innerHTML = '<th>Campo</th><th>Synthetic</th>';
+
+
+
+            body.innerHTML = columns.map(col => {
+
+                const rawValue = formatModalExportValue(syntheticRow?.[col]);
+
+                const displayValue = rawValue || '-';
+
+                return `<tr><td>${escapeHtml(col)}</td><td title="${escapeHtml(rawValue)}">${escapeHtml(displayValue)}</td></tr>`;
+
+            }).join('');
+
+
+
+            if (count) count.textContent = `1 registro reconstruido · ${sourceMatches.length} aparicion${sourceMatches.length === 1 ? '' : 'es'}`;
+
+            setModalSectionVisibility(body, true);
+
+        }
+
+
+
+        function renderRecordModalMatches(row, currentRevisionKey, options = {}) {
+
+            const {
+
+                bodyId = 'qaModalMatchesBody',
+
+                countId = 'qaModalMatchesCount',
+
+                bookFilterId = 'qaModalMatchesBookFilter',
+
+                showAction = true
+
+            } = options;
+
+            const body = $(bodyId);
+
+            const count = $(countId);
+
+            if (!(body instanceof HTMLElement)) return;
+
+
+
+            const matchesByPn = getModalMatchesByPn(row);
+
+            const currentBook = normModalMatch(getBookEngineCode(row));
+
+
+
+            const emptyColspan = 5;
+
+
+
+            if (!matchesByPn.length) {
+
+                body.innerHTML = `<tr><td colspan="${emptyColspan}">No se pudo determinar PN/libro del registro.</td></tr>`;
+
+                if (count) count.textContent = '0 coincidencias';
+
+                setModalSectionVisibility(body, false);
+
+                return;
+
+            }
+
+
+
+            syncRecordModalBookFilter(row, matchesByPn, bookFilterId);
+
+            const selectedBookFilter = String($(bookFilterId)?.value || '__current__');
+
+
+
+            const filteredMatches = matchesByPn.filter(item => {
+
+                const itemBook = normModalMatch(item.book);
+
+                if (selectedBookFilter === '__all__') return true;
+
+                if (selectedBookFilter === '__current__') return !!currentBook && itemBook === currentBook;
+
+                return itemBook === normModalMatch(selectedBookFilter);
+
+            });
+
+
+
+            const matches = filteredMatches
+
+                .sort((a, b) => {
+
+                    const byBook = String(a.book || '').localeCompare(String(b.book || ''), 'es', { numeric: true, sensitivity: 'base' });
+
+                    if (byBook !== 0) return byBook;
+
+                    const byPage = pageSortValue(a.page) - pageSortValue(b.page);
+
+                    if (byPage !== 0) return byPage;
+
+                    const byPos = a.pos.localeCompare(b.pos, 'es', { numeric: true, sensitivity: 'base' });
+
+                    if (byPos !== 0) return byPos;
+
+                    return a.id.localeCompare(b.id, 'es', { numeric: true, sensitivity: 'base' });
+
+                });
+
+
+
+            if (!matches.length) {
+
+                body.innerHTML = `<tr><td colspan="${emptyColspan}">Sin coincidencias para el filtro seleccionado.</td></tr>`;
+
+                if (count) count.textContent = '0 coincidencias';
+
+                setModalSectionVisibility(body, false);
+
+                return;
+
+            }
+
+
+
+            body.innerHTML = matches.map(item => {
+
+                const isCurrent = item.revisionKey === currentRevisionKey;
+
+                const revisionKeyAttr = escapeHtml(String(item.revisionKey || ''));
+
+                const normalizedEstado = normModalMatch(item.estado);
+
+                const isOkStatus = normalizedEstado === 'ok';
+
+                const sideStatusClass = isOkStatus ? 'ok' : 'ko';
+
+                const sideStatusLabel = isOkStatus ? 'OK' : 'KO';
+
+                return `<tr class="${isCurrent ? 'qa-modal-related-current' : ''}" data-revision-key="${revisionKeyAttr}" title="Doble click para ir al registro en tabla principal">`
+
+                    + `<td>${escapeHtml(item.book || '-')}</td>`
+
+                    + `<td>${escapeHtml(item.page || '-')}</td>`
+
+                    + `<td>${escapeHtml(item.pos || '-')}</td>`
+
+                    + (showAction
+
+                        ? `<td>${escapeHtml(item.designationFinal || '-')}</td><td>${escapeHtml(item.accion || '-')}</td>`
+
+                        : `<td class="qa-side-match-part-number">${escapeHtml(item.partNumber || '-')}</td><td><span class="qa-side-match-st ${sideStatusClass}">${sideStatusLabel}</span></td>`)
+
+                    + '</tr>';
+
+            }).join('');
+
+
+
+            if (count) count.textContent = `${matches.length} coincidencias`;
+
+            setModalSectionVisibility(body, true);
+
+        }
+
+
+
+        function getQaErrorDefinitionMap() {
+
+            return new Map((state.qaErrorCheckDefinitions || [])
+
+                .map(def => [String(def?.code || '').trim(), String(def?.label || def?.code || '').trim()])
+
+                .filter(([code]) => code));
+
+        }
+
+
+
+        function buildRowActiveQaErrors(row, activeCodes) {
+
+            return evaluateRowQaChecks(row, activeCodes);
+
+        }
+
+
+
+        function invalidateRowActiveQaErrors(row) {
+
+            if (!row || typeof row !== 'object') return;
+
+            delete row.__qaChecksActive;
+
+        }
+
+
+
+        function applyActiveQaErrorsToClientRows(activeCodes) {
+
+            state.allData.forEach(row => {
+
+                row.__qaChecksActive = buildRowActiveQaErrors(row, activeCodes);
+
+            });
+
+        }
+
+
+
+        function applyActiveQaErrorsToSubset(activeCodes, rows) {
+
+            (rows || []).forEach(row => {
+
+                row.__qaChecksActive = buildRowActiveQaErrors(row, activeCodes);
+
+            });
+
+        }
+
+
+
+        function buildQaStatsFromRows(rows, activeCodes) {
+
+            const activeSet = new Set((activeCodes || []).map(code => String(code || '').trim()).filter(Boolean));
+
+            const totals = {
+
+                totalRows: 0,
+
+                rowsWithErrors: 0,
+
+                rowsOk: 0,
+
+                severityCount: { critical: 0, warning: 0, none: 0 },
+
+                codeCount: {}
+
+            };
+
+
+
+            (rows || []).forEach(row => {
+
+                totals.totalRows += 1;
+
+                const activeErrors = buildRowActiveQaErrors(row, activeSet);
+
+                const hasErrors = Array.isArray(activeErrors?.codes) && activeErrors.codes.length > 0;
+
+                if (hasErrors) totals.rowsWithErrors += 1;
+
+                else totals.rowsOk += 1;
+
+
+
+                if (hasErrors) totals.severityCount.critical += 1;
+
+                else totals.severityCount.none += 1;
+
+
+
+                (activeErrors.codes || []).forEach(code => {
+
+                    const normalizedCode = String(code || '').trim();
+
+                    if (!normalizedCode) return;
+
+                    totals.codeCount[normalizedCode] = Number(totals.codeCount[normalizedCode] || 0) + 1;
+
+                });
+
+            });
+
+
+
+            return totals;
+
+        }
+
+
+
+        function renderRecordQaErrors(row, options = {}) {
+
+            const summaryId = options.summaryId || 'qaModalErrorsSummary';
+
+            const listId = options.listId || 'qaModalErrorsList';
+
+            const summary = $(summaryId);
+
+            const list = $(listId);
+
+            if (!(summary instanceof HTMLElement) || !(list instanceof HTMLElement)) return;
+
+
+
+            const activeCodes = state.activeQaErrorChecks instanceof Set ? state.activeQaErrorChecks : new Set();
+
+            const type = getRowErrorType(row, { activeCodes }) || 'none';
+
+            const definitionMap = getQaErrorDefinitionMap();
+
+            const sourceErrors = row?.__qaChecksActive && row.__qaChecksActive.signature === getQaActiveSignature([...activeCodes])
+
+                ? row.__qaChecksActive
+
+                : buildRowActiveQaErrors(row, [...activeCodes]);
+
+            const rawIssues = Array.isArray(sourceErrors?.issues) ? sourceErrors.issues : [];
+
+            const filteredIssues = rawIssues.filter(issue => {
+
+                const code = String(issue?.code || '').trim();
+
+                return code && activeCodes.has(code);
+
+            });
+
+
+
+            const fallbackCodes = getRowErrors(row, { activeCodes });
+
+            const issueItems = filteredIssues.length > 0
+
+                ? filteredIssues.map(issue => {
+
+                    const code = String(issue?.code || '').trim();
+
+                    const fields = Array.isArray(issue?.fields) ? issue.fields.filter(Boolean).join(', ') : '';
+
+                    const label = definitionMap.get(code) || code;
+
+                    const message = String(issue?.message || '').trim() || label;
+
+                    const severity = type === 'critical' ? 'critical' : String(issue?.severity || type || 'warning').trim();
+
+                    const fieldHtml = fields ? `<span class="qa-record-errors-fields">${escapeHtml(fields)}</span>` : '';
+
+                    return `<li class="qa-record-errors-item is-${escapeHtml(severity)}">
 
                 <div class="qa-record-errors-item-main">
 
@@ -3592,13 +3541,13 @@ function renderRecordQaErrors(row, options = {}) {
 
             </li>`;
 
-        })
+                })
 
-        : fallbackCodes.map(code => {
+                : fallbackCodes.map(code => {
 
-            const label = definitionMap.get(code) || code;
+                    const label = definitionMap.get(code) || code;
 
-            return `<li class="qa-record-errors-item is-${escapeHtml(type === 'critical' ? 'critical' : 'warning')}">
+                    return `<li class="qa-record-errors-item is-${escapeHtml(type === 'critical' ? 'critical' : 'warning')}">
 
                 <div class="qa-record-errors-item-main">
 
@@ -3610,1601 +3559,1645 @@ function renderRecordQaErrors(row, options = {}) {
 
             </li>`;
 
-        });
+                });
 
 
 
-    if (issueItems.length === 0) {
+            if (issueItems.length === 0) {
 
-        summary.innerHTML = '<span class="qa-record-errors-pill is-ok">Sin errores activos</span>';
+                summary.innerHTML = '<span class="qa-record-errors-pill is-ok">Sin errores activos</span>';
 
-        list.innerHTML = '<li class="qa-record-errors-empty">Este registro no tiene errores para las comprobaciones activas.</li>';
+                list.innerHTML = '<li class="qa-record-errors-empty">Este registro no tiene errores para las comprobaciones activas.</li>';
 
-        return;
-
-    }
-
-
-
-    const severityLabel = type === 'critical' ? 'Criticos' : 'Avisos';
-
-    summary.innerHTML = `<span class="qa-record-errors-pill is-${escapeHtml(type)}">${issueItems.length} ${escapeHtml(severityLabel)}</span>`;
-
-    list.innerHTML = issueItems.join('');
-
-}
-
-
-
-function fillRecordModal(row, revisionKey) {
-
-    const form = $('qaRecordModalForm');
-
-    if (!(form instanceof HTMLFormElement)) return;
-
-
-
-    form.dataset.revisionKey = revisionKey;
-
-    $('qaModalId').value = String(row?.ID ?? '');
-
-    $('qaModalPn').value = String(row?.['PART NO.'] ?? row?.pn ?? '');
-
-    $('qaModalBook').value = String(row?.engine_model ?? '');
-
-    $('qaModalPage').value = String(row?.['Source Page'] ?? '');
-
-    $('qaModalPosExcel').value = String(row?.pos_excel ?? row?.POS ?? '');
-
-    $('qaModalPnExcel').value = String(row?.pn_excel ?? row?.['PART NO.'] ?? '');
-
-    $('qaModalDesignationExcel').value = String(row?.designation_excel ?? row?.DESIGNATION ?? '');
-
-    $('qaModalModelTypeExcel').value = String(row?.model_type_excel ?? row?.['MODEL/TYPE'] ?? '');
-
-    $('qaModalQtyExcel').value = String(row?.qty_excel ?? row?.QTY ?? '');
-
-    $('qaModalQtyUnitsExcel').value = String(row?.qty_units_excel ?? row?.UNITS ?? '');
-
-    $('qaModalWeightExcel').value = String(row?.weight_excel ?? row?.WEIGHT ?? '');
-
-    $('qaModalFnExcel').value = String(row?.fn_excel ?? row?.FN ?? '');
-
-    $('qaModalMeasureExcel').value = String(row?.measure_excel ?? row?.['MEASUREMENT / STANDARD'] ?? '');
-
-    $('qaModalFgFgsExcel').value = String(row?.fg_fgs_excel ?? row?.['FG/FGS'] ?? '');
-
-    $('qaModalBomExcel').value = String(row?.bom_excel ?? row?.['BOM-No.'] ?? '');
-
-    $('qaModalPos').value = String(row?.pos_final ?? '');
-
-    $('qaModalGesa').value = String(row?.gesa ?? '');
-
-    $('qaModalNormalizado').value = String(row?.normalizado ?? '');
-
-    $('qaModalSustHierarchie').value = String(row?.sust_hierarchie ?? '');
-
-    $('qaModalHasImg').value = String(row?.has_img ?? '');
-
-    $('qaModalEnWeb').value = String(row?.EN_WEB ?? '');
-
-
-
-    $('qaModalRevisionEstado').value = normalizeEstadoToNew(row?.qa_revision_estado);
-
-    $('qaModalRevisionAccion').value = normalizeAccionToNew(row?.qa_revision_accion);
-
-    $('qaModalPnFinal').value = String(row?.pn_final ?? '');
-
-    $('qaModalDesignationFinal').value = String(row?.designation_final ?? '');
-
-    $('qaModalModelType').value = String(row?.model_type_final ?? '');
-
-    $('qaModalQty').value = String(row?.qty_final ?? '');
-
-    $('qaModalUnits').value = String(row?.qty_units_final ?? '');
-
-    $('qaModalWeightFinal').value = String(row?.weight_final ?? '');
-
-    $('qaModalFn').value = String(row?.fn_final ?? '');
-
-    $('qaModalMeasurementFinal').value = String(row?.measure_final ?? row?.measurement_final ?? '');
-
-    $('qaModalNorma').value = String(row?.norma_final ?? '');
-
-
-
-    renderRecordQaErrors(row);
-
-    renderRecordModalMatches(row, revisionKey);
-
-    updateExportModalHeader(row);
-
-
-
-    const status = $('qaRecordModalStatus');
-
-    if (status) status.textContent = '';
-
-}
-
-
-
-function fillSideRecordForm(row, revisionKey) {
-
-    const form = $('qaSideRecordForm');
-
-    if (!(form instanceof HTMLFormElement)) return;
-
-
-
-    form.dataset.revisionKey = revisionKey;
-
-    $('qaSideId').value = String(row?.ID ?? '');
-
-    $('qaSidePn').value = String(row?.['PART NO.'] ?? row?.pn ?? '');
-
-    $('qaSideBook').value = String(row?.engine_model ?? '');
-
-    $('qaSidePage').value = String(row?.['Source Page'] ?? '');
-
-    $('qaSidePosExcel').value = String(row?.pos_excel ?? row?.POS ?? '');
-
-    $('qaSidePnExcel').value = String(row?.pn_excel ?? row?.['PART NO.'] ?? '');
-
-    $('qaSidePos').value = String(row?.pos_final ?? '');
-
-    $('qaSideGesa').value = String(row?.gesa ?? '');
-
-    $('qaSideNormalizado').value = String(row?.normalizado ?? '');
-
-    $('qaSideSustHierarchie').value = String(row?.sust_hierarchie ?? '');
-
-    $('qaSideHasImg').value = String(row?.has_img ?? '');
-
-    $('qaSideEnWeb').value = String(row?.EN_WEB ?? '');
-
-
-
-    $('qaSideRevisionEstado').value = normalizeEstadoToNew(row?.qa_revision_estado);
-
-    $('qaSideRevisionAccion').value = normalizeAccionToNew(row?.qa_revision_accion);
-
-    $('qaSidePnFinal').value = String(row?.pn_final ?? '');
-
-    $('qaSideDesignationFinal').value = String(row?.designation_final ?? '');
-
-    $('qaSideModelType').value = String(row?.model_type_final ?? '');
-
-    $('qaSideQty').value = String(row?.qty_final ?? '');
-
-    $('qaSideUnits').value = String(row?.qty_units_final ?? '');
-
-    $('qaSideWeightFinal').value = String(row?.weight_final ?? '');
-
-    $('qaSideFn').value = String(row?.fn_final ?? '');
-
-    $('qaSideMeasurementFinal').value = String(row?.measure_final ?? row?.measurement_final ?? '');
-
-    $('qaSideNorma').value = String(row?.norma_final ?? '');
-
-
-
-    const sideLabel = $('qaSideLabel');
-
-    if (sideLabel) {
-
-        sideLabel.textContent = `${String(row?.engine_model ?? '-')} • pág ${String(row?.['Source Page'] ?? '-')} • ID ${String(row?.ID ?? '-')}`;
-
-    }
-
-    const exportLabel = $('qaSideExportLabel');
-
-    if (exportLabel) {
-
-        exportLabel.textContent = `${String(row?.engine_model ?? '-')} • pág ${String(row?.['Source Page'] ?? '-')} • ID ${String(row?.ID ?? '-')}`;
-
-    }
-
-
-
-    renderRecordQaErrors(row, {
-
-        summaryId: 'qaSideErrorsSummary',
-
-        listId: 'qaSideErrorsList'
-
-    });
-
-    renderRecordModalMatches(row, revisionKey, {
-
-        bodyId: 'qaSideMatchesBody',
-
-        countId: 'qaSideMatchesCount',
-
-        bookFilterId: 'qaSideMatchesBookFilter',
-
-        showAction: false
-
-    });
-
-    renderRecordModalExport(row, {
-
-        headRowId: 'qaSideExportHeadRow',
-
-        bodyId: 'qaSideExportBody',
-
-        countId: 'qaSideExportCount',
-
-        onlyDiffToggleId: 'qaSideExportOnlyDiffToggle'
-
-    });
-
-    renderRecordModalSuperseded(row, {
-
-        headRowId: 'qaSideSupersededHeadRow',
-
-        bodyId: 'qaSideSupersededBody',
-
-        countId: 'qaSideSupersededCount'
-
-    });
-
-
-
-    const superseded = isSupersededArticle(row);
-
-    $('qaSideNewSection')?.toggleAttribute('hidden', superseded);
-
-    $('qaSideSupersededSection')?.toggleAttribute('hidden', !superseded);
-
-
-
-    const status = $('qaSideStatus');
-
-    if (status) status.textContent = '';
-
-}
-
-
-
-function getRecordFormValues(scope) {
-
-    const prefix = scope === 'side' ? 'qaSide' : 'qaModal';
-
-    return {
-
-        const includeExcelFields = scope !== 'side';
-        pos_excel: String($(`${prefix}PosExcel`)?.value || ''),
-        const values = {
-            pn_excel: String($(`${prefix}PnExcel`)?.value || ''),
-
-            designation_excel: String($(`${prefix}DesignationExcel`)?.value || ''),
-
-            model_type_excel: String($(`${prefix}ModelTypeExcel`)?.value || ''),
-
-            qty_excel: String($(`${prefix}QtyExcel`)?.value || ''),
-
-            qty_units_excel: String($(`${prefix}QtyUnitsExcel`)?.value || ''),
-
-            weight_excel: String($(`${prefix}WeightExcel`)?.value || ''),
-
-            fn_excel: String($(`${prefix}FnExcel`)?.value || ''),
-
-            measure_excel: String($(`${prefix}MeasureExcel`)?.value || ''),
-
-            fg_fgs_excel: String($(`${prefix}FgFgsExcel`)?.value || ''),
-
-            bom_excel: String($(`${prefix}BomExcel`)?.value || ''),
-            if(includeExcelFields) {
-                values.designation_excel = String($(`${prefix}DesignationExcel`)?.value || '');
-                values.model_type_excel = String($(`${prefix}ModelTypeExcel`)?.value || '');
-                values.qty_excel = String($(`${prefix}QtyExcel`)?.value || '');
-                values.qty_units_excel = String($(`${prefix}QtyUnitsExcel`)?.value || '');
-                values.weight_excel = String($(`${prefix}WeightExcel`)?.value || '');
-                values.fn_excel = String($(`${prefix}FnExcel`)?.value || '');
-                values.measure_excel = String($(`${prefix}MeasureExcel`)?.value || '');
-                values.fg_fgs_excel = String($(`${prefix}FgFgsExcel`)?.value || '');
-                values.bom_excel = String($(`${prefix}BomExcel`)?.value || '');
-            }
-
-        return values;
-
-            pos_final: String($(`${prefix}Pos`)?.value || ''),
-
-            pn_final: String($(`${prefix}PnFinal`)?.value || ''),
-
-            designation_final: String($(`${prefix}DesignationFinal`)?.value || ''),
-
-            model_type_final: String($(`${prefix}ModelType`)?.value || ''),
-
-            qty_final: String($(`${prefix}Qty`)?.value || ''),
-
-            qty_units_final: String($(`${prefix}Units`)?.value || ''),
-
-            weight_final: String($(`${prefix}WeightFinal`)?.value || ''),
-
-            fn_final: String($(`${prefix}Fn`)?.value || ''),
-
-            measure_final: String($(`${prefix}MeasurementFinal`)?.value || ''),
-
-            norma_final: String($(`${prefix}Norma`)?.value || ''),
-
-            gesa: String($(`${prefix}Gesa`)?.value || ''),
-
-            normalizado: String($(`${prefix}Normalizado`)?.value || ''),
-
-            sust_hierarchie: String($(`${prefix}SustHierarchie`)?.value || ''),
-
-            has_img: String($(`${prefix}HasImg`)?.value || ''),
-
-            EN_WEB: String($(`${prefix}EnWeb`)?.value || ''),
-
-            engine_model: String($(`${prefix}Book`)?.value || ''),
-
-            'Source Page': String($(`${prefix}Page`)?.value || '')
-
-        };
-
-    }
-
-
-
-    function clearSideRecordForm() {
-
-        const form = $('qaSideRecordForm');
-
-        if (!(form instanceof HTMLFormElement)) return;
-
-
-
-        form.dataset.revisionKey = '';
-
-        form.querySelectorAll('input').forEach(input => { input.value = ''; });
-
-        form.querySelectorAll('select').forEach(select => {
-
-            if (select.id === 'qaSideMatchesBookFilter') select.value = '__current__';
-
-            else if (select.id === 'qaSideRevisionEstado') select.value = 'pendiente';
-
-            else if (select.id === 'qaSideRevisionAccion') select.value = 'importar';
-
-            else select.value = '';
-
-        });
-
-
-
-        const sideLabel = $('qaSideLabel');
-
-        if (sideLabel) sideLabel.textContent = 'Selecciona una fila para cargar la ficha';
-
-        const exportLabel = $('qaSideExportLabel');
-
-        if (exportLabel) exportLabel.textContent = 'Sin selección';
-
-
-
-        $('qaSideMatchesBody').innerHTML = '<tr><td colspan="5">Sin seleccion</td></tr>';
-
-        const sideOnlyDiffToggle = $('qaSideExportOnlyDiffToggle');
-
-        if (sideOnlyDiffToggle instanceof HTMLInputElement) sideOnlyDiffToggle.checked = false;
-
-        $('qaSideExportHeadRow').innerHTML = '<th>Sin datos</th>';
-
-        $('qaSideExportBody').innerHTML = '<tr><td>Sin seleccion.</td></tr>';
-
-        $('qaSideSupersededHeadRow').innerHTML = '<th>Sin datos</th>';
-
-        $('qaSideSupersededBody').innerHTML = '<tr><td>Sin seleccion.</td></tr>';
-
-        $('qaSideErrorsSummary').innerHTML = '<span class="qa-record-errors-pill is-empty">Sin seleccion</span>';
-
-        $('qaSideErrorsList').innerHTML = '<li class="qa-record-errors-empty">Selecciona una fila para ver sus errores.</li>';
-
-        const status = $('qaSideStatus');
-
-        if (status) status.textContent = 'Selecciona una fila para editarla aqui.';
-
-        if (isMatchesModalOpen()) closeMatchesModal();
-
-    }
-
-
-
-    function syncSideRecordFormWithSelection() {
-
-        const revisionKey = String(state.selectedRevisionRowKey || '');
-
-        const row = getRowByRevisionKey(revisionKey);
-
-        if (!row || !revisionKey) {
-
-            clearSideRecordForm();
-
-            return;
-
-        }
-
-        fillSideRecordForm(row, revisionKey);
-
-        if (isMatchesModalOpen()) {
-
-            activeMatchesModalRevisionKey = revisionKey;
-
-            renderMatchesLargeModal(revisionKey);
-
-        }
-
-    }
-
-
-
-    function applyIncomingRevisionSync(message) {
-
-        const id = String(message?.id || '').trim();
-
-        if (!id || !Array.isArray(state.allData) || state.allData.length === 0) return;
-
-
-
-        const engineFile = String(message?.engineFile || '').trim().toLowerCase();
-
-        const hasEstado = message?.estado !== undefined && message?.estado !== null;
-
-        const hasAccion = message?.accion !== undefined && message?.accion !== null;
-
-        if (!hasEstado && !hasAccion) return;
-
-
-
-        const nextEstado = hasEstado ? normalizeEstadoToNew(message.estado) : null;
-
-        const nextAccion = hasAccion ? normalizeAccionToNew(message.accion) : null;
-
-
-
-        let changed = false;
-
-        const touchedKeys = new Set();
-
-
-
-        state.allData.forEach((row) => {
-
-            const rowId = String(row?.ID || '').trim();
-
-            if (!rowId || rowId !== id) return;
-
-
-
-            if (engineFile) {
-
-                const rowEngineFile = String(getEngineJsonForRow(row) || '').trim().toLowerCase();
-
-                if (rowEngineFile !== engineFile) return;
+                return;
 
             }
 
 
 
-            let rowChanged = false;
+            const severityLabel = type === 'critical' ? 'Criticos' : 'Avisos';
 
-            if (nextEstado && normalizeEstadoToNew(row?.qa_revision_estado) !== nextEstado) {
+            summary.innerHTML = `<span class="qa-record-errors-pill is-${escapeHtml(type)}">${issueItems.length} ${escapeHtml(severityLabel)}</span>`;
 
-                row.qa_revision_estado = nextEstado;
+            list.innerHTML = issueItems.join('');
 
-                rowChanged = true;
+        }
+
+
+
+        function fillRecordModal(row, revisionKey) {
+
+            const form = $('qaRecordModalForm');
+
+            if (!(form instanceof HTMLFormElement)) return;
+
+
+
+            form.dataset.revisionKey = revisionKey;
+
+            $('qaModalId').value = String(row?.ID ?? '');
+
+            $('qaModalPn').value = String(row?.['PART NO.'] ?? row?.pn ?? '');
+
+            $('qaModalBook').value = String(row?.engine_model ?? '');
+
+            $('qaModalPage').value = String(row?.['Source Page'] ?? '');
+
+            $('qaModalPosExcel').value = String(row?.pos_excel ?? row?.POS ?? '');
+
+            $('qaModalPnExcel').value = String(row?.pn_excel ?? row?.['PART NO.'] ?? '');
+
+            $('qaModalDesignationExcel').value = String(row?.designation_excel ?? row?.DESIGNATION ?? '');
+
+            $('qaModalModelTypeExcel').value = String(row?.model_type_excel ?? row?.['MODEL/TYPE'] ?? '');
+
+            $('qaModalQtyExcel').value = String(row?.qty_excel ?? row?.QTY ?? '');
+
+            $('qaModalQtyUnitsExcel').value = String(row?.qty_units_excel ?? row?.UNITS ?? '');
+
+            $('qaModalWeightExcel').value = String(row?.weight_excel ?? row?.WEIGHT ?? '');
+
+            $('qaModalFnExcel').value = String(row?.fn_excel ?? row?.FN ?? '');
+
+            $('qaModalMeasureExcel').value = String(row?.measure_excel ?? row?.['MEASUREMENT / STANDARD'] ?? '');
+
+            $('qaModalFgFgsExcel').value = String(row?.fg_fgs_excel ?? row?.['FG/FGS'] ?? '');
+
+            $('qaModalBomExcel').value = String(row?.bom_excel ?? row?.['BOM-No.'] ?? '');
+
+            $('qaModalPos').value = String(row?.pos_final ?? '');
+
+            $('qaModalGesa').value = String(row?.gesa ?? '');
+
+            $('qaModalNormalizado').value = String(row?.normalizado ?? '');
+
+            $('qaModalSustHierarchie').value = String(row?.sust_hierarchie ?? '');
+
+            $('qaModalHasImg').value = String(row?.has_img ?? '');
+
+            $('qaModalEnWeb').value = String(row?.EN_WEB ?? '');
+
+
+
+            $('qaModalRevisionEstado').value = normalizeEstadoToNew(row?.qa_revision_estado);
+
+            $('qaModalRevisionAccion').value = normalizeAccionToNew(row?.qa_revision_accion);
+
+            $('qaModalPnFinal').value = String(row?.pn_final ?? '');
+
+            $('qaModalDesignationFinal').value = String(row?.designation_final ?? '');
+
+            $('qaModalModelType').value = String(row?.model_type_final ?? '');
+
+            $('qaModalQty').value = String(row?.qty_final ?? '');
+
+            $('qaModalUnits').value = String(row?.qty_units_final ?? '');
+
+            $('qaModalWeightFinal').value = String(row?.weight_final ?? '');
+
+            $('qaModalFn').value = String(row?.fn_final ?? '');
+
+            $('qaModalMeasurementFinal').value = String(row?.measure_final ?? row?.measurement_final ?? '');
+
+            $('qaModalFgFgsFinal').value = String(row?.fg_fgs_final ?? '');
+
+            $('qaModalBomFinal').value = String(row?.bom_final ?? '');
+
+            $('qaModalNorma').value = String(row?.norma_final ?? '');
+
+
+
+            renderRecordQaErrors(row);
+
+            renderRecordModalMatches(row, revisionKey);
+
+            updateExportModalHeader(row);
+
+
+
+            const status = $('qaRecordModalStatus');
+
+            if (status) status.textContent = '';
+
+        }
+
+
+
+        function fillSideRecordForm(row, revisionKey) {
+
+            const form = $('qaSideRecordForm');
+
+            if (!(form instanceof HTMLFormElement)) return;
+
+
+
+            form.dataset.revisionKey = revisionKey;
+
+            $('qaSideId').value = String(row?.ID ?? '');
+
+            $('qaSidePn').value = String(row?.['PART NO.'] ?? row?.pn ?? '');
+
+            $('qaSideBook').value = String(row?.engine_model ?? '');
+
+            $('qaSidePage').value = String(row?.['Source Page'] ?? '');
+
+            $('qaSidePosExcel').value = String(row?.pos_excel ?? row?.POS ?? '');
+
+            $('qaSidePnExcel').value = String(row?.pn_excel ?? row?.['PART NO.'] ?? '');
+
+            $('qaSidePos').value = String(row?.pos_final ?? '');
+
+            $('qaSideGesa').value = String(row?.gesa ?? '');
+
+            $('qaSideNormalizado').value = String(row?.normalizado ?? '');
+
+            $('qaSideSustHierarchie').value = String(row?.sust_hierarchie ?? '');
+
+            $('qaSideHasImg').value = String(row?.has_img ?? '');
+
+            $('qaSideEnWeb').value = String(row?.EN_WEB ?? '');
+
+
+
+            $('qaSideRevisionEstado').value = normalizeEstadoToNew(row?.qa_revision_estado);
+
+            $('qaSideRevisionAccion').value = normalizeAccionToNew(row?.qa_revision_accion);
+
+            $('qaSidePnFinal').value = String(row?.pn_final ?? '');
+
+            $('qaSideDesignationFinal').value = String(row?.designation_final ?? '');
+
+            $('qaSideModelType').value = String(row?.model_type_final ?? '');
+
+            $('qaSideQty').value = String(row?.qty_final ?? '');
+
+            $('qaSideUnits').value = String(row?.qty_units_final ?? '');
+
+            $('qaSideWeightFinal').value = String(row?.weight_final ?? '');
+
+            $('qaSideFn').value = String(row?.fn_final ?? '');
+
+            $('qaSideMeasurementFinal').value = String(row?.measure_final ?? row?.measurement_final ?? '');
+
+            $('qaSideNorma').value = String(row?.norma_final ?? '');
+
+
+
+            const sideLabel = $('qaSideLabel');
+
+            if (sideLabel) {
+
+                sideLabel.textContent = `${String(row?.engine_model ?? '-')} • pág ${String(row?.['Source Page'] ?? '-')} • ID ${String(row?.ID ?? '-')}`;
 
             }
 
-            if (nextAccion && normalizeAccionToNew(row?.qa_revision_accion) !== nextAccion) {
+            const exportLabel = $('qaSideExportLabel');
 
-                row.qa_revision_accion = nextAccion;
+            if (exportLabel) {
 
-                rowChanged = true;
-
-            }
-
-
-
-            if (!rowChanged) return;
-
-            row.qa_revision_updated_at = new Date().toISOString();
-
-            touchedKeys.add(getRevisionKey(row));
-
-            changed = true;
-
-        });
-
-
-
-        if (!changed) return;
-
-
-
-        renderTable();
-
-        renderPagination();
-
-
-
-        const selectedKey = String(state.selectedRevisionRowKey || '').trim();
-
-        if (selectedKey && touchedKeys.has(selectedKey)) {
-
-            syncSideRecordFormWithSelection();
-
-
-
-            const modalForm = $('qaRecordModalForm');
-
-            if (modalForm instanceof HTMLFormElement && String(modalForm.dataset.revisionKey || '') === selectedKey) {
-
-                const selectedRow = getRowByRevisionKey(selectedKey);
-
-                if (selectedRow) fillRecordModal(selectedRow, selectedKey);
-
-            }
-
-        }
-
-    }
-
-
-
-    function captureModalUiState() {
-
-        const tableWrap = $('mainTableWrap');
-
-        if (tableWrap instanceof HTMLElement) {
-
-            modalUiState.tableScrollTop = tableWrap.scrollTop;
-
-            modalUiState.tableScrollLeft = tableWrap.scrollLeft;
-
-        }
-
-        modalUiState.windowScrollX = window.scrollX || 0;
-
-        modalUiState.windowScrollY = window.scrollY || 0;
-
-    }
-
-
-
-    function restoreModalUiState(revisionKey) {
-
-        const tableWrap = $('mainTableWrap');
-
-        if (tableWrap instanceof HTMLElement) {
-
-            tableWrap.scrollTop = modalUiState.tableScrollTop;
-
-            tableWrap.scrollLeft = modalUiState.tableScrollLeft;
-
-        }
-
-        window.scrollTo(modalUiState.windowScrollX, modalUiState.windowScrollY);
-
-
-
-        const safeKey = String(revisionKey || '').replace(/"/g, '\\"');
-
-        if (!safeKey) return;
-
-        const targetRow = document.querySelector(`#tbody tr[data-revision-key="${safeKey}"]`);
-
-        if (!(targetRow instanceof HTMLTableRowElement)) return;
-
-        targetRow.scrollIntoView({ block: 'nearest' });
-
-    }
-
-
-
-    function openRecordModal(revisionKey) {
-
-        const row = getRowByRevisionKey(revisionKey);
-
-        const modal = $('qaRecordModal');
-
-        if (!row || !modal) return;
-
-        captureModalUiState();
-
-        fillRecordModal(row, revisionKey);
-
-        modal.removeAttribute('hidden');
-
-        const firstInput = $('qaModalRevisionEstado');
-
-        if (firstInput instanceof HTMLElement) firstInput.focus();
-
-    }
-
-
-
-    function openSharedRecordEditorForRow(row) {
-
-        if (!row || typeof row !== 'object') return false;
-
-
-
-        const parentBridge = window.parent && window.parent !== window
-
-            ? window.parent.miluShellOpenSharedRecordEditor
-
-            : null;
-
-        const topBridge = window.top && window.top !== window
-
-            ? window.top.miluShellOpenSharedRecordEditor
-
-            : null;
-
-        const shellBridge = typeof parentBridge === 'function'
-
-            ? parentBridge
-
-            : (typeof topBridge === 'function' ? topBridge : null);
-
-        if (typeof shellBridge !== 'function') return false;
-
-
-
-        const opened = shellBridge({
-
-            id: String(row?.ID ?? '').trim(),
-
-            engineModel: String(row?.engine_model ?? '').trim(),
-
-            engineFile: String(getEngineJsonForRow(row) || '').trim(),
-
-            record: String(row?.pn_final ?? row?.['PART NO.'] ?? '').trim(),
-
-            source_file: String(row?.source_file ?? '').trim(),
-
-            source_page: String(row?.['Source Page'] ?? '').trim(),
-
-            pos: String(row?.POS ?? '').trim(),
-
-            pos_final: String(row?.pos_final ?? '').trim(),
-
-            part_no: String(row?.['PART NO.'] ?? row?.pn ?? '').trim(),
-
-            pn_final: String(row?.pn_final ?? '').trim(),
-
-            designation_final: String(row?.designation_final ?? '').trim(),
-
-            model_type_final: String(row?.model_type_final ?? '').trim(),
-
-            qty: String(row?.QTY ?? row?.qty ?? '').trim(),
-
-            units: String(row?.Units ?? row?.units ?? '').trim(),
-
-            fn: String(row?.FN ?? row?.fn ?? '').trim(),
-
-            weight_final: String(row?.weight_final ?? '').trim(),
-
-            measurement_final: String(row?.measure_final ?? row?.measurement_final ?? '').trim(),
-
-            norma: String(row?.norma ?? '').trim(),
-
-            gesa: String(row?.gesa ?? '').trim(),
-
-            normalizado: String(row?.normalizado ?? '').trim(),
-
-            sust_hierarchie: String(row?.sust_hierarchie ?? '').trim(),
-
-            has_img: String(row?.has_img ?? '').trim(),
-
-            en_web: String(row?.en_web ?? '').trim(),
-
-            qa_revision_estado: String(row?.qa_revision_estado ?? '').trim(),
-
-            qa_revision_accion: String(row?.qa_revision_accion ?? '').trim()
-
-        });
-
-        return opened !== false;
-
-    }
-
-
-
-    function updateExportModalHeader(row) {
-
-        const pnLabel = $('qaExportModalPn');
-
-        const currentLabel = $('qaExportModalCurrent');
-
-        if (pnLabel) pnLabel.textContent = String(row?.['PART NO.'] ?? row?.pn ?? '-').trim() || '-';
-
-        if (currentLabel) {
-
-            currentLabel.textContent = `${String(row?.engine_model || '-')} · pag ${String(row?.['Source Page'] || '-')} · pos ${String(row?.POS || '-')}`;
-
-        }
-
-    }
-
-
-
-    function openExportModal(revisionKey) {
-
-        const row = getRowByRevisionKey(revisionKey);
-
-        const modal = $('qaExportModal');
-
-        if (!row || !modal) return;
-
-
-
-        if (isRecordModalOpen()) closeRecordModal();
-
-
-
-        renderRecordModalExport(row);
-
-        renderRecordModalSuperseded(row);
-
-        updateExportModalHeader(row);
-
-        modal.dataset.revisionKey = String(revisionKey || '');
-
-        modal.removeAttribute('hidden');
-
-    }
-
-
-
-    function closeExportModal() {
-
-        const modal = $('qaExportModal');
-
-        if (!modal) return;
-
-        modal.setAttribute('hidden', '');
-
-        modal.dataset.revisionKey = '';
-
-    }
-
-
-
-    function closeRecordModal() {
-
-        const modal = $('qaRecordModal');
-
-        if (!modal) return;
-
-        modal.setAttribute('hidden', '');
-
-        const status = $('qaRecordModalStatus');
-
-        if (status) status.textContent = '';
-
-    }
-
-
-
-    function renderMatchesLargeModal(revisionKey = activeMatchesModalRevisionKey) {
-
-        const body = $('qaMatchesModalBody');
-
-        const count = $('qaMatchesModalCount');
-
-        const pnLabel = $('qaMatchesModalPn');
-
-        const currentLabel = $('qaMatchesModalCurrent');
-
-        const row = getRowByRevisionKey(revisionKey);
-
-
-
-        if (!(body instanceof HTMLElement) || !row || !revisionKey) {
-
-            if (body instanceof HTMLElement) {
-
-                body.innerHTML = '<tr><td colspan="8">Selecciona un registro en la ficha para ver apariciones.</td></tr>';
-
-            }
-
-            if (count) count.textContent = '0';
-
-            if (pnLabel) pnLabel.textContent = '-';
-
-            if (currentLabel) currentLabel.textContent = '-';
-
-            return;
-
-        }
-
-
-
-        const currentBook = normModalMatch(getBookEngineCode(row));
-
-        const matchesByPn = getModalMatchesByPn(row);
-
-        const pn = String(row?.['PART NO.'] ?? row?.pn ?? '').trim() || '-';
-
-        if (pnLabel) pnLabel.textContent = pn;
-
-        if (currentLabel) {
-
-            currentLabel.textContent = `${String(row?.engine_model || '-')} · pag ${String(row?.['Source Page'] || '-')} · pos ${String(row?.POS || '-')}`;
-
-        }
-
-
-
-        if (!matchesByPn.length) {
-
-            body.innerHTML = '<tr><td colspan="8">No se pudo determinar PN/libro del registro.</td></tr>';
-
-            if (count) count.textContent = '0';
-
-            return;
-
-        }
-
-
-
-        syncRecordModalBookFilter(row, matchesByPn, 'qaMatchesModalBookFilter');
-
-
-
-        const selectedBookFilter = String($('qaMatchesModalBookFilter')?.value || '__current__');
-
-        const pageFilter = normModalMatch($('qaMatchesModalPageFilter')?.value || '');
-
-        const posFilter = normModalMatch($('qaMatchesModalPosFilter')?.value || '');
-
-        const idFilter = normModalMatch($('qaMatchesModalIdFilter')?.value || '');
-
-        const textFilter = normModalMatch($('qaMatchesModalTextFilter')?.value || '');
-
-
-
-        const filteredMatches = matchesByPn.filter(item => {
-
-            const itemBook = normModalMatch(item.book);
-
-            if (selectedBookFilter === '__all__') {
-
-                // No aplicar filtro de libro.
-
-            } else if (selectedBookFilter === '__current__') {
-
-                if (!currentBook || itemBook !== currentBook) return false;
-
-            } else if (itemBook !== normModalMatch(selectedBookFilter)) {
-
-                return false;
+                exportLabel.textContent = `${String(row?.engine_model ?? '-')} • pág ${String(row?.['Source Page'] ?? '-')} • ID ${String(row?.ID ?? '-')}`;
 
             }
 
 
 
-            if (pageFilter && !normModalMatch(item.page).includes(pageFilter)) return false;
+            renderRecordQaErrors(row, {
 
-            if (posFilter && !normModalMatch(item.pos).includes(posFilter)) return false;
+                summaryId: 'qaSideErrorsSummary',
 
-            if (idFilter && !normModalMatch(item.id).includes(idFilter)) return false;
+                listId: 'qaSideErrorsList'
 
+            });
 
+            renderRecordModalMatches(row, revisionKey, {
 
-            if (textFilter) {
+                bodyId: 'qaSideMatchesBody',
 
-                const haystack = [
+                countId: 'qaSideMatchesCount',
 
-                    item.id,
+                bookFilterId: 'qaSideMatchesBookFilter',
 
-                    item.designationFinal,
+                showAction: false
 
-                    item.weightFinal,
+            });
 
-                    item.measurementFinal,
+            renderRecordModalExport(row, {
 
-                    item.fgsCodeDescription,
+                headRowId: 'qaSideExportHeadRow',
 
-                    item.book,
+                bodyId: 'qaSideExportBody',
 
-                    item.page,
+                countId: 'qaSideExportCount',
 
-                    item.pos
+                onlyDiffToggleId: 'qaSideExportOnlyDiffToggle'
 
-                ].map(value => normModalMatch(value)).join(' ');
+            });
 
-                if (!haystack.includes(textFilter)) return false;
+            renderRecordModalSuperseded(row, {
 
-            }
+                headRowId: 'qaSideSupersededHeadRow',
 
+                bodyId: 'qaSideSupersededBody',
 
-
-            return true;
-
-        });
-
-
-
-        const matches = filteredMatches
-
-            .sort((a, b) => {
-
-                const byBook = String(a.book || '').localeCompare(String(b.book || ''), 'es', { numeric: true, sensitivity: 'base' });
-
-                if (byBook !== 0) return byBook;
-
-                const byPage = pageSortValue(a.page) - pageSortValue(b.page);
-
-                if (byPage !== 0) return byPage;
-
-                const byPos = a.pos.localeCompare(b.pos, 'es', { numeric: true, sensitivity: 'base' });
-
-                if (byPos !== 0) return byPos;
-
-                return a.id.localeCompare(b.id, 'es', { numeric: true, sensitivity: 'base' });
+                countId: 'qaSideSupersededCount'
 
             });
 
 
 
-        if (!matches.length) {
+            const superseded = isSupersededArticle(row);
 
-            body.innerHTML = '<tr><td colspan="8">Sin coincidencias para los filtros seleccionados.</td></tr>';
+            $('qaSideNewSection')?.toggleAttribute('hidden', superseded);
 
-            if (count) count.textContent = `0 / ${matchesByPn.length}`;
-
-            return;
-
-        }
+            $('qaSideSupersededSection')?.toggleAttribute('hidden', !superseded);
 
 
 
-        body.innerHTML = matches.map(item => {
+            const status = $('qaSideStatus');
 
-            const isCurrent = item.revisionKey === revisionKey;
-
-            const revisionKeyAttr = escapeHtml(String(item.revisionKey || ''));
-
-            return `<tr class="${isCurrent ? 'qa-modal-related-current' : ''}" data-revision-key="${revisionKeyAttr}" title="Doble click para ir al registro en tabla principal">`
-
-                + `<td>${escapeHtml(item.book || '-')}</td>`
-
-                + `<td>${escapeHtml(item.page || '-')}</td>`
-
-                + `<td>${escapeHtml(item.pos || '-')}</td>`
-
-                + `<td>${escapeHtml(item.id || '-')}</td>`
-
-                + `<td>${escapeHtml(item.designationFinal || '-')}</td>`
-
-                + `<td>${escapeHtml(item.weightFinal || '-')}</td>`
-
-                + `<td>${escapeHtml(item.measurementFinal || '-')}</td>`
-
-                + `<td>${escapeHtml(item.fgsCodeDescription || '-')}</td>`
-
-                + '</tr>';
-
-        }).join('');
-
-
-
-        if (count) count.textContent = `${matches.length} / ${matchesByPn.length}`;
-
-    }
-
-
-
-    function openMatchesModal(revisionKey) {
-
-        const modal = $('qaMatchesModal');
-
-        const row = getRowByRevisionKey(revisionKey);
-
-        if (!modal || !row) return;
-
-
-
-        if (activeMatchesModalRevisionKey !== revisionKey) {
-
-            const pageFilter = $('qaMatchesModalPageFilter');
-
-            const posFilter = $('qaMatchesModalPosFilter');
-
-            const idFilter = $('qaMatchesModalIdFilter');
-
-            const textFilter = $('qaMatchesModalTextFilter');
-
-            if (pageFilter instanceof HTMLInputElement) pageFilter.value = '';
-
-            if (posFilter instanceof HTMLInputElement) posFilter.value = '';
-
-            if (idFilter instanceof HTMLInputElement) idFilter.value = '';
-
-            if (textFilter instanceof HTMLInputElement) textFilter.value = '';
+            if (status) status.textContent = '';
 
         }
 
 
 
-        activeMatchesModalRevisionKey = revisionKey;
+        function getRecordFormValues(scope) {
 
-        modal.removeAttribute('hidden');
+            const prefix = scope === 'side' ? 'qaSide' : 'qaModal';
 
-        renderMatchesLargeModal(revisionKey);
+            const values = {
 
-    }
+                pos_final: String($(`${prefix}Pos`)?.value || ''),
 
+                pn_final: String($(`${prefix}PnFinal`)?.value || ''),
 
+                designation_final: String($(`${prefix}DesignationFinal`)?.value || ''),
 
-    function closeMatchesModal() {
+                model_type_final: String($(`${prefix}ModelType`)?.value || ''),
 
-        const modal = $('qaMatchesModal');
+                qty_final: String($(`${prefix}Qty`)?.value || ''),
 
-        if (!modal) return;
+                qty_units_final: String($(`${prefix}Units`)?.value || ''),
 
+                weight_final: String($(`${prefix}WeightFinal`)?.value || ''),
 
+                fn_final: String($(`${prefix}Fn`)?.value || ''),
 
-        modal.setAttribute('hidden', '');
+                measure_final: String($(`${prefix}MeasurementFinal`)?.value || ''),
 
-        activeMatchesModalRevisionKey = '';
+                fg_fgs_final: String($(`${prefix}FgFgsFinal`)?.value || ''),
 
-    }
+                bom_final: String($(`${prefix}BomFinal`)?.value || ''),
 
+                norma_final: String($(`${prefix}Norma`)?.value || ''),
 
+                gesa: String($(`${prefix}Gesa`)?.value || ''),
 
-    function normalizeCopyCellValue(value) {
+                normalizado: String($(`${prefix}Normalizado`)?.value || ''),
 
-        const raw = String(value ?? '').trim();
+                sust_hierarchie: String($(`${prefix}SustHierarchie`)?.value || ''),
 
-        if (!raw || raw === '—' || raw === '-') return '';
+                has_img: String($(`${prefix}HasImg`)?.value || ''),
 
-        return raw;
+                EN_WEB: String($(`${prefix}EnWeb`)?.value || ''),
 
-    }
+                engine_model: String($(`${prefix}Book`)?.value || ''),
 
+                'Source Page': String($(`${prefix}Page`)?.value || '')
 
-
-    async function tryHandleTableCellDoubleClickCopy(event, row, cell) {
-
-        const toField = String(cell?.dataset?.copyToFinal || '').trim();
-
-        const fromField = String(cell?.dataset?.copyFromField || '').trim();
-
-        if (!toField || !fromField || !row) return false;
-
-
-
-        event.preventDefault();
-
-        event.stopPropagation();
+            };
 
 
 
-        if (!ensureBackendWritable('copiar valor a campo _final')) {
+            if (scope !== 'side') {
 
-            return true;
+                values.pos_excel = String($(`${prefix}PosExcel`)?.value || '');
 
-        }
+                values.pn_excel = String($(`${prefix}PnExcel`)?.value || '');
 
+                values.designation_excel = String($(`${prefix}DesignationExcel`)?.value || '');
 
+                values.model_type_excel = String($(`${prefix}ModelTypeExcel`)?.value || '');
 
-        const nextValue = normalizeCopyCellValue(getRowValueForColumn(row, fromField, row?.[fromField]));
+                values.qty_excel = String($(`${prefix}QtyExcel`)?.value || '');
 
-        if (!nextValue) {
+                values.qty_units_excel = String($(`${prefix}QtyUnitsExcel`)?.value || '');
 
-            showToast(`No hay valor en ${fromField} para copiar a ${toField}.`, 'warning');
+                values.weight_excel = String($(`${prefix}WeightExcel`)?.value || '');
 
-            return true;
+                values.fn_excel = String($(`${prefix}FnExcel`)?.value || '');
 
-        }
+                values.measure_excel = String($(`${prefix}MeasureExcel`)?.value || '');
 
+                values.fg_fgs_excel = String($(`${prefix}FgFgsExcel`)?.value || '');
 
-
-        const currentValue = normalizeCopyCellValue(getRowValueForColumn(row, toField, row?.[toField]));
-
-        if (nextValue === currentValue) {
-
-            showToast(`${toField} ya coincide con ${fromField}.`, 'info');
-
-            return true;
-
-        }
-
-
-
-        const changes = {
-
-            [toField]: {
-
-                before: String(row?.[toField] ?? ''),
-
-                after: nextValue
+                values.bom_excel = String($(`${prefix}BomExcel`)?.value || '');
 
             }
 
-        };
 
 
-
-        try {
-
-            await changeControl.applyAndRecord(buildRowPatchEntryWithPnCopyPropagation(row, changes, {
-
-                action: `dblclick-copy-${toField}`,
-
-                description: `Doble click copia ${fromField} -> ${toField} (ID ${row.ID})`
-
-            }));
-
-            updateUndoButtonState();
-
-            showToast(`Copiado ${fromField} -> ${toField}.`, 'success');
-
-        } catch (error) {
-
-            console.error('No se pudo copiar valor por doble click:', error);
-
-            showToast(`No se pudo copiar ${fromField} a ${toField}: ${error.message}`, 'error');
+            return values;
 
         }
 
 
 
-        return true;
+        function clearSideRecordForm() {
 
-    }
+            const form = $('qaSideRecordForm');
 
-
-
-    async function handleRecordModalSubmit(event) {
-
-        event.preventDefault();
-
-        event.stopPropagation();
-
-        const form = event.target;
-
-        if (!(form instanceof HTMLFormElement)) return;
+            if (!(form instanceof HTMLFormElement)) return;
 
 
 
-        const revisionKey = String(form.dataset.revisionKey || '');
+            form.dataset.revisionKey = '';
 
-        const row = getRowByRevisionKey(revisionKey);
+            form.querySelectorAll('input').forEach(input => { input.value = ''; });
 
-        if (!row) {
+            form.querySelectorAll('select').forEach(select => {
 
-            alert('No se encontro el registro seleccionado para guardar.');
+                if (select.id === 'qaSideMatchesBookFilter') select.value = '__current__';
 
-            closeRecordModal();
+                else if (select.id === 'qaSideRevisionEstado') select.value = 'pendiente';
 
-            return;
+                else if (select.id === 'qaSideRevisionAccion') select.value = 'importar';
+
+                else select.value = '';
+
+            });
+
+
+
+            const sideLabel = $('qaSideLabel');
+
+            if (sideLabel) sideLabel.textContent = 'Selecciona una fila para cargar la ficha';
+
+            const exportLabel = $('qaSideExportLabel');
+
+            if (exportLabel) exportLabel.textContent = 'Sin selección';
+
+
+
+            $('qaSideMatchesBody').innerHTML = '<tr><td colspan="5">Sin seleccion</td></tr>';
+
+            const sideOnlyDiffToggle = $('qaSideExportOnlyDiffToggle');
+
+            if (sideOnlyDiffToggle instanceof HTMLInputElement) sideOnlyDiffToggle.checked = false;
+
+            $('qaSideExportHeadRow').innerHTML = '<th>Sin datos</th>';
+
+            $('qaSideExportBody').innerHTML = '<tr><td>Sin seleccion.</td></tr>';
+
+            $('qaSideSupersededHeadRow').innerHTML = '<th>Sin datos</th>';
+
+            $('qaSideSupersededBody').innerHTML = '<tr><td>Sin seleccion.</td></tr>';
+
+            $('qaSideErrorsSummary').innerHTML = '<span class="qa-record-errors-pill is-empty">Sin seleccion</span>';
+
+            $('qaSideErrorsList').innerHTML = '<li class="qa-record-errors-empty">Selecciona una fila para ver sus errores.</li>';
+
+            const status = $('qaSideStatus');
+
+            if (status) status.textContent = 'Selecciona una fila para editarla aqui.';
+
+            if (isMatchesModalOpen()) closeMatchesModal();
 
         }
 
 
 
-        const saveBtn = $('qaRecordModalSaveBtn');
+        function syncSideRecordFormWithSelection() {
 
-        const status = $('qaRecordModalStatus');
+            const revisionKey = String(state.selectedRevisionRowKey || '');
 
-        if (saveBtn) saveBtn.disabled = true;
+            const row = getRowByRevisionKey(revisionKey);
 
-        if (status) status.textContent = 'Guardando cambios...';
+            if (!row || !revisionKey) {
 
-
-
-        const nextEstado = String($('qaModalRevisionEstado')?.value || '').trim();
-
-        const nextAccion = String($('qaModalRevisionAccion')?.value || '').trim();
-
-        const nextValues = getRecordFormValues('modal');
-
-
-
-        if (!ensureBackendWritable('guardar el registro')) {
-
-            if (status) status.textContent = 'Modo solo lectura: backend sin conexion.';
-
-            if (saveBtn) saveBtn.disabled = false;
-
-            return;
-
-        }
-
-
-
-        try {
-
-            const changes = collectRowChanges(row, nextValues, nextEstado, nextAccion);
-
-            if (!Object.keys(changes).length) {
-
-                if (status) status.textContent = 'Sin cambios para guardar.';
-
-                closeRecordModal();
-
-                restoreModalUiState(revisionKey);
+                clearSideRecordForm();
 
                 return;
 
             }
 
+            fillSideRecordForm(row, revisionKey);
 
+            if (isMatchesModalOpen()) {
 
-            await changeControl.applyAndRecord(buildRowPatchEntryWithPnCopyPropagation(row, changes, {
+                activeMatchesModalRevisionKey = revisionKey;
 
-                action: 'save-record-modal',
-
-                description: `Guardar ficha modal ID ${row.ID}`
-
-            }));
-
-
-
-            closeRecordModal();
-
-            restoreModalUiState(revisionKey);
-
-            updateUndoButtonState();
-
-        } catch (error) {
-
-            console.error('Error guardando formulario modal:', error);
-
-            if (status) status.textContent = `No se pudo guardar: ${error.message}`;
-
-            alert(`No se pudo guardar el registro: ${error.message}`);
-
-        } finally {
-
-            if (saveBtn) saveBtn.disabled = false;
-
-        }
-
-    }
-
-
-
-    async function handleSideRecordSubmit(event) {
-
-        event.preventDefault();
-
-        event.stopPropagation();
-
-        const form = event.target;
-
-        if (!(form instanceof HTMLFormElement)) return;
-
-
-
-        const revisionKey = String(form.dataset.revisionKey || '');
-
-        const row = getRowByRevisionKey(revisionKey);
-
-        if (!row) {
-
-            alert('Selecciona un registro de la tabla para editar la ficha lateral.');
-
-            return;
-
-        }
-
-
-
-        const saveBtn = $('qaSideSaveBtn');
-
-        const status = $('qaSideStatus');
-
-        if (saveBtn) saveBtn.disabled = true;
-
-        if (status) status.textContent = 'Guardando cambios...';
-
-
-
-        const nextEstado = String($('qaSideRevisionEstado')?.value || '').trim();
-
-        const nextAccion = String($('qaSideRevisionAccion')?.value || '').trim();
-
-        const nextValues = getRecordFormValues('side');
-
-
-
-        if (!ensureBackendWritable('guardar el registro')) {
-
-            if (status) status.textContent = 'Modo solo lectura: backend sin conexion.';
-
-            if (saveBtn) saveBtn.disabled = false;
-
-            return;
-
-        }
-
-
-
-        try {
-
-            const changes = collectRowChanges(row, nextValues, nextEstado, nextAccion);
-
-            if (!Object.keys(changes).length) {
-
-                if (status) status.textContent = 'Sin cambios para guardar.';
-
-                return;
+                renderMatchesLargeModal(revisionKey);
 
             }
 
-
-
-            await changeControl.applyAndRecord(buildRowPatchEntryWithPnCopyPropagation(row, changes, {
-
-                action: 'save-side-form',
-
-                description: `Guardar ficha lateral ID ${row.ID}`
-
-            }));
-
-
-
-            if (status) status.textContent = 'Cambios guardados.';
-
-            updateUndoButtonState();
-
-        } catch (error) {
-
-            console.error('Error guardando ficha lateral:', error);
-
-            if (status) status.textContent = `No se pudo guardar: ${error.message}`;
-
-            alert(`No se pudo guardar el registro: ${error.message}`);
-
-        } finally {
-
-            if (saveBtn) saveBtn.disabled = false;
-
         }
 
-    }
+
+
+        function applyIncomingRevisionSync(message) {
+
+            const id = String(message?.id || '').trim();
+
+            if (!id || !Array.isArray(state.allData) || state.allData.length === 0) return;
 
 
 
-    async function tryLoadFirstJson(candidates) {
+            const engineFile = String(message?.engineFile || '').trim().toLowerCase();
 
-        for (const candidate of candidates) {
+            const hasEstado = message?.estado !== undefined && message?.estado !== null;
 
-            try {
+            const hasAccion = message?.accion !== undefined && message?.accion !== null;
 
-                return await fetchJsonSafe(candidate);
-
-            } catch (_) {
-
-                // Continue with next candidate.
-
-            }
-
-        }
-
-        return null;
-
-    }
+            if (!hasEstado && !hasAccion) return;
 
 
 
-    const ENABLE_OPTIONAL_CATALOGS = false;
+            const nextEstado = hasEstado ? normalizeEstadoToNew(message.estado) : null;
+
+            const nextAccion = hasAccion ? normalizeAccionToNew(message.accion) : null;
 
 
 
-    async function loadOptionalCatalogsInBackground() {
+            let changed = false;
 
-        // El índice de esquemas_pos debe cargarse siempre (aunque catálogos opcionales estén desactivados)
+            const touchedKeys = new Set();
 
-        // porque la columna ESQ_POS depende de este Set para evitar falsos MISS.
 
-        try {
 
-            const posIndexResponse = await fetch(apiUrl('/api/esquemas-pos-index'));
+            state.allData.forEach((row) => {
 
-            if (posIndexResponse.ok) {
+                const rowId = String(row?.ID || '').trim();
 
-                const posIndexData = await posIndexResponse.json();
+                if (!rowId || rowId !== id) return;
 
-                if (posIndexData.ok && Array.isArray(posIndexData.files)) {
 
-                    state.esquemasPosFileSet = new Set(posIndexData.files);
+
+                if (engineFile) {
+
+                    const rowEngineFile = String(getEngineJsonForRow(row) || '').trim().toLowerCase();
+
+                    if (rowEngineFile !== engineFile) return;
+
+                }
+
+
+
+                let rowChanged = false;
+
+                if (nextEstado && normalizeEstadoToNew(row?.qa_revision_estado) !== nextEstado) {
+
+                    row.qa_revision_estado = nextEstado;
+
+                    rowChanged = true;
+
+                }
+
+                if (nextAccion && normalizeAccionToNew(row?.qa_revision_accion) !== nextAccion) {
+
+                    row.qa_revision_accion = nextAccion;
+
+                    rowChanged = true;
+
+                }
+
+
+
+                if (!rowChanged) return;
+
+                row.qa_revision_updated_at = new Date().toISOString();
+
+                touchedKeys.add(getRevisionKey(row));
+
+                changed = true;
+
+            });
+
+
+
+            if (!changed) return;
+
+
+
+            renderTable();
+
+            renderPagination();
+
+
+
+            const selectedKey = String(state.selectedRevisionRowKey || '').trim();
+
+            if (selectedKey && touchedKeys.has(selectedKey)) {
+
+                syncSideRecordFormWithSelection();
+
+
+
+                const modalForm = $('qaRecordModalForm');
+
+                if (modalForm instanceof HTMLFormElement && String(modalForm.dataset.revisionKey || '') === selectedKey) {
+
+                    const selectedRow = getRowByRevisionKey(selectedKey);
+
+                    if (selectedRow) fillRecordModal(selectedRow, selectedKey);
 
                 }
 
             }
 
-        } catch (e) {
+        }
 
-            console.warn('[loadOptionalCatalogsInBackground] No se pudo cargar índice esquemas_pos:', e);
+
+
+        function captureModalUiState() {
+
+            const tableWrap = $('mainTableWrap');
+
+            if (tableWrap instanceof HTMLElement) {
+
+                modalUiState.tableScrollTop = tableWrap.scrollTop;
+
+                modalUiState.tableScrollLeft = tableWrap.scrollLeft;
+
+            }
+
+            modalUiState.windowScrollX = window.scrollX || 0;
+
+            modalUiState.windowScrollY = window.scrollY || 0;
 
         }
 
 
 
-        if (!ENABLE_OPTIONAL_CATALOGS) {
+        function restoreModalUiState(revisionKey) {
+
+            const tableWrap = $('mainTableWrap');
+
+            if (tableWrap instanceof HTMLElement) {
+
+                tableWrap.scrollTop = modalUiState.tableScrollTop;
+
+                tableWrap.scrollLeft = modalUiState.tableScrollLeft;
+
+            }
+
+            window.scrollTo(modalUiState.windowScrollX, modalUiState.windowScrollY);
+
+
+
+            const safeKey = String(revisionKey || '').replace(/"/g, '\\"');
+
+            if (!safeKey) return;
+
+            const targetRow = document.querySelector(`#tbody tr[data-revision-key="${safeKey}"]`);
+
+            if (!(targetRow instanceof HTMLTableRowElement)) return;
+
+            targetRow.scrollIntoView({ block: 'nearest' });
+
+        }
+
+
+
+        function openRecordModal(revisionKey) {
+
+            const row = getRowByRevisionKey(revisionKey);
+
+            const modal = $('qaRecordModal');
+
+            if (!row || !modal) return;
+
+            captureModalUiState();
+
+            fillRecordModal(row, revisionKey);
+
+            modal.removeAttribute('hidden');
+
+            const firstInput = $('qaModalRevisionEstado');
+
+            if (firstInput instanceof HTMLElement) firstInput.focus();
+
+        }
+
+
+
+        function openSharedRecordEditorForRow(row) {
+
+            if (!row || typeof row !== 'object') return false;
+
+
+
+            const parentBridge = window.parent && window.parent !== window
+
+                ? window.parent.miluShellOpenSharedRecordEditor
+
+                : null;
+
+            const topBridge = window.top && window.top !== window
+
+                ? window.top.miluShellOpenSharedRecordEditor
+
+                : null;
+
+            const shellBridge = typeof parentBridge === 'function'
+
+                ? parentBridge
+
+                : (typeof topBridge === 'function' ? topBridge : null);
+
+            if (typeof shellBridge !== 'function') return false;
+
+
+
+            const opened = shellBridge({
+
+                id: String(row?.ID ?? '').trim(),
+
+                engineModel: String(row?.engine_model ?? '').trim(),
+
+                engineFile: String(getEngineJsonForRow(row) || '').trim(),
+
+                record: String(row?.pn_final ?? row?.['PART NO.'] ?? '').trim(),
+
+                source_file: String(row?.source_file ?? '').trim(),
+
+                source_page: String(row?.['Source Page'] ?? '').trim(),
+
+                pos: String(row?.POS ?? '').trim(),
+
+                pos_final: String(row?.pos_final ?? '').trim(),
+
+                part_no: String(row?.['PART NO.'] ?? row?.pn ?? '').trim(),
+
+                pn_final: String(row?.pn_final ?? '').trim(),
+
+                designation_final: String(row?.designation_final ?? '').trim(),
+
+                model_type_final: String(row?.model_type_final ?? '').trim(),
+
+                qty: String(row?.QTY ?? row?.qty ?? '').trim(),
+
+                units: String(row?.Units ?? row?.units ?? '').trim(),
+
+                fn: String(row?.FN ?? row?.fn ?? '').trim(),
+
+                weight_final: String(row?.weight_final ?? '').trim(),
+
+                measurement_final: String(row?.measure_final ?? row?.measurement_final ?? '').trim(),
+
+                norma: String(row?.norma ?? '').trim(),
+
+                gesa: String(row?.gesa ?? '').trim(),
+
+                normalizado: String(row?.normalizado ?? '').trim(),
+
+                sust_hierarchie: String(row?.sust_hierarchie ?? '').trim(),
+
+                has_img: String(row?.has_img ?? '').trim(),
+
+                en_web: String(row?.en_web ?? '').trim(),
+
+                qa_revision_estado: String(row?.qa_revision_estado ?? '').trim(),
+
+                qa_revision_accion: String(row?.qa_revision_accion ?? '').trim()
+
+            });
+
+            return opened !== false;
+
+        }
+
+
+
+        function updateExportModalHeader(row) {
+
+            const pnLabel = $('qaExportModalPn');
+
+            const currentLabel = $('qaExportModalCurrent');
+
+            if (pnLabel) pnLabel.textContent = String(row?.['PART NO.'] ?? row?.pn ?? '-').trim() || '-';
+
+            if (currentLabel) {
+
+                currentLabel.textContent = `${String(row?.engine_model || '-')} · pag ${String(row?.['Source Page'] || '-')} · pos ${String(row?.POS || '-')}`;
+
+            }
+
+        }
+
+
+
+        function openExportModal(revisionKey) {
+
+            const row = getRowByRevisionKey(revisionKey);
+
+            const modal = $('qaExportModal');
+
+            if (!row || !modal) return;
+
+
+
+            if (isRecordModalOpen()) closeRecordModal();
+
+
+
+            renderRecordModalExport(row);
+
+            renderRecordModalSuperseded(row);
+
+            updateExportModalHeader(row);
+
+            modal.dataset.revisionKey = String(revisionKey || '');
+
+            modal.removeAttribute('hidden');
+
+        }
+
+
+
+        function closeExportModal() {
+
+            const modal = $('qaExportModal');
+
+            if (!modal) return;
+
+            modal.setAttribute('hidden', '');
+
+            modal.dataset.revisionKey = '';
+
+        }
+
+
+
+        function closeRecordModal() {
+
+            const modal = $('qaRecordModal');
+
+            if (!modal) return;
+
+            modal.setAttribute('hidden', '');
+
+            const status = $('qaRecordModalStatus');
+
+            if (status) status.textContent = '';
+
+        }
+
+
+
+        function renderMatchesLargeModal(revisionKey = activeMatchesModalRevisionKey) {
+
+            const body = $('qaMatchesModalBody');
+
+            const count = $('qaMatchesModalCount');
+
+            const pnLabel = $('qaMatchesModalPn');
+
+            const currentLabel = $('qaMatchesModalCurrent');
+
+            const row = getRowByRevisionKey(revisionKey);
+
+
+
+            if (!(body instanceof HTMLElement) || !row || !revisionKey) {
+
+                if (body instanceof HTMLElement) {
+
+                    body.innerHTML = '<tr><td colspan="8">Selecciona un registro en la ficha para ver apariciones.</td></tr>';
+
+                }
+
+                if (count) count.textContent = '0';
+
+                if (pnLabel) pnLabel.textContent = '-';
+
+                if (currentLabel) currentLabel.textContent = '-';
+
+                return;
+
+            }
+
+
+
+            const currentBook = normModalMatch(getBookEngineCode(row));
+
+            const matchesByPn = getModalMatchesByPn(row);
+
+            const pn = String(row?.['PART NO.'] ?? row?.pn ?? '').trim() || '-';
+
+            if (pnLabel) pnLabel.textContent = pn;
+
+            if (currentLabel) {
+
+                currentLabel.textContent = `${String(row?.engine_model || '-')} · pag ${String(row?.['Source Page'] || '-')} · pos ${String(row?.POS || '-')}`;
+
+            }
+
+
+
+            if (!matchesByPn.length) {
+
+                body.innerHTML = '<tr><td colspan="8">No se pudo determinar PN/libro del registro.</td></tr>';
+
+                if (count) count.textContent = '0';
+
+                return;
+
+            }
+
+
+
+            syncRecordModalBookFilter(row, matchesByPn, 'qaMatchesModalBookFilter');
+
+
+
+            const selectedBookFilter = String($('qaMatchesModalBookFilter')?.value || '__current__');
+
+            const pageFilter = normModalMatch($('qaMatchesModalPageFilter')?.value || '');
+
+            const posFilter = normModalMatch($('qaMatchesModalPosFilter')?.value || '');
+
+            const idFilter = normModalMatch($('qaMatchesModalIdFilter')?.value || '');
+
+            const textFilter = normModalMatch($('qaMatchesModalTextFilter')?.value || '');
+
+
+
+            const filteredMatches = matchesByPn.filter(item => {
+
+                const itemBook = normModalMatch(item.book);
+
+                if (selectedBookFilter === '__all__') {
+
+                    // No aplicar filtro de libro.
+
+                } else if (selectedBookFilter === '__current__') {
+
+                    if (!currentBook || itemBook !== currentBook) return false;
+
+                } else if (itemBook !== normModalMatch(selectedBookFilter)) {
+
+                    return false;
+
+                }
+
+
+
+                if (pageFilter && !normModalMatch(item.page).includes(pageFilter)) return false;
+
+                if (posFilter && !normModalMatch(item.pos).includes(posFilter)) return false;
+
+                if (idFilter && !normModalMatch(item.id).includes(idFilter)) return false;
+
+
+
+                if (textFilter) {
+
+                    const haystack = [
+
+                        item.id,
+
+                        item.designationFinal,
+
+                        item.weightFinal,
+
+                        item.measurementFinal,
+
+                        item.fgsCodeDescription,
+
+                        item.book,
+
+                        item.page,
+
+                        item.pos
+
+                    ].map(value => normModalMatch(value)).join(' ');
+
+                    if (!haystack.includes(textFilter)) return false;
+
+                }
+
+
+
+                return true;
+
+            });
+
+
+
+            const matches = filteredMatches
+
+                .sort((a, b) => {
+
+                    const byBook = String(a.book || '').localeCompare(String(b.book || ''), 'es', { numeric: true, sensitivity: 'base' });
+
+                    if (byBook !== 0) return byBook;
+
+                    const byPage = pageSortValue(a.page) - pageSortValue(b.page);
+
+                    if (byPage !== 0) return byPage;
+
+                    const byPos = a.pos.localeCompare(b.pos, 'es', { numeric: true, sensitivity: 'base' });
+
+                    if (byPos !== 0) return byPos;
+
+                    return a.id.localeCompare(b.id, 'es', { numeric: true, sensitivity: 'base' });
+
+                });
+
+
+
+            if (!matches.length) {
+
+                body.innerHTML = '<tr><td colspan="8">Sin coincidencias para los filtros seleccionados.</td></tr>';
+
+                if (count) count.textContent = `0 / ${matchesByPn.length}`;
+
+                return;
+
+            }
+
+
+
+            body.innerHTML = matches.map(item => {
+
+                const isCurrent = item.revisionKey === revisionKey;
+
+                const revisionKeyAttr = escapeHtml(String(item.revisionKey || ''));
+
+                return `<tr class="${isCurrent ? 'qa-modal-related-current' : ''}" data-revision-key="${revisionKeyAttr}" title="Doble click para ir al registro en tabla principal">`
+
+                    + `<td>${escapeHtml(item.book || '-')}</td>`
+
+                    + `<td>${escapeHtml(item.page || '-')}</td>`
+
+                    + `<td>${escapeHtml(item.pos || '-')}</td>`
+
+                    + `<td>${escapeHtml(item.id || '-')}</td>`
+
+                    + `<td>${escapeHtml(item.designationFinal || '-')}</td>`
+
+                    + `<td>${escapeHtml(item.weightFinal || '-')}</td>`
+
+                    + `<td>${escapeHtml(item.measurementFinal || '-')}</td>`
+
+                    + `<td>${escapeHtml(item.fgsCodeDescription || '-')}</td>`
+
+                    + '</tr>';
+
+            }).join('');
+
+
+
+            if (count) count.textContent = `${matches.length} / ${matchesByPn.length}`;
+
+        }
+
+
+
+        function openMatchesModal(revisionKey) {
+
+            const modal = $('qaMatchesModal');
+
+            const row = getRowByRevisionKey(revisionKey);
+
+            if (!modal || !row) return;
+
+
+
+            if (activeMatchesModalRevisionKey !== revisionKey) {
+
+                const pageFilter = $('qaMatchesModalPageFilter');
+
+                const posFilter = $('qaMatchesModalPosFilter');
+
+                const idFilter = $('qaMatchesModalIdFilter');
+
+                const textFilter = $('qaMatchesModalTextFilter');
+
+                if (pageFilter instanceof HTMLInputElement) pageFilter.value = '';
+
+                if (posFilter instanceof HTMLInputElement) posFilter.value = '';
+
+                if (idFilter instanceof HTMLInputElement) idFilter.value = '';
+
+                if (textFilter instanceof HTMLInputElement) textFilter.value = '';
+
+            }
+
+
+
+            activeMatchesModalRevisionKey = revisionKey;
+
+            modal.removeAttribute('hidden');
+
+            renderMatchesLargeModal(revisionKey);
+
+        }
+
+
+
+        function closeMatchesModal() {
+
+            const modal = $('qaMatchesModal');
+
+            if (!modal) return;
+
+
+
+            modal.setAttribute('hidden', '');
+
+            activeMatchesModalRevisionKey = '';
+
+        }
+
+
+
+        function normalizeCopyCellValue(value) {
+
+            const raw = String(value ?? '').trim();
+
+            if (!raw || raw === '—' || raw === '-') return '';
+
+            return raw;
+
+        }
+
+
+
+        async function tryHandleTableCellDoubleClickCopy(event, row, cell) {
+
+            const toField = String(cell?.dataset?.copyToFinal || '').trim();
+
+            const fromField = String(cell?.dataset?.copyFromField || '').trim();
+
+            if (!toField || !fromField || !row) return false;
+
+
+
+            event.preventDefault();
+
+            event.stopPropagation();
+
+
+
+            if (!ensureBackendWritable('copiar valor a campo _final')) {
+
+                return true;
+
+            }
+
+
+
+            const nextValue = normalizeCopyCellValue(getRowValueForColumn(row, fromField, row?.[fromField]));
+
+            if (!nextValue) {
+
+                showToast(`No hay valor en ${fromField} para copiar a ${toField}.`, 'warning');
+
+                return true;
+
+            }
+
+
+
+            const currentValue = normalizeCopyCellValue(getRowValueForColumn(row, toField, row?.[toField]));
+
+            if (nextValue === currentValue) {
+
+                showToast(`${toField} ya coincide con ${fromField}.`, 'info');
+
+                return true;
+
+            }
+
+
+
+            const changes = {
+
+                [toField]: {
+
+                    before: String(row?.[toField] ?? ''),
+
+                    after: nextValue
+
+                }
+
+            };
+
+
+
+            try {
+
+                await changeControl.applyAndRecord(buildRowPatchEntryWithPnCopyPropagation(row, changes, {
+
+                    action: `dblclick-copy-${toField}`,
+
+                    description: `Doble click copia ${fromField} -> ${toField} (ID ${row.ID})`
+
+                }));
+
+                updateUndoButtonState();
+
+                showToast(`Copiado ${fromField} -> ${toField}.`, 'success');
+
+            } catch (error) {
+
+                console.error('No se pudo copiar valor por doble click:', error);
+
+                showToast(`No se pudo copiar ${fromField} a ${toField}: ${error.message}`, 'error');
+
+            }
+
+
+
+            return true;
+
+        }
+
+
+
+        async function handleRecordModalSubmit(event) {
+
+            event.preventDefault();
+
+            event.stopPropagation();
+
+            const form = event.target;
+
+            if (!(form instanceof HTMLFormElement)) return;
+
+
+
+            const revisionKey = String(form.dataset.revisionKey || '');
+
+            const row = getRowByRevisionKey(revisionKey);
+
+            if (!row) {
+
+                alert('No se encontro el registro seleccionado para guardar.');
+
+                closeRecordModal();
+
+                return;
+
+            }
+
+
+
+            const saveBtn = $('qaRecordModalSaveBtn');
+
+            const status = $('qaRecordModalStatus');
+
+            if (saveBtn) saveBtn.disabled = true;
+
+            if (status) status.textContent = 'Guardando cambios...';
+
+
+
+            const nextEstado = String($('qaModalRevisionEstado')?.value || '').trim();
+
+            const nextAccion = String($('qaModalRevisionAccion')?.value || '').trim();
+
+            const nextValues = getRecordFormValues('modal');
+
+
+
+            if (!ensureBackendWritable('guardar el registro')) {
+
+                if (status) status.textContent = 'Modo solo lectura: backend sin conexion.';
+
+                if (saveBtn) saveBtn.disabled = false;
+
+                return;
+
+            }
+
+
+
+            try {
+
+                const changes = collectRowChanges(row, nextValues, nextEstado, nextAccion);
+
+                if (!Object.keys(changes).length) {
+
+                    if (status) status.textContent = 'Sin cambios para guardar.';
+
+                    closeRecordModal();
+
+                    restoreModalUiState(revisionKey);
+
+                    return;
+
+                }
+
+
+
+                await changeControl.applyAndRecord(buildRowPatchEntryWithPnCopyPropagation(row, changes, {
+
+                    action: 'save-record-modal',
+
+                    description: `Guardar ficha modal ID ${row.ID}`
+
+                }));
+
+
+
+                closeRecordModal();
+
+                restoreModalUiState(revisionKey);
+
+                updateUndoButtonState();
+
+            } catch (error) {
+
+                console.error('Error guardando formulario modal:', error);
+
+                if (status) status.textContent = `No se pudo guardar: ${error.message}`;
+
+                alert(`No se pudo guardar el registro: ${error.message}`);
+
+            } finally {
+
+                if (saveBtn) saveBtn.disabled = false;
+
+            }
+
+        }
+
+
+
+        async function handleSideRecordSubmit(event) {
+
+            event.preventDefault();
+
+            event.stopPropagation();
+
+            const form = event.target;
+
+            if (!(form instanceof HTMLFormElement)) return;
+
+
+
+            const revisionKey = String(form.dataset.revisionKey || '');
+
+            const row = getRowByRevisionKey(revisionKey);
+
+            if (!row) {
+
+                alert('Selecciona un registro de la tabla para editar la ficha lateral.');
+
+                return;
+
+            }
+
+
+
+            const saveBtn = $('qaSideSaveBtn');
+
+            const status = $('qaSideStatus');
+
+            if (saveBtn) saveBtn.disabled = true;
+
+            if (status) status.textContent = 'Guardando cambios...';
+
+
+
+            const nextEstado = String($('qaSideRevisionEstado')?.value || '').trim();
+
+            const nextAccion = String($('qaSideRevisionAccion')?.value || '').trim();
+
+            const nextValues = getRecordFormValues('side');
+
+
+
+            if (!ensureBackendWritable('guardar el registro')) {
+
+                if (status) status.textContent = 'Modo solo lectura: backend sin conexion.';
+
+                if (saveBtn) saveBtn.disabled = false;
+
+                return;
+
+            }
+
+
+
+            try {
+
+                const changes = collectRowChanges(row, nextValues, nextEstado, nextAccion);
+
+                if (!Object.keys(changes).length) {
+
+                    if (status) status.textContent = 'Sin cambios para guardar.';
+
+                    return;
+
+                }
+
+
+
+                await changeControl.applyAndRecord(buildRowPatchEntryWithPnCopyPropagation(row, changes, {
+
+                    action: 'save-side-form',
+
+                    description: `Guardar ficha lateral ID ${row.ID}`
+
+                }));
+
+
+
+                if (status) status.textContent = 'Cambios guardados.';
+
+                updateUndoButtonState();
+
+            } catch (error) {
+
+                console.error('Error guardando ficha lateral:', error);
+
+                if (status) status.textContent = `No se pudo guardar: ${error.message}`;
+
+                alert(`No se pudo guardar el registro: ${error.message}`);
+
+            } finally {
+
+                if (saveBtn) saveBtn.disabled = false;
+
+            }
+
+        }
+
+
+
+        async function tryLoadFirstJson(candidates) {
+
+            for (const candidate of candidates) {
+
+                try {
+
+                    return await fetchJsonSafe(candidate);
+
+                } catch (_) {
+
+                    // Continue with next candidate.
+
+                }
+
+            }
+
+            return null;
+
+        }
+
+
+
+        const ENABLE_OPTIONAL_CATALOGS = false;
+
+
+
+        async function loadOptionalCatalogsInBackground() {
+
+            // El índice de esquemas_pos debe cargarse siempre (aunque catálogos opcionales estén desactivados)
+
+            // porque la columna ESQ_POS depende de este Set para evitar falsos MISS.
+
+            try {
+
+                const posIndexResponse = await fetch(apiUrl('/api/esquemas-pos-index'));
+
+                if (posIndexResponse.ok) {
+
+                    const posIndexData = await posIndexResponse.json();
+
+                    if (posIndexData.ok && Array.isArray(posIndexData.files)) {
+
+                        state.esquemasPosFileSet = new Set(posIndexData.files);
+
+                    }
+
+                }
+
+            } catch (e) {
+
+                console.warn('[loadOptionalCatalogsInBackground] No se pudo cargar índice esquemas_pos:', e);
+
+            }
+
+
+
+            if (!ENABLE_OPTIONAL_CATALOGS) {
+
+                renderTable();
+
+                return;
+
+            }
+
+
+
+            const [newData, supersededData, productExportData] = await Promise.all([
+
+                tryLoadFirstJson(['MILU_New_v506.json', 'MILU_New_v507.json']),
+
+                tryLoadFirstJson(['MILU_Superseded_v506.json', 'MILU_Superseded_v507.json']),
+
+                tryLoadFirstJson(['product-export-2026-03-29-11-07.json', 'product_export_v507.json'])
+
+            ]);
+
+
+
+            if (Array.isArray(newData)) {
+
+                state.newPnSet = new Set(newData.map(item => item.pn));
+
+                state.miluNewData = newData;
+
+            }
+
+
+
+            if (Array.isArray(supersededData)) {
+
+                state.supersededPnSet = new Set(supersededData.map(item => item.pn));
+
+                state.miluSupersededData = supersededData;
+
+            }
+
+
+
+            if (Array.isArray(productExportData)) {
+
+                state.productExportPnSet = new Set(productExportData.map(item => item.pn));
+
+            }
+
+
+
+            // Refresca vistas dependientes de estos catálogos si están habilitados.
 
             renderTable();
 
-            return;
+        }
+
+
+
+        function getBookPages(book) {
+
+            const bookFilter = String(book || state.filters.book || '').toLowerCase();
+
+            return [...new Set(state.allData
+
+                .filter(row => !bookFilter || val(row, 'engine_model', '').toString().toLowerCase() === bookFilter)
+
+                .map(row => {
+
+                    const n = Number(String(val(row, 'Source Page', '')).replace(/[^0-9]/g, ''));
+
+                    return Number.isFinite(n) && !Number.isNaN(n) ? n : null;
+
+                })
+
+                .filter(n => n != null))].sort((a, b) => a - b);
 
         }
 
 
 
-        const [newData, supersededData, productExportData] = await Promise.all([
+        function populatePageFilterOptions(bookValue, selectedPage = '') {
 
-            tryLoadFirstJson(['MILU_New_v506.json', 'MILU_New_v507.json']),
+            const pageSelect = $('pageFilterSelect');
 
-            tryLoadFirstJson(['MILU_Superseded_v506.json', 'MILU_Superseded_v507.json']),
-
-            tryLoadFirstJson(['product-export-2026-03-29-11-07.json', 'product_export_v507.json'])
-
-        ]);
+            if (!(pageSelect instanceof HTMLSelectElement)) return '';
 
 
 
-        if (Array.isArray(newData)) {
+            const normalizedBook = String(bookValue || '').trim();
 
-            state.newPnSet = new Set(newData.map(item => item.pn));
+            const pages = normalizedBook ? getBookPages(normalizedBook) : [];
 
-            state.miluNewData = newData;
+            const normalizedSelectedPage = normalizePageNumber(selectedPage);
 
-        }
+            const selectedPageNumber = Number(normalizedSelectedPage);
 
+            const hasSelectedPage = normalizedSelectedPage !== '' && pages.includes(selectedPageNumber);
 
-
-        if (Array.isArray(supersededData)) {
-
-            state.supersededPnSet = new Set(supersededData.map(item => item.pn));
-
-            state.miluSupersededData = supersededData;
-
-        }
+            const resolvedPage = hasSelectedPage ? normalizedSelectedPage : '';
 
 
 
-        if (Array.isArray(productExportData)) {
+            pageSelect.innerHTML = '<option value="">Todas las páginas</option>'
 
-            state.productExportPnSet = new Set(productExportData.map(item => item.pn));
+                + pages.map(page => `<option value="${page}">${page}</option>`).join('');
+
+            pageSelect.value = resolvedPage;
+
+
+
+            return resolvedPage;
 
         }
 
 
 
-        // Refresca vistas dependientes de estos catálogos si están habilitados.
+        function applyBookSelection(bookValue, options = {}) {
 
-        renderTable();
+            const {
 
-    }
+                pageValue = null,
 
+                fallbackToFirstAvailablePage = true,
 
+                render = true,
 
-    function getBookPages(book) {
+                updatePdf = true
 
-        const bookFilter = String(book || state.filters.book || '').toLowerCase();
+            } = options;
 
-        return [...new Set(state.allData
 
-            .filter(row => !bookFilter || val(row, 'engine_model', '').toString().toLowerCase() === bookFilter)
 
-            .map(row => {
+            const normalizedBook = String(bookValue || '').trim();
 
-                const n = Number(String(val(row, 'Source Page', '')).replace(/[^0-9]/g, ''));
+            const bookFilterSelect = $('bookFilterSelect');
 
-                return Number.isFinite(n) && !Number.isNaN(n) ? n : null;
 
-            })
 
-            .filter(n => n != null))].sort((a, b) => a - b);
+            if (bookFilterSelect) bookFilterSelect.value = normalizedBook;
 
-    }
+            if (normalizedBook) state.filters.book = normalizedBook;
 
+            else delete state.filters.book;
 
 
-    function populatePageFilterOptions(bookValue, selectedPage = '') {
 
-        const pageSelect = $('pageFilterSelect');
+            const pages = getBookPages(normalizedBook);
 
-        if (!(pageSelect instanceof HTMLSelectElement)) return '';
+            const requestedPage = String(pageValue ?? '').trim();
 
+            const requestedPageNumber = Number(requestedPage.replace(/[^0-9]/g, ''));
 
+            const hasRequestedPage = requestedPage !== '' && pages.includes(requestedPageNumber);
 
-        const normalizedBook = String(bookValue || '').trim();
+            const resolvedPage = hasRequestedPage
 
-        const pages = normalizedBook ? getBookPages(normalizedBook) : [];
+                ? String(requestedPageNumber)
 
-        const normalizedSelectedPage = normalizePageNumber(selectedPage);
+                : (fallbackToFirstAvailablePage && pages.length > 0 ? String(pages[0]) : '');
 
-        const selectedPageNumber = Number(normalizedSelectedPage);
 
-        const hasSelectedPage = normalizedSelectedPage !== '' && pages.includes(selectedPageNumber);
 
-        const resolvedPage = hasSelectedPage ? normalizedSelectedPage : '';
+            const selectedPage = populatePageFilterOptions(normalizedBook, resolvedPage);
 
 
 
-        pageSelect.innerHTML = '<option value="">Todas las páginas</option>'
+            if (selectedPage) state.filters.page = selectedPage;
 
-            + pages.map(page => `<option value="${page}">${page}</option>`).join('');
+            else delete state.filters.page;
 
-        pageSelect.value = resolvedPage;
 
 
+            if (render) {
 
-        return resolvedPage;
+                state.currentPage = 1;
 
-    }
+                renderTable();
 
+                renderPagination();
 
+            }
 
-    function applyBookSelection(bookValue, options = {}) {
 
-        const {
 
-            pageValue = null,
+            if (updatePdf) {
 
-            fallbackToFirstAvailablePage = true,
+                if (normalizedBook && selectedPage) loadPdfWithPageAndAutoRender(normalizedBook, selectedPage);
 
-            render = true,
+                else loadPdfClear();
 
-            updatePdf = true
+            }
 
-        } = options;
 
 
+            updateSchemasInline(normalizedBook, selectedPage);
 
-        const normalizedBook = String(bookValue || '').trim();
+        }
 
-        const bookFilterSelect = $('bookFilterSelect');
 
 
+        function setPageFilterValue(pageValue) {
 
-        if (bookFilterSelect) bookFilterSelect.value = normalizedBook;
+            const selectedBook = $('bookFilterSelect')?.value || '';
 
-        if (normalizedBook) state.filters.book = normalizedBook;
+            const normalizedPage = normalizePageNumber(pageValue);
 
-        else delete state.filters.book;
+            const selectedPage = populatePageFilterOptions(selectedBook, normalizedPage);
 
+            if (!selectedPage) delete state.filters.page;
 
+            else state.filters.page = selectedPage;
 
-        const pages = getBookPages(normalizedBook);
 
-        const requestedPage = String(pageValue ?? '').trim();
-
-        const requestedPageNumber = Number(requestedPage.replace(/[^0-9]/g, ''));
-
-        const hasRequestedPage = requestedPage !== '' && pages.includes(requestedPageNumber);
-
-        const resolvedPage = hasRequestedPage
-
-            ? String(requestedPageNumber)
-
-            : (fallbackToFirstAvailablePage && pages.length > 0 ? String(pages[0]) : '');
-
-
-
-        const selectedPage = populatePageFilterOptions(normalizedBook, resolvedPage);
-
-
-
-        if (selectedPage) state.filters.page = selectedPage;
-
-        else delete state.filters.page;
-
-
-
-        if (render) {
 
             state.currentPage = 1;
 
@@ -5212,880 +5205,840 @@ function getRecordFormValues(scope) {
 
             renderPagination();
 
-        }
 
 
-
-        if (updatePdf) {
-
-            if (normalizedBook && selectedPage) loadPdfWithPageAndAutoRender(normalizedBook, selectedPage);
+            if (selectedBook && selectedPage) loadPdfWithPageAndAutoRender(selectedBook, selectedPage);
 
             else loadPdfClear();
 
-        }
 
 
-
-        updateSchemasInline(normalizedBook, selectedPage);
-
-    }
-
-
-
-    function setPageFilterValue(pageValue) {
-
-        const selectedBook = $('bookFilterSelect')?.value || '';
-
-        const normalizedPage = normalizePageNumber(pageValue);
-
-        const selectedPage = populatePageFilterOptions(selectedBook, normalizedPage);
-
-        if (!selectedPage) delete state.filters.page;
-
-        else state.filters.page = selectedPage;
-
-
-
-        state.currentPage = 1;
-
-        renderTable();
-
-        renderPagination();
-
-
-
-        if (selectedBook && selectedPage) loadPdfWithPageAndAutoRender(selectedBook, selectedPage);
-
-        else loadPdfClear();
-
-
-
-        updateSchemasInline(selectedBook, selectedPage);
-
-    }
-
-
-
-    function getLoadedEngineFilesSet() {
-
-        if (state.loadedEngineFiles instanceof Set) return state.loadedEngineFiles;
-
-        return new Set();
-
-    }
-
-
-
-    function getEngineCatalogList() {
-
-        return Array.isArray(state.engineCatalog) ? state.engineCatalog : [];
-
-    }
-
-
-
-    function formatLazyEngineOptionLabel(engineItem) {
-
-        const model = String(engineItem?.engine_model || '').trim();
-
-        const file = String(engineItem?.file || '').trim();
-
-        const rowCountRaw = Number(engineItem?.rowCount);
-
-        const rowCountText = Number.isFinite(rowCountRaw) && rowCountRaw >= 0
-
-            ? ` (${rowCountRaw.toLocaleString('es-ES')} filas)`
-
-            : '';
-
-        return `${model || file}${rowCountText}`;
-
-    }
-
-
-
-    function updateLazyEngineBadge() {
-
-        const badge = $('lazyEngineBadge');
-
-        if (!(badge instanceof HTMLElement)) return;
-
-        const total = getEngineCatalogList().length || 0;
-
-        const loaded = getLoadedEngineFilesSet().size;
-
-        badge.textContent = `Motores cargados: ${loaded} / ${total}`;
-
-    }
-
-
-
-    function refreshLazyEngineSelectOptions() {
-
-        const select = $('lazyEngineSelect');
-
-        const loadBtn = $('lazyLoadEngineBtn');
-
-        const loadAllBtn = $('lazyLoadAllEnginesBtn');
-
-        if (!(select instanceof HTMLSelectElement)) return;
-
-
-
-        const catalog = getEngineCatalogList();
-
-        const loaded = getLoadedEngineFilesSet();
-
-        select.innerHTML = catalog.map((item) => {
-
-            const file = String(item?.file || '').trim();
-
-            const isLoaded = loaded.has(file);
-
-            const label = formatLazyEngineOptionLabel(item);
-
-            return `<option value="${escapeHtml(file)}" ${isLoaded ? 'disabled' : ''}>${escapeHtml(label)}${isLoaded ? ' (cargado)' : ''}</option>`;
-
-        }).join('');
-
-
-
-        const firstPending = catalog.find(item => !loaded.has(String(item?.file || '').trim()));
-
-        const hasPending = Boolean(firstPending && firstPending.file);
-
-        select.value = hasPending ? String(firstPending.file) : '';
-
-        select.disabled = !hasPending;
-
-
-
-        if (loadBtn instanceof HTMLButtonElement) {
-
-            loadBtn.disabled = !hasPending;
-
-        }
-
-        if (loadAllBtn instanceof HTMLButtonElement) {
-
-            loadAllBtn.disabled = !hasPending;
+            updateSchemasInline(selectedBook, selectedPage);
 
         }
 
 
 
-        updateLazyEngineBadge();
+        function getLoadedEngineFilesSet() {
 
-    }
+            if (state.loadedEngineFiles instanceof Set) return state.loadedEngineFiles;
 
-
-
-    function refreshBookFilterCatalog({ keepCurrentSelection = true } = {}) {
-
-        const bookFilterSelect = $('bookFilterSelect');
-
-        if (!(bookFilterSelect instanceof HTMLSelectElement)) return;
-
-
-
-        const previousBook = keepCurrentSelection
-
-            ? String(state.filters.book || bookFilterSelect.value || '').trim()
-
-            : '';
-
-        const previousPage = keepCurrentSelection
-
-            ? normalizePageNumber(state.filters.page || $('pageFilterSelect')?.value || '')
-
-            : '';
-
-
-
-        const allBooks = [...new Set(state.allData
-
-            .map(item => val(item, 'engine_model', '').toString().trim())
-
-            .filter(b => b && b !== 'â€”'))].sort((a, b) => a.localeCompare(b, undefined, { numeric: true }));
-
-
-
-        bookFilterSelect.innerHTML = '<option value="">Todos los libros</option>'
-
-            + allBooks.map(book => `<option value="${escapeHtml(book)}">${escapeHtml(book)}</option>`).join('');
-
-
-
-        if (!allBooks.length) {
-
-            delete state.filters.book;
-
-            delete state.filters.page;
-
-            populatePageFilterOptions('', '');
-
-            loadPdfClear();
-
-            updateSchemasInline('', '');
-
-            return;
+            return new Set();
 
         }
 
 
 
-        const nextBook = previousBook && allBooks.includes(previousBook)
+        function getEngineCatalogList() {
 
-            ? previousBook
-
-            : allBooks[0];
-
-        applyBookSelection(nextBook, {
-
-            pageValue: previousPage,
-
-            fallbackToFirstAvailablePage: true,
-
-            render: false,
-
-            updatePdf: true
-
-        });
-
-    }
-
-
-
-    async function loadLazyEnginesAndRefresh(fileNames, options = {}) {
-
-        const mergedRows = await loadEnginesByFileNames(fileNames, options);
-
-        if (!Array.isArray(mergedRows)) {
-
-            throw new Error('La carga incremental no devolvio datos validos.');
+            return Array.isArray(state.engineCatalog) ? state.engineCatalog : [];
 
         }
 
 
 
-        const previousSelectedRevisionKey = String(state.selectedRevisionRowKey || '').trim();
+        function formatLazyEngineOptionLabel(engineItem) {
 
-        state.allData = mergedRows;
+            const model = String(engineItem?.engine_model || '').trim();
 
-        assignRevisionKeys(state.allData);
+            const file = String(engineItem?.file || '').trim();
 
-        applyRevisionDataToRows(state.allData);
+            const rowCountRaw = Number(engineItem?.rowCount);
 
-        rebuildGlobalPartNumberIndex(state.allData);
+            const rowCountText = Number.isFinite(rowCountRaw) && rowCountRaw >= 0
 
+                ? ` (${rowCountRaw.toLocaleString('es-ES')} filas)`
 
+                : '';
 
-        if (previousSelectedRevisionKey) {
-
-            const selectedExists = state.allData.some(item => getRevisionKey(item) === previousSelectedRevisionKey);
-
-            if (!selectedExists) state.selectedRevisionRowKey = '';
+            return `${model || file}${rowCountText}`;
 
         }
 
 
 
-        refreshBookFilterCatalog({ keepCurrentSelection: true });
+        function updateLazyEngineBadge() {
 
-        state.currentPage = 1;
+            const badge = $('lazyEngineBadge');
 
-        renderTable();
+            if (!(badge instanceof HTMLElement)) return;
 
-        renderPagination();
+            const total = getEngineCatalogList().length || 0;
 
-        queueColumnViewRefresh();
+            const loaded = getLoadedEngineFilesSet().size;
 
-        syncSideRecordFormWithSelection();
-
-        refreshLazyEngineSelectOptions();
-
-    }
-
-
-
-    function initLazyEnginePanel() {
-
-        const panel = $('lazyEnginePanel');
-
-        if (!(panel instanceof HTMLElement)) return;
-
-
-
-        if (!state.incrementalLoadingEnabled) {
-
-            panel.hidden = true;
-
-            return;
+            badge.textContent = `Motores cargados: ${loaded} / ${total}`;
 
         }
 
 
 
-        panel.hidden = false;
+        function refreshLazyEngineSelectOptions() {
 
-        refreshLazyEngineSelectOptions();
+            const select = $('lazyEngineSelect');
 
-    }
+            const loadBtn = $('lazyLoadEngineBtn');
 
+            const loadAllBtn = $('lazyLoadAllEnginesBtn');
 
-
-    function syncPdfWithSelectedRow(revisionKey) {
-
-        const normalizedKey = String(revisionKey || '').trim();
-
-        if (!normalizedKey) {
-
-            setPdfSelection(null);
-
-            loadPdfClear();
-
-            return;
-
-        }
+            if (!(select instanceof HTMLSelectElement)) return;
 
 
 
-        const selectedRow = state.allData.find(item => getRevisionKey(item) === normalizedKey);
+            const catalog = getEngineCatalogList();
 
-        if (!selectedRow) {
+            const loaded = getLoadedEngineFilesSet();
 
-            setPdfSelection(null);
+            select.innerHTML = catalog.map((item) => {
 
-            loadPdfClear();
+                const file = String(item?.file || '').trim();
 
-            return;
+                const isLoaded = loaded.has(file);
 
-        }
+                const label = formatLazyEngineOptionLabel(item);
 
+                return `<option value="${escapeHtml(file)}" ${isLoaded ? 'disabled' : ''}>${escapeHtml(label)}${isLoaded ? ' (cargado)' : ''}</option>`;
 
-
-        const resolvedPage = resolvePdfPage(selectedRow);
-        const selectedRowForPdfSelection = resolvedPage
-            ? { ...selectedRow, 'Source Page': resolvedPage, __active_pdf_row_overlay: true }
-            : { ...selectedRow, __active_pdf_row_overlay: true };
-
-        setPdfSelection(selectedRowForPdfSelection);
-
-        const book = String(val(selectedRow, 'engine_model', '') || '').trim();
-
-        const page = resolvedPage;
-
-        if (book && page) {
-
-            loadPdfWithPageAndAutoRender(book, page);
-
-            return;
-
-        }
+            }).join('');
 
 
 
-        loadPdfClear();
+            const firstPending = catalog.find(item => !loaded.has(String(item?.file || '').trim()));
 
-    }
+            const hasPending = Boolean(firstPending && firstPending.file);
 
+            select.value = hasPending ? String(firstPending.file) : '';
 
-
-    function normalizePageNumber(value) {
-
-        const match = String(value || '').match(/\d+/);
-
-        if (!match) return '';
-
-        const parsed = Number(match[0]);
-
-        return Number.isFinite(parsed) && !Number.isNaN(parsed) ? String(parsed) : '';
-
-    }
+            select.disabled = !hasPending;
 
 
-    function resolvePdfPage(record) {
 
-        const row = record && typeof record === 'object' ? record : {};
+            if (loadBtn instanceof HTMLButtonElement) {
 
-        const candidates = [
-            ['Source Page', row?.['Source Page']],
-            ['source_page', row?.source_page],
-            ['page4', row?.page4],
-            ['libro_pag', row?.libro_pag],
-            ['pages', row?.pages]
-        ];
+                loadBtn.disabled = !hasPending;
 
-        for (const [source, value] of candidates) {
-            const page = normalizePageNumber(value);
-            if (!page) continue;
-            if (source !== 'Source Page') {
-                console.debug('[PDF Fallback] Página resuelta con fallback', {
-                    source,
-                    page,
-                    id: String(row?.ID ?? '').trim(),
-                    engine_model: String(row?.engine_model ?? '').trim(),
-                    rawValue: String(value ?? '').trim()
-                });
             }
-            return page;
-        }
 
-        console.warn('[PDF Fallback] No se pudo resolver página PDF para registro', {
-            id: String(row?.ID ?? '').trim(),
-            engine_model: String(row?.engine_model ?? '').trim(),
-            sourcePage: String(row?.['Source Page'] ?? '').trim(),
-            source_page: String(row?.source_page ?? '').trim(),
-            page4: String(row?.page4 ?? '').trim(),
-            libro_pag: String(row?.libro_pag ?? '').trim(),
-            pages: String(row?.pages ?? '').trim()
-        });
+            if (loadAllBtn instanceof HTMLButtonElement) {
 
-        return '';
+                loadAllBtn.disabled = !hasPending;
 
-    }
+            }
 
 
 
-    function resolveBookValue(rawBook) {
-
-        const candidate = String(rawBook || '').trim();
-
-        if (!candidate) return '';
-
-        const normalizedCandidate = candidate.toLowerCase();
-
-
-
-        const books = [...new Set(state.allData
-
-            .map(item => String(item?.engine_model ?? '').trim())
-
-            .filter(Boolean))];
-
-
-
-        const exact = books.find(book => book.toLowerCase() === normalizedCandidate);
-
-        if (exact) return exact;
-
-
-
-        const partial = books.find(book => book.toLowerCase().includes(normalizedCandidate));
-
-        return partial || candidate;
-
-    }
-
-
-
-    function setSideSearchStatus(message, kind = '') {
-
-        const status = $('qaSideSearchStatus');
-
-        if (!(status instanceof HTMLElement)) return;
-
-        status.classList.remove('ok', 'error');
-
-        if (kind) status.classList.add(kind);
-
-        status.textContent = String(message || '');
-
-    }
-
-
-
-    function findRowByArticleToken(rows, token) {
-
-        const normalizedToken = String(token || '').trim().toLowerCase();
-
-        if (!normalizedToken) return null;
-
-
-
-        const byIdExact = rows.find(item => String(item?.ID ?? '').trim().toLowerCase() === normalizedToken);
-
-        if (byIdExact) return byIdExact;
-
-
-
-        const byPnExact = rows.find(item => {
-
-            const pn = String(item?.['PART NO.'] ?? item?.pn ?? '').trim().toLowerCase();
-
-            return pn === normalizedToken;
-
-        });
-
-        if (byPnExact) return byPnExact;
-
-
-
-        const byContains = rows.find(item => {
-
-            const id = String(item?.ID ?? '').trim().toLowerCase();
-
-            const pn = String(item?.['PART NO.'] ?? item?.pn ?? '').trim().toLowerCase();
-
-            const designation = String(getRowValueForColumn(item, 'designation_final', '')).trim().toLowerCase();
-
-            return id.includes(normalizedToken) || pn.includes(normalizedToken) || designation.includes(normalizedToken);
-
-        });
-
-        return byContains || null;
-
-    }
-
-
-
-    function runSideQuickSearch() {
-
-        const rawArticle = String($('qaSideSearchArticle')?.value || '').trim();
-
-
-
-        if (!rawArticle) {
-
-            setSideSearchStatus('Escribe un articulo o part number para buscar.', 'error');
-
-            return;
+            updateLazyEngineBadge();
 
         }
 
 
 
-        const targetRow = findRowByArticleToken(state.allData, rawArticle);
+        function refreshBookFilterCatalog({ keepCurrentSelection = true } = {}) {
 
-        if (!targetRow) {
+            const bookFilterSelect = $('bookFilterSelect');
 
-            setSideSearchStatus('No se encontro ese articulo.', 'error');
+            if (!(bookFilterSelect instanceof HTMLSelectElement)) return;
 
-            return;
+
+
+            const previousBook = keepCurrentSelection
+
+                ? String(state.filters.book || bookFilterSelect.value || '').trim()
+
+                : '';
+
+            const previousPage = keepCurrentSelection
+
+                ? normalizePageNumber(state.filters.page || $('pageFilterSelect')?.value || '')
+
+                : '';
+
+
+
+            const allBooks = [...new Set(state.allData
+
+                .map(item => val(item, 'engine_model', '').toString().trim())
+
+                .filter(b => b && b !== 'â€”'))].sort((a, b) => a.localeCompare(b, undefined, { numeric: true }));
+
+
+
+            bookFilterSelect.innerHTML = '<option value="">Todos los libros</option>'
+
+                + allBooks.map(book => `<option value="${escapeHtml(book)}">${escapeHtml(book)}</option>`).join('');
+
+
+
+            if (!allBooks.length) {
+
+                delete state.filters.book;
+
+                delete state.filters.page;
+
+                populatePageFilterOptions('', '');
+
+                loadPdfClear();
+
+                updateSchemasInline('', '');
+
+                return;
+
+            }
+
+
+
+            const nextBook = previousBook && allBooks.includes(previousBook)
+
+                ? previousBook
+
+                : allBooks[0];
+
+            applyBookSelection(nextBook, {
+
+                pageValue: previousPage,
+
+                fallbackToFirstAvailablePage: true,
+
+                render: false,
+
+                updatePdf: true
+
+            });
 
         }
 
 
 
-        const targetBook = String(targetRow?.engine_model ?? '').trim();
+        async function loadLazyEnginesAndRefresh(fileNames, options = {}) {
 
-        const targetPage = resolvePdfPage(targetRow);
+            const mergedRows = await loadEnginesByFileNames(fileNames, options);
 
-        applyBookSelection(targetBook, {
+            if (!Array.isArray(mergedRows)) {
 
-            pageValue: targetPage,
+                throw new Error('La carga incremental no devolvio datos validos.');
 
-            fallbackToFirstAvailablePage: true,
-
-            render: true,
-
-            updatePdf: true
-
-        });
+            }
 
 
 
-        const revisionKey = getRevisionKey(targetRow);
+            const previousSelectedRevisionKey = String(state.selectedRevisionRowKey || '').trim();
 
-        const moved = focusRevisionRowInMainTable(revisionKey);
+            state.allData = mergedRows;
 
-        if (!moved) {
+            assignRevisionKeys(state.allData);
 
-            setSideSearchStatus('Se encontro el articulo, pero no se pudo enfocar en la tabla principal.', 'error');
+            applyRevisionDataToRows(state.allData);
 
-            return;
-
-        }
+            rebuildGlobalPartNumberIndex(state.allData);
 
 
 
-        setSideSearchStatus(`Articulo encontrado: ID ${String(targetRow?.ID ?? '-')}, libro ${targetBook || '-'}, pagina ${targetPage || '-'}.`, 'ok');
+            if (previousSelectedRevisionKey) {
 
-    }
+                const selectedExists = state.allData.some(item => getRevisionKey(item) === previousSelectedRevisionKey);
 
+                if (!selectedExists) state.selectedRevisionRowKey = '';
 
-
-    function goToNextBookPage() {
-
-        const book = $('bookFilterSelect')?.value || '';
-
-        if (!book) return;
-
-        const pages = getBookPages(book);
-
-        if (!pages.length) return;
-
-        const currentValue = Number($('pageFilterSelect')?.value || 0);
-
-        const currentIndex = pages.indexOf(currentValue);
-
-        const targetPage = (currentIndex === -1 || currentIndex === pages.length - 1) ? pages[0] : pages[currentIndex + 1];
-
-        setPageFilterValue(targetPage);
-
-    }
+            }
 
 
 
-    function goToPrevBookPage() {
+            refreshBookFilterCatalog({ keepCurrentSelection: true });
 
-        const book = $('bookFilterSelect')?.value || '';
+            state.currentPage = 1;
 
-        if (!book) return;
+            renderTable();
 
-        const pages = getBookPages(book);
+            renderPagination();
 
-        if (!pages.length) return;
+            queueColumnViewRefresh();
 
-        const currentValue = Number($('pageFilterSelect')?.value || 0);
+            syncSideRecordFormWithSelection();
 
-        const currentIndex = pages.indexOf(currentValue);
-
-        const targetPage = currentIndex <= 0 ? pages[pages.length - 1] : pages[currentIndex - 1];
-
-        setPageFilterValue(targetPage);
-
-    }
-
-
-
-    function getAllQaCheckCodes() {
-
-        return (state.qaErrorCheckDefinitions || [])
-
-            .map(def => String(def?.code || '').trim())
-
-            .filter(Boolean);
-
-    }
-
-
-
-    function persistActiveQaChecks() {
-
-        // QA checks are session-only: do not persist error settings to localStorage.
-
-    }
-
-
-
-    function ensureQaChecksState() {
-
-        const allCodes = getAllQaCheckCodes();
-
-        if (!allCodes.length) {
-
-            state.activeQaErrorChecks = new Set();
-
-            return;
+            refreshLazyEngineSelectOptions();
 
         }
 
 
 
-        const currentSet = state.activeQaErrorChecks instanceof Set
+        function initLazyEnginePanel() {
 
-            ? state.activeQaErrorChecks
+            const panel = $('lazyEnginePanel');
 
-            : new Set();
+            if (!(panel instanceof HTMLElement)) return;
 
-        const active = currentSet.size > 0
 
-            ? allCodes.filter(code => currentSet.has(code))
 
-            : allCodes;
+            if (!state.incrementalLoadingEnabled) {
 
+                panel.hidden = true;
 
+                return;
 
-        state.activeQaErrorChecks = new Set(active);
+            }
 
-    }
 
 
+            panel.hidden = false;
 
-    function updateQaChecksSummary() {
+            refreshLazyEngineSelectOptions();
 
-        const badge = $('qaChecksSummaryBadge');
+        }
 
-        if (!(badge instanceof HTMLElement)) return;
 
-        const total = getAllQaCheckCodes().length;
 
-        const active = state.activeQaErrorChecks.size;
+        function syncPdfWithSelectedRow(revisionKey) {
 
-        badge.textContent = `${active}/${total}`;
+            const normalizedKey = String(revisionKey || '').trim();
 
-    }
+            if (!normalizedKey) {
 
+                setPdfSelection(null);
 
+                loadPdfClear();
 
-    function showQaChecksProgress() {
+                return;
 
-        const area = $('qaChecksProgressArea');
+            }
 
-        if (!(area instanceof HTMLElement)) return;
 
-        area.style.display = 'flex';
 
-    }
+            const selectedRow = state.allData.find(item => getRevisionKey(item) === normalizedKey);
 
+            if (!selectedRow) {
 
+                setPdfSelection(null);
 
-    function hideQaChecksProgress() {
+                loadPdfClear();
 
-        const area = $('qaChecksProgressArea');
+                return;
 
-        if (!(area instanceof HTMLElement)) return;
+            }
 
-        area.style.display = 'none';
 
-    }
 
+            const resolvedPage = resolvePdfPage(selectedRow);
+            const selectedRowForPdfSelection = resolvedPage
+                ? { ...selectedRow, 'Source Page': resolvedPage, __active_pdf_row_overlay: true }
+                : { ...selectedRow, __active_pdf_row_overlay: true };
 
+            setPdfSelection(selectedRowForPdfSelection);
 
-    function toFiniteNumber(value) {
+            const book = String(val(selectedRow, 'engine_model', '') || '').trim();
 
-        const parsed = Number(value);
+            const page = resolvedPage;
 
-        return Number.isFinite(parsed) ? parsed : NaN;
+            if (book && page) {
 
-    }
+                loadPdfWithPageAndAutoRender(book, page);
 
+                return;
 
+            }
 
-    function getPersistedErrorCountFromRow(row) {
 
-        const total = toFiniteNumber(row?.total_error);
 
-        if (!Number.isNaN(total)) return Math.max(0, Math.trunc(total));
+            loadPdfClear();
 
+        }
 
 
-        const breakdownKeys = [
 
-            'pos_error',
+        function normalizePageNumber(value) {
 
-            'pn_error',
+            const match = String(value || '').match(/\d+/);
 
-            'designation_error',
+            if (!match) return '';
 
-            'weight_error',
+            const parsed = Number(match[0]);
 
-            'measurement_error',
+            return Number.isFinite(parsed) && !Number.isNaN(parsed) ? String(parsed) : '';
 
-            'norma_error',
+        }
 
-            'bom_error'
 
-        ];
+        function resolvePdfPage(record) {
 
+            const row = record && typeof record === 'object' ? record : {};
 
-
-        let sum = 0;
-
-        let hasBreakdown = false;
-
-        breakdownKeys.forEach((key) => {
-
-            const value = toFiniteNumber(row?.[key]);
-
-            if (Number.isNaN(value)) return;
-
-            hasBreakdown = true;
-
-            sum += Math.max(0, Math.trunc(value));
-
-        });
-
-
-
-        if (hasBreakdown) return sum;
-
-        return getPersistedHasError(row) ? 1 : 0;
-
-    }
-
-
-
-    function buildFoundErrorRows(rows, activeCodes, maxItems = 300) {
-
-        const definitionMap = getQaErrorDefinitionMap();
-
-        const output = [];
-
-
-
-        for (const row of (rows || [])) {
-
-            const activeErrors = buildRowActiveQaErrors(row, activeCodes);
-
-            if (!Array.isArray(activeErrors?.codes) || activeErrors.codes.length === 0) continue;
-
-
-
-            output.push({
-
+            const candidates = [
+                ['Source Page', row?.['Source Page']],
+                ['source_page', row?.source_page],
+                ['page4', row?.page4],
+                ['libro_pag', row?.libro_pag],
+                ['pages', row?.pages]
+            ];
+
+            for (const [source, value] of candidates) {
+                const page = normalizePageNumber(value);
+                if (!page) continue;
+                if (source !== 'Source Page') {
+                    console.debug('[PDF Fallback] Página resuelta con fallback', {
+                        source,
+                        page,
+                        id: String(row?.ID ?? '').trim(),
+                        engine_model: String(row?.engine_model ?? '').trim(),
+                        rawValue: String(value ?? '').trim()
+                    });
+                }
+                return page;
+            }
+
+            console.warn('[PDF Fallback] No se pudo resolver página PDF para registro', {
                 id: String(row?.ID ?? '').trim(),
+                engine_model: String(row?.engine_model ?? '').trim(),
+                sourcePage: String(row?.['Source Page'] ?? '').trim(),
+                source_page: String(row?.source_page ?? '').trim(),
+                page4: String(row?.page4 ?? '').trim(),
+                libro_pag: String(row?.libro_pag ?? '').trim(),
+                pages: String(row?.pages ?? '').trim()
+            });
 
-                book: String(row?.engine_model ?? '').trim(),
+            return '';
 
-                page: String(row?.['Source Page'] ?? '').trim(),
+        }
 
-                pos: String(row?.POS ?? '').trim(),
 
-                pn: String(row?.['PART NO.'] ?? row?.pn ?? '').trim(),
 
-                errors: getPersistedErrorCountFromRow(row),
+        function resolveBookValue(rawBook) {
 
-                activeChecks: activeErrors.codes.map(code => definitionMap.get(code) || code)
+            const candidate = String(rawBook || '').trim();
+
+            if (!candidate) return '';
+
+            const normalizedCandidate = candidate.toLowerCase();
+
+
+
+            const books = [...new Set(state.allData
+
+                .map(item => String(item?.engine_model ?? '').trim())
+
+                .filter(Boolean))];
+
+
+
+            const exact = books.find(book => book.toLowerCase() === normalizedCandidate);
+
+            if (exact) return exact;
+
+
+
+            const partial = books.find(book => book.toLowerCase().includes(normalizedCandidate));
+
+            return partial || candidate;
+
+        }
+
+
+
+        function setSideSearchStatus(message, kind = '') {
+
+            const status = $('qaSideSearchStatus');
+
+            if (!(status instanceof HTMLElement)) return;
+
+            status.classList.remove('ok', 'error');
+
+            if (kind) status.classList.add(kind);
+
+            status.textContent = String(message || '');
+
+        }
+
+
+
+        function findRowByArticleToken(rows, token) {
+
+            const normalizedToken = String(token || '').trim().toLowerCase();
+
+            if (!normalizedToken) return null;
+
+
+
+            const byIdExact = rows.find(item => String(item?.ID ?? '').trim().toLowerCase() === normalizedToken);
+
+            if (byIdExact) return byIdExact;
+
+
+
+            const byPnExact = rows.find(item => {
+
+                const pn = String(item?.['PART NO.'] ?? item?.pn ?? '').trim().toLowerCase();
+
+                return pn === normalizedToken;
+
+            });
+
+            if (byPnExact) return byPnExact;
+
+
+
+            const byContains = rows.find(item => {
+
+                const id = String(item?.ID ?? '').trim().toLowerCase();
+
+                const pn = String(item?.['PART NO.'] ?? item?.pn ?? '').trim().toLowerCase();
+
+                const designation = String(getRowValueForColumn(item, 'designation_final', '')).trim().toLowerCase();
+
+                return id.includes(normalizedToken) || pn.includes(normalizedToken) || designation.includes(normalizedToken);
+
+            });
+
+            return byContains || null;
+
+        }
+
+
+
+        function runSideQuickSearch() {
+
+            const rawArticle = String($('qaSideSearchArticle')?.value || '').trim();
+
+
+
+            if (!rawArticle) {
+
+                setSideSearchStatus('Escribe un articulo o part number para buscar.', 'error');
+
+                return;
+
+            }
+
+
+
+            const targetRow = findRowByArticleToken(state.allData, rawArticle);
+
+            if (!targetRow) {
+
+                setSideSearchStatus('No se encontro ese articulo.', 'error');
+
+                return;
+
+            }
+
+
+
+            const targetBook = String(targetRow?.engine_model ?? '').trim();
+
+            const targetPage = resolvePdfPage(targetRow);
+
+            applyBookSelection(targetBook, {
+
+                pageValue: targetPage,
+
+                fallbackToFirstAvailablePage: true,
+
+                render: true,
+
+                updatePdf: true
 
             });
 
 
 
-            if (output.length >= maxItems) break;
+            const revisionKey = getRevisionKey(targetRow);
+
+            const moved = focusRevisionRowInMainTable(revisionKey);
+
+            if (!moved) {
+
+                setSideSearchStatus('Se encontro el articulo, pero no se pudo enfocar en la tabla principal.', 'error');
+
+                return;
+
+            }
+
+
+
+            setSideSearchStatus(`Articulo encontrado: ID ${String(targetRow?.ID ?? '-')}, libro ${targetBook || '-'}, pagina ${targetPage || '-'}.`, 'ok');
 
         }
 
 
 
-        return output;
+        function goToNextBookPage() {
 
-    }
+            const book = $('bookFilterSelect')?.value || '';
 
+            if (!book) return;
 
+            const pages = getBookPages(book);
 
-    function renderQaChecksFoundRows(foundRows, totalFound) {
+            if (!pages.length) return;
 
-        const body = $('qaChecksFoundRows');
+            const currentValue = Number($('pageFilterSelect')?.value || 0);
 
-        const count = $('qaChecksFoundCount');
+            const currentIndex = pages.indexOf(currentValue);
 
+            const targetPage = (currentIndex === -1 || currentIndex === pages.length - 1) ? pages[0] : pages[currentIndex + 1];
 
-
-        if (count instanceof HTMLElement) {
-
-            count.textContent = String(Number(totalFound || 0));
-
-        }
-
-
-
-        if (!(body instanceof HTMLElement)) return;
-
-
-
-        if (!Array.isArray(foundRows) || foundRows.length === 0) {
-
-            body.innerHTML = '<tr><td colspan="6" class="qa-checks-found-empty">No se han encontrado registros con error para las comprobaciones activas.</td></tr>';
-
-            return;
+            setPageFilterValue(targetPage);
 
         }
 
 
 
-        body.innerHTML = foundRows.map(item => `
+        function goToPrevBookPage() {
+
+            const book = $('bookFilterSelect')?.value || '';
+
+            if (!book) return;
+
+            const pages = getBookPages(book);
+
+            if (!pages.length) return;
+
+            const currentValue = Number($('pageFilterSelect')?.value || 0);
+
+            const currentIndex = pages.indexOf(currentValue);
+
+            const targetPage = currentIndex <= 0 ? pages[pages.length - 1] : pages[currentIndex - 1];
+
+            setPageFilterValue(targetPage);
+
+        }
+
+
+
+        function getAllQaCheckCodes() {
+
+            return (state.qaErrorCheckDefinitions || [])
+
+                .map(def => String(def?.code || '').trim())
+
+                .filter(Boolean);
+
+        }
+
+
+
+        function persistActiveQaChecks() {
+
+            // QA checks are session-only: do not persist error settings to localStorage.
+
+        }
+
+
+
+        function ensureQaChecksState() {
+
+            const allCodes = getAllQaCheckCodes();
+
+            if (!allCodes.length) {
+
+                state.activeQaErrorChecks = new Set();
+
+                return;
+
+            }
+
+
+
+            const currentSet = state.activeQaErrorChecks instanceof Set
+
+                ? state.activeQaErrorChecks
+
+                : new Set();
+
+            const active = currentSet.size > 0
+
+                ? allCodes.filter(code => currentSet.has(code))
+
+                : allCodes;
+
+
+
+            state.activeQaErrorChecks = new Set(active);
+
+        }
+
+
+
+        function updateQaChecksSummary() {
+
+            const badge = $('qaChecksSummaryBadge');
+
+            if (!(badge instanceof HTMLElement)) return;
+
+            const total = getAllQaCheckCodes().length;
+
+            const active = state.activeQaErrorChecks.size;
+
+            badge.textContent = `${active}/${total}`;
+
+        }
+
+
+
+        function showQaChecksProgress() {
+
+            const area = $('qaChecksProgressArea');
+
+            if (!(area instanceof HTMLElement)) return;
+
+            area.style.display = 'flex';
+
+        }
+
+
+
+        function hideQaChecksProgress() {
+
+            const area = $('qaChecksProgressArea');
+
+            if (!(area instanceof HTMLElement)) return;
+
+            area.style.display = 'none';
+
+        }
+
+
+
+        function toFiniteNumber(value) {
+
+            const parsed = Number(value);
+
+            return Number.isFinite(parsed) ? parsed : NaN;
+
+        }
+
+
+
+        function getPersistedErrorCountFromRow(row) {
+
+            const total = toFiniteNumber(row?.total_error);
+
+            if (!Number.isNaN(total)) return Math.max(0, Math.trunc(total));
+
+
+
+            const breakdownKeys = [
+
+                'pos_error',
+
+                'pn_error',
+
+                'designation_error',
+
+                'weight_error',
+
+                'measurement_error',
+
+                'norma_error',
+
+                'bom_error'
+
+            ];
+
+
+
+            let sum = 0;
+
+            let hasBreakdown = false;
+
+            breakdownKeys.forEach((key) => {
+
+                const value = toFiniteNumber(row?.[key]);
+
+                if (Number.isNaN(value)) return;
+
+                hasBreakdown = true;
+
+                sum += Math.max(0, Math.trunc(value));
+
+            });
+
+
+
+            if (hasBreakdown) return sum;
+
+            return getPersistedHasError(row) ? 1 : 0;
+
+        }
+
+
+
+        function buildFoundErrorRows(rows, activeCodes, maxItems = 300) {
+
+            const definitionMap = getQaErrorDefinitionMap();
+
+            const output = [];
+
+
+
+            for (const row of (rows || [])) {
+
+                const activeErrors = buildRowActiveQaErrors(row, activeCodes);
+
+                if (!Array.isArray(activeErrors?.codes) || activeErrors.codes.length === 0) continue;
+
+
+
+                output.push({
+
+                    id: String(row?.ID ?? '').trim(),
+
+                    book: String(row?.engine_model ?? '').trim(),
+
+                    page: String(row?.['Source Page'] ?? '').trim(),
+
+                    pos: String(row?.POS ?? '').trim(),
+
+                    pn: String(row?.['PART NO.'] ?? row?.pn ?? '').trim(),
+
+                    errors: getPersistedErrorCountFromRow(row),
+
+                    activeChecks: activeErrors.codes.map(code => definitionMap.get(code) || code)
+
+                });
+
+
+
+                if (output.length >= maxItems) break;
+
+            }
+
+
+
+            return output;
+
+        }
+
+
+
+        function renderQaChecksFoundRows(foundRows, totalFound) {
+
+            const body = $('qaChecksFoundRows');
+
+            const count = $('qaChecksFoundCount');
+
+
+
+            if (count instanceof HTMLElement) {
+
+                count.textContent = String(Number(totalFound || 0));
+
+            }
+
+
+
+            if (!(body instanceof HTMLElement)) return;
+
+
+
+            if (!Array.isArray(foundRows) || foundRows.length === 0) {
+
+                body.innerHTML = '<tr><td colspan="6" class="qa-checks-found-empty">No se han encontrado registros con error para las comprobaciones activas.</td></tr>';
+
+                return;
+
+            }
+
+
+
+            body.innerHTML = foundRows.map(item => `
 
         <tr>
 
@@ -6105,87 +6058,87 @@ function getRecordFormValues(scope) {
 
     `).join('');
 
-    }
-
-
-
-    function showQaChecksStats(stats, scopeLabel = '') {
-
-        const statsArea = $('qaChecksStatsArea');
-
-        if (!(statsArea instanceof HTMLElement)) return;
-
-
-
-        const globalStats = stats?.stats;
-
-        if (!globalStats) {
-
-            statsArea.style.display = 'none';
-
-            return;
-
         }
 
 
 
-        const scopeElem = $('qaChecksStatsScope');
+        function showQaChecksStats(stats, scopeLabel = '') {
 
-        if (scopeElem instanceof HTMLElement) {
+            const statsArea = $('qaChecksStatsArea');
 
-            scopeElem.textContent = scopeLabel || 'Todos los articulos';
-
-        }
+            if (!(statsArea instanceof HTMLElement)) return;
 
 
 
-        const totalElem = $('qaChecksStat_total');
+            const globalStats = stats?.stats;
 
-        if (totalElem) totalElem.textContent = String(globalStats.totalRows || 0);
+            if (!globalStats) {
 
+                statsArea.style.display = 'none';
 
+                return;
 
-        const errorsElem = $('qaChecksStat_errors');
-
-        if (errorsElem) errorsElem.textContent = String(globalStats.rowsWithErrors || 0);
-
-
-
-        const okElem = $('qaChecksStat_ok');
-
-        if (okElem) okElem.textContent = String(globalStats.rowsOk || 0);
+            }
 
 
 
-        const criticalElem = $('qaChecksStat_critical');
+            const scopeElem = $('qaChecksStatsScope');
 
-        if (criticalElem) criticalElem.textContent = String(globalStats.severityCount?.critical || 0);
+            if (scopeElem instanceof HTMLElement) {
 
+                scopeElem.textContent = scopeLabel || 'Todos los articulos';
 
-
-        const definitionMap = getQaErrorDefinitionMap();
-
-        const codesList = $('qaChecksStatCodes');
-
-        if (codesList instanceof HTMLElement) {
-
-            const entries = Object.entries(globalStats.codeCount || {})
-
-                .sort((a, b) => Number(b[1] || 0) - Number(a[1] || 0) || String(a[0]).localeCompare(String(b[0])));
+            }
 
 
 
-            if (!entries.length) {
+            const totalElem = $('qaChecksStat_total');
 
-                codesList.innerHTML = '<li class="qa-checks-stat-codes-empty">No hay errores para las comprobaciones activas.</li>';
+            if (totalElem) totalElem.textContent = String(globalStats.totalRows || 0);
 
-            } else {
 
-                codesList.innerHTML = entries.map(([code, count]) => {
 
-                    const label = definitionMap.get(code) || code;
+            const errorsElem = $('qaChecksStat_errors');
 
-                    return `<li class="qa-checks-stat-code-item">
+            if (errorsElem) errorsElem.textContent = String(globalStats.rowsWithErrors || 0);
+
+
+
+            const okElem = $('qaChecksStat_ok');
+
+            if (okElem) okElem.textContent = String(globalStats.rowsOk || 0);
+
+
+
+            const criticalElem = $('qaChecksStat_critical');
+
+            if (criticalElem) criticalElem.textContent = String(globalStats.severityCount?.critical || 0);
+
+
+
+            const definitionMap = getQaErrorDefinitionMap();
+
+            const codesList = $('qaChecksStatCodes');
+
+            if (codesList instanceof HTMLElement) {
+
+                const entries = Object.entries(globalStats.codeCount || {})
+
+                    .sort((a, b) => Number(b[1] || 0) - Number(a[1] || 0) || String(a[0]).localeCompare(String(b[0])));
+
+
+
+                if (!entries.length) {
+
+                    codesList.innerHTML = '<li class="qa-checks-stat-codes-empty">No hay errores para las comprobaciones activas.</li>';
+
+                } else {
+
+                    codesList.innerHTML = entries.map(([code, count]) => {
+
+                        const label = definitionMap.get(code) || code;
+
+                        return `<li class="qa-checks-stat-code-item">
 
                     <span class="qa-checks-stat-code-label">${escapeHtml(label)}</span>
 
@@ -6193,45 +6146,93 @@ function getRecordFormValues(scope) {
 
                 </li>`;
 
-                }).join('');
+                    }).join('');
+
+                }
 
             }
+
+
+
+            statsArea.style.display = 'block';
 
         }
 
 
 
-        statsArea.style.display = 'block';
+        async function applyQaChecksFilter(scope = 'all') {
 
-    }
+            const activeCodes = Array.from(state.activeQaErrorChecks);
 
-
-
-    async function applyQaChecksFilter(scope = 'all') {
-
-        const activeCodes = Array.from(state.activeQaErrorChecks);
-
-        const isVisibleScope = scope === 'visible';
+            const isVisibleScope = scope === 'visible';
 
 
 
-        showQaChecksProgress();
+            showQaChecksProgress();
 
-        hideQaChecksStats();
+            hideQaChecksStats();
 
 
 
-        try {
+            try {
 
-            if (isVisibleScope) {
+                if (isVisibleScope) {
 
-                const targetRows = getRowsForBulkScope('visible');
+                    const targetRows = getRowsForBulkScope('visible');
 
-                if (!targetRows.length) {
+                    if (!targetRows.length) {
+
+                        hideQaChecksProgress();
+
+                        alert('No hay articulos visibles para aplicar el filtro en esta pagina.');
+
+                        return;
+
+                    }
+
+
+
+                    const revisionKeys = targetRows
+
+                        .map(row => String(getRevisionKey(row) || '').trim())
+
+                        .filter(key => /^idx=\d+$/.test(key) || /^id=.+/.test(key));
+
+                    if (!revisionKeys.length) {
+
+                        hideQaChecksProgress();
+
+                        alert('No se pudo determinar la clave de revisión para guardar los visibles.');
+
+                        return;
+
+                    }
+
+                    applyActiveQaErrorsToSubset(activeCodes, targetRows);
+
+                    state.qaChecksScopedRows = new Set(targetRows);
+
+                    persistActiveQaChecks();
+
+
+
+                    const visibleStats = buildQaStatsFromRows(targetRows, activeCodes);
+
+                    showQaChecksStats({ stats: visibleStats }, 'Solo visibles en pantalla');
+
+
+
+                    const foundRows = buildFoundErrorRows(targetRows, activeCodes, 300);
+
+                    renderQaChecksFoundRows(foundRows, visibleStats.rowsWithErrors || foundRows.length);
+
+
+
+                    renderTable();
+
+                    renderPagination();
 
                     hideQaChecksProgress();
-
-                    alert('No hay articulos visibles para aplicar el filtro en esta pagina.');
 
                     return;
 
@@ -6239,183 +6240,135 @@ function getRecordFormValues(scope) {
 
 
 
-                const revisionKeys = targetRows
+                applyActiveQaErrorsToClientRows(activeCodes);
 
-                    .map(row => String(getRevisionKey(row) || '').trim())
+                const globalStats = buildQaStatsFromRows(state.allData, activeCodes);
 
-                    .filter(key => /^idx=\d+$/.test(key) || /^id=.+/.test(key));
 
-                if (!revisionKeys.length) {
 
-                    hideQaChecksProgress();
+                hideQaChecksProgress();
 
-                    alert('No se pudo determinar la clave de revisión para guardar los visibles.');
-
-                    return;
-
-                }
-
-                applyActiveQaErrorsToSubset(activeCodes, targetRows);
-
-                state.qaChecksScopedRows = new Set(targetRows);
+                showQaChecksStats({ stats: globalStats }, 'Todos los articulos');
 
                 persistActiveQaChecks();
 
-
-
-                const visibleStats = buildQaStatsFromRows(targetRows, activeCodes);
-
-                showQaChecksStats({ stats: visibleStats }, 'Solo visibles en pantalla');
+                state.qaChecksScopedRows = null;
 
 
 
-                const foundRows = buildFoundErrorRows(targetRows, activeCodes, 300);
+                const foundRows = buildFoundErrorRows(state.allData, activeCodes, 500);
 
-                renderQaChecksFoundRows(foundRows, visibleStats.rowsWithErrors || foundRows.length);
+                renderQaChecksFoundRows(foundRows, globalStats.rowsWithErrors || foundRows.length);
 
 
+
+                // Actualizar tabla después del éxito
+
+                state.currentPage = 1;
 
                 renderTable();
 
                 renderPagination();
 
+
+
+            } catch (err) {
+
+                console.error('Error applying QA checks filter:', err);
+
                 hideQaChecksProgress();
 
-                return;
+                alert('Error al procesar el filtro. Revisa la consola.');
+
+            }
+
+        }
+
+
+
+        function hideQaChecksStats() {
+
+            const statsArea = $('qaChecksStatsArea');
+
+            if (!(statsArea instanceof HTMLElement)) return;
+
+            statsArea.style.display = 'none';
+
+
+
+            const codesList = $('qaChecksStatCodes');
+
+            if (codesList instanceof HTMLElement) {
+
+                codesList.innerHTML = '<li class="qa-checks-stat-codes-empty">Aplica el cálculo para ver el detalle.</li>';
 
             }
 
 
 
-            applyActiveQaErrorsToClientRows(activeCodes);
-
-            const globalStats = buildQaStatsFromRows(state.allData, activeCodes);
-
-
-
-            hideQaChecksProgress();
-
-            showQaChecksStats({ stats: globalStats }, 'Todos los articulos');
-
-            persistActiveQaChecks();
-
-            state.qaChecksScopedRows = null;
-
-
-
-            const foundRows = buildFoundErrorRows(state.allData, activeCodes, 500);
-
-            renderQaChecksFoundRows(foundRows, globalStats.rowsWithErrors || foundRows.length);
-
-
-
-            // Actualizar tabla después del éxito
-
-            state.currentPage = 1;
-
-            renderTable();
-
-            renderPagination();
-
-
-
-        } catch (err) {
-
-            console.error('Error applying QA checks filter:', err);
-
-            hideQaChecksProgress();
-
-            alert('Error al procesar el filtro. Revisa la consola.');
-
-        }
-
-    }
-
-
-
-    function hideQaChecksStats() {
-
-        const statsArea = $('qaChecksStatsArea');
-
-        if (!(statsArea instanceof HTMLElement)) return;
-
-        statsArea.style.display = 'none';
-
-
-
-        const codesList = $('qaChecksStatCodes');
-
-        if (codesList instanceof HTMLElement) {
-
-            codesList.innerHTML = '<li class="qa-checks-stat-codes-empty">Aplica el cálculo para ver el detalle.</li>';
+            renderQaChecksFoundRows([], 0);
 
         }
 
 
 
-        renderQaChecksFoundRows([], 0);
+        function openQaChecksModal() {
 
-    }
+            const overlay = $('qaChecksModalOverlay');
 
+            if (!(overlay instanceof HTMLElement)) return;
 
+            renderQaChecksPanel();
 
-    function openQaChecksModal() {
+            overlay.style.display = 'flex';
 
-        const overlay = $('qaChecksModalOverlay');
+            // Prevent body scroll
 
-        if (!(overlay instanceof HTMLElement)) return;
+            document.body.style.overflow = 'hidden';
 
-        renderQaChecksPanel();
-
-        overlay.style.display = 'flex';
-
-        // Prevent body scroll
-
-        document.body.style.overflow = 'hidden';
-
-    }
+        }
 
 
 
-    function closeQaChecksModal() {
+        function closeQaChecksModal() {
 
-        const overlay = $('qaChecksModalOverlay');
+            const overlay = $('qaChecksModalOverlay');
 
-        if (!(overlay instanceof HTMLElement)) return;
+            if (!(overlay instanceof HTMLElement)) return;
 
-        overlay.style.display = 'none';
+            overlay.style.display = 'none';
 
-        // Restore body scroll
+            // Restore body scroll
 
-        document.body.style.overflow = '';
+            document.body.style.overflow = '';
 
-    }
-
-
-
-    function renderQaChecksPanel() {
-
-        ensureQaChecksState();
+        }
 
 
 
-        const container = $('qaChecksList');
+        function renderQaChecksPanel() {
 
-        if (!(container instanceof HTMLElement)) return;
+            ensureQaChecksState();
 
 
 
-        const items = state.qaErrorCheckDefinitions || [];
+            const container = $('qaChecksList');
 
-        container.innerHTML = items.map(def => {
+            if (!(container instanceof HTMLElement)) return;
 
-            const code = String(def?.code || '').trim();
 
-            const label = String(def?.label || code);
 
-            const checked = state.activeQaErrorChecks.has(code) ? 'checked' : '';
+            const items = state.qaErrorCheckDefinitions || [];
 
-            return `<label class="qa-check-item" title="${escapeHtml(code)}">
+            container.innerHTML = items.map(def => {
+
+                const code = String(def?.code || '').trim();
+
+                const label = String(def?.label || code);
+
+                const checked = state.activeQaErrorChecks.has(code) ? 'checked' : '';
+
+                return `<label class="qa-check-item" title="${escapeHtml(code)}">
 
             <input type="checkbox" data-qa-check-code="${escapeHtml(code)}" ${checked}>
 
@@ -6423,153 +6376,27 @@ function getRecordFormValues(scope) {
 
         </label>`;
 
-        }).join('');
+            }).join('');
 
 
 
-        updateQaChecksSummary();
-
-    }
-
-
-
-    function clearFilters() {
-
-        document.querySelectorAll('.filter-input[data-filter]').forEach(input => { input.value = ''; });
-
-        document.querySelectorAll('.filter-select[data-filter]').forEach(select => { select.value = ''; });
-
-        state.filters = {};
-
-        updateOnlyErrorsToggleLabel();
-
-        populatePageFilterOptions('', '');
-
-        state.currentPage = 1;
-
-        renderTable();
-
-        renderPagination();
-
-        loadPdfClear();
-
-        updateSchemasInline('', '');
-
-    }
-
-
-
-    function updateOnlyErrorsToggleLabel() {
-
-        const toggleBtn = $('toggleOnlyErrorsBtn');
-
-        if (!(toggleBtn instanceof HTMLButtonElement)) return;
-
-
-
-        const onlyErrorsActive = String(state.filters?.has_error || '') === 'true';
-
-        toggleBtn.classList.toggle('is-active', onlyErrorsActive);
-
-
-
-        // Compute counts excluding the has_error filter to always show X/Total
-
-        const savedErrorFilter = state.filters?.has_error;
-
-        if (state.filters) delete state.filters.has_error;
-
-        const baseFiltered = applyFilters(state.allData || []);
-
-        if (state.filters && savedErrorFilter !== undefined) state.filters.has_error = savedErrorFilter;
-
-        const errorsCount = baseFiltered.filter(row => getPersistedHasError(row)).length;
-
-        const total = baseFiltered.length;
-
-        const countStr = total > 0 ? ` (${errorsCount}/${total})` : '';
-
-
-
-        toggleBtn.textContent = (onlyErrorsActive ? 'Solo errores: ON' : 'Solo errores: OFF') + countStr;
-
-    }
-
-
-
-    function setOnlyErrorsFilter(enabled) {
-
-        if (enabled) state.filters.has_error = 'true';
-
-        else delete state.filters.has_error;
-
-
-
-        if (enabled) {
-
-            // En modo Solo errores: siempre paginación ON y sin filtro de página.
-
-            state.paginationEnabled = true;
-
-            const pageSelect = $('pageFilterSelect');
-
-            if (pageSelect instanceof HTMLSelectElement) {
-
-                pageSelect.value = '';
-
-            }
-
-            delete state.filters.page;
-
-            updatePaginationToggleLabel();
+            updateQaChecksSummary();
 
         }
 
 
 
-        const hasErrorSelect = document.querySelector('.filter-select[data-filter="has_error"]');
+        function clearFilters() {
 
-        if (hasErrorSelect instanceof HTMLSelectElement) {
+            document.querySelectorAll('.filter-input[data-filter]').forEach(input => { input.value = ''; });
 
-            hasErrorSelect.value = enabled ? 'true' : '';
+            document.querySelectorAll('.filter-select[data-filter]').forEach(select => { select.value = ''; });
 
-        }
+            state.filters = {};
 
+            updateOnlyErrorsToggleLabel();
 
-
-        state.currentPage = 1;
-
-        updateOnlyErrorsToggleLabel();
-
-        renderTable();
-
-        renderPagination();
-
-    }
-
-
-
-    function handleFilter(event) {
-
-        const input = event.target;
-
-        const filterKey = input.dataset.filter;
-
-        if (!filterKey) return;
-
-        const filterValue = input.value.trim();
-
-        if (filterValue === '') delete state.filters[filterKey];
-
-        else state.filters[filterKey] = filterValue;
-
-        updateOnlyErrorsToggleLabel();
-
-
-
-        if (filterTimeout) clearTimeout(filterTimeout);
-
-        filterTimeout = setTimeout(() => {
+            populatePageFilterOptions('', '');
 
             state.currentPage = 1;
 
@@ -6577,415 +6404,233 @@ function getRecordFormValues(scope) {
 
             renderPagination();
 
-            updateOnlyErrorsToggleLabel();
+            loadPdfClear();
 
-        }, 120);
-
-    }
-
-
-
-    function handleSort(event) {
-
-        const th = event.target.closest('th');
-
-        if (!th || !th.dataset.sort) return;
-
-        const key = th.dataset.sort;
-
-        if (state.sortKey === key) state.sortAsc = !state.sortAsc;
-
-        else {
-
-            state.sortKey = key;
-
-            state.sortAsc = true;
-
-        }
-
-        state.currentPage = 1;
-
-        renderTable();
-
-        renderPagination();
-
-    }
-
-
-
-    function isTypingContext(target) {
-
-        if (!(target instanceof HTMLElement)) return false;
-
-        const tag = target.tagName;
-
-        return tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT' || target.isContentEditable || Boolean(target.closest('[contenteditable="true"]'));
-
-    }
-
-
-
-    function updatePaginationToggleLabel() {
-
-        const btn = $('togglePaginationBtn');
-
-        if (!(btn instanceof HTMLButtonElement)) return;
-
-        btn.textContent = state.paginationEnabled ? 'Paginación: ON' : 'Paginación: OFF';
-
-    }
-
-
-
-    async function applyBulkQuickMode(quickMode) {
-
-        if (!ensureBackendWritable('aplicar cambios masivos')) return;
-
-
-
-        const scopeSelect = $('bulkScopeSelect');
-
-        if (!scopeSelect) return;
-
-
-
-        const quickMap = {
-
-            revok: { estado: 'ok', accion: null, label: 'revisión OK' },
-
-            revempty: { estado: 'pendiente', accion: null, label: 'revisión Pendiente' },
-
-            validate: { estado: null, accion: 'importar', label: 'acción Importar' },
-
-            review: { estado: null, accion: 'revisar', label: 'acción Revisar' },
-
-            discard: { estado: null, accion: 'eliminar', label: 'acción Eliminar' }
-
-        };
-
-
-
-        const targetValues = quickMap[quickMode];
-
-        if (!targetValues) return;
-
-
-
-        const scope = scopeSelect.value;
-
-        const targetRows = getRowsForBulkScope(scope);
-
-        if (!targetRows.length) {
-
-            alert('No hay registros para aplicar el cambio masivo con el ámbito seleccionado.');
-
-            return;
+            updateSchemasInline('', '');
 
         }
 
 
 
-        const scopeText = scope === 'visible' ? 'registros visibles en pantalla' : 'registros filtrados';
+        function updateOnlyErrorsToggleLabel() {
 
-        const expectedByMode = {
+            const toggleBtn = $('toggleOnlyErrorsBtn');
 
-            revok: 'APLICAR',
-
-            revempty: 'RESET',
-
-            validate: 'APLICAR',
-
-            review: 'APLICAR',
-
-            discard: 'DESCARTAR'
-
-        };
-
-        const expectedText = expectedByMode[quickMode] || 'APLICAR';
-
-        const confirmed = await confirmTypedAction({
-
-            title: 'Confirmar cambio masivo',
-
-            message: `Se aplicara ${targetValues.label} masiva a ${targetRows.length} ${scopeText}.`,
-
-            expectedText,
-
-            confirmLabel: 'Aplicar cambios',
-
-            cancelLabel: 'Cancelar',
-
-            dangerLevel: 'high'
-
-        });
-
-        if (!confirmed) return;
+            if (!(toggleBtn instanceof HTMLButtonElement)) return;
 
 
 
-        const targets = [];
+            const onlyErrorsActive = String(state.filters?.has_error || '') === 'true';
 
-        for (const row of targetRows) {
-
-            const currentEstado = normalizeEstadoToNew(row.qa_revision_estado);
-
-            const currentAccion = normalizeAccionToNew(row.qa_revision_accion);
-
-            const nextEstado = targetValues.estado === null ? currentEstado : targetValues.estado;
-
-            const nextAccion = targetValues.accion === null ? currentAccion : targetValues.accion;
+            toggleBtn.classList.toggle('is-active', onlyErrorsActive);
 
 
 
-            if (nextEstado === currentEstado && nextAccion === currentAccion) {
+            // Compute counts excluding the has_error filter to always show X/Total
 
-                continue;
+            const savedErrorFilter = state.filters?.has_error;
 
-            }
+            if (state.filters) delete state.filters.has_error;
+
+            const baseFiltered = applyFilters(state.allData || []);
+
+            if (state.filters && savedErrorFilter !== undefined) state.filters.has_error = savedErrorFilter;
+
+            const errorsCount = baseFiltered.filter(row => getPersistedHasError(row)).length;
+
+            const total = baseFiltered.length;
+
+            const countStr = total > 0 ? ` (${errorsCount}/${total})` : '';
 
 
 
-            targets.push({
+            toggleBtn.textContent = (onlyErrorsActive ? 'Solo errores: ON' : 'Solo errores: OFF') + countStr;
 
-                target: buildPatchTargetForRow(row),
+        }
 
-                changes: {
 
-                    ...(nextEstado !== currentEstado
 
-                        ? { qa_revision_estado: { before: currentEstado, after: nextEstado } }
+        function setOnlyErrorsFilter(enabled) {
 
-                        : {}),
+            if (enabled) state.filters.has_error = 'true';
 
-                    ...(nextAccion !== currentAccion
+            else delete state.filters.has_error;
 
-                        ? { qa_revision_accion: { before: currentAccion, after: nextAccion } }
 
-                        : {})
+
+            if (enabled) {
+
+                // En modo Solo errores: siempre paginación ON y sin filtro de página.
+
+                state.paginationEnabled = true;
+
+                const pageSelect = $('pageFilterSelect');
+
+                if (pageSelect instanceof HTMLSelectElement) {
+
+                    pageSelect.value = '';
 
                 }
 
-            });
+                delete state.filters.page;
 
-        }
-
-
-
-        if (!targets.length) {
-
-            alert('No hay cambios efectivos para aplicar en el ambito seleccionado.');
-
-            return;
-
-        }
-
-
-
-        await changeControl.applyAndRecord({
-
-            type: QA_BULK_ROW_PATCH_CHANGE_TYPE,
-
-            module: 'qa_milu',
-
-            action: `bulk-${quickMode}`,
-
-            description: `Cambio masivo ${targetValues.label} (${targets.length} filas)`,
-
-            target: { scope, size: targets.length },
-
-            data: { targets }
-
-        });
-
-
-
-        updateUndoButtonState();
-
-    }
-
-
-
-    /**
-    
-     * AR-1: decide si la carga inicial es completa (legacy) o incremental.
-    
-     * Activacion: ?lazy=1 en URL o localStorage.miluLazyEngines='1'.
-    
-     * Default: comportamiento actual (carga los 9 motores en paralelo).
-    
-     */
-
-    function isIncrementalLoadingEnabled() {
-
-        try {
-
-            const params = new URLSearchParams(window.location.search);
-
-            if (params.get('lazy') === '1') return true;
-
-            if (params.get('lazy') === '0') return false;
-
-        } catch (_) { /* noop */ }
-
-        try {
-
-            if (window.localStorage && window.localStorage.getItem('miluLazyEngines') === '1') return true;
-
-        } catch (_) { /* noop */ }
-
-        return false;
-
-    }
-
-
-
-    async function loadInitialEngineData() {
-
-        if (!isIncrementalLoadingEnabled()) {
-
-            state.incrementalLoadingEnabled = false;
-
-            return loadPartitionedEngineData();
-
-        }
-
-        state.incrementalLoadingEnabled = true;
-
-        try {
-
-            await fetchEngineCatalog();
-
-        } catch (error) {
-
-            console.warn('AR-1: catalogo /engines no disponible, fallback a carga completa.', error);
-
-            state.incrementalLoadingEnabled = false;
-
-            return loadPartitionedEngineData();
-
-        }
-
-        const catalog = Array.isArray(state.engineCatalog) ? state.engineCatalog : [];
-
-        const firstEngine = catalog[0];
-
-        if (!firstEngine || !firstEngine.file) {
-
-            console.warn('AR-1: catalogo vacio, fallback a carga completa.');
-
-            state.incrementalLoadingEnabled = false;
-
-            return loadPartitionedEngineData();
-
-        }
-
-        return loadEnginesByFileNames([firstEngine.file], { append: false });
-
-    }
-
-
-
-    async function loadData() {
-
-        try {
-
-            const isFileProtocol = window.location.protocol === 'file:';
-
-            if (isFileProtocol) {
-
-                const columns = 53;
-
-                $('tbody').innerHTML = `<tr><td colspan="${columns}" class="error">Estás abriendo el archivo directamente (file://). Intenta con servidor local.</td></tr>` +
-
-                    `<tr><td colspan="${columns}" class="error">Ejecuta un servidor local o usa Ejecutar localhost.bat para que fetch() cargue los engine_*.json.</td></tr>`;
+                updatePaginationToggleLabel();
 
             }
 
 
 
-            $('stats').innerHTML = '<span class="stat">Cargando datos...</span>';
+            const hasErrorSelect = document.querySelector('.filter-select[data-filter="has_error"]');
 
-            $('pagination').style.display = 'none';
+            if (hasErrorSelect instanceof HTMLSelectElement) {
 
+                hasErrorSelect.value = enabled ? 'true' : '';
 
-
-            state.allData = await loadInitialEngineData();
-
-            if (!Array.isArray(state.allData)) throw new Error('Los datos no son un array');
-
-
-
-            // No bloquear carga principal por catálogos opcionales que pueden no existir en todos los despliegues.
-
-            state.newPnSet = new Set();
-
-            state.miluNewData = [];
-
-            state.supersededPnSet = new Set();
-
-            state.miluSupersededData = [];
-
-            state.productExportPnSet = new Set();
-
-
-
-            state.publishedMap = new Map();
+            }
 
 
 
             state.currentPage = 1;
 
-            state.sortKey = 'book_page_pos';
+            updateOnlyErrorsToggleLabel();
 
-            state.sortAsc = true;
+            renderTable();
 
-            state.paginationEnabled = true;
+            renderPagination();
 
-            state.tableMode = 'qa';
+        }
 
-            state.filters = {};
+
+
+        function handleFilter(event) {
+
+            const input = event.target;
+
+            const filterKey = input.dataset.filter;
+
+            if (!filterKey) return;
+
+            const filterValue = input.value.trim();
+
+            if (filterValue === '') delete state.filters[filterKey];
+
+            else state.filters[filterKey] = filterValue;
 
             updateOnlyErrorsToggleLabel();
 
-            state.qaChecksScopedRows = null;
-
-            state.recentRevisionKeys = [];
-
-            state.displayRowCount = 0;
 
 
+            if (filterTimeout) clearTimeout(filterTimeout);
 
-            const columnViewSelect = $('columnViewSelect');
+            filterTimeout = setTimeout(() => {
 
-            if (columnViewSelect instanceof HTMLSelectElement) {
+                state.currentPage = 1;
 
-                columnViewSelect.value = state.tableMode === 'errors' ? 'errors' : state.columnView;
+                renderTable();
+
+                renderPagination();
+
+                updateOnlyErrorsToggleLabel();
+
+            }, 120);
+
+        }
+
+
+
+        function handleSort(event) {
+
+            const th = event.target.closest('th');
+
+            if (!th || !th.dataset.sort) return;
+
+            const key = th.dataset.sort;
+
+            if (state.sortKey === key) state.sortAsc = !state.sortAsc;
+
+            else {
+
+                state.sortKey = key;
+
+                state.sortAsc = true;
 
             }
 
+            state.currentPage = 1;
 
+            renderTable();
 
-            assignRevisionKeys(state.allData);
+            renderPagination();
 
-            applyRevisionDataToRows(state.allData);
-
-            rebuildGlobalPartNumberIndex(state.allData);
-
-            loadColumnWidths();
-
-
-
-            refreshBookFilterCatalog({ keepCurrentSelection: false });
+        }
 
 
 
-            if (!state.allData.length) {
+        function isTypingContext(target) {
 
-                $('tbody').innerHTML = '<tr><td colspan="53" class="error">No se encontró información en los archivos engine_*.json</td></tr>';
+            if (!(target instanceof HTMLElement)) return false;
 
-                $('stats').innerHTML = '<span class="stat">0 total</span>';
+            const tag = target.tagName;
 
-                $('pagination').style.display = 'none';
+            return tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT' || target.isContentEditable || Boolean(target.closest('[contenteditable="true"]'));
+
+        }
+
+
+
+        function updatePaginationToggleLabel() {
+
+            const btn = $('togglePaginationBtn');
+
+            if (!(btn instanceof HTMLButtonElement)) return;
+
+            btn.textContent = state.paginationEnabled ? 'Paginación: ON' : 'Paginación: OFF';
+
+        }
+
+
+
+        async function applyBulkQuickMode(quickMode) {
+
+            if (!ensureBackendWritable('aplicar cambios masivos')) return;
+
+
+
+            const scopeSelect = $('bulkScopeSelect');
+
+            if (!scopeSelect) return;
+
+
+
+            const quickMap = {
+
+                revok: { estado: 'ok', accion: null, label: 'revisión OK' },
+
+                revempty: { estado: 'pendiente', accion: null, label: 'revisión Pendiente' },
+
+                validate: { estado: null, accion: 'importar', label: 'acción Importar' },
+
+                review: { estado: null, accion: 'revisar', label: 'acción Revisar' },
+
+                discard: { estado: null, accion: 'eliminar', label: 'acción Eliminar' }
+
+            };
+
+
+
+            const targetValues = quickMap[quickMode];
+
+            if (!targetValues) return;
+
+
+
+            const scope = scopeSelect.value;
+
+            const targetRows = getRowsForBulkScope(scope);
+
+            if (!targetRows.length) {
+
+                alert('No hay registros para aplicar el cambio masivo con el ámbito seleccionado.');
 
                 return;
 
@@ -6993,57 +6638,617 @@ function getRecordFormValues(scope) {
 
 
 
-            state.filteredData = [...state.allData];
+            const scopeText = scope === 'visible' ? 'registros visibles en pantalla' : 'registros filtrados';
 
-            renderTable();
+            const expectedByMode = {
 
-            renderPagination();
+                revok: 'APLICAR',
 
-            initLazyEnginePanel();
+                revempty: 'RESET',
 
+                validate: 'APLICAR',
 
+                review: 'APLICAR',
 
-            loadOptionalCatalogsInBackground().catch(error => {
+                discard: 'DESCARTAR'
 
-                console.warn('No se pudieron cargar los catálogos opcionales:', error);
+            };
+
+            const expectedText = expectedByMode[quickMode] || 'APLICAR';
+
+            const confirmed = await confirmTypedAction({
+
+                title: 'Confirmar cambio masivo',
+
+                message: `Se aplicara ${targetValues.label} masiva a ${targetRows.length} ${scopeText}.`,
+
+                expectedText,
+
+                confirmLabel: 'Aplicar cambios',
+
+                cancelLabel: 'Cancelar',
+
+                dangerLevel: 'high'
 
             });
 
-            applyBackendWriteMode();
-
-            updatePaginationToggleLabel();
-
-            updateOnlyErrorsToggleLabel();
-
-            syncSideRecordFormWithSelection();
-
-            queueColumnViewRefresh();
+            if (!confirmed) return;
 
 
 
-            if (pendingShellRecordModalRequest) {
+            const targets = [];
 
-                const pendingRequest = pendingShellRecordModalRequest;
+            for (const row of targetRows) {
 
-                pendingShellRecordModalRequest = null;
+                const currentEstado = normalizeEstadoToNew(row.qa_revision_estado);
 
-                openRecordModalFromShell(pendingRequest);
+                const currentAccion = normalizeAccionToNew(row.qa_revision_accion);
+
+                const nextEstado = targetValues.estado === null ? currentEstado : targetValues.estado;
+
+                const nextAccion = targetValues.accion === null ? currentAccion : targetValues.accion;
+
+
+
+                if (nextEstado === currentEstado && nextAccion === currentAccion) {
+
+                    continue;
+
+                }
+
+
+
+                targets.push({
+
+                    target: buildPatchTargetForRow(row),
+
+                    changes: {
+
+                        ...(nextEstado !== currentEstado
+
+                            ? { qa_revision_estado: { before: currentEstado, after: nextEstado } }
+
+                            : {}),
+
+                        ...(nextAccion !== currentAccion
+
+                            ? { qa_revision_accion: { before: currentAccion, after: nextAccion } }
+
+                            : {})
+
+                    }
+
+                });
 
             }
 
 
 
-            const startupRecordModalRequest = getStartupRecordModalRequestFromUrl();
+            if (!targets.length) {
 
-            if (startupRecordModalRequest) {
+                alert('No hay cambios efectivos para aplicar en el ambito seleccionado.');
 
-                openRecordModalFromShell(startupRecordModalRequest);
+                return;
 
             }
 
 
 
-            if (syncAutoPageSize()) {
+            await changeControl.applyAndRecord({
+
+                type: QA_BULK_ROW_PATCH_CHANGE_TYPE,
+
+                module: 'qa_milu',
+
+                action: `bulk-${quickMode}`,
+
+                description: `Cambio masivo ${targetValues.label} (${targets.length} filas)`,
+
+                target: { scope, size: targets.length },
+
+                data: { targets }
+
+            });
+
+
+
+            updateUndoButtonState();
+
+        }
+
+
+
+        /**
+        
+         * AR-1: decide si la carga inicial es completa (legacy) o incremental.
+        
+         * Activacion: ?lazy=1 en URL o localStorage.miluLazyEngines='1'.
+        
+         * Default: comportamiento actual (carga los 9 motores en paralelo).
+        
+         */
+
+        function isIncrementalLoadingEnabled() {
+
+            try {
+
+                const params = new URLSearchParams(window.location.search);
+
+                if (params.get('lazy') === '1') return true;
+
+                if (params.get('lazy') === '0') return false;
+
+            } catch (_) { /* noop */ }
+
+            try {
+
+                if (window.localStorage && window.localStorage.getItem('miluLazyEngines') === '1') return true;
+
+            } catch (_) { /* noop */ }
+
+            return false;
+
+        }
+
+
+
+        async function loadInitialEngineData() {
+
+            if (!isIncrementalLoadingEnabled()) {
+
+                state.incrementalLoadingEnabled = false;
+
+                return loadPartitionedEngineData();
+
+            }
+
+            state.incrementalLoadingEnabled = true;
+
+            try {
+
+                await fetchEngineCatalog();
+
+            } catch (error) {
+
+                console.warn('AR-1: catalogo /engines no disponible, fallback a carga completa.', error);
+
+                state.incrementalLoadingEnabled = false;
+
+                return loadPartitionedEngineData();
+
+            }
+
+            const catalog = Array.isArray(state.engineCatalog) ? state.engineCatalog : [];
+
+            const firstEngine = catalog[0];
+
+            if (!firstEngine || !firstEngine.file) {
+
+                console.warn('AR-1: catalogo vacio, fallback a carga completa.');
+
+                state.incrementalLoadingEnabled = false;
+
+                return loadPartitionedEngineData();
+
+            }
+
+            return loadEnginesByFileNames([firstEngine.file], { append: false });
+
+        }
+
+
+
+        async function loadData() {
+
+            try {
+
+                const isFileProtocol = window.location.protocol === 'file:';
+
+                if (isFileProtocol) {
+
+                    const columns = 53;
+
+                    $('tbody').innerHTML = `<tr><td colspan="${columns}" class="error">Estás abriendo el archivo directamente (file://). Intenta con servidor local.</td></tr>` +
+
+                        `<tr><td colspan="${columns}" class="error">Ejecuta un servidor local o usa Ejecutar localhost.bat para que fetch() cargue los engine_*.json.</td></tr>`;
+
+                }
+
+
+
+                $('stats').innerHTML = '<span class="stat">Cargando datos...</span>';
+
+                $('pagination').style.display = 'none';
+
+
+
+                state.allData = await loadInitialEngineData();
+
+                if (!Array.isArray(state.allData)) throw new Error('Los datos no son un array');
+
+
+
+                // No bloquear carga principal por catálogos opcionales que pueden no existir en todos los despliegues.
+
+                state.newPnSet = new Set();
+
+                state.miluNewData = [];
+
+                state.supersededPnSet = new Set();
+
+                state.miluSupersededData = [];
+
+                state.productExportPnSet = new Set();
+
+
+
+                state.publishedMap = new Map();
+
+
+
+                state.currentPage = 1;
+
+                state.sortKey = 'book_page_pos';
+
+                state.sortAsc = true;
+
+                state.paginationEnabled = true;
+
+                state.tableMode = 'qa';
+
+                state.filters = {};
+
+                updateOnlyErrorsToggleLabel();
+
+                state.qaChecksScopedRows = null;
+
+                state.recentRevisionKeys = [];
+
+                state.displayRowCount = 0;
+
+
+
+                const columnViewSelect = $('columnViewSelect');
+
+                if (columnViewSelect instanceof HTMLSelectElement) {
+
+                    columnViewSelect.value = state.tableMode === 'errors' ? 'errors' : state.columnView;
+
+                }
+
+
+
+                assignRevisionKeys(state.allData);
+
+                applyRevisionDataToRows(state.allData);
+
+                rebuildGlobalPartNumberIndex(state.allData);
+
+                loadColumnWidths();
+
+
+
+                refreshBookFilterCatalog({ keepCurrentSelection: false });
+
+
+
+                if (!state.allData.length) {
+
+                    $('tbody').innerHTML = '<tr><td colspan="53" class="error">No se encontró información en los archivos engine_*.json</td></tr>';
+
+                    $('stats').innerHTML = '<span class="stat">0 total</span>';
+
+                    $('pagination').style.display = 'none';
+
+                    return;
+
+                }
+
+
+
+                state.filteredData = [...state.allData];
+
+                renderTable();
+
+                renderPagination();
+
+                initLazyEnginePanel();
+
+
+
+                loadOptionalCatalogsInBackground().catch(error => {
+
+                    console.warn('No se pudieron cargar los catálogos opcionales:', error);
+
+                });
+
+                applyBackendWriteMode();
+
+                updatePaginationToggleLabel();
+
+                updateOnlyErrorsToggleLabel();
+
+                syncSideRecordFormWithSelection();
+
+                queueColumnViewRefresh();
+
+
+
+                if (pendingShellRecordModalRequest) {
+
+                    const pendingRequest = pendingShellRecordModalRequest;
+
+                    pendingShellRecordModalRequest = null;
+
+                    openRecordModalFromShell(pendingRequest);
+
+                }
+
+
+
+                const startupRecordModalRequest = getStartupRecordModalRequestFromUrl();
+
+                if (startupRecordModalRequest) {
+
+                    openRecordModalFromShell(startupRecordModalRequest);
+
+                }
+
+
+
+                if (syncAutoPageSize()) {
+
+                    state.currentPage = 1;
+
+                    renderTable();
+
+                    renderPagination();
+
+                    queueColumnViewRefresh();
+
+                }
+
+            } catch (error) {
+
+                console.error('Error cargando datos:', error);
+
+                $('tbody').innerHTML = `<tr><td colspan="53" class="error">Error cargando datos: ${escapeHtml(error.message)}</td></tr>`;
+
+                $('stats').innerHTML = '<span class="stat bad">Error cargando datos</span>';
+
+            }
+
+        }
+
+
+
+        function attachGlobalEvents() {
+
+            document.addEventListener('qa:selected-row-changed', (event) => {
+
+                syncPdfWithSelectedRow(event?.detail?.revisionKey || state.selectedRevisionRowKey);
+
+                syncSideRecordFormWithSelection();
+
+            });
+
+
+
+            document.addEventListener('qa:revision-save-failed', (event) => {
+
+                const revisionKey = String(event?.detail?.revisionKey || '').trim();
+
+                if (!revisionKey) return;
+
+                const rowRefreshed = refreshVisibleRowByRevisionKey(revisionKey);
+
+                if (!rowRefreshed) renderTable();
+
+
+
+                const selectedRevisionKey = String(state.selectedRevisionRowKey || '').trim();
+
+                if (selectedRevisionKey === revisionKey) {
+
+                    const status = $('qaSideStatus');
+
+                    if (status) status.textContent = 'Error guardando revisión. Revisa conexión/backend.';
+
+                }
+
+            });
+
+
+
+            $('firstBtn')?.addEventListener('click', () => jumpToPage(1));
+
+            $('prevBtn')?.addEventListener('click', () => changePage(-1));
+
+            $('nextBtn')?.addEventListener('click', () => changePage(1));
+
+            $('lastBtn')?.addEventListener('click', () => jumpToPage(Number.MAX_SAFE_INTEGER));
+
+
+
+            ensureFilterControlNames();
+
+
+
+            document.querySelectorAll('.filter-input[data-filter], .filter-select[data-filter]').forEach(elem => {
+
+                if (elem.id === 'bookFilterSelect' || elem.id === 'pageFilterSelect') return;
+
+                elem.addEventListener('input', handleFilter);
+
+                elem.addEventListener('change', handleFilter);
+
+            });
+
+
+
+            $('nextBookPageBtn')?.addEventListener('click', goToNextBookPage);
+
+            $('prevBookPageBtn')?.addEventListener('click', goToPrevBookPage);
+
+            $('clearFiltersBtn')?.addEventListener('click', clearFilters);
+
+            $('toggleOnlyErrorsBtn')?.addEventListener('click', () => {
+
+                const onlyErrorsActive = String(state.filters?.has_error || '') === 'true';
+
+                setOnlyErrorsFilter(!onlyErrorsActive);
+
+            });
+
+            $('togglePaginationBtn')?.addEventListener('click', () => {
+
+                state.paginationEnabled = !state.paginationEnabled;
+
+                state.currentPage = 1;
+
+                renderTable();
+
+                renderPagination();
+
+                updatePaginationToggleLabel();
+
+            });
+
+
+
+            // QA Checks Modal
+
+            $('openQaChecksModalBtn')?.addEventListener('click', openQaChecksModal);
+
+            $('closeQaChecksModalBtn')?.addEventListener('click', closeQaChecksModal);
+
+            $('applyQaChecksAllBtn')?.addEventListener('click', async () => {
+
+                await applyQaChecksFilter('all');
+
+                // No cerrar modal aún, para que usuario vea estadísticas
+
+            });
+
+
+
+            $('applyQaChecksVisibleBtn')?.addEventListener('click', async () => {
+
+                await applyQaChecksFilter('visible');
+
+                // No cerrar modal aún, para que usuario vea estadísticas
+
+            });
+
+
+
+            // Close modal on overlay click
+
+            $('qaChecksModalOverlay')?.addEventListener('click', (event) => {
+
+                if (event.target.id === 'qaChecksModalOverlay') closeQaChecksModal();
+
+            });
+
+
+
+            // QA Checks list changes - use event delegation with 'input' (bubbles)
+
+            const qaChecksList = $('qaChecksList');
+
+            if (qaChecksList instanceof HTMLElement) {
+
+                qaChecksList.addEventListener('input', (event) => {
+
+                    const target = event.target;
+
+                    if (!(target instanceof HTMLInputElement) || target.type !== 'checkbox') return;
+
+                    const code = String(target.dataset.qaCheckCode || '').trim();
+
+                    if (!code) return;
+
+
+
+                    if (target.checked) state.activeQaErrorChecks.add(code);
+
+                    else state.activeQaErrorChecks.delete(code);
+
+
+
+                    // Solo actualizar badge, NO renderizar tabla
+
+                    updateQaChecksSummary();
+
+                });
+
+            }
+
+
+
+            $('qaChecksAllBtn')?.addEventListener('click', () => {
+
+                state.activeQaErrorChecks = new Set(getAllQaCheckCodes());
+
+                renderQaChecksPanel();
+
+            });
+
+
+
+            $('qaChecksNoneBtn')?.addEventListener('click', () => {
+
+                state.activeQaErrorChecks = new Set();
+
+                renderQaChecksPanel();
+
+            });
+
+
+
+            $('sortBookPagePosBtn')?.addEventListener('click', () => {
+
+                state.sortKey = 'book_page_pos';
+
+                state.sortAsc = true;
+
+                state.currentPage = 1;
+
+                renderTable();
+
+                renderPagination();
+
+            });
+
+
+
+            $('columnViewSelect')?.addEventListener('change', (event) => {
+
+                const selectedView = String(event.target.value || 'qa');
+
+                if (selectedView === 'errors') {
+
+                    state.tableMode = 'errors';
+
+                } else {
+
+                    state.tableMode = 'qa';
+
+                    state.columnView = ['qa', 'focus', 'pdf'].includes(selectedView) ? selectedView : 'qa';
+
+                    saveColumnViewPreference();
+
+                }
+
+
+
+                if (event.target instanceof HTMLSelectElement) {
+
+                    event.target.value = state.tableMode === 'errors' ? 'errors' : state.columnView;
+
+                }
+
+
 
                 state.currentPage = 1;
 
@@ -7053,179 +7258,1107 @@ function getRecordFormValues(scope) {
 
                 queueColumnViewRefresh();
 
-            }
+            });
 
-        } catch (error) {
 
-            console.error('Error cargando datos:', error);
 
-            $('tbody').innerHTML = `<tr><td colspan="53" class="error">Error cargando datos: ${escapeHtml(error.message)}</td></tr>`;
+            $('bookFilterSelect')?.addEventListener('change', () => {
 
-            $('stats').innerHTML = '<span class="stat bad">Error cargando datos</span>';
+                applyBookSelection($('bookFilterSelect')?.value || '', {
 
-        }
+                    fallbackToFirstAvailablePage: false,
 
-    }
+                    render: true,
 
+                    updatePdf: true
 
+                });
 
-    function attachGlobalEvents() {
+            });
 
-        document.addEventListener('qa:selected-row-changed', (event) => {
 
-            syncPdfWithSelectedRow(event?.detail?.revisionKey || state.selectedRevisionRowKey);
 
-            syncSideRecordFormWithSelection();
+            $('pageFilterSelect')?.addEventListener('change', () => {
 
-        });
+                setPageFilterValue($('pageFilterSelect')?.value || '');
 
+            });
 
 
-        document.addEventListener('qa:revision-save-failed', (event) => {
 
-            const revisionKey = String(event?.detail?.revisionKey || '').trim();
+            $('lazyLoadEngineBtn')?.addEventListener('click', async () => {
 
-            if (!revisionKey) return;
+                if (!state.incrementalLoadingEnabled) return;
 
-            const rowRefreshed = refreshVisibleRowByRevisionKey(revisionKey);
+                const select = $('lazyEngineSelect');
 
-            if (!rowRefreshed) renderTable();
+                if (!(select instanceof HTMLSelectElement)) return;
 
+                const file = String(select.value || '').trim();
 
+                if (!file) return;
 
-            const selectedRevisionKey = String(state.selectedRevisionRowKey || '').trim();
 
-            if (selectedRevisionKey === revisionKey) {
 
-                const status = $('qaSideStatus');
+                const status = $('stats');
 
-                if (status) status.textContent = 'Error guardando revisión. Revisa conexión/backend.';
+                const previousStats = status?.innerHTML || '';
 
-            }
+                if (status) status.innerHTML = '<span class="stat">Cargando motor seleccionado...</span>';
 
-        });
 
 
+                try {
 
-        $('firstBtn')?.addEventListener('click', () => jumpToPage(1));
+                    await loadLazyEnginesAndRefresh([file], { append: true });
 
-        $('prevBtn')?.addEventListener('click', () => changePage(-1));
+                } catch (error) {
 
-        $('nextBtn')?.addEventListener('click', () => changePage(1));
+                    console.error('No se pudo cargar el motor seleccionado:', error);
 
-        $('lastBtn')?.addEventListener('click', () => jumpToPage(Number.MAX_SAFE_INTEGER));
+                    alert(`No se pudo cargar el motor: ${error.message}`);
 
+                    if (status) status.innerHTML = previousStats;
 
+                    renderTable();
 
-        ensureFilterControlNames();
+                    renderPagination();
 
+                }
 
+            });
 
-        document.querySelectorAll('.filter-input[data-filter], .filter-select[data-filter]').forEach(elem => {
 
-            if (elem.id === 'bookFilterSelect' || elem.id === 'pageFilterSelect') return;
 
-            elem.addEventListener('input', handleFilter);
+            $('lazyLoadAllEnginesBtn')?.addEventListener('click', async () => {
 
-            elem.addEventListener('change', handleFilter);
+                if (!state.incrementalLoadingEnabled) return;
 
-        });
+                const catalog = getEngineCatalogList();
 
+                const loaded = getLoadedEngineFilesSet();
 
+                const pending = catalog
 
-        $('nextBookPageBtn')?.addEventListener('click', goToNextBookPage);
+                    .map(item => String(item?.file || '').trim())
 
-        $('prevBookPageBtn')?.addEventListener('click', goToPrevBookPage);
+                    .filter(file => file && !loaded.has(file));
 
-        $('clearFiltersBtn')?.addEventListener('click', clearFilters);
+                if (!pending.length) return;
 
-        $('toggleOnlyErrorsBtn')?.addEventListener('click', () => {
 
-            const onlyErrorsActive = String(state.filters?.has_error || '') === 'true';
 
-            setOnlyErrorsFilter(!onlyErrorsActive);
+                const status = $('stats');
 
-        });
+                const previousStats = status?.innerHTML || '';
 
-        $('togglePaginationBtn')?.addEventListener('click', () => {
+                if (status) status.innerHTML = `<span class="stat">Cargando ${pending.length} motores pendientes...</span>`;
 
-            state.paginationEnabled = !state.paginationEnabled;
 
-            state.currentPage = 1;
 
-            renderTable();
+                try {
 
-            renderPagination();
+                    await loadLazyEnginesAndRefresh(pending, { append: true });
 
-            updatePaginationToggleLabel();
+                } catch (error) {
 
-        });
+                    console.error('No se pudieron cargar todos los motores:', error);
 
+                    alert(`No se pudieron cargar todos los motores: ${error.message}`);
 
+                    if (status) status.innerHTML = previousStats;
 
-        // QA Checks Modal
+                    renderTable();
 
-        $('openQaChecksModalBtn')?.addEventListener('click', openQaChecksModal);
+                    renderPagination();
 
-        $('closeQaChecksModalBtn')?.addEventListener('click', closeQaChecksModal);
+                }
 
-        $('applyQaChecksAllBtn')?.addEventListener('click', async () => {
+            });
 
-            await applyQaChecksFilter('all');
 
-            // No cerrar modal aún, para que usuario vea estadísticas
 
-        });
+            $('bulkRevOkBtn')?.addEventListener('click', () => applyBulkQuickMode('revok'));
 
+            $('bulkRevEmptyBtn')?.addEventListener('click', () => applyBulkQuickMode('revempty'));
 
+            $('bulkValidateBtn')?.addEventListener('click', () => applyBulkQuickMode('validate'));
 
-        $('applyQaChecksVisibleBtn')?.addEventListener('click', async () => {
+            $('bulkReviewBtn')?.addEventListener('click', () => applyBulkQuickMode('review'));
 
-            await applyQaChecksFilter('visible');
+            $('bulkDiscardBtn')?.addEventListener('click', () => applyBulkQuickMode('discard'));
 
-            // No cerrar modal aún, para que usuario vea estadísticas
+            $('qaUndoLastChangeBtn')?.addEventListener('click', () => undoLastQaChange());
 
-        });
+            $('openAuditPageBtn')?.addEventListener('click', () => {
 
+                window.open('qa_auditoria.html', '_blank', 'noopener');
 
+            });
 
-        // Close modal on overlay click
 
-        $('qaChecksModalOverlay')?.addEventListener('click', (event) => {
 
-            if (event.target.id === 'qaChecksModalOverlay') closeQaChecksModal();
+            document.addEventListener('milu:change-control:history-updated', () => {
 
-        });
+                updateUndoButtonState();
 
+            });
 
 
-        // QA Checks list changes - use event delegation with 'input' (bubbles)
 
-        const qaChecksList = $('qaChecksList');
+            document.addEventListener('milu:change-control:audit-persist-failed', (event) => {
 
-        if (qaChecksList instanceof HTMLElement) {
+                const detail = event?.detail || {};
 
-            qaChecksList.addEventListener('input', (event) => {
+                const entry = detail.entry || {};
+
+                const message = `Aviso: el cambio se guardo, pero la auditoria no se pudo persistir (${detail.error || 'error desconocido'}).`;
+
+                const sideStatus = $('qaSideStatus');
+
+                const modalStatus = $('qaRecordModalStatus');
+
+
+
+                if (sideStatus) sideStatus.textContent = message;
+
+                if (modalStatus && String($('qaRecordModalForm')?.dataset.revisionKey || '') === String(entry?.target?.revisionKey || '')) {
+
+                    modalStatus.textContent = message;
+
+                }
+
+            });
+
+
+
+            document.querySelectorAll('[data-pdf-tab]').forEach(tabBtn => {
+
+                tabBtn.addEventListener('click', () => setRightPanelTab(tabBtn.dataset.pdfTab || 'pdf'));
+
+            });
+
+
+
+            $('qaSideOpenModalBtn')?.addEventListener('click', () => {
+
+                const revisionKey = String($('qaSideRecordForm')?.dataset.revisionKey || '');
+
+                if (!revisionKey) {
+
+                    alert('Selecciona un registro para abrir el modal.');
+
+                    return;
+
+                }
+
+
+
+                const row = getRowByRevisionKey(revisionKey);
+
+                if (openSharedRecordEditorForRow(row)) return;
+
+                openRecordModal(revisionKey);
+
+            });
+
+
+
+            $('qaRecordModalOpenExportBtn')?.addEventListener('click', () => {
+
+                const revisionKey = String($('qaRecordModalForm')?.dataset.revisionKey || '');
+
+                if (!revisionKey) {
+
+                    alert('Selecciona un registro para abrir la exportación.');
+
+                    return;
+
+                }
+
+                openExportModal(revisionKey);
+
+            });
+
+
+
+            $('qaSideOpenMatchesModalBtn')?.addEventListener('click', () => {
+
+                const revisionKey = String($('qaSideRecordForm')?.dataset.revisionKey || '');
+
+                if (!revisionKey) {
+
+                    alert('Selecciona un registro para abrir las apariciones en modal.');
+
+                    return;
+
+                }
+
+                openMatchesModal(revisionKey);
+
+            });
+
+
+
+            $('qaSideMatchesBookFilter')?.addEventListener('change', () => {
+
+                const revisionKey = String($('qaSideRecordForm')?.dataset.revisionKey || '');
+
+                const row = getRowByRevisionKey(revisionKey);
+
+                if (!row) return;
+
+                renderRecordModalMatches(row, revisionKey, {
+
+                    bodyId: 'qaSideMatchesBody',
+
+                    countId: 'qaSideMatchesCount',
+
+                    bookFilterId: 'qaSideMatchesBookFilter',
+
+                    showAction: false
+
+                });
+
+            });
+
+
+
+            $('qaSideExportOnlyDiffToggle')?.addEventListener('change', () => {
+
+                const revisionKey = String($('qaSideRecordForm')?.dataset.revisionKey || '');
+
+                const row = getRowByRevisionKey(revisionKey);
+
+                if (!row) return;
+
+                renderRecordModalExport(row, {
+
+                    headRowId: 'qaSideExportHeadRow',
+
+                    bodyId: 'qaSideExportBody',
+
+                    countId: 'qaSideExportCount',
+
+                    onlyDiffToggleId: 'qaSideExportOnlyDiffToggle'
+
+                });
+
+            });
+
+
+
+            $('qaExportRunWordpressBtn')?.addEventListener('click', async () => {
+
+                await runExportPipeline('/export/run-wordpress', 'WordPress export');
+
+            });
+
+
+
+            $('qaExportReloadPreviewBtn')?.addEventListener('click', async () => {
+
+                setExportRunStatus('Recargando preview...', 'warn');
+
+                await loadExportPreview();
+
+                setExportRunStatus('Preview actualizado', 'ok');
+
+            });
+
+
+
+            $('qaExportDecisionFilter')?.addEventListener('change', () => {
+
+                renderExportPreviewRows(state.exportPreviewRows || []);
+
+            });
+
+
+
+            $('qaExportSearchInput')?.addEventListener('input', () => {
+
+                renderExportPreviewRows(state.exportPreviewRows || []);
+
+            });
+
+
+
+            $('qaExportFilterResetBtn')?.addEventListener('click', () => {
+
+                resetExportPreviewFilters();
+
+                renderExportPreviewRows(state.exportPreviewRows || []);
+
+            });
+
+
+
+            $('qaExportDownloadCsvBtn')?.addEventListener('click', () => {
+
+                downloadExportPreviewCsv();
+
+            });
+
+
+
+            document.querySelectorAll('th[data-export-sort]').forEach((th) => {
+
+                th.addEventListener('click', () => {
+
+                    const key = th.getAttribute('data-export-sort');
+
+                    toggleExportPreviewSort(key);
+
+                });
+
+            });
+
+
+
+            $('qaExportPreviewBody')?.addEventListener('click', async (event) => {
 
                 const target = event.target;
 
-                if (!(target instanceof HTMLInputElement) || target.type !== 'checkbox') return;
+                if (!(target instanceof HTMLElement)) return;
 
-                const code = String(target.dataset.qaCheckCode || '').trim();
+                const row = target.closest('tr[data-export-sku]');
 
-                if (!code) return;
+                const sku = String(row?.getAttribute('data-export-sku') || '').trim();
 
-
-
-                if (target.checked) state.activeQaErrorChecks.add(code);
-
-                else state.activeQaErrorChecks.delete(code);
+                if (!sku) return;
 
 
 
-                // Solo actualizar badge, NO renderizar tabla
+                state.selectedExportSku = sku;
 
-                updateQaChecksSummary();
+                renderExportPreviewRows(state.exportPreviewRows || []);
+
+                await loadExportTraceForSku(sku);
+
+            });
+
+
+
+            $('qaModalExportOnlyDiffToggle')?.addEventListener('change', () => {
+
+                if (!isExportModalOpen()) return;
+
+                const revisionKey = String($('qaExportModal')?.dataset.revisionKey || '');
+
+                const row = getRowByRevisionKey(revisionKey);
+
+                if (!row) return;
+
+                renderRecordModalExport(row, {
+
+                    headRowId: 'qaModalExportHeadRow',
+
+                    bodyId: 'qaModalExportBody',
+
+                    countId: 'qaModalExportCount',
+
+                    onlyDiffToggleId: 'qaModalExportOnlyDiffToggle'
+
+                });
+
+            });
+
+
+
+            $('qaSideMatchesBody')?.addEventListener('dblclick', (event) => {
+
+                const target = event.target;
+
+                if (!(target instanceof HTMLElement)) return;
+
+                const tr = target.closest('tr[data-revision-key]');
+
+                const revisionKey = String(tr?.getAttribute('data-revision-key') || '').trim();
+
+                if (!revisionKey) return;
+
+
+
+                event.preventDefault();
+
+                event.stopPropagation();
+
+
+
+                const moved = focusRevisionRowInMainTable(revisionKey);
+
+                if (!moved) {
+
+                    alert('No se pudo navegar al registro en la tabla principal. Puede estar fuera de los filtros activos.');
+
+                }
+
+            });
+
+
+
+            $('qaMatchesModalCloseBtn')?.addEventListener('click', closeMatchesModal);
+
+            $('qaMatchesModal')?.addEventListener('click', (event) => {
+
+                const target = event.target;
+
+                if (!(target instanceof HTMLElement)) return;
+
+                if (target.dataset.matchesModalClose === 'true') closeMatchesModal();
+
+            });
+
+
+
+            ['qaMatchesModalBookFilter'].forEach(id => {
+
+                $(id)?.addEventListener('change', () => renderMatchesLargeModal());
+
+            });
+
+            ['qaMatchesModalPageFilter', 'qaMatchesModalPosFilter', 'qaMatchesModalIdFilter', 'qaMatchesModalTextFilter'].forEach(id => {
+
+                $(id)?.addEventListener('input', () => renderMatchesLargeModal());
+
+            });
+
+
+
+            $('qaMatchesModalBody')?.addEventListener('dblclick', (event) => {
+
+                const target = event.target;
+
+                if (!(target instanceof HTMLElement)) return;
+
+                const tr = target.closest('tr[data-revision-key]');
+
+                const revisionKey = String(tr?.getAttribute('data-revision-key') || '').trim();
+
+                if (!revisionKey) return;
+
+
+
+                event.preventDefault();
+
+                event.stopPropagation();
+
+
+
+                const moved = focusRevisionRowInMainTable(revisionKey);
+
+                if (!moved) {
+
+                    alert('No se pudo navegar al registro en la tabla principal. Puede estar fuera de los filtros activos.');
+
+                    return;
+
+                }
+
+                closeMatchesModal();
+
+            });
+
+
+
+            $('qaSideSearchBtn')?.addEventListener('click', runSideQuickSearch);
+
+            ['qaSideSearchArticle'].forEach(id => {
+
+                $(id)?.addEventListener('keydown', (event) => {
+
+                    if (event.key !== 'Enter') return;
+
+                    event.preventDefault();
+
+                    runSideQuickSearch();
+
+                });
+
+            });
+
+
+
+            $('qaSideResetBtn')?.addEventListener('click', syncSideRecordFormWithSelection);
+
+            $('qaSideRecordForm')?.addEventListener('submit', handleSideRecordSubmit);
+
+
+
+            document.addEventListener('keydown', (event) => {
+
+                if ((event.ctrlKey || event.metaKey) && !event.altKey) {
+
+                    const key = String(event.key || '').toLowerCase();
+
+                    if (key === 'z') {
+
+                        event.preventDefault();
+
+                        if (event.shiftKey) redoLastQaChange();
+
+                        else undoLastQaChange();
+
+                        return;
+
+                    }
+
+                    if (key === 'y') {
+
+                        event.preventDefault();
+
+                        redoLastQaChange();
+
+                        return;
+
+                    }
+
+                }
+
+
+
+                if (isMatchesModalOpen()) {
+
+                    if (event.key === 'Escape') {
+
+                        event.preventDefault();
+
+                        closeMatchesModal();
+
+                    }
+
+                    return;
+
+                }
+
+
+
+                if (isRecordModalOpen()) {
+
+                    if (event.key === 'Escape') {
+
+                        event.preventDefault();
+
+                        closeRecordModal();
+
+                    }
+
+                    return;
+
+                }
+
+
+
+                if (event.altKey || event.ctrlKey || event.metaKey || event.shiftKey) return;
+
+                if (event.repeat || isTypingContext(event.target)) return;
+
+
+
+                if (event.key.toLowerCase() === 'v') {
+
+                    event.preventDefault();
+
+                    const scopeSelect = $('bulkScopeSelect');
+
+                    if (scopeSelect) scopeSelect.value = 'filtered';
+
+                    applyBulkQuickMode('revok');
+
+                    return;
+
+                }
+
+
+
+                if (event.key === 'ArrowRight') { event.preventDefault(); goToNextBookPage(); return; }
+
+                if (event.key === 'ArrowLeft') { event.preventDefault(); goToPrevBookPage(); return; }
+
+                if (event.key === 'ArrowDown') { event.preventDefault(); moveSelectionBy(1); return; }
+
+                if (event.key === 'ArrowUp') { event.preventDefault(); moveSelectionBy(-1); return; }
+
+                if (event.key === 'Escape') cancelInlineEdit();
+
+            });
+
+
+
+            const tbody = $('tbody');
+
+            tbody?.addEventListener('click', (event) => {
+
+                const target = event.target;
+
+                if (!(target instanceof HTMLElement)) return;
+
+
+
+                const openAnalysisBadge = target.closest('[data-open-analysis="true"]');
+
+                if (openAnalysisBadge) {
+
+                    const tr = openAnalysisBadge.closest('tr[data-revision-key]');
+
+                    const rowKey = tr?.getAttribute('data-revision-key') || '';
+
+                    const row = state.allData.find(item => getRevisionKey(item) === rowKey);
+
+                    if (row) {
+
+                        event.preventDefault();
+
+                        event.stopPropagation();
+
+                        openAnalisisForRow(row);
+
+                    }
+
+                    return;
+
+                }
+
+
+
+                if (target.closest('select') || target.closest('a') || isInlineEditableTarget(target)) return;
+
+
+
+                const tr = target.closest('tr[data-revision-key]');
+
+                if (!tr) return;
+
+                const rowKey = tr.getAttribute('data-revision-key') || '';
+
+                const row = state.allData.find(item => getRevisionKey(item) === rowKey);
+
+                if (!row) return;
+
+                state.selectedRevisionRowKey = rowKey;
+
+                refreshSelectedRowVisual();
+
+                renderSelectedRowPosPanel(row);
+
+                renderSelectedRowPosTop(row);
+
+                document.dispatchEvent(new CustomEvent('qa:selected-row-changed', {
+
+                    detail: { revisionKey: rowKey }
+
+                }));
+
+            });
+
+
+
+            tbody?.addEventListener('dblclick', async (event) => {
+
+                const target = event.target;
+
+                if (!(target instanceof HTMLElement)) return;
+
+                if (target.closest('button') || target.closest('select') || target.closest('a') || target.closest('input') || target.closest('textarea')) return;
+
+                const tr = target.closest('tr[data-revision-key]');
+
+                const revisionKey = tr?.getAttribute('data-revision-key') || '';
+
+                if (!revisionKey) return;
+
+                const row = state.allData.find(item => getRevisionKey(item) === revisionKey);
+
+                if (!row) return;
+
+                const copyCell = target.closest('td[data-copy-to-final][data-copy-from-field]');
+
+                if (copyCell instanceof HTMLTableCellElement) {
+
+                    const handledCopy = await tryHandleTableCellDoubleClickCopy(event, row, copyCell);
+
+                    if (handledCopy) return;
+
+                }
+
+                event.preventDefault();
+
+                event.stopPropagation();
+
+                openAnalisisForRow(row);
+
+            });
+
+
+
+            tbody?.addEventListener('change', (event) => {
+
+                const target = event.target;
+
+                if (!(target instanceof HTMLSelectElement)) return;
+
+                if (!ensureBackendWritable('guardar cambios rapidos')) {
+
+                    refreshVisibleRowByRevisionKey(String(target.dataset.revisionKey || ''));
+
+                    syncSideRecordFormWithSelection();
+
+                    return;
+
+                }
+
+                const revisionField = target.dataset.revisionField;
+
+                const revisionKey = target.dataset.revisionKey;
+
+                if (!revisionField || !revisionKey) return;
+
+                const row = state.allData.find(item => getRevisionKey(item) === revisionKey);
+
+                if (!row) return;
+
+                const currentEstado = normalizeEstadoToNew(row.qa_revision_estado);
+
+                const currentAccion = normalizeAccionToNew(row.qa_revision_accion);
+
+                const nextEstado = revisionField === 'estado' ? normalizeEstadoToNew(target.value) : currentEstado;
+
+                const nextAccion = revisionField === 'accion' ? normalizeAccionToNew(target.value) : currentAccion;
+
+                const changes = {};
+
+                if (nextEstado !== currentEstado) {
+
+                    changes.qa_revision_estado = { before: currentEstado, after: nextEstado };
+
+                }
+
+                if (nextAccion !== currentAccion) {
+
+                    changes.qa_revision_accion = { before: currentAccion, after: nextAccion };
+
+                }
+
+                if (!Object.keys(changes).length) {
+
+                    updateRevisionSelectVisual(target);
+
+                    return;
+
+                }
+
+
+
+                changeControl.applyAndRecord(buildRowPatchEntryWithPnCopyPropagation(row, changes, {
+
+                    action: `inline-${revisionField}`,
+
+                    description: `Cambio rapido ${revisionField} ID ${row.ID}`
+
+                })).catch((error) => {
+
+                    console.error('No se pudo guardar cambio rapido:', error);
+
+                    alert(`No se pudo guardar el cambio rapido: ${error.message}`);
+
+                    refreshVisibleRowByRevisionKey(revisionKey);
+
+                    syncSideRecordFormWithSelection();
+
+                }).finally(() => {
+
+                    updateRevisionSelectVisual(target);
+
+                    updateUndoButtonState();
+
+                });
+
+            });
+
+
+
+            const errorViewTbody = $('errorViewTbody');
+
+            errorViewTbody?.addEventListener('click', (event) => {
+
+                const target = event.target;
+
+                if (!(target instanceof HTMLElement)) return;
+
+
+
+                const openAnalysisBadge = target.closest('[data-open-analysis="true"]');
+
+                if (openAnalysisBadge) {
+
+                    const tr = openAnalysisBadge.closest('tr[data-revision-key]');
+
+                    const rowKey = tr?.getAttribute('data-revision-key') || '';
+
+                    const row = state.allData.find(item => getRevisionKey(item) === rowKey);
+
+                    if (row) {
+
+                        event.preventDefault();
+
+                        event.stopPropagation();
+
+                        openAnalisisForRow(row);
+
+                    }
+
+                    return;
+
+                }
+
+
+
+                if (target.closest('a') || target.closest('button') || target.closest('input') || target.closest('select')) return;
+
+
+
+                const tr = target.closest('tr[data-revision-key]');
+
+                if (!tr) return;
+
+                const rowKey = tr.getAttribute('data-revision-key') || '';
+
+                const row = state.allData.find(item => getRevisionKey(item) === rowKey);
+
+                if (!row) return;
+
+
+
+                state.selectedRevisionRowKey = rowKey;
+
+                refreshSelectedRowVisual();
+
+                renderSelectedRowPosPanel(row);
+
+                renderSelectedRowPosTop(row);
+
+                document.dispatchEvent(new CustomEvent('qa:selected-row-changed', {
+
+                    detail: { revisionKey: rowKey }
+
+                }));
+
+            });
+
+
+
+            errorViewTbody?.addEventListener('dblclick', async (event) => {
+
+                const target = event.target;
+
+                if (!(target instanceof HTMLElement)) return;
+
+                if (target.closest('a') || target.closest('button') || target.closest('input') || target.closest('select') || target.closest('textarea')) return;
+
+
+
+                const tr = target.closest('tr[data-revision-key]');
+
+                const revisionKey = tr?.getAttribute('data-revision-key') || '';
+
+                if (!revisionKey) return;
+
+                const row = state.allData.find(item => getRevisionKey(item) === revisionKey);
+
+                if (!row) return;
+
+                const copyCell = target.closest('td[data-copy-to-final][data-copy-from-field]');
+
+                if (copyCell instanceof HTMLTableCellElement) {
+
+                    const handledCopy = await tryHandleTableCellDoubleClickCopy(event, row, copyCell);
+
+                    if (handledCopy) return;
+
+                }
+
+
+
+                event.preventDefault();
+
+                event.stopPropagation();
+
+                openAnalisisForRow(row);
+
+            });
+
+
+
+            errorViewTbody?.addEventListener('change', (event) => {
+
+                const target = event.target;
+
+                if (!(target instanceof HTMLSelectElement)) return;
+
+                if (!ensureBackendWritable('guardar cambios rapidos')) {
+
+                    refreshVisibleRowByRevisionKey(String(target.dataset.revisionKey || ''));
+
+                    syncSideRecordFormWithSelection();
+
+                    return;
+
+                }
+
+                const revisionField = target.dataset.revisionField;
+
+                const revisionKey = target.dataset.revisionKey;
+
+                if (!revisionField || !revisionKey) return;
+
+                const row = state.allData.find(item => getRevisionKey(item) === revisionKey);
+
+                if (!row) return;
+
+                const currentEstado = normalizeEstadoToNew(row.qa_revision_estado);
+
+                const currentAccion = normalizeAccionToNew(row.qa_revision_accion);
+
+                const nextEstado = revisionField === 'estado' ? normalizeEstadoToNew(target.value) : currentEstado;
+
+                const nextAccion = revisionField === 'accion' ? normalizeAccionToNew(target.value) : currentAccion;
+
+                const changes = {};
+
+                if (nextEstado !== currentEstado) {
+
+                    changes.qa_revision_estado = { before: currentEstado, after: nextEstado };
+
+                }
+
+                if (nextAccion !== currentAccion) {
+
+                    changes.qa_revision_accion = { before: currentAccion, after: nextAccion };
+
+                }
+
+                if (!Object.keys(changes).length) {
+
+                    updateRevisionSelectVisual(target);
+
+                    return;
+
+                }
+
+
+
+                changeControl.applyAndRecord(buildRowPatchEntryWithPnCopyPropagation(row, changes, {
+
+                    action: `inline-error-view-${revisionField}`,
+
+                    description: `Cambio rapido vista errores ${revisionField} ID ${row.ID}`
+
+                })).catch((error) => {
+
+                    console.error('No se pudo guardar cambio rapido en vista errores:', error);
+
+                    alert(`No se pudo guardar el cambio rapido: ${error.message}`);
+
+                    refreshVisibleRowByRevisionKey(revisionKey);
+
+                    syncSideRecordFormWithSelection();
+
+                }).finally(() => {
+
+                    updateRevisionSelectVisual(target);
+
+                    updateUndoButtonState();
+
+                });
+
+            });
+
+
+
+            window.addEventListener('resize', () => {
+
+                if (resizeTimer) clearTimeout(resizeTimer);
+
+                resizeTimer = setTimeout(() => {
+
+                    if (state.rightPanelTab === 'pdf') {
+
+                        requestPdfRelayout();
+
+                    }
+
+                    if (!state.allData.length || state.groupedVisible) return;
+
+                    if (!syncAutoPageSize()) return;
+
+                    const totalPages = Math.max(1, Math.ceil(state.filteredData.length / state.pageSize));
+
+                    if (state.currentPage > totalPages) state.currentPage = totalPages;
+
+                    renderTable();
+
+                    renderPagination();
+
+                }, 120);
+
+            });
+
+
+
+            $('qaRecordModalCloseBtn')?.addEventListener('click', closeRecordModal);
+
+            $('qaRecordModalCancelBtn')?.addEventListener('click', closeRecordModal);
+
+            $('qaRecordModal')?.addEventListener('click', (event) => {
+
+                const target = event.target;
+
+                if (!(target instanceof HTMLElement)) return;
+
+                if (target.dataset.modalClose === 'true') closeRecordModal();
+
+            });
+
+
+
+            $('qaModalMatchesBookFilter')?.addEventListener('change', () => {
+
+                const form = $('qaRecordModalForm');
+
+                if (!(form instanceof HTMLFormElement)) return;
+
+                const revisionKey = String(form.dataset.revisionKey || '');
+
+                const row = getRowByRevisionKey(revisionKey);
+
+                if (!row) return;
+
+                renderRecordModalMatches(row, revisionKey);
+
+            });
+
+
+
+            $('qaExportModalCloseBtn')?.addEventListener('click', closeExportModal);
+
+            $('qaExportModal')?.addEventListener('click', (event) => {
+
+                const target = event.target;
+
+                if (!(target instanceof HTMLElement)) return;
+
+                if (target.dataset.exportModalClose === 'true') closeExportModal();
+
+            });
+
+
+
+            $('qaRecordModalForm')?.addEventListener('submit', handleRecordModalSubmit);
+
+            $('backendStatusRetryBtn')?.addEventListener('click', () => {
+
+                refreshBackendStatus().catch(() => setBackendStatusBadge('offline', 'Backend: sin conexion'));
 
             });
 
@@ -7233,1477 +8366,211 @@ function getRecordFormValues(scope) {
 
 
 
-        $('qaChecksAllBtn')?.addEventListener('click', () => {
+        function ensureFilterControlNames() {
 
-            state.activeQaErrorChecks = new Set(getAllQaCheckCodes());
+            document.querySelectorAll('.filter-input[data-filter], .filter-select[data-filter]').forEach((elem, index) => {
 
-            renderQaChecksPanel();
+                if (elem.id || elem.name) return;
 
-        });
+                const rawFilterKey = String(elem.dataset?.filter || '').trim();
 
+                const normalizedFilterKey = rawFilterKey
 
+                    .toLowerCase()
 
-        $('qaChecksNoneBtn')?.addEventListener('click', () => {
+                    .replace(/[^a-z0-9]+/g, '_')
 
-            state.activeQaErrorChecks = new Set();
+                    .replace(/^_+|_+$/g, '');
 
-            renderQaChecksPanel();
-
-        });
-
-
-
-        $('sortBookPagePosBtn')?.addEventListener('click', () => {
-
-            state.sortKey = 'book_page_pos';
-
-            state.sortAsc = true;
-
-            state.currentPage = 1;
-
-            renderTable();
-
-            renderPagination();
-
-        });
-
-
-
-        $('columnViewSelect')?.addEventListener('change', (event) => {
-
-            const selectedView = String(event.target.value || 'qa');
-
-            if (selectedView === 'errors') {
-
-                state.tableMode = 'errors';
-
-            } else {
-
-                state.tableMode = 'qa';
-
-                state.columnView = ['qa', 'focus', 'pdf'].includes(selectedView) ? selectedView : 'qa';
-
-                saveColumnViewPreference();
-
-            }
-
-
-
-            if (event.target instanceof HTMLSelectElement) {
-
-                event.target.value = state.tableMode === 'errors' ? 'errors' : state.columnView;
-
-            }
-
-
-
-            state.currentPage = 1;
-
-            renderTable();
-
-            renderPagination();
-
-            queueColumnViewRefresh();
-
-        });
-
-
-
-        $('bookFilterSelect')?.addEventListener('change', () => {
-
-            applyBookSelection($('bookFilterSelect')?.value || '', {
-
-                fallbackToFirstAvailablePage: false,
-
-                render: true,
-
-                updatePdf: true
+                elem.name = `filter_${normalizedFilterKey || index}`;
 
             });
 
-        });
+        }
 
 
 
-        $('pageFilterSelect')?.addEventListener('change', () => {
+        function initQaSplitter() {
 
-            setPageFilterValue($('pageFilterSelect')?.value || '');
+            const main = document.querySelector('.main');
 
-        });
+            const splitter = document.getElementById('qaSplitter');
 
+            if (!(main instanceof HTMLElement) || !(splitter instanceof HTMLElement)) return;
 
 
-        $('lazyLoadEngineBtn')?.addEventListener('click', async () => {
 
-            if (!state.incrementalLoadingEnabled) return;
+            const QA_RIGHT_WIDTH_KEY = 'qamilu:right-panel-width';
 
-            const select = $('lazyEngineSelect');
 
-            if (!(select instanceof HTMLSelectElement)) return;
 
-            const file = String(select.value || '').trim();
+            const clampAndApply = (desiredWidth) => {
 
-            if (!file) return;
+                const totalWidth = Math.max(1, main.getBoundingClientRect().width);
 
+                const min = 320;
 
+                const max = Math.max(400, Math.floor(totalWidth * 0.70));
 
-            const status = $('stats');
+                const clamped = Math.max(min, Math.min(max, Math.round(desiredWidth)));
 
-            const previousStats = status?.innerHTML || '';
+                document.documentElement.style.setProperty('--qa-right-width', `${clamped}px`);
 
-            if (status) status.innerHTML = '<span class="stat">Cargando motor seleccionado...</span>';
+                return clamped;
 
+            };
 
 
-            try {
 
-                await loadLazyEnginesAndRefresh([file], { append: true });
+            const syncWidthFromLayout = ({ persist = false, relayout = false } = {}) => {
 
-            } catch (error) {
+                const savedWidth = Number(localStorage.getItem(QA_RIGHT_WIDTH_KEY));
 
-                console.error('No se pudo cargar el motor seleccionado:', error);
+                const fallbackWidth = Math.round(main.getBoundingClientRect().width * 0.35);
 
-                alert(`No se pudo cargar el motor: ${error.message}`);
+                const desiredWidth = Number.isFinite(savedWidth) && savedWidth > 0
 
-                if (status) status.innerHTML = previousStats;
+                    ? savedWidth
 
-                renderTable();
+                    : fallbackWidth;
 
-                renderPagination();
+                const applied = clampAndApply(desiredWidth);
 
-            }
+                if (persist || !(Number.isFinite(savedWidth) && savedWidth > 0)) {
 
-        });
-
-
-
-        $('lazyLoadAllEnginesBtn')?.addEventListener('click', async () => {
-
-            if (!state.incrementalLoadingEnabled) return;
-
-            const catalog = getEngineCatalogList();
-
-            const loaded = getLoadedEngineFilesSet();
-
-            const pending = catalog
-
-                .map(item => String(item?.file || '').trim())
-
-                .filter(file => file && !loaded.has(file));
-
-            if (!pending.length) return;
-
-
-
-            const status = $('stats');
-
-            const previousStats = status?.innerHTML || '';
-
-            if (status) status.innerHTML = `<span class="stat">Cargando ${pending.length} motores pendientes...</span>`;
-
-
-
-            try {
-
-                await loadLazyEnginesAndRefresh(pending, { append: true });
-
-            } catch (error) {
-
-                console.error('No se pudieron cargar todos los motores:', error);
-
-                alert(`No se pudieron cargar todos los motores: ${error.message}`);
-
-                if (status) status.innerHTML = previousStats;
-
-                renderTable();
-
-                renderPagination();
-
-            }
-
-        });
-
-
-
-        $('bulkRevOkBtn')?.addEventListener('click', () => applyBulkQuickMode('revok'));
-
-        $('bulkRevEmptyBtn')?.addEventListener('click', () => applyBulkQuickMode('revempty'));
-
-        $('bulkValidateBtn')?.addEventListener('click', () => applyBulkQuickMode('validate'));
-
-        $('bulkReviewBtn')?.addEventListener('click', () => applyBulkQuickMode('review'));
-
-        $('bulkDiscardBtn')?.addEventListener('click', () => applyBulkQuickMode('discard'));
-
-        $('qaUndoLastChangeBtn')?.addEventListener('click', () => undoLastQaChange());
-
-        $('openAuditPageBtn')?.addEventListener('click', () => {
-
-            window.open('qa_auditoria.html', '_blank', 'noopener');
-
-        });
-
-
-
-        document.addEventListener('milu:change-control:history-updated', () => {
-
-            updateUndoButtonState();
-
-        });
-
-
-
-        document.addEventListener('milu:change-control:audit-persist-failed', (event) => {
-
-            const detail = event?.detail || {};
-
-            const entry = detail.entry || {};
-
-            const message = `Aviso: el cambio se guardo, pero la auditoria no se pudo persistir (${detail.error || 'error desconocido'}).`;
-
-            const sideStatus = $('qaSideStatus');
-
-            const modalStatus = $('qaRecordModalStatus');
-
-
-
-            if (sideStatus) sideStatus.textContent = message;
-
-            if (modalStatus && String($('qaRecordModalForm')?.dataset.revisionKey || '') === String(entry?.target?.revisionKey || '')) {
-
-                modalStatus.textContent = message;
-
-            }
-
-        });
-
-
-
-        document.querySelectorAll('[data-pdf-tab]').forEach(tabBtn => {
-
-            tabBtn.addEventListener('click', () => setRightPanelTab(tabBtn.dataset.pdfTab || 'pdf'));
-
-        });
-
-
-
-        $('qaSideOpenModalBtn')?.addEventListener('click', () => {
-
-            const revisionKey = String($('qaSideRecordForm')?.dataset.revisionKey || '');
-
-            if (!revisionKey) {
-
-                alert('Selecciona un registro para abrir el modal.');
-
-                return;
-
-            }
-
-
-
-            const row = getRowByRevisionKey(revisionKey);
-
-            if (openSharedRecordEditorForRow(row)) return;
-
-            openRecordModal(revisionKey);
-
-        });
-
-
-
-        $('qaRecordModalOpenExportBtn')?.addEventListener('click', () => {
-
-            const revisionKey = String($('qaRecordModalForm')?.dataset.revisionKey || '');
-
-            if (!revisionKey) {
-
-                alert('Selecciona un registro para abrir la exportación.');
-
-                return;
-
-            }
-
-            openExportModal(revisionKey);
-
-        });
-
-
-
-        $('qaSideOpenMatchesModalBtn')?.addEventListener('click', () => {
-
-            const revisionKey = String($('qaSideRecordForm')?.dataset.revisionKey || '');
-
-            if (!revisionKey) {
-
-                alert('Selecciona un registro para abrir las apariciones en modal.');
-
-                return;
-
-            }
-
-            openMatchesModal(revisionKey);
-
-        });
-
-
-
-        $('qaSideMatchesBookFilter')?.addEventListener('change', () => {
-
-            const revisionKey = String($('qaSideRecordForm')?.dataset.revisionKey || '');
-
-            const row = getRowByRevisionKey(revisionKey);
-
-            if (!row) return;
-
-            renderRecordModalMatches(row, revisionKey, {
-
-                bodyId: 'qaSideMatchesBody',
-
-                countId: 'qaSideMatchesCount',
-
-                bookFilterId: 'qaSideMatchesBookFilter',
-
-                showAction: false
-
-            });
-
-        });
-
-
-
-        $('qaSideExportOnlyDiffToggle')?.addEventListener('change', () => {
-
-            const revisionKey = String($('qaSideRecordForm')?.dataset.revisionKey || '');
-
-            const row = getRowByRevisionKey(revisionKey);
-
-            if (!row) return;
-
-            renderRecordModalExport(row, {
-
-                headRowId: 'qaSideExportHeadRow',
-
-                bodyId: 'qaSideExportBody',
-
-                countId: 'qaSideExportCount',
-
-                onlyDiffToggleId: 'qaSideExportOnlyDiffToggle'
-
-            });
-
-        });
-
-
-
-        $('qaExportRunWordpressBtn')?.addEventListener('click', async () => {
-
-            await runExportPipeline('/export/run-wordpress', 'WordPress export');
-
-        });
-
-
-
-        $('qaExportReloadPreviewBtn')?.addEventListener('click', async () => {
-
-            setExportRunStatus('Recargando preview...', 'warn');
-
-            await loadExportPreview();
-
-            setExportRunStatus('Preview actualizado', 'ok');
-
-        });
-
-
-
-        $('qaExportDecisionFilter')?.addEventListener('change', () => {
-
-            renderExportPreviewRows(state.exportPreviewRows || []);
-
-        });
-
-
-
-        $('qaExportSearchInput')?.addEventListener('input', () => {
-
-            renderExportPreviewRows(state.exportPreviewRows || []);
-
-        });
-
-
-
-        $('qaExportFilterResetBtn')?.addEventListener('click', () => {
-
-            resetExportPreviewFilters();
-
-            renderExportPreviewRows(state.exportPreviewRows || []);
-
-        });
-
-
-
-        $('qaExportDownloadCsvBtn')?.addEventListener('click', () => {
-
-            downloadExportPreviewCsv();
-
-        });
-
-
-
-        document.querySelectorAll('th[data-export-sort]').forEach((th) => {
-
-            th.addEventListener('click', () => {
-
-                const key = th.getAttribute('data-export-sort');
-
-                toggleExportPreviewSort(key);
-
-            });
-
-        });
-
-
-
-        $('qaExportPreviewBody')?.addEventListener('click', async (event) => {
-
-            const target = event.target;
-
-            if (!(target instanceof HTMLElement)) return;
-
-            const row = target.closest('tr[data-export-sku]');
-
-            const sku = String(row?.getAttribute('data-export-sku') || '').trim();
-
-            if (!sku) return;
-
-
-
-            state.selectedExportSku = sku;
-
-            renderExportPreviewRows(state.exportPreviewRows || []);
-
-            await loadExportTraceForSku(sku);
-
-        });
-
-
-
-        $('qaModalExportOnlyDiffToggle')?.addEventListener('change', () => {
-
-            if (!isExportModalOpen()) return;
-
-            const revisionKey = String($('qaExportModal')?.dataset.revisionKey || '');
-
-            const row = getRowByRevisionKey(revisionKey);
-
-            if (!row) return;
-
-            renderRecordModalExport(row, {
-
-                headRowId: 'qaModalExportHeadRow',
-
-                bodyId: 'qaModalExportBody',
-
-                countId: 'qaModalExportCount',
-
-                onlyDiffToggleId: 'qaModalExportOnlyDiffToggle'
-
-            });
-
-        });
-
-
-
-        $('qaSideMatchesBody')?.addEventListener('dblclick', (event) => {
-
-            const target = event.target;
-
-            if (!(target instanceof HTMLElement)) return;
-
-            const tr = target.closest('tr[data-revision-key]');
-
-            const revisionKey = String(tr?.getAttribute('data-revision-key') || '').trim();
-
-            if (!revisionKey) return;
-
-
-
-            event.preventDefault();
-
-            event.stopPropagation();
-
-
-
-            const moved = focusRevisionRowInMainTable(revisionKey);
-
-            if (!moved) {
-
-                alert('No se pudo navegar al registro en la tabla principal. Puede estar fuera de los filtros activos.');
-
-            }
-
-        });
-
-
-
-        $('qaMatchesModalCloseBtn')?.addEventListener('click', closeMatchesModal);
-
-        $('qaMatchesModal')?.addEventListener('click', (event) => {
-
-            const target = event.target;
-
-            if (!(target instanceof HTMLElement)) return;
-
-            if (target.dataset.matchesModalClose === 'true') closeMatchesModal();
-
-        });
-
-
-
-        ['qaMatchesModalBookFilter'].forEach(id => {
-
-            $(id)?.addEventListener('change', () => renderMatchesLargeModal());
-
-        });
-
-        ['qaMatchesModalPageFilter', 'qaMatchesModalPosFilter', 'qaMatchesModalIdFilter', 'qaMatchesModalTextFilter'].forEach(id => {
-
-            $(id)?.addEventListener('input', () => renderMatchesLargeModal());
-
-        });
-
-
-
-        $('qaMatchesModalBody')?.addEventListener('dblclick', (event) => {
-
-            const target = event.target;
-
-            if (!(target instanceof HTMLElement)) return;
-
-            const tr = target.closest('tr[data-revision-key]');
-
-            const revisionKey = String(tr?.getAttribute('data-revision-key') || '').trim();
-
-            if (!revisionKey) return;
-
-
-
-            event.preventDefault();
-
-            event.stopPropagation();
-
-
-
-            const moved = focusRevisionRowInMainTable(revisionKey);
-
-            if (!moved) {
-
-                alert('No se pudo navegar al registro en la tabla principal. Puede estar fuera de los filtros activos.');
-
-                return;
-
-            }
-
-            closeMatchesModal();
-
-        });
-
-
-
-        $('qaSideSearchBtn')?.addEventListener('click', runSideQuickSearch);
-
-        ['qaSideSearchArticle'].forEach(id => {
-
-            $(id)?.addEventListener('keydown', (event) => {
-
-                if (event.key !== 'Enter') return;
-
-                event.preventDefault();
-
-                runSideQuickSearch();
-
-            });
-
-        });
-
-
-
-        $('qaSideResetBtn')?.addEventListener('click', syncSideRecordFormWithSelection);
-
-        $('qaSideRecordForm')?.addEventListener('submit', handleSideRecordSubmit);
-
-
-
-        document.addEventListener('keydown', (event) => {
-
-            if ((event.ctrlKey || event.metaKey) && !event.altKey) {
-
-                const key = String(event.key || '').toLowerCase();
-
-                if (key === 'z') {
-
-                    event.preventDefault();
-
-                    if (event.shiftKey) redoLastQaChange();
-
-                    else undoLastQaChange();
-
-                    return;
+                    localStorage.setItem(QA_RIGHT_WIDTH_KEY, String(applied));
 
                 }
 
-                if (key === 'y') {
-
-                    event.preventDefault();
-
-                    redoLastQaChange();
-
-                    return;
-
-                }
-
-            }
-
-
-
-            if (isMatchesModalOpen()) {
-
-                if (event.key === 'Escape') {
-
-                    event.preventDefault();
-
-                    closeMatchesModal();
-
-                }
-
-                return;
-
-            }
-
-
-
-            if (isRecordModalOpen()) {
-
-                if (event.key === 'Escape') {
-
-                    event.preventDefault();
-
-                    closeRecordModal();
-
-                }
-
-                return;
-
-            }
-
-
-
-            if (event.altKey || event.ctrlKey || event.metaKey || event.shiftKey) return;
-
-            if (event.repeat || isTypingContext(event.target)) return;
-
-
-
-            if (event.key.toLowerCase() === 'v') {
-
-                event.preventDefault();
-
-                const scopeSelect = $('bulkScopeSelect');
-
-                if (scopeSelect) scopeSelect.value = 'filtered';
-
-                applyBulkQuickMode('revok');
-
-                return;
-
-            }
-
-
-
-            if (event.key === 'ArrowRight') { event.preventDefault(); goToNextBookPage(); return; }
-
-            if (event.key === 'ArrowLeft') { event.preventDefault(); goToPrevBookPage(); return; }
-
-            if (event.key === 'ArrowDown') { event.preventDefault(); moveSelectionBy(1); return; }
-
-            if (event.key === 'ArrowUp') { event.preventDefault(); moveSelectionBy(-1); return; }
-
-            if (event.key === 'Escape') cancelInlineEdit();
-
-        });
-
-
-
-        const tbody = $('tbody');
-
-        tbody?.addEventListener('click', (event) => {
-
-            const target = event.target;
-
-            if (!(target instanceof HTMLElement)) return;
-
-
-
-            const openAnalysisBadge = target.closest('[data-open-analysis="true"]');
-
-            if (openAnalysisBadge) {
-
-                const tr = openAnalysisBadge.closest('tr[data-revision-key]');
-
-                const rowKey = tr?.getAttribute('data-revision-key') || '';
-
-                const row = state.allData.find(item => getRevisionKey(item) === rowKey);
-
-                if (row) {
-
-                    event.preventDefault();
-
-                    event.stopPropagation();
-
-                    openAnalisisForRow(row);
-
-                }
-
-                return;
-
-            }
-
-
-
-            if (target.closest('select') || target.closest('a') || isInlineEditableTarget(target)) return;
-
-
-
-            const tr = target.closest('tr[data-revision-key]');
-
-            if (!tr) return;
-
-            const rowKey = tr.getAttribute('data-revision-key') || '';
-
-            const row = state.allData.find(item => getRevisionKey(item) === rowKey);
-
-            if (!row) return;
-
-            state.selectedRevisionRowKey = rowKey;
-
-            refreshSelectedRowVisual();
-
-            renderSelectedRowPosPanel(row);
-
-            renderSelectedRowPosTop(row);
-
-            document.dispatchEvent(new CustomEvent('qa:selected-row-changed', {
-
-                detail: { revisionKey: rowKey }
-
-            }));
-
-        });
-
-
-
-        tbody?.addEventListener('dblclick', async (event) => {
-
-            const target = event.target;
-
-            if (!(target instanceof HTMLElement)) return;
-
-            if (target.closest('button') || target.closest('select') || target.closest('a') || target.closest('input') || target.closest('textarea')) return;
-
-            const tr = target.closest('tr[data-revision-key]');
-
-            const revisionKey = tr?.getAttribute('data-revision-key') || '';
-
-            if (!revisionKey) return;
-
-            const row = state.allData.find(item => getRevisionKey(item) === revisionKey);
-
-            if (!row) return;
-
-            const copyCell = target.closest('td[data-copy-to-final][data-copy-from-field]');
-
-            if (copyCell instanceof HTMLTableCellElement) {
-
-                const handledCopy = await tryHandleTableCellDoubleClickCopy(event, row, copyCell);
-
-                if (handledCopy) return;
-
-            }
-
-            event.preventDefault();
-
-            event.stopPropagation();
-
-            openAnalisisForRow(row);
-
-        });
-
-
-
-        tbody?.addEventListener('change', (event) => {
-
-            const target = event.target;
-
-            if (!(target instanceof HTMLSelectElement)) return;
-
-            if (!ensureBackendWritable('guardar cambios rapidos')) {
-
-                refreshVisibleRowByRevisionKey(String(target.dataset.revisionKey || ''));
-
-                syncSideRecordFormWithSelection();
-
-                return;
-
-            }
-
-            const revisionField = target.dataset.revisionField;
-
-            const revisionKey = target.dataset.revisionKey;
-
-            if (!revisionField || !revisionKey) return;
-
-            const row = state.allData.find(item => getRevisionKey(item) === revisionKey);
-
-            if (!row) return;
-
-            const currentEstado = normalizeEstadoToNew(row.qa_revision_estado);
-
-            const currentAccion = normalizeAccionToNew(row.qa_revision_accion);
-
-            const nextEstado = revisionField === 'estado' ? normalizeEstadoToNew(target.value) : currentEstado;
-
-            const nextAccion = revisionField === 'accion' ? normalizeAccionToNew(target.value) : currentAccion;
-
-            const changes = {};
-
-            if (nextEstado !== currentEstado) {
-
-                changes.qa_revision_estado = { before: currentEstado, after: nextEstado };
-
-            }
-
-            if (nextAccion !== currentAccion) {
-
-                changes.qa_revision_accion = { before: currentAccion, after: nextAccion };
-
-            }
-
-            if (!Object.keys(changes).length) {
-
-                updateRevisionSelectVisual(target);
-
-                return;
-
-            }
-
-
-
-            changeControl.applyAndRecord(buildRowPatchEntryWithPnCopyPropagation(row, changes, {
-
-                action: `inline-${revisionField}`,
-
-                description: `Cambio rapido ${revisionField} ID ${row.ID}`
-
-            })).catch((error) => {
-
-                console.error('No se pudo guardar cambio rapido:', error);
-
-                alert(`No se pudo guardar el cambio rapido: ${error.message}`);
-
-                refreshVisibleRowByRevisionKey(revisionKey);
-
-                syncSideRecordFormWithSelection();
-
-            }).finally(() => {
-
-                updateRevisionSelectVisual(target);
-
-                updateUndoButtonState();
-
-            });
-
-        });
-
-
-
-        const errorViewTbody = $('errorViewTbody');
-
-        errorViewTbody?.addEventListener('click', (event) => {
-
-            const target = event.target;
-
-            if (!(target instanceof HTMLElement)) return;
-
-
-
-            const openAnalysisBadge = target.closest('[data-open-analysis="true"]');
-
-            if (openAnalysisBadge) {
-
-                const tr = openAnalysisBadge.closest('tr[data-revision-key]');
-
-                const rowKey = tr?.getAttribute('data-revision-key') || '';
-
-                const row = state.allData.find(item => getRevisionKey(item) === rowKey);
-
-                if (row) {
-
-                    event.preventDefault();
-
-                    event.stopPropagation();
-
-                    openAnalisisForRow(row);
-
-                }
-
-                return;
-
-            }
-
-
-
-            if (target.closest('a') || target.closest('button') || target.closest('input') || target.closest('select')) return;
-
-
-
-            const tr = target.closest('tr[data-revision-key]');
-
-            if (!tr) return;
-
-            const rowKey = tr.getAttribute('data-revision-key') || '';
-
-            const row = state.allData.find(item => getRevisionKey(item) === rowKey);
-
-            if (!row) return;
-
-
-
-            state.selectedRevisionRowKey = rowKey;
-
-            refreshSelectedRowVisual();
-
-            renderSelectedRowPosPanel(row);
-
-            renderSelectedRowPosTop(row);
-
-            document.dispatchEvent(new CustomEvent('qa:selected-row-changed', {
-
-                detail: { revisionKey: rowKey }
-
-            }));
-
-        });
-
-
-
-        errorViewTbody?.addEventListener('dblclick', async (event) => {
-
-            const target = event.target;
-
-            if (!(target instanceof HTMLElement)) return;
-
-            if (target.closest('a') || target.closest('button') || target.closest('input') || target.closest('select') || target.closest('textarea')) return;
-
-
-
-            const tr = target.closest('tr[data-revision-key]');
-
-            const revisionKey = tr?.getAttribute('data-revision-key') || '';
-
-            if (!revisionKey) return;
-
-            const row = state.allData.find(item => getRevisionKey(item) === revisionKey);
-
-            if (!row) return;
-
-            const copyCell = target.closest('td[data-copy-to-final][data-copy-from-field]');
-
-            if (copyCell instanceof HTMLTableCellElement) {
-
-                const handledCopy = await tryHandleTableCellDoubleClickCopy(event, row, copyCell);
-
-                if (handledCopy) return;
-
-            }
-
-
-
-            event.preventDefault();
-
-            event.stopPropagation();
-
-            openAnalisisForRow(row);
-
-        });
-
-
-
-        errorViewTbody?.addEventListener('change', (event) => {
-
-            const target = event.target;
-
-            if (!(target instanceof HTMLSelectElement)) return;
-
-            if (!ensureBackendWritable('guardar cambios rapidos')) {
-
-                refreshVisibleRowByRevisionKey(String(target.dataset.revisionKey || ''));
-
-                syncSideRecordFormWithSelection();
-
-                return;
-
-            }
-
-            const revisionField = target.dataset.revisionField;
-
-            const revisionKey = target.dataset.revisionKey;
-
-            if (!revisionField || !revisionKey) return;
-
-            const row = state.allData.find(item => getRevisionKey(item) === revisionKey);
-
-            if (!row) return;
-
-            const currentEstado = normalizeEstadoToNew(row.qa_revision_estado);
-
-            const currentAccion = normalizeAccionToNew(row.qa_revision_accion);
-
-            const nextEstado = revisionField === 'estado' ? normalizeEstadoToNew(target.value) : currentEstado;
-
-            const nextAccion = revisionField === 'accion' ? normalizeAccionToNew(target.value) : currentAccion;
-
-            const changes = {};
-
-            if (nextEstado !== currentEstado) {
-
-                changes.qa_revision_estado = { before: currentEstado, after: nextEstado };
-
-            }
-
-            if (nextAccion !== currentAccion) {
-
-                changes.qa_revision_accion = { before: currentAccion, after: nextAccion };
-
-            }
-
-            if (!Object.keys(changes).length) {
-
-                updateRevisionSelectVisual(target);
-
-                return;
-
-            }
-
-
-
-            changeControl.applyAndRecord(buildRowPatchEntryWithPnCopyPropagation(row, changes, {
-
-                action: `inline-error-view-${revisionField}`,
-
-                description: `Cambio rapido vista errores ${revisionField} ID ${row.ID}`
-
-            })).catch((error) => {
-
-                console.error('No se pudo guardar cambio rapido en vista errores:', error);
-
-                alert(`No se pudo guardar el cambio rapido: ${error.message}`);
-
-                refreshVisibleRowByRevisionKey(revisionKey);
-
-                syncSideRecordFormWithSelection();
-
-            }).finally(() => {
-
-                updateRevisionSelectVisual(target);
-
-                updateUndoButtonState();
-
-            });
-
-        });
-
-
-
-        window.addEventListener('resize', () => {
-
-            if (resizeTimer) clearTimeout(resizeTimer);
-
-            resizeTimer = setTimeout(() => {
-
-                if (state.rightPanelTab === 'pdf') {
+                if (relayout) {
 
                     requestPdfRelayout();
 
                 }
 
-                if (!state.allData.length || state.groupedVisible) return;
+                return applied;
 
-                if (!syncAutoPageSize()) return;
+            };
 
-                const totalPages = Math.max(1, Math.ceil(state.filteredData.length / state.pageSize));
 
-                if (state.currentPage > totalPages) state.currentPage = totalPages;
 
-                renderTable();
+            syncQaSplitterLayout = () => {
 
-                renderPagination();
+                if (window.matchMedia('(max-width: 1200px)').matches) return;
 
-            }, 120);
+                syncWidthFromLayout({ persist: true, relayout: state.rightPanelTab === 'pdf' });
 
-        });
+            };
 
 
 
-        $('qaRecordModalCloseBtn')?.addEventListener('click', closeRecordModal);
+            syncWidthFromLayout();
 
-        $('qaRecordModalCancelBtn')?.addEventListener('click', closeRecordModal);
 
-        $('qaRecordModal')?.addEventListener('click', (event) => {
 
-            const target = event.target;
+            let dragging = false;
 
-            if (!(target instanceof HTMLElement)) return;
 
-            if (target.dataset.modalClose === 'true') closeRecordModal();
 
-        });
+            const onPointerMove = (event) => {
 
+                if (!dragging) return;
 
+                const rect = main.getBoundingClientRect();
 
-        $('qaModalMatchesBookFilter')?.addEventListener('change', () => {
+                const desiredWidth = rect.right - event.clientX;
 
-            const form = $('qaRecordModalForm');
-
-            if (!(form instanceof HTMLFormElement)) return;
-
-            const revisionKey = String(form.dataset.revisionKey || '');
-
-            const row = getRowByRevisionKey(revisionKey);
-
-            if (!row) return;
-
-            renderRecordModalMatches(row, revisionKey);
-
-        });
-
-
-
-        $('qaExportModalCloseBtn')?.addEventListener('click', closeExportModal);
-
-        $('qaExportModal')?.addEventListener('click', (event) => {
-
-            const target = event.target;
-
-            if (!(target instanceof HTMLElement)) return;
-
-            if (target.dataset.exportModalClose === 'true') closeExportModal();
-
-        });
-
-
-
-        $('qaRecordModalForm')?.addEventListener('submit', handleRecordModalSubmit);
-
-        $('backendStatusRetryBtn')?.addEventListener('click', () => {
-
-            refreshBackendStatus().catch(() => setBackendStatusBadge('offline', 'Backend: sin conexion'));
-
-        });
-
-    }
-
-
-
-    function ensureFilterControlNames() {
-
-        document.querySelectorAll('.filter-input[data-filter], .filter-select[data-filter]').forEach((elem, index) => {
-
-            if (elem.id || elem.name) return;
-
-            const rawFilterKey = String(elem.dataset?.filter || '').trim();
-
-            const normalizedFilterKey = rawFilterKey
-
-                .toLowerCase()
-
-                .replace(/[^a-z0-9]+/g, '_')
-
-                .replace(/^_+|_+$/g, '');
-
-            elem.name = `filter_${normalizedFilterKey || index}`;
-
-        });
-
-    }
-
-
-
-    function initQaSplitter() {
-
-        const main = document.querySelector('.main');
-
-        const splitter = document.getElementById('qaSplitter');
-
-        if (!(main instanceof HTMLElement) || !(splitter instanceof HTMLElement)) return;
-
-
-
-        const QA_RIGHT_WIDTH_KEY = 'qamilu:right-panel-width';
-
-
-
-        const clampAndApply = (desiredWidth) => {
-
-            const totalWidth = Math.max(1, main.getBoundingClientRect().width);
-
-            const min = 320;
-
-            const max = Math.max(400, Math.floor(totalWidth * 0.70));
-
-            const clamped = Math.max(min, Math.min(max, Math.round(desiredWidth)));
-
-            document.documentElement.style.setProperty('--qa-right-width', `${clamped}px`);
-
-            return clamped;
-
-        };
-
-
-
-        const syncWidthFromLayout = ({ persist = false, relayout = false } = {}) => {
-
-            const savedWidth = Number(localStorage.getItem(QA_RIGHT_WIDTH_KEY));
-
-            const fallbackWidth = Math.round(main.getBoundingClientRect().width * 0.35);
-
-            const desiredWidth = Number.isFinite(savedWidth) && savedWidth > 0
-
-                ? savedWidth
-
-                : fallbackWidth;
-
-            const applied = clampAndApply(desiredWidth);
-
-            if (persist || !(Number.isFinite(savedWidth) && savedWidth > 0)) {
+                const applied = clampAndApply(desiredWidth);
 
                 localStorage.setItem(QA_RIGHT_WIDTH_KEY, String(applied));
 
-            }
+                requestPdfRelayout();
 
-            if (relayout) {
+                event.preventDefault();
+
+            };
+
+
+
+            const stopDragging = () => {
+
+                if (!dragging) return;
+
+                dragging = false;
+
+                document.body.classList.remove('qa-resizing');
+
+                window.removeEventListener('pointermove', onPointerMove);
+
+                window.removeEventListener('pointerup', stopDragging);
 
                 requestPdfRelayout();
 
-            }
+            };
 
-            return applied;
 
-        };
 
+            splitter.addEventListener('pointerdown', (event) => {
 
+                if (window.matchMedia('(max-width: 1200px)').matches) return;
 
-        syncQaSplitterLayout = () => {
+                dragging = true;
 
-            if (window.matchMedia('(max-width: 1200px)').matches) return;
+                document.body.classList.add('qa-resizing');
 
-            syncWidthFromLayout({ persist: true, relayout: state.rightPanelTab === 'pdf' });
+                window.addEventListener('pointermove', onPointerMove);
 
-        };
+                window.addEventListener('pointerup', stopDragging);
 
+                event.preventDefault();
 
+            });
 
-        syncWidthFromLayout();
 
 
+            splitter.addEventListener('keydown', (event) => {
 
-        let dragging = false;
+                if (window.matchMedia('(max-width: 1200px)').matches) return;
 
+                if (event.key !== 'ArrowLeft' && event.key !== 'ArrowRight') return;
 
+                const current = parseInt(getComputedStyle(document.documentElement).getPropertyValue('--qa-right-width'), 10) || 500;
 
-        const onPointerMove = (event) => {
+                const delta = event.key === 'ArrowLeft' ? 24 : -24;
 
-            if (!dragging) return;
+                const applied = clampAndApply(current + delta);
 
-            const rect = main.getBoundingClientRect();
-
-            const desiredWidth = rect.right - event.clientX;
-
-            const applied = clampAndApply(desiredWidth);
-
-            localStorage.setItem(QA_RIGHT_WIDTH_KEY, String(applied));
-
-            requestPdfRelayout();
-
-            event.preventDefault();
-
-        };
-
-
-
-        const stopDragging = () => {
-
-            if (!dragging) return;
-
-            dragging = false;
-
-            document.body.classList.remove('qa-resizing');
-
-            window.removeEventListener('pointermove', onPointerMove);
-
-            window.removeEventListener('pointerup', stopDragging);
-
-            requestPdfRelayout();
-
-        };
-
-
-
-        splitter.addEventListener('pointerdown', (event) => {
-
-            if (window.matchMedia('(max-width: 1200px)').matches) return;
-
-            dragging = true;
-
-            document.body.classList.add('qa-resizing');
-
-            window.addEventListener('pointermove', onPointerMove);
-
-            window.addEventListener('pointerup', stopDragging);
-
-            event.preventDefault();
-
-        });
-
-
-
-        splitter.addEventListener('keydown', (event) => {
-
-            if (window.matchMedia('(max-width: 1200px)').matches) return;
-
-            if (event.key !== 'ArrowLeft' && event.key !== 'ArrowRight') return;
-
-            const current = parseInt(getComputedStyle(document.documentElement).getPropertyValue('--qa-right-width'), 10) || 500;
-
-            const delta = event.key === 'ArrowLeft' ? 24 : -24;
-
-            const applied = clampAndApply(current + delta);
-
-            localStorage.setItem(QA_RIGHT_WIDTH_KEY, String(applied));
-
-            requestPdfRelayout();
-
-            event.preventDefault();
-
-        });
-
-
-
-        requestAnimationFrame(() => {
-
-            syncQaSplitterLayout();
-
-        });
-
-
-
-        window.addEventListener('load', () => {
-
-            syncQaSplitterLayout();
-
-        }, { once: true });
-
-
-
-        window.addEventListener('resize', () => {
-
-            if (dragging || window.matchMedia('(max-width: 1200px)').matches) return;
-
-            syncQaSplitterLayout();
-
-        });
-
-    }
-
-
-
-    function initHeaderDetectionHandlers() {
-
-        // Botón: Recalcular Tabla (Detectar Headers + Pintar Cuerpo)
-
-        const recalculateTableBtn = document.getElementById('recalculateTableBtn');
-
-        if (recalculateTableBtn instanceof HTMLButtonElement) {
-
-            recalculateTableBtn.addEventListener('click', async () => {
-
-                const selectedBook = String(document.getElementById('bookFilterSelect')?.value || state.filters?.book || '').trim();
-                const selectedPage = String(document.getElementById('pageFilterSelect')?.value || state.filters?.page || '').trim();
-
-                if (selectedBook && selectedPage) {
-                    await loadPdfWithPageAndAutoRender(selectedBook, selectedPage);
-                    return;
-                }
-
-                // Ejecutar detección de headers
-
-                runPdfHeaderOnlyDetection();
-
-
-
-                // Ejecutar pintado de cuerpo
-
-                buildHeaderColumnBodyHighlights();
-
-
-
-                // Relayout del PDF
+                localStorage.setItem(QA_RIGHT_WIDTH_KEY, String(applied));
 
                 requestPdfRelayout();
 
-            });
-
-        }
-
-
-
-        // Botón: Mostrar Estadísticas de detección
-
-        const showStatsBtn = document.getElementById('showTableStatsBtn');
-
-        if (showStatsBtn instanceof HTMLButtonElement) {
-
-            showStatsBtn.addEventListener('click', () => {
-
-                if (state.currentPdfHeaderOnlyDebug) {
-
-                    renderHeaderDetectionPanel(state.currentPdfHeaderOnlyDebug);
-
-                }
-
-                if (state.currentPdfHeaderColumnBodyDebug) {
-
-                    renderBodyColumnHighlightPanel(state.currentPdfHeaderColumnBodyDebug);
-
-                }
+                event.preventDefault();
 
             });
 
-        }
+
+
+            requestAnimationFrame(() => {
+
+                syncQaSplitterLayout();
+
+            });
 
 
 
-        // Botón: Cerrar panel de Headers
+            window.addEventListener('load', () => {
 
-        const headerCloseBtn = document.getElementById('headerDetectionCloseBtn');
+                syncQaSplitterLayout();
 
-        if (headerCloseBtn instanceof HTMLButtonElement) {
+            }, { once: true });
 
-            headerCloseBtn.addEventListener('click', () => {
 
-                clearPdfHeaderOnlyOverlay();
 
-                const panel = document.getElementById('headerDetectionPanel');
+            window.addEventListener('resize', () => {
 
-                if (panel) panel.hidden = true;
+                if (dragging || window.matchMedia('(max-width: 1200px)').matches) return;
+
+                syncQaSplitterLayout();
 
             });
 
@@ -8711,140 +8578,226 @@ function getRecordFormValues(scope) {
 
 
 
-        // Botón: Cerrar panel de Body Highlight
+        function initHeaderDetectionHandlers() {
 
-        const bodyCloseBtn = document.getElementById('bodyColumnHighlightCloseBtn');
+            // Botón: Recalcular Tabla (Detectar Headers + Pintar Cuerpo)
 
-        if (bodyCloseBtn instanceof HTMLButtonElement) {
+            const recalculateTableBtn = document.getElementById('recalculateTableBtn');
 
-            bodyCloseBtn.addEventListener('click', () => {
+            if (recalculateTableBtn instanceof HTMLButtonElement) {
 
-                clearPdfHeaderColumnBodyHighlights();
+                recalculateTableBtn.addEventListener('click', async () => {
 
-                const panel = document.getElementById('bodyColumnHighlightPanel');
+                    const selectedBook = String(document.getElementById('bookFilterSelect')?.value || state.filters?.book || '').trim();
+                    const selectedPage = String(document.getElementById('pageFilterSelect')?.value || state.filters?.page || '').trim();
 
-                if (panel) panel.hidden = true;
+                    if (selectedBook && selectedPage) {
+                        await loadPdfWithPageAndAutoRender(selectedBook, selectedPage);
+                        return;
+                    }
 
-            });
+                    // Ejecutar detección de headers
+
+                    runPdfHeaderOnlyDetection();
+
+
+
+                    // Ejecutar pintado de cuerpo
+
+                    buildHeaderColumnBodyHighlights();
+
+
+
+                    // Relayout del PDF
+
+                    requestPdfRelayout();
+
+                });
+
+            }
+
+
+
+            // Botón: Mostrar Estadísticas de detección
+
+            const showStatsBtn = document.getElementById('showTableStatsBtn');
+
+            if (showStatsBtn instanceof HTMLButtonElement) {
+
+                showStatsBtn.addEventListener('click', () => {
+
+                    if (state.currentPdfHeaderOnlyDebug) {
+
+                        renderHeaderDetectionPanel(state.currentPdfHeaderOnlyDebug);
+
+                    }
+
+                    if (state.currentPdfHeaderColumnBodyDebug) {
+
+                        renderBodyColumnHighlightPanel(state.currentPdfHeaderColumnBodyDebug);
+
+                    }
+
+                });
+
+            }
+
+
+
+            // Botón: Cerrar panel de Headers
+
+            const headerCloseBtn = document.getElementById('headerDetectionCloseBtn');
+
+            if (headerCloseBtn instanceof HTMLButtonElement) {
+
+                headerCloseBtn.addEventListener('click', () => {
+
+                    clearPdfHeaderOnlyOverlay();
+
+                    const panel = document.getElementById('headerDetectionPanel');
+
+                    if (panel) panel.hidden = true;
+
+                });
+
+            }
+
+
+
+            // Botón: Cerrar panel de Body Highlight
+
+            const bodyCloseBtn = document.getElementById('bodyColumnHighlightCloseBtn');
+
+            if (bodyCloseBtn instanceof HTMLButtonElement) {
+
+                bodyCloseBtn.addEventListener('click', () => {
+
+                    clearPdfHeaderColumnBodyHighlights();
+
+                    const panel = document.getElementById('bodyColumnHighlightPanel');
+
+                    if (panel) panel.hidden = true;
+
+                });
+
+            }
 
         }
 
-    }
 
 
+        async function loadPdfWithPageAndAutoRender(book, page) {
 
-    async function loadPdfWithPageAndAutoRender(book, page) {
+            loadPdfClear();
 
-        loadPdfClear();
+            await loadPdfWithPage(book, page);
 
-        await loadPdfWithPage(book, page);
-
-        await rebuildPdfOverlaysAfterReload();
-
-    }
-
-
-    async function rebuildPdfOverlaysAfterReload(maxAttempts = 5) {
-
-        const attempts = Number.isFinite(maxAttempts) ? Math.max(1, Math.trunc(maxAttempts)) : 5;
-
-        for (let attempt = 0; attempt < attempts; attempt += 1) {
-
-            const headerResult = runPdfHeaderOnlyDetection();
-            const bodyResult = buildHeaderColumnBodyHighlights();
-            requestPdfRelayout();
-
-            const hasHeaderError = Boolean(headerResult?.error);
-            const hasBodyError = Boolean(bodyResult?.error);
-            if (!hasHeaderError && !hasBodyError) return;
-
-            await new Promise((resolve) => setTimeout(resolve, 80));
+            await rebuildPdfOverlaysAfterReload();
 
         }
 
-    }
 
+        async function rebuildPdfOverlaysAfterReload(maxAttempts = 5) {
 
+            const attempts = Number.isFinite(maxAttempts) ? Math.max(1, Math.trunc(maxAttempts)) : 5;
 
-    function renderHeaderDetectionPanel(result) {
+            for (let attempt = 0; attempt < attempts; attempt += 1) {
 
-        const panel = document.getElementById('headerDetectionPanel');
+                const headerResult = runPdfHeaderOnlyDetection();
+                const bodyResult = buildHeaderColumnBodyHighlights();
+                requestPdfRelayout();
 
-        const body = document.getElementById('headerDetectionBody');
+                const hasHeaderError = Boolean(headerResult?.error);
+                const hasBodyError = Boolean(bodyResult?.error);
+                if (!hasHeaderError && !hasBodyError) return;
 
-        const confBadge = document.getElementById('headerDetectionConfidence');
+                await new Promise((resolve) => setTimeout(resolve, 80));
 
-        if (!panel || !body || !confBadge) return;
-
-
-
-        const HEADER_COLORS = {
-
-            pos: { border: '#2563eb', bg: 'rgba(96,165,250,0.20)', label: 'POS' },
-
-            part_no: { border: '#16a34a', bg: 'rgba(74,222,128,0.18)', label: 'PART NO.' },
-
-            designation: { border: '#ea580c', bg: 'rgba(251,146,60,0.18)', label: 'DESIGNATION' },
-
-            model_type: { border: '#0e7490', bg: 'rgba(103,232,249,0.18)', label: 'MODEL/TYPE' },
-
-            qty: { border: '#7c3aed', bg: 'rgba(196,181,253,0.22)', label: 'QTY.' },
-
-            units: { border: '#ca8a04', bg: 'rgba(253,224,71,0.22)', label: 'UNITS' },
-
-            weight: { border: '#dc2626', bg: 'rgba(252,165,165,0.22)', label: 'WEIGHT' },
-
-            fn: { border: '#a855f7', bg: 'rgba(221,214,254,0.22)', label: 'FN' },
-
-            measurement: { border: '#0891b2', bg: 'rgba(103,232,249,0.20)', label: 'MEASUREMENT' },
-
-            standard: { border: '#0f766e', bg: 'rgba(94,234,212,0.18)', label: 'STANDARD' }
-
-        };
-
-
-
-        if (result?.error) {
-
-            confBadge.textContent = 'sin datos';
-
-            body.innerHTML = `<div style="color:#c63c2c;font-size:12px;padding:4px 0">${result.error}</div>`;
-
-            panel.hidden = false;
-
-            return;
+            }
 
         }
 
 
 
-        const conf = result?.confidence || '?';
+        function renderHeaderDetectionPanel(result) {
 
-        const matchCount = result?.matchCount ?? 0;
+            const panel = document.getElementById('headerDetectionPanel');
 
-        confBadge.textContent = `${conf} · ${matchCount}/10 headers`;
+            const body = document.getElementById('headerDetectionBody');
 
+            const confBadge = document.getElementById('headerDetectionConfidence');
 
-
-        const entries = Array.isArray(result?.entries) ? result.entries : [];
-
-
-
-        const legendHtml = `<div class="header-detection-legend">${Object.entries(HEADER_COLORS)
-
-            .map(([key, c]) => `<span style="border-left: 3px solid ${c.border}; padding-left: 6px; font-size: 11px; color: #666;">${c.label}</span>`)
-
-            .join('')}</div>`;
+            if (!panel || !body || !confBadge) return;
 
 
 
-        const itemsHtml = entries
+            const HEADER_COLORS = {
 
-            .map((entry) => {
+                pos: { border: '#2563eb', bg: 'rgba(96,165,250,0.20)', label: 'POS' },
 
-                const color = HEADER_COLORS[entry.kind] || { border: '#999', bg: 'rgba(128,128,128,0.1)', label: 'UNKNOWN' };
+                part_no: { border: '#16a34a', bg: 'rgba(74,222,128,0.18)', label: 'PART NO.' },
 
-                return `<div style="border-left: 3px solid ${color.border}; background: ${color.bg}; padding: 6px 8px; margin: 4px 0; border-radius: 2px; font-size: 12px;">
+                designation: { border: '#ea580c', bg: 'rgba(251,146,60,0.18)', label: 'DESIGNATION' },
+
+                model_type: { border: '#0e7490', bg: 'rgba(103,232,249,0.18)', label: 'MODEL/TYPE' },
+
+                qty: { border: '#7c3aed', bg: 'rgba(196,181,253,0.22)', label: 'QTY.' },
+
+                units: { border: '#ca8a04', bg: 'rgba(253,224,71,0.22)', label: 'UNITS' },
+
+                weight: { border: '#dc2626', bg: 'rgba(252,165,165,0.22)', label: 'WEIGHT' },
+
+                fn: { border: '#a855f7', bg: 'rgba(221,214,254,0.22)', label: 'FN' },
+
+                measurement: { border: '#0891b2', bg: 'rgba(103,232,249,0.20)', label: 'MEASUREMENT' },
+
+                standard: { border: '#0f766e', bg: 'rgba(94,234,212,0.18)', label: 'STANDARD' }
+
+            };
+
+
+
+            if (result?.error) {
+
+                confBadge.textContent = 'sin datos';
+
+                body.innerHTML = `<div style="color:#c63c2c;font-size:12px;padding:4px 0">${result.error}</div>`;
+
+                panel.hidden = false;
+
+                return;
+
+            }
+
+
+
+            const conf = result?.confidence || '?';
+
+            const matchCount = result?.matchCount ?? 0;
+
+            confBadge.textContent = `${conf} · ${matchCount}/10 headers`;
+
+
+
+            const entries = Array.isArray(result?.entries) ? result.entries : [];
+
+
+
+            const legendHtml = `<div class="header-detection-legend">${Object.entries(HEADER_COLORS)
+
+                .map(([key, c]) => `<span style="border-left: 3px solid ${c.border}; padding-left: 6px; font-size: 11px; color: #666;">${c.label}</span>`)
+
+                .join('')}</div>`;
+
+
+
+            const itemsHtml = entries
+
+                .map((entry) => {
+
+                    const color = HEADER_COLORS[entry.kind] || { border: '#999', bg: 'rgba(128,128,128,0.1)', label: 'UNKNOWN' };
+
+                    return `<div style="border-left: 3px solid ${color.border}; background: ${color.bg}; padding: 6px 8px; margin: 4px 0; border-radius: 2px; font-size: 12px;">
 
                 <strong>${color.label}</strong> @${Math.round(entry.centerX)},${Math.round(entry.centerY)}
 
@@ -8852,95 +8805,95 @@ function getRecordFormValues(scope) {
 
             </div>`;
 
-            })
+                })
 
-            .join('');
-
-
-
-        body.innerHTML = legendHtml + '<div style="margin-top: 8px;">' + (itemsHtml || '<p style="color:#999;font-size:12px;">Sin headers detectados</p>') + '</div>';
-
-        panel.hidden = false;
-
-    }
+                .join('');
 
 
 
-    function renderBodyColumnHighlightPanel(result) {
-
-        const panel = document.getElementById('bodyColumnHighlightPanel');
-
-        const body = document.getElementById('bodyColumnHighlightBody');
-
-        const statsBadge = document.getElementById('bodyColumnHighlightStats');
-
-        if (!panel || !body || !statsBadge) return;
-
-
-
-        const COLUMN_COLORS = {
-
-            pos: { border: '#2563eb', bg: 'rgba(96,165,250,0.18)' },
-
-            part_no: { border: '#16a34a', bg: 'rgba(74,222,128,0.16)' },
-
-            designation: { border: '#ea580c', bg: 'rgba(251,146,60,0.16)' },
-
-            model_type: { border: '#0e7490', bg: 'rgba(103,232,249,0.16)' },
-
-            qty: { border: '#7c3aed', bg: 'rgba(196,181,253,0.20)' },
-
-            units: { border: '#ca8a04', bg: 'rgba(253,224,71,0.20)' },
-
-            weight: { border: '#dc2626', bg: 'rgba(252,165,165,0.20)' },
-
-            fn: { border: '#a855f7', bg: 'rgba(221,214,254,0.20)' },
-
-            measurement: { border: '#0891b2', bg: 'rgba(103,232,249,0.18)' },
-
-            standard: { border: '#0f766e', bg: 'rgba(94,234,212,0.16)' }
-
-        };
-
-
-
-        if (result?.error) {
-
-            statsBadge.textContent = 'error';
-
-            body.innerHTML = `<div style="color:#c63c2c;font-size:12px;padding:4px 0">${result.message || result.error}</div>`;
+            body.innerHTML = legendHtml + '<div style="margin-top: 8px;">' + (itemsHtml || '<p style="color:#999;font-size:12px;">Sin headers detectados</p>') + '</div>';
 
             panel.hidden = false;
-
-            return;
 
         }
 
 
 
-        const highlightCount = result?.highlightCount || 0;
+        function renderBodyColumnHighlightPanel(result) {
 
-        const textCount = result?.textCount || 0;
+            const panel = document.getElementById('bodyColumnHighlightPanel');
 
-        statsBadge.textContent = `${highlightCount} highlights de ${textCount} textos`;
+            const body = document.getElementById('bodyColumnHighlightBody');
 
+            const statsBadge = document.getElementById('bodyColumnHighlightStats');
 
-
-        const debug = result?.debug || {};
-
-        const columns = debug.assignedByColumn || {};
+            if (!panel || !body || !statsBadge) return;
 
 
 
-        const columnItems = Object.entries(columns)
+            const COLUMN_COLORS = {
 
-            .map(([kind, info]) => {
+                pos: { border: '#2563eb', bg: 'rgba(96,165,250,0.18)' },
 
-                const c = COLUMN_COLORS[kind] || { border: '#999', bg: 'rgba(128,128,128,0.1)' };
+                part_no: { border: '#16a34a', bg: 'rgba(74,222,128,0.16)' },
 
-                const samples = Array.isArray(info.samples) ? info.samples.slice(0, 5) : [];
+                designation: { border: '#ea580c', bg: 'rgba(251,146,60,0.16)' },
 
-                return `<div style="border-left: 4px solid ${c.border}; background: ${c.bg}; padding: 8px 10px; margin: 6px 0; border-radius: 3px; font-size: 12px;">
+                model_type: { border: '#0e7490', bg: 'rgba(103,232,249,0.16)' },
+
+                qty: { border: '#7c3aed', bg: 'rgba(196,181,253,0.20)' },
+
+                units: { border: '#ca8a04', bg: 'rgba(253,224,71,0.20)' },
+
+                weight: { border: '#dc2626', bg: 'rgba(252,165,165,0.20)' },
+
+                fn: { border: '#a855f7', bg: 'rgba(221,214,254,0.20)' },
+
+                measurement: { border: '#0891b2', bg: 'rgba(103,232,249,0.18)' },
+
+                standard: { border: '#0f766e', bg: 'rgba(94,234,212,0.16)' }
+
+            };
+
+
+
+            if (result?.error) {
+
+                statsBadge.textContent = 'error';
+
+                body.innerHTML = `<div style="color:#c63c2c;font-size:12px;padding:4px 0">${result.message || result.error}</div>`;
+
+                panel.hidden = false;
+
+                return;
+
+            }
+
+
+
+            const highlightCount = result?.highlightCount || 0;
+
+            const textCount = result?.textCount || 0;
+
+            statsBadge.textContent = `${highlightCount} highlights de ${textCount} textos`;
+
+
+
+            const debug = result?.debug || {};
+
+            const columns = debug.assignedByColumn || {};
+
+
+
+            const columnItems = Object.entries(columns)
+
+                .map(([kind, info]) => {
+
+                    const c = COLUMN_COLORS[kind] || { border: '#999', bg: 'rgba(128,128,128,0.1)' };
+
+                    const samples = Array.isArray(info.samples) ? info.samples.slice(0, 5) : [];
+
+                    return `<div style="border-left: 4px solid ${c.border}; background: ${c.bg}; padding: 8px 10px; margin: 6px 0; border-radius: 3px; font-size: 12px;">
 
                 <strong>${kind}</strong> [x: ${Math.round(info.x0)}-${Math.round(info.x1)}] · ${info.textCount || 0} textos
 
@@ -8952,83 +8905,83 @@ function getRecordFormValues(scope) {
 
             </div>`;
 
-            })
-
-            .join('');
-
-
-
-        if (result?.warnings && result.warnings.length > 0) {
-
-            const warningHtml = result.warnings
-
-                .map((w) => `<div style="color:#b45309;font-size:11px;padding:4px 0;border-top:1px solid #fcd34d;margin-top:6px;padding-top:6px;">${w}</div>`)
+                })
 
                 .join('');
 
-            body.innerHTML = columnItems + warningHtml;
 
-        } else {
 
-            body.innerHTML = columnItems || '<p style="color:#999;font-size:12px;">Sin datos de columnas</p>';
+            if (result?.warnings && result.warnings.length > 0) {
+
+                const warningHtml = result.warnings
+
+                    .map((w) => `<div style="color:#b45309;font-size:11px;padding:4px 0;border-top:1px solid #fcd34d;margin-top:6px;padding-top:6px;">${w}</div>`)
+
+                    .join('');
+
+                body.innerHTML = columnItems + warningHtml;
+
+            } else {
+
+                body.innerHTML = columnItems || '<p style="color:#999;font-size:12px;">Sin datos de columnas</p>';
+
+            }
+
+
+
+            panel.hidden = false;
 
         }
 
 
 
-        panel.hidden = false;
+        function init() {
 
-    }
+            registerChangeControlTypes();
 
+            initColumnResize();
 
+            loadColumnViewPreference();
 
-    function init() {
+            initPdfZoomControls();
 
-        registerChangeControlTypes();
+            initHeaderDetectionHandlers();
 
-        initColumnResize();
+            initBackendStatusMonitor();
 
-        loadColumnViewPreference();
+            ensureQaChecksState();
 
-        initPdfZoomControls();
+            updateQaChecksSummary();
 
-        initHeaderDetectionHandlers();
+            attachGlobalEvents();
 
-        initBackendStatusMonitor();
+            subscribeRevisionSync((message) => {
 
-        ensureQaChecksState();
+                applyIncomingRevisionSync(message);
 
-        updateQaChecksSummary();
+            });
 
-        attachGlobalEvents();
+            updateUndoButtonState();
 
-        subscribeRevisionSync((message) => {
+            initQaSplitter();
 
-            applyIncomingRevisionSync(message);
+            setRightPanelTab(state.rightPanelTab);
 
-        });
+            clearSideRecordForm();
 
-        updateUndoButtonState();
+            applyBackendWriteMode();
 
-        initQaSplitter();
+            loadData();
 
-        setRightPanelTab(state.rightPanelTab);
+            loadExportPreview().catch((error) => {
 
-        clearSideRecordForm();
+                setExportRunStatus(`Sin preview: ${error.message}`, 'bad');
 
-        applyBackendWriteMode();
+            });
 
-        loadData();
-
-        loadExportPreview().catch((error) => {
-
-            setExportRunStatus(`Sin preview: ${error.message}`, 'bad');
-
-        });
-
-    }
+        }
 
 
 
-    init();
+        init();
 

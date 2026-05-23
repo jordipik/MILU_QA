@@ -89,7 +89,9 @@ function isProhibitedField(name) {
 
 function isAllowedSaveJsonField(name) {
     const normalized = canonicalFieldName(name);
-    return QA_EDITABLE_FIELDS.has(normalized) || OPERATIONAL_EDITABLE_FIELDS.has(normalized);
+    return QA_EDITABLE_FIELDS.has(normalized)
+        || OPERATIONAL_EDITABLE_FIELDS.has(normalized)
+        || /_excel$/i.test(normalized);
 }
 
 function normalizeEditableFieldValue(name, value) {

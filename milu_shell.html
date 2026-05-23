@@ -251,13 +251,65 @@
 
 
 
-        .shell-shared-grid {
+        .shell-shared-columns {
 
             display: grid;
 
-            grid-template-columns: repeat(6, minmax(0, 1fr));
+            grid-template-columns: repeat(2, minmax(0, 1fr));
 
-            gap: 10px;
+            gap: 14px;
+
+        }
+
+
+
+        .shell-shared-column {
+
+            border: 1px solid #d6e1ee;
+
+            border-radius: 12px;
+
+            background: #f8fbff;
+
+            padding: 10px;
+
+            min-height: 0;
+
+        }
+
+
+
+        .shell-shared-section-title {
+
+            margin: 0 0 8px;
+
+            font-size: 12px;
+
+            font-weight: 800;
+
+            color: #37526b;
+
+            letter-spacing: 0.03em;
+
+            text-transform: uppercase;
+
+        }
+
+
+
+        .shell-shared-section-title.is-secondary {
+
+            margin-top: 14px;
+
+        }
+
+
+
+        .shell-shared-stack {
+
+            display: grid;
+
+            gap: 8px;
 
         }
 
@@ -273,25 +325,35 @@
 
 
 
-        .shell-shared-field.span-2 {
+        .shell-shared-empty {
 
-            grid-column: span 2;
+            margin: 0;
+
+            border: 1px dashed #c9d6e3;
+
+            border-radius: 8px;
+
+            background: #f8fbff;
+
+            color: #55708a;
+
+            font-size: 12px;
+
+            line-height: 1.4;
+
+            padding: 8px 10px;
 
         }
 
 
 
-        .shell-shared-field.span-3 {
+        @media (max-width: 1080px) {
 
-            grid-column: span 3;
+            .shell-shared-columns {
 
-        }
+                grid-template-columns: 1fr;
 
-
-
-        .shell-shared-field.span-4 {
-
-            grid-column: span 4;
+            }
 
         }
 
@@ -460,189 +522,102 @@
 
                 <div id="shellSharedMeta" class="shell-shared-meta">-</div>
 
-                <div class="shell-shared-grid">
+                <div class="shell-shared-columns">
 
-                    <div class="shell-shared-field">
+                    <section class="shell-shared-column" aria-label="Campos origen excel">
 
-                        <label for="shellSharedPosExcel">POS EXCEL (pos_excel)</label>
+                        <h3 class="shell-shared-section-title">Origen Excel</h3>
 
-                        <input id="shellSharedPosExcel" type="text" />
+                        <div id="shellSharedExcelFields" class="shell-shared-stack"></div>
 
-                    </div>
+                    </section>
 
-                    <div class="shell-shared-field">
+                    <section class="shell-shared-column" aria-label="Campos final y contexto">
 
-                        <label for="shellSharedPnExcel">PN EXCEL (pn_excel)</label>
+                        <h3 class="shell-shared-section-title">Datos Final</h3>
 
-                        <input id="shellSharedPnExcel" type="text" />
+                        <div class="shell-shared-stack">
 
-                    </div>
+                            <div class="shell-shared-field"><label for="shellSharedPos">POS FINAL
+                                    (pos_final)</label><input id="shellSharedPos" type="text" /></div>
 
-                    <div class="shell-shared-field">
+                            <div class="shell-shared-field"><label for="shellSharedPnFinal">PN FINAL
+                                    (pn_final)</label><input id="shellSharedPnFinal" type="text" /></div>
 
-                        <label for="shellSharedPos">POS (pos_final)</label>
+                            <div class="shell-shared-field"><label for="shellSharedDesignationFinal">DESIGNATION FINAL
+                                    (designation_final)</label><input id="shellSharedDesignationFinal" type="text" />
+                            </div>
 
-                        <input id="shellSharedPos" type="text" />
+                            <div class="shell-shared-field"><label for="shellSharedModelType">MODEL/TYPE FINAL
+                                    (model_type_final)</label><input id="shellSharedModelType" type="text" /></div>
 
-                    </div>
+                            <div class="shell-shared-field"><label for="shellSharedQty">QTY FINAL
+                                    (qty_final)</label><input id="shellSharedQty" type="text" /></div>
 
-                    <div class="shell-shared-field">
+                            <div class="shell-shared-field"><label for="shellSharedUnits">UNITS FINAL
+                                    (qty_units_final)</label><input id="shellSharedUnits" type="text" /></div>
 
-                        <label for="shellSharedPnFinal">PN FINAL (pn_final)</label>
+                            <div class="shell-shared-field"><label for="shellSharedWeightFinal">WEIGHT FINAL
+                                    (weight_final)</label><input id="shellSharedWeightFinal" type="text" /></div>
 
-                        <input id="shellSharedPnFinal" type="text" />
+                            <div class="shell-shared-field"><label for="shellSharedFn">FN FINAL (fn_final)</label><input
+                                    id="shellSharedFn" type="text" /></div>
 
-                    </div>
+                            <div class="shell-shared-field"><label for="shellSharedMeasurementFinal">MEASURE FINAL
+                                    (measure_final)</label><input id="shellSharedMeasurementFinal" type="text" /></div>
 
-                    <div class="shell-shared-field span-3">
+                            <div class="shell-shared-field"><label for="shellSharedFgFgsFinal">FG/FGS FINAL
+                                    (fg_fgs_final)</label><input id="shellSharedFgFgsFinal" type="text" /></div>
 
-                        <label for="shellSharedDesignationFinal">DESIGNATION FINAL (designation_final)</label>
+                            <div class="shell-shared-field"><label for="shellSharedBomFinal">BOM FINAL
+                                    (bom_final)</label><input id="shellSharedBomFinal" type="text" /></div>
 
-                        <input id="shellSharedDesignationFinal" type="text" />
+                            <div class="shell-shared-field"><label for="shellSharedNorma">NORMA FINAL
+                                    (norma_final)</label><input id="shellSharedNorma" type="text" /></div>
 
-                    </div>
+                        </div>
 
-                    <div class="shell-shared-field">
+                        <h3 class="shell-shared-section-title is-secondary">Revision y Contexto</h3>
 
-                        <label for="shellSharedModelType">MODEL/TYPE FINAL (MODEL/TYPE_final)</label>
+                        <div class="shell-shared-stack">
 
-                        <input id="shellSharedModelType" type="text" />
+                            <div class="shell-shared-field"><label for="shellSharedEstado">ESTADO
+                                    (qa_revision_estado)</label><select id="shellSharedEstado">
+                                    <option value="pendiente">Pendiente</option>
+                                    <option value="ok">OK</option>
+                                </select></div>
 
-                    </div>
+                            <div class="shell-shared-field"><label for="shellSharedAccion">ACCION
+                                    (qa_revision_accion)</label><select id="shellSharedAccion">
+                                    <option value="importar">Importar</option>
+                                    <option value="revisar">Revisar</option>
+                                    <option value="eliminar">Eliminar</option>
+                                </select></div>
 
-                    <div class="shell-shared-field">
+                            <div class="shell-shared-field"><label for="shellSharedGesa">GESA (gesa)</label><input
+                                    id="shellSharedGesa" type="text" /></div>
 
-                        <label for="shellSharedQty">QTY (qty_final)</label>
+                            <div class="shell-shared-field"><label for="shellSharedNormalizado">NORMALIZADO
+                                    (normalizado)</label><input id="shellSharedNormalizado" type="text" /></div>
 
-                        <input id="shellSharedQty" type="text" />
+                            <div class="shell-shared-field"><label for="shellSharedNewSup">NEW/SUP
+                                    (sust_hierarchie)</label><input id="shellSharedNewSup" type="text" /></div>
 
-                    </div>
+                            <div class="shell-shared-field"><label for="shellSharedHasImg">FOTO (has_img)</label><input
+                                    id="shellSharedHasImg" type="text" /></div>
 
-                    <div class="shell-shared-field">
+                            <div class="shell-shared-field"><label for="shellSharedEnWeb">EN WEB (EN_WEB)</label><input
+                                    id="shellSharedEnWeb" type="text" /></div>
 
-                        <label for="shellSharedUnits">UNITS (qty_units_final)</label>
+                            <div class="shell-shared-field"><label for="shellSharedBook">LIBRO
+                                    (engine_model)</label><input id="shellSharedBook" type="text" /></div>
 
-                        <input id="shellSharedUnits" type="text" />
+                            <div class="shell-shared-field"><label for="shellSharedPage">PAGINA (Source
+                                    Page)</label><input id="shellSharedPage" type="text" /></div>
 
-                    </div>
+                        </div>
 
-                    <div class="shell-shared-field">
-
-                        <label for="shellSharedWeightFinal">WEIGHT FINAL (weight_final)</label>
-
-                        <input id="shellSharedWeightFinal" type="text" />
-
-                    </div>
-
-                    <div class="shell-shared-field">
-
-                        <label for="shellSharedFn">FN (fn_final)</label>
-
-                        <input id="shellSharedFn" type="text" />
-
-                    </div>
-
-                    <div class="shell-shared-field">
-
-                        <label for="shellSharedMeasurementFinal">MEASURE FINAL (measure_final)</label>
-
-                        <input id="shellSharedMeasurementFinal" type="text" />
-
-                    </div>
-
-                    <div class="shell-shared-field">
-
-                        <label for="shellSharedNorma">NORMA (norma_final)</label>
-
-                        <input id="shellSharedNorma" type="text" />
-
-                    </div>
-
-                    <div class="shell-shared-field">
-
-                        <label for="shellSharedEstado">ESTADO (qa_revision_estado)</label>
-
-                        <select id="shellSharedEstado">
-
-                            <option value="pendiente">Pendiente</option>
-
-                            <option value="ok">OK</option>
-
-                        </select>
-
-                    </div>
-
-                    <div class="shell-shared-field">
-
-                        <label for="shellSharedAccion">ACCION (qa_revision_accion)</label>
-
-                        <select id="shellSharedAccion">
-
-                            <option value="importar">Importar</option>
-
-                            <option value="revisar">Revisar</option>
-
-                            <option value="eliminar">Eliminar</option>
-
-                        </select>
-
-                    </div>
-
-                    <div class="shell-shared-field">
-
-                        <label for="shellSharedGesa">GESA (gesa)</label>
-
-                        <input id="shellSharedGesa" type="text" />
-
-                    </div>
-
-                    <div class="shell-shared-field">
-
-                        <label for="shellSharedNormalizado">NORM. (normalizado)</label>
-
-                        <input id="shellSharedNormalizado" type="text" />
-
-                    </div>
-
-                    <div class="shell-shared-field span-2">
-
-                        <label for="shellSharedNewSup">NEW/SUP (sust_hierarchie)</label>
-
-                        <input id="shellSharedNewSup" type="text" />
-
-                    </div>
-
-                    <div class="shell-shared-field">
-
-                        <label for="shellSharedHasImg">FOTO (has_img)</label>
-
-                        <input id="shellSharedHasImg" type="text" />
-
-                    </div>
-
-                    <div class="shell-shared-field">
-
-                        <label for="shellSharedEnWeb">EN WEB (EN_WEB)</label>
-
-                        <input id="shellSharedEnWeb" type="text" />
-
-                    </div>
-
-                    <div class="shell-shared-field span-3">
-
-                        <label for="shellSharedBook">LIBRO (engine_model)</label>
-
-                        <input id="shellSharedBook" type="text" />
-
-                    </div>
-
-                    <div class="shell-shared-field">
-
-                        <label for="shellSharedPage">PAGINA (Source Page)</label>
-
-                        <input id="shellSharedPage" type="text" />
-
-                    </div>
+                    </section>
 
                 </div>
 
@@ -755,6 +730,10 @@
 
             'measure_final',
 
+            'fg_fgs_final',
+
+            'bom_final',
+
             'norma_final',
 
             'qa_revision_estado',
@@ -779,11 +758,132 @@
 
         const PENDING_SHARED_EDITOR_KEY = 'milu:pending-shared-editor-payload';
 
+        const PREFERRED_EXCEL_FIELD_ORDER = [
+            'pos_excel',
+            'pn_excel',
+            'designation_excel',
+            'model_type_excel',
+            'qty_excel',
+            'qty_units_excel',
+            'weight_excel',
+            'fn_excel',
+            'measure_excel',
+            'norma_excel',
+            'fg_fgs_excel',
+            'bom_excel'
+        ];
+
+        const EXCEL_FIELD_FALLBACKS = {
+            pos_excel: (payload) => txt(payload.pos_excel || payload.POS),
+            pn_excel: (payload) => txt(payload.pn_excel || payload['PART NO.']),
+            designation_excel: (payload) => txt(payload.designation_excel || payload.DESIGNATION),
+            model_type_excel: (payload) => txt(payload.model_type_excel || payload['MODEL/TYPE']),
+            qty_excel: (payload) => txt(payload.qty_excel || payload.QTY || payload.qty),
+            qty_units_excel: (payload) => txt(payload.qty_units_excel || payload.units_excel || payload.UNITS || payload.Units || payload.units),
+            weight_excel: (payload) => txt(payload.weight_excel || payload.WEIGHT),
+            fn_excel: (payload) => txt(payload.fn_excel || payload.FN || payload.fn),
+            measure_excel: (payload) => txt(payload.measure_excel || payload['MEASUREMENT / STANDARD']),
+            norma_excel: (payload) => txt(payload.norma_excel || payload.NORMA || payload.norma),
+            fg_fgs_excel: (payload) => txt(payload.fg_fgs_excel || payload['FG/FGS']),
+            bom_excel: (payload) => txt(payload.bom_excel || payload['BOM-No.'])
+        };
+
+        const EXCEL_FIELD_LABELS = {
+            pos_excel: 'POS',
+            pn_excel: 'PART NO.',
+            designation_excel: 'DESIGNATION',
+            model_type_excel: 'MODEL/TYPE',
+            qty_excel: 'QTY',
+            qty_units_excel: 'UNITS',
+            weight_excel: 'WEIGHT',
+            fn_excel: 'FN',
+            measure_excel: 'MEASUREMENT / STANDARD',
+            norma_excel: 'NORMA',
+            fg_fgs_excel: 'FG/FGS',
+            bom_excel: 'BOM-No.'
+        };
+
 
 
         function txt(value) {
 
             return String(value ?? '').trim();
+
+        }
+
+
+
+        function sortExcelFields(a, b) {
+
+            const aIndex = PREFERRED_EXCEL_FIELD_ORDER.indexOf(a);
+
+            const bIndex = PREFERRED_EXCEL_FIELD_ORDER.indexOf(b);
+
+            if (aIndex !== -1 && bIndex !== -1) return aIndex - bIndex;
+
+            if (aIndex !== -1) return -1;
+
+            if (bIndex !== -1) return 1;
+
+            return String(a || '').localeCompare(String(b || ''));
+
+        }
+
+
+
+        function getExcelFieldKeys(source = {}) {
+
+            return Object.keys(source)
+
+                .filter((key) => /_excel$/i.test(String(key)))
+
+                .sort(sortExcelFields);
+
+        }
+
+
+
+        function buildExcelValues(payload = {}) {
+
+            const excelValues = {};
+
+            getExcelFieldKeys(payload).forEach((field) => {
+
+                excelValues[field] = txt(payload[field]);
+
+            });
+
+
+
+            PREFERRED_EXCEL_FIELD_ORDER.forEach((field) => {
+
+                if (Object.prototype.hasOwnProperty.call(excelValues, field)) return;
+
+                const resolver = EXCEL_FIELD_FALLBACKS[field];
+
+                excelValues[field] = typeof resolver === 'function' ? resolver(payload) : '';
+
+            });
+
+
+
+            return excelValues;
+
+        }
+
+
+
+        function escapeHtml(value) {
+
+            return String(value ?? '')
+
+                .replace(/&/g, '&amp;')
+
+                .replace(/</g, '&lt;')
+
+                .replace(/>/g, '&gt;')
+
+                .replace(/\"/g, '&quot;');
 
         }
 
@@ -913,13 +1013,15 @@
 
                 saveBtn: document.getElementById('shellSharedSaveBtn'),
 
-                posExcel: document.getElementById('shellSharedPosExcel'),
-
-                pnExcel: document.getElementById('shellSharedPnExcel'),
+                excelFields: document.getElementById('shellSharedExcelFields'),
 
                 pnFinal: document.getElementById('shellSharedPnFinal'),
 
                 designationFinal: document.getElementById('shellSharedDesignationFinal'),
+
+                fgFgsFinal: document.getElementById('shellSharedFgFgsFinal'),
+
+                bomFinal: document.getElementById('shellSharedBomFinal'),
 
                 weightFinal: document.getElementById('shellSharedWeightFinal'),
 
@@ -956,6 +1058,40 @@
                 pos: document.getElementById('shellSharedPos')
 
             };
+
+        }
+
+
+
+        function renderSharedExcelFields(values = {}) {
+
+            const { excelFields } = getSharedModalElements();
+
+            if (!(excelFields instanceof HTMLElement)) return;
+
+
+
+            const excelKeys = getExcelFieldKeys(values);
+
+            if (!excelKeys.length) {
+
+                excelFields.innerHTML = '<p class="shell-shared-empty">No hay campos *_excel en este registro.</p>';
+
+                return;
+
+            }
+
+
+
+            excelFields.innerHTML = excelKeys.map((field) => {
+
+                const title = EXCEL_FIELD_LABELS[field] || field.replace(/_/g, ' ').toUpperCase();
+
+                const label = `${title} (${field})`;
+
+                return `<div class="shell-shared-field"><label>${escapeHtml(label)}</label><input type="text" data-excel-field="${escapeHtml(field)}" value="${escapeHtml(txt(values[field]))}" /></div>`;
+
+            }).join('');
 
         }
 
@@ -1337,13 +1473,15 @@
 
                 meta,
 
-                posExcel,
-
-                pnExcel,
+                excelFields,
 
                 pnFinal,
 
                 designationFinal,
+
+                fgFgsFinal,
+
+                bomFinal,
 
                 weightFinal,
 
@@ -1385,6 +1523,10 @@
 
 
 
+            const excelValues = buildExcelValues(payload);
+
+
+
             sharedEditorContext = {
 
                 id,
@@ -1393,11 +1535,11 @@
 
                 basePayload: { ...payload },
 
+                editableFields: [...new Set([...Object.keys(excelValues), ...EDITABLE_FIELDS])],
+
                 values: {
 
-                    pos_excel: txt(payload.pos_excel || payload.POS),
-
-                    pn_excel: txt(payload.pn_excel || payload['PART NO.']),
+                    ...excelValues,
 
                     pos_final: txt(payload.pos_final || payload.pos || payload.POS),
 
@@ -1416,6 +1558,10 @@
                     fn_final: txt(payload.fn_final || payload.fn || payload.FN),
 
                     measure_final: txt(payload.measure_final || payload.measurement_final),
+
+                    fg_fgs_final: txt(payload.fg_fgs_final || payload.fg_fgs),
+
+                    bom_final: txt(payload.bom_final || payload.bom),
 
                     norma_final: txt(payload.norma_final || payload.norma),
 
@@ -1442,9 +1588,12 @@
             };
 
 
-            if (posExcel instanceof HTMLInputElement) posExcel.value = sharedEditorContext.values.pos_excel;
 
-            if (pnExcel instanceof HTMLInputElement) pnExcel.value = sharedEditorContext.values.pn_excel;
+            if (excelFields instanceof HTMLElement) {
+
+                renderSharedExcelFields(sharedEditorContext.values);
+
+            }
 
 
 
@@ -1477,6 +1626,10 @@
             if (fn instanceof HTMLInputElement) fn.value = sharedEditorContext.values.fn_final;
 
             if (measurementFinal instanceof HTMLInputElement) measurementFinal.value = sharedEditorContext.values.measure_final;
+
+            if (fgFgsFinal instanceof HTMLInputElement) fgFgsFinal.value = sharedEditorContext.values.fg_fgs_final;
+
+            if (bomFinal instanceof HTMLInputElement) bomFinal.value = sharedEditorContext.values.bom_final;
 
             if (norma instanceof HTMLInputElement) norma.value = sharedEditorContext.values.norma_final;
 
@@ -1524,15 +1677,17 @@
 
                 saveBtn,
 
-                posExcel,
-
-                pnExcel,
+                excelFields,
 
                 pos,
 
                 pnFinal,
 
                 designationFinal,
+
+                fgFgsFinal,
+
+                bomFinal,
 
                 modelType,
 
@@ -1568,11 +1723,33 @@
 
             } = getSharedModalElements();
 
+
+
+            const excelInputElements = (excelFields instanceof HTMLElement)
+
+                ? Array.from(excelFields.querySelectorAll('input[data-excel-field]'))
+
+                : [];
+
+            const excelValues = {};
+
+            excelInputElements.forEach((input) => {
+
+                if (!(input instanceof HTMLInputElement)) return;
+
+                const field = txt(input.dataset.excelField || '');
+
+                if (!/_excel$/i.test(field)) return;
+
+                excelValues[field] = txt(input.value);
+
+            });
+
             const nextValues = {
 
-                pos_excel: txt(posExcel instanceof HTMLInputElement ? posExcel.value : ''),
+                ...context.values,
 
-                pn_excel: txt(pnExcel instanceof HTMLInputElement ? pnExcel.value : ''),
+                ...excelValues,
 
                 pos_final: txt(pos instanceof HTMLInputElement ? pos.value : ''),
 
@@ -1591,6 +1768,10 @@
                 fn_final: txt(fn instanceof HTMLInputElement ? fn.value : ''),
 
                 measure_final: txt(measurementFinal instanceof HTMLInputElement ? measurementFinal.value : ''),
+
+                fg_fgs_final: txt(fgFgsFinal instanceof HTMLInputElement ? fgFgsFinal.value : ''),
+
+                bom_final: txt(bomFinal instanceof HTMLInputElement ? bomFinal.value : ''),
 
                 norma_final: txt(norma instanceof HTMLInputElement ? norma.value : ''),
 
@@ -1616,7 +1797,13 @@
 
 
 
-            const changed = EDITABLE_FIELDS.filter((field) => nextValues[field] !== context.values[field]);
+            const editableFields = Array.isArray(context.editableFields)
+
+                ? context.editableFields
+
+                : EDITABLE_FIELDS;
+
+            const changed = editableFields.filter((field) => nextValues[field] !== context.values[field]);
 
             if (!changed.length) {
 
@@ -1750,13 +1937,9 @@
 
             if (!(targetFrame instanceof HTMLIFrameElement)) return false;
 
-
-
             const bridge = targetFrame.contentWindow?.miluRefreshPdfData;
 
             if (typeof bridge !== 'function') return false;
-
-
 
             try {
 
