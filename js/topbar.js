@@ -154,6 +154,11 @@ export function createTopbar(page) {
             subtitle: 'De registro_raw a registro_ok o registro_ko, proceso por proceso.',
             active: 'ANALISIS'
         },
+        recompute: {
+            title: 'Recompute MILU Simple',
+            subtitle: 'Recálculo por libro o global con endpoints oficiales y log de ejecución.',
+            active: 'RECOMPUTE'
+        },
         imagenes: {
             title: 'QA Imagenes y Esquemas',
             subtitle: 'Auditoria visual de exportacion multimedia.',
@@ -201,6 +206,7 @@ export function createTopbar(page) {
             <a href="${getNavTargetHref('importpdf')}" data-page="importpdf" class="${pageConfig.active === 'IMPORT PDF' ? 'active' : ''}">IMPORT PDF</a>
             <a href="${getNavTargetHref('pdf')}" data-page="pdf" class="${pageConfig.active === 'PDF' ? 'active' : ''}">PDF</a>
             <a href="${getNavTargetHref('analisis')}" data-page="analisis" class="${pageConfig.active === 'ANALISIS' ? 'active' : ''}">ANALISIS</a>
+            <a href="${appUrl('/recompute_simple.html')}" data-page="recompute" class="${pageConfig.active === 'RECOMPUTE' ? 'active' : ''}">RECOMPUTE</a>
             <a href="${getNavTargetHref('imagenes')}" data-page="imagenes" class="${pageConfig.active === 'IMAGENES' ? 'active' : ''}">IMAGENES</a>
             <a href="${getNavTargetHref('exportwp')}" data-page="exportwp" class="${pageConfig.active === 'EXPORT' ? 'active' : ''}">EXPORT</a>
             ${ENABLE_EXPORT_VIEW ? `<a href="${getNavTargetHref('export')}" data-page="export" class="${pageConfig.active === 'EXPORT' ? 'active' : ''}">EXPORT</a>` : ''}

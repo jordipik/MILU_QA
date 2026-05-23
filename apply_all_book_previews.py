@@ -18,9 +18,11 @@ Uso:
 from __future__ import annotations
 
 import argparse
+import json
 import re
 import subprocess
 import sys
+import tempfile
 from pathlib import Path
 
 REPO_ROOT = Path(__file__).resolve().parent
@@ -43,7 +45,7 @@ def _discover(previews_dir: Path, only: list[str] | None) -> list[tuple[str, Pat
     return out
 
 
-def _run_one(preview: Path, engine: Path, *, write: bool, overwrite: bool) -> int:
+def _run_one(preview: Path, engine: Path, *, write: bool, overwrite: bool, report: Path | None = None) -> int:
     cmd = [
         sys.executable,
         str(SINGLE_SCRIPT),
@@ -54,9 +56,30 @@ def _run_one(preview: Path, engine: Path, *, write: bool, overwrite: bool) -> in
         cmd.append("--write")
     if overwrite:
         cmd.append("--overwrite")
+    if report is not None:
+        cmd.extend(["--report", str(report)])
     print(f"\n>>> {' '.join(cmd)}", flush=True)
     proc = subprocess.run(cmd, cwd=str(REPO_ROOT))
     return proc.returncode
+
+
+def _empty_stats() -> dict[str, int]:
+    return {
+        "preview_pages": 0,
+        "preview_rows": 0,
+        "matched_unique": 0,
+        "matched_tiebreak_pn": 0,
+        "ambiguous": 0,
+        "not_found": 0,
+        "rows_changed": 0,
+        "fields_changed": 0,
+        "fields_skipped_nonempty": 0,
+    }
+
+
+def _merge_stats(total: dict[str, int], part: dict) -> None:
+    for key in total.keys():
+        total[key] += int(part.get(key) or 0)
 
 
 def main() -> int:
@@ -66,6 +89,7 @@ def main() -> int:
     parser.add_argument("--overwrite", action="store_true", help="Sobrescribir valores no vacios en los engines.")
     parser.add_argument("--only", nargs="*", help="Lista de modelos a procesar (ej: 12V4000M40A 12V4000M53). Por defecto todos.")
     parser.add_argument("--stop-on-error", action="store_true", help="Detener barrido si un engine falla.")
+    parser.add_argument("--report", default=None, help="Ruta opcional para guardar un informe JSON agregado.")
     args = parser.parse_args()
 
     if not SINGLE_SCRIPT.exists():
@@ -88,13 +112,87 @@ def main() -> int:
         print(f"  - {model}: {preview.name}  ->  {engine.name}  (engine_exists={engine.exists()})")
 
     results: list[tuple[str, int, bool]] = []
+    aggregate_stats = _empty_stats()
+    aggregate_not_found_rows: list[dict] = []
+    per_model: list[dict] = []
+
     for model, preview, engine in targets:
         if not engine.exists():
             print(f"[SKIP] {model}: no existe {engine}")
             results.append((model, -1, False))
+            per_model.append({
+                "model": model,
+                "engine": engine.name,
+                "preview": preview.name,
+                "ok": False,
+                "exit_code": -1,
+                "skipped": True,
+                "reason": "engine-missing",
+            })
             continue
-        rc = _run_one(preview, engine, write=args.write, overwrite=args.overwrite)
+
+        with tempfile.NamedTemporaryFile(prefix=f"milu_apply_book_preview_child_{model}_", suffix=".json", delete=False) as tf:
+            child_report = Path(tf.name)
+        try:
+            child_report.unlink()
+        except Exception:
+            pass
+
+        rc = _run_one(
+            preview,
+            engine,
+            write=args.write,
+            overwrite=args.overwrite,
+            report=child_report,
+        )
+
         results.append((model, rc, True))
+
+        child_data = None
+        if child_report.exists():
+            try:
+                with child_report.open("r", encoding="utf-8") as f:
+                    child_data = json.load(f)
+            except Exception as exc:
+                print(f"[WARN] No se pudo leer reporte hijo de {model}: {exc}")
+            finally:
+                try:
+                    child_report.unlink()
+                except Exception:
+                    pass
+
+        if isinstance(child_data, dict):
+            child_stats = child_data.get("stats") if isinstance(child_data.get("stats"), dict) else {}
+            _merge_stats(aggregate_stats, child_stats)
+
+            child_not_found = child_data.get("not_found_rows") if isinstance(child_data.get("not_found_rows"), list) else []
+            for row in child_not_found:
+                if not isinstance(row, dict):
+                    continue
+                row_copy = dict(row)
+                row_copy.setdefault("book", model)
+                row_copy.setdefault("engine", engine.name)
+                aggregate_not_found_rows.append(row_copy)
+
+            per_model.append({
+                "model": model,
+                "engine": engine.name,
+                "preview": preview.name,
+                "ok": rc == 0,
+                "exit_code": rc,
+                "skipped": False,
+                "stats": child_stats,
+            })
+        else:
+            per_model.append({
+                "model": model,
+                "engine": engine.name,
+                "preview": preview.name,
+                "ok": rc == 0,
+                "exit_code": rc,
+                "skipped": False,
+            })
+
         if rc != 0 and args.stop_on_error:
             print(f"[STOP] {model} devolvio rc={rc}. Abortando por --stop-on-error.")
             break
@@ -107,6 +205,25 @@ def main() -> int:
         tag = "SKIP" if not ran else ("OK" if rc == 0 else f"FAIL(rc={rc})")
         print(f"  {tag:>10}  {model}")
     print(f"Total: ok={ok}  fail={fail}  skip={skip}")
+
+    if args.report:
+        report_path = Path(args.report)
+        report_path.parent.mkdir(parents=True, exist_ok=True)
+        payload = {
+            "stats": aggregate_stats,
+            "not_found_rows": aggregate_not_found_rows,
+            "per_model": per_model,
+            "summary": {
+                "ok": ok,
+                "fail": fail,
+                "skip": skip,
+                "total": len(results),
+            },
+        }
+        with report_path.open("w", encoding="utf-8") as f:
+            json.dump(payload, f, ensure_ascii=False, indent=2)
+        print(f"[OK] Informe agregado guardado: {report_path}")
+
     return 0 if fail == 0 else 1
 
 

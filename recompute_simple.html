@@ -181,6 +181,11 @@
 </head>
 
 <body>
+    <script type="module">
+        import { initTopbar } from './js/topbar.js';
+        initTopbar('recompute');
+    </script>
+
     <main class="recompute-simple-wrap">
         <header class="recompute-simple-head">
             <h1>Recompute MILU Simple</h1>
@@ -255,6 +260,15 @@
                 style="border:1px solid #6b7280;border-radius:10px;height:34px;padding:0 14px;cursor:pointer;color:#fff;font-size:11px;font-weight:700;letter-spacing:0.01em;background:linear-gradient(135deg,#9ca3af,#6b7280);">
                 VACIAR _PDF Y _FINAL
             </button>
+        </section>
+
+        <section id="recomputeSimpleResultPanel" class="recompute-result-panel" aria-label="Resumen de ejecución"
+            style="margin-top:12px;" hidden>
+            <div class="recompute-result-head">
+                <h3 id="recomputeSimpleResultTitle">Resumen</h3>
+                <p id="recomputeSimpleResultMeta" class="recompute-result-meta"></p>
+            </div>
+            <div id="recomputeSimpleResultBody" class="recompute-result-body"></div>
         </section>
 
         <section class="recompute-simple-log" aria-label="Estado y log">

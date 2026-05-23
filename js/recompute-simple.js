@@ -5,6 +5,10 @@ const refs = {
     idInput: document.getElementById('idInput'),
     scopeSummary: document.getElementById('scopeSummary'),
     status: document.getElementById('recomputeSimpleStatus'),
+    resultPanel: document.getElementById('recomputeSimpleResultPanel'),
+    resultTitle: document.getElementById('recomputeSimpleResultTitle'),
+    resultMeta: document.getElementById('recomputeSimpleResultMeta'),
+    resultBody: document.getElementById('recomputeSimpleResultBody'),
     logPanel: document.getElementById('recomputeSimpleLogPanel'),
     btnImportPdf: document.getElementById('btnImportPdf'),
     btnFinal: document.getElementById('btnFinal'),
@@ -27,6 +31,15 @@ let logLines = [];
 
 function normalizeText(value) {
     return String(value == null ? '' : value).trim();
+}
+
+function escapeHtml(value) {
+    return String(value == null ? '' : value)
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#39;');
 }
 
 function nowTag() {
@@ -77,6 +90,284 @@ function setBusy(isBusy) {
     actionButtons.forEach((button) => {
         button.disabled = Boolean(isBusy);
     });
+}
+
+function currentScopeLabel() {
+    const scope = getScope();
+    if (scope.isAll) return scope.id ? 'TODOS (ID ignorado)' : 'TODOS';
+    return scope.id ? `LIBRO ${scope.model} · ID ${scope.id}` : `LIBRO ${scope.model}`;
+}
+
+function renderResultEmpty(message) {
+    if (!(refs.resultPanel instanceof HTMLElement)
+        || !(refs.resultTitle instanceof HTMLElement)
+        || !(refs.resultMeta instanceof HTMLElement)
+        || !(refs.resultBody instanceof HTMLElement)) {
+        return;
+    }
+
+    refs.resultPanel.hidden = false;
+    refs.resultTitle.textContent = 'Resumen de ejecución';
+    refs.resultMeta.textContent = currentScopeLabel();
+    refs.resultBody.innerHTML = `<p class="recompute-result-empty">${escapeHtml(message)}</p>`;
+}
+
+function renderCards(cards) {
+    const safeCards = Array.isArray(cards) ? cards : [];
+    return `<div class="recompute-result-summary">${safeCards.map((card) => `
+        <div class="recompute-result-kpi">
+            <div class="recompute-result-kpi-label">${escapeHtml(card?.label || '')}</div>
+            <div class="recompute-result-kpi-value">${escapeHtml(card?.value || '')}</div>
+        </div>
+    `).join('')}</div>`;
+}
+
+function renderTable(headers, rows) {
+    if (!Array.isArray(headers) || !headers.length || !Array.isArray(rows) || !rows.length) {
+        return '';
+    }
+
+    const headerHtml = headers.map((header) => `<th>${escapeHtml(header)}</th>`).join('');
+    const rowHtml = rows.map((row) => {
+        const cols = Array.isArray(row) ? row : [];
+        return `<tr>${cols.map((col) => `<td>${escapeHtml(col)}</td>`).join('')}</tr>`;
+    }).join('');
+
+    return `<div class="recompute-result-table-wrap">
+        <table class="recompute-result-table">
+            <thead><tr>${headerHtml}</tr></thead>
+            <tbody>${rowHtml}</tbody>
+        </table>
+    </div>`;
+}
+
+function renderImportNotFoundInteractive(rowsInput) {
+    if (!(refs.resultBody instanceof HTMLElement)) return;
+
+    const rows = Array.isArray(rowsInput) ? rowsInput : [];
+    if (!rows.length) {
+        refs.resultBody.insertAdjacentHTML('beforeend', '<p class="recompute-result-empty">No hay filas no encontradas para mostrar.</p>');
+        return;
+    }
+
+    const pageSize = 50;
+    const reasons = [...new Set(rows.map((item) => normalizeText(item?.reason)).filter(Boolean))].sort((a, b) => a.localeCompare(b, 'es'));
+
+    const controlsHtml = `
+        <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;">
+            <label style="display:flex;align-items:center;gap:6px;font-size:12px;color:#35516c;">
+                <span>Motivo</span>
+                <select data-rs-notfound-filter style="height:30px;border:1px solid #c6d7e8;border-radius:8px;padding:0 8px;background:#fff;color:#1a3851;font-size:12px;">
+                    <option value="__ALL__">Todos</option>
+                    ${reasons.map((reason) => `<option value="${escapeHtml(reason)}">${escapeHtml(reason)}</option>`).join('')}
+                </select>
+            </label>
+            <div data-rs-notfound-meta style="font-size:11px;color:#5a738b;font-family:'IBM Plex Mono',Consolas,monospace;"></div>
+            <div style="margin-left:auto;display:flex;align-items:center;gap:8px;">
+                <button type="button" data-rs-notfound-prev style="height:30px;border:1px solid #c6d7e8;border-radius:8px;padding:0 10px;background:#fff;color:#244864;font-size:11px;font-weight:700;cursor:pointer;">Anterior</button>
+                <span data-rs-notfound-page style="font-size:11px;color:#5a738b;font-family:'IBM Plex Mono',Consolas,monospace;"></span>
+                <button type="button" data-rs-notfound-next style="height:30px;border:1px solid #c6d7e8;border-radius:8px;padding:0 10px;background:#fff;color:#244864;font-size:11px;font-weight:700;cursor:pointer;">Siguiente</button>
+            </div>
+        </div>
+        <div class="recompute-result-table-wrap" style="max-height:420px;">
+            <table class="recompute-result-table">
+                <thead>
+                    <tr>
+                        <th>Libro</th>
+                        <th>ID</th>
+                        <th>Página</th>
+                        <th>POS</th>
+                        <th>PN</th>
+                        <th>Motivo</th>
+                    </tr>
+                </thead>
+                <tbody data-rs-notfound-body></tbody>
+            </table>
+        </div>
+    `;
+
+    refs.resultBody.insertAdjacentHTML('beforeend', controlsHtml);
+
+    const filterEl = refs.resultBody.querySelector('[data-rs-notfound-filter]');
+    const metaEl = refs.resultBody.querySelector('[data-rs-notfound-meta]');
+    const pageEl = refs.resultBody.querySelector('[data-rs-notfound-page]');
+    const prevEl = refs.resultBody.querySelector('[data-rs-notfound-prev]');
+    const nextEl = refs.resultBody.querySelector('[data-rs-notfound-next]');
+    const bodyEl = refs.resultBody.querySelector('[data-rs-notfound-body]');
+
+    if (!(filterEl instanceof HTMLSelectElement)
+        || !(metaEl instanceof HTMLElement)
+        || !(pageEl instanceof HTMLElement)
+        || !(prevEl instanceof HTMLButtonElement)
+        || !(nextEl instanceof HTMLButtonElement)
+        || !(bodyEl instanceof HTMLElement)) {
+        return;
+    }
+
+    let currentPage = 1;
+
+    const applyView = () => {
+        const selectedReason = normalizeText(filterEl.value);
+        const filtered = selectedReason && selectedReason !== '__ALL__'
+            ? rows.filter((row) => normalizeText(row?.reason) === selectedReason)
+            : rows;
+
+        const totalRows = filtered.length;
+        const totalPages = Math.max(1, Math.ceil(totalRows / pageSize));
+        if (currentPage > totalPages) currentPage = totalPages;
+        if (currentPage < 1) currentPage = 1;
+
+        const from = (currentPage - 1) * pageSize;
+        const to = Math.min(totalRows, from + pageSize);
+        const pageRows = filtered.slice(from, to);
+
+        bodyEl.innerHTML = pageRows.map((row) => `
+            <tr>
+                <td>${escapeHtml(row.book)}</td>
+                <td>${escapeHtml(row.id)}</td>
+                <td>${escapeHtml(row.page)}</td>
+                <td>${escapeHtml(row.pos)}</td>
+                <td>${escapeHtml(row.pn)}</td>
+                <td>${escapeHtml(row.reason)}</td>
+            </tr>
+        `).join('');
+
+        pageEl.textContent = `Página ${currentPage}/${totalPages}`;
+        metaEl.textContent = `Mostrando ${totalRows ? from + 1 : 0}-${to} de ${totalRows}`;
+        prevEl.disabled = currentPage <= 1;
+        nextEl.disabled = currentPage >= totalPages;
+    };
+
+    filterEl.addEventListener('change', () => {
+        currentPage = 1;
+        applyView();
+    });
+
+    prevEl.addEventListener('click', () => {
+        currentPage -= 1;
+        applyView();
+    });
+
+    nextEl.addEventListener('click', () => {
+        currentPage += 1;
+        applyView();
+    });
+
+    applyView();
+}
+
+function renderResultPanel(title, endpoint, cards, headers = [], rows = [], note = '') {
+    if (!(refs.resultPanel instanceof HTMLElement)
+        || !(refs.resultTitle instanceof HTMLElement)
+        || !(refs.resultMeta instanceof HTMLElement)
+        || !(refs.resultBody instanceof HTMLElement)) {
+        return;
+    }
+
+    refs.resultPanel.hidden = false;
+    refs.resultTitle.textContent = title;
+    refs.resultMeta.textContent = `${endpoint} | ${currentScopeLabel()}`;
+    refs.resultBody.innerHTML = `${renderCards(cards)}${renderTable(headers, rows)}${note ? `<p class="recompute-result-empty">${escapeHtml(note)}</p>` : ''}`;
+}
+
+function renderResponseSummary(actionLabel, endpoint, responseData) {
+    const data = responseData || {};
+    const result = data?.result || {};
+
+    if (endpoint === '/copy-pdf-to-final-all-books') {
+        const totals = result?.totals || {};
+        const perFile = Array.isArray(result?.perFile) ? result.perFile : [];
+        const cards = [
+            { label: 'Libros procesados', value: String(Number(totals.filesProcessed) || 0) },
+            { label: 'Libros escritos', value: String(Number(totals.filesWritten) || 0) },
+            { label: 'Registros escaneados', value: String(Number(totals.scannedRows) || 0) },
+            { label: 'Registros cambiados', value: String(Number(totals.changedRows) || 0) },
+            { label: 'Campos actualizados', value: String(Number(totals.updatedFields) || 0) }
+        ];
+        const rows = perFile.map((item) => [
+            String(item?.file || ''),
+            String(Number(item?.scannedRows) || 0),
+            String(Number(item?.changedRows) || 0),
+            String(Number(item?.updatedFields) || 0),
+            item?.wroteFile ? 'si' : 'no'
+        ]);
+        renderResultPanel(actionLabel, endpoint, cards, ['Libro', 'Escaneados', 'Cambiados', 'Campos', 'Escrito'], rows);
+        return;
+    }
+
+    if (endpoint === '/clear-engine-fields') {
+        const summary = result?.summary || {};
+        const perFile = Array.isArray(result?.perFile) ? result.perFile : [];
+        const cards = [
+            { label: 'Registros tocados', value: String(Number(summary.totalRecords) || 0) },
+            { label: 'Campos vaciados', value: String(Number(summary.totalFields) || 0) },
+            { label: 'Sufijos', value: String((result?.suffixes || []).join(', ')) }
+        ];
+        const rows = perFile.map((item) => [
+            String(item?.file || ''),
+            String(Number(item?.records) || 0),
+            String(Number(item?.fields) || 0)
+        ]);
+        renderResultPanel(actionLabel, endpoint, cards, ['Libro', 'Registros', 'Campos'], rows);
+        return;
+    }
+
+    if (endpoint === '/recompute-qa-errors') {
+        const ruleSummary = Array.isArray(result?.ruleSummary) ? result.ruleSummary : [];
+        const cards = [
+            { label: 'Modo', value: String(result?.mode || '-') },
+            { label: 'Escaneados', value: String(Number(result?.scanned) || 0) },
+            { label: 'Cambiados', value: String(Number(result?.changedRows) || 0) },
+            { label: 'OK', value: String(Number(result?.okRows) || 0) },
+            { label: 'KO', value: String(Number(result?.koRows) || 0) },
+            { label: 'Errores', value: String(Number(result?.errorsFound) || 0) }
+        ];
+        const rows = ruleSummary.map((rule) => [
+            String(rule?.label || rule?.code || ''),
+            String(Number(rule?.count) || 0),
+            String(rule?.severity || '')
+        ]);
+        renderResultPanel(actionLabel, endpoint, cards, ['Regla', 'Conteo', 'Severidad'], rows, rows.length ? '' : 'No hubo desglose de reglas para este alcance.');
+        return;
+    }
+
+    if (endpoint === '/recalculate-revision-status') {
+        const cards = [
+            { label: 'Total registros', value: String(Number(result?.totalRecords) || 0) },
+            { label: 'Registros actualizados', value: String(Number(result?.changedRecords) || 0) },
+            { label: 'Mensaje', value: String(result?.message || '-') }
+        ];
+        renderResultPanel(actionLabel, endpoint, cards);
+        return;
+    }
+
+    if (endpoint === '/api/pdf-preview/apply-to-engine') {
+        const stats = data?.stats || {};
+        const notFoundRows = Array.isArray(data?.not_found_rows) ? data.not_found_rows : [];
+        const scope = getScope();
+        const defaultBook = String(data?.engine || (scope.isAll ? '(varios)' : scope.model) || '').trim();
+        const cards = [
+            { label: 'Script', value: String(data?.script || '-') },
+            { label: 'Engine', value: String(data?.engine || '(todos)') },
+            { label: 'Preview filas', value: String(Number(stats.preview_rows) || 0) },
+            { label: 'Match único', value: String(Number(stats.matched_unique) || 0) },
+            { label: 'No encontrados', value: String(Number(stats.not_found) || 0) },
+            { label: 'Campos modificados', value: String(Number(stats.fields_changed) || 0) }
+        ];
+        const normalizedRows = notFoundRows.map((item) => ({
+            book: String(item?.engine || item?.book || defaultBook),
+            id: String(item?.id ?? item?.ID ?? ''),
+            page: String(item?.page ?? ''),
+            pos: String(item?.pos ?? ''),
+            pn: String(item?.pn_pdf ?? item?.pn ?? ''),
+            reason: String(item?.reason ?? '')
+        }));
+        renderResultPanel(actionLabel, endpoint, cards);
+        renderImportNotFoundInteractive(normalizedRows);
+        return;
+    }
+
+    renderResultEmpty('La respuesta no tiene un formato visual mapeado todavía. Revisa el log para detalle técnico.');
 }
 
 function getScope() {
@@ -314,7 +605,8 @@ async function runImportPdf() {
     const payload = scope.isAll ? {} : { engine: scope.model };
 
     setStatus(scope.isAll ? 'Importando PDF para todos los libros...' : `Importando PDF para ${scope.model}...`, '');
-    await postJson('/api/pdf-preview/apply-to-engine', payload);
+    const data = await postJson('/api/pdf-preview/apply-to-engine', payload);
+    renderResponseSummary('Importar de PDF', '/api/pdf-preview/apply-to-engine', data);
     setStatus('IMPORTAR PDF finalizado correctamente.', 'ok');
 }
 
@@ -325,7 +617,8 @@ async function runFinalCalculation() {
     const payload = scope.isAll ? { backup: true } : { file: scope.file, backup: true };
 
     setStatus(scope.isAll ? 'Ejecutando CÁLCULO FINAL para todos los libros...' : `Ejecutando CÁLCULO FINAL para ${scope.model}...`, '');
-    await postJson('/copy-pdf-to-final-all-books', payload);
+    const data = await postJson('/copy-pdf-to-final-all-books', payload);
+    renderResponseSummary('Cálculo FINAL', '/copy-pdf-to-final-all-books', data);
     setStatus('CÁLCULO FINAL finalizado correctamente.', 'ok');
 }
 
@@ -364,7 +657,8 @@ async function runErrors() {
     }
 
     setStatus('Recalculando ERRORES...', '');
-    await postJson('/recompute-qa-errors', payload);
+    const data = await postJson('/recompute-qa-errors', payload);
+    renderResponseSummary('Recalcular errores', '/recompute-qa-errors', data);
     setStatus('ERRORES recalculados correctamente.', 'ok');
 }
 
@@ -376,7 +670,8 @@ async function runStatuses() {
     }
 
     setStatus('Recalculando ESTADOS para todos los libros...', '');
-    await postJson('/recalculate-revision-status', {});
+    const data = await postJson('/recalculate-revision-status', {});
+    renderResponseSummary('Recalcular estados', '/recalculate-revision-status', data);
     setStatus('ESTADOS recalculados correctamente.', 'ok');
 }
 
@@ -399,7 +694,8 @@ async function runClearPdfFinal() {
         : { files: [scope.file], suffixes: ['_pdf', '_final'], exclude: ['pn_pdf', 'pn_final'] };
 
     setStatus(scope.isAll ? 'Vaciando campos _pdf/_final en todos los libros...' : `Vaciando campos _pdf/_final en ${scope.model}...`, '');
-    await postJson('/clear-engine-fields', payload);
+    const data = await postJson('/clear-engine-fields', payload);
+    renderResponseSummary('Vaciar campos _pdf/_final', '/clear-engine-fields', data);
     setStatus('VACIAR _PDF Y _FINAL finalizado correctamente.', 'ok');
 }
 
@@ -460,6 +756,7 @@ async function init() {
     }
 
     bindEvents();
+    renderResultEmpty('Aún no hay ejecuciones. Lanza una acción para ver resumen y detalle por tabla.');
     appendLog('Inicializando recompute simple...');
     await loadEngines();
     renderScopeSummary();
