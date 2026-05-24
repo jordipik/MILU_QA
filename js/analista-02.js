@@ -1,6 +1,6 @@
 import { state } from './state.js';
 
-import { getEngineJsonFiles, loadEngineDataByFileName, saveCellToServer } from './data-loader.js';
+import { deleteRecordFromServer, getEngineJsonFiles, loadEngineDataByFileName, saveCellToServer } from './data-loader.js';
 
 import {
 
@@ -4298,6 +4298,101 @@ async function saveEditRecordForm() {
         setEditRecordStatus(`Error: ${error.message}`, 'error');
 
         console.error(error);
+
+    }
+
+}
+
+
+async function deleteCurrentRecord() {
+
+    try {
+
+        if (!currentRow) {
+
+            showToast('Carga un registro antes de eliminarlo.', 'warning');
+
+            return;
+
+        }
+
+
+
+        const id = String(currentRow?.ID ?? '').trim();
+
+        if (!id) {
+
+            showToast('No se pudo resolver el ID del registro actual.', 'error');
+
+            return;
+
+        }
+
+
+
+        const engineFile = resolveEngineFile(currentRow);
+
+        if (!engineFile) {
+
+            showToast('No se pudo resolver el archivo engine de este registro.', 'error');
+
+            return;
+
+        }
+
+
+
+        const selectedModel = inferEngineModelFromFileName(engineFile);
+        const rowsBeforeDelete = Array.isArray(state.allData) ? state.allData : [];
+        const currentKey = getRevisionKey(currentRow);
+        const currentIndex = currentKey
+            ? rowsBeforeDelete.findIndex((row) => getRevisionKey(row) === currentKey)
+            : rowsBeforeDelete.findIndex((row) => String(row?.ID ?? '').trim() === id);
+
+        const confirmed = window.confirm(
+            `Se eliminará el registro ${id} del libro ${selectedModel}. Esta acción no se puede deshacer. ¿Continuar?`
+        );
+
+        if (!confirmed) return;
+
+
+
+        showToast('Eliminando registro...', 'info');
+
+        await deleteRecordFromServer(engineFile, id);
+
+        closeRecordEditor(true);
+
+        await loadEngineForFilter(selectedModel);
+
+        const reloadedRows = Array.isArray(state.allData) ? state.allData : [];
+        if (reloadedRows.length) {
+
+            const nextIndex = currentIndex >= 0
+                ? Math.min(currentIndex, reloadedRows.length - 1)
+                : 0;
+
+            currentRow = reloadedRows[nextIndex] || null;
+            currentProcessIndex = nextIndex;
+            $('recordIdInput').value = getDisplayPnForInput(currentRow);
+            renderRecord(currentRow);
+        } else {
+
+            currentRow = null;
+            currentProcessIndex = 0;
+            $('recordIdInput').value = '';
+            renderRecord(null);
+
+        }
+
+
+
+        updateRecordSearchSuggestions();
+        showToast(`Registro ${id} eliminado correctamente.`, 'ok');
+
+    } catch (error) {
+
+        showToast(`No se pudo eliminar el registro: ${String(error?.message || error)}`, 'error');
 
     }
 
@@ -12525,6 +12620,13 @@ bindClick('openRecordEditorBtn', () => {
         },
 
     });
+
+});
+
+
+bindClick('deleteCurrentRecordBtn', () => {
+
+    deleteCurrentRecord();
 
 });
 

@@ -1958,6 +1958,13 @@ body.a2-resizing * {
     box-shadow: none;
 }
 
+.a2-toolbar .a2-meta-delete-btn,
+.a2-meta-delete-btn {
+    margin-left: 8px;
+    border: 1px solid #ad231a;
+    background: linear-gradient(135deg, #d6362a, #b32117);
+}
+
 .a2-toolbar #loadRecordBtn,
 .a2-toolbar #openEditRecordBtn {
     min-height: 22px;

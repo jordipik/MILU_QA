@@ -343,8 +343,20 @@ async function saveEditorChanges(panel, context) {
 
         showToast(`${updatedCount} campo(s) guardado(s): ${fieldNames}`, 'ok');
 
+        let callbackError = null;
         if (typeof onSaved === 'function') {
-            onSaved({ row, changes, updatedFields: data.updatedFields || [] });
+            try {
+                await onSaved({ row, changes, updatedFields: data.updatedFields || [] });
+            } catch (error) {
+                callbackError = error instanceof Error ? error : new Error(String(error));
+                console.warn('[record-editor] onSaved error:', callbackError);
+            }
+        }
+
+        closeEditor(true);
+
+        if (callbackError) {
+            showToast(`Guardado completado, pero la actualización posterior falló: ${callbackError.message}`, 'warning');
         }
 
     } catch (error) {

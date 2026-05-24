@@ -320,6 +320,61 @@ export async function saveCellToServer(file, id, col, value) {
     throw new Error(lastMessage);
 }
 
+export async function deleteRecordFromServer(file, id) {
+    const targetFile = String(file ?? '').trim();
+    const targetId = String(id ?? '').trim();
+
+    if (!targetFile) {
+        throw new Error('No se indico ningun archivo engine_*.json para borrar.');
+    }
+
+    if (!targetId) {
+        throw new Error('No se indico ningun ID de registro para borrar.');
+    }
+
+    const candidateUrls = getDeleteBackendCandidateUrls();
+    let lastError = null;
+    let lastTriedUrl = '';
+
+    for (const url of candidateUrls) {
+        lastTriedUrl = url;
+        try {
+            const response = await fetch(url, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ file: targetFile, id: targetId })
+            });
+
+            if (!response.ok) {
+                const rawBody = await response.text().catch(() => '');
+                let data = {};
+                if (rawBody) {
+                    try {
+                        data = JSON.parse(rawBody);
+                    } catch (_) {
+                        data = {};
+                    }
+                }
+                const plainBody = String(rawBody || '').replace(/<[^>]*>/g, ' ').replace(/\s+/g, ' ').trim();
+                const message = data.error
+                    || (plainBody ? `${plainBody.slice(0, 220)}${plainBody.length > 220 ? '...' : ''}` : '')
+                    || `HTTP ${response.status}`;
+                lastError = new Error(`Borrado no disponible en ${url}: ${message}`);
+                continue;
+            }
+
+            return await response.json();
+        } catch (error) {
+            lastError = error instanceof Error ? error : new Error(String(error));
+        }
+    }
+
+    const lastMessage = String(lastError?.message || '').trim();
+    throw new Error(
+        lastMessage || `No se pudo borrar el registro (${targetId}) usando ${lastTriedUrl || 'ninguna URL de borrado'}.`
+    );
+}
+
 function getSaveBackendCandidateUrls() {
     const currentOrigin = window.location.origin && window.location.origin !== 'null'
         ? window.location.origin
@@ -380,6 +435,34 @@ function getSaveBackendCandidateUrls() {
             sameOriginPhpCandidate
         ].filter(Boolean).filter((url, index, arr) => arr.indexOf(url) === index);
     }
+}
+
+function getDeleteBackendCandidateUrls() {
+    const currentOrigin = window.location.origin && window.location.origin !== 'null'
+        ? window.location.origin
+        : '';
+    const currentHostname = String(window.location.hostname || '').trim();
+    const isLocalhost = currentHostname === 'localhost' || currentHostname === '127.0.0.1' || currentHostname === '';
+
+    const phpCandidate = new URL('delete-json.php', new URL('.', window.location.href)).href;
+    const sameOriginPhpCandidate = currentOrigin ? `${currentOrigin}/delete-json.php` : '/delete-json.php';
+
+    if (isLocalhost) {
+        const localPortCandidate = currentHostname ? `http://${currentHostname}:3000/delete-json` : '';
+        const sameOriginCandidate = currentOrigin ? `${currentOrigin}/delete-json` : '/delete-json';
+        return [
+            localPortCandidate,
+            'http://localhost:3000/delete-json',
+            sameOriginCandidate,
+            phpCandidate
+        ].filter(Boolean).filter((url, index, arr) => arr.indexOf(url) === index);
+    }
+
+    return [
+        sameOriginPhpCandidate,
+        phpCandidate,
+        currentOrigin ? `${currentOrigin}/delete-json` : '/delete-json'
+    ].filter(Boolean).filter((url, index, arr) => arr.indexOf(url) === index);
 }
 
 export async function checkSaveBackendConnection() {

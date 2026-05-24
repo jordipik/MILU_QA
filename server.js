@@ -2567,7 +2567,7 @@ app.delete('/audit-log', async (_req, res) => {
 
 app.use((req, res, next) => {
     const phpPath = String(req.path || '').toLowerCase();
-    const allowedPhpRoutes = new Set(['/qa_revision_sync.php', '/save-json.php']);
+    const allowedPhpRoutes = new Set(['/qa_revision_sync.php', '/save-json.php', '/delete-json.php']);
     if (/\.php$/i.test(req.path) && !allowedPhpRoutes.has(phpPath)) {
         return res.status(404).json({ ok: false, error: 'Ruta no disponible en backend local.' });
     }
@@ -2577,6 +2577,10 @@ app.use((req, res, next) => {
 // Compatibilidad local: esta ruta debe resolverse por Express antes del static middleware.
 app.get('/save-json.php', (_req, res) => {
     res.json({ ok: true, service: 'milu-save-backend', route: '/save-json.php' });
+});
+
+app.get('/delete-json.php', (_req, res) => {
+    res.json({ ok: true, service: 'milu-delete-backend', route: '/delete-json.php' });
 });
 
 // Índice de archivos existentes en esquemas_pos_circulos/.
@@ -2757,9 +2761,73 @@ async function handleSaveJson(req, res) {
     }
 }
 
+async function handleDeleteJson(req, res) {
+    const body = req.body && typeof req.body === 'object' ? req.body : {};
+    const file = String(body.file || '').trim();
+    const id = String(body.id || '').trim();
+
+    try {
+        if (!file) {
+            throw validationError({ code: 'INVALID_FILE', field: 'file', message: 'file es obligatorio' });
+        }
+        if (!id) {
+            throw validationError({ code: 'INVALID_ID', field: 'id', message: 'id es obligatorio' });
+        }
+        if (!ENGINE_JSON_FILES.includes(file)) {
+            throw validationError({ code: 'FILE_NOT_ALLOWED', field: 'file', message: 'Archivo no permitido' });
+        }
+    } catch (error) {
+        return isValidationError(error)
+            ? sendValidationError(res, error, { endpoint: '/delete-json' })
+            : res.status(400).json({ ok: false, error: String(error?.message || error) });
+    }
+
+    const filePath = path.join(__dirname, file);
+    try {
+        let remaining = 0;
+        await withSaveJsonFileLock(file, async () => {
+            const data = await fs.promises.readFile(filePath, 'utf8');
+            let json;
+            try {
+                json = JSON.parse(data);
+            } catch (_parseError) {
+                const parseError = new Error('JSON inválido');
+                parseError.status = 500;
+                throw parseError;
+            }
+            if (!Array.isArray(json)) {
+                const parseError = new Error('JSON inválido');
+                parseError.status = 500;
+                throw parseError;
+            }
+            const index = json.findIndex((row) => String(row?.ID) === String(id));
+            if (index < 0) {
+                const notFoundError = new Error('Registro no encontrado');
+                notFoundError.status = 404;
+                throw notFoundError;
+            }
+            json.splice(index, 1);
+            remaining = json.length;
+            stripLegacyQaFields(json);
+            await writeJsonAtomic(filePath, json);
+            pnReviewQaCacheService.invalidate();
+        });
+        return res.json({ ok: true, deleted: true, file, id, remaining });
+    } catch (error) {
+        console.error('[delete-json] Error borrando', error);
+        const status = Number(error?.status || 500);
+        if (error?.message === 'JSON inválido' || error?.message === 'Registro no encontrado') {
+            return res.status(status).json({ error: error.message });
+        }
+        return res.status(500).json({ error: 'No se pudo borrar el registro' });
+    }
+}
+
 // Ruta para guardar cambios en un archivo JSON.
 app.post('/save-json', handleSaveJson);
 app.post('/save-json.php', handleSaveJson);
+app.post('/delete-json', handleDeleteJson);
+app.post('/delete-json.php', handleDeleteJson);
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Record Editor: actualización segura de múltiples campos en un solo registro.
