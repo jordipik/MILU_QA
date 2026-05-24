@@ -258,6 +258,90 @@ function renderImportNotFoundInteractive(rowsInput) {
     applyView();
 }
 
+function renderImportConflictTable(conflictsInput) {
+    if (!(refs.resultBody instanceof HTMLElement)) return;
+    const conflicts = Array.isArray(conflictsInput) ? conflictsInput : [];
+    if (!conflicts.length) return;
+
+    const rows = conflicts.map((conflict) => {
+        const candidates = Array.isArray(conflict?.candidates) ? conflict.candidates : [];
+        const ids = candidates.map((candidate) => normalizeText(candidate?.ID)).filter(Boolean).join(', ');
+        const diff = Array.isArray(conflict?.differing_fields) ? conflict.differing_fields.join(', ') : '';
+        return [
+            String(conflict?.page ?? ''),
+            String(conflict?.pos ?? ''),
+            String(conflict?.pn_pdf ?? ''),
+            String(conflict?.reason ?? ''),
+            diff,
+            ids || '-'
+        ];
+    });
+
+    refs.resultBody.insertAdjacentHTML('beforeend', `
+        <h4 style="margin:12px 0 8px;font-size:13px;color:#12344f;">Conflictos con acción manual</h4>
+        ${renderTable(['Página', 'POS', 'PN', 'Motivo', 'Campos que difieren', 'IDs candidatos'], rows)}
+    `);
+}
+
+function buildConflictKey(conflict) {
+    return `${Number(conflict?.page || 0)}|${normalizeText(conflict?.pos)}|${normalizeText(conflict?.pn_pdf)}`;
+}
+
+async function requestImportConflictDecisions(conflictsInput) {
+    const conflicts = Array.isArray(conflictsInput) ? conflictsInput : [];
+    const decisions = {};
+
+    for (const conflict of conflicts) {
+        const candidates = Array.isArray(conflict?.candidates) ? conflict.candidates : [];
+        if (!candidates.length) continue;
+
+        const key = normalizeText(conflict?.conflict_key) || buildConflictKey(conflict);
+        const candidateLines = candidates
+            .map((candidate) => {
+                const id = normalizeText(candidate?.ID);
+                const pos = normalizeText(candidate?.POS);
+                const pn = normalizeText(candidate?.['PART NO.'] || candidate?.pn_final || candidate?.pn_excel || candidate?.pn_pdf);
+                return `- ID ${id} (POS ${pos}, PN ${pn})`;
+            })
+            .join('\n');
+
+        const differing = Array.isArray(conflict?.differing_fields) ? conflict.differing_fields.join(', ') : '(sin detalle)';
+        const promptText = [
+            `Conflicto en página ${conflict?.page ?? '-'} POS ${conflict?.pos ?? '-'} PN ${conflict?.pn_pdf ?? '-'}`,
+            `Campos distintos: ${differing}`,
+            '',
+            'Candidatos:',
+            candidateLines,
+            '',
+            'Escribe una acción:',
+            '  skip           -> omitir este conflicto',
+            '  id:<ID>        -> aplicar al ID indicado',
+            '  cancel         -> cancelar el proceso'
+        ].join('\n');
+
+        const answerRaw = window.prompt(promptText, 'skip');
+        const answer = normalizeText(answerRaw).toLowerCase();
+
+        if (!answer || answer === 'skip') {
+            decisions[key] = { action: 'skip' };
+            continue;
+        }
+        if (answer === 'cancel') return { cancelled: true, decisions: {} };
+        if (answer.startsWith('id:')) {
+            const id = normalizeText(answer.slice(3));
+            if (id) {
+                decisions[key] = { action: 'apply-id', target_id: id };
+                continue;
+            }
+        }
+
+        window.alert('Acción no válida. Se tomará como skip para este conflicto.');
+        decisions[key] = { action: 'skip' };
+    }
+
+    return { cancelled: false, decisions };
+}
+
 function renderResultPanel(title, endpoint, cards, headers = [], rows = [], note = '') {
     if (!(refs.resultPanel instanceof HTMLElement)
         || !(refs.resultTitle instanceof HTMLElement)
@@ -364,6 +448,7 @@ function renderResponseSummary(actionLabel, endpoint, responseData) {
     if (endpoint === '/api/pdf-preview/apply-to-engine') {
         const stats = data?.stats || {};
         const notFoundRows = Array.isArray(data?.not_found_rows) ? data.not_found_rows : [];
+        const actionRequiredConflicts = Array.isArray(data?.action_required_conflicts) ? data.action_required_conflicts : [];
         const scope = getScope();
         const defaultBook = String(data?.engine || (scope.isAll ? '(varios)' : scope.model) || '').trim();
         const cards = [
@@ -371,6 +456,8 @@ function renderResponseSummary(actionLabel, endpoint, responseData) {
             { label: 'Engine', value: String(data?.engine || '(todos)') },
             { label: 'Preview filas', value: String(Number(stats.preview_rows) || 0) },
             { label: 'Match único', value: String(Number(stats.matched_unique) || 0) },
+            { label: 'Ambiguos auto (iguales)', value: String(Number(stats.matched_ambiguous_all_equal) || 0) },
+            { label: 'Ambiguos manual', value: String(Number(stats.matched_ambiguous_manual) || 0) },
             { label: 'No encontrados', value: String(Number(stats.not_found) || 0) },
             { label: 'Campos modificados', value: String(Number(stats.fields_changed) || 0) }
         ];
@@ -386,6 +473,7 @@ function renderResponseSummary(actionLabel, endpoint, responseData) {
         }));
         renderResultPanel(actionLabel, endpoint, cards);
         renderImportNotFoundInteractive(normalizedRows);
+        renderImportConflictTable(actionRequiredConflicts);
         return;
     }
 
@@ -627,8 +715,34 @@ async function runImportPdf() {
     const payload = scope.isAll ? {} : { engine: scope.model };
 
     setStatus(scope.isAll ? 'Importando PDF para todos los libros...' : `Importando PDF para ${scope.model}...`, '');
-    const data = await postJson('/api/pdf-preview/apply-to-engine', payload);
+    let data = await postJson('/api/pdf-preview/apply-to-engine', payload);
     renderResponseSummary('Importar de PDF', '/api/pdf-preview/apply-to-engine', data);
+
+    const conflicts = Array.isArray(data?.action_required_conflicts) ? data.action_required_conflicts : [];
+    if (conflicts.length && !scope.isAll) {
+        setStatus(`Se detectaron ${conflicts.length} conflicto(s) ambiguos. Esperando decisiones...`, 'warning');
+        appendLog('[IMPORTAR PDF] Conflictos ambiguos detectados', conflicts);
+
+        const decisionResult = await requestImportConflictDecisions(conflicts);
+        if (decisionResult?.cancelled) {
+            setStatus('IMPORTAR PDF cancelado por el usuario durante la resolución de conflictos.', 'warning');
+            appendLog('[IMPORTAR PDF] Resolución de conflictos cancelada por usuario.');
+            return;
+        }
+
+        const conflictDecisions = decisionResult?.decisions || {};
+        const decisionsCount = Object.keys(conflictDecisions).length;
+        if (decisionsCount > 0) {
+            setStatus('Reejecutando IMPORTAR PDF con decisiones manuales...', '');
+            appendLog('[IMPORTAR PDF] Reintento con decisiones', conflictDecisions);
+            data = await postJson('/api/pdf-preview/apply-to-engine', {
+                engine: scope.model,
+                conflictDecisions
+            });
+            renderResponseSummary('Importar de PDF', '/api/pdf-preview/apply-to-engine', data);
+        }
+    }
+
     setStatus('IMPORTAR PDF finalizado correctamente.', 'ok');
 }
 

@@ -1,7 +1,9 @@
 """Aplica los campos *_pdf de un book_preview_*.json al engine_*.json correspondiente.
 
-Match: (Source Page, POS) en engine <-> (source_page, pos_pdf) en book_preview.
+Match principal: (Source Page, POS) en engine <-> (source_page, pos_pdf) en book_preview.
 Desempate: pn_pdf == pn_pdf / pn_excel / PART NO. en el engine.
+Fallback controlado: si no hay match por (Source Page, POS), intentar (Source Page, PN)
+solo cuando haya un unico candidato.
 
 Por defecto dry-run y sin sobrescribir valores no vacios. Usa --write para persistir
 y --overwrite para forzar sustitucion de valores no vacios.
@@ -56,6 +58,25 @@ OTHER_EMPTY_FIELDS = (
     "fn_pdf",
     "measure_pdf",
     "norma_pdf",
+)
+
+# Campos para comprobar si varios candidatos ambiguos son equivalentes y se puede
+# aplicar el mismo preview a todos sin decision manual.
+DUPLICATE_EQUIVALENCE_FIELDS = (
+    "engine_model",
+    "Source Page",
+    "PART NO.",
+    "pn_final",
+    "pn_excel",
+    "pn_pdf",
+    "DESIGNATION",
+    "designation_final",
+    "designation_pdf",
+    "BOM-No.",
+    "bom_final",
+    "bom_pdf",
+    "FG/FGS",
+    "fg_fgs_final",
 )
 
 
@@ -192,13 +213,84 @@ def select_engine_row_without_pos(
     return None, "ambiguous"
 
 
+def _duplicate_candidate_signature(row: dict) -> tuple[str, ...]:
+    return tuple(_norm(row.get(field)) for field in DUPLICATE_EQUIVALENCE_FIELDS)
+
+
+def _equivalent_duplicate_candidates(engine_rows: list[dict], candidate_indexes: list[int]) -> tuple[bool, list[str]]:
+    if not candidate_indexes:
+        return False, []
+    signatures = [_duplicate_candidate_signature(engine_rows[i]) for i in candidate_indexes]
+    first = signatures[0]
+    if all(sig == first for sig in signatures[1:]):
+        return True, []
+
+    differing_fields: list[str] = []
+    for field_i, field_name in enumerate(DUPLICATE_EQUIVALENCE_FIELDS):
+        values = {sig[field_i] for sig in signatures}
+        if len(values) > 1:
+            differing_fields.append(field_name)
+    return False, differing_fields
+
+
+def _candidate_snapshot(engine_rows: list[dict], candidate_indexes: list[int]) -> list[dict]:
+    out: list[dict] = []
+    for idx in candidate_indexes[:10]:
+        row = engine_rows[idx]
+        out.append(
+            {
+                "engine_index": idx,
+                "ID": _norm(row.get("ID")),
+                "Source Page": _norm(row.get("Source Page")),
+                "POS": _norm(row.get("POS")),
+                "PART NO.": _norm(row.get("PART NO.")),
+                "pn_final": _norm(row.get("pn_final")),
+                "pn_excel": _norm(row.get("pn_excel")),
+                "pn_pdf": _norm(row.get("pn_pdf")),
+            }
+        )
+    return out
+
+
+def _conflict_key(page: int, pos: str, pn_pdf: str) -> str:
+    return f"{int(page)}|{_norm(pos)}|{_norm(pn_pdf)}"
+
+
+def _apply_preview_fields_to_engine_row(
+    engine_row: dict,
+    preview_row: dict,
+    *,
+    overwrite: bool,
+    only_fields: tuple[str, ...],
+    stats: dict,
+) -> dict[str, dict]:
+    row_changes: dict[str, dict] = {}
+    for field in only_fields:
+        new_val = preview_row.get(field)
+        if _is_empty(new_val):
+            continue
+        current = engine_row.get(field)
+        if not _is_empty(current) and not overwrite:
+            if _norm(current) != _norm(new_val):
+                stats["fields_skipped_nonempty"] += 1
+            continue
+        if _norm(current) == _norm(new_val):
+            continue
+        row_changes[field] = {"from": current, "to": new_val}
+        engine_row[field] = new_val
+        stats["fields_changed"] += 1
+    return row_changes
+
+
 def apply_preview(
     engine_rows: list[dict],
     preview: dict,
     *,
     overwrite: bool,
+    conflict_decisions: dict[str, dict] | None = None,
     only_fields: tuple[str, ...] = PDF_FIELDS,
 ) -> dict:
+    conflict_decisions = conflict_decisions or {}
     idx = build_engine_index(engine_rows)
     pn_idx = build_engine_page_pn_index(engine_rows)
 
@@ -208,6 +300,9 @@ def apply_preview(
         "matched_unique": 0,
         "matched_tiebreak_pn": 0,
         "matched_page_pn_no_pos": 0,
+        "matched_page_pn_pos_mismatch": 0,
+        "matched_ambiguous_all_equal": 0,
+        "matched_ambiguous_manual": 0,
         "ambiguous": 0,
         "not_found": 0,
         "rows_changed": 0,
@@ -217,6 +312,8 @@ def apply_preview(
     not_found_rows: list[dict] = []
     unmatched_samples: list[dict] = []
     ambiguous_samples: list[dict] = []
+    action_required_conflicts: list[dict] = []
+    applied_manual_decisions: list[dict] = []
     changes_log: list[dict] = []
 
     for page_block in preview.get("pages", []) or []:
@@ -245,10 +342,98 @@ def apply_preview(
                 if status == "page-pn":
                     stats["matched_page_pn_no_pos"] += 1
                 elif status == "ambiguous":
+                    candidate_indexes = pn_idx.get((page_num, pn), []) if pn else []
+                    can_apply_to_all, differing_fields = _equivalent_duplicate_candidates(engine_rows, candidate_indexes)
+
+                    if candidate_indexes and can_apply_to_all:
+                        stats["matched_ambiguous_all_equal"] += 1
+                        for candidate_i in candidate_indexes:
+                            engine_row = engine_rows[candidate_i]
+                            row_changes = _apply_preview_fields_to_engine_row(
+                                engine_row,
+                                row,
+                                overwrite=overwrite,
+                                only_fields=only_fields,
+                                stats=stats,
+                            )
+                            if row_changes:
+                                stats["rows_changed"] += 1
+                                if len(changes_log) < 200:
+                                    changes_log.append(
+                                        {
+                                            "engine_index": candidate_i,
+                                            "page": page_num,
+                                            "pos": pos,
+                                            "pn_pdf": pn,
+                                            "match": "ambiguous-all-equal",
+                                            "changes": row_changes,
+                                        }
+                                    )
+                        continue
+
+                    conflict_key = _conflict_key(page_num, pos, pn)
+                    decision = conflict_decisions.get(conflict_key) if isinstance(conflict_decisions, dict) else None
+                    decision_action = _norm((decision or {}).get("action")).lower()
+                    decision_target_id = _norm((decision or {}).get("target_id") or (decision or {}).get("id"))
+
+                    if decision_action in {"apply-id", "apply_id", "apply"} and decision_target_id:
+                        chosen_indexes = [
+                            ci for ci in candidate_indexes if _norm(engine_rows[ci].get("ID")) == decision_target_id
+                        ]
+                        if len(chosen_indexes) == 1:
+                            chosen_i = chosen_indexes[0]
+                            row_changes = _apply_preview_fields_to_engine_row(
+                                engine_rows[chosen_i],
+                                row,
+                                overwrite=overwrite,
+                                only_fields=only_fields,
+                                stats=stats,
+                            )
+                            if row_changes:
+                                stats["rows_changed"] += 1
+                                if len(changes_log) < 200:
+                                    changes_log.append(
+                                        {
+                                            "engine_index": chosen_i,
+                                            "page": page_num,
+                                            "pos": pos,
+                                            "pn_pdf": pn,
+                                            "match": "ambiguous-manual-id",
+                                            "changes": row_changes,
+                                        }
+                                    )
+                            stats["matched_ambiguous_manual"] += 1
+                            if len(applied_manual_decisions) < 50:
+                                applied_manual_decisions.append(
+                                    {
+                                        "page": page_num,
+                                        "pos": pos,
+                                        "pn_pdf": pn,
+                                        "action": "apply-id",
+                                        "target_id": decision_target_id,
+                                        "engine_index": chosen_i,
+                                    }
+                                )
+                            continue
+
                     stats["ambiguous"] += 1
+                    ambiguous_entry = {
+                        "page": page_num,
+                        "pos": pos,
+                        "pn_pdf": pn,
+                        "reason": "missing-pos-page-pn-ambiguous",
+                        "differing_fields": differing_fields,
+                        "conflict_key": conflict_key,
+                    }
                     if len(ambiguous_samples) < 20:
-                        ambiguous_samples.append(
-                            {"page": page_num, "pos": pos, "pn_pdf": pn, "reason": "missing-pos-page-pn-ambiguous"}
+                        ambiguous_samples.append(ambiguous_entry)
+                    if candidate_indexes and len(action_required_conflicts) < 20:
+                        action_required_conflicts.append(
+                            {
+                                **ambiguous_entry,
+                                "candidates": _candidate_snapshot(engine_rows, candidate_indexes),
+                                "suggested_action": "manual-decision-required",
+                            }
                         )
                     continue
                 else:
@@ -258,44 +443,160 @@ def apply_preview(
                     continue
             else:
                 engine_i, status = select_engine_row(idx, engine_rows, page_num, pos, pn)
+                # Fallback de compatibilidad: si no existe (page,pos), intentar (page,pn)
+                # y aplicar solo cuando el candidato por PN sea unico.
+                if status == "not-found" and pn:
+                    pn_engine_i, pn_status = select_engine_row_without_pos(pn_idx, page_num, pn)
+                    if pn_status == "page-pn":
+                        engine_i = pn_engine_i
+                        status = "page-pn-pos-mismatch"
+                    elif pn_status == "ambiguous":
+                        stats["ambiguous"] += 1
+                        if len(ambiguous_samples) < 20:
+                            ambiguous_samples.append(
+                                {
+                                    "page": page_num,
+                                    "pos": pos,
+                                    "pn_pdf": pn,
+                                    "reason": "pos-mismatch-page-pn-ambiguous",
+                                }
+                            )
+                        continue
             if status == "unique":
                 stats["matched_unique"] += 1
             elif status == "tiebreak-pn":
                 stats["matched_tiebreak_pn"] += 1
             elif status == "page-pn":
                 stats["matched_page_pn_no_pos"] += 1
+            elif status == "page-pn-pos-mismatch":
+                stats["matched_page_pn_pos_mismatch"] += 1
             elif status == "ambiguous":
+                candidate_indexes: list[int]
+                if pos:
+                    candidate_indexes = idx.get((page_num, pos), [])
+                else:
+                    candidate_indexes = pn_idx.get((page_num, pn), []) if pn else []
+
+                can_apply_to_all, differing_fields = _equivalent_duplicate_candidates(engine_rows, candidate_indexes)
+                if not candidate_indexes:
+                    stats["ambiguous"] += 1
+                    if len(ambiguous_samples) < 20:
+                        ambiguous_samples.append(
+                            {"page": page_num, "pos": pos, "pn_pdf": pn, "reason": "ambiguous-without-candidates"}
+                        )
+                    continue
+
+                if can_apply_to_all:
+                    stats["matched_ambiguous_all_equal"] += 1
+                    for candidate_i in candidate_indexes:
+                        engine_row = engine_rows[candidate_i]
+                        row_changes = _apply_preview_fields_to_engine_row(
+                            engine_row,
+                            row,
+                            overwrite=overwrite,
+                            only_fields=only_fields,
+                            stats=stats,
+                        )
+                        if row_changes:
+                            stats["rows_changed"] += 1
+                            if len(changes_log) < 200:
+                                changes_log.append(
+                                    {
+                                        "engine_index": candidate_i,
+                                        "page": page_num,
+                                        "pos": pos,
+                                        "pn_pdf": pn,
+                                        "match": "ambiguous-all-equal",
+                                        "changes": row_changes,
+                                    }
+                                )
+                    continue
+
+                conflict_key = _conflict_key(page_num, pos, pn)
+                decision = conflict_decisions.get(conflict_key) if isinstance(conflict_decisions, dict) else None
+                decision_action = _norm((decision or {}).get("action")).lower()
+                decision_target_id = _norm((decision or {}).get("target_id") or (decision or {}).get("id"))
+
+                if decision_action in {"apply-id", "apply_id", "apply"} and decision_target_id:
+                    chosen_indexes = [
+                        ci for ci in candidate_indexes if _norm(engine_rows[ci].get("ID")) == decision_target_id
+                    ]
+                    if len(chosen_indexes) == 1:
+                        chosen_i = chosen_indexes[0]
+                        row_changes = _apply_preview_fields_to_engine_row(
+                            engine_rows[chosen_i],
+                            row,
+                            overwrite=overwrite,
+                            only_fields=only_fields,
+                            stats=stats,
+                        )
+                        if row_changes:
+                            stats["rows_changed"] += 1
+                            if len(changes_log) < 200:
+                                changes_log.append(
+                                    {
+                                        "engine_index": chosen_i,
+                                        "page": page_num,
+                                        "pos": pos,
+                                        "pn_pdf": pn,
+                                        "match": "ambiguous-manual-id",
+                                        "changes": row_changes,
+                                    }
+                                )
+                        stats["matched_ambiguous_manual"] += 1
+                        if len(applied_manual_decisions) < 50:
+                            applied_manual_decisions.append(
+                                {
+                                    "page": page_num,
+                                    "pos": pos,
+                                    "pn_pdf": pn,
+                                    "action": "apply-id",
+                                    "target_id": decision_target_id,
+                                    "engine_index": chosen_i,
+                                }
+                            )
+                        continue
+
                 stats["ambiguous"] += 1
+                ambiguous_entry = {
+                    "page": page_num,
+                    "pos": pos,
+                    "pn_pdf": pn,
+                    "reason": "ambiguous-duplicates-differ",
+                    "differing_fields": differing_fields,
+                    "conflict_key": conflict_key,
+                }
                 if len(ambiguous_samples) < 20:
-                    ambiguous_samples.append(
-                        {"page": page_num, "pos": pos, "pn_pdf": pn}
+                    ambiguous_samples.append(ambiguous_entry)
+                if len(action_required_conflicts) < 20:
+                    action_required_conflicts.append(
+                        {
+                            **ambiguous_entry,
+                            "candidates": _candidate_snapshot(engine_rows, candidate_indexes),
+                            "suggested_action": "manual-decision-required",
+                        }
                     )
                 continue
             else:
                 stats["not_found"] += 1
-                not_found_rows.append(_build_not_found_row(page_num, row, "no-engine-match"))
+                reason = "no-engine-match"
+                if pos and pn:
+                    reason = "no-pos-match-page-pn-no-match"
+                not_found_rows.append(_build_not_found_row(page_num, row, reason))
                 if len(unmatched_samples) < 20:
                     unmatched_samples.append(
-                        {"page": page_num, "pos": pos, "pn_pdf": pn}
+                        {"page": page_num, "pos": pos, "pn_pdf": pn, "reason": reason}
                     )
                 continue
 
             engine_row = engine_rows[engine_i]
-            row_changes: dict[str, dict] = {}
-            for field in only_fields:
-                new_val = row.get(field)
-                if _is_empty(new_val):
-                    continue
-                current = engine_row.get(field)
-                if not _is_empty(current) and not overwrite:
-                    if _norm(current) != _norm(new_val):
-                        stats["fields_skipped_nonempty"] += 1
-                    continue
-                if _norm(current) == _norm(new_val):
-                    continue
-                row_changes[field] = {"from": current, "to": new_val}
-                engine_row[field] = new_val
-                stats["fields_changed"] += 1
+            row_changes = _apply_preview_fields_to_engine_row(
+                engine_row,
+                row,
+                overwrite=overwrite,
+                only_fields=only_fields,
+                stats=stats,
+            )
             if row_changes:
                 stats["rows_changed"] += 1
                 if len(changes_log) < 200:
@@ -315,6 +616,8 @@ def apply_preview(
         "not_found_rows": not_found_rows,
         "unmatched_samples": unmatched_samples,
         "ambiguous_samples": ambiguous_samples,
+        "action_required_conflicts": action_required_conflicts,
+        "applied_manual_decisions": applied_manual_decisions,
         "changes_sample": changes_log,
     }
 
@@ -340,6 +643,11 @@ def main(argv: list[str] | None = None) -> int:
         default=None,
         help="Ruta opcional para guardar el informe JSON del run.",
     )
+    parser.add_argument(
+        "--conflict-decisions",
+        default=None,
+        help="Ruta JSON opcional con decisiones manuales por conflicto ambiguo.",
+    )
 
     args = parser.parse_args(argv)
 
@@ -362,7 +670,27 @@ def main(argv: list[str] | None = None) -> int:
 
     only_fields = tuple(args.fields) if args.fields else PDF_FIELDS
 
-    report = apply_preview(engine_rows, preview, overwrite=args.overwrite, only_fields=only_fields)
+    conflict_decisions: dict[str, dict] = {}
+    if args.conflict_decisions:
+        decisions_path = Path(args.conflict_decisions)
+        if decisions_path.is_file():
+            loaded = None
+            try:
+                with decisions_path.open("r", encoding="utf-8") as f:
+                    loaded = json.load(f)
+            except json.JSONDecodeError:
+                with decisions_path.open("r", encoding="utf-8-sig") as f:
+                    loaded = json.load(f)
+            if isinstance(loaded, dict):
+                conflict_decisions = loaded
+
+    report = apply_preview(
+        engine_rows,
+        preview,
+        overwrite=args.overwrite,
+        conflict_decisions=conflict_decisions,
+        only_fields=only_fields,
+    )
     stats = report["stats"]
 
     print("=" * 70)
@@ -376,6 +704,9 @@ def main(argv: list[str] | None = None) -> int:
     print(f"Match único              : {stats['matched_unique']}")
     print(f"Match desempate por PN   : {stats['matched_tiebreak_pn']}")
     print(f"Match page+PN sin POS    : {stats['matched_page_pn_no_pos']}")
+    print(f"Match page+PN por mismatch POS: {stats['matched_page_pn_pos_mismatch']}")
+    print(f"Match ambiguo (todos iguales): {stats['matched_ambiguous_all_equal']}")
+    print(f"Match ambiguo (decision manual): {stats['matched_ambiguous_manual']}")
     print(f"Ambiguos (no aplicado)   : {stats['ambiguous']}")
     print(f"No encontrados           : {stats['not_found']}")
     print(f"Filas con cambios        : {stats['rows_changed']}")
@@ -391,6 +722,14 @@ def main(argv: list[str] | None = None) -> int:
         print("Ejemplos ambiguos (max 20):")
         for s in report["ambiguous_samples"]:
             print(f"  page={s['page']} pos={s['pos']!r} pn={s['pn_pdf']!r}")
+    if report["action_required_conflicts"]:
+        print("-" * 70)
+        print("Conflictos que requieren decision manual (max 20):")
+        for s in report["action_required_conflicts"]:
+            print(
+                f"  page={s['page']} pos={s['pos']!r} pn={s['pn_pdf']!r} "
+                f"diferencias={','.join(s.get('differing_fields') or [])}"
+            )
     print("=" * 70)
 
     if args.write and stats["rows_changed"] > 0:

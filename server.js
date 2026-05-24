@@ -670,6 +670,9 @@ app.post('/api/pdf-preview/apply-to-engine', async (req, res) => {
         const fs = require('fs');
         const os = require('os');
         const engineRaw = typeof req.body?.engine === 'string' ? req.body.engine.trim() : '';
+        const conflictDecisions = (req.body && typeof req.body.conflictDecisions === 'object' && req.body.conflictDecisions !== null)
+            ? req.body.conflictDecisions
+            : null;
         const previewsDir = 'json_originales';
 
         // Validacion estricta para evitar inyeccion via argumentos (aunque no usemos shell).
@@ -697,8 +700,22 @@ app.post('/api/pdf-preview/apply-to-engine', async (req, res) => {
 
         const script = engineRaw ? 'apply_book_preview_to_engine.py' : 'apply_all_book_previews.py';
         const reportPath = path.join(os.tmpdir(), `milu_apply_book_preview_report_${Date.now()}_${process.pid}.json`);
+        let conflictDecisionsPath = '';
+        if (engineRaw && conflictDecisions && Object.keys(conflictDecisions).length > 0) {
+            conflictDecisionsPath = path.join(os.tmpdir(), `milu_apply_book_preview_conflicts_${Date.now()}_${process.pid}.json`);
+            fs.writeFileSync(conflictDecisionsPath, JSON.stringify(conflictDecisions, null, 2), 'utf8');
+        }
+
         const args = engineRaw
-            ? [script, '--book-preview', previewFile, '--engine', engineFile, '--write', '--overwrite', '--report', reportPath]
+            ? [
+                script,
+                '--book-preview', previewFile,
+                '--engine', engineFile,
+                '--write',
+                '--overwrite',
+                '--report', reportPath,
+                ...(conflictDecisionsPath ? ['--conflict-decisions', conflictDecisionsPath] : [])
+            ]
             : [script, '--write', '--overwrite', '--report', reportPath];
 
         console.log(`${tag} script=${script} engine=${engineFile || '(all)'} preview=${previewFile || '(all)'}`);
@@ -723,6 +740,9 @@ app.post('/api/pdf-preview/apply-to-engine', async (req, res) => {
                     reportData = JSON.parse(fs.readFileSync(reportPath, 'utf8'));
                     fs.unlinkSync(reportPath);
                 }
+                if (conflictDecisionsPath && fs.existsSync(conflictDecisionsPath)) {
+                    fs.unlinkSync(conflictDecisionsPath);
+                }
             } catch (reportError) {
                 console.warn(`${tag} report parse error:`, reportError);
             }
@@ -731,18 +751,24 @@ app.post('/api/pdf-preview/apply-to-engine', async (req, res) => {
                 const m = out.match(re);
                 return m ? Number(m[1]) : 0;
             };
-            const stats = {
+            const parsedStats = {
                 preview_pages: num(/P[áa]ginas en preview\s*:\s*(\d+)/i),
                 preview_rows: num(/Filas en preview\s*:\s*(\d+)/i),
                 matched_unique: num(/Match [úu]nico\s*:\s*(\d+)/i),
                 matched_tiebreak_pn: num(/Match desempate por PN\s*:\s*(\d+)/i),
                 matched_page_pn_no_pos: num(/Match page\+PN sin POS\s*:\s*(\d+)/i),
+                matched_page_pn_pos_mismatch: num(/Match page\+PN por mismatch POS\s*:\s*(\d+)/i),
+                matched_ambiguous_all_equal: num(/Match ambiguo \(todos iguales\)\s*:\s*(\d+)/i),
+                matched_ambiguous_manual: num(/Match ambiguo \(decision manual\)\s*:\s*(\d+)/i),
                 ambiguous: num(/Ambiguos[^:]*:\s*(\d+)/i),
                 not_found: num(/No encontrados\s*:\s*(\d+)/i),
                 rows_changed: num(/Filas con cambios\s*:\s*(\d+)/i),
                 fields_changed: num(/Campos modificados\s*:\s*(\d+)/i),
                 fields_skipped_nonempty: num(/Campos no vac[íi]os saltados\s*:\s*(\d+)/i)
             };
+            const stats = reportData?.stats && typeof reportData.stats === 'object'
+                ? reportData.stats
+                : parsedStats;
             // Warnings: lineas [WARN]/[SKIP] del barrido o stderr no vacio.
             const warnings = [];
             for (const line of out.split(/\r?\n/)) {
@@ -762,6 +788,8 @@ app.post('/api/pdf-preview/apply-to-engine', async (req, res) => {
                 preview: previewFile || null,
                 stats,
                 not_found_rows: Array.isArray(reportData?.not_found_rows) ? reportData.not_found_rows : [],
+                action_required_conflicts: Array.isArray(reportData?.action_required_conflicts) ? reportData.action_required_conflicts : [],
+                applied_manual_decisions: Array.isArray(reportData?.applied_manual_decisions) ? reportData.applied_manual_decisions : [],
                 warnings,
                 stdout: out,
                 stderr,
