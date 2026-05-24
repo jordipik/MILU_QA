@@ -29,6 +29,8 @@ import { runInMemoryRecalculation } from './error-recalc.js';
 
 import { showToast } from './toast.js';
 
+import { openRecordEditor, closeRecordEditor } from './record-editor.js';
+
 const $ = (id) => document.getElementById(id);
 
 function ensureLegacyToolbarControls() {
@@ -12141,6 +12143,58 @@ bindClick('propagateHermanosBtn', () => {
 bindClick('propagateHermanosBookBtn', () => {
 
     applyPnCopyPropagationForCurrentBook().catch((error) => alert(`Error al propagar hermanos del libro: ${error.message}`));
+
+});
+
+
+
+bindClick('openRecordEditorBtn', () => {
+
+    if (!currentRow) {
+
+        showToast('Carga un registro antes de editarlo.', 'warn');
+
+        return;
+
+    }
+
+    const engineFile = resolveEngineFile(currentRow);
+
+    if (!engineFile) {
+
+        showToast('No se pudo determinar el archivo engine de este registro.', 'error');
+
+        return;
+
+    }
+
+    openRecordEditor({
+
+        row: currentRow,
+
+        engineFile,
+
+        recordId: String(currentRow?.ID ?? ''),
+
+        onSaved: async ({ row }) => {
+
+            currentRow = row;
+
+            try {
+
+                await reloadEditedRecord(engineFile, String(row?.ID ?? ''));
+
+            } catch (_reloadError) {
+
+                // Si el reload falla, al menos refrescamos la UI con los datos en memoria
+
+                renderRecord(currentRow);
+
+            }
+
+        },
+
+    });
 
 });
 

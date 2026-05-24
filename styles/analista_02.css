@@ -2174,6 +2174,18 @@ body.a2-resizing * {
     box-shadow: 0 6px 16px rgba(50, 131, 85, 0.28);
 }
 
+.a2-review-btn.is-edit {
+    border-color: #b3c8f0;
+    background: linear-gradient(180deg, #f5f9ff, #e8f0fc);
+    color: #2a5da8;
+}
+
+.a2-review-btn.is-edit:hover {
+    background: linear-gradient(180deg, #eaf2ff, #d6e8ff);
+    border-color: #7aa8e8;
+    color: #1a4690;
+}
+
 .a2-compare-table-card {
     border-radius: 12px;
     border: 1px solid var(--line);

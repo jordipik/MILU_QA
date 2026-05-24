@@ -7,6 +7,17 @@ const QA_EDITABLE_FIELDS = new Set([
 ]);
 
 const OPERATIONAL_EDITABLE_FIELDS = new Set([
+    'POS',
+    'PART NO.',
+    'DESIGNATION',
+    'MODEL/TYPE',
+    'QTY',
+    'UNITS',
+    'WEIGHT',
+    'FN',
+    'MEASUREMENT / STANDARD',
+    'FG/FGS',
+    'BOM-No.',
     'pos_excel',
     'pn_excel',
     'designation_excel',
@@ -37,6 +48,16 @@ const OPERATIONAL_EDITABLE_FIELDS = new Set([
     'hierarchie_final',
     'new_pn_final',
     'subst_pnlist_final',
+    'gesa',
+    'nsn',
+    'normalizado',
+    'designation_gesa',
+    'weight_gesa',
+    'dimensions_gesa',
+    'sust_status',
+    'sust_hierarchie',
+    'sust_new_part_number',
+    'sust_superseded_list',
     'norma',
     'exp_imagenes',
     'pos_pdf',
@@ -70,6 +91,17 @@ const PROHIBITED_FIELDS = new Set([
 ]);
 
 const FIELD_ALIASES = new Map([
+    ['pos', 'POS'],
+    ['part no.', 'PART NO.'],
+    ['designation', 'DESIGNATION'],
+    ['model/type', 'MODEL/TYPE'],
+    ['qty', 'QTY'],
+    ['units', 'UNITS'],
+    ['weight', 'WEIGHT'],
+    ['fn', 'FN'],
+    ['measurement / standard', 'MEASUREMENT / STANDARD'],
+    ['fg/fgs', 'FG/FGS'],
+    ['bom-no.', 'BOM-No.'],
     ['measurement_final', 'measure_final'],
 ]);
 
@@ -89,9 +121,12 @@ function isProhibitedField(name) {
 
 function isAllowedSaveJsonField(name) {
     const normalized = canonicalFieldName(name);
+    const normalizedLower = String(normalized).trim().toLowerCase();
     return QA_EDITABLE_FIELDS.has(normalized)
+        || QA_EDITABLE_FIELDS.has(normalizedLower)
         || OPERATIONAL_EDITABLE_FIELDS.has(normalized)
-        || /_excel$/i.test(normalized);
+        || OPERATIONAL_EDITABLE_FIELDS.has(normalizedLower)
+        || /_excel$/i.test(normalizedLower);
 }
 
 function normalizeEditableFieldValue(name, value) {

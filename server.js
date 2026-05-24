@@ -779,6 +779,9 @@ app.post('/api/pdf-preview/apply-to-engine', async (req, res) => {
     }
 });
 
+// Endpoint del editor de registro (registrado aqui para asegurar disponibilidad).
+app.post('/api/record-editor/update-record', handleRecordEditorUpdateRecord);
+
 app.post('/recalculate-revision-status', async (req, res) => {
     try {
         let totalRecords = 0;
@@ -2729,6 +2732,195 @@ async function handleSaveJson(req, res) {
 // Ruta para guardar cambios en un archivo JSON.
 app.post('/save-json', handleSaveJson);
 app.post('/save-json.php', handleSaveJson);
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Record Editor: actualización segura de múltiples campos en un solo registro.
+// Payload: { engine, id, changes: { field: value, ... } }
+// ─────────────────────────────────────────────────────────────────────────────
+
+const RECORD_EDITOR_BLOCKED_FIELDS = new Set([
+    'id',
+    'ID',
+    'engine_model',
+    'source_json_file',
+    'raw_json',
+    'total_error',
+    'has_error',
+    'qa_errors',
+    'qa_errors_active',
+    'exp_imagenes',
+    'esquema',
+    'esquema_pos',
+]);
+
+function isBlockedRecordEditorField(name) {
+    const raw = String(name == null ? '' : name).trim();
+    if (!raw) return true;
+    if (RECORD_EDITOR_BLOCKED_FIELDS.has(raw)) return true;
+    if (/_error$/i.test(raw)) return true;
+    if (/^qa_revision_/i.test(raw)) return true;
+    if (/^(has_img|en_web|fotos_|esquemas_)/i.test(raw)) return true;
+    return false;
+}
+
+async function handleRecordEditorUpdateRecord(req, res) {
+    const payload = req.body || {};
+
+    let engineRaw, idRaw, changesRaw;
+
+    try {
+        assertPlainObject(payload, 'payload');
+        assertPayloadSize(payload, 32768, 'payload');
+
+        engineRaw = assertString(payload.engine ?? '', { field: 'engine', allowEmpty: true, maxLength: 128 });
+        idRaw = assertString(payload.id ?? '', { field: 'id', allowEmpty: true, maxLength: 128 });
+
+        if (!engineRaw) {
+            throw validationError({ code: 'MISSING_FIELD', field: 'engine', message: 'engine es requerido' });
+        }
+        if (!idRaw) {
+            throw validationError({ code: 'MISSING_FIELD', field: 'id', message: 'id es requerido' });
+        }
+
+        changesRaw = payload.changes;
+        if (!changesRaw || typeof changesRaw !== 'object' || Array.isArray(changesRaw)) {
+            throw validationError({ code: 'MISSING_FIELD', field: 'changes', message: 'changes debe ser un objeto' });
+        }
+    } catch (error) {
+        return isValidationError(error)
+            ? sendValidationError(res, error, { endpoint: '/api/record-editor/update-record' })
+            : res.status(400).json({ ok: false, error: String(error?.message || error) });
+    }
+
+    // Resolver nombre del archivo engine
+    const engineFile = (() => {
+        const direct = String(engineRaw).trim();
+        if (ENGINE_JSON_FILES.includes(direct)) return direct;
+        const withPrefix = `engine_${direct}.json`;
+        if (ENGINE_JSON_FILES.includes(withPrefix)) return withPrefix;
+        const withPrefixLower = withPrefix.toLowerCase();
+        return ENGINE_JSON_FILES.find((f) => f.toLowerCase() === withPrefixLower) || null;
+    })();
+
+    if (!engineFile) {
+        return res.status(400).json({
+            ok: false,
+            error: `Motor no permitido: ${engineRaw}. Valores permitidos: ${ENGINE_JSON_FILES.join(', ')}`
+        });
+    }
+
+    // Validar campos del changes
+    const blockedFields = [];
+    const notAllowedFields = [];
+
+    for (const fieldName of Object.keys(changesRaw)) {
+        if (isBlockedRecordEditorField(fieldName)) {
+            blockedFields.push(fieldName);
+        } else if (!isAllowedSaveJsonField(fieldName)) {
+            notAllowedFields.push(fieldName);
+        }
+    }
+
+    if (blockedFields.length > 0) {
+        return res.status(400).json({
+            ok: false,
+            error: `Campos bloqueados no editables: ${blockedFields.join(', ')}`
+        });
+    }
+
+    if (notAllowedFields.length > 0) {
+        return res.status(400).json({
+            ok: false,
+            error: `Campos no permitidos en whitelist: ${notAllowedFields.join(', ')}`
+        });
+    }
+
+    const filePath = path.join(__dirname, engineFile);
+
+    try {
+        let updatedFields = [];
+        let notFoundId = false;
+
+        await withSaveJsonFileLock(engineFile, async () => {
+            const raw = await fs.promises.readFile(filePath, 'utf8');
+            let json;
+            try {
+                json = JSON.parse(raw);
+            } catch (_parseError) {
+                throw Object.assign(new Error('JSON inválido'), { status: 500 });
+            }
+
+            if (!Array.isArray(json)) {
+                throw Object.assign(new Error('Formato inesperado: se esperaba array'), { status: 500 });
+            }
+
+            const rowIndex = json.findIndex((r) => idsEquivalent(r?.ID, idRaw));
+            if (rowIndex < 0) {
+                notFoundId = true;
+                return;
+            }
+
+            const row = json[rowIndex];
+            const changes = [];
+
+            for (const [fieldName, newValue] of Object.entries(changesRaw)) {
+                const canonical = canonicalFieldName(fieldName);
+                if (!canonical) continue;
+
+                const oldValue = String(row[canonical] == null ? '' : row[canonical]);
+                const normalizedNew = String(newValue == null ? '' : newValue);
+
+                if (oldValue === normalizedNew) continue;
+
+                changes.push({ field: canonical, oldValue, newValue: normalizedNew });
+                setWriteField(row, canonical, normalizedNew);
+            }
+
+            if (changes.length === 0) {
+                updatedFields = [];
+                return;
+            }
+
+            // Backup antes de escribir
+            const backupPath = `${filePath}.backup.${Date.now()}`;
+            await fs.promises.copyFile(filePath, backupPath);
+
+            stripLegacyQaFields(json);
+            await writeJsonAtomic(filePath, json);
+            pnReviewQaCacheService.invalidate();
+
+            updatedFields = changes;
+        });
+
+        if (notFoundId) {
+            return res.status(404).json({
+                ok: false,
+                error: `Registro no encontrado con ID ${idRaw} en ${engineFile}`
+            });
+        }
+
+        console.info(
+            `[record-editor] file=${engineFile} id=${idRaw} fields=${updatedFields.length}`,
+            updatedFields.map((c) => c.field)
+        );
+
+        return res.json({
+            ok: true,
+            engine: engineFile,
+            id: idRaw,
+            updatedCount: updatedFields.length,
+            updatedFields
+        });
+
+    } catch (error) {
+        console.error('[record-editor] Error guardando', error);
+        const status = Number(error?.status || 500);
+        return res.status(status).json({
+            ok: false,
+            error: String(error?.message || 'No se pudo guardar el archivo')
+        });
+    }
+}
 
 app.post('/copy-pdf-to-pdf', async (req, res) => {
     const payload = req.body;

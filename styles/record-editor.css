@@ -1,0 +1,465 @@
+/* ─────────────────────────────────────────────────────────────────────────────
+   Record Editor — Panel de edición de ficha técnica MILU
+   ───────────────────────────────────────────────────────────────────────────── */
+
+/* ── Variables ────────────────────────────────────────────────────────────── */
+.re-modal {
+    --re-panel-width: min(880px, 95vw);
+    --re-header-h: 64px;
+    --re-footer-h: 56px;
+    --re-status-h: 30px;
+
+    --re-bg: #f5f8fd;
+    --re-panel-bg: #ffffff;
+    --re-header-bg: #f6f9ff;
+    --re-border: #d6e0ef;
+    --re-input-bg: #ffffff;
+    --re-input-bg-hover: #f8fbff;
+    --re-input-border: #b9cbe2;
+    --re-input-focus-border: #5b8af5;
+    --re-input-dirty-border: #e6a817;
+
+    --re-text: #1f2a3d;
+    --re-text-muted: #5e6f84;
+    --re-text-label: #4c5f76;
+    --re-accent: #5b8af5;
+    --re-dirty: #e6a817;
+    --re-ok: #48b877;
+    --re-error: #e05858;
+
+    --re-group-title-bg: #f2f6fd;
+    --re-group-border: #dbe4f2;
+
+    --re-radius-sm: 4px;
+    --re-radius-md: 6px;
+    --re-radius-lg: 8px;
+
+    --re-font: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+    --re-font-mono: 'Consolas', 'Fira Code', 'Cascadia Code', monospace;
+    --re-font-size: 13px;
+
+    --re-z: 9900;
+}
+
+/* ── Backdrop ─────────────────────────────────────────────────────────────── */
+.re-modal-backdrop {
+    position: fixed;
+    inset: 0;
+    background: rgba(16, 26, 40, 0.26);
+    z-index: var(--re-z);
+    backdrop-filter: blur(2px);
+}
+
+/* ── Panel contenedor ─────────────────────────────────────────────────────── */
+.re-modal-panel {
+    position: fixed;
+    top: 0;
+    right: 0;
+    width: var(--re-panel-width);
+    height: 100dvh;
+    max-height: 100dvh;
+    background: var(--re-panel-bg);
+    border-left: 1px solid var(--re-border);
+    z-index: calc(var(--re-z) + 1);
+    display: flex;
+    flex-direction: column;
+    font-family: var(--re-font);
+    font-size: var(--re-font-size);
+    color: var(--re-text);
+    box-shadow: -6px 0 30px rgba(22, 48, 86, 0.2);
+    overflow: hidden;
+    animation: re-slide-in 0.18s ease-out;
+}
+
+@keyframes re-slide-in {
+    from {
+        transform: translateX(100%);
+        opacity: 0;
+    }
+
+    to {
+        transform: translateX(0);
+        opacity: 1;
+    }
+}
+
+/* ── Header ───────────────────────────────────────────────────────────────── */
+.re-modal-header {
+    flex-shrink: 0;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 0 16px;
+    height: var(--re-header-h);
+    background: var(--re-header-bg);
+    border-bottom: 1px solid var(--re-border);
+}
+
+.re-modal-title-wrap {
+    flex: 1;
+    overflow: hidden;
+}
+
+.re-modal-title {
+    margin: 0;
+    font-size: 15px;
+    font-weight: 600;
+    color: var(--re-text);
+    line-height: 1.2;
+}
+
+.re-modal-meta {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin-top: 2px;
+    font-size: 11px;
+    color: var(--re-text-muted);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.re-modal-pn {
+    color: #2f6fcc;
+    font-weight: 600;
+    font-size: 12px;
+    max-width: 280px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.re-modal-engine {
+    background: #e9f1ff;
+    border-radius: var(--re-radius-sm);
+    padding: 1px 6px;
+    font-size: 11px;
+    color: #355f99;
+}
+
+.re-modal-id {
+    font-size: 11px;
+    color: var(--re-text-muted);
+}
+
+.re-modal-close {
+    flex-shrink: 0;
+    width: 32px;
+    height: 32px;
+    padding: 0;
+    background: transparent;
+    border: 1px solid transparent;
+    border-radius: var(--re-radius-md);
+    color: var(--re-text-muted);
+    font-size: 20px;
+    line-height: 1;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: background 0.12s, color 0.12s, border-color 0.12s;
+}
+
+.re-modal-close:hover {
+    background: rgba(47, 111, 204, 0.1);
+    border-color: var(--re-border);
+    color: var(--re-text);
+}
+
+/* ── Status bar ───────────────────────────────────────────────────────────── */
+.re-modal-status-bar {
+    flex-shrink: 0;
+    height: var(--re-status-h);
+    padding: 0 16px;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    background: var(--re-bg);
+    border-bottom: 1px solid var(--re-group-border);
+    font-size: 11px;
+}
+
+.re-dirty-badge {
+    background: rgba(230, 168, 23, 0.15);
+    border: 1px solid rgba(230, 168, 23, 0.45);
+    color: var(--re-dirty);
+    border-radius: var(--re-radius-sm);
+    padding: 1px 8px;
+    font-size: 11px;
+    font-weight: 500;
+}
+
+.re-status-msg {
+    font-size: 11px;
+    color: var(--re-text-muted);
+}
+
+.re-status-msg.is-ok {
+    color: var(--re-ok);
+}
+
+.re-status-msg.is-error {
+    color: var(--re-error);
+    font-weight: 500;
+}
+
+/* ── Body (scroll area) ───────────────────────────────────────────────────── */
+.re-modal-body {
+    flex: 1;
+    overflow-y: auto;
+    overflow-x: hidden;
+    padding: 12px 16px;
+    scroll-behavior: smooth;
+}
+
+.re-modal-body::-webkit-scrollbar {
+    width: 6px;
+}
+
+.re-modal-body::-webkit-scrollbar-track {
+    background: transparent;
+}
+
+.re-modal-body::-webkit-scrollbar-thumb {
+    background: #bfd0e8;
+    border-radius: 3px;
+}
+
+.re-modal-body::-webkit-scrollbar-thumb:hover {
+    background: #9db5d8;
+}
+
+/* ── Grupos ───────────────────────────────────────────────────────────────── */
+.re-group {
+    border: 1px solid var(--re-group-border);
+    border-radius: var(--re-radius-lg);
+    margin-bottom: 10px;
+    overflow: hidden;
+}
+
+.re-group-title {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 8px 12px;
+    background: var(--re-group-title-bg);
+    border-bottom: 1px solid var(--re-group-border);
+    font-size: 11px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    color: var(--re-text-muted);
+    cursor: pointer;
+    user-select: none;
+    list-style: none;
+    transition: background 0.12s;
+}
+
+.re-group-title::-webkit-details-marker {
+    display: none;
+}
+
+.re-group-title::before {
+    content: '▾';
+    font-size: 10px;
+    color: var(--re-text-muted);
+    transition: transform 0.15s;
+    display: inline-block;
+    width: 12px;
+    text-align: center;
+}
+
+.re-group:not([open]) .re-group-title::before {
+    transform: rotate(-90deg);
+}
+
+.re-group-title:hover {
+    background: #e8f0fc;
+}
+
+.re-group-fields {
+    padding: 8px 0;
+}
+
+/* ── Filas de campos ──────────────────────────────────────────────────────── */
+.re-field-row {
+    display: grid;
+    grid-template-columns: 210px 1fr;
+    align-items: center;
+    gap: 8px;
+    padding: 4px 12px;
+    border-radius: var(--re-radius-sm);
+    transition: background 0.08s;
+    position: relative;
+}
+
+.re-field-row:hover {
+    background: rgba(47, 111, 204, 0.06);
+}
+
+.re-field-row.is-dirty {
+    background: rgba(230, 168, 23, 0.06);
+}
+
+.re-field-label {
+    font-size: 12px;
+    color: var(--re-text-label);
+    font-family: var(--re-font-mono);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    cursor: default;
+}
+
+.re-field-input-wrap {
+    position: relative;
+    display: flex;
+    align-items: center;
+}
+
+.re-field-input {
+    width: 100%;
+    padding: 5px 28px 5px 8px;
+    background: var(--re-input-bg);
+    border: 1px solid var(--re-input-border);
+    border-radius: var(--re-radius-sm);
+    color: var(--re-text);
+    font-family: var(--re-font-mono);
+    font-size: 12px;
+    line-height: 1.4;
+    outline: none;
+    transition: border-color 0.12s, background 0.12s, box-shadow 0.12s;
+    min-height: 28px;
+    box-sizing: border-box;
+}
+
+.re-field-input.is-empty {
+    color: var(--re-text-muted);
+}
+
+.re-field-input:hover {
+    background: var(--re-input-bg-hover);
+    border-color: #8eabd1;
+}
+
+.re-field-input:focus {
+    border-color: var(--re-input-focus-border);
+    background: var(--re-input-bg-hover);
+    box-shadow: 0 0 0 2px rgba(91, 138, 245, 0.18);
+}
+
+.re-field-row.is-dirty .re-field-input {
+    border-color: var(--re-input-dirty-border);
+}
+
+.re-field-row.is-dirty .re-field-input:focus {
+    box-shadow: 0 0 0 2px rgba(230, 168, 23, 0.2);
+}
+
+/* Indicador de campo sucio (punto naranja) */
+.re-field-dirty-mark {
+    position: absolute;
+    right: 7px;
+    width: 7px;
+    height: 7px;
+    border-radius: 50%;
+    background: var(--re-dirty);
+    opacity: 0;
+    transition: opacity 0.15s;
+    pointer-events: none;
+}
+
+.re-field-row.is-dirty .re-field-dirty-mark {
+    opacity: 1;
+}
+
+/* ── Footer ───────────────────────────────────────────────────────────────── */
+.re-modal-footer {
+    flex-shrink: 0;
+    display: flex;
+    align-items: center;
+    justify-content: flex-end;
+    gap: 8px;
+    padding: 0 16px;
+    height: var(--re-footer-h);
+    background: var(--re-header-bg);
+    border-top: 1px solid var(--re-border);
+}
+
+.re-btn {
+    padding: 7px 18px;
+    border-radius: var(--re-radius-md);
+    font-family: var(--re-font);
+    font-size: 13px;
+    font-weight: 500;
+    cursor: pointer;
+    border: 1px solid transparent;
+    transition: background 0.12s, border-color 0.12s, color 0.12s, opacity 0.12s;
+    min-width: 80px;
+    text-align: center;
+}
+
+.re-btn:disabled {
+    opacity: 0.45;
+    cursor: not-allowed;
+}
+
+.re-btn-cancel {
+    background: transparent;
+    border-color: var(--re-border);
+    color: var(--re-text-muted);
+}
+
+.re-btn-cancel:hover:not(:disabled) {
+    background: #eef3fb;
+    border-color: #a6bddc;
+    color: var(--re-text);
+}
+
+.re-btn-reset {
+    background: transparent;
+    border-color: var(--re-border);
+    color: var(--re-text-muted);
+}
+
+.re-btn-reset:hover:not(:disabled) {
+    background: rgba(230, 168, 23, 0.08);
+    border-color: rgba(230, 168, 23, 0.4);
+    color: var(--re-dirty);
+}
+
+.re-btn-save {
+    background: var(--re-accent);
+    border-color: var(--re-accent);
+    color: #fff;
+    font-weight: 600;
+}
+
+.re-btn-save:hover:not(:disabled) {
+    background: #6e9bff;
+    border-color: #6e9bff;
+}
+
+.re-btn-save:active:not(:disabled) {
+    background: #4a78e0;
+}
+
+/* ── Accesibilidad: solo contorno visible con teclado ─────────────────────── */
+.re-btn:focus-visible,
+.re-field-input:focus-visible,
+.re-modal-close:focus-visible {
+    outline: 2px solid var(--re-accent);
+    outline-offset: 2px;
+}
+
+/* ── Responsive: en pantallas pequeñas, el panel ocupa toda la pantalla ───── */
+@media (max-width: 600px) {
+    .re-modal-panel {
+        width: 100vw;
+        border-left: none;
+    }
+
+    .re-field-row {
+        grid-template-columns: 140px 1fr;
+    }
+}
