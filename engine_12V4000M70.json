@@ -615,7 +615,7 @@
     "total_error": 0,
     "has_error": false,
     "qa_revision_estado": "ok",
-    "qa_revision_accion": "importar",
+    "qa_revision_accion": "copia",
     "ID": 1900004,
     "model_type_final": "4000",
     "model_type_error": 0,
@@ -646,7 +646,9 @@
     "bom_pdf": "010.00475",
     "pn_excel": "5249950159",
     "model_type_pdf": "4000",
-    "qa_revision_updated_at": "2026-05-23T02:32:35.296Z"
+    "qa_revision_updated_at": "2026-05-23T02:32:35.296Z",
+    "qa_status": "ok",
+    "qa_action": "copia"
   },
   {
     "POS": "130",
@@ -2157,7 +2159,7 @@
     "total_error": 0,
     "has_error": false,
     "qa_revision_estado": "ok",
-    "qa_revision_accion": "importar",
+    "qa_revision_accion": "copia",
     "ID": 1900016,
     "model_type_final": "",
     "model_type_error": 0,
@@ -2195,7 +2197,9 @@
     "SUST_TIPO": "New",
     "new_pn_final": "000912008115",
     "subst_pnlist_final": "000912008005, 000912008085, 000912008143, 06.02093-0405",
-    "qa_revision_updated_at": "2026-05-23T02:32:35.296Z"
+    "qa_revision_updated_at": "2026-05-23T02:32:35.296Z",
+    "qa_status": "ok",
+    "qa_action": "copia"
   },
   {
     "POS": "80",
@@ -2289,7 +2293,7 @@
     "total_error": 0,
     "has_error": false,
     "qa_revision_estado": "ok",
-    "qa_revision_accion": "importar",
+    "qa_revision_accion": "copia",
     "ID": 1900017,
     "model_type_final": "",
     "model_type_error": 0,
@@ -2322,7 +2326,9 @@
     "SUST_TIPO": "New",
     "new_pn_final": "0049976736",
     "subst_pnlist_final": "0009970436, 06.93160-0120, 071401018200, 111L37701/1, 5509970036",
-    "qa_revision_updated_at": "2026-05-23T02:32:35.296Z"
+    "qa_revision_updated_at": "2026-05-23T02:32:35.296Z",
+    "qa_status": "ok",
+    "qa_action": "copia"
   },
   {
     "POS": "85",
@@ -2416,7 +2422,7 @@
     "total_error": 0,
     "has_error": false,
     "qa_revision_estado": "ok",
-    "qa_revision_accion": "importar",
+    "qa_revision_accion": "copia",
     "ID": 1900018,
     "model_type_final": "BR 4000",
     "model_type_error": 0,
@@ -2446,7 +2452,9 @@
     "fg_fgs_pdf": "011-05",
     "bom_pdf": "010.00475",
     "pn_excel": "5260101714",
-    "qa_revision_updated_at": "2026-05-23T02:32:35.296Z"
+    "qa_revision_updated_at": "2026-05-23T02:32:35.296Z",
+    "qa_status": "ok",
+    "qa_action": "copia"
   },
   {
     "POS": "10",
@@ -155026,7 +155034,7 @@
     "total_error": 0,
     "has_error": false,
     "qa_revision_estado": "ok",
-    "qa_revision_accion": "importar",
+    "qa_revision_accion": "copia",
     "ID": 1901221,
     "model_type_final": "",
     "model_type_error": 0,
@@ -155059,7 +155067,9 @@
     "SUST_TIPO": "New",
     "new_pn_final": "0049976736",
     "subst_pnlist_final": "0009970436, 06.93160-0120, 071401018200, 111L37701/1, 5509970036",
-    "qa_revision_updated_at": "2026-05-23T02:32:35.296Z"
+    "qa_revision_updated_at": "2026-05-23T02:32:35.296Z",
+    "qa_status": "ok",
+    "qa_action": "copia"
   },
   {
     "POS": "1300",
@@ -238776,7 +238786,7 @@
     "total_error": 0,
     "has_error": false,
     "qa_revision_estado": "ok",
-    "qa_revision_accion": "importar",
+    "qa_revision_accion": "copia",
     "ID": 1901888,
     "model_type_final": "",
     "model_type_error": 0,
@@ -238809,7 +238819,9 @@
     "SUST_TIPO": "New",
     "new_pn_final": "0049976736",
     "subst_pnlist_final": "0009970436, 06.93160-0120, 071401018200, 111L37701/1, 5509970036",
-    "qa_revision_updated_at": "2026-05-23T02:32:35.296Z"
+    "qa_revision_updated_at": "2026-05-23T02:32:35.296Z",
+    "qa_status": "ok",
+    "qa_action": "copia"
   },
   {
     "POS": "1200",
@@ -309792,7 +309804,7 @@
     "total_error": 0,
     "has_error": false,
     "qa_revision_estado": "ok",
-    "qa_revision_accion": "importar",
+    "qa_revision_accion": "copia",
     "ID": 1902444,
     "model_type_final": "4000",
     "model_type_error": 0,
@@ -309823,7 +309835,9 @@
     "bom_pdf": "010.00475",
     "pn_excel": "5249950159",
     "model_type_pdf": "4000",
-    "qa_revision_updated_at": "2026-05-23T02:32:35.296Z"
+    "qa_revision_updated_at": "2026-05-23T02:32:35.296Z",
+    "qa_status": "ok",
+    "qa_action": "copia"
   },
   {
     "POS": "130",
@@ -311334,7 +311348,7 @@
     "total_error": 0,
     "has_error": false,
     "qa_revision_estado": "ok",
-    "qa_revision_accion": "importar",
+    "qa_revision_accion": "copia",
     "ID": 1902456,
     "model_type_final": "",
     "model_type_error": 0,
@@ -311372,7 +311386,9 @@
     "SUST_TIPO": "New",
     "new_pn_final": "000912008115",
     "subst_pnlist_final": "000912008005, 000912008085, 000912008143, 06.02093-0405",
-    "qa_revision_updated_at": "2026-05-23T02:32:35.296Z"
+    "qa_revision_updated_at": "2026-05-23T02:32:35.296Z",
+    "qa_status": "ok",
+    "qa_action": "copia"
   },
   {
     "POS": "80",
@@ -311466,7 +311482,7 @@
     "total_error": 0,
     "has_error": false,
     "qa_revision_estado": "ok",
-    "qa_revision_accion": "importar",
+    "qa_revision_accion": "copia",
     "ID": 1902457,
     "model_type_final": "",
     "model_type_error": 0,
@@ -311499,7 +311515,9 @@
     "SUST_TIPO": "New",
     "new_pn_final": "0049976736",
     "subst_pnlist_final": "0009970436, 06.93160-0120, 071401018200, 111L37701/1, 5509970036",
-    "qa_revision_updated_at": "2026-05-23T02:32:35.296Z"
+    "qa_revision_updated_at": "2026-05-23T02:32:35.296Z",
+    "qa_status": "ok",
+    "qa_action": "copia"
   },
   {
     "POS": "85",
@@ -311593,7 +311611,7 @@
     "total_error": 0,
     "has_error": false,
     "qa_revision_estado": "ok",
-    "qa_revision_accion": "importar",
+    "qa_revision_accion": "copia",
     "ID": 1902458,
     "model_type_final": "BR 4000",
     "model_type_error": 0,
@@ -311623,7 +311641,9 @@
     "fg_fgs_pdf": "011-05",
     "bom_pdf": "010.00475",
     "pn_excel": "5260101714",
-    "qa_revision_updated_at": "2026-05-23T02:32:35.296Z"
+    "qa_revision_updated_at": "2026-05-23T02:32:35.296Z",
+    "qa_status": "ok",
+    "qa_action": "copia"
   },
   {
     "POS": "10",
@@ -464203,7 +464223,7 @@
     "total_error": 0,
     "has_error": false,
     "qa_revision_estado": "ok",
-    "qa_revision_accion": "importar",
+    "qa_revision_accion": "copia",
     "ID": 1903663,
     "model_type_final": "",
     "model_type_error": 0,
@@ -464236,7 +464256,9 @@
     "SUST_TIPO": "New",
     "new_pn_final": "0049976736",
     "subst_pnlist_final": "0009970436, 06.93160-0120, 071401018200, 111L37701/1, 5509970036",
-    "qa_revision_updated_at": "2026-05-23T02:32:35.296Z"
+    "qa_revision_updated_at": "2026-05-23T02:32:35.296Z",
+    "qa_status": "ok",
+    "qa_action": "copia"
   },
   {
     "POS": "1300",
@@ -541247,7 +541269,7 @@
     "total_error": 0,
     "has_error": false,
     "qa_revision_estado": "ok",
-    "qa_revision_accion": "importar",
+    "qa_revision_accion": "copia",
     "ID": 1904275,
     "model_type_final": "",
     "model_type_error": 0,
@@ -541280,7 +541302,9 @@
     "SUST_TIPO": "New",
     "new_pn_final": "0049976736",
     "subst_pnlist_final": "0009970436, 06.93160-0120, 071401018200, 111L37701/1, 5509970036",
-    "qa_revision_updated_at": "2026-05-23T02:32:35.296Z"
+    "qa_revision_updated_at": "2026-05-23T02:32:35.296Z",
+    "qa_status": "ok",
+    "qa_action": "copia"
   },
   {
     "POS": "1200",

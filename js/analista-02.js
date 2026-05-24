@@ -7365,6 +7365,16 @@ function renderReviewStats(rows = getQueueRows(), row = currentRow) {
 
     const currentEl = $('statsCurrentIndex');
 
+    const currentImportOkEl = $('statsCurrentImportOk');
+
+    const currentCopyOkEl = $('statsCurrentCopyOk');
+
+    const currentReviewOkEl = $('statsCurrentReviewOk');
+
+    const currentDeleteOkEl = $('statsCurrentDeleteOk');
+
+    const currentPendingEl = $('statsCurrentPending');
+
     const totalUniqueEl = $('statsUniqueTotalAnalysed');
 
     const importOkEl = $('statsTotalImportOk');
@@ -7389,13 +7399,69 @@ function renderReviewStats(rows = getQueueRows(), row = currentRow) {
 
 
 
+    const getReviewCategory = (entry) => {
+
+        const estado = normalizeEstadoToNew(entry?.qa_revision_estado);
+
+        if (estado !== 'ok') return 'pending';
+
+        const accion = normalizeAccionToNew(entry?.qa_revision_accion);
+
+        if (accion === 'revisar') return 'reviewOk';
+
+        if (accion === 'eliminar') return 'deleteOk';
+
+        if (accion === 'copia') return 'copyOk';
+
+        return 'importOk';
+
+    };
+
+
+
     let currentIndex = 0;
+
+    let currentImportOkIndex = 0;
+
+    let currentCopyOkIndex = 0;
+
+    let currentReviewOkIndex = 0;
+
+    let currentDeleteOkIndex = 0;
+
+    let currentPendingIndex = 0;
 
     if (row && stats.total > 0) {
 
         const idx = rows.findIndex(item => getRevisionKey(item) === getRevisionKey(row));
 
         currentIndex = idx >= 0 ? idx + 1 : 0;
+
+        if (idx >= 0) {
+
+            const selectedCategory = getReviewCategory(row);
+
+            const categoryRowsBefore = rows
+
+                .slice(0, idx + 1)
+
+                .filter(entry => getReviewCategory(entry) === selectedCategory)
+
+                .length;
+
+
+
+            if (selectedCategory === 'importOk') currentImportOkIndex = categoryRowsBefore;
+
+            else if (selectedCategory === 'copyOk') currentCopyOkIndex = categoryRowsBefore;
+
+            else if (selectedCategory === 'reviewOk') currentReviewOkIndex = categoryRowsBefore;
+
+            else if (selectedCategory === 'deleteOk') currentDeleteOkIndex = categoryRowsBefore;
+
+            else if (selectedCategory === 'pending') currentPendingIndex = categoryRowsBefore;
+
+        }
 
     }
 
@@ -7404,6 +7470,16 @@ function renderReviewStats(rows = getQueueRows(), row = currentRow) {
     if (totalEl instanceof HTMLElement) totalEl.textContent = String(stats.total);
 
     if (currentEl instanceof HTMLElement) currentEl.textContent = String(currentIndex);
+
+    if (currentImportOkEl instanceof HTMLElement) currentImportOkEl.textContent = String(currentImportOkIndex);
+
+    if (currentCopyOkEl instanceof HTMLElement) currentCopyOkEl.textContent = String(currentCopyOkIndex);
+
+    if (currentReviewOkEl instanceof HTMLElement) currentReviewOkEl.textContent = String(currentReviewOkIndex);
+
+    if (currentDeleteOkEl instanceof HTMLElement) currentDeleteOkEl.textContent = String(currentDeleteOkIndex);
+
+    if (currentPendingEl instanceof HTMLElement) currentPendingEl.textContent = String(currentPendingIndex);
 
     if (totalUniqueEl instanceof HTMLElement) totalUniqueEl.textContent = `· ${uniqueStats.total.size} únicos`;
 

@@ -92,7 +92,7 @@
     "total_error": 0,
     "has_error": false,
     "qa_revision_estado": "ok",
-    "qa_revision_accion": "importar",
+    "qa_revision_accion": "copia",
     "model_type_final": "",
     "model_type_error": 0,
     "qty_error": 0,
@@ -127,7 +127,9 @@
     "hierarchie_final": "New",
     "SUST_TIPO": "New",
     "new_pn_final": "700425000158",
-    "qa_revision_updated_at": "2026-05-23T02:32:35.296Z"
+    "qa_revision_updated_at": "2026-05-23T02:32:35.296Z",
+    "qa_status": "ok",
+    "qa_action": "copia"
   },
   {
     "ID": "1300002",
@@ -865,7 +867,7 @@
     "total_error": 0,
     "has_error": false,
     "qa_revision_estado": "ok",
-    "qa_revision_accion": "importar",
+    "qa_revision_accion": "copia",
     "model_type_final": "",
     "model_type_error": 0,
     "qty_error": 0,
@@ -893,7 +895,9 @@
     "fg_fgs_pdf": "011-05",
     "bom_pdf": "010.00476",
     "pn_excel": "5249950159",
-    "qa_revision_updated_at": "2026-05-23T02:32:35.296Z"
+    "qa_revision_updated_at": "2026-05-23T02:32:35.296Z",
+    "qa_status": "ok",
+    "qa_action": "copia"
   },
   {
     "ID": "1300008",
@@ -2273,7 +2277,7 @@
     "total_error": 0,
     "has_error": false,
     "qa_revision_estado": "ok",
-    "qa_revision_accion": "importar",
+    "qa_revision_accion": "copia",
     "model_type_final": "",
     "model_type_error": 0,
     "qty_error": 0,
@@ -2304,7 +2308,9 @@
     "hierarchie_final": "Superseded",
     "SUST_TIPO": "Superseded",
     "new_pn_final": "X52401100023",
-    "qa_revision_updated_at": "2026-05-23T02:32:35.296Z"
+    "qa_revision_updated_at": "2026-05-23T02:32:35.296Z",
+    "qa_status": "ok",
+    "qa_action": "copia"
   },
   {
     "ID": "1300019",
@@ -2399,7 +2405,7 @@
     "total_error": 0,
     "has_error": false,
     "qa_revision_estado": "ok",
-    "qa_revision_accion": "importar",
+    "qa_revision_accion": "copia",
     "model_type_final": "",
     "model_type_error": 0,
     "qty_error": 0,
@@ -2434,7 +2440,9 @@
     "SUST_TIPO": "New",
     "new_pn_final": "000912008115",
     "subst_pnlist_final": "000912008005, 000912008085, 000912008143, 06.02093-0405",
-    "qa_revision_updated_at": "2026-05-23T02:32:35.296Z"
+    "qa_revision_updated_at": "2026-05-23T02:32:35.296Z",
+    "qa_status": "ok",
+    "qa_action": "copia"
   },
   {
     "ID": "1300020",
@@ -2529,7 +2537,7 @@
     "total_error": 0,
     "has_error": false,
     "qa_revision_estado": "ok",
-    "qa_revision_accion": "importar",
+    "qa_revision_accion": "copia",
     "model_type_final": "",
     "model_type_error": 0,
     "qty_error": 0,
@@ -2561,7 +2569,9 @@
     "SUST_TIPO": "New",
     "new_pn_final": "0049976736",
     "subst_pnlist_final": "0009970436, 06.93160-0120, 071401018200, 111L37701/1, 5509970036",
-    "qa_revision_updated_at": "2026-05-23T02:32:35.296Z"
+    "qa_revision_updated_at": "2026-05-23T02:32:35.296Z",
+    "qa_status": "ok",
+    "qa_action": "copia"
   },
   {
     "ID": "1300021",
@@ -188072,7 +188082,7 @@
     "total_error": 0,
     "has_error": false,
     "qa_revision_estado": "ok",
-    "qa_revision_accion": "importar",
+    "qa_revision_accion": "copia",
     "model_type_final": "",
     "model_type_error": 0,
     "qty_error": 0,
@@ -188104,7 +188114,9 @@
     "SUST_TIPO": "New",
     "new_pn_final": "0049976736",
     "subst_pnlist_final": "0009970436, 06.93160-0120, 071401018200, 111L37701/1, 5509970036",
-    "qa_revision_updated_at": "2026-05-23T02:32:35.296Z"
+    "qa_revision_updated_at": "2026-05-23T02:32:35.296Z",
+    "qa_status": "ok",
+    "qa_action": "copia"
   },
   {
     "ID": "1301526",
@@ -360461,7 +360473,7 @@
     "total_error": 0,
     "has_error": false,
     "qa_revision_estado": "ok",
-    "qa_revision_accion": "importar",
+    "qa_revision_accion": "copia",
     "qa_revision_updated_at": "2026-05-23T02:32:35.296Z",
     "model_type_final": "",
     "model_type_error": 0,
@@ -360496,7 +360508,9 @@
     "fn_pdf": "EM",
     "hierarchie_final": "New",
     "SUST_TIPO": "New",
-    "new_pn_final": "700425000158"
+    "new_pn_final": "700425000158",
+    "qa_status": "ok",
+    "qa_action": "copia"
   },
   {
     "ID": "1302924",
@@ -361234,7 +361248,7 @@
     "total_error": 0,
     "has_error": false,
     "qa_revision_estado": "ok",
-    "qa_revision_accion": "importar",
+    "qa_revision_accion": "copia",
     "model_type_final": "",
     "model_type_error": 0,
     "qty_error": 0,
@@ -361262,7 +361276,9 @@
     "fg_fgs_pdf": "011-05",
     "bom_pdf": "010.00476",
     "pn_excel": "5249950159",
-    "qa_revision_updated_at": "2026-05-23T02:32:35.296Z"
+    "qa_revision_updated_at": "2026-05-23T02:32:35.296Z",
+    "qa_status": "ok",
+    "qa_action": "copia"
   },
   {
     "ID": "1302930",
@@ -362642,7 +362658,7 @@
     "total_error": 0,
     "has_error": false,
     "qa_revision_estado": "ok",
-    "qa_revision_accion": "importar",
+    "qa_revision_accion": "copia",
     "model_type_final": "",
     "model_type_error": 0,
     "qty_error": 0,
@@ -362673,7 +362689,9 @@
     "hierarchie_final": "Superseded",
     "SUST_TIPO": "Superseded",
     "new_pn_final": "X52401100023",
-    "qa_revision_updated_at": "2026-05-23T02:32:35.296Z"
+    "qa_revision_updated_at": "2026-05-23T02:32:35.296Z",
+    "qa_status": "ok",
+    "qa_action": "copia"
   },
   {
     "ID": "1302941",
@@ -362768,7 +362786,7 @@
     "total_error": 0,
     "has_error": false,
     "qa_revision_estado": "ok",
-    "qa_revision_accion": "importar",
+    "qa_revision_accion": "copia",
     "model_type_final": "",
     "model_type_error": 0,
     "qty_error": 0,
@@ -362803,7 +362821,9 @@
     "SUST_TIPO": "New",
     "new_pn_final": "000912008115",
     "subst_pnlist_final": "000912008005, 000912008085, 000912008143, 06.02093-0405",
-    "qa_revision_updated_at": "2026-05-23T02:32:35.296Z"
+    "qa_revision_updated_at": "2026-05-23T02:32:35.296Z",
+    "qa_status": "ok",
+    "qa_action": "copia"
   },
   {
     "ID": "1302942",
@@ -362898,7 +362918,7 @@
     "total_error": 0,
     "has_error": false,
     "qa_revision_estado": "ok",
-    "qa_revision_accion": "importar",
+    "qa_revision_accion": "copia",
     "model_type_final": "",
     "model_type_error": 0,
     "qty_error": 0,
@@ -362930,7 +362950,9 @@
     "SUST_TIPO": "New",
     "new_pn_final": "0049976736",
     "subst_pnlist_final": "0009970436, 06.93160-0120, 071401018200, 111L37701/1, 5509970036",
-    "qa_revision_updated_at": "2026-05-23T02:32:35.296Z"
+    "qa_revision_updated_at": "2026-05-23T02:32:35.296Z",
+    "qa_status": "ok",
+    "qa_action": "copia"
   },
   {
     "ID": "1302943",
@@ -547343,7 +547365,7 @@
     "total_error": 0,
     "has_error": false,
     "qa_revision_estado": "ok",
-    "qa_revision_accion": "importar",
+    "qa_revision_accion": "copia",
     "model_type_final": "",
     "model_type_error": 0,
     "qty_error": 0,
@@ -547375,7 +547397,9 @@
     "SUST_TIPO": "New",
     "new_pn_final": "0049976736",
     "subst_pnlist_final": "0009970436, 06.93160-0120, 071401018200, 111L37701/1, 5509970036",
-    "qa_revision_updated_at": "2026-05-23T02:32:35.296Z"
+    "qa_revision_updated_at": "2026-05-23T02:32:35.296Z",
+    "qa_status": "ok",
+    "qa_action": "copia"
   },
   {
     "ID": "1304439",
