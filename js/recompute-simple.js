@@ -263,24 +263,133 @@ function renderImportConflictTable(conflictsInput) {
     const conflicts = Array.isArray(conflictsInput) ? conflictsInput : [];
     if (!conflicts.length) return;
 
-    const rows = conflicts.map((conflict) => {
+    const tableHeaders = [
+        'Opción',
+        'ID',
+        'Source Page',
+        'POS',
+        'PART NO.',
+        'pn_pdf',
+        'pn_final',
+        'pn_excel',
+        'DESIGNATION',
+        'designation_pdf',
+        'designation_final',
+        'MODEL/TYPE',
+        'QTY',
+        'UNITS',
+        'WEIGHT',
+        'FN',
+        'MEASUREMENT / STANDARD',
+        'FG/FGS',
+        'BOM-No.',
+        'total_error',
+        'has_error',
+        'qa_revision_estado',
+        'qa_revision_accion'
+    ];
+
+    const sectionsHtml = conflicts.map((conflict, conflictIndex) => {
         const candidates = Array.isArray(conflict?.candidates) ? conflict.candidates : [];
-        const ids = candidates.map((candidate) => normalizeText(candidate?.ID)).filter(Boolean).join(', ');
-        const diff = Array.isArray(conflict?.differing_fields) ? conflict.differing_fields.join(', ') : '';
-        return [
-            String(conflict?.page ?? ''),
-            String(conflict?.pos ?? ''),
-            String(conflict?.pn_pdf ?? ''),
-            String(conflict?.reason ?? ''),
-            diff,
-            ids || '-'
-        ];
-    });
+        const conflictKey = normalizeText(conflict?.conflict_key) || buildConflictKey(conflict);
+        const diff = Array.isArray(conflict?.differing_fields) ? conflict.differing_fields.join(', ') : '(sin detalle)';
+
+        const rows = candidates.map((candidate, index) => {
+            const optionNumber = String(index + 1);
+            return [
+                optionNumber,
+                pickCandidateValue(candidate, ['ID', 'id']),
+                pickCandidateValue(candidate, ['source_page', 'sourcePage', 'SOURCE PAGE', 'page', 'PAGE']),
+                pickCandidateValue(candidate, ['POS', 'pos', 'pos_final', 'pos_pdf']),
+                pickCandidateValue(candidate, ['PART NO.', 'part_no', 'pn', 'pn_final', 'pn_pdf']),
+                pickCandidateValue(candidate, ['pn_pdf']),
+                pickCandidateValue(candidate, ['pn_final']),
+                pickCandidateValue(candidate, ['pn_excel']),
+                pickCandidateValue(candidate, ['DESIGNATION', 'designation', 'designation_final', 'designation_pdf']),
+                pickCandidateValue(candidate, ['designation_pdf']),
+                pickCandidateValue(candidate, ['designation_final']),
+                pickCandidateValue(candidate, ['MODEL/TYPE', 'model_type', 'model_type_final', 'model_type_pdf']),
+                pickCandidateValue(candidate, ['QTY', 'qty', 'qty_final', 'qty_pdf']),
+                pickCandidateValue(candidate, ['UNITS', 'units', 'units_final', 'units_pdf']),
+                pickCandidateValue(candidate, ['WEIGHT', 'weight', 'weight_final', 'weight_pdf']),
+                pickCandidateValue(candidate, ['FN', 'fn', 'fn_final', 'fn_pdf']),
+                pickCandidateValue(candidate, ['MEASUREMENT / STANDARD', 'measurement', 'measurement_final', 'measure_final', 'measure_pdf']),
+                pickCandidateValue(candidate, ['FG/FGS', 'fg_fgs', 'fg_fgs_final', 'fg_fgs_pdf']),
+                pickCandidateValue(candidate, ['BOM-No.', 'bom_no', 'bom_final', 'bom_pdf']),
+                pickCandidateValue(candidate, ['total_error']),
+                pickCandidateValue(candidate, ['has_error']),
+                pickCandidateValue(candidate, ['qa_revision_estado']),
+                pickCandidateValue(candidate, ['qa_revision_accion'])
+            ];
+        });
+
+        return `
+            <section style="margin:12px 0 16px;padding:10px;border:1px solid #d3deea;border-radius:10px;background:#f8fbff;">
+                <p style="margin:0 0 8px;font-size:12px;color:#21445f;font-family:'IBM Plex Mono',Consolas,monospace;">
+                    Conflicto ${conflictIndex + 1} | conflict_key: ${escapeHtml(conflictKey)} | Página ${escapeHtml(conflict?.page ?? '-')} | POS ${escapeHtml(conflict?.pos ?? '-')} | PN ${escapeHtml(conflict?.pn_pdf ?? '-')}<br>
+                    Motivo: ${escapeHtml(conflict?.reason ?? '-')} | Campos que difieren: ${escapeHtml(diff)} | Numeración estable por conflicto (1..N).
+                </p>
+                ${renderTable(tableHeaders, rows)}
+            </section>
+        `;
+    }).join('');
 
     refs.resultBody.insertAdjacentHTML('beforeend', `
-        <h4 style="margin:12px 0 8px;font-size:13px;color:#12344f;">Conflictos con acción manual</h4>
-        ${renderTable(['Página', 'POS', 'PN', 'Motivo', 'Campos que difieren', 'IDs candidatos'], rows)}
+        <h4 style="margin:12px 0 8px;font-size:13px;color:#12344f;">Conflictos con acción manual (selección por opción)</h4>
+        ${sectionsHtml}
     `);
+}
+
+function pickCandidateValue(candidate, keys) {
+    const source = candidate && typeof candidate === 'object' ? candidate : {};
+    const list = Array.isArray(keys) ? keys : [keys];
+    for (const key of list) {
+        if (!key) continue;
+        if (Object.prototype.hasOwnProperty.call(source, key)) {
+            const value = source[key];
+            if (value == null) continue;
+            const normalized = normalizeText(value);
+            if (!normalized) continue;
+            if (typeof value === 'boolean') return value ? 'true' : 'false';
+            return normalized;
+        }
+    }
+    return '-';
+}
+
+function buildConflictCandidateOptions(conflict) {
+    const candidates = Array.isArray(conflict?.candidates) ? conflict.candidates : [];
+    return candidates
+        .map((candidate, index) => {
+            const id = pickCandidateValue(candidate, ['ID', 'id']);
+            const hasValidId = id && id !== '-';
+            if (!hasValidId) return null;
+            return {
+                optionNumber: index + 1,
+                id,
+                candidate,
+                summary: [
+                    `ID ${id}`,
+                    `PAGE ${pickCandidateValue(candidate, ['source_page', 'sourcePage', 'SOURCE PAGE', 'page', 'PAGE'])}`,
+                    `POS ${pickCandidateValue(candidate, ['POS', 'pos', 'pos_final', 'pos_pdf'])}`,
+                    `PN ${pickCandidateValue(candidate, ['PART NO.', 'part_no', 'pn', 'pn_final', 'pn_pdf'])}`,
+                    `DESIGNATION ${pickCandidateValue(candidate, ['DESIGNATION', 'designation', 'designation_final', 'designation_pdf'])}`,
+                    `MODEL/TYPE ${pickCandidateValue(candidate, ['MODEL/TYPE', 'model_type', 'model_type_final', 'model_type_pdf'])}`,
+                    `QTY ${pickCandidateValue(candidate, ['QTY', 'qty', 'qty_final', 'qty_pdf'])}`,
+                    `UNITS ${pickCandidateValue(candidate, ['UNITS', 'units', 'units_final', 'units_pdf'])}`,
+                    `WEIGHT ${pickCandidateValue(candidate, ['WEIGHT', 'weight', 'weight_final', 'weight_pdf'])}`,
+                    `FN ${pickCandidateValue(candidate, ['FN', 'fn', 'fn_final', 'fn_pdf'])}`,
+                    `MEAS ${pickCandidateValue(candidate, ['MEASUREMENT / STANDARD', 'measurement', 'measurement_final', 'measure_final', 'measure_pdf'])}`,
+                    `FG/FGS ${pickCandidateValue(candidate, ['FG/FGS', 'fg_fgs', 'fg_fgs_final', 'fg_fgs_pdf'])}`,
+                    `BOM ${pickCandidateValue(candidate, ['BOM-No.', 'bom_no', 'bom_final', 'bom_pdf'])}`,
+                    `total_error ${pickCandidateValue(candidate, ['total_error'])}`,
+                    `has_error ${pickCandidateValue(candidate, ['has_error'])}`,
+                    `estado ${pickCandidateValue(candidate, ['qa_revision_estado'])}`,
+                    `accion ${pickCandidateValue(candidate, ['qa_revision_accion'])}`
+                ].join(' | ')
+            };
+        })
+        .filter(Boolean);
 }
 
 function buildConflictKey(conflict) {
@@ -292,51 +401,65 @@ async function requestImportConflictDecisions(conflictsInput) {
     const decisions = {};
 
     for (const conflict of conflicts) {
-        const candidates = Array.isArray(conflict?.candidates) ? conflict.candidates : [];
-        if (!candidates.length) continue;
+        const options = buildConflictCandidateOptions(conflict);
+        if (!options.length) continue;
 
         const key = normalizeText(conflict?.conflict_key) || buildConflictKey(conflict);
-        const candidateLines = candidates
-            .map((candidate) => {
-                const id = normalizeText(candidate?.ID);
-                const pos = normalizeText(candidate?.POS);
-                const pn = normalizeText(candidate?.['PART NO.'] || candidate?.pn_final || candidate?.pn_excel || candidate?.pn_pdf);
-                return `- ID ${id} (POS ${pos}, PN ${pn})`;
-            })
+        const candidateLines = options
+            .map((option) => `${option.optionNumber} - ${option.summary}`)
             .join('\n');
 
         const differing = Array.isArray(conflict?.differing_fields) ? conflict.differing_fields.join(', ') : '(sin detalle)';
-        const promptText = [
-            `Conflicto en página ${conflict?.page ?? '-'} POS ${conflict?.pos ?? '-'} PN ${conflict?.pn_pdf ?? '-'}`,
-            `Campos distintos: ${differing}`,
-            '',
-            'Candidatos:',
-            candidateLines,
-            '',
-            'Escribe una acción:',
-            '  skip           -> omitir este conflicto',
-            '  id:<ID>        -> aplicar al ID indicado',
-            '  cancel         -> cancelar el proceso'
-        ].join('\n');
+        while (true) {
+            const promptText = [
+                `Conflicto en página ${conflict?.page ?? '-'} POS ${conflict?.pos ?? '-'} PN ${conflict?.pn_pdf ?? '-'}`,
+                `conflict_key: ${key}`,
+                `Campos distintos: ${differing}`,
+                '',
+                'Opciones disponibles (numeración estable dentro del conflicto):',
+                candidateLines,
+                '',
+                'Escribe una acción:',
+                '  skip      -> omitir este conflicto',
+                '  <número>  -> aplicar la opción (1, 2, 3...)',
+                '  cancel    -> cancelar el proceso'
+            ].join('\n');
 
-        const answerRaw = window.prompt(promptText, 'skip');
-        const answer = normalizeText(answerRaw).toLowerCase();
+            const answerRaw = window.prompt(promptText, 'skip');
+            const answer = normalizeText(answerRaw).toLowerCase();
 
-        if (!answer || answer === 'skip') {
-            decisions[key] = { action: 'skip' };
-            continue;
-        }
-        if (answer === 'cancel') return { cancelled: true, decisions: {} };
-        if (answer.startsWith('id:')) {
-            const id = normalizeText(answer.slice(3));
-            if (id) {
-                decisions[key] = { action: 'apply-id', target_id: id };
-                continue;
+            if (!answer || answer === 'skip') {
+                decisions[key] = { action: 'skip' };
+                appendLog('[IMPORTAR PDF][CONFLICT DECISION]', {
+                    conflict_key: key,
+                    optionNumber: null,
+                    resolvedId: null,
+                    action: 'skip'
+                });
+                break;
             }
-        }
+            if (answer === 'cancel') return { cancelled: true, decisions: {} };
 
-        window.alert('Acción no válida. Se tomará como skip para este conflicto.');
-        decisions[key] = { action: 'skip' };
+            if (/^\d+$/.test(answer)) {
+                const optionNumber = Number(answer);
+                const selected = options.find((entry) => entry.optionNumber === optionNumber);
+                if (!selected) {
+                    window.alert(`Número de opción inválido: ${answer}. Debe estar entre 1 y ${options.length} para este conflicto.`);
+                    continue;
+                }
+
+                decisions[key] = { action: 'apply-id', target_id: selected.id };
+                appendLog('[IMPORTAR PDF][CONFLICT DECISION]', {
+                    conflict_key: key,
+                    optionNumber,
+                    resolvedId: selected.id,
+                    action: 'apply-id'
+                });
+                break;
+            }
+
+            window.alert('Acción no válida. Escribe skip, cancel o un número de opción válido.');
+        }
     }
 
     return { cancelled: false, decisions };
