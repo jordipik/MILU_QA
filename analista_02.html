@@ -48,6 +48,8 @@
                             <line x1="21" y1="21" x2="16.65" y2="16.65" />
                         </svg></button>
                     <div id="recordMeta" class="a2-meta">Sin registro cargado.</div>
+                    <button id="openRecordEditorBtn" class="a2-meta-edit-btn" type="button"
+                        title="Abrir editor de ficha técnica completo">EDITAR</button>
                 </div>
             </div>
 
@@ -224,13 +226,12 @@
                             title="Revisar">REVISAR</button>
                         <button id="statusAccionEliminarBtn" class="a2-review-btn is-ko" type="button"
                             title="Eliminar">ELIMINAR</button>
+                        <span class="a2-review-inline-label" aria-hidden="true">CALCULAR</span>
                         <button id="propagateHermanosBtn" class="a2-review-btn" type="button"
                             title="Propagar revisión OK+Importar a todos los hermanos con el mismo PN">HERMANOS</button>
                         <button id="propagateHermanosBookBtn" class="a2-review-btn" type="button"
                             title="Recorrer el libro actual y propagar hermanos para todos los registros en OK+Importar">HERMANOS
                             LIBRO</button>
-                        <button id="openRecordEditorBtn" class="a2-review-btn is-edit" type="button"
-                            title="Abrir editor de ficha técnica completo">EDITAR CAMPOS</button>
                     </div>
                 </div>
             </div>
@@ -308,22 +309,6 @@
                         <button id="pdfClearOverlaysBtn" class="pdf-row-debug-btn is-step-clear" type="button"
                             title="Limpiar todo lo pintado sobre el PDF"><span
                                 class="pdf-btn-label">LIMPIAR</span></button>
-                        <span class="pdf-quick-break" aria-hidden="true"></span>
-                        <button id="copyPdfReadToPdfBtn" class="pdf-row-debug-btn is-step-copy" type="button"
-                            title="Paso 3: copiar lectura del PDF a campos _pdf"><span
-                                class="pdf-btn-label">COPIAR</span></button>
-                        <button id="copyPdfReadToPdfBackendBtn" class="pdf-row-debug-btn is-step-copy" type="button"
-                            title="Paso 3 (Backend): enviar lectura del PDF al backend para copiar campos _pdf en bloque"><span
-                                class="pdf-btn-label">COPIAR BACKEND</span></button>
-                        <button id="copyPdfReadToFinalBtn" class="pdf-row-debug-btn is-step-copy" type="button"
-                            title="Paso 3b: copiar campos _pdf del registro actual a campos _final"><span
-                                class="pdf-btn-label">FINAL</span></button>
-                        <button id="pdfRecomputeErrorsBtn" class="pdf-row-debug-btn is-step-check" type="button"
-                            title="Paso 4: recalcular errores del registro actual"><span
-                                class="pdf-btn-label">ERRORES</span></button>
-                        <button id="pdfRecomputeRevisionBtn" class="pdf-row-debug-btn is-step-revision" type="button"
-                            title="Paso 5: recalcular estado y acción del registro actual"><span
-                                class="pdf-btn-label">ESTADO</span></button>
                     </div>
                 </div>
                 <p id="pdfActionStatusText" class="pdf-action-status" aria-live="polite"></p>

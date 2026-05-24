@@ -294,12 +294,17 @@ body.a2-resizing * {
 
 .a2-toolbar-top {
     display: grid;
-    grid-template-columns: minmax(110px, 140px) minmax(130px, 190px) 22px minmax(300px, 1fr);
+    grid-template-columns: minmax(110px, 140px) minmax(130px, 190px) 22px minmax(280px, 1fr) auto;
     gap: 12px;
     align-items: center;
     justify-content: start;
     padding-bottom: 0;
     border-bottom: none;
+}
+
+.a2-toolbar-top>#openRecordEditorBtn {
+    justify-self: end;
+    margin-left: 0;
 }
 
 #engineFilterSelect {
@@ -1991,10 +1996,11 @@ body.a2-resizing * {
 
 .a2-review-actions {
     display: flex;
-    align-items: center;
+    flex-direction: column;
+    align-items: flex-start;
     gap: 8px;
     flex-wrap: nowrap;
-    overflow-x: auto;
+    overflow-x: visible;
     overflow-y: visible;
     min-height: 36px;
     padding-top: 2px;
@@ -2006,6 +2012,7 @@ body.a2-resizing * {
     align-items: center;
     gap: 6px;
     flex-wrap: nowrap;
+    justify-content: flex-start;
 }
 
 .a2-review-action-group {
@@ -2014,6 +2021,11 @@ body.a2-resizing * {
     gap: 6px;
     flex-wrap: nowrap;
     min-width: 0;
+    justify-content: flex-start;
+}
+
+.a2-review-action-group>.a2-review-quick-buttons {
+    flex: 0 1 auto;
 }
 
 .a2-review-quick-buttons {
@@ -2027,6 +2039,19 @@ body.a2-resizing * {
     display: inline-flex;
     align-items: center;
     gap: 6px;
+    font-size: 9px;
+    font-weight: 800;
+    letter-spacing: 0.03em;
+    text-transform: uppercase;
+    color: #56708c;
+    white-space: nowrap;
+}
+
+.a2-review-inline-label {
+    display: inline-flex;
+    align-items: center;
+    align-self: stretch;
+    margin: 0 2px 0 6px;
     font-size: 9px;
     font-weight: 800;
     letter-spacing: 0.03em;
@@ -3203,7 +3228,8 @@ body.a2-resizing * {
     }
 
     .a2-toolbar-top {
-        grid-template-columns: 1fr;
+        grid-template-columns: minmax(88px, 120px) minmax(110px, 160px) 22px minmax(120px, 1fr) auto;
+        gap: 8px;
     }
 
     .a2-toolbar-primary-actions {
@@ -3309,6 +3335,10 @@ body.a2-resizing * {
 }
 
 @media (max-width: 560px) {
+    .a2-toolbar-top {
+        grid-template-columns: 1fr;
+    }
+
     .a2-toolbar-bottom {
         grid-template-columns: 1fr;
     }

@@ -7772,23 +7772,7 @@ function renderMeta(row) {
 
 <span class="a2-meta-item a2-meta-item-designation"><span class="a2-meta-k">Designation</span><strong class="a2-meta-v" title="${escapeHtml(txt(row?.designation_final || row?.DESIGNATION))}">${escapeHtml(txt(row?.designation_final || row?.DESIGNATION))}</strong></span>
 
-<button id="openEditRecordBtn" type="button" class="a2-meta-edit-btn">EDITAR</button>
-
 </div>`;
-
-
-
-    const editBtn = $('openEditRecordBtn');
-
-    if (editBtn instanceof HTMLButtonElement) {
-
-        editBtn.addEventListener('click', () => {
-
-            openEditRecordModalForRow();
-
-        });
-
-    }
 
 }
 
