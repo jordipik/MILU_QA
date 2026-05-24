@@ -119,7 +119,7 @@
 
             place-items: center;
 
-            padding: 20px;
+            padding: 12px;
 
         }
 
@@ -143,9 +143,9 @@
 
             position: relative;
 
-            width: min(1120px, calc(100vw - 32px));
+            width: min(1080px, calc(100vw - 20px));
 
-            max-height: calc(100vh - 32px);
+            max-height: calc(100vh - 20px);
 
             overflow: auto;
 
@@ -169,9 +169,9 @@
 
             justify-content: space-between;
 
-            gap: 12px;
+            gap: 10px;
 
-            padding: 12px 14px;
+            padding: 10px 12px;
 
             border-bottom: 1px solid #d8e2ee;
 
@@ -221,11 +221,11 @@
 
         .shell-shared-modal-body {
 
-            padding: 14px;
+            padding: 10px;
 
             display: grid;
 
-            gap: 12px;
+            gap: 8px;
 
         }
 
@@ -233,7 +233,7 @@
 
         .shell-shared-meta {
 
-            padding: 10px 12px;
+            padding: 8px 10px;
 
             border-radius: 10px;
 
@@ -241,7 +241,7 @@
 
             background: #f8fbff;
 
-            font-size: 12px;
+            font-size: 11px;
 
             color: #2f4a63;
 
@@ -257,7 +257,7 @@
 
             grid-template-columns: repeat(2, minmax(0, 1fr));
 
-            gap: 14px;
+            gap: 10px;
 
         }
 
@@ -267,11 +267,11 @@
 
             border: 1px solid #d6e1ee;
 
-            border-radius: 12px;
+            border-radius: 10px;
 
             background: #f8fbff;
 
-            padding: 10px;
+            padding: 8px;
 
             min-height: 0;
 
@@ -281,9 +281,9 @@
 
         .shell-shared-section-title {
 
-            margin: 0 0 8px;
+            margin: 0 0 6px;
 
-            font-size: 12px;
+            font-size: 11px;
 
             font-weight: 800;
 
@@ -299,7 +299,7 @@
 
         .shell-shared-section-title.is-secondary {
 
-            margin-top: 14px;
+            margin-top: 10px;
 
         }
 
@@ -309,7 +309,9 @@
 
             display: grid;
 
-            gap: 8px;
+            grid-template-columns: repeat(2, minmax(0, 1fr));
+
+            gap: 6px 8px;
 
         }
 
@@ -319,7 +321,15 @@
 
             display: grid;
 
-            gap: 6px;
+            gap: 4px;
+
+        }
+
+
+
+        .shell-shared-field.span-2 {
+
+            grid-column: span 2;
 
         }
 
@@ -337,11 +347,11 @@
 
             color: #55708a;
 
-            font-size: 12px;
+            font-size: 11px;
 
             line-height: 1.4;
 
-            padding: 8px 10px;
+            padding: 7px 9px;
 
         }
 
@@ -359,9 +369,29 @@
 
 
 
+        @media (max-width: 940px) {
+
+            .shell-shared-stack {
+
+                grid-template-columns: 1fr;
+
+            }
+
+
+
+            .shell-shared-field.span-2 {
+
+                grid-column: span 1;
+
+            }
+
+        }
+
+
+
         .shell-shared-field label {
 
-            font-size: 11px;
+            font-size: 10px;
 
             font-weight: 800;
 
@@ -379,17 +409,17 @@
 
         .shell-shared-field select {
 
-            height: 34px;
+            height: 30px;
 
-            border-radius: 9px;
+            border-radius: 8px;
 
             border: 1px solid #c9d6e3;
 
-            padding: 0 10px;
+            padding: 0 8px;
 
             font-family: inherit;
 
-            font-size: 12px;
+            font-size: 11px;
 
             color: #14283a;
 
@@ -417,7 +447,7 @@
 
             gap: 8px;
 
-            padding: 0 14px 14px;
+            padding: 0 10px 10px;
 
         }
 
@@ -425,7 +455,7 @@
 
         .shell-shared-btn {
 
-            height: 34px;
+            height: 32px;
 
             border-radius: 10px;
 
@@ -435,7 +465,7 @@
 
             color: #143652;
 
-            font-size: 12px;
+            font-size: 11px;
 
             font-weight: 800;
 
@@ -463,11 +493,11 @@
 
             min-height: 16px;
 
-            padding: 0 14px 12px;
+            padding: 0 10px 8px;
 
             margin: 0;
 
-            font-size: 12px;
+            font-size: 11px;
 
             color: #46627d;
 
@@ -538,42 +568,47 @@
 
                         <div class="shell-shared-stack">
 
-                            <div class="shell-shared-field"><label for="shellSharedPos">POS FINAL
-                                    (pos_final)</label><input id="shellSharedPos" type="text" /></div>
+                            <div class="shell-shared-field"><label for="shellSharedPos">pos_final</label><input
+                                    id="shellSharedPos" type="text" /></div>
 
-                            <div class="shell-shared-field"><label for="shellSharedPnFinal">PN FINAL
-                                    (pn_final)</label><input id="shellSharedPnFinal" type="text" /></div>
+                            <div class="shell-shared-field"><label for="shellSharedPnFinal">pn_final</label><input
+                                    id="shellSharedPnFinal" type="text" /></div>
 
-                            <div class="shell-shared-field"><label for="shellSharedDesignationFinal">DESIGNATION FINAL
-                                    (designation_final)</label><input id="shellSharedDesignationFinal" type="text" />
+                            <div class="shell-shared-field span-2"><label
+                                    for="shellSharedDesignationFinal">designation_final</label><input
+                                    id="shellSharedDesignationFinal" type="text" />
                             </div>
 
-                            <div class="shell-shared-field"><label for="shellSharedModelType">MODEL/TYPE FINAL
-                                    (model_type_final)</label><input id="shellSharedModelType" type="text" /></div>
+                            <div class="shell-shared-field"><label
+                                    for="shellSharedModelType">model_type_final</label><input id="shellSharedModelType"
+                                    type="text" /></div>
 
-                            <div class="shell-shared-field"><label for="shellSharedQty">QTY FINAL
-                                    (qty_final)</label><input id="shellSharedQty" type="text" /></div>
+                            <div class="shell-shared-field"><label for="shellSharedQty">qty_final</label><input
+                                    id="shellSharedQty" type="text" /></div>
 
-                            <div class="shell-shared-field"><label for="shellSharedUnits">UNITS FINAL
-                                    (qty_units_final)</label><input id="shellSharedUnits" type="text" /></div>
+                            <div class="shell-shared-field"><label for="shellSharedUnits">qty_units_final</label><input
+                                    id="shellSharedUnits" type="text" /></div>
 
-                            <div class="shell-shared-field"><label for="shellSharedWeightFinal">WEIGHT FINAL
-                                    (weight_final)</label><input id="shellSharedWeightFinal" type="text" /></div>
+                            <div class="shell-shared-field"><label
+                                    for="shellSharedWeightFinal">weight_final</label><input id="shellSharedWeightFinal"
+                                    type="text" /></div>
 
-                            <div class="shell-shared-field"><label for="shellSharedFn">FN FINAL (fn_final)</label><input
+                            <div class="shell-shared-field"><label for="shellSharedFn">fn_final</label><input
                                     id="shellSharedFn" type="text" /></div>
 
-                            <div class="shell-shared-field"><label for="shellSharedMeasurementFinal">MEASURE FINAL
-                                    (measure_final)</label><input id="shellSharedMeasurementFinal" type="text" /></div>
+                            <div class="shell-shared-field span-2"><label
+                                    for="shellSharedMeasurementFinal">measure_final</label><input
+                                    id="shellSharedMeasurementFinal" type="text" /></div>
 
-                            <div class="shell-shared-field"><label for="shellSharedFgFgsFinal">FG/FGS FINAL
-                                    (fg_fgs_final)</label><input id="shellSharedFgFgsFinal" type="text" /></div>
+                            <div class="shell-shared-field"><label
+                                    for="shellSharedFgFgsFinal">fg_fgs_final</label><input id="shellSharedFgFgsFinal"
+                                    type="text" /></div>
 
-                            <div class="shell-shared-field"><label for="shellSharedBomFinal">BOM FINAL
-                                    (bom_final)</label><input id="shellSharedBomFinal" type="text" /></div>
+                            <div class="shell-shared-field"><label for="shellSharedBomFinal">bom_final</label><input
+                                    id="shellSharedBomFinal" type="text" /></div>
 
-                            <div class="shell-shared-field"><label for="shellSharedNorma">NORMA FINAL
-                                    (norma_final)</label><input id="shellSharedNorma" type="text" /></div>
+                            <div class="shell-shared-field"><label for="shellSharedNorma">norma_final</label><input
+                                    id="shellSharedNorma" type="text" /></div>
 
                         </div>
 
@@ -581,39 +616,41 @@
 
                         <div class="shell-shared-stack">
 
-                            <div class="shell-shared-field"><label for="shellSharedEstado">ESTADO
-                                    (qa_revision_estado)</label><select id="shellSharedEstado">
+                            <div class="shell-shared-field"><label
+                                    for="shellSharedEstado">qa_revision_estado</label><select id="shellSharedEstado">
                                     <option value="pendiente">Pendiente</option>
                                     <option value="ok">OK</option>
                                 </select></div>
 
-                            <div class="shell-shared-field"><label for="shellSharedAccion">ACCION
-                                    (qa_revision_accion)</label><select id="shellSharedAccion">
+                            <div class="shell-shared-field"><label
+                                    for="shellSharedAccion">qa_revision_accion</label><select id="shellSharedAccion">
                                     <option value="importar">Importar</option>
                                     <option value="revisar">Revisar</option>
                                     <option value="eliminar">Eliminar</option>
                                 </select></div>
 
-                            <div class="shell-shared-field"><label for="shellSharedGesa">GESA (gesa)</label><input
+                            <div class="shell-shared-field"><label for="shellSharedGesa">gesa</label><input
                                     id="shellSharedGesa" type="text" /></div>
 
-                            <div class="shell-shared-field"><label for="shellSharedNormalizado">NORMALIZADO
-                                    (normalizado)</label><input id="shellSharedNormalizado" type="text" /></div>
+                            <div class="shell-shared-field"><label
+                                    for="shellSharedNormalizado">normalizado</label><input id="shellSharedNormalizado"
+                                    type="text" /></div>
 
-                            <div class="shell-shared-field"><label for="shellSharedNewSup">NEW/SUP
-                                    (sust_hierarchie)</label><input id="shellSharedNewSup" type="text" /></div>
+                            <div class="shell-shared-field"><label for="shellSharedNewSup">sust_hierarchie</label><input
+                                    id="shellSharedNewSup" type="text" /></div>
 
-                            <div class="shell-shared-field"><label for="shellSharedHasImg">FOTO (has_img)</label><input
+                            <div class="shell-shared-field"><label for="shellSharedHasImg">has_img</label><input
                                     id="shellSharedHasImg" type="text" /></div>
 
-                            <div class="shell-shared-field"><label for="shellSharedEnWeb">EN WEB (EN_WEB)</label><input
+                            <div class="shell-shared-field"><label for="shellSharedEnWeb">en_web</label><input
                                     id="shellSharedEnWeb" type="text" /></div>
 
-                            <div class="shell-shared-field"><label for="shellSharedBook">LIBRO
-                                    (engine_model)</label><input id="shellSharedBook" type="text" /></div>
+                            <div class="shell-shared-field span-2"><label
+                                    for="shellSharedBook">engine_model</label><input id="shellSharedBook" type="text" />
+                            </div>
 
-                            <div class="shell-shared-field"><label for="shellSharedPage">PAGINA (Source
-                                    Page)</label><input id="shellSharedPage" type="text" /></div>
+                            <div class="shell-shared-field"><label for="shellSharedPage">source_page</label><input
+                                    id="shellSharedPage" type="text" /></div>
 
                         </div>
 
@@ -1085,11 +1122,13 @@
 
             excelFields.innerHTML = excelKeys.map((field) => {
 
-                const title = EXCEL_FIELD_LABELS[field] || field.replace(/_/g, ' ').toUpperCase();
+                const label = field;
 
-                const label = `${title} (${field})`;
+                const isWideField = /designation|measure|model_type|new_part_number|part_no/i.test(field);
 
-                return `<div class="shell-shared-field"><label>${escapeHtml(label)}</label><input type="text" data-excel-field="${escapeHtml(field)}" value="${escapeHtml(txt(values[field]))}" /></div>`;
+                const wideClass = isWideField ? ' span-2' : '';
+
+                return `<div class="shell-shared-field${wideClass}"><label>${escapeHtml(label)}</label><input type="text" data-excel-field="${escapeHtml(field)}" value="${escapeHtml(txt(values[field]))}" /></div>`;
 
             }).join('');
 

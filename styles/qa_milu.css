@@ -725,6 +725,14 @@
 
 
 
+        #qaSideRecordForm .qa-modal-top-split {
+
+            grid-template-columns: minmax(0, 1fr);
+
+        }
+
+
+
         .qa-side-grid-meta {
 
             grid-template-columns: repeat(3, minmax(0, 1fr));
