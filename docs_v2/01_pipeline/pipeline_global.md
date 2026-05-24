@@ -7,6 +7,7 @@ Resumir el pipeline operativo real de MILU V1 por motor, sin asumir flujos histo
 - PDF por motor.
 - `book_preview_*.json`.
 - `engine_*.json`.
+- `EXCEL_GESA2026.json` (cuando se ejecuta actualizacion OFFLINE de campos GESA).
 
 ## Outputs
 - `engine_*.json` consolidados para QA y export.
@@ -43,12 +44,13 @@ Resumir el pipeline operativo real de MILU V1 por motor, sin asumir flujos histo
 1. Extraccion PDF genera `book_preview_<MODEL>.json` en `import_pdf.html`.
 2. IMPORTAR PDF llama `POST /api/pdf-preview/apply-to-engine`.
 3. Backend ejecuta `apply_book_preview_to_engine.py` o `apply_all_book_previews.py` con `--write --overwrite`.
-4. CALCULO FINAL llama `POST /copy-pdf-to-final-all-books`.
-5. Backend aplica `FINAL_FIELDS_V1_MAPPINGS_BACKEND` y persiste `*_final`.
-6. ERRORES llama `POST /recompute-qa-errors` y recalcula `*_error`.
-7. ESTADOS llama `POST /api/recompute-simple/update-states` (o endpoint coexistente `/recalculate-revision-status`).
-8. Revision remota usa `/qa_revision_sync.php` y `/apply-revision-to-engines`.
-9. Export publica con `POST /export/run-wordpress`.
+4. OFFLINE opcional/recomendado antes de FINAL: actualizar campos GESA desde catalogo con `node scripts/update_gesa_fields_from_excel.js` (dry-run) o `node scripts/update_gesa_fields_from_excel.js --write`.
+5. CALCULO FINAL llama `POST /copy-pdf-to-final-all-books`.
+6. Backend aplica `FINAL_FIELDS_V1_MAPPINGS_BACKEND` y persiste `*_final`.
+7. ERRORES llama `POST /recompute-qa-errors` y recalcula `*_error`.
+8. ESTADOS llama `POST /api/recompute-simple/update-states` (o endpoint coexistente `/recalculate-revision-status`).
+9. Revision remota usa `/qa_revision_sync.php` y `/apply-revision-to-engines`.
+10. Export publica con `POST /export/run-wordpress`.
 
 ## Diagnostico activo
 - IMPORTAR PDF devuelve `stats`, `not_found_rows`, `action_required_conflicts`, `applied_manual_decisions`.
@@ -62,6 +64,7 @@ Resumir el pipeline operativo real de MILU V1 por motor, sin asumir flujos histo
 - IMPORTAR PDF y CALCULO FINAL ignoran `ID puntual` (trabajan por libro/todos).
 - ERRORES admite `scope` con libro e ID.
 - ESTADOS en `recompute_simple` usa endpoint por engine/ID; en modal analista permanece el endpoint global coexistente.
+- Actualizacion GESA desde `EXCEL_GESA2026.json` es OFFLINE (sin endpoint runtime), con match exacto `PART NUMBER == pn_final`, `--only` por motor y backup por engine en modo `--write`.
 
 ## Estado operativo actual
 - Flujo principal estable sobre `recompute_simple.html`.
