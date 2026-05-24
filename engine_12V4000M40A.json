@@ -221,8 +221,8 @@
     "bom_error": 0,
     "total_error": 1,
     "has_error": true,
-    "qa_revision_estado": "pendiente",
-    "qa_revision_accion": "revisar",
+    "qa_revision_estado": "ok",
+    "qa_revision_accion": "eliminar",
     "qa_revision_updated_at": "2026-05-23T02:32:35.296Z",
     "model_type_final": "",
     "model_type_error": 0,
@@ -4877,7 +4877,7 @@
   },
   {
     "ID": "1100658",
-    "POS": null,
+    "POS": "40",
     "PART NO.": "000931008075",
     "DESIGNATION": "HEX SCREW",
     "MODEL/TYPE": null,
@@ -4950,7 +4950,7 @@
     "book_set": "12V4000M40A",
     "measure_raw": "M 8 X 45",
     "norma_raw": "DIN931",
-    "pos_final": "",
+    "pos_final": "40",
     "qty_final": "8",
     "qty_units_final": "",
     "norma_final": "DIN931",
@@ -4967,8 +4967,8 @@
     "bom_error": 0,
     "total_error": 1,
     "has_error": true,
-    "qa_revision_estado": "pendiente",
-    "qa_revision_accion": "revisar",
+    "qa_revision_estado": "ok",
+    "qa_revision_accion": "importar",
     "qa_revision_motivo": "PN encontrado en GESA",
     "qa_revision_confianza": 1,
     "qa_revision_origen": "auto",
@@ -5008,7 +5008,8 @@
     "qa_revision_updated_at": "2026-05-23T02:32:35.296Z",
     "pos_excel": "40",
     "qa_status": "ok",
-    "qa_action": "importar"
+    "qa_action": "importar",
+    "pos_pdf": "40"
   },
   {
     "ID": "1100715",
@@ -145544,7 +145545,7 @@
   },
   {
     "ID": "1102191",
-    "POS": null,
+    "POS": "20",
     "PART NO.": "718363232002",
     "DESIGNATION": "UNION",
     "MODEL/TYPE": null,
@@ -145617,7 +145618,7 @@
     "book_set": "12V4000M40A",
     "measure_raw": "35 M 45 X 1 5",
     "norma_raw": "MMN18363.2",
-    "pos_final": "",
+    "pos_final": "20",
     "qty_final": "2",
     "qty_units_final": "",
     "norma_final": "MMN18363.2",
@@ -145634,8 +145635,8 @@
     "bom_error": 0,
     "total_error": 1,
     "has_error": true,
-    "qa_revision_estado": "pendiente",
-    "qa_revision_accion": "revisar",
+    "qa_revision_estado": "ok",
+    "qa_revision_accion": "importar",
     "qa_revision_motivo": "PN encontrado en GESA",
     "qa_revision_confianza": 1,
     "qa_revision_origen": "auto",
@@ -145673,7 +145674,10 @@
     "pn_excel": "718363232002",
     "measure_pdf": "35/M 45 X 1,5",
     "qa_revision_updated_at": "2026-05-23T02:32:35.296Z",
-    "pos_excel": "20"
+    "pos_excel": "20",
+    "pos_pdf": "20",
+    "qa_action": "importar",
+    "qa_status": "ok"
   },
   {
     "ID": "1100542",
@@ -309429,7 +309433,7 @@
     "bom_error": 0,
     "total_error": 1,
     "has_error": true,
-    "qa_revision_estado": "pendiente",
+    "qa_revision_estado": "ok",
     "qa_revision_accion": "revisar",
     "model_type_final": "",
     "model_type_error": 0,
@@ -309455,7 +309459,8 @@
     "qty_pdf": "1",
     "units_pdf": "PC",
     "weight_pdf": "1,590 KG",
-    "qa_revision_updated_at": "2026-05-23T02:32:35.296Z"
+    "qa_revision_updated_at": "2026-05-23T02:32:35.296Z",
+    "qa_status": "ok"
   },
   {
     "ID": "1100252",

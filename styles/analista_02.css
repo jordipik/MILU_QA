@@ -468,8 +468,8 @@ body.a2-resizing * {
 }
 
 .a2-search-nav.is-pending {
-    border: 1px solid #d7dee7;
-    background: linear-gradient(180deg, #ffffff, #f5f8fb);
+    border: 1px solid #f0b4ad;
+    background: linear-gradient(180deg, #fff3f1, #ffe1dd);
 }
 
 .a2-recompute-top-group {
@@ -546,7 +546,7 @@ body.a2-resizing * {
 }
 
 .a2-search-nav.is-pending .a2-search-nav-center {
-    color: #5c6d80;
+    color: #b42318;
 }
 
 .a2-btn-nav {
@@ -597,9 +597,9 @@ body.a2-resizing * {
 
 #prevPendingBtn,
 #nextPendingBtn {
-    color: #5c6d80;
-    background: #ffffff;
-    border-color: #c4d0dd;
+    color: #a33125;
+    background: #ffecea;
+    border-color: #efbbb3;
 }
 
 #prevReviewBtn,
@@ -611,9 +611,9 @@ body.a2-resizing * {
 
 #prevPendingBtn:hover,
 #nextPendingBtn:hover {
-    color: #425365;
-    background: #edf3f9;
-    border-color: #aebfd1;
+    color: #872317;
+    background: #ffdcd8;
+    border-color: #e69e95;
 }
 
 #prevReviewBtn:hover,
@@ -625,7 +625,7 @@ body.a2-resizing * {
 
 #prevPendingBtn:focus-visible,
 #nextPendingBtn:focus-visible {
-    outline: 2px solid #7290ad;
+    outline: 2px solid #d6453a;
     outline-offset: 1px;
 }
 
@@ -778,6 +778,11 @@ body.a2-resizing * {
 .a2-stat-card.is-ko {
     border-color: #f0beb7;
     background: linear-gradient(180deg, #fff7f5, #ffe9e6);
+}
+
+.a2-stat-card.is-pending {
+    border-color: #f0b4ad;
+    background: linear-gradient(180deg, #fff3f1, #ffe1dd);
 }
 
 .a2-stat-label {
@@ -2097,9 +2102,9 @@ body.a2-resizing * {
 }
 
 .a2-review-btn.is-ok {
-    border-color: #b7e0c8;
-    background: linear-gradient(180deg, #f6fffa, #e8f8ef);
-    color: #1e6c44;
+    border-color: #d0d8e3;
+    background: linear-gradient(180deg, #f8fafc, #edf2f7);
+    color: #5e6f84;
 }
 
 .a2-review-btn.is-ok.is-active {
@@ -2110,9 +2115,9 @@ body.a2-resizing * {
 }
 
 .a2-review-btn.is-copy {
-    border-color: #f1c849;
-    background: linear-gradient(180deg, #fff8de, #ffeaa3);
-    color: #7b5504;
+    border-color: #d0d8e3;
+    background: linear-gradient(180deg, #f8fafc, #edf2f7);
+    color: #5e6f84;
 }
 
 .a2-review-btn.is-copy.is-active {
@@ -2123,9 +2128,9 @@ body.a2-resizing * {
 }
 
 .a2-review-btn.is-review {
-    border-color: #d9c7f4;
-    background: linear-gradient(180deg, #f7f2ff, #ece1ff);
-    color: #6c46a6;
+    border-color: #d0d8e3;
+    background: linear-gradient(180deg, #f8fafc, #edf2f7);
+    color: #5e6f84;
 }
 
 .a2-review-btn.is-review.is-active {
@@ -2136,9 +2141,9 @@ body.a2-resizing * {
 }
 
 .a2-review-btn.is-ko {
-    border-color: #f0beb7;
-    background: linear-gradient(180deg, #fff7f5, #ffe9e6);
-    color: #8f2e23;
+    border-color: #d0d8e3;
+    background: linear-gradient(180deg, #f8fafc, #edf2f7);
+    color: #5e6f84;
 }
 
 .a2-review-btn.is-ko.is-active {
@@ -2149,16 +2154,16 @@ body.a2-resizing * {
 }
 
 .a2-review-btn.is-pending {
-    border-color: #d7dee7;
-    background: linear-gradient(180deg, #ffffff, #f5f8fb);
+    border-color: #d0d8e3;
+    background: linear-gradient(180deg, #f8fafc, #edf2f7);
     color: #5e6f84;
 }
 
 .a2-review-btn.is-pending.is-active {
-    background: linear-gradient(180deg, #f9fbfd, #edf3f8);
-    border-color: #95abbe;
-    color: #425365;
-    box-shadow: 0 6px 14px rgba(66, 83, 101, 0.18);
+    background: linear-gradient(180deg, #ffe9e6, #ffc5bd);
+    border-color: #d92d20;
+    color: #7a1212;
+    box-shadow: 0 6px 14px rgba(217, 45, 32, 0.28);
 }
 
 .a2-review-btn.is-reviewed {
