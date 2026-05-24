@@ -34,6 +34,11 @@ body {
     background: linear-gradient(155deg, var(--bg-top), var(--bg-bottom));
 }
 
+body.a2-hermanos-busy,
+body.a2-hermanos-busy * {
+    cursor: progress !important;
+}
+
 .a2-topbar {
     display: grid;
     grid-template-columns: minmax(420px, 1fr) auto minmax(220px, 1fr);

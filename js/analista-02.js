@@ -33,6 +33,42 @@ import { openRecordEditor, closeRecordEditor } from './record-editor.js';
 
 const $ = (id) => document.getElementById(id);
 
+const hermanosBusyUiState = {
+
+    depth: 0
+
+};
+
+function setHermanosBusyCursor(enabled) {
+
+    if (enabled) {
+
+        hermanosBusyUiState.depth += 1;
+
+    } else {
+
+        hermanosBusyUiState.depth = Math.max(0, hermanosBusyUiState.depth - 1);
+
+    }
+
+
+
+    const shouldBeBusy = hermanosBusyUiState.depth > 0;
+
+    if (document.body instanceof HTMLElement) {
+
+        document.body.classList.toggle('a2-hermanos-busy', shouldBeBusy);
+
+    }
+
+}
+
+async function waitForUiPaint() {
+
+    await new Promise((resolve) => requestAnimationFrame(() => resolve()));
+
+}
+
 function ensureLegacyToolbarControls() {
     const ids = ['engineFilterSelect', 'recordIdInput', 'recordSearchList', 'loadRecordBtn', 'recordMeta'];
     const hasAll = ids.every((id) => Boolean($(id)));
@@ -9735,19 +9771,29 @@ async function loadRelativeImport(direction) {
 
 async function applyPnCopyPropagationFromCurrent() {
 
-    const result = await applyPnCopyPropagationFromRow(currentRow, {
+    setHermanosBusyCursor(true);
 
-        showAlerts: true,
+    try {
 
-        refreshPnReview: true,
+        const result = await applyPnCopyPropagationFromRow(currentRow, {
 
-        requireOkImportar: true,
+            showAlerts: true,
 
-        silentIfNoSiblings: false
+            refreshPnReview: true,
 
-    });
+            requireOkImportar: true,
 
-    if (result?.fatalError) return;
+            silentIfNoSiblings: false
+
+        });
+
+        if (result?.fatalError) return;
+
+    } finally {
+
+        setHermanosBusyCursor(false);
+
+    }
 
 }
 
@@ -10154,6 +10200,18 @@ async function applyPnCopyPropagationForCurrentBook() {
     });
 
     if (!confirmed) return;
+
+    const typedConfirmBackdrop = document.querySelector('.cta-backdrop');
+
+    if (typedConfirmBackdrop instanceof HTMLElement) {
+
+        typedConfirmBackdrop.hidden = true;
+
+    }
+
+    await waitForUiPaint();
+
+    setHermanosBusyCursor(true);
 
 
 
@@ -10726,6 +10784,8 @@ async function applyPnCopyPropagationForCurrentBook() {
     } finally {
 
         finishHermanosProgressModal();
+
+        setHermanosBusyCursor(false);
 
         if (triggerBtn instanceof HTMLButtonElement) {
 
