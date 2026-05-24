@@ -1,6 +1,6 @@
 [
   {
-    "POS": null,
+    "POS": "20",
     "PART NO.": "700425000219",
     "DESIGNATION": "NAMEPLATE FOR DIESEL ENGINE",
     "MODEL/TYPE": null,
@@ -5876,8 +5876,8 @@
     "subst_pnlist_final": "5240100164, 5240100264, X52601100004"
   },
   {
-    "POS": "5 15 25 30",
-    "PART NO.": "X52601100055 0000181802 5240111380 000933010035",
+    "POS": "5",
+    "PART NO.": "X52601100055",
     "DESIGNATION": null,
     "MODEL/TYPE": null,
     "QTY": null,
@@ -5892,7 +5892,7 @@
     "source_file": "12V4000M70.xlsx",
     "source_sheet": "1",
     "pn_raw": "X52601100055 0000181802 5240111380 000933010035",
-    "pn_final": "X52601100055 0000181802 5240111380 000933010035",
+    "pn_final": "X52601100055",
     "criterio_pn": "MATCH_CATALOGO",
     "detalle_cambio": "match: X52601100055",
     "existeix_gesa": true,
@@ -5995,12 +5995,12 @@
     "weight_pdf": "",
     "fg_fgs_pdf": "",
     "bom_pdf": "",
-    "pn_excel": "X52601100055 0000181802 5240111380 000933010035",
+    "pn_excel": "X52601100055",
     "qa_revision_updated_at": "2026-05-23T02:32:35.296Z"
   },
   {
-    "POS": null,
-    "PART NO.": "15 5240100266",
+    "POS": "15",
+    "PART NO.": "5240100266",
     "DESIGNATION": "CONNECTOR THREADED 1",
     "MODEL/TYPE": "0 1",
     "QTY": null,
@@ -6015,7 +6015,7 @@
     "source_file": "12V4000M70.xlsx",
     "source_sheet": "1",
     "pn_raw": "15 5240100266",
-    "pn_final": "15 5240100266",
+    "pn_final": "5240100266",
     "criterio_pn": "MATCH_CATALOGO",
     "detalle_cambio": "match: 5240100266",
     "existeix_gesa": true,
@@ -6112,7 +6112,7 @@
     "measure_error": 0,
     "fg_fgs_pdf": "",
     "bom_pdf": "",
-    "pn_excel": "15 5240100266",
+    "pn_excel": "5240100266",
     "qa_revision_updated_at": "2026-05-23T02:32:35.296Z"
   },
   {

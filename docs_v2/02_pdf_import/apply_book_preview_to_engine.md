@@ -8,18 +8,23 @@ Describir la logica real de aplicacion de `book_preview` sobre `engine`.
 - `--engine engine_<MODEL>.json`
 - flags: `--write`, `--overwrite`.
 
+Flags adicionales auditados:
+- `--report <path>`
+- `--conflict-decisions <path>`
+
 ## Outputs
 - Actualizacion de campos `_pdf` en el engine.
-- Backup `engine_*.json.bak.<timestamp>` cuando hay escritura.
+- Backup `engine_*.json.bak.<timestamp>` cuando hay escritura (`--write` y cambios).
+- Reporte JSON con `stats`, `not_found_rows`, `action_required_conflicts`, `applied_manual_decisions`.
 
 ## Scripts implicados
 - `apply_book_preview_to_engine.py`.
 - `apply_all_book_previews.py`.
 
 ## Endpoints implicados
-- `POST /api/pdf-preview/apply-to-engine` (wrapper backend para ejecutar scripts Python).
-- `POST /copy-pdf-to-pdf-all-books` (legacy para este flujo, no oficial actual de IMPORTAR PDF).
-- `POST /recompute-pdf-auto` (legacy/desactivado para este flujo).
+- OFFICIAL: `POST /api/pdf-preview/apply-to-engine`.
+- LEGACY/ALTERNATIVO: `POST /copy-pdf-to-pdf-all-books`.
+- LEGACY DESACTIVADO: `POST /recompute-pdf-auto`.
 
 ## Botones UI relacionados
 - `recomputeCopyBookBtn` (IMPORTAR PDF).
@@ -30,11 +35,14 @@ Describir la logica real de aplicacion de `book_preview` sobre `engine`.
 ## Flujo paso a paso
 1. Script indexa engine por `(Source Page, POS)`.
 2. Busca candidatos para cada fila de preview.
-3. Si la fila preview no trae `POS`, aplica fallback por `(Source Page, PN)` en la misma pagina.
-4. El fallback solo se acepta si el `PN` identifica una unica fila de engine en esa pagina (`pn_pdf` contra `pn_pdf`/`PART NO.`/`pn_final`/`pn_excel`).
-5. Si hay multiples candidatos con la misma clave, el caso queda como ambiguo y no se aplica.
-6. Si `--overwrite` no esta activo, no reemplaza celdas no vacias.
-7. Si `--write` y hubo cambios, persiste engine y crea backup.
+3. Si hay colision de candidatos, desempata por PN usando candidatos del engine: `pn_pdf`, `PART NO.`, `pn_final`, `pn_excel`.
+4. Si falta `POS`, usa fallback `(Source Page, PN)` solo con candidato unico.
+5. Si falla `(page,pos)` y hay PN, existe fallback de compatibilidad por `(page,pn)` (`page-pn-pos-mismatch`).
+6. Si hay ambiguos:
+	- si candidatos son equivalentes en campos clave, aplica a todos (`matched_ambiguous_all_equal`);
+	- si difieren, crea conflicto (`action_required_conflicts`) y espera decision manual opcional.
+7. Si `--overwrite` no esta activo, no reemplaza celdas no vacias.
+8. Si `--write` y hubo cambios, persiste engine y crea backup.
 
 ## Flujo oficial desde modal IMPORTAR PDF
 - `recomputeCopyBookBtn` ejecuta `runApplyBookPreviewToEngines()` en `js/analista-02.js`.
@@ -44,15 +52,23 @@ Describir la logica real de aplicacion de `book_preview` sobre `engine`.
 
 ## Logs y diagnostico
 - `analista-02.js`: boton, engine, endpoint, `rows_changed`, `fields_changed`, `ambiguous`, `not_found`.
-- `server.js`: comando Python ejecutado y resumen de stats.
-- `apply_book_preview_to_engine.py`: reporte de `not_found`/`ambiguous` y muestras.
+- `server.js`: comando Python ejecutado y resumen de stats, mas parseo de `--report`.
+- `apply_book_preview_to_engine.py`: reporte de `not_found`/`ambiguous` y conflictos manuales.
 
 ## not_found (interpretacion oficial)
 - `not_found` no implica fallo de escritura.
 - `not_found` significa que la fila preview no encontro match de engine por clave de matching.
 - Matching principal: `Source Page` + `POS`.
-- Fallback cuando falta `POS`: `Source Page` + `PN`, solo dentro de la misma pagina y solo si el match es unico.
-- Desempate secundario del matching por `POS`: `PN`.
+- Desempate del matching por `POS`: `PN`.
+- Fallback cuando falta `POS`: `Source Page` + `PN` (match unico).
+- Fallback de compatibilidad adicional: `page-pn-pos-mismatch`.
+
+## Conflictos ambiguos
+- `ambiguous`: no aplica automaticamente cuando hay ambiguedad sin resolver.
+- `action_required_conflicts`: lista conflictos con candidatos.
+- `conflict_key`: identificador de conflicto (`page|pos|pn_pdf`).
+- `--conflict-decisions`: permite aplicar decision manual por ID (`apply-id`).
+- `applied_manual_decisions`: refleja conflictos resueltos manualmente.
 
 ## Sistema de diagnostico en modal
 - El panel de no-match del modal muestra:

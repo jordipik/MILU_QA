@@ -1,97 +1,42 @@
 # SCRIPT MAP
 
 ## Objetivo
-Inventario operativo de scripts y endpoints usados por el flujo MILU v1.
+Inventario de scripts y endpoints, con estado oficial/legacy validado en el codigo actual.
 
-## Inputs
-- `engine_*.json`.
-- `book_preview_*.json`.
-- Peticiones UI desde `import_pdf.html`, `analista_02.html` y `exportacion.html`.
+## Mapa principal
 
-## Outputs
-- JSON de motores actualizados.
-- Artefactos de export en `data/output/wordpress/`.
-- Persistencia de revisiones en `qa_revision_server_data.json`.
+| Componente | Tipo | Punto de entrada | Resultado | Estado |
+| --- | --- | --- | --- | --- |
+| `js/import-pdf.js` | Frontend | `import_pdf.html` (`extractBookBtn`, `extractAllBooksBtn`) | Genera `book_preview_<MODEL>.json` | OFFICIAL |
+| `apply_book_preview_to_engine.py` | Python | `POST /api/pdf-preview/apply-to-engine` (por libro) | Copia campos `_pdf` al engine | OFFICIAL |
+| `apply_all_book_previews.py` | Python | `POST /api/pdf-preview/apply-to-engine` (todos) | Ejecuta apply en lote | OFFICIAL |
+| `POST /api/pdf-preview/apply-to-engine` | Backend | UI recompute (`btnImportPdf`, `recomputeCopyBookBtn`) | Ejecuta scripts apply con `--write --overwrite` | OFFICIAL |
+| `POST /copy-pdf-to-final-all-books` | Backend | UI recompute (`btnFinal`, `recomputeCalculateFinalBtn`) | Calcula `*_final` con `FINAL_FIELDS_V1_MAPPINGS_BACKEND` | OFFICIAL |
+| `POST /calculate-final-fields` + `copy_gesa_fields_to_final.py` | Backend + Python | Llamada legacy | Ruta heredada de final fields | LEGACY |
+| `recompute_engine_errors.js` | Node | `POST /recompute-qa-errors` | Recalcula `*_error`, `total_error`, `has_error` y opcion QA | OFFICIAL |
+| `scripts/update_revision_states.js` | Node | `POST /api/recompute-simple/update-states` | Recalcula `qa_revision_estado/accion` | OFFICIAL |
+| `POST /recalculate-revision-status` | Backend | `recomputeRevisionStatusBtn` (analista modal) | Recalculo global alternativo | OFFICIAL (coexistente) |
+| `GET/POST /qa_revision_sync.php` | Backend | QA UI + sync remoto | Lee/escribe `qa_revision_server_data.json` | OFFICIAL |
+| `POST /apply-revision-to-engines` | Backend | Flujos revision | Aplica decisiones a engines | OFFICIAL |
+| `POST /recompute-pdf-auto` | Backend | Endpoints antiguos | Devuelve 410 | LEGACY DESACTIVADO |
+| `POST /recompute-pdf-auto-visual` | Backend | Flujo alternativo visual | Copia `_pdf` por comparacion visual | ALTERNATIVO |
+| `POST /copy-pdf-to-pdf-all-books` | Backend | Flujo historico | Copia `_pdf` batch visual | LEGACY/ALTERNATIVO |
+| `depuracion_json.py` | Python offline | Ejecucion manual | Normaliza y consolida engines | OFFICIAL OFFLINE |
 
-## Scripts implicados
-- Ver tabla principal.
+## Botones UI auditados
+- `recompute_simple.html`
+	- `btnImportPdf` -> `POST /api/pdf-preview/apply-to-engine`
+	- `btnFinal` -> `POST /copy-pdf-to-final-all-books`
+	- `btnErrors` -> `POST /recompute-qa-errors`
+	- `btnStatuses` -> `POST /api/recompute-simple/update-states`
+	- `btnClearPdfFinal` -> `POST /clear-engine-fields`
+- `analista_02.html` (modal recompute)
+	- `recomputeCopyBookBtn` -> `runApplyBookPreviewToEngines()` -> `POST /api/pdf-preview/apply-to-engine`
+	- `recomputeCalculateFinalBtn` -> `POST /copy-pdf-to-final-all-books`
+	- `recomputeRunBtn` -> `POST /recompute-qa-errors`
+	- `recomputeRevisionStatusBtn` -> `POST /recalculate-revision-status`
 
-## Endpoints implicados
-- Ver tabla principal para endpoints HTTP.
-
-## Botones UI relacionados
-- `extractWholeBookBtn`, `extractAllBooksBtn`, `recomputeCopyBookBtn`, `recomputeCalculateFinalBtn`, `recomputeRunBtn`, `recomputeRevisionStatusBtn`, `btnClearPdfFinal`, `expBtnRunWordpress`.
-
-## Campos afectados
-- `_pdf`, `_final`, `_error`, QA, campos de export y de imagenes.
-
-## Flujo paso a paso
-1. UI dispara endpoint o script.
-2. Backend valida payload y archivo.
-3. Script actualiza JSON en disco o genera export.
-4. UI recarga estado y resumen.
-
-## Riesgos / problemas conocidos
-- Scripts con superposicion funcional (`copy_gesa_fields_to_final.py` vs `copy-pdf-to-final-all-books` vs `depuracion_json.py`).
-- Dependencia de archivos externos no versionados para algunos pasos historicos.
-
-## TODO pendiente
-- Retirar rutas legacy cuando ya no haya consumidores activos.
-
-## Ejemplo real
-- `POST /api/pdf-preview/apply-to-engine` ejecuta `apply_book_preview_to_engine.py` o `apply_all_book_previews.py` con `--write --overwrite`.
-
-## Notas operativas vigentes
-- IMPORTAR PDF en modal se dispara desde `recomputeCopyBookBtn` -> `runApplyBookPreviewToEngines()` (`js/analista-02.js`).
-- Flujo oficial IMPORTAR PDF usa solo `POST /api/pdf-preview/apply-to-engine` para aplicar preview a engine.
-- Para este flujo, `POST /copy-pdf-to-pdf-all-books` y `POST /recompute-pdf-auto` quedan marcados como legacy/alternativo y no oficiales.
-- Diagnostico activo en `analista-02.js`, `server.js` y `apply_book_preview_to_engine.py` (boton, engine, endpoint, comando Python, `rows_changed`, `fields_changed`, `ambiguous`, `not_found`).
-- En modal de errores, selector `Libro` admite libro individual o `Todos los libros`; al elegir `Todos los libros`, el scope pasa a `all` y el boton muestra `ERRORES TODOS`.
-
-## Contrato oficial de filtros del RecomputeModal
-
-Estado: OFFICIAL (UI validada en `analista_02.html` + handlers en `js/analista-02.js`).
-
-Filtros oficiales:
-- `Libro`: `Todos los libros` o motor concreto.
-- `ID puntual`: opcional.
-
-| Boton | Endpoint | Soporta libro | Soporta ID | Comportamiento | Estado |
-| --- | --- | --- | --- | --- | --- |
-| `recomputeCopyBookBtn` (IMPORTAR PDF) | `POST /api/pdf-preview/apply-to-engine` | Si | No | Ignora ID puntual y muestra aviso; ejecuta por libro o todos. | OFFICIAL |
-| `recomputeCalculateFinalBtn` (CALCULO FINAL) | `POST /copy-pdf-to-final-all-books` | Si | No | Ignora ID puntual y muestra aviso; ejecuta por libro o todos. | OFFICIAL |
-| `recomputeRunBtn` (ERRORES) | `POST /recompute-qa-errors` | Si | Si | Respeta libro/ID y bloquea `Todos + ID`. | OFFICIAL |
-| `recomputeRevisionStatusBtn` (ESTADOS) | `POST /recalculate-revision-status` | No (solo global) | No | Bloquea libro o ID; solo recalcula todos los libros. | OFFICIAL (limitado) |
-| `btnClearPdfFinal` (VACIAR + MARCAR REVISION, en `recompute_simple.html`) | `POST /clear-engine-fields` | Si | No | Requiere confirmacion `VACIAR`; vacia `*_pdf`, `*_final`, `*_error` (excepto `pn_pdf`, `pn_final`) y marca QA pendiente. | OFFICIAL |
-
-Notas de implementacion vigentes:
-- ERRORES envia `updateRevision:false` y `forceRevision:false`.
-- ESTADOS se mantiene como paso separado para `qa_revision_estado` y `qa_revision_accion`.
-- Dependencia de checkboxes ocultos removida del flujo ERRORES.
-
-Riesgos pendientes:
-- PENDIENTE: ESTADOS sigue siendo global mientras `/recalculate-revision-status` no soporte filtro por libro.
-- PENDIENTE: IMPORTAR PDF y CALCULO FINAL no soportan ID puntual (solo aviso de ID ignorado).
-
-| Script | Tipo | Entrada | Salida | Modifica | Estado |
-| ------ | ---- | ------- | ------ | -------- | ------ |
-| `js/analista-02.js::runApplyBookPreviewToEngines` | UI handler | click `recomputeCopyBookBtn`, selector libro | `fetch` a endpoint oficial + logs de diagnostico | no escribe directo; orquesta apply backend | Activo oficial |
-| `apply_book_preview_to_engine.py` | Python CLI | `book_preview_<MODEL>.json`, `engine_<MODEL>.json` | reporte en stdout y cambios en engine | `*_pdf` en `engine_*.json` | Activo oficial |
-| `apply_all_book_previews.py` | Python CLI | carpeta `json_originales/book_preview_*.json` + `engine_*.json` | ejecucion por lote de apply unitario | `*_pdf` en multiples engines | Activo oficial |
-| `POST /api/pdf-preview/apply-to-engine` | Endpoint Express | JSON opcional `{engine}` | JSON `stats` + `warnings` | dispara apply Python oficial | Activo oficial |
-| `recompute_engine_errors.js` | Node CLI/modulo | `engine_*.json` (+ scope/id flags) | resumen por archivo/libro | `*_error`, `total_error`, `has_error`, QA opcional | Activo oficial |
-| `POST /recompute-qa-errors` | Endpoint Express | `scope`, `file`, `id`, flags | resultado de recompute | `*_error` y QA segun flags | Activo oficial |
-| `copy_gesa_fields_to_final.py` | Python CLI | `engine_*.json` | resumen de registros/campos | subset de `*_final` si `gesa=SI` | LEGACY |
-| `POST /calculate-final-fields` | Endpoint Express | sin payload relevante | ejecuta script Python | usa `copy_gesa_fields_to_final.py` | LEGACY |
-| `POST /copy-pdf-to-final-all-books` | Endpoint Express | files opcionales + backup | totales por lote | `*_final` con FINAL_FIELDS_V1 y prioridad simple por campo | OFFICIAL |
-| `POST /clear-engine-fields` | Endpoint Express | `files?`, `suffixes`, `exclude`, `resetQaRevision` | resumen de limpieza por archivos/filas/campos | vacia `*_pdf`, `*_final`, `*_error` (segun payload) y opcionalmente resetea `qa_revision_*` | OFFICIAL |
-| `depuracion_json.py` | Python offline | `engine_*.json` | engines normalizados | recalcula finales, errores, `exp_imagenes` | Proceso oficial offline |
-| `POST /recalculate-revision-status` | Endpoint Express | vacio | totales procesados | `qa_revision_estado`, `qa_revision_accion` | Activo oficial |
-| `GET/POST /qa_revision_sync.php` | Endpoint Express | snapshot revision | payload normalizado | `qa_revision_server_data.json` | Activo oficial |
-| `POST /apply-revision-to-engines` | Endpoint Express | payload revision | resumen de aplicacion | aplica revision masiva a engines | Activo oficial |
-| `scripts/export_wordpress_milu.js` | Node script | todos los `engine_*.json` | JSON/CSV en `data/output/wordpress/` | genera salidas de export | Activo oficial |
-| `POST /export/run-wordpress` | Endpoint Express | vacio | resultado + resumen import/pending/discard | ejecuta script export | Activo oficial |
-| `POST /copy-pdf-to-pdf-all-books` | Endpoint Express | writePdf/backup/clear flags | resultado batch `_pdf` | copia `_pdf` por backend batch previo | Legacy (no usado por IMPORTAR PDF actual) |
-| `POST /recompute-pdf-auto` | Endpoint Express | n/a | 410 legacy | no aplica | Legacy desactivado (no usado por IMPORTAR PDF actual) |
-| `POST /recompute-pdf-auto-visual` | Endpoint Express | file/id/dryRun | resumen de copia visual | actualiza `_pdf` via comparacion visual | Activo alternativo |
-| Scripts R | R | n/a | n/a | n/a | No detectados en repo |
+## Campos nucleares afectados
+- PDF: `pos_pdf`, `pn_pdf`, `designation_pdf`, `model_type_pdf`, `qty_pdf`, `units_pdf`, `weight_pdf`, `fn_pdf`, `measure_pdf`, `norma_pdf`, `bom_pdf`, `fg_fgs_pdf`
+- Final: `pos_final`, `pn_final`, `designation_final`, `model_type_final`, `qty_final`, `units_final`, `weight_final`, `fn_final`, `measure_final`, `norma_final`, `fg_fgs_final`, `bom_final`, `nsn_final`, `normalizado_final`
+- Error/QA: `*_error`, `total_error`, `has_error`, `qa_revision_estado`, `qa_revision_accion`

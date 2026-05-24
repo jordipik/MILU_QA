@@ -16,28 +16,34 @@ Documentar el flujo de extraccion de tablas PDF y su aplicacion sobre `engine_*.
 - Backend apply: `apply_book_preview_to_engine.py`, `apply_all_book_previews.py`.
 
 ## Endpoints implicados
-- `POST /api/pdf-preview/apply-to-engine`.
-- `POST /copy-pdf-to-pdf-all-books` (legacy/alternativo, no usado por IMPORTAR PDF actual del modal).
-- `POST /recompute-pdf-auto` (legacy/desactivado, no usado por IMPORTAR PDF actual del modal).
+- OFFICIAL: `POST /api/pdf-preview/apply-to-engine`.
+- ALTERNATIVO/LEGACY: `POST /copy-pdf-to-pdf-all-books`.
+- LEGACY DESACTIVADO: `POST /recompute-pdf-auto` (HTTP 410).
+- ALTERNATIVO VISUAL: `POST /recompute-pdf-auto-visual`.
 
 ## Botones UI relacionados
-- `extractWholeBookBtn` (extraer libro actual).
+- `extractBookBtn` (extraer libro actual).
 - `extractAllBooksBtn` (barrido de todos los libros).
-- En modal analista: `recomputeCopyBookBtn` (IMPORTAR PDF).
+- En `recompute_simple.html`: `btnImportPdf`.
+- En modal analista: `recomputeCopyBookBtn`.
 
 ## Campos afectados
 - Campos `_pdf`: `pos_pdf`, `pn_pdf`, `designation_pdf`, `model_type_pdf`, `qty_pdf`, `units_pdf`, `weight_pdf`, `fn_pdf`, `measure_pdf`, `norma_pdf`, `bom_pdf`, `fg_fgs_pdf`.
 
 ## Flujo paso a paso
 1. `import_pdf.html` carga PDF y ejecuta deteccion por pagina (`extractAllPdfRowsFromCurrentPage`).
-2. `extractWholeBook` recorre paginas y compone payload `pages[]` con `rows_total` y `warnings_total`.
+2. `extractWholeBook` recorre paginas y compone payload con:
+	- raiz: `book`, `generated_at`, `pages_total`, `range_from`, `range_to`, `pages_processed`, `pages_with_rows`, `rows_total`, `warnings_total`, `cancelled`, `pages`.
+	- cada pagina: `source_page`, `rows_count`, `rows_with_pn`, `warnings_count`, `rows`.
 3. El frontend descarga `book_preview_<MODEL>.json` con `downloadJsonPreview(...)`.
-4. En analista, `recomputeCopyBookBtn` ejecuta `runApplyBookPreviewToEngines()`.
-5. `runApplyBookPreviewToEngines()` llama `POST /api/pdf-preview/apply-to-engine`.
-6. Backend ejecuta apply oficial con `--write --overwrite`.
+4. IMPORTAR PDF en recompute (`btnImportPdf` o `recomputeCopyBookBtn`) llama `POST /api/pdf-preview/apply-to-engine`.
+5. Backend ejecuta:
+	- por libro: `apply_book_preview_to_engine.py --write --overwrite --report ...`
+	- todos: `apply_all_book_previews.py --write --overwrite --report ...`
+6. La respuesta devuelve `stats`, `not_found_rows`, `action_required_conflicts`, `applied_manual_decisions`.
 
 ## Logs y diagnostico
-- En `js/analista-02.js` se registran:
+- En `js/analista-02.js` y `js/recompute-simple.js` se registran:
 	- boton pulsado;
 	- engine seleccionado;
 	- endpoint llamado;
@@ -52,8 +58,9 @@ Documentar el flujo de extraccion de tablas PDF y su aplicacion sobre `engine_*.
 - `not_found` indica fila preview sin match contra engine.
 - Matching real actual:
 	- principal: `Source Page` + `POS`.
-	- fallback si falta `POS`: `Source Page` + `PN`, limitado a la misma pagina y solo si el candidato es unico.
-	- secundario (desempate del matching por `POS`): `PN`.
+	- desempate del matching principal por PN.
+	- fallback si falta `POS`: `Source Page` + `PN` (candidato unico).
+	- fallback adicional de compatibilidad: cuando falla `(page,pos)` y hay PN, puede resolver por `(page,pn)` como `page-pn-pos-mismatch`.
 
 ## Panel de no-match en modal
 - El modal de recálculo muestra diagnostico de no-match:
@@ -66,13 +73,18 @@ Documentar el flujo de extraccion de tablas PDF y su aplicacion sobre `engine_*.
 ## Riesgos / problemas conocidos
 - Extraccion depende de deteccion visual; puede generar `warnings` y filas ambiguas/no encontradas.
 - Apply oficial con `--overwrite` puede reemplazar valores no vacios en `_pdf`.
-- `not_found` puede mantenerse aunque la ejecucion sea correcta; se trata como diagnostico de matching cuando no hay match por pagina+POS ni por el fallback pagina+PN sin `POS`.
+- `not_found` puede mantenerse aunque la ejecucion sea correcta; se trata como diagnostico de matching.
+- Existen rutas legacy/alternativas de copia `_pdf`, pero no son el flujo oficial de IMPORTAR PDF.
 
 ## Estado operativo actual
 - Flujo IMPORTAR PDF estabilizado sobre endpoint oficial unico.
 - Diagnostico activo en UI y backend.
 - Persistencia validada en disco.
 - `not_found` aceptado temporalmente como estado operativo esperado en parte del dataset.
+
+## Aclaracion oficial vs legacy
+- Oficial para IMPORTAR PDF: `POST /api/pdf-preview/apply-to-engine`.
+- No oficial para este boton: `/copy-pdf-to-pdf-all-books`, `/recompute-pdf-auto`, `/recompute-pdf-auto-visual`.
 
 ## TODO pendiente
 - Definir test de regresion por muestra de paginas para validar estabilidad de extraccion.
