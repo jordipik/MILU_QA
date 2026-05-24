@@ -8410,3 +8410,325 @@
             }
 
         }
+
+
+
+        /* Scale parity with analista_02: typography and spacing density only. */
+
+        html,
+
+        body {
+
+            font-family: 'Manrope', 'Segoe UI', Arial, sans-serif;
+
+            font-size: 12px;
+
+            line-height: 1.35;
+
+        }
+
+
+
+        .content {
+
+            padding: 12px;
+
+        }
+
+
+
+        .topbar {
+
+            padding: 10px 16px;
+
+        }
+
+
+
+        .nav {
+
+            gap: 10px;
+
+        }
+
+
+
+        .pill,
+
+        .nav-modern .pill {
+
+            min-height: 32px;
+
+            padding: 6px 12px;
+
+            font-size: 12px;
+
+            font-weight: 700;
+
+        }
+
+
+
+        .qa-checks-topbar-btn,
+
+        #backendStatusRetryBtn {
+
+            min-height: 30px;
+
+            font-size: 11px;
+
+        }
+
+
+
+        .pdf-tabs {
+
+            padding: 8px 8px 0;
+
+            gap: 5px;
+
+        }
+
+
+
+        .pdf-tab-btn {
+
+            height: 30px;
+
+            padding: 0 10px;
+
+            font-size: 11px;
+
+        }
+
+
+
+        .pdfbar {
+
+            padding: 8px;
+
+            gap: 6px;
+
+        }
+
+
+
+        .pdfmeta,
+
+        .backend-status,
+
+        .qa-modal-status,
+
+        .qa-side-search-status {
+
+            font-size: 11px;
+
+        }
+
+
+
+        th,
+
+        td {
+
+            padding: 6px 10px;
+
+        }
+
+
+
+        thead th {
+
+            font-size: 11px;
+
+        }
+
+
+
+        td {
+
+            font-size: 12px;
+
+        }
+
+
+
+        .filter-input,
+
+        .qa-side-search-row input,
+
+        .qa-modal-related-select,
+
+        .qa-side-open-btn,
+
+        #qaSideSearchBtn,
+
+        #qaSideResetBtn,
+
+        #qaSideSaveBtn,
+
+        #qaRecordModalOpenExportBtn,
+
+        #qaRecordModalCancelBtn,
+
+        #qaRecordModalSaveBtn,
+
+        .qa-modal-related-expand-btn,
+
+        .qa-modal-close-btn {
+
+            height: 30px;
+
+            min-height: 30px;
+
+            padding: 0 10px;
+
+            font-size: 11px;
+
+        }
+
+
+
+        .qa-modal-row label,
+
+        .qa-modal-grid label,
+
+        #qaRecordModal .qa-modal-meta-row label,
+
+        #qaRecordModal .qa-modal-mini-grid label {
+
+            font-size: 11px;
+
+            gap: 4px;
+
+        }
+
+
+
+        .qa-modal-row input,
+
+        .qa-modal-row select,
+
+        .qa-modal-grid input,
+
+        .qa-modal-grid select,
+
+        #qaRecordModal .qa-modal-meta-row input,
+
+        #qaRecordModal .qa-modal-mini-grid input,
+
+        #qaRecordModal .qa-modal-mini-grid select,
+
+        #qaRecordModal .qa-modal-edit-row input {
+
+            height: 30px;
+
+            border-radius: 8px;
+
+            padding: 0 8px;
+
+            font-size: 11px;
+
+        }
+
+
+
+        #qaRecordModal .qa-modal-edit-empty {
+
+            height: 30px;
+
+        }
+
+
+
+        #qaRecordModal .qa-modal-edit-label {
+
+            font-size: 11px;
+
+        }
+
+
+
+        #qaRecordModal .qa-modal-edit-head {
+
+            font-size: 10px;
+
+        }
+
+
+
+        .qa-modal-dialog {
+
+            padding: 14px;
+
+        }
+
+
+
+        .qa-modal-header {
+
+            padding-bottom: 10px;
+
+            margin-bottom: 10px;
+
+        }
+
+
+
+        .qa-modal-header h2 {
+
+            font-size: 17px;
+
+        }
+
+
+
+        .qa-modal-kicker,
+
+        .qa-modal-related-head h3,
+
+        .qa-modal-related-filter,
+
+        .qa-modal-related-count {
+
+            font-size: 11px;
+
+        }
+
+
+
+        .qa-record-errors-pill,
+
+        .qa-side-match-st,
+
+        .badge-pos-ok,
+
+        .badge-pos-missing,
+
+        .badge-pos-empty {
+
+            min-height: 20px;
+
+            font-size: 10px;
+
+            line-height: 1;
+
+            padding: 2px 7px;
+
+        }
+
+
+
+        .status-icon {
+
+            height: 22px;
+
+            min-height: 22px;
+
+            font-size: 10px;
+
+            line-height: 1;
+
+            padding: 2px 8px;
+
+        }
