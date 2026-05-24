@@ -1428,5 +1428,1349 @@
         }
       }
     }
+  },
+  {
+    "id": "1779631898749-wyniq978",
+    "timestamp": "2026-05-24T14:11:38.749Z",
+    "kind": "change-applied",
+    "type": "qa-row-patch",
+    "module": "qa_milu",
+    "action": "save-side-form",
+    "description": "Guardar ficha lateral ID 1200549",
+    "target": {
+      "revisionKey": "id=1200549"
+    },
+    "changeId": "1779631897693-cjlgrytq",
+    "data": {
+      "target": {
+        "revisionKey": "id=1200549",
+        "engineFile": "engine_12V4000M53.json",
+        "id": "1200549"
+      },
+      "changes": {
+        "fg_fgs_final": {
+          "before": "075-05",
+          "after": ""
+        },
+        "bom_final": {
+          "before": "XS594070.00024",
+          "after": ""
+        }
+      }
+    }
+  },
+  {
+    "id": "1779631913785-tt0pe0g9",
+    "timestamp": "2026-05-24T14:11:53.785Z",
+    "kind": "change-applied",
+    "type": "qa-row-patch",
+    "module": "qa_milu",
+    "action": "save-side-form",
+    "description": "Guardar ficha lateral ID 1200806",
+    "target": {
+      "revisionKey": "id=1200806"
+    },
+    "changeId": "1779631912760-4ibssj0j",
+    "data": {
+      "target": {
+        "revisionKey": "id=1200806",
+        "engineFile": "engine_12V4000M53.json",
+        "id": "1200806"
+      },
+      "changes": {
+        "fg_fgs_final": {
+          "before": "083-05",
+          "after": ""
+        },
+        "bom_final": {
+          "before": "XS596080.00009",
+          "after": ""
+        }
+      }
+    }
+  },
+  {
+    "id": "1779631923728-jz0kcdb2",
+    "timestamp": "2026-05-24T14:12:03.728Z",
+    "kind": "change-applied",
+    "type": "qa-row-patch",
+    "module": "qa_milu",
+    "action": "save-side-form",
+    "description": "Guardar ficha lateral ID 1200806",
+    "target": {
+      "revisionKey": "id=1200806"
+    },
+    "changeId": "1779631923165-p4isd6kk",
+    "data": {
+      "target": {
+        "revisionKey": "id=1200806",
+        "engineFile": "engine_12V4000M53.json",
+        "id": "1200806"
+      },
+      "changes": {
+        "pn_final": {
+          "before": "1240 X59308300034",
+          "after": "X59308300034"
+        }
+      }
+    }
+  },
+  {
+    "id": "1779631931011-pysmlgol",
+    "timestamp": "2026-05-24T14:12:11.011Z",
+    "kind": "change-applied",
+    "type": "qa-row-patch",
+    "module": "qa_milu",
+    "action": "save-side-form",
+    "description": "Guardar ficha lateral ID 1201260",
+    "target": {
+      "revisionKey": "id=1201260"
+    },
+    "changeId": "1779631929465-bg9mpawt",
+    "data": {
+      "target": {
+        "revisionKey": "id=1201260",
+        "engineFile": "engine_12V4000M53.json",
+        "id": "1201260"
+      },
+      "changes": {
+        "pn_final": {
+          "before": "2300 X56912300043",
+          "after": "X56912300043"
+        },
+        "fg_fgs_final": {
+          "before": "143-05",
+          "after": ""
+        },
+        "bom_final": {
+          "before": "XS594140.00040",
+          "after": ""
+        }
+      }
+    }
+  },
+  {
+    "id": "1779631940434-ii2r0h6k",
+    "timestamp": "2026-05-24T14:12:20.434Z",
+    "kind": "change-applied",
+    "type": "qa-row-patch",
+    "module": "qa_milu",
+    "action": "save-side-form",
+    "description": "Guardar ficha lateral ID 1201950",
+    "target": {
+      "revisionKey": "id=1201950"
+    },
+    "changeId": "1779631938961-6r4t7a85",
+    "data": {
+      "target": {
+        "revisionKey": "id=1201950",
+        "engineFile": "engine_12V4000M53.json",
+        "id": "1201950"
+      },
+      "changes": {
+        "pn_final": {
+          "before": "3300 X59420200182DISTRIBUTOR 1 pc 1,500 kg",
+          "after": "X59420200182"
+        },
+        "fg_fgs_final": {
+          "before": "200-00",
+          "after": ""
+        },
+        "bom_final": {
+          "before": "XS594200.00156",
+          "after": ""
+        }
+      }
+    }
+  },
+  {
+    "id": "1779631956586-j66wpe1w",
+    "timestamp": "2026-05-24T14:12:36.586Z",
+    "kind": "change-applied",
+    "type": "qa-row-patch",
+    "module": "qa_milu",
+    "action": "save-side-form",
+    "description": "Guardar ficha lateral ID 1202429",
+    "target": {
+      "revisionKey": "id=1202429"
+    },
+    "changeId": "1779631954966-uzg5kkca",
+    "data": {
+      "target": {
+        "revisionKey": "id=1202429",
+        "engineFile": "engine_12V4000M53.json",
+        "id": "1202429"
+      },
+      "changes": {
+        "pn_final": {
+          "before": "X00E50201048GROUND/EARTH LIN",
+          "after": "X00E50201048"
+        },
+        "fg_fgs_final": {
+          "before": "500-00",
+          "after": ""
+        },
+        "bom_final": {
+          "before": "XS594500.00251",
+          "after": ""
+        }
+      }
+    }
+  },
+  {
+    "id": "1779631964766-k7xk1rqg",
+    "timestamp": "2026-05-24T14:12:44.766Z",
+    "kind": "change-applied",
+    "type": "qa-row-patch",
+    "module": "qa_milu",
+    "action": "save-side-form",
+    "description": "Guardar ficha lateral ID 1202599",
+    "target": {
+      "revisionKey": "id=1202599"
+    },
+    "changeId": "1779631963306-x1dtx4ap",
+    "data": {
+      "target": {
+        "revisionKey": "id=1202599",
+        "engineFile": "engine_12V4000M53.json",
+        "id": "1202599"
+      },
+      "changes": {
+        "pn_final": {
+          "before": "0005335043 0005334943",
+          "after": "0005335043"
+        },
+        "fg_fgs_final": {
+          "before": "500-00",
+          "after": ""
+        },
+        "bom_final": {
+          "before": "XS594500.00251",
+          "after": ""
+        }
+      }
+    }
+  },
+  {
+    "id": "1779631972193-9wf0ustz",
+    "timestamp": "2026-05-24T14:12:52.193Z",
+    "kind": "change-applied",
+    "type": "qa-row-patch",
+    "module": "qa_milu",
+    "action": "save-side-form",
+    "description": "Guardar ficha lateral ID 1202622",
+    "target": {
+      "revisionKey": "id=1202622"
+    },
+    "changeId": "1779631970732-xqeqvmvd",
+    "data": {
+      "target": {
+        "revisionKey": "id=1202622",
+        "engineFile": "engine_12V4000M53.json",
+        "id": "1202622"
+      },
+      "changes": {
+        "pn_final": {
+          "before": "5 5621531140",
+          "after": "5621531140"
+        },
+        "fg_fgs_final": {
+          "before": "500-00",
+          "after": ""
+        },
+        "bom_final": {
+          "before": "5241505873",
+          "after": ""
+        }
+      }
+    }
+  },
+  {
+    "id": "1779631980397-q3vmx82l",
+    "timestamp": "2026-05-24T14:13:00.397Z",
+    "kind": "change-applied",
+    "type": "qa-row-patch",
+    "module": "qa_milu",
+    "action": "save-side-form",
+    "description": "Guardar ficha lateral ID 1202706",
+    "target": {
+      "revisionKey": "id=1202706"
+    },
+    "changeId": "1779631978791-m5sqt2qg",
+    "data": {
+      "target": {
+        "revisionKey": "id=1202706",
+        "engineFile": "engine_12V4000M53.json",
+        "id": "1202706"
+      },
+      "changes": {
+        "pn_final": {
+          "before": "110 X00E50205185 CONNECTING CABLE FOR ELECTRIC START 12V4000M23-M63 1 pc 855,100 g ELEKTR.ANLASSUNG",
+          "after": "X00E50205185"
+        },
+        "fg_fgs_final": {
+          "before": "507-98",
+          "after": ""
+        },
+        "bom_final": {
+          "before": "XS00E500.01242",
+          "after": ""
+        }
+      }
+    }
+  },
+  {
+    "id": "1779631989507-npfptu2h",
+    "timestamp": "2026-05-24T14:13:09.507Z",
+    "kind": "change-applied",
+    "type": "qa-row-patch",
+    "module": "qa_milu",
+    "action": "save-side-form",
+    "description": "Guardar ficha lateral ID 1202707",
+    "target": {
+      "revisionKey": "id=1202707"
+    },
+    "changeId": "1779631988067-xul9zdro",
+    "data": {
+      "target": {
+        "revisionKey": "id=1202707",
+        "engineFile": "engine_12V4000M53.json",
+        "id": "1202707"
+      },
+      "changes": {
+        "pn_final": {
+          "before": "100 X00E50700472 WIRING HARNESS F.ENGINE INTERFACE S400M23-63 1 pc 1,965 kg M. LIMA _ M. EMU",
+          "after": "X00E50700472"
+        },
+        "fg_fgs_final": {
+          "before": "507-98",
+          "after": ""
+        },
+        "bom_final": {
+          "before": "XS00E500.01242",
+          "after": ""
+        }
+      }
+    }
+  },
+  {
+    "id": "1779631997254-fumr4eci",
+    "timestamp": "2026-05-24T14:13:17.254Z",
+    "kind": "change-applied",
+    "type": "qa-row-patch",
+    "module": "qa_milu",
+    "action": "save-side-form",
+    "description": "Guardar ficha lateral ID 1202708",
+    "target": {
+      "revisionKey": "id=1202708"
+    },
+    "changeId": "1779631995744-5qeo83ik",
+    "data": {
+      "target": {
+        "revisionKey": "id=1202708",
+        "engineFile": "engine_12V4000M53.json",
+        "id": "1202708"
+      },
+      "changes": {
+        "pn_final": {
+          "before": "120 X00E50700638 CONNECTING CABLE FOR GENERATOR LIMA G03 1 pc 590,200 g XG03-G3 920MM",
+          "after": "X00E50700638"
+        },
+        "fg_fgs_final": {
+          "before": "507-98",
+          "after": ""
+        },
+        "bom_final": {
+          "before": "XS00E500.01242",
+          "after": ""
+        }
+      }
+    }
+  },
+  {
+    "id": "1779632004202-6v0u53ve",
+    "timestamp": "2026-05-24T14:13:24.202Z",
+    "kind": "change-applied",
+    "type": "qa-row-patch",
+    "module": "qa_milu",
+    "action": "save-side-form",
+    "description": "Guardar ficha lateral ID 1202734",
+    "target": {
+      "revisionKey": "id=1202734"
+    },
+    "changeId": "1779632002832-t67jexxr",
+    "data": {
+      "target": {
+        "revisionKey": "id=1202734",
+        "engineFile": "engine_12V4000M53.json",
+        "id": "1202734"
+      },
+      "changes": {
+        "pn_final": {
+          "before": "X00E50206373FUSE HO X00E50206374FUSE",
+          "after": "X00E50206373"
+        },
+        "fg_fgs_final": {
+          "before": "507-98",
+          "after": ""
+        },
+        "bom_final": {
+          "before": "X00E50205185",
+          "after": ""
+        }
+      }
+    }
+  },
+  {
+    "id": "1779632016147-ei8asioe",
+    "timestamp": "2026-05-24T14:13:36.147Z",
+    "kind": "change-applied",
+    "type": "qa-row-patch",
+    "module": "qa_milu",
+    "action": "save-side-form",
+    "description": "Guardar ficha lateral ID 1202803",
+    "target": {
+      "revisionKey": "id=1202803"
+    },
+    "changeId": "1779632014664-waxp2980",
+    "data": {
+      "target": {
+        "revisionKey": "id=1202803",
+        "engineFile": "engine_12V4000M53.json",
+        "id": "1202803"
+      },
+      "changes": {
+        "pn_final": {
+          "before": "0035337089 IDENTIFICATIO X00E50200336SEPARABLE C",
+          "after": "0035337089"
+        },
+        "fg_fgs_final": {
+          "before": "507-98",
+          "after": ""
+        },
+        "bom_final": {
+          "before": "X00E50700472",
+          "after": ""
+        }
+      }
+    }
+  },
+  {
+    "id": "1779632036101-1ybvw6jt",
+    "timestamp": "2026-05-24T14:13:56.101Z",
+    "kind": "change-applied",
+    "type": "qa-row-patch",
+    "module": "qa_milu",
+    "action": "save-side-form",
+    "description": "Guardar ficha lateral ID 1202841",
+    "target": {
+      "revisionKey": "id=1202841"
+    },
+    "changeId": "1779632034712-1d1lcg69",
+    "data": {
+      "target": {
+        "revisionKey": "id=1202841",
+        "engineFile": "engine_12V4000M53.json",
+        "id": "1202841"
+      },
+      "changes": {
+        "pn_final": {
+          "before": "SWITCH E-STOP 45MM W/ 701 635H22706/2 1 pc 148,900 g SELF MONITORING CO",
+          "after": "635H22706/2"
+        },
+        "fg_fgs_final": {
+          "before": "507-98",
+          "after": ""
+        },
+        "bom_final": {
+          "before": "XS00E500.01614",
+          "after": ""
+        }
+      }
+    }
+  },
+  {
+    "id": "1779632048086-3u9u2zbl",
+    "timestamp": "2026-05-24T14:14:08.086Z",
+    "kind": "change-applied",
+    "type": "qa-row-patch",
+    "module": "qa_milu",
+    "action": "save-side-form",
+    "description": "Guardar ficha lateral ID 1202842",
+    "target": {
+      "revisionKey": "id=1202842"
+    },
+    "changeId": "1779632046660-bqed6xov",
+    "data": {
+      "target": {
+        "revisionKey": "id=1202842",
+        "engineFile": "engine_12V4000M53.json",
+        "id": "1202842"
+      },
+      "changes": {
+        "pn_final": {
+          "before": "M14X1,5,110MM, 421 X00E50201372TEMPERATURE SENSOR PT100 ABGAS 1 pc 175,000 gEM KABEL=1M,STECKER,",
+          "after": "X00E50201372"
+        },
+        "fg_fgs_final": {
+          "before": "507-98",
+          "after": ""
+        },
+        "bom_final": {
+          "before": "XS00E500.01614",
+          "after": ""
+        }
+      }
+    }
+  },
+  {
+    "id": "1779632058689-gx257ok6",
+    "timestamp": "2026-05-24T14:14:18.689Z",
+    "kind": "change-applied",
+    "type": "qa-row-patch",
+    "module": "qa_milu",
+    "action": "save-side-form",
+    "description": "Guardar ficha lateral ID 1202843",
+    "target": {
+      "revisionKey": "id=1202843"
+    },
+    "changeId": "1779632057299-qqynzuxp",
+    "data": {
+      "target": {
+        "revisionKey": "id=1202843",
+        "engineFile": "engine_12V4000M53.json",
+        "id": "1202843"
+      },
+      "changes": {
+        "pn_final": {
+          "before": "WIRING HARNESS TO 90 X00E50700435 12V4000M23-M63 1 pc 1,925 kg ECU7 X4 INJECTOR",
+          "after": "X00E50700435"
+        },
+        "fg_fgs_final": {
+          "before": "507-98",
+          "after": ""
+        },
+        "bom_final": {
+          "before": "XS00E500.01614",
+          "after": ""
+        }
+      }
+    }
+  },
+  {
+    "id": "1779632070011-kcin69ra",
+    "timestamp": "2026-05-24T14:14:30.011Z",
+    "kind": "change-applied",
+    "type": "qa-row-patch",
+    "module": "qa_milu",
+    "action": "save-side-form",
+    "description": "Guardar ficha lateral ID 1202844",
+    "target": {
+      "revisionKey": "id=1202844"
+    },
+    "changeId": "1779632068466-tj39bgjm",
+    "data": {
+      "target": {
+        "revisionKey": "id=1202844",
+        "engineFile": "engine_12V4000M53.json",
+        "id": "1202844"
+      },
+      "changes": {
+        "pn_final": {
+          "before": "WIRING HARNESS FOR 140 X00E50700444 12V4000M23-M63 1 pc 2,405 kg EMU7 X12 M.EA ON-ENGINE SENSO",
+          "after": "X00E50700444"
+        },
+        "fg_fgs_final": {
+          "before": "507-98",
+          "after": ""
+        },
+        "bom_final": {
+          "before": "XS00E500.01614",
+          "after": ""
+        }
+      }
+    }
+  },
+  {
+    "id": "1779632079817-oyak434d",
+    "timestamp": "2026-05-24T14:14:39.817Z",
+    "kind": "change-applied",
+    "type": "qa-row-patch",
+    "module": "qa_milu",
+    "action": "save-side-form",
+    "description": "Guardar ficha lateral ID 1202845",
+    "target": {
+      "revisionKey": "id=1202845"
+    },
+    "changeId": "1779632078307-ht7wy012",
+    "data": {
+      "target": {
+        "revisionKey": "id=1202845",
+        "engineFile": "engine_12V4000M53.json",
+        "id": "1202845"
+      },
+      "changes": {
+        "pn_final": {
+          "before": "WIRING HARNESS FOR 120 X00E50700628 12V4000M23-M63 1 pc 4,130 kg ECU7 X2 ON-ENGINE SENSO",
+          "after": "X00E50700628"
+        },
+        "fg_fgs_final": {
+          "before": "507-98",
+          "after": ""
+        },
+        "bom_final": {
+          "before": "XS00E500.01614",
+          "after": ""
+        }
+      }
+    }
+  },
+  {
+    "id": "1779632087673-27i4np6t",
+    "timestamp": "2026-05-24T14:14:47.673Z",
+    "kind": "change-applied",
+    "type": "qa-row-patch",
+    "module": "qa_milu",
+    "action": "save-side-form",
+    "description": "Guardar ficha lateral ID 1202835",
+    "target": {
+      "revisionKey": "id=1202835"
+    },
+    "changeId": "1779632086145-0xdojv4q",
+    "data": {
+      "target": {
+        "revisionKey": "id=1202835",
+        "engineFile": "engine_12V4000M53.json",
+        "id": "1202835"
+      },
+      "changes": {
+        "pn_final": {
+          "before": "X00E50700444 ON-ENGINE SEN 0035352531 PRESSURE SEN",
+          "after": "X00E50700444"
+        },
+        "fg_fgs_final": {
+          "before": "507-98",
+          "after": ""
+        },
+        "bom_final": {
+          "before": "XS00E500.01614",
+          "after": ""
+        }
+      }
+    }
+  },
+  {
+    "id": "1779632094866-3np3ilsf",
+    "timestamp": "2026-05-24T14:14:54.866Z",
+    "kind": "change-applied",
+    "type": "qa-row-patch",
+    "module": "qa_milu",
+    "action": "save-side-form",
+    "description": "Guardar ficha lateral ID 1202854",
+    "target": {
+      "revisionKey": "id=1202854"
+    },
+    "changeId": "1779632093202-5ikerzj4",
+    "data": {
+      "target": {
+        "revisionKey": "id=1202854",
+        "engineFile": "engine_12V4000M53.json",
+        "id": "1202854"
+      },
+      "changes": {
+        "pn_final": {
+          "before": "0035352231 PRESSURE SEN X00E50201372TEMPERATURE",
+          "after": "0035352231"
+        },
+        "fg_fgs_final": {
+          "before": "507-98",
+          "after": ""
+        },
+        "bom_final": {
+          "before": "XS00E500.01614",
+          "after": ""
+        }
+      }
+    }
+  },
+  {
+    "id": "1779632101263-extdgg3j",
+    "timestamp": "2026-05-24T14:15:01.263Z",
+    "kind": "change-applied",
+    "type": "qa-row-patch",
+    "module": "qa_milu",
+    "action": "save-side-form",
+    "description": "Guardar ficha lateral ID 1202859",
+    "target": {
+      "revisionKey": "id=1202859"
+    },
+    "changeId": "1779632099816-gu1qzf8b",
+    "data": {
+      "target": {
+        "revisionKey": "id=1202859",
+        "engineFile": "engine_12V4000M53.json",
+        "id": "1202859"
+      },
+      "changes": {
+        "pn_final": {
+          "before": "0005356430 TEMPERATURE 0005356430 TEMPERATURE",
+          "after": "0005356430"
+        },
+        "fg_fgs_final": {
+          "before": "507-98",
+          "after": ""
+        },
+        "bom_final": {
+          "before": "XS00E500.01614",
+          "after": ""
+        }
+      }
+    }
+  },
+  {
+    "id": "1779632107709-jfy8vhx3",
+    "timestamp": "2026-05-24T14:15:07.709Z",
+    "kind": "change-applied",
+    "type": "qa-row-patch",
+    "module": "qa_milu",
+    "action": "save-side-form",
+    "description": "Guardar ficha lateral ID 1202882",
+    "target": {
+      "revisionKey": "id=1202882"
+    },
+    "changeId": "1779632106334-izwjs0zr",
+    "data": {
+      "target": {
+        "revisionKey": "id=1202882",
+        "engineFile": "engine_12V4000M53.json",
+        "id": "1202882"
+      },
+      "changes": {
+        "pn_final": {
+          "before": "0005359960 THERMOCOUPLE 0005359960 THERMOCOUPLE",
+          "after": "0005359960"
+        },
+        "fg_fgs_final": {
+          "before": "507-98",
+          "after": ""
+        },
+        "bom_final": {
+          "before": "XS00E500.01614",
+          "after": ""
+        }
+      }
+    }
+  },
+  {
+    "id": "1779632120214-wdy2d2uv",
+    "timestamp": "2026-05-24T14:15:20.214Z",
+    "kind": "change-applied",
+    "type": "qa-row-patch",
+    "module": "qa_milu",
+    "action": "save-side-form",
+    "description": "Guardar ficha lateral ID 1202888",
+    "target": {
+      "revisionKey": "id=1202888"
+    },
+    "changeId": "1779632118751-39n5yjo6",
+    "data": {
+      "target": {
+        "revisionKey": "id=1202888",
+        "engineFile": "engine_12V4000M53.json",
+        "id": "1202888"
+      },
+      "changes": {
+        "pn_final": {
+          "before": "0005359960 THERMOCOUPLE 0005359960 THERMOCOUPLE",
+          "after": "0005359960"
+        },
+        "fg_fgs_final": {
+          "before": "507-98",
+          "after": ""
+        },
+        "bom_final": {
+          "before": "XS00E500.01614",
+          "after": ""
+        }
+      }
+    }
+  },
+  {
+    "id": "1779632127721-kd6q68gp",
+    "timestamp": "2026-05-24T14:15:27.721Z",
+    "kind": "change-applied",
+    "type": "qa-row-patch",
+    "module": "qa_milu",
+    "action": "save-side-form",
+    "description": "Guardar ficha lateral ID 1202891",
+    "target": {
+      "revisionKey": "id=1202891"
+    },
+    "changeId": "1779632126190-9fs0kmd8",
+    "data": {
+      "target": {
+        "revisionKey": "id=1202891",
+        "engineFile": "engine_12V4000M53.json",
+        "id": "1202891"
+      },
+      "changes": {
+        "pn_final": {
+          "before": "0005359960 THERMOCOUPLE 0005359960 THERMOCOUPLE",
+          "after": "0005359960"
+        },
+        "fg_fgs_final": {
+          "before": "507-98",
+          "after": ""
+        },
+        "bom_final": {
+          "before": "XS00E500.01614",
+          "after": ""
+        }
+      }
+    }
+  },
+  {
+    "id": "1779632138959-n2jsiz14",
+    "timestamp": "2026-05-24T14:15:38.959Z",
+    "kind": "change-applied",
+    "type": "qa-row-patch",
+    "module": "qa_milu",
+    "action": "save-side-form",
+    "description": "Guardar ficha lateral ID 1202962",
+    "target": {
+      "revisionKey": "id=1202962"
+    },
+    "changeId": "1779632137532-q6mzjnqz",
+    "data": {
+      "target": {
+        "revisionKey": "id=1202962",
+        "engineFile": "engine_12V4000M53.json",
+        "id": "1202962"
+      },
+      "changes": {
+        "pn_final": {
+          "before": "0165313283 0165313883",
+          "after": "0165313283"
+        },
+        "fg_fgs_final": {
+          "before": "507-98",
+          "after": ""
+        },
+        "bom_final": {
+          "before": "X00E50700444",
+          "after": ""
+        }
+      }
+    }
+  },
+  {
+    "id": "1779632145989-no2u1sds",
+    "timestamp": "2026-05-24T14:15:45.989Z",
+    "kind": "change-applied",
+    "type": "qa-row-patch",
+    "module": "qa_milu",
+    "action": "save-side-form",
+    "description": "Guardar ficha lateral ID 1202997",
+    "target": {
+      "revisionKey": "id=1202997"
+    },
+    "changeId": "1779632144480-zqlia837",
+    "data": {
+      "target": {
+        "revisionKey": "id=1202997",
+        "engineFile": "engine_12V4000M53.json",
+        "id": "1202997"
+      },
+      "changes": {
+        "pn_final": {
+          "before": "0095318980 0095319080",
+          "after": "0095318980"
+        },
+        "fg_fgs_final": {
+          "before": "507-98",
+          "after": ""
+        },
+        "bom_final": {
+          "before": "X00E50700628",
+          "after": ""
+        }
+      }
+    }
+  },
+  {
+    "id": "1779632152616-thcur43w",
+    "timestamp": "2026-05-24T14:15:52.616Z",
+    "kind": "change-applied",
+    "type": "qa-row-patch",
+    "module": "qa_milu",
+    "action": "save-side-form",
+    "description": "Guardar ficha lateral ID 1203024",
+    "target": {
+      "revisionKey": "id=1203024"
+    },
+    "changeId": "1779632151215-x2d6xwgk",
+    "data": {
+      "target": {
+        "revisionKey": "id=1203024",
+        "engineFile": "engine_12V4000M53.json",
+        "id": "1203024"
+      },
+      "changes": {
+        "pn_final": {
+          "before": "0165313383 0165313983",
+          "after": "0165313383"
+        },
+        "fg_fgs_final": {
+          "before": "507-98",
+          "after": ""
+        },
+        "bom_final": {
+          "before": "X00E50700628",
+          "after": ""
+        }
+      }
+    }
+  },
+  {
+    "id": "1779632160375-qopnlopr",
+    "timestamp": "2026-05-24T14:16:00.375Z",
+    "kind": "change-applied",
+    "type": "qa-row-patch",
+    "module": "qa_milu",
+    "action": "save-side-form",
+    "description": "Guardar ficha lateral ID 1203077",
+    "target": {
+      "revisionKey": "id=1203077"
+    },
+    "changeId": "1779632158843-1wrzygcx",
+    "data": {
+      "target": {
+        "revisionKey": "id=1203077",
+        "engineFile": "engine_12V4000M53.json",
+        "id": "1203077"
+      },
+      "changes": {
+        "pn_final": {
+          "before": "0005335043 0005334943",
+          "after": "0005335043"
+        },
+        "fg_fgs_final": {
+          "before": "507-98",
+          "after": ""
+        },
+        "bom_final": {
+          "before": "XS594500.00250",
+          "after": ""
+        }
+      }
+    }
+  },
+  {
+    "id": "1779632167965-xl6vrqla",
+    "timestamp": "2026-05-24T14:16:07.965Z",
+    "kind": "change-applied",
+    "type": "qa-row-patch",
+    "module": "qa_milu",
+    "action": "save-side-form",
+    "description": "Guardar ficha lateral ID 1203080",
+    "target": {
+      "revisionKey": "id=1203080"
+    },
+    "changeId": "1779632166495-zedyudi6",
+    "data": {
+      "target": {
+        "revisionKey": "id=1203080",
+        "engineFile": "engine_12V4000M53.json",
+        "id": "1203080"
+      },
+      "changes": {
+        "pn_final": {
+          "before": "70 X00E50209366 GOVERNOR ECU7-05/C 1 pc 5,500 kg EM ECU7-05/C; 360X314X95 (LXBXH)",
+          "after": "X00E50209366"
+        },
+        "fg_fgs_final": {
+          "before": "508-10",
+          "after": ""
+        },
+        "bom_final": {
+          "before": "X00043550",
+          "after": ""
+        }
+      }
+    }
+  },
+  {
+    "id": "1779632174453-qqpbe3of",
+    "timestamp": "2026-05-24T14:16:14.453Z",
+    "kind": "change-applied",
+    "type": "qa-row-patch",
+    "module": "qa_milu",
+    "action": "save-side-form",
+    "description": "Guardar ficha lateral ID 1203097",
+    "target": {
+      "revisionKey": "id=1203097"
+    },
+    "changeId": "1779632172959-e8jkqko8",
+    "data": {
+      "target": {
+        "revisionKey": "id=1203097",
+        "engineFile": "engine_12V4000M53.json",
+        "id": "1203097"
+      },
+      "changes": {
+        "pn_final": {
+          "before": "0065315725 0005327956",
+          "after": "0065315725"
+        },
+        "fg_fgs_final": {
+          "before": "508-10",
+          "after": ""
+        },
+        "bom_final": {
+          "before": "X00E50209366",
+          "after": ""
+        }
+      }
+    }
+  },
+  {
+    "id": "1779632180973-vilcuc6v",
+    "timestamp": "2026-05-24T14:16:20.973Z",
+    "kind": "change-applied",
+    "type": "qa-row-patch",
+    "module": "qa_milu",
+    "action": "save-side-form",
+    "description": "Guardar ficha lateral ID 1203084",
+    "target": {
+      "revisionKey": "id=1203084"
+    },
+    "changeId": "1779632179367-qxslub1o",
+    "data": {
+      "target": {
+        "revisionKey": "id=1203084",
+        "engineFile": "engine_12V4000M53.json",
+        "id": "1203084"
+      },
+      "changes": {
+        "pn_final": {
+          "before": "0025318185 0025318685",
+          "after": "0025318185"
+        },
+        "fg_fgs_final": {
+          "before": "508-10",
+          "after": ""
+        },
+        "bom_final": {
+          "before": "X00E50209366",
+          "after": ""
+        }
+      }
+    }
+  },
+  {
+    "id": "1779632189286-hogpsvuf",
+    "timestamp": "2026-05-24T14:16:29.286Z",
+    "kind": "change-applied",
+    "type": "qa-row-patch",
+    "module": "qa_milu",
+    "action": "save-side-form",
+    "description": "Guardar ficha lateral ID 1203101",
+    "target": {
+      "revisionKey": "id=1203101"
+    },
+    "changeId": "1779632187896-k64db0b7",
+    "data": {
+      "target": {
+        "revisionKey": "id=1203101",
+        "engineFile": "engine_12V4000M53.json",
+        "id": "1203101"
+      },
+      "changes": {
+        "pn_final": {
+          "before": "40 X00E50206654 ENGINE MONITORING EMU8-02 / URL 1 pc 4,627 kg EMU8-02 MIT URLADER 25MHZ",
+          "after": "X00E50206654"
+        },
+        "fg_fgs_final": {
+          "before": "508-10",
+          "after": ""
+        },
+        "bom_final": {
+          "before": "XS00E500.01398",
+          "after": ""
+        }
+      }
+    }
+  },
+  {
+    "id": "1779632199386-nmrffsbw",
+    "timestamp": "2026-05-24T14:16:39.386Z",
+    "kind": "change-applied",
+    "type": "qa-row-patch",
+    "module": "qa_milu",
+    "action": "save-side-form",
+    "description": "Guardar ficha lateral ID 1203105",
+    "target": {
+      "revisionKey": "id=1203105"
+    },
+    "changeId": "1779632197971-hd43floq",
+    "data": {
+      "target": {
+        "revisionKey": "id=1203105",
+        "engineFile": "engine_12V4000M53.json",
+        "id": "1203105"
+      },
+      "changes": {
+        "pn_final": {
+          "before": "10 X00E50206653 HOUSING EMU7-03 1 pc 3,320 kg EMU7-03",
+          "after": "X00E50206653"
+        },
+        "fg_fgs_final": {
+          "before": "508-10",
+          "after": ""
+        },
+        "bom_final": {
+          "before": "X00E50206654",
+          "after": ""
+        }
+      }
+    }
+  },
+  {
+    "id": "1779632208680-uci0htyw",
+    "timestamp": "2026-05-24T14:16:48.680Z",
+    "kind": "change-applied",
+    "type": "qa-row-patch",
+    "module": "qa_milu",
+    "action": "save-side-form",
+    "description": "Guardar ficha lateral ID 1203114",
+    "target": {
+      "revisionKey": "id=1203114"
+    },
+    "changeId": "1779632207309-c9fcbodx",
+    "data": {
+      "target": {
+        "revisionKey": "id=1203114",
+        "engineFile": "engine_12V4000M53.json",
+        "id": "1203114"
+      },
+      "changes": {
+        "pn_final": {
+          "before": "50 B00E50201528/S0002 MONITOR WITH SOFTWARE EIM 2-02 1 pc 3,938 kg",
+          "after": "B00E50201528/S0002"
+        },
+        "fg_fgs_final": {
+          "before": "508-95",
+          "after": ""
+        },
+        "bom_final": {
+          "before": "XS00E500.02015",
+          "after": ""
+        }
+      }
+    }
+  },
+  {
+    "id": "1779632222922-884c21ny",
+    "timestamp": "2026-05-24T14:17:02.922Z",
+    "kind": "change-applied",
+    "type": "qa-row-patch",
+    "module": "qa_milu",
+    "action": "save-side-form",
+    "description": "Guardar ficha lateral ID 1203130",
+    "target": {
+      "revisionKey": "id=1203130"
+    },
+    "changeId": "1779632221467-0vig3f6l",
+    "data": {
+      "target": {
+        "revisionKey": "id=1203130",
+        "engineFile": "engine_12V4000M53.json",
+        "id": "1203130"
+      },
+      "changes": {
+        "pn_final": {
+          "before": "PLUG-IN BOARD LOWER 150 B00E50200605/S0001 CIB 5-01 1 pc 1,715 kg PART",
+          "after": "B00E50200605/S0001"
+        },
+        "fg_fgs_final": {
+          "before": "508-95",
+          "after": ""
+        },
+        "bom_final": {
+          "before": "B00E50201528",
+          "after": ""
+        }
+      }
+    }
+  },
+  {
+    "id": "1779632229740-670xe158",
+    "timestamp": "2026-05-24T14:17:09.740Z",
+    "kind": "change-applied",
+    "type": "qa-row-patch",
+    "module": "qa_milu",
+    "action": "save-side-form",
+    "description": "Guardar ficha lateral ID 1203150",
+    "target": {
+      "revisionKey": "id=1203150"
+    },
+    "changeId": "1779632228288-gsymxwfm",
+    "data": {
+      "target": {
+        "revisionKey": "id=1203150",
+        "engineFile": "engine_12V4000M53.json",
+        "id": "1203150"
+      },
+      "changes": {
+        "pn_final": {
+          "before": "0005327956 TRANSFORMER X00009977 2-COMP. SILIC.RUBBER",
+          "after": "0005327956"
+        },
+        "fg_fgs_final": {
+          "before": "508-95",
+          "after": ""
+        },
+        "bom_final": {
+          "before": "B00E50200605",
+          "after": ""
+        }
+      }
+    }
+  },
+  {
+    "id": "1779632235967-wekuvu7h",
+    "timestamp": "2026-05-24T14:17:15.967Z",
+    "kind": "change-applied",
+    "type": "qa-row-patch",
+    "module": "qa_milu",
+    "action": "save-side-form",
+    "description": "Guardar ficha lateral ID 1203314",
+    "target": {
+      "revisionKey": "id=1203314"
+    },
+    "changeId": "1779632234596-4wm5pyxh",
+    "data": {
+      "target": {
+        "revisionKey": "id=1203314",
+        "engineFile": "engine_12V4000M53.json",
+        "id": "1203314"
+      },
+      "changes": {
+        "pn_final": {
+          "before": "XP57518300057RETAINER",
+          "after": "XP57518300057"
+        },
+        "fg_fgs_final": {
+          "before": "018-00",
+          "after": ""
+        },
+        "bom_final": {
+          "before": "XS594010.00077",
+          "after": ""
+        }
+      }
+    }
+  },
+  {
+    "id": "1779632241892-e2q8qwkc",
+    "timestamp": "2026-05-24T14:17:21.893Z",
+    "kind": "change-applied",
+    "type": "qa-row-patch",
+    "module": "qa_milu",
+    "action": "save-side-form",
+    "description": "Guardar ficha lateral ID 1203318",
+    "target": {
+      "revisionKey": "id=1203318"
+    },
+    "changeId": "1779632240499-jf22dxoj",
+    "data": {
+      "target": {
+        "revisionKey": "id=1203318",
+        "engineFile": "engine_12V4000M53.json",
+        "id": "1203318"
+      },
+      "changes": {
+        "pn_final": {
+          "before": "XP57518300057RETAINER",
+          "after": "XP57518300057"
+        },
+        "fg_fgs_final": {
+          "before": "018-00",
+          "after": ""
+        },
+        "bom_final": {
+          "before": "XS594010.00077",
+          "after": ""
+        }
+      }
+    }
+  },
+  {
+    "id": "1779632251827-6iwj7nrb",
+    "timestamp": "2026-05-24T14:17:31.827Z",
+    "kind": "change-applied",
+    "type": "qa-row-patch",
+    "module": "qa_milu",
+    "action": "save-side-form",
+    "description": "Guardar ficha lateral ID 1203597",
+    "target": {
+      "revisionKey": "id=1203597"
+    },
+    "changeId": "1779632250536-tkx47u51",
+    "data": {
+      "target": {
+        "revisionKey": "id=1203597",
+        "engineFile": "engine_12V4000M53.json",
+        "id": "1203597"
+      },
+      "changes": {
+        "pn_final": {
+          "before": "CYLINDER HEAD W/VALVE 10 X52404100208 1 pc 50,000 kg EM GUIDES",
+          "after": "X52404100208"
+        },
+        "fg_fgs_final": {
+          "before": "041-05",
+          "after": ""
+        },
+        "bom_final": {
+          "before": "X52404100209",
+          "after": ""
+        }
+      }
+    }
+  },
+  {
+    "id": "1779632293952-ynit7163",
+    "timestamp": "2026-05-24T14:18:13.952Z",
+    "kind": "change-applied",
+    "type": "qa-row-patch",
+    "module": "qa_milu",
+    "action": "save-side-form",
+    "description": "Guardar ficha lateral ID 1203681",
+    "target": {
+      "revisionKey": "id=1203681"
+    },
+    "changeId": "1779632292529-v1nwmag2",
+    "data": {
+      "target": {
+        "revisionKey": "id=1203681",
+        "engineFile": "engine_12V4000M53.json",
+        "id": "1203681"
+      },
+      "changes": {
+        "pn_final": {
+          "before": "10 XP52607300003 CONTROL BLOCK 1 pc 5,230 kg",
+          "after": "XP52607300003"
+        },
+        "fg_fgs_final": {
+          "before": "070-05",
+          "after": ""
+        },
+        "bom_final": {
+          "before": "X59407300006",
+          "after": ""
+        }
+      }
+    }
   }
 ]

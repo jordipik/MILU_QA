@@ -148,6 +148,14 @@ function ensureModal() {
   return root;
 }
 
+function setBackdropVisibility(root, visible) {
+  if (!(root instanceof HTMLElement)) return;
+  root.hidden = !visible;
+  root.setAttribute('aria-hidden', visible ? 'false' : 'true');
+  root.style.display = visible ? 'flex' : 'none';
+  root.style.pointerEvents = visible ? 'auto' : 'none';
+}
+
 function dangerBadgeText(level) {
   if (level === 'low') return 'Accion delicada';
   if (level === 'medium') return 'Accion sensible';
@@ -191,7 +199,7 @@ export function confirmTypedAction(options = {}) {
   confirmBtn.disabled = true;
 
   const previousActive = document.activeElement instanceof HTMLElement ? document.activeElement : null;
-  root.hidden = false;
+  setBackdropVisibility(root, true);
   setTimeout(() => inputEl.focus(), 0);
 
   function updateConfirmState() {
@@ -202,7 +210,7 @@ export function confirmTypedAction(options = {}) {
     if (!activeResolver) return;
     const resolver = activeResolver;
     activeResolver = null;
-    root.hidden = true;
+    setBackdropVisibility(root, false);
     inputEl.removeEventListener('input', onInput);
     cancelBtn.removeEventListener('click', onCancel);
     confirmBtn.removeEventListener('click', onConfirm);

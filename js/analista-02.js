@@ -10185,13 +10185,19 @@ async function applyPnCopyPropagationForCurrentBook() {
 
     if (!confirmed) return;
 
-    const typedConfirmBackdrop = document.querySelector('.cta-backdrop');
+    const typedConfirmBackdrops = document.querySelectorAll('.cta-backdrop');
 
-    if (typedConfirmBackdrop instanceof HTMLElement) {
+    typedConfirmBackdrops.forEach((backdrop) => {
 
-        typedConfirmBackdrop.hidden = true;
+        if (!(backdrop instanceof HTMLElement)) return;
 
-    }
+        backdrop.hidden = true;
+
+        backdrop.style.display = 'none';
+
+        backdrop.style.pointerEvents = 'none';
+
+    });
 
     await waitForUiPaint();
 
@@ -10309,47 +10315,99 @@ async function applyPnCopyPropagationForCurrentBook() {
 
                     appendHermanosProgressLog('Ejecutando modo rápido backend (bulk)...', 'ok');
 
+                    const BULK_MAX_ITEMS_PER_REQUEST = 150;
+                    const BULK_MAX_BYTES_PER_REQUEST = 24000;
+                    const bulkBatches = [];
+                    let currentBatch = [];
 
+                    for (const item of bulkItems) {
+                        const candidateBatch = [...currentBatch, item];
+                        const candidateBytes = JSON.stringify({ items: candidateBatch }).length;
+                        const exceedsItems = candidateBatch.length > BULK_MAX_ITEMS_PER_REQUEST;
+                        const exceedsBytes = candidateBytes > BULK_MAX_BYTES_PER_REQUEST;
 
-                    const response = await fetch('/pn-review/apply-siblings-bulk', {
+                        if (currentBatch.length > 0 && (exceedsItems || exceedsBytes)) {
+                            bulkBatches.push(currentBatch);
+                            currentBatch = [item];
+                            continue;
+                        }
 
-                        method: 'POST',
-
-                        headers: { 'Content-Type': 'application/json' },
-
-                        body: JSON.stringify({ items: bulkItems })
-
-                    });
-
-
-
-                    const payload = await response.json().catch(() => ({}));
-
-                    if (!response.ok || !payload?.result) {
-
-                        throw new Error(String(payload?.error || `HTTP ${response.status}`));
-
+                        currentBatch = candidateBatch;
                     }
 
+                    if (currentBatch.length > 0) {
+                        bulkBatches.push(currentBatch);
+                    }
 
+                    appendHermanosProgressLog(
+                        `Bulk dividido en ${bulkBatches.length} lote(s) para compatibilidad con límites de payload.`,
+                        ''
+                    );
 
-                    const result = payload.result;
+                    let totalPnsWithPropagation = 0;
+                    let totalRowsUpdated = 0;
+                    let totalNoSiblingPn = 0;
+                    const aggregatedErrors = [];
 
-                    summary.pnsWithPropagation = Number(result?.pns_with_changes || 0);
+                    for (let batchIndex = 0; batchIndex < bulkBatches.length; batchIndex += 1) {
+                        const items = bulkBatches[batchIndex];
+                        const response = await fetch('/pn-review/apply-siblings-bulk', {
 
-                    summary.propagatedRows = Number(result?.rows_updated || 0);
+                            method: 'POST',
 
-                    summary.noSiblingPn = Array.isArray(result?.item_results)
+                            headers: { 'Content-Type': 'application/json' },
 
-                        ? result.item_results.filter((item) => Number(item?.target_siblings || 0) === 0).length
+                            body: JSON.stringify({ items })
 
-                        : 0;
+                        });
 
-                    summary.fatalErrors = Array.isArray(result?.errors)
+                        const payload = await response.json().catch(() => ({}));
+                        if (!response.ok || !payload?.result) {
+                            const code = String(payload?.code || '').trim();
+                            const detail = code ? `${code}: ${String(payload?.error || `HTTP ${response.status}`)}` : String(payload?.error || `HTTP ${response.status}`);
+                            throw new Error(`Lote ${batchIndex + 1}/${bulkBatches.length} (${items.length} PN): ${detail}`);
+                        }
 
-                        ? result.errors.map((entry) => `${entry.file || 'bulk'}: ${entry.error || 'Error desconocido'}`)
+                        const result = payload.result;
+                        totalPnsWithPropagation += Number(result?.pns_with_changes || 0);
+                        totalRowsUpdated += Number(result?.rows_updated || 0);
+                        if (Array.isArray(result?.item_results)) {
+                            totalNoSiblingPn += result.item_results.filter((item) => Number(item?.target_siblings || 0) === 0).length;
+                        }
+                        if (Array.isArray(result?.errors) && result.errors.length > 0) {
+                            aggregatedErrors.push(
+                                ...result.errors.map((entry) => `${entry.file || 'bulk'}: ${entry.error || 'Error desconocido'}`)
+                            );
+                        }
 
-                        : [];
+                        const processedByBatch = Math.min(
+                            summary.scannedUniquePn,
+                            Math.floor(((batchIndex + 1) / bulkBatches.length) * summary.scannedUniquePn)
+                        );
+                        renderHermanosProgress({
+
+                            currentLabel: `Bulk en servidor: lote ${batchIndex + 1}/${bulkBatches.length} completado.`,
+
+                            processedPn: processedByBatch,
+
+                            totalPn: summary.scannedUniquePn,
+
+                            scannedRows: summary.scannedRows,
+
+                            propagatedRows: totalRowsUpdated,
+
+                            pnsWithPropagation: totalPnsWithPropagation
+
+                        });
+                    }
+
+                    summary.pnsWithPropagation = totalPnsWithPropagation;
+
+                    summary.propagatedRows = totalRowsUpdated;
+
+                    summary.noSiblingPn = totalNoSiblingPn;
+
+                    summary.fatalErrors = aggregatedErrors;
 
 
 

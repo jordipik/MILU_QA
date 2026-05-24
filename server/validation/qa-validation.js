@@ -176,7 +176,7 @@ function validatePnReviewApplyValuesPayload(payload) {
 
 function validateSiblingBulkPayload(payload) {
     assertNonEmptyObject(payload, 'payload');
-    assertPayloadSize(payload, 32768, 'payload');
+    assertPayloadSize(payload, 524288, 'payload');
     const items = Array.isArray(payload.items) ? payload.items : null;
     if (!items || items.length === 0) {
         throw validationError({
@@ -185,11 +185,11 @@ function validateSiblingBulkPayload(payload) {
             message: 'items requerido (array no vacío).'
         });
     }
-    if (items.length > 200) {
+    if (items.length > 5000) {
         throw validationError({
             code: 'PAYLOAD_TOO_LARGE',
             field: 'items',
-            message: 'items supera el limite permitido (200).'
+            message: 'items supera el limite permitido (5000).'
         });
     }
     return items;
