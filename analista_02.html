@@ -54,7 +54,7 @@
             <section class="a2-stats-row" aria-label="Estadisticas de revision">
                 <article class="a2-stat-card">
                     <div class="a2-stat-head-row">
-                        <span class="a2-stat-label">Total analizados</span>
+                        <span class="a2-stat-label">TOTAL</span>
                         <div class="a2-stat-mini-nav" aria-label="Navegacion de registros">
                             <button id="statsPrevRecordBtn" class="a2-stat-mini-btn" type="button"
                                 title="Registro anterior" aria-label="Registro anterior">◀</button>
@@ -69,73 +69,22 @@
                     </div>
                     <div id="statsUniqueTotalAnalysed" class="a2-stat-unique" aria-live="polite">0 únicos</div>
                 </article>
-                <article class="a2-stat-card is-ok">
+                <article class="a2-stat-card is-state-ok">
                     <div class="a2-stat-head-row">
-                        <span class="a2-stat-label">Importar (OK)</span>
-                        <div class="a2-stat-mini-nav" aria-label="Navegacion de importar">
-                            <button id="statsPrevImportBtn" class="a2-stat-mini-btn" type="button"
-                                title="Importar anterior" aria-label="Importar anterior">◀</button>
-                            <button id="statsNextImportBtn" class="a2-stat-mini-btn" type="button"
-                                title="Importar siguiente" aria-label="Importar siguiente">▶</button>
+                        <span class="a2-stat-label">OK</span>
+                        <div class="a2-stat-mini-nav" aria-label="Navegacion de estado OK">
+                            <button id="statsPrevEstadoOkBtn" class="a2-stat-mini-btn" type="button"
+                                title="Estado OK anterior" aria-label="Estado OK anterior">◀</button>
+                            <button id="statsNextEstadoOkBtn" class="a2-stat-mini-btn" type="button"
+                                title="Estado OK siguiente" aria-label="Estado OK siguiente">▶</button>
                         </div>
                     </div>
                     <div class="a2-stat-main" aria-live="polite">
-                        <span id="statsCurrentImportOk" class="a2-stat-current">0</span>
+                        <span id="statsCurrentEstadoOk" class="a2-stat-current">0</span>
                         <span class="a2-stat-of">de</span>
-                        <span id="statsTotalImportOk" class="a2-stat-total">0</span>
+                        <span id="statsTotalEstadoOk" class="a2-stat-total">0</span>
                     </div>
-                    <div id="statsUniqueTotalImportOk" class="a2-stat-unique" aria-live="polite">0 únicos</div>
-                </article>
-                <article class="a2-stat-card is-copy">
-                    <div class="a2-stat-head-row">
-                        <span class="a2-stat-label">Copia (OK)</span>
-                        <div class="a2-stat-mini-nav" aria-label="Navegacion de copia">
-                            <button id="statsPrevCopyBtn" class="a2-stat-mini-btn" type="button" title="Copia anterior"
-                                aria-label="Copia anterior">◀</button>
-                            <button id="statsNextCopyBtn" class="a2-stat-mini-btn" type="button" title="Copia siguiente"
-                                aria-label="Copia siguiente">▶</button>
-                        </div>
-                    </div>
-                    <div class="a2-stat-main" aria-live="polite">
-                        <span id="statsCurrentCopyOk" class="a2-stat-current">0</span>
-                        <span class="a2-stat-of">de</span>
-                        <span id="statsTotalCopyOk" class="a2-stat-total">0</span>
-                    </div>
-                    <div id="statsUniqueTotalCopyOk" class="a2-stat-unique" aria-live="polite">0 únicos</div>
-                </article>
-                <article class="a2-stat-card is-review">
-                    <div class="a2-stat-head-row">
-                        <span class="a2-stat-label">Revisar (OK)</span>
-                        <div class="a2-stat-mini-nav" aria-label="Navegacion de revisar">
-                            <button id="statsPrevReviewBtn" class="a2-stat-mini-btn" type="button"
-                                title="Revisar anterior" aria-label="Revisar anterior">◀</button>
-                            <button id="statsNextReviewBtn" class="a2-stat-mini-btn" type="button"
-                                title="Revisar siguiente" aria-label="Revisar siguiente">▶</button>
-                        </div>
-                    </div>
-                    <div class="a2-stat-main" aria-live="polite">
-                        <span id="statsCurrentReviewOk" class="a2-stat-current">0</span>
-                        <span class="a2-stat-of">de</span>
-                        <span id="statsTotalReviewOk" class="a2-stat-total">0</span>
-                    </div>
-                    <div id="statsUniqueTotalReviewOk" class="a2-stat-unique" aria-live="polite">0 únicos</div>
-                </article>
-                <article class="a2-stat-card is-ko">
-                    <div class="a2-stat-head-row">
-                        <span class="a2-stat-label">Eliminar (OK)</span>
-                        <div class="a2-stat-mini-nav" aria-label="Navegacion de errores">
-                            <button id="statsPrevErrorBtn" class="a2-stat-mini-btn" type="button" title="Error anterior"
-                                aria-label="Error anterior">◀</button>
-                            <button id="statsNextErrorBtn" class="a2-stat-mini-btn" type="button"
-                                title="Error siguiente" aria-label="Error siguiente">▶</button>
-                        </div>
-                    </div>
-                    <div class="a2-stat-main" aria-live="polite">
-                        <span id="statsCurrentDeleteOk" class="a2-stat-current">0</span>
-                        <span class="a2-stat-of">de</span>
-                        <span id="statsTotalDeleteOk" class="a2-stat-total">0</span>
-                    </div>
-                    <div id="statsUniqueTotalDeleteOk" class="a2-stat-unique" aria-live="polite">0 únicos</div>
+                    <div id="statsUniqueTotalEstadoOk" class="a2-stat-unique" aria-live="polite">0 únicos</div>
                 </article>
                 <article class="a2-stat-card is-pending">
                     <div class="a2-stat-head-row">
@@ -153,6 +102,91 @@
                         <span id="statsTotalPending" class="a2-stat-total">0</span>
                     </div>
                     <div id="statsUniqueTotalPending" class="a2-stat-unique" aria-live="polite">0 únicos</div>
+                </article>
+                <article class="a2-stat-card is-error">
+                    <div class="a2-stat-head-row">
+                        <span class="a2-stat-label">Errores</span>
+                        <div class="a2-stat-mini-nav" aria-label="Navegacion de errores">
+                            <button id="statsPrevErrorSummaryBtn" class="a2-stat-mini-btn" type="button"
+                                title="Error anterior" aria-label="Error anterior">◀</button>
+                            <button id="statsNextErrorSummaryBtn" class="a2-stat-mini-btn" type="button"
+                                title="Error siguiente" aria-label="Error siguiente">▶</button>
+                        </div>
+                    </div>
+                    <div class="a2-stat-main" aria-live="polite">
+                        <span id="statsCurrentErrorRows" class="a2-stat-current">0</span>
+                        <span class="a2-stat-of">de</span>
+                        <span id="statsTotalErrorRows" class="a2-stat-total">0</span>
+                    </div>
+                    <div id="statsUniqueTotalErrorRows" class="a2-stat-unique" aria-live="polite">0 únicos</div>
+                </article>
+                <article class="a2-stat-card is-ok is-import-sep">
+                    <div class="a2-stat-head-row">
+                        <span class="a2-stat-label">Importar</span>
+                        <div class="a2-stat-mini-nav" aria-label="Navegacion de importar">
+                            <button id="statsPrevImportBtn" class="a2-stat-mini-btn" type="button"
+                                title="Importar anterior" aria-label="Importar anterior">◀</button>
+                            <button id="statsNextImportBtn" class="a2-stat-mini-btn" type="button"
+                                title="Importar siguiente" aria-label="Importar siguiente">▶</button>
+                        </div>
+                    </div>
+                    <div class="a2-stat-main" aria-live="polite">
+                        <span id="statsCurrentImportOk" class="a2-stat-current">0</span>
+                        <span class="a2-stat-of">de</span>
+                        <span id="statsTotalImportOk" class="a2-stat-total">0</span>
+                    </div>
+                    <div id="statsUniqueTotalImportOk" class="a2-stat-unique" aria-live="polite">0 únicos</div>
+                </article>
+                <article class="a2-stat-card is-copy">
+                    <div class="a2-stat-head-row">
+                        <span class="a2-stat-label">Copia</span>
+                        <div class="a2-stat-mini-nav" aria-label="Navegacion de copia">
+                            <button id="statsPrevCopyBtn" class="a2-stat-mini-btn" type="button" title="Copia anterior"
+                                aria-label="Copia anterior">◀</button>
+                            <button id="statsNextCopyBtn" class="a2-stat-mini-btn" type="button" title="Copia siguiente"
+                                aria-label="Copia siguiente">▶</button>
+                        </div>
+                    </div>
+                    <div class="a2-stat-main" aria-live="polite">
+                        <span id="statsCurrentCopyOk" class="a2-stat-current">0</span>
+                        <span class="a2-stat-of">de</span>
+                        <span id="statsTotalCopyOk" class="a2-stat-total">0</span>
+                    </div>
+                    <div id="statsUniqueTotalCopyOk" class="a2-stat-unique" aria-live="polite">0 únicos</div>
+                </article>
+                <article class="a2-stat-card is-review">
+                    <div class="a2-stat-head-row">
+                        <span class="a2-stat-label">Revisar</span>
+                        <div class="a2-stat-mini-nav" aria-label="Navegacion de revisar">
+                            <button id="statsPrevReviewBtn" class="a2-stat-mini-btn" type="button"
+                                title="Revisar anterior" aria-label="Revisar anterior">◀</button>
+                            <button id="statsNextReviewBtn" class="a2-stat-mini-btn" type="button"
+                                title="Revisar siguiente" aria-label="Revisar siguiente">▶</button>
+                        </div>
+                    </div>
+                    <div class="a2-stat-main" aria-live="polite">
+                        <span id="statsCurrentReviewOk" class="a2-stat-current">0</span>
+                        <span class="a2-stat-of">de</span>
+                        <span id="statsTotalReviewOk" class="a2-stat-total">0</span>
+                    </div>
+                    <div id="statsUniqueTotalReviewOk" class="a2-stat-unique" aria-live="polite">0 únicos</div>
+                </article>
+                <article class="a2-stat-card is-ko">
+                    <div class="a2-stat-head-row">
+                        <span class="a2-stat-label">Eliminar</span>
+                        <div class="a2-stat-mini-nav" aria-label="Navegacion de errores">
+                            <button id="statsPrevErrorBtn" class="a2-stat-mini-btn" type="button" title="Error anterior"
+                                aria-label="Error anterior">◀</button>
+                            <button id="statsNextErrorBtn" class="a2-stat-mini-btn" type="button"
+                                title="Error siguiente" aria-label="Error siguiente">▶</button>
+                        </div>
+                    </div>
+                    <div class="a2-stat-main" aria-live="polite">
+                        <span id="statsCurrentDeleteOk" class="a2-stat-current">0</span>
+                        <span class="a2-stat-of">de</span>
+                        <span id="statsTotalDeleteOk" class="a2-stat-total">0</span>
+                    </div>
+                    <div id="statsUniqueTotalDeleteOk" class="a2-stat-unique" aria-live="polite">0 únicos</div>
                 </article>
             </section>
 

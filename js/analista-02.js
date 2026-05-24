@@ -7267,7 +7267,13 @@ function renderReviewStats(rows = getQueueRows(), row = currentRow) {
 
         deleteOk: 0,
 
-        pending: 0
+        pending: 0,
+
+        estadoOk: 0,
+
+        errorRows: 0,
+
+        errorTotal: 0
 
     };
 
@@ -7283,7 +7289,11 @@ function renderReviewStats(rows = getQueueRows(), row = currentRow) {
 
         deleteOk: new Set(),
 
-        pending: new Set()
+        pending: new Set(),
+
+        estadoOk: new Set(),
+
+        errorRows: new Set()
 
     };
 
@@ -7303,6 +7313,18 @@ function renderReviewStats(rows = getQueueRows(), row = currentRow) {
 
         uniqueStats.total.add(distinctKey);
 
+        const rowErrorCount = getRowErrorCount(entry);
+
+        if (rowErrorCount > 0) {
+
+            stats.errorRows += 1;
+
+            stats.errorTotal += rowErrorCount;
+
+            uniqueStats.errorRows.add(distinctKey);
+
+        }
+
 
 
         if (estado !== 'ok') {
@@ -7311,7 +7333,12 @@ function renderReviewStats(rows = getQueueRows(), row = currentRow) {
 
             uniqueStats.pending.add(distinctKey);
 
-            return;
+        }
+        else {
+
+            stats.estadoOk += 1;
+
+            uniqueStats.estadoOk.add(distinctKey);
 
         }
 
@@ -7397,25 +7424,17 @@ function renderReviewStats(rows = getQueueRows(), row = currentRow) {
 
     const pendingUniqueEl = $('statsUniqueTotalPending');
 
+    const estadoOkEl = $('statsTotalEstadoOk');
 
+    const estadoOkUniqueEl = $('statsUniqueTotalEstadoOk');
 
-    const getReviewCategory = (entry) => {
+    const currentEstadoOkEl = $('statsCurrentEstadoOk');
 
-        const estado = normalizeEstadoToNew(entry?.qa_revision_estado);
+    const errorRowsEl = $('statsTotalErrorRows');
 
-        if (estado !== 'ok') return 'pending';
+    const currentErrorRowsEl = $('statsCurrentErrorRows');
 
-        const accion = normalizeAccionToNew(entry?.qa_revision_accion);
-
-        if (accion === 'revisar') return 'reviewOk';
-
-        if (accion === 'eliminar') return 'deleteOk';
-
-        if (accion === 'copia') return 'copyOk';
-
-        return 'importOk';
-
-    };
+    const errorRowsUniqueEl = $('statsUniqueTotalErrorRows');
 
 
 
@@ -7431,6 +7450,10 @@ function renderReviewStats(rows = getQueueRows(), row = currentRow) {
 
     let currentPendingIndex = 0;
 
+    let currentEstadoOkIndex = 0;
+
+    let currentErrorRowsIndex = 0;
+
     if (row && stats.total > 0) {
 
         const idx = rows.findIndex(item => getRevisionKey(item) === getRevisionKey(row));
@@ -7439,27 +7462,21 @@ function renderReviewStats(rows = getQueueRows(), row = currentRow) {
 
         if (idx >= 0) {
 
-            const selectedCategory = getReviewCategory(row);
+            const rowsUpToCurrent = rows.slice(0, idx + 1);
 
-            const categoryRowsBefore = rows
+            currentImportOkIndex = rowsUpToCurrent.filter(entry => rowHasImportOkAction(entry)).length;
 
-                .slice(0, idx + 1)
+            currentCopyOkIndex = rowsUpToCurrent.filter(entry => rowHasCopyOkAction(entry)).length;
 
-                .filter(entry => getReviewCategory(entry) === selectedCategory)
+            currentReviewOkIndex = rowsUpToCurrent.filter(entry => rowHasReviewAction(entry)).length;
 
-                .length;
+            currentDeleteOkIndex = rowsUpToCurrent.filter(entry => rowHasDeleteOkAction(entry)).length;
 
+            currentPendingIndex = rowsUpToCurrent.filter(entry => rowIsPending(entry)).length;
 
+            currentEstadoOkIndex = rowsUpToCurrent.filter(entry => rowIsOk(entry)).length;
 
-            if (selectedCategory === 'importOk') currentImportOkIndex = categoryRowsBefore;
-
-            else if (selectedCategory === 'copyOk') currentCopyOkIndex = categoryRowsBefore;
-
-            else if (selectedCategory === 'reviewOk') currentReviewOkIndex = categoryRowsBefore;
-
-            else if (selectedCategory === 'deleteOk') currentDeleteOkIndex = categoryRowsBefore;
-
-            else if (selectedCategory === 'pending') currentPendingIndex = categoryRowsBefore;
+            currentErrorRowsIndex = rowsUpToCurrent.filter(entry => rowHasErrors(entry)).length;
 
         }
 
@@ -7481,27 +7498,39 @@ function renderReviewStats(rows = getQueueRows(), row = currentRow) {
 
     if (currentPendingEl instanceof HTMLElement) currentPendingEl.textContent = String(currentPendingIndex);
 
-    if (totalUniqueEl instanceof HTMLElement) totalUniqueEl.textContent = `· ${uniqueStats.total.size} únicos`;
+    if (totalUniqueEl instanceof HTMLElement) totalUniqueEl.textContent = `${uniqueStats.total.size} únicos`;
 
     if (importOkEl instanceof HTMLElement) importOkEl.textContent = String(stats.importOk);
 
-    if (importOkUniqueEl instanceof HTMLElement) importOkUniqueEl.textContent = `· ${uniqueStats.importOk.size} únicos`;
+    if (importOkUniqueEl instanceof HTMLElement) importOkUniqueEl.textContent = `${uniqueStats.importOk.size} únicos`;
 
     if (copyOkEl instanceof HTMLElement) copyOkEl.textContent = String(stats.copyOk);
 
-    if (copyOkUniqueEl instanceof HTMLElement) copyOkUniqueEl.textContent = `· ${uniqueStats.copyOk.size} únicos`;
+    if (copyOkUniqueEl instanceof HTMLElement) copyOkUniqueEl.textContent = `${uniqueStats.copyOk.size} únicos`;
 
     if (reviewOkEl instanceof HTMLElement) reviewOkEl.textContent = String(stats.reviewOk);
 
-    if (reviewOkUniqueEl instanceof HTMLElement) reviewOkUniqueEl.textContent = `· ${uniqueStats.reviewOk.size} únicos`;
+    if (reviewOkUniqueEl instanceof HTMLElement) reviewOkUniqueEl.textContent = `${uniqueStats.reviewOk.size} únicos`;
 
     if (deleteOkEl instanceof HTMLElement) deleteOkEl.textContent = String(stats.deleteOk);
 
-    if (deleteOkUniqueEl instanceof HTMLElement) deleteOkUniqueEl.textContent = `· ${uniqueStats.deleteOk.size} únicos`;
+    if (deleteOkUniqueEl instanceof HTMLElement) deleteOkUniqueEl.textContent = `${uniqueStats.deleteOk.size} únicos`;
 
     if (pendingEl instanceof HTMLElement) pendingEl.textContent = String(stats.pending);
 
-    if (pendingUniqueEl instanceof HTMLElement) pendingUniqueEl.textContent = `· ${uniqueStats.pending.size} únicos`;
+    if (pendingUniqueEl instanceof HTMLElement) pendingUniqueEl.textContent = `${uniqueStats.pending.size} únicos`;
+
+    if (estadoOkEl instanceof HTMLElement) estadoOkEl.textContent = String(stats.estadoOk);
+
+    if (estadoOkUniqueEl instanceof HTMLElement) estadoOkUniqueEl.textContent = `${uniqueStats.estadoOk.size} únicos`;
+
+    if (currentEstadoOkEl instanceof HTMLElement) currentEstadoOkEl.textContent = String(currentEstadoOkIndex);
+
+    if (errorRowsEl instanceof HTMLElement) errorRowsEl.textContent = String(stats.errorRows);
+
+    if (currentErrorRowsEl instanceof HTMLElement) currentErrorRowsEl.textContent = String(currentErrorRowsIndex);
+
+    if (errorRowsUniqueEl instanceof HTMLElement) errorRowsUniqueEl.textContent = `${uniqueStats.errorRows.size} únicos`;
 
 
 
@@ -9336,21 +9365,20 @@ function rowHasReviewAction(row) {
 }
 
 function rowHasCopyOkAction(row) {
-
-    const estado = normalizeEstadoToNew(row?.qa_revision_estado);
-
     const accion = normalizeAccionToNew(row?.qa_revision_accion);
 
-    return estado === 'ok' && accion === 'copia';
+    return accion === 'copia';
+
+}
+
+function rowHasDeleteOkAction(row) {
+    const accion = normalizeAccionToNew(row?.qa_revision_accion);
+
+    return accion === 'eliminar';
 
 }
 
 function rowHasImportOkAction(row) {
-
-    const estado = normalizeEstadoToNew(row?.qa_revision_estado);
-
-    if (estado !== 'ok') return false;
-
     const accion = normalizeAccionToNew(row?.qa_revision_accion);
 
     return accion !== 'revisar' && accion !== 'eliminar' && accion !== 'copia';
@@ -9364,6 +9392,14 @@ function rowIsPending(row) {
     const estado = normalizeEstadoToNew(row?.qa_revision_estado);
 
     return estado === 'pendiente';
+
+}
+
+function rowIsOk(row) {
+
+    const estado = normalizeEstadoToNew(row?.qa_revision_estado);
+
+    return estado === 'ok';
 
 }
 
@@ -9463,6 +9499,52 @@ async function loadRelativePending(direction) {
 
 }
 
+async function loadRelativeEstadoOk(direction) {
+
+    const queue = getQueueRows();
+
+    if (!queue.length) return;
+
+
+
+    const startIndex = currentRow
+
+        ? queue.findIndex(row => getRevisionKey(row) === getRevisionKey(currentRow))
+
+        : -1;
+
+
+
+    let idx = startIndex;
+
+    while (true) {
+
+        idx += direction;
+
+        if (idx < 0 || idx >= queue.length) {
+
+            alert(direction > 0 ? 'No hay mas registros con estado OK.' : 'No hay registros anteriores con estado OK.');
+
+            return;
+
+        }
+
+        if (rowIsOk(queue[idx])) break;
+
+    }
+
+
+
+    currentRow = queue[idx];
+
+    $('recordIdInput').value = getDisplayPnForInput(currentRow);
+
+    currentProcessIndex = 0;
+
+    await revalidateCurrentRow();
+
+}
+
 
 
 async function loadRelativeReview(direction) {
@@ -9542,6 +9624,52 @@ async function loadRelativeCopy(direction) {
         }
 
         if (rowHasCopyOkAction(queue[idx])) break;
+
+    }
+
+
+
+    currentRow = queue[idx];
+
+    $('recordIdInput').value = getDisplayPnForInput(currentRow);
+
+    currentProcessIndex = 0;
+
+    await revalidateCurrentRow();
+
+}
+
+async function loadRelativeDelete(direction) {
+
+    const queue = getQueueRows();
+
+    if (!queue.length) return;
+
+
+
+    const startIndex = currentRow
+
+        ? queue.findIndex(row => getRevisionKey(row) === getRevisionKey(currentRow))
+
+        : -1;
+
+
+
+    let idx = startIndex;
+
+    while (true) {
+
+        idx += direction;
+
+        if (idx < 0 || idx >= queue.length) {
+
+            alert(direction > 0 ? 'No hay mas registros con accion Eliminar.' : 'No hay registros anteriores con accion Eliminar.');
+
+            return;
+
+        }
+
+        if (rowHasDeleteOkAction(queue[idx])) break;
 
     }
 
@@ -11331,13 +11459,25 @@ bindClick('statsNextCopyBtn', () => {
 
 bindClick('statsPrevErrorBtn', () => {
 
-    loadRelativeError(-1).catch((error) => alert(`No se pudo cargar error anterior: ${error.message}`));
+    loadRelativeDelete(-1).catch((error) => alert(`No se pudo cargar eliminar anterior: ${error.message}`));
 
 });
 
 
 
 bindClick('statsNextErrorBtn', () => {
+
+    loadRelativeDelete(1).catch((error) => alert(`No se pudo cargar siguiente eliminar: ${error.message}`));
+
+});
+
+bindClick('statsPrevErrorSummaryBtn', () => {
+
+    loadRelativeError(-1).catch((error) => alert(`No se pudo cargar error anterior: ${error.message}`));
+
+});
+
+bindClick('statsNextErrorSummaryBtn', () => {
 
     loadRelativeError(1).catch((error) => alert(`No se pudo cargar siguiente error: ${error.message}`));
 
@@ -11372,6 +11512,18 @@ bindClick('statsPrevPendingBtn', () => {
 bindClick('statsNextPendingBtn', () => {
 
     loadRelativePending(1).catch((error) => alert(`No se pudo cargar siguiente pendiente: ${error.message}`));
+
+});
+
+bindClick('statsPrevEstadoOkBtn', () => {
+
+    loadRelativeEstadoOk(-1).catch((error) => alert(`No se pudo cargar estado OK anterior: ${error.message}`));
+
+});
+
+bindClick('statsNextEstadoOkBtn', () => {
+
+    loadRelativeEstadoOk(1).catch((error) => alert(`No se pudo cargar siguiente estado OK: ${error.message}`));
 
 });
 

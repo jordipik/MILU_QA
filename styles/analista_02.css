@@ -643,7 +643,7 @@ body.a2-resizing * {
 
 .a2-stats-row {
     display: grid;
-    grid-template-columns: repeat(6, minmax(0, 1fr));
+    grid-template-columns: repeat(8, minmax(0, 1fr));
     gap: 8px;
 }
 
@@ -783,6 +783,20 @@ body.a2-resizing * {
 .a2-stat-card.is-pending {
     border-color: #f0b4ad;
     background: linear-gradient(180deg, #fff3f1, #ffe1dd);
+}
+
+.a2-stat-card.is-error {
+    border-color: #f3ca74;
+    background: linear-gradient(180deg, #fff8e8, #ffefc8);
+}
+
+.a2-stat-card.is-state-ok {
+    border-color: #94d3ae;
+    background: linear-gradient(180deg, #f3fff8, #ddf5e8);
+}
+
+.a2-stat-card.is-import-sep {
+    margin-left: 8px;
 }
 
 .a2-stat-label {
@@ -3222,6 +3236,10 @@ body.a2-resizing * {
         grid-template-columns: 1fr 1fr;
     }
 
+    .a2-stat-card.is-import-sep {
+        margin-left: 0;
+    }
+
     .a2-stat-main {
         min-height: 20px;
     }
@@ -3300,6 +3318,10 @@ body.a2-resizing * {
 
     .a2-stats-row {
         grid-template-columns: 1fr;
+    }
+
+    .a2-stat-card.is-import-sep {
+        margin-left: 0;
     }
 
     .a2-stat-main {
