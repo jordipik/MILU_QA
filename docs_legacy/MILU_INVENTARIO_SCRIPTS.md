@@ -1,4 +1,4 @@
-# MILU INVENTARIO SCRIPTS
+﻿# MILU INVENTARIO SCRIPTS
 
 ## 1. Criterios de estado
 - Critico: necesario para runtime web o pipeline oficial actual.
@@ -20,10 +20,10 @@
 | qa_milu.html | HTML | UI principal QA | navegador | app QA operativa | js/qa-milu.js | Critico |
 | analista_02.html | HTML | UI analista por registro/PDF | navegador | app analista | js/analista-02.js | Critico |
 | js/analista-02.js | JS ESM | Flujo analista, acciones por registro, recompute | allData + backend | guardados y navegacion | data-loader/revision/pdf-viewer | Critico |
-| scripts/export_wordpress_milu.js | Node | Export WordPress QA-only por PN | 9 engine_*.json | JSON/CSV/MD en data/output/wordpress | fs/path | Critico |
+| scripts/export_wordpress_milu.js | Node | Export WordPress QA-only por PN | 9 engine_*.json | JSON/CSV/MD en data/05-wordpress | fs/path | Critico |
 | exportacion.html | HTML | Pantalla export QA-only | backend export endpoints | vista y control ejecucion | js/exportacion.js | Critico |
 | js/exportacion.js | JS | Dashboard export, preview archivos y decisiones | /export/* | UI de ejecucion y preview | fetch API | Critico |
-| export_wordpress.html | HTML | Vista comparativa/export WordPress | backend + JSON | revision visual por pestañas | js/export-wordpress.js | Revisar |
+| export_wordpress.html | HTML | Vista comparativa/export WordPress | backend + JSON | revision visual por pestaÃ±as | js/export-wordpress.js | Revisar |
 | js/export-wordpress.js | JS | Cliente export con synthetic local y tabs | /export/status + JSON | UI comparativa | fetch | Revisar |
 | recompute_engine_errors.js | Node | Recalculo flags *_error y revision opcional | engine file + id opcional | JSON actualizado | engine_files.js | Critico |
 | scripts/qa_pdf_compare.js | Node | Comparacion PDF->campos *_pdf + reporte | PDF + engine file | campos *_pdf + reportes JSON | pdfjs-dist + fs | Critico |
@@ -45,7 +45,7 @@
 | js/column-view.js | JS ESM | configuracion de vistas de columnas | state + localStorage | ocultar/mostrar columnas | n/a | Critico |
 | js/cell-editor.js | JS ESM | edicion inline de celdas | eventos tabla | guardado puntual | data-loader | Util |
 | js/change-control.js | JS ESM | undo/redo + auditoria cliente | acciones UI | historial y revert | n/a | Util |
-| js/revision-sync.js | JS ESM | sincronia revision entre pestañas | localStorage/events | refresh cruzado | n/a | Util |
+| js/revision-sync.js | JS ESM | sincronia revision entre pestaÃ±as | localStorage/events | refresh cruzado | n/a | Util |
 | js/topbar.js | JS ESM | topbar comun y estado backend | backend status | barra superior | data-loader | Util |
 | js/pos-preload.js | JS ESM | precarga de imagenes pos visibles | rows visibles | mejora UX | n/a | Util |
 | js/pn-review.js | JS ESM | flujo PN review dedicado | /pn-review/* | UI de decisiones PN | fetch | Revisar |
@@ -103,3 +103,4 @@
 2. Compare PDF si aplica: scripts/qa_pdf_compare.js.
 3. QA operativo web: qa_milu.html y analista_02.html.
 4. Export final: scripts/export_wordpress_milu.js o /export/run-wordpress.
+

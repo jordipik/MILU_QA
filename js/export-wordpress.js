@@ -15,18 +15,18 @@ function buildStaticJsonUrlCandidates(fileName) {
     const isLegacyRootFile = /^(milu_(new|superseded)_v\d+|product-export-.*)\.json$/i.test(clean);
 
     const withBase = API_BASE_PATH
-        ? `${API_BASE_PATH}/data/output/wordpress/${clean}`
-        : `/data/output/wordpress/${clean}`;
+        ? `${API_BASE_PATH}/data/05-wordpress/${clean}`
+        : `/data/05-wordpress/${clean}`;
 
     const candidates = isLegacyRootFile
         ? [
             clean,
             withBase,
-            `data/output/wordpress/${clean}`
+            `data/05-wordpress/${clean}`
         ]
         : [
             withBase,
-            `data/output/wordpress/${clean}`,
+            `data/05-wordpress/${clean}`,
             clean
         ];
 
@@ -903,7 +903,7 @@ async function loadAllData() {
 
         renderAll();
         if (staticMode && state.data.new.length === 0 && state.data.superseded.length === 0 && state.data.pending.length === 0 && state.data.discarded.length === 0) {
-            showToast('Modo publicacion: no se encontraron JSON en /data/output/wordpress.', 'info');
+            showToast('Modo publicacion: no se encontraron JSON en /data/05-wordpress.', 'info');
         }
         showToast('Export cargado correctamente.', 'success');
     } catch (error) {

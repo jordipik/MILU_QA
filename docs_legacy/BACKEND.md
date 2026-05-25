@@ -1,15 +1,15 @@
-# MILU Backend Documentation
+﻿# MILU Backend Documentation
 
 ## Overview
 
 El backend de MILU es un servidor Express.js que proporciona API REST para:
 
 - **Persistencia de datos**: Guardar cambios en archivos `engine_*.json`
-- **Sincronización de revisiones**: Manage QA revision states y actions
-- **Exportación de datos**: Pipeline para WordPress, análisis y reportes
-- **Comparación PDF**: Extracción de datos desde PDFs y validación contra engine data
-- **Auditoría**: Logging de cambios y operaciones
-- **Servicio de archivos estáticos**: Frontend HTML, JS, CSS
+- **SincronizaciÃ³n de revisiones**: Manage QA revision states y actions
+- **ExportaciÃ³n de datos**: Pipeline para WordPress, anÃ¡lisis y reportes
+- **ComparaciÃ³n PDF**: ExtracciÃ³n de datos desde PDFs y validaciÃ³n contra engine data
+- **AuditorÃ­a**: Logging de cambios y operaciones
+- **Servicio de archivos estÃ¡ticos**: Frontend HTML, JS, CSS
 
 ## Architecture
 
@@ -17,26 +17,26 @@ El backend de MILU es un servidor Express.js que proporciona API REST para:
 
 - **[server.js](server.js)**: Servidor Express principal
   - Puerto: `3000` (por defecto)
-  - Carga configuración de archivos engines desde `engine_files.js`
+  - Carga configuraciÃ³n de archivos engines desde `engine_files.js`
   - Inicializa middleware y routes
-  - Maneja conexión con filesystem para persistencia
+  - Maneja conexiÃ³n con filesystem para persistencia
 
 ### Structure
 
 ```
-├── server.js                          # Express server principal
-├── engine_files.js                    # Configuración de engines
-├── recompute_engine_errors.js         # Recálculo de flags QA
-├── apply_revision_to_engines.js       # Aplicación de revisiones masivas
-├── scripts/
-│   ├── export_wordpress_milu.js       # Pipeline WordPress
-│   ├── qa_pdf_compare.js              # Comparación PDF
-│   ├── prepare-pages-dist.js          # Preparación para GitHub Pages
-│   ├── publish-pages.ps1              # Publicación automatizada
-│   └── ...
-├── qa_revision_server_data.json       # Persistencia de revisiones
-├── qa_audit_log.json                  # Log de auditoría
-└── engine_*.json                      # Data principal (9 archivos)
+â”œâ”€â”€ server.js                          # Express server principal
+â”œâ”€â”€ engine_files.js                    # ConfiguraciÃ³n de engines
+â”œâ”€â”€ recompute_engine_errors.js         # RecÃ¡lculo de flags QA
+â”œâ”€â”€ apply_revision_to_engines.js       # AplicaciÃ³n de revisiones masivas
+â”œâ”€â”€ scripts/
+â”‚   â”œâ”€â”€ export_wordpress_milu.js       # Pipeline WordPress
+â”‚   â”œâ”€â”€ qa_pdf_compare.js              # ComparaciÃ³n PDF
+â”‚   â”œâ”€â”€ prepare-pages-dist.js          # PreparaciÃ³n para GitHub Pages
+â”‚   â”œâ”€â”€ publish-pages.ps1              # PublicaciÃ³n automatizada
+â”‚   â””â”€â”€ ...
+â”œâ”€â”€ qa_revision_server_data.json       # Persistencia de revisiones
+â”œâ”€â”€ qa_audit_log.json                  # Log de auditorÃ­a
+â””â”€â”€ engine_*.json                      # Data principal (9 archivos)
 ```
 
 ## Express Server (server.js)
@@ -48,7 +48,7 @@ El backend de MILU es un servidor Express.js que proporciona API REST para:
 1. bodyParser.json()              // Parse JSON bodies
 2. cors()                         // CORS habilitado
 3. Rutas especiales (/qa_revision_sync.php, /save-json, etc.)
-4. express.static()               // Servir archivos estáticos
+4. express.static()               // Servir archivos estÃ¡ticos
 ```
 
 ### Key Middleware
@@ -65,7 +65,7 @@ Response: { "status": "ok" }
 ```
 
 Verifica:
-- Conexión backend activa
+- ConexiÃ³n backend activa
 - Fileystem accesible
 - Endpoints disponibles
 
@@ -94,18 +94,18 @@ Guarda un cambio puntual en un campo de un registro.
 }
 ```
 
-**Implementación**:
+**ImplementaciÃ³n**:
 - Valida `rowKey` y `engineFile`
 - Lee archivo JSON actual
 - Encuentra registro por clave
-- Actualiza campo específico
+- Actualiza campo especÃ­fico
 - Escribe archivo actualizado
 - Registra en audit log
 - Recalcula flags QA (`has_error`, `pos_error`, etc.)
 
 ### 2. Apply Revision to Engines (`POST /apply-revision-to-engines`)
 
-Aplica cambios masivos a múltiples registros (revisiones).
+Aplica cambios masivos a mÃºltiples registros (revisiones).
 
 **Request**:
 ```json
@@ -132,19 +132,19 @@ Aplica cambios masivos a múltiples registros (revisiones).
 }
 ```
 
-**Implementación**:
+**ImplementaciÃ³n**:
 - Recibe array de actualizaciones
 - Para cada registro:
   - Valida claves
   - Lee archivo
-  - Actualiza múltiples campos
+  - Actualiza mÃºltiples campos
   - Normaliza estados/acciones si es necesario
 - Escribe cambios a disco
 - Retorna summary
 
 ### 3. Revision Sync (`GET/POST /qa_revision_sync.php`)
 
-Sincroniza cambios de revisión entre frontend y servidor.
+Sincroniza cambios de revisiÃ³n entre frontend y servidor.
 
 **GET** - Obtener revisiones remotas:
 ```
@@ -170,11 +170,11 @@ Response: {
 **Persistencia**:
 - Lee/escribe [qa_revision_server_data.json](qa_revision_server_data.json)
 - Formato: `{ revision_key: { estado, accion, timestamp } }`
-- Sincronización bidireccional con frontend
+- SincronizaciÃ³n bidireccional con frontend
 
 ### 4. PN Review QA Decision (`GET /qa_pn_review/:filename/:pn`)
 
-Obtiene decisión QA para un PN específico.
+Obtiene decisiÃ³n QA para un PN especÃ­fico.
 
 **Response**:
 ```json
@@ -191,9 +191,9 @@ Obtiene decisión QA para un PN específico.
 
 ### export_wordpress_milu.js
 
-Pipeline oficial para exportación a WordPress.
+Pipeline oficial para exportaciÃ³n a WordPress.
 
-**Ejecución**:
+**EjecuciÃ³n**:
 ```bash
 npm run export:wordpress
 ```
@@ -201,13 +201,13 @@ npm run export:wordpress
 **Responsabilidades**:
 1. Lee los 9 `engine_*.json`
 2. Agrupa registros por PN (Part Number)
-3. Aplica reglas de decisión basadas en:
-   - `qa_revision_estado` (estado de aprobación)
-   - `qa_revision_accion` (acción: Import, Supersede, etc.)
+3. Aplica reglas de decisiÃ³n basadas en:
+   - `qa_revision_estado` (estado de aprobaciÃ³n)
+   - `qa_revision_accion` (acciÃ³n: Import, Supersede, etc.)
 4. Genera outputs:
    - `milu_wp_import.csv`: Registros listos para importar
    - `milu_wp_discarded.csv`: Registros descartados
-   - `milu_wp_pending_review.csv`: Pendientes revisión
+   - `milu_wp_pending_review.csv`: Pendientes revisiÃ³n
    - `milu_wp_import.json`: Version JSON para referencia
    - `milu_wp_export_summary.md`: Resumen ejecutivo
 
@@ -220,20 +220,20 @@ npm run export:wordpress
 **Decision Rules**:
 ```
 qa_revision_estado == "aprobado" && qa_revision_accion == "Import"
-  → EXPORT a WordPress
+  â†’ EXPORT a WordPress
 qa_revision_accion == "Supersede"
-  → Marcar como supersedido
+  â†’ Marcar como supersedido
 qa_revision_estado == "rechazado"
-  → DISCARD
+  â†’ DISCARD
 Otros
-  → PENDING REVIEW
+  â†’ PENDING REVIEW
 ```
 
 ### qa_pdf_compare.js
 
-Herramienta de comparación PDF vs datos JSON.
+Herramienta de comparaciÃ³n PDF vs datos JSON.
 
-**Ejecución**:
+**EjecuciÃ³n**:
 ```bash
 npm run qa:pdf-compare
 npm run qa:pdf-compare:write    # Actualiza engine_*.json con datos PDF
@@ -268,7 +268,7 @@ qa_pdf_compare_<engine>_<timestamp>.json
 
 Prepara la carpeta `dist/milu_publish/` para GitHub Pages.
 
-**Ejecución**:
+**EjecuciÃ³n**:
 ```bash
 npm run pages:prepare:incremental    # Recomendado (solo cambios)
 npm run pages:prepare                # Full copy (reset + copy all)
@@ -276,31 +276,31 @@ npm run pages:prepare:incremental:dry # Preview sin cambios
 ```
 
 **Responsabilidades**:
-1. Copia HTML principal: `qa_milu.html` → `dist/milu_publish/`
+1. Copia HTML principal: `qa_milu.html` â†’ `dist/milu_publish/`
 2. Copia directorios:
-   - `js/` → `dist/milu_publish/js/`
-   - `styles/` → `dist/milu_publish/styles/`
+   - `js/` â†’ `dist/milu_publish/js/`
+   - `styles/` â†’ `dist/milu_publish/styles/`
    - `esquemas/`, `esquemas_pos_circulos/`
 3. Copia archivos de datos:
    - `engine_*.json`
    - `MILU_New_v506.json`, `MILU_Superseded_v506.json`
    - `product-export-*.json`
 4. Actualiza `CNAME` (dominio personalizado)
-5. En modo `--incremental`: Solo copia cambios (más rápido)
+5. En modo `--incremental`: Solo copia cambios (mÃ¡s rÃ¡pido)
 
 **Output**: `dist/milu_publish/` lista para GitHub Pages
 
 ### Otros Scripts
 
 - **recompute_engine_errors.js**: Recalcula flags de error por registro
-  - Evaluado por endpoint `/save-json` automáticamente
+  - Evaluado por endpoint `/save-json` automÃ¡ticamente
   - Genera: `pos_error`, `pn_error`, `designation_error`, etc.
   - Suma: `total_error`, `has_error`
 
 - **apply_revision_to_engines.js**: Aplica revisiones masivas
   - Usado por endpoint `/apply-revision-to-engines`
   - Normaliza estados y acciones
-  - Valida claves de revisión
+  - Valida claves de revisiÃ³n
 
 ## Data Models
 
@@ -395,7 +395,7 @@ npm run pages:prepare:incremental:dry # Preview sin cambios
 ]
 ```
 
-**Límite**: Max 10,000 entries (rotación automática)
+**LÃ­mite**: Max 10,000 entries (rotaciÃ³n automÃ¡tica)
 
 ## Utility Functions
 
@@ -434,21 +434,21 @@ rowHasAnySust(row)                 // Check for substitution data
 ```
 Frontend: POST /save-json
   {field, value, rowKey, engineFile}
-  ↓
+  â†“
 server.js: validateEdit()
-  ↓
+  â†“
 readJsonSafe(engineFile)
-  ↓
+  â†“
 findRecordByRowKey()
-  ↓
+  â†“
 updateField(record, field, value)
-  ↓
+  â†“
 recomputeEngineErrors(record)  // Recalc error flags
-  ↓
+  â†“
 fs.writeFileSync(engineFile)
-  ↓
+  â†“
 appendAuditLog()
-  ↓
+  â†“
 Response: {success, updatedField}
 ```
 
@@ -457,15 +457,15 @@ Response: {success, updatedField}
 ```
 Frontend: POST /qa_revision_sync.php
   {updates: { revision_key: {estado, accion} }}
-  ↓
+  â†“
 server.js: handleRevisionSync()
-  ↓
+  â†“
 readJsonSafe(REVISION_SYNC_FILE)
-  ↓
+  â†“
 Merge updates into revision data
-  ↓
+  â†“
 fs.writeFileSync(qa_revision_server_data.json)
-  ↓
+  â†“
 Response: {success}
 ```
 
@@ -473,24 +473,24 @@ Response: {success}
 
 ```
 User: npm run export:wordpress
-  ↓
+  â†“
 scripts/export_wordpress_milu.js starts
-  ↓
+  â†“
 loadEngineData() - Read all 9 engine_*.json
-  ↓
+  â†“
 groupByPn() - Aggregate records per PN
-  ↓
+  â†“
 For each PN group:
-  - decideByQa() → Decide action (Export/Discard/Pending)
-  - buildMergedFields() → Consolidate data
-  - buildPnValidation() → Check completeness
-  ↓
+  - decideByQa() â†’ Decide action (Export/Discard/Pending)
+  - buildMergedFields() â†’ Consolidate data
+  - buildPnValidation() â†’ Check completeness
+  â†“
 Write outputs:
-  - data/output/wordpress/milu_wp_import.csv
-  - data/output/wordpress/milu_wp_discarded.csv
-  - data/output/wordpress/milu_wp_pending_review.csv
-  - data/output/wordpress/milu_wp_import.json
-  - data/output/wordpress/milu_wp_export_summary.md
+  - data/05-wordpress/milu_wp_import.csv
+  - data/05-wordpress/milu_wp_discarded.csv
+  - data/05-wordpress/milu_wp_pending_review.csv
+  - data/05-wordpress/milu_wp_import.json
+  - data/05-wordpress/milu_wp_export_summary.md
 ```
 
 ## Recent Changes (May 2026)
@@ -592,7 +592,7 @@ REVISION_SYNC_FILE = path.join(REPO_ROOT, 'qa_revision_server_data.json')
 
 ### Scaling Considerations
 
-- Current design: ~9 engine files × 500-1000 records each
+- Current design: ~9 engine files Ã— 500-1000 records each
 - Audit log rotation at 10,000 entries
 - For larger datasets, consider:
   - Database migration (SQLite/PostgreSQL)
@@ -653,6 +653,7 @@ jq '.[:1]' engine_12V4000M53.json
 
 ---
 
-**Última actualización**: Mayo 5, 2026
+**Ãšltima actualizaciÃ³n**: Mayo 5, 2026
 **Stack**: Node.js + Express + Filesystem
 **Mantenedor**: Equipo MILU
+

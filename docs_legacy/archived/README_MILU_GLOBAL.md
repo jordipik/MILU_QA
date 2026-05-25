@@ -20,7 +20,7 @@ PDF/BOM -> extraccion -> limpieza/depuracion -> enriquecimiento GESA/SUST -> eng
 - Backend local: server.js (Express, puerto 3000).
 - Persistencia: archivos JSON en disco (sin BD).
 - Datos runtime: 9 archivos engine_*.json (67,883 filas auditadas).
-- Export oficial: scripts/export_wordpress_milu.js + data/output/wordpress.
+- Export oficial: scripts/export_wordpress_milu.js + data/05-wordpress.
 
 ## 3. Componentes clave
 - Estado global UI: js/state.js.
@@ -50,7 +50,7 @@ No hay base de datos relacional. Se persiste en:
 - engine_*.json: datos operativos y revisiones.
 - qa_revision_server_data.json: payload de sync revision.
 - qa_audit_log.json: auditoria de cambios.
-- data/output/wordpress/*: salidas de export.
+- data/05-wordpress/*: salidas de export.
 
 ## 6. Estado tecnico resumido
 Fortalezas:
@@ -85,3 +85,4 @@ Debilidades:
 3. docs/MILU_FRONTEND_BACKEND.md
 4. docs/MILU_MODELO_DATOS_JSON.md
 5. docs/MILU_PLAN_MEJORA.md
+

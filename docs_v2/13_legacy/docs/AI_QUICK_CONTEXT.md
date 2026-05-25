@@ -83,7 +83,7 @@ Important fields:
 ## WordPress Export (official)
 - Command: `npm run export:wordpress`
 - Script: `scripts/export_wordpress_milu.js`
-- Output: `data/output/wordpress/`
+- Output: `data/05-wordpress/`
 - Decision: QA-only (`qa_revision_estado=ok` + `qa_revision_accion=importar` â†’ import)
 
 ## High-Value Rules
@@ -118,4 +118,5 @@ Important fields:
 - `npm install`
 - `node server.js`
 - open `http://localhost:3000/qa_milu.html`
+
 

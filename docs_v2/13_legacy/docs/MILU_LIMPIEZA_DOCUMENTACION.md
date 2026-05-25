@@ -90,8 +90,8 @@ Destinos consolidados objetivo:
 | docs/modules/server.md | docs/modules | Backend (referencia mÃ³dulo) | s/d | Ãºtil | ARQUITECTURA_MILU | BACKEND.md | Mantener |
 | extraccion_de_pdf_a_excel/README_MILU_v6_2.md | tool | Herramienta offline PDFâ†’Excel | s/d | Ãºtil | â€” | â€” | Mantener (utilidad offline) |
 | legacy/export_complex_ai/README.md | legacy | Export complejo IA archivado | s/d | obsoleto | archivar | docs/13_wordpress_export_ai_pipeline.md | Ya estÃ¡ en `legacy/`; conservar |
-| data/output/wordpress/milu_wp_export_summary.md | data | Resumen export WP | generado | generado | â€” | â€” | Artefacto generado; no editar |
-| dist/milu_publish/data/output/wordpress/milu_wp_export_summary.md | dist | Resumen export WP empaquetado | generado | generado | â€” | â€” | Artefacto en `dist/`; no editar |
+| data/05-wordpress/milu_wp_export_summary.md | data | Resumen export WP | generado | generado | â€” | â€” | Artefacto generado; no editar |
+| dist/milu_publish/data/05-wordpress/milu_wp_export_summary.md | dist | Resumen export WP empaquetado | generado | generado | â€” | â€” | Artefacto en `dist/`; no editar |
 | .github/copilot-instructions.md | .github | Instrucciones Copilot | s/d | Ãºtil | â€” | â€” | Mantener actualizado |
 
 ---
@@ -263,7 +263,7 @@ Cada consolidado **enlaza al doc canÃ³nico** como fuente de verdad y resume su
 
 1. **Enlaces externos no auditados.** Algunos documentos pueden estar enlazados desde commits, issues o desde el repo de WordPress externo. Antes de borrar/mover, revisar referencias con `grep` sobre `*.md`, `*.html`, `*.js`, `*.py`.
 2. **AuditorÃ­as como evidencia histÃ³rica.** `AUDIT_2026_05_04.md`, `MILU_AUDITORIA_TECNICA.md`, `AUDITORIA_TECNICA_MILU_WEB.md` pueden ser referencia legal/contractual de hallazgos en una fecha concreta. Recomendado **archivar (mover), no eliminar**.
-3. **Documentos generados.** `data/output/wordpress/milu_wp_export_summary.md` y `dist/.../milu_wp_export_summary.md` se regeneran automÃ¡ticamente. No editarlos a mano ni incluirlos en limpieza.
+3. **Documentos generados.** `data/05-wordpress/milu_wp_export_summary.md` y `dist/.../milu_wp_export_summary.md` se regeneran automÃ¡ticamente. No editarlos a mano ni incluirlos en limpieza.
 4. **Propuestas no implementadas.** `MILU_JSON_SCHEMA_REFACTOR_PROPOSAL.md`, `06_future_versions_review_flow_figma.md`, `08_pdf_visual_pipeline_prompt.md`, `docs/images/future_architecture.md` contienen diseÃ±os valiosos sin cÃ³digo asociado. Conservar y marcar `PENDIENTE DE VALIDAR`.
 5. **Inconsistencias de cÃ³digo vs doc (DT-5).** `descartar` vs `eliminar` no se resuelve con documentaciÃ³n: requiere decisiÃ³n y refactor en `analista_02.js`. La documentaciÃ³n reflejarÃ¡ lo que decida el cÃ³digo.
 6. **`docs/modules/`**. Es documentaciÃ³n mÃ³dulo a mÃ³dulo. Ãštil como referencia, pero conviene revisar si se mantiene al dÃ­a con el cÃ³digo. Pendiente: una sub-auditorÃ­a de `docs/modules/`.
@@ -280,4 +280,5 @@ Cada consolidado **enlaza al doc canÃ³nico** como fuente de verdad y resume su
 4. AÃ±adir banner de cabecera `âš ï¸ ARCHIVADO â€” superseded por X` a los documentos archivados.
 5. Resolver inconsistencia `descartar`/`eliminar` (DT-5 del plan) y actualizar QA_MILU.
 6. Auditar `docs/modules/` cuando se aborde la modularizaciÃ³n del backend (AR-2 del plan).
+
 

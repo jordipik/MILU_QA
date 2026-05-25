@@ -94,11 +94,11 @@ Regla de decision QA por PN (implementacion actual):
 - si no hay import ni pending y hay OK+Eliminar: discard.
 
 Salidas:
-- data/output/wordpress/milu_wp_import.*
-- data/output/wordpress/milu_wp_superseded.*
-- data/output/wordpress/milu_wp_pending_review.*
-- data/output/wordpress/milu_wp_discarded.*
-- data/output/wordpress/milu_wp_trace.json
+- data/05-wordpress/milu_wp_import.*
+- data/05-wordpress/milu_wp_superseded.*
+- data/05-wordpress/milu_wp_pending_review.*
+- data/05-wordpress/milu_wp_discarded.*
+- data/05-wordpress/milu_wp_trace.json
 
 ## 3. Pipeline runtime web
 1. Frontend carga engines por js/data-loader.js.
@@ -131,4 +131,5 @@ Python:
 2. Regeneracion compare PDF (scripts/qa_pdf_compare.js con write cuando aplique).
 3. QA en web (qa_milu/analista_02).
 4. Export WordPress (scripts/export_wordpress_milu.js o endpoint /export/run-wordpress).
+
 

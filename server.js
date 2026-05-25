@@ -52,7 +52,7 @@ const app = express();
 const PORT = 3000;
 const AUDIT_LOG_FILE = path.join(__dirname, 'qa_audit_log.json');
 const AUDIT_LOG_MAX_ENTRIES = 10000;
-const WORDPRESS_OUTPUT_DIR = path.join(__dirname, 'data', 'output', 'wordpress');
+const WORDPRESS_OUTPUT_DIR = path.join(__dirname, 'data', '05-wordpress');
 
 const pnReviewQaCacheService = createPnReviewQaCacheService({
     repoRoot: __dirname,
@@ -737,7 +737,7 @@ app.post('/api/recompute-simple/rebuild-json', async (req, res) => {
             notes: {
                 backupIgnored: true,
                 backupRequested: backup,
-                writesOnlyTo: 'data/output/rebuild',
+                writesOnlyTo: 'data/02-engine_rebuild',
                 engineFilesModified: false
             }
         });
@@ -823,7 +823,7 @@ app.post('/api/pdf-preview/apply-to-engine', async (req, res) => {
         const conflictDecisions = (req.body && typeof req.body.conflictDecisions === 'object' && req.body.conflictDecisions !== null)
             ? req.body.conflictDecisions
             : null;
-        const previewsDir = 'json_originales';
+        const previewsDir = path.join('data', '01-engine_preview');
 
         // Validacion estricta para evitar inyeccion via argumentos (aunque no usemos shell).
         if (engineRaw && !/^[A-Za-z0-9._-]+$/.test(engineRaw)) {
@@ -1609,7 +1609,7 @@ app.get('/export/preview', async (_req, res) => {
 
 app.get('/export/wordpress-decisions', async (_req, res) => {
     try {
-        const wpDir = path.join(__dirname, 'data', 'output', 'wordpress');
+        const wpDir = path.join(__dirname, 'data', '05-wordpress');
         const importRows = readJsonFileSafe(path.join(wpDir, 'milu_wp_import.json'), []);
         const pendingRows = readFirstJsonFileSafe(wpDir, ['milu_wp_pending.json', 'milu_wp_pending_review.json'], []);
         const discardRows = readJsonFileSafe(path.join(wpDir, 'milu_wp_discarded.json'), []);
@@ -2342,8 +2342,9 @@ app.get('/pn/:sku/sources', async (_req, res) => legacyExportEndpoint(res, 'pn/:
 // Export Manager — listado de archivos generados, preview y orquestador (lock).
 // =============================================================================
 
-const EXPORT_BASE_DIR = path.join(__dirname, 'data', 'output');
-const EXPORT_FOLDER_WHITELIST = new Set(['wordpress']);
+const EXPORT_BASE_DIR = path.join(__dirname, 'data');
+const WORDPRESS_EXPORT_FOLDER = '05-wordpress';
+const EXPORT_FOLDER_WHITELIST = new Set([WORDPRESS_EXPORT_FOLDER]);
 const EXPORT_EXT_WHITELIST = new Set(['.json', '.csv', '.md', '.txt']);
 const EXPORT_PREVIEW_MAX_BYTES = 512 * 1024; // 512KB
 
@@ -2386,6 +2387,7 @@ async function withExportLock(jobName, runner) {
 
 function safeFolderName(folder) {
     const value = String(folder || '').trim();
+    if (value === 'wordpress') return WORDPRESS_EXPORT_FOLDER;
     if (!EXPORT_FOLDER_WHITELIST.has(value)) return null;
     return value;
 }
@@ -2525,7 +2527,7 @@ function getWordpressStatusSnapshot() {
 
     let lastGeneratedAt = String(report?.generated_at || '').trim() || null;
     if (!lastGeneratedAt) {
-        const files = listExportFolder('wordpress');
+        const files = listExportFolder(WORDPRESS_EXPORT_FOLDER);
         for (const item of files) {
             if (!lastGeneratedAt || item.mtime > lastGeneratedAt) {
                 lastGeneratedAt = item.mtime;
@@ -2589,7 +2591,7 @@ app.get('/export/status', (_req, res) => {
 });
 
 app.get('/export/file', (req, res) => {
-    const folder = safeFolderName(req.query?.folder || 'wordpress');
+    const folder = safeFolderName(req.query?.folder || WORDPRESS_EXPORT_FOLDER);
     const name = safeFileName(req.query?.name);
     if (!folder || !name) {
         return res.status(400).json({ ok: false, error: 'Carpeta o archivo no permitidos.' });
@@ -2649,7 +2651,7 @@ app.get('/export/file', (req, res) => {
 });
 
 app.get('/export/download', (req, res) => {
-    const folder = safeFolderName(req.query?.folder || 'wordpress');
+    const folder = safeFolderName(req.query?.folder || WORDPRESS_EXPORT_FOLDER);
     let name = safeFileName(req.query?.name);
 
     if (folder && !name) {

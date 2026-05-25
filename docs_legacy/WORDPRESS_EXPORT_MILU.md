@@ -1,31 +1,31 @@
-# DOCUMENTO CANÓNICO MILU — EXPORTACIÓN WORDPRESS
+﻿# DOCUMENTO CANÃ“NICO MILU â€” EXPORTACIÃ“N WORDPRESS
 
-> **Estado**: CANÓNICO · Fuente única de verdad para el export oficial QA-only.
-> **Última actualización**: 2026-05-12.
+> **Estado**: CANÃ“NICO Â· Fuente Ãºnica de verdad para el export oficial QA-only.
+> **Ãšltima actualizaciÃ³n**: 2026-05-12.
 > **Fuentes consolidadas**: [14_wordpress_export_simplified.md](14_wordpress_export_simplified.md).
 > **Complementaria**: [images/wordpress_image_export.md](images/wordpress_image_export.md).
 >
-> ⚠️ Documento **superseded** (archivado): [archived/13_wordpress_export_ai_pipeline.md](archived/13_wordpress_export_ai_pipeline.md) — pipeline con IA, ya no oficial.
+> âš ï¸ Documento **superseded** (archivado): [archived/13_wordpress_export_ai_pipeline.md](archived/13_wordpress_export_ai_pipeline.md) â€” pipeline con IA, ya no oficial.
 
 ---
 
 ## 1. Regla fundamental
 
-> **La decisión final de exportación depende exclusivamente de QA humana.**
-> No hay scoring ni decisión automática por IA. La IA puede ayudar a explicar pendientes, pero **no decide**.
+> **La decisiÃ³n final de exportaciÃ³n depende exclusivamente de QA humana.**
+> No hay scoring ni decisiÃ³n automÃ¡tica por IA. La IA puede ayudar a explicar pendientes, pero **no decide**.
 
 ---
 
-## 2. Clasificación New / Superseded (regla obligatoria)
+## 2. ClasificaciÃ³n New / Superseded (regla obligatoria)
 
-La separación entre **New** y **Superseded** se basa **exclusivamente** en `sust_hierarchie`:
+La separaciÃ³n entre **New** y **Superseded** se basa **exclusivamente** en `sust_hierarchie`:
 
 - **Superseded** si `sust_hierarchie === "Superseded"`.
-- **New** en cualquier otro caso (incluidos `"New"`, vacío, otros valores).
+- **New** en cualquier otro caso (incluidos `"New"`, vacÃ­o, otros valores).
 
 > **`sust_status === "SI"` NO determina si un registro se exporta como Superseded.** Solo indica que el PN aparece en relaciones SUST del Excel de sustituciones. Un registro con `sust_status = "SI"` y `sust_hierarchie = "New"` va a **New**.
 
-Función canónica usada por todos los módulos de exportación:
+FunciÃ³n canÃ³nica usada por todos los mÃ³dulos de exportaciÃ³n:
 
 ```javascript
 function getExportType(row) {
@@ -41,13 +41,13 @@ function getExportType(row) {
 
 ---
 
-## 4. Agrupación
+## 4. AgrupaciÃ³n
 
-- Una fila exportable **por PN (SKU) global** a través de los 9 motores y libros.
+- Una fila exportable **por PN (SKU) global** a travÃ©s de los 9 motores y libros.
 
 ---
 
-## 5. Reglas de decisión
+## 5. Reglas de decisiÃ³n
 
 Sobre el conjunto de filas que comparten PN:
 
@@ -67,17 +67,17 @@ Sobre el conjunto de filas que comparten PN:
 npm run export:wordpress
 ```
 
-Implementación: [scripts/export_wordpress_milu.js](../scripts/export_wordpress_milu.js).
+ImplementaciÃ³n: [scripts/export_wordpress_milu.js](../scripts/export_wordpress_milu.js).
 
 ---
 
 ## 7. Endpoints operativos
 
-- `GET /export/files` — lista de outputs disponibles.
-- `GET /export/file` — descarga un output concreto.
-- `GET /export/download` — descarga empaquetada.
-- `GET /export/status` — estado del último export.
-- `POST /export/run-wordpress` — dispara el export oficial.
+- `GET /export/files` â€” lista de outputs disponibles.
+- `GET /export/file` â€” descarga un output concreto.
+- `GET /export/download` â€” descarga empaquetada.
+- `GET /export/status` â€” estado del Ãºltimo export.
+- `POST /export/run-wordpress` â€” dispara el export oficial.
 - `GET /pn-review/list`
 - `GET /pn-review/:sku`
 - `GET /pn-review/:sku/sources`
@@ -87,10 +87,10 @@ Implementación: [scripts/export_wordpress_milu.js](../scripts/export_wordpress_
 
 ## 8. PN Review
 
-- URL autónoma: `pn_review.html`.
-- Pestaña embebida en `analista_02.html` (`js/pn-review-embedded.js`).
-- Objetivo: revisar PN únicos globales (no filas BOM individuales).
-- Fuente de decisión: **solo QA humana** (`qa_revision_estado` + `qa_revision_accion`).
+- URL autÃ³noma: `pn_review.html`.
+- PestaÃ±a embebida en `analista_02.html` (`js/pn-review-embedded.js`).
+- Objetivo: revisar PN Ãºnicos globales (no filas BOM individuales).
+- Fuente de decisiÃ³n: **solo QA humana** (`qa_revision_estado` + `qa_revision_accion`).
 
 Carga recomendada:
 
@@ -98,7 +98,7 @@ Carga recomendada:
 - Detalle bajo demanda: `GET /pn-review/:sku`.
 - Fuentes bajo demanda: `GET /pn-review/:sku/sources`.
 
-### 8.1 Acción masiva por PN
+### 8.1 AcciÃ³n masiva por PN
 
 ```
 POST /pn-review/:sku/apply-decision
@@ -139,7 +139,7 @@ Respuesta: `{ ok, sku, decision_applied, rows_updated, files_touched, errors }`.
 
 ## 10. Outputs oficiales
 
-Carpeta: `data/output/wordpress/`.
+Carpeta: `data/05-wordpress/`.
 
 - `milu_wp_import.json`
 - `milu_wp_import.csv`
@@ -165,7 +165,7 @@ Detalle de outputs de imagen y manifest: [docs/images/wordpress_image_export.md]
 
 ## 12. Legacy archivado
 
-La lógica compleja anterior (con IA) se conserva como referencia en:
+La lÃ³gica compleja anterior (con IA) se conserva como referencia en:
 
 - [legacy/export_complex_ai/](../legacy/export_complex_ai/)
 
@@ -179,8 +179,9 @@ Comandos legacy:
 
 ## Referencias
 
-- Canónico vigente: [14_wordpress_export_simplified.md](14_wordpress_export_simplified.md)
+- CanÃ³nico vigente: [14_wordpress_export_simplified.md](14_wordpress_export_simplified.md)
 - Obsoleto archivado: [archived/13_wordpress_export_ai_pipeline.md](archived/13_wordpress_export_ai_pipeline.md)
-- Imágenes en export: [docs/images/wordpress_image_export.md](images/wordpress_image_export.md)
-- Flujo PN Review: [FLUJO_DATOS_MILU.md → sección 4](FLUJO_DATOS_MILU.md)
-- Decisión QA: [QA_MILU.md → sección 2](QA_MILU.md)
+- ImÃ¡genes en export: [docs/images/wordpress_image_export.md](images/wordpress_image_export.md)
+- Flujo PN Review: [FLUJO_DATOS_MILU.md â†’ secciÃ³n 4](FLUJO_DATOS_MILU.md)
+- DecisiÃ³n QA: [QA_MILU.md â†’ secciÃ³n 2](QA_MILU.md)
+

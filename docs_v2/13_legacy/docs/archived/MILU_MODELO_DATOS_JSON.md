@@ -35,7 +35,7 @@ Totales auditados:
 - qa_audit_log.json (auditoria)
 
 ### Salidas pipeline
-- data/output/wordpress/*.json
+- data/05-wordpress/*.json
 - data/output/export_review/*.json
 - data/output/ai_review/*.json
 - data/output/v2/*.json
@@ -197,4 +197,5 @@ Minimo recomendado para export robusto:
 - Definir JSON schema versionado (v1 runtime actual, v2 objetivo).
 - Mantener capa de compatibilidad de lectura durante transicion.
 - Agregar validacion schema en pre-export y pre-commit de datos.
+
 

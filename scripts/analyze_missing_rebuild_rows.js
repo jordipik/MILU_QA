@@ -6,7 +6,7 @@ const path = require('path');
 const { detectModelsFromEngineFiles } = require('./compare_rebuild_vs_engine');
 
 const REPO_ROOT = path.resolve(__dirname, '..');
-const REBUILD_DIR = path.join(REPO_ROOT, 'data', 'output', 'rebuild');
+const REBUILD_DIR = path.join(REPO_ROOT, 'data', '02-engine_rebuild');
 const REBUILD_COMPARE_DIR = path.join(REPO_ROOT, 'data', 'output', 'rebuild_compare');
 const DEFAULT_OUT_DIR = path.join('data', 'output', 'rebuild_missing_analysis');
 const MAX_EXAMPLES = 100;

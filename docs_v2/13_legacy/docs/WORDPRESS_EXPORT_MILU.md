@@ -144,7 +144,7 @@ Respuesta: `{ ok, sku, decision_applied, rows_updated, files_touched, errors }`.
 
 ## 10. Outputs oficiales
 
-Carpeta: `data/output/wordpress/`.
+Carpeta: `data/05-wordpress/`.
 
 - `milu_wp_import.json`
 - `milu_wp_import.csv`
@@ -189,4 +189,5 @@ Comandos legacy:
 - ImÃ¡genes en export: [docs/images/wordpress_image_export.md](images/wordpress_image_export.md)
 - Flujo PN Review: [FLUJO_DATOS_MILU.md â†’ secciÃ³n 4](FLUJO_DATOS_MILU.md)
 - DecisiÃ³n QA: [QA_MILU.md â†’ secciÃ³n 2](QA_MILU.md)
+
 

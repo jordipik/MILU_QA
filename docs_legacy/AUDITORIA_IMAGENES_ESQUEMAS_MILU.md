@@ -1,4 +1,4 @@
-# AUDITORIA IMAGENES Y ESQUEMAS MILU
+﻿# AUDITORIA IMAGENES Y ESQUEMAS MILU
 
 Generado: 2026-05-10T09:57:19.022Z
 
@@ -13,8 +13,8 @@ Generado: 2026-05-10T09:57:19.022Z
 
 ## Campos y datasets actuales
 - engine_*.json: dataset principal consumido por qa_milu.html.
-- data/output/wordpress/milu_wp_import.json y milu_wp_superseded.json: export actual a WordPress.
-- data/output/wordpress/milu_wp_trace.json: traza por PN hacia source_records.
+- data/05-wordpress/milu_wp_import.json y milu_wp_superseded.json: export actual a WordPress.
+- data/05-wordpress/milu_wp_trace.json: traza por PN hacia source_records.
 - qa_index.json / qa_index_light.json: flujo legacy referenciado en app.js, no presente en el repo actual.
 
 ## Flujo actual de generacion de rutas
@@ -69,6 +69,7 @@ Generado: 2026-05-10T09:57:19.022Z
 
 ## Recomendaciones
 - No cambiar logica productiva hasta revisar estos artefactos: image_inventory.json, image_schema_audit.json, image_inventory.csv y este informe.
-- Antes de cualquier correccion, regenerar copia de seguridad de data/output/wordpress y de los engine_*.json afectados.
+- Antes de cualquier correccion, regenerar copia de seguridad de data/05-wordpress y de los engine_*.json afectados.
 - Introducir una comprobacion automatica que falle si una ruta WordPress no encuentra fichero local equivalente o si solo se resuelve a placeholder.
+
 

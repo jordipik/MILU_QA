@@ -19,10 +19,10 @@ Generated: 2026-05-05T15:11:04.939249+00:00
 
 - MILU_New_v506.json: rows=3875, fields=30
 - MILU_Superseded_v506.json: rows=2945, fields=30
-- data/output/wordpress/milu_wp_discarded.json: rows=8, fields=23
-- data/output/wordpress/milu_wp_import.json: rows=3573, fields=23
-- data/output/wordpress/milu_wp_pending_review.json: rows=644, fields=23
-- data/output/wordpress/milu_wp_superseded.json: rows=1890, fields=23
+- data/05-wordpress/milu_wp_discarded.json: rows=8, fields=23
+- data/05-wordpress/milu_wp_import.json: rows=3573, fields=23
+- data/05-wordpress/milu_wp_pending_review.json: rows=644, fields=23
+- data/05-wordpress/milu_wp_superseded.json: rows=1890, fields=23
 - engine_12V4000M40A.json: rows=2759, fields=117
 - engine_12V4000M53.json: rows=6580, fields=119
 - engine_12V4000M70.json: rows=5358, fields=113
@@ -47,25 +47,25 @@ Generated: 2026-05-05T15:11:04.939249+00:00
 - pn: pct=100.0 empty=0/2945 types=string
 - ruta_foto: pct=100.0 empty=2867/2945 types=null|string
 
-### data/output/wordpress/milu_wp_discarded.json
+### data/05-wordpress/milu_wp_discarded.json
 - pn: pct=100.0 empty=0/8 types=string
 - qa_revision_estado: pct=100.0 empty=0/8 types=string
 - qa_revision_accion: pct=100.0 empty=0/8 types=string
 - sust_superseded_list: pct=100.0 empty=8/8 types=string
 
-### data/output/wordpress/milu_wp_import.json
+### data/05-wordpress/milu_wp_import.json
 - pn: pct=100.0 empty=0/3573 types=string
 - qa_revision_estado: pct=100.0 empty=0/3573 types=string
 - qa_revision_accion: pct=100.0 empty=0/3573 types=string
 - sust_superseded_list: pct=100.0 empty=3573/3573 types=string
 
-### data/output/wordpress/milu_wp_pending_review.json
+### data/05-wordpress/milu_wp_pending_review.json
 - pn: pct=100.0 empty=0/644 types=string
 - qa_revision_estado: pct=100.0 empty=0/644 types=string
 - qa_revision_accion: pct=100.0 empty=0/644 types=string
 - sust_superseded_list: pct=100.0 empty=634/644 types=string
 
-### data/output/wordpress/milu_wp_superseded.json
+### data/05-wordpress/milu_wp_superseded.json
 - pn: pct=100.0 empty=0/1890 types=string
 - qa_revision_estado: pct=100.0 empty=0/1890 types=string
 - qa_revision_accion: pct=100.0 empty=0/1890 types=string
@@ -965,4 +965,5 @@ Generated: 2026-05-05T15:11:04.939249+00:00
 - WEIGHT: null|string
 - weight_final: null|string
 - weight_gesa: null|string
+
 

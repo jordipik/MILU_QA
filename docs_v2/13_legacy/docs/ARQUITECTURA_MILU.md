@@ -41,7 +41,7 @@ No hay base de datos relacional. La fuente de verdad runtime son los `engine_*.j
 â”Œâ”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â–¼â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”
 â”‚  engine_*.json (9 ficheros)                                â”‚
 â”‚  qa_revision_server_data.json                              â”‚
-â”‚  data/output/wordpress/*.json|csv                          â”‚
+â”‚  data/05-wordpress/*.json|csv                          â”‚
 â””â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”˜
 ```
 
@@ -96,7 +96,7 @@ Detalle: [BACKEND.md](BACKEND.md), [docs/modules/server.md](modules/server.md).
 - **No hay base de datos.** Todo es FS sobre JSON.
 - `engine_*.json` (9 ficheros) â€” datos de fila runtime.
 - `qa_revision_server_data.json` â€” persistencia de revisiones agregadas.
-- `data/output/wordpress/` â€” outputs del pipeline de exportaciÃ³n.
+- `data/05-wordpress/` â€” outputs del pipeline de exportaciÃ³n.
 
 Regla operativa (ver [.github/copilot-instructions.md](../.github/copilot-instructions.md)):
 - Los `engine_*.json` solo deben modificarse vÃ­a `/save-json`, `/apply-revision-to-engines` o el pipeline oficial (`depuracion_json.py`).
@@ -119,7 +119,7 @@ Regla operativa (ver [.github/copilot-instructions.md](../.github/copilot-instru
 - [js/](../js/) â€” mÃ³dulos frontend ES.
 - [css/](../css/), [styles/](../styles/), `styles.css` â€” estilos.
 - [docs/](.) â€” documentaciÃ³n.
-- [data/](../data/) â€” entradas/salidas del pipeline (incluye `data/output/wordpress/`).
+- [data/](../data/) â€” entradas/salidas del pipeline (incluye `data/05-wordpress/`).
 - [scripts/](../scripts/) â€” scripts de orquestaciÃ³n.
 - [legacy/](../legacy/) â€” cÃ³digo archivado (p. ej. export con IA).
 - [dist/](../dist/) â€” artefactos de publicaciÃ³n.
@@ -168,4 +168,5 @@ Resumen no exhaustivo (detalle completo en [09_auditoria_2026.md](09_auditoria_2
 - IntegraciÃ³n FE+BE: [MILU_FRONTEND_BACKEND.md](MILU_FRONTEND_BACKEND.md)
 - AR-1: [12_ar1_carga_incremental.md](12_ar1_carga_incremental.md)
 - AuditorÃ­a: [09_auditoria_2026.md](09_auditoria_2026.md)
+
 

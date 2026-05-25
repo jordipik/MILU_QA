@@ -1,4 +1,4 @@
-# PLAN DE ACCION MILU - EJECUCION DETALLADA
+﻿# PLAN DE ACCION MILU - EJECUCION DETALLADA
 
 ## 0. Preparacion previa (antes de cualquier cambio)
 1. **Crear rama de desarrollo**: `git checkout -b refactor/milu-stability-p0`
@@ -167,7 +167,7 @@ Objetivo: Centralizar lectura/escritura/validacion/lock de engine files.
 - Capa reversible si hay problemas.
 
 ### Tarea P1.2: Extraer servicio de reglas de revision
-**Entregable**: server/services/revision-rules.js + versión frontend js/domain/revision-rules.js
+**Entregable**: server/services/revision-rules.js + versiÃ³n frontend js/domain/revision-rules.js
 
 Objetivo: Centralizar logica de estado/accion para reutilizar backend/frontend/export.
 
@@ -254,7 +254,7 @@ server/
 ```
 
 **Riesgos mitigados**:
-- Cambios pequeños e incrementales.
+- Cambios pequeÃ±os e incrementales.
 - Reversible si hay regresion.
 - Facilita future testing y mantenimiento.
 
@@ -359,7 +359,7 @@ Objetivo: Cobertura minima de endpoints y flujos criticos.
 
 5. Export
    - POST /export/run-wordpress ejecuta sin error
-   - Archivos generados en data/output/wordpress/
+   - Archivos generados en data/05-wordpress/
    - Trazabilidad de SKU es consistente
 
 6. Error handling
@@ -458,7 +458,7 @@ Objetivo: Despejar raiz y evitar confusion.
 - app.js -> legacy/
 - analysis.js -> legacy/
 - debug.js -> legacy/
-- legacy/export_complex_ai/* ya está bien ubicado
+- legacy/export_complex_ai/* ya estÃ¡ bien ubicado
 
 **Tareas concretas**:
 ```
@@ -533,7 +533,7 @@ Objetivo: Una sola UI principal, paneles especializados opcionales.
 **Tareas concretas**:
 ```
 1. Documentar flujos de cada HTML.
-2. Consolidar export_wordpress.html como pestaña en qa_milu.html si no está.
+2. Consolidar export_wordpress.html como pestaÃ±a en qa_milu.html si no estÃ¡.
 3. Deprecar qa_analista_registro.html a favor de analista_02.html.
 4. Mantener wrappers redireccionadores durante transicion (6 meses).
 5. Validar no hay usuarios de HTML deprecadas.
@@ -619,3 +619,4 @@ TOTAL: ~3 meses para P0+P1+P2, P3 evolutiva.
 - No bloquea nada, prepara todo.
 
 Una vez P0 sea operativo (todos los documentos listos y validados), proceder a P1.1 (capa IO JSON).
+

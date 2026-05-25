@@ -205,7 +205,7 @@ function getEnginePath(model) {
 }
 
 function getRebuildPath(model) {
-    return path.join(REPO_ROOT, 'data', 'output', 'rebuild', `engine_rebuild_${model}.json`);
+    return path.join(REPO_ROOT, 'data', '02-engine_rebuild', `engine_rebuild_${model}.json`);
 }
 
 function getPnTokens(row) {

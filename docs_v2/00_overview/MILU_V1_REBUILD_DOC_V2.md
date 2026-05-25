@@ -1,4 +1,4 @@
-# MILU V1 - Documentacion Consolidada del Proceso REBUILD
+﻿# MILU V1 - Documentacion Consolidada del Proceso REBUILD
 
 ## Alcance y criterio documental
 
@@ -8,7 +8,7 @@ Reglas de este documento:
 
 - Prioriza flujo real actual sobre flujo historico.
 - Marca siempre OFFICIAL, LEGACY o ALTERNATIVE cuando coexistien varias rutas.
-- Distingue runtime sobre `engine_*.json` del rebuild offline sobre `data/output/rebuild/engine_rebuild_<MODEL>.json`.
+- Distingue runtime sobre `engine_*.json` del rebuild offline sobre `data/02-engine_rebuild/engine_rebuild_<MODEL>.json`.
 - No propone arquitectura futura salvo en la seccion `TODO explicito`.
 
 ## Fuentes consolidadas
@@ -70,7 +70,7 @@ Es el pipeline operativo que reconstruye y consolida campos de trabajo dentro de
 
 Artefactos y capas que intervienen:
 
-- Entrada de extraccion PDF: `json_originales/book_preview_<MODEL>.json`.
+- Entrada de extraccion PDF: `data/01-engine_preview/book_preview_<MODEL>.json`.
 - Persistencia principal: `engine_<MODEL>.json`.
 - Campos reconstruidos desde PDF: `*_pdf`.
 - Campos consolidados para QA/export: `*_final`.
@@ -85,21 +85,21 @@ Este flujo alimenta directamente:
 - revision remota via `qa_revision_sync.php`.
 - export WordPress via `POST /export/run-wordpress`.
 
-### 1.2 Offline rebuild sobre `data/output/rebuild/engine_rebuild_<MODEL>.json`
+### 1.2 Offline rebuild sobre `data/02-engine_rebuild/engine_rebuild_<MODEL>.json`
 
 Es un pipeline separado, usado para reconstruccion controlada desde `book_preview`, enriquecimiento catalogal y enriquecimiento visual sin tocar `engine_*.json`.
 
 Artefactos:
 
-- `data/output/rebuild/engine_rebuild_<MODEL>.json`
-- `data/output/rebuild/phase4_report_gesa_sust_<MODEL>.json`
-- `data/output/rebuild/assets_report_<MODEL>.json`
+- `data/02-engine_rebuild/engine_rebuild_<MODEL>.json`
+- `data/02-engine_rebuild/phase4_report_gesa_sust_<MODEL>.json`
+- `data/02-engine_rebuild/assets_report_<MODEL>.json`
 
 Separacion garantizada por codigo:
 
 - No modifica `engine_*.json`.
 - No ejecuta export WordPress.
-- Escribe solo en `data/output/rebuild/`.
+- Escribe solo en `data/02-engine_rebuild/`.
 
 ### 1.3 Como encaja con QA y export
 
@@ -118,7 +118,7 @@ Pipeline operativo real de runtime:
 ### 2.1 Inputs reales
 
 - PDF por motor cargado en `import_pdf.html`.
-- `json_originales/book_preview_<MODEL>.json`.
+- `data/01-engine_preview/book_preview_<MODEL>.json`.
 - `engine_*.json`.
 - `EXCEL_GESA2026.json`.
 - `EXCEL_SUSTITUCION.json`.
@@ -129,8 +129,8 @@ Pipeline operativo real de runtime:
 
 - `engine_*.json` actualizados.
 - `qa_revision_server_data.json`.
-- artefactos WordPress en `data/output/wordpress/`.
-- rebuild offline en `data/output/rebuild/`.
+- artefactos WordPress en `data/05-wordpress/`.
+- rebuild offline en `data/02-engine_rebuild/`.
 
 ### 2.3 UIs y botones reales
 
@@ -217,7 +217,7 @@ Payload real generado:
 
 OFFICIAL:
 
-- `json_originales/book_preview_<MODEL>.json`
+- `data/01-engine_preview/book_preview_<MODEL>.json`
 
 Es el artefacto puente oficial entre OCR/lectura PDF y enrich del engine runtime o rebuild offline.
 
@@ -843,7 +843,7 @@ Soporte SUST:
 
 ### 9.5 Outputs reales
 
-`data/output/wordpress/`:
+`data/05-wordpress/`:
 
 - `milu_wp_import.csv`
 - `milu_wp_superseded.csv`

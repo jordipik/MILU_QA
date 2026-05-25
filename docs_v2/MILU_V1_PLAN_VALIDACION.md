@@ -1,4 +1,4 @@
-# MILU V1 - Plan de trabajo y validacion
+﻿# MILU V1 - Plan de trabajo y validacion
 
 ## 1. Objetivo
 Cerrar MILU V1 de forma ordenada, priorizando estabilidad, trazabilidad y export final.
@@ -96,7 +96,7 @@ Generar export final New/Superseded.
 
 Validacion:
 - Ejecutar /export/run-wordpress.
-- Revisar outputs en data/output/wordpress/.
+- Revisar outputs en data/05-wordpress/.
 - Contar New.
 - Contar Superseded.
 - Revisar imagenes.
@@ -125,3 +125,4 @@ Validacion:
 Documento claro, compacto y facil de imprimir.
 Uso de titulos, tablas pequenas y checklist.
 No extender contenido fuera de lo necesario para cerrar V1.
+

@@ -1,4 +1,4 @@
-# Field Registry Refactor (Prueba Controlada)
+﻿# Field Registry Refactor (Prueba Controlada)
 
 Fecha: 2026-05-15
 
@@ -13,7 +13,7 @@ Crear una primera capa segura para migrar nombres de campos de `engine_*.json` s
 1. `data/field_registry.json`
 - Generado desde `Excel refactorizacion Milu.xlsx`.
 - Incluye dos bloques:
-  - `fields`: reglas de copia/alta para normalización.
+  - `fields`: reglas de copia/alta para normalizaciÃ³n.
   - `deletes`: campos legacy marcados para no pasar al normalizado y mover opcionalmente a `_legacy`.
 - Estructura por campo:
   - `id`, `current_name`, `new_name`, `group`, `action`, `legacy_names`, `type`, `description`.
@@ -35,7 +35,7 @@ Crear una primera capa segura para migrar nombres de campos de `engine_*.json` s
   - `getFieldAliases(fieldName)`
   - `configureFieldRegistry(registryPayload)`
 
-4. Tests mínimos
+4. Tests mÃ­nimos
 - `tests/refactor-json-fields.test.js`
 - `tests/field-adapter.test.js`
 
@@ -199,11 +199,11 @@ Crear una primera capa segura para migrar nombres de campos de `engine_*.json` s
 3. Derivados legacy
 - `page4`, `pages`, `book_set` se tratan como legacy/derivados si existen.
 
-## Seguridad y no regresión
+## Seguridad y no regresiÃ³n
 
 - No se tocaron `qa_milu.html`, exportadores WordPress ni analytics.
 - No se eliminaron campos en los JSON originales.
-- No se cambió la lógica QA ni estados/acciones.
+- No se cambiÃ³ la lÃ³gica QA ni estados/acciones.
 
 ## Siguiente zona recomendada (sin ampliar alcance funcional)
 
@@ -212,12 +212,12 @@ Crear una primera capa segura para migrar nombres de campos de `engine_*.json` s
   - cero cambios de escritura,
   - validacion con test dedicado y smoke final.
 
-## Uso rápido
+## Uso rÃ¡pido
 
 - Dry run completo:
   - `python scripts/refactor_json_fields.py --all-engines --dry-run --include-legacy`
 
-- Normalización completa:
+- NormalizaciÃ³n completa:
   - `python scripts/refactor_json_fields.py --all-engines --include-legacy`
 
 - Tests de esta fase:
@@ -269,9 +269,9 @@ Fecha de cierre formal: 2026-05-16
 - Se agregan tests de helper semantico, helper de escritura y smoke de escritura sobre fixture temporal.
 
 2. Baseline legacy congelado para comparacion
-- WordPress New legacy: `dist/milu_publish/data/output/wordpress/milu_wp_import.json`
+- WordPress New legacy: `dist/milu_publish/data/05-wordpress/milu_wp_import.json`
   - SHA256: `93C915DC742A9E21118A7805F150890595C7BCE38821650442974762943440F7`
-- WordPress Superseded legacy: `dist/milu_publish/data/output/wordpress/milu_wp_superseded.json`
+- WordPress Superseded legacy: `dist/milu_publish/data/05-wordpress/milu_wp_superseded.json`
   - SHA256: `31028285A707FCCE76575F3ADCF68C93B1A3B4CF139C98992354A3464FB0E299`
 - Synthetic legacy de referencia historica:
   - `MILU_New_v506.json` (SHA256 `648BA789838FCB7638A9B1A56BDB4287F9F93716DBA05CB7D899055E09905532`)
@@ -355,3 +355,4 @@ Fecha de cierre formal: 2026-05-16
 5. Validacion final ejecutada
 - `npm run validate:field-refactor-final` -> OK.
 - `npm run validate:field-refactor-final:exports` -> OK (reporte generado sin criticas).
+

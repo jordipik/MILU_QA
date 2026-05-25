@@ -648,7 +648,7 @@ function renderResponseSummary(actionLabel, endpoint, responseData) {
             { label: 'Filas generadas', value: String(Number(result?.totals?.rowsGenerated) || 0) },
             { label: 'Ambiguos', value: String(Number(result?.totals?.ambiguous) || 0) },
             { label: 'No encontrados', value: String(Number(result?.totals?.notFound) || 0) },
-            { label: 'Salida', value: String(result?.outputDir || notes?.writesOnlyTo || 'data/output/rebuild') }
+            { label: 'Salida', value: String(result?.outputDir || notes?.writesOnlyTo || 'data/02-engine_rebuild') }
         ];
 
         const perModel = Array.isArray(result?.results) ? result.results : [];

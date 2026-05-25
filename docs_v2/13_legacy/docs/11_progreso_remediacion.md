@@ -838,7 +838,7 @@ Cuando se cierre cada una, aÃ±adir aquÃ­ un bloque "Commit `<sha>` â€” 
 - [archived/13_wordpress_export_ai_pipeline.md](archived/13_wordpress_export_ai_pipeline.md)
 
 ### Outputs generados
-- WordPress: `data/output/wordpress/` (CSV/JSON/reportes para NEW, SUPERSEDED, PENDING, DISCARDED)
+- WordPress: `data/05-wordpress/` (CSV/JSON/reportes para NEW, SUPERSEDED, PENDING, DISCARDED)
 - IA: `data/output/ai_review/` (conflictos completos, resumen, pendientes humanos y reporte de decisiÃ³n)
 
 ### Resultado de ejecuciÃ³n inicial
@@ -1234,5 +1234,6 @@ Se aÃ±aden 7 tests nuevos sobre el server real:
 
 ### Indicador de avance hacia beta operativa
 - Cuando el export WordPress tenga imagen real trazable y `qa_imagenes.html` pueda auditarse con datos consistentes, MILU puede pasar de beta tecnica a beta operativa.
+
 
 

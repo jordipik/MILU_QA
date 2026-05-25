@@ -491,11 +491,11 @@ For each PN group:
   - buildPnValidation() â†’ Check completeness
   â†“
 Write outputs:
-  - data/output/wordpress/milu_wp_import.csv
-  - data/output/wordpress/milu_wp_discarded.csv
-  - data/output/wordpress/milu_wp_pending_review.csv
-  - data/output/wordpress/milu_wp_import.json
-  - data/output/wordpress/milu_wp_export_summary.md
+  - data/05-wordpress/milu_wp_import.csv
+  - data/05-wordpress/milu_wp_discarded.csv
+  - data/05-wordpress/milu_wp_pending_review.csv
+  - data/05-wordpress/milu_wp_import.json
+  - data/05-wordpress/milu_wp_export_summary.md
 ```
 
 ## Recent Changes (May 2026)
@@ -661,4 +661,5 @@ jq '.[:1]' engine_12V4000M53.json
 **Ãšltima actualizaciÃ³n**: Mayo 5, 2026
 **Stack**: Node.js + Express + Filesystem
 **Mantenedor**: Equipo MILU
+
 

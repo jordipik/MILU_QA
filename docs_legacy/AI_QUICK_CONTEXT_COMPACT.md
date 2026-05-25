@@ -1,4 +1,4 @@
-# MILU AI Context Compact
+﻿# MILU AI Context Compact
 
 ## System In 10 Lines
 - Local QA web app for MTU engine parts data.
@@ -27,7 +27,7 @@
 - `GET /pn-review/list`
 - `GET /pn-review/:sku`
 - `GET /pn-review/:sku/sources`
-- `POST /pn-review/:sku/apply-decision` — action: `validar`|`revisar`|`descartar`; aplica en todos los engine JSON
+- `POST /pn-review/:sku/apply-decision` â€” action: `validar`|`revisar`|`descartar`; aplica en todos los engine JSON
 
 ## Core Runtime Flows
 ### Load
@@ -37,7 +37,7 @@
 - UI change -> `setRowRevision()` -> `saveCellToServer()` -> `POST /save-json` -> engine JSON write by `ID`.
 
 ### PN Review Global Decision
-- `pn_review.html` o tab PN Review en `analista_02.html` -> `GET /pn-review/:sku` + sources -> botón Validar/Revisar/Descartar -> confirm `<dialog>` -> `POST /pn-review/:sku/apply-decision` -> escribe en TODOS los engine JSON -> toast inmediato.
+- `pn_review.html` o tab PN Review en `analista_02.html` -> `GET /pn-review/:sku` + sources -> botÃ³n Validar/Revisar/Descartar -> confirm `<dialog>` -> `POST /pn-review/:sku/apply-decision` -> escribe en TODOS los engine JSON -> toast inmediato.
 
 ## Data Keys That Matter Most
 - Identity: `ID`, `PART NO.`, `POS`, `Source Page`, `engine_model`, `source_file`
@@ -53,10 +53,10 @@
 
 ## PN Review Embedded (Analista 02)
 - Panel derecho de `analista_02.html` tiene tabs **PDF** | **PN Review**
-- Módulo: `js/pn-review-embedded.js` (exports: `init`, `onRecordChange`, `refresh`, `detectPnSourceConflicts`)
+- MÃ³dulo: `js/pn-review-embedded.js` (exports: `init`, `onRecordChange`, `refresh`, `detectPnSourceConflicts`)
 - Estilos: `styles/pn-review-embedded.css` (prefijo `pre-`)
 - Conflict detection por familias: `pn`, `designation`, `measure`, `weight`, `sust`
-- Celdas conflicto: color únicamente (`pre-cell--conflict` rojo, `pre-cell--warning` amarillo)
+- Celdas conflicto: color Ãºnicamente (`pre-cell--conflict` rojo, `pre-cell--warning` amarillo)
 
 ## Usually Ignore First Pass
 - `dist/`, `zz_old/`, `zz_copias/`, `json_originales/`
@@ -68,11 +68,12 @@
 - *(legacy) `generate_synthetic_exports.js`*: archived in `legacy/export_complex_ai/scripts/`
 
 ## WordPress Export (official)
-- `npm run export:wordpress` → `scripts/export_wordpress_milu.js`
-- Output: `data/output/wordpress/`
-- Decision QA-only: `ok/importar` → import, todos `ok/eliminar` → discard, resto → pending_review
+- `npm run export:wordpress` â†’ `scripts/export_wordpress_milu.js`
+- Output: `data/05-wordpress/`
+- Decision QA-only: `ok/importar` â†’ import, todos `ok/eliminar` â†’ discard, resto â†’ pending_review
 
 ## Fast Start
 - `npm install`
 - `node server.js`
 - open `http://localhost:3000/qa_milu.html`
+

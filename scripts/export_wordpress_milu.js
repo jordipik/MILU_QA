@@ -4,7 +4,7 @@ const { ENGINE_JSON_FILES } = require('../engine_files');
 const { getExportField, getExportType, isExportable } = require('../js/export-field-helper');
 
 const REPO_ROOT = path.resolve(__dirname, '..');
-const OUTPUT_DIR = path.join(REPO_ROOT, 'data', 'output', 'wordpress');
+const OUTPUT_DIR = path.join(REPO_ROOT, 'data', '05-wordpress');
 
 function ensureDir(dirPath) {
     fs.mkdirSync(dirPath, { recursive: true });

@@ -1,4 +1,4 @@
-# QA Imagenes y Esquemas
+﻿# QA Imagenes y Esquemas
 
 Nueva herramienta visual en modo solo lectura para auditoria multimedia.
 
@@ -23,12 +23,12 @@ La pagina intenta cargar (tolerante a errores):
 - `qa_index.json`
 - `version.json`
 - Export WordPress detectados por lista de rutas conocidas:
-  - `data/output/wordpress/milu_wp_import.json`
-  - `data/output/wordpress/milu_wp_pending.json`
-  - `data/output/wordpress/milu_wp_superseded.json`
-  - `data/output/wordpress/milu_wp_discarded.json`
-  - `data/output/wordpress/milu_wp_trace.json`
-  - `data/output/wordpress/milu_wp_export_report.json`
+  - `data/05-wordpress/milu_wp_import.json`
+  - `data/05-wordpress/milu_wp_pending.json`
+  - `data/05-wordpress/milu_wp_superseded.json`
+  - `data/05-wordpress/milu_wp_discarded.json`
+  - `data/05-wordpress/milu_wp_trace.json`
+  - `data/05-wordpress/milu_wp_export_report.json`
   - `MILU_New_v506.json`
   - `MILU_Superseded_v506.json`
   - `product-export-2026-03-29-11-07.json`
@@ -160,3 +160,4 @@ Panel lateral por registro:
 - Validacion activa de URLs WordPress
 - Acciones bulk con confirmacion y auditoria
 - Integracion directa con pagina de revision QA y PDF
+

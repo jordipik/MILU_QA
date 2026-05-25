@@ -74,11 +74,12 @@ Consultar docs_v2 para versión actual.
 
 ## WordPress Export (official)
 - `npm run export:wordpress` â†’ `scripts/export_wordpress_milu.js`
-- Output: `data/output/wordpress/`
+- Output: `data/05-wordpress/`
 - Decision QA-only: `ok/importar` â†’ import, todos `ok/eliminar` â†’ discard, resto â†’ pending_review
 
 ## Fast Start
 - `npm install`
 - `node server.js`
 - open `http://localhost:3000/qa_milu.html`
+
 

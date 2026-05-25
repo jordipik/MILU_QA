@@ -1,4 +1,4 @@
-# MILU Project Overview
+﻿# MILU Project Overview
 
 ## Purpose
 MILU is a local web application for QA review of MTU engine parts catalogs. The UI lets users browse, filter, validate, and revise article records coming from 9 engine JSON datasets.
@@ -38,7 +38,7 @@ Offline support system:
 - `GET /pn-review/list`
 - `GET /pn-review/:sku` (detalle de PN con qa_summary y engine_models_all)
 - `GET /pn-review/:sku/sources` (todas las apariciones en todos los engine JSON)
-- `POST /pn-review/:sku/apply-decision` (acción global: `validar`|`revisar`|`descartar`)
+- `POST /pn-review/:sku/apply-decision` (acciÃ³n global: `validar`|`revisar`|`descartar`)
 
 ### Persistence Model
 - no SQL database
@@ -57,8 +57,8 @@ Offline support system:
 
 ## Main Views
 - `qa_milu.html`: QA principal (tabla + detalle + PDF)
-- `analista_02.html`: Analista avanzado con panel derecho de dos pestañas: **PDF** y **PN Review** (tab PN Review muestra `js/pn-review-embedded.js`)
-- `pn_review.html`: vista autónoma de PN Review con bútones Validar/Revisar/Descartar, confirm `<dialog>` nativo y toasts CSS
+- `analista_02.html`: Analista avanzado con panel derecho de dos pestaÃ±as: **PDF** y **PN Review** (tab PN Review muestra `js/pn-review-embedded.js`)
+- `pn_review.html`: vista autÃ³noma de PN Review con bÃºtones Validar/Revisar/Descartar, confirm `<dialog>` nativo y toasts CSS
 
 ## High-Level Data Flows
 1. Load flow:
@@ -72,7 +72,7 @@ Offline support system:
 - frontend persists to backend (`/save-json`) and updates in-memory state
 
 3. Export/support flow:
-- WordPress export: `npm run export:wordpress` reads all 9 `engine_*.json`, applies QA-only decision rules, outputs to `data/output/wordpress/`
+- WordPress export: `npm run export:wordpress` reads all 9 `engine_*.json`, applies QA-only decision rules, outputs to `data/05-wordpress/`
 - statistics/report scripts generate diagnostics for consistency checks
 
 ## Runtime Entry Points
@@ -84,3 +84,4 @@ Offline support system:
 - app runs primarily in local trusted network context
 - large JSON datasets are edited directly in git workspace
 - no external auth/identity layer is implemented in backend endpoints
+

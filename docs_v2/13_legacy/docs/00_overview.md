@@ -77,7 +77,7 @@ Offline support system:
 - frontend persists to backend (`/save-json`) and updates in-memory state
 
 3. Export/support flow:
-- WordPress export: `npm run export:wordpress` reads all 9 `engine_*.json`, applies QA-only decision rules, outputs to `data/output/wordpress/`
+- WordPress export: `npm run export:wordpress` reads all 9 `engine_*.json`, applies QA-only decision rules, outputs to `data/05-wordpress/`
 - statistics/report scripts generate diagnostics for consistency checks
 
 ## Runtime Entry Points
@@ -89,4 +89,5 @@ Offline support system:
 - app runs primarily in local trusted network context
 - large JSON datasets are edited directly in git workspace
 - no external auth/identity layer is implemented in backend endpoints
+
 

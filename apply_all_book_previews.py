@@ -1,6 +1,6 @@
 """Aplica en cadena cada book_preview_<MODEL>.json al engine_<MODEL>.json correspondiente.
 
-Recorre la carpeta de previews (por defecto ``json_originales/``) buscando ficheros
+Recorre la carpeta de previews (por defecto ``data/01-engine_preview/``) buscando ficheros
 ``book_preview_*.json`` y, para cada uno, llama a ``apply_book_preview_to_engine.py``
 con el engine homonimo en la raiz del repo. Reutiliza la logica oficial del script
 unitario (mismo matching, backups y reglas de PDF_FIELDS).
@@ -12,7 +12,7 @@ Uso:
     python apply_all_book_previews.py
     python apply_all_book_previews.py --write
     python apply_all_book_previews.py --write --overwrite
-    python apply_all_book_previews.py --previews-dir json_originales --only 12V4000M40A 12V4000M53
+    python apply_all_book_previews.py --previews-dir data/01-engine_preview --only 12V4000M40A 12V4000M53
 """
 
 from __future__ import annotations
@@ -84,7 +84,7 @@ def _merge_stats(total: dict[str, int], part: dict) -> None:
 
 def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
-    parser.add_argument("--previews-dir", default="json_originales", help="Carpeta donde buscar book_preview_*.json (default: json_originales)")
+    parser.add_argument("--previews-dir", default="data/01-engine_preview", help="Carpeta donde buscar book_preview_*.json (default: data/01-engine_preview)")
     parser.add_argument("--write", action="store_true", help="Aplicar cambios al disco (sin esto es dry-run).")
     parser.add_argument("--overwrite", action="store_true", help="Sobrescribir valores no vacios en los engines.")
     parser.add_argument("--only", nargs="*", help="Lista de modelos a procesar (ej: 12V4000M40A 12V4000M53). Por defecto todos.")

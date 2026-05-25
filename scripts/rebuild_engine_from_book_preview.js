@@ -31,7 +31,7 @@ const OTHER_EMPTY_FIELDS = [
     'norma_pdf'
 ];
 
-const OUTPUT_DIR = path.join('data', 'output', 'rebuild');
+const OUTPUT_DIR = path.join('data', '02-engine_rebuild');
 
 /**
  * Reglas de rango de páginas por motor.
@@ -476,7 +476,7 @@ function summarizeDuplicates(rebuildRows) {
 }
 
 function runModel(repoRoot, model, options) {
-    const previewPath = path.join(repoRoot, 'json_originales', `book_preview_${model}.json`);
+    const previewPath = path.join(repoRoot, 'data', '01-engine_preview', `book_preview_${model}.json`);
     const enginePath = path.join(repoRoot, `engine_${model}.json`);
 
     if (!fs.existsSync(previewPath)) {

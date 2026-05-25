@@ -6,7 +6,7 @@ const path = require('path');
 const { detectModelsFromEngineFiles } = require('./scripts/compare_rebuild_vs_engine');
 
 const REPO_ROOT = __dirname;
-const REBUILD_DIR = path.join(REPO_ROOT, 'data', 'output', 'rebuild');
+const REBUILD_DIR = path.join(REPO_ROOT, 'data', '02-engine_rebuild');
 const DEFAULT_OUT_DIR = path.join('data', 'output', 'rebuild_equivalence_analysis');
 
 const BLOCK_FIELDS = {

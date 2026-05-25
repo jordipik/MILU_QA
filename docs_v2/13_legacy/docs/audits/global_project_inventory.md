@@ -28,7 +28,7 @@ MILU funciona como una aplicacion local file-centric:
 2. RevisiÃ³n QA en qa_milu.html / analista_02.html (estado+accion).
 3. Persistencia puntual por /save-json o masiva por /apply-revision-to-engines y PN-review endpoints.
 4. Export oficial con /export/run-wordpress (internamente scripts/export_wordpress_milu.js).
-5. Salidas en data/output/wordpress/*.json + *.csv.
+5. Salidas en data/05-wordpress/*.json + *.csv.
 
 ### Flujo Python
 
@@ -134,4 +134,5 @@ MILU funciona como una aplicacion local file-centric:
 - Runtime real no usa R.
 - Existen referencias documentales a artefactos ya eliminados del runtime (pn_review.html, milu_qa, qa_web, qa_articulos).
 - El centro operativo actual es qa_milu + analista_02 + export_wordpress + analytics + db mirror.
+
 

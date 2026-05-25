@@ -125,7 +125,7 @@ Estas validaciones ayudan a revisar, pero no deciden exportacion:
 - `GET /pn/:sku/sources`
 
 ## Outputs oficiales
-Carpeta: `data/output/wordpress/`
+Carpeta: `data/05-wordpress/`
 
 - `milu_wp_import.csv`
 - `milu_wp_discarded.csv`
@@ -144,4 +144,5 @@ Comandos legacy:
 - `npm run legacy:ai:conflicts`
 - `npm run legacy:export:review`
 - `npm run legacy:generate:synthetic`
+
 

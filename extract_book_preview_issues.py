@@ -235,7 +235,7 @@ def summarize(results: list[dict[str, Any]]) -> dict[str, Any]:
 
 def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("--previews-dir", default="json_originales", help="Folder with book_preview_*.json")
+    parser.add_argument("--previews-dir", default="data/01-engine_preview", help="Folder with book_preview_*.json")
     parser.add_argument("--only", nargs="*", help="Optional model filters")
     parser.add_argument("--output", default=None, help="Output JSON report path")
     args = parser.parse_args()

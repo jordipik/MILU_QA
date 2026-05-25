@@ -1,4 +1,4 @@
-# WordPress Export Simplified (QA-only)
+﻿# WordPress Export Simplified (QA-only)
 
 ## Objetivo
 Definir el flujo oficial de exportacion WordPress en MILU, sin scoring ni decision automatica por IA.
@@ -9,9 +9,9 @@ La decision final de exportacion depende solo de QA humana.
 - IA/reglas auxiliares pueden ayudar a explicar pendientes.
 - IA no decide automaticamente import/discard.
 
-## Clasificación New / Superseded (REGLA OBLIGATORIA)
+## ClasificaciÃ³n New / Superseded (REGLA OBLIGATORIA)
 
-La separación entre registros **New** y **Superseded** se basa **exclusivamente** en:
+La separaciÃ³n entre registros **New** y **Superseded** se basa **exclusivamente** en:
 
 - **Superseded**: `sust_hierarchie === "Superseded"`
 - **New**: todos los registros que NO tengan `sust_hierarchie === "Superseded"`
@@ -20,7 +20,7 @@ La separación entre registros **New** y **Superseded** se basa **exclusivamente
 `sust_status` solo indica que el PN aparece en relaciones SUST (Excel de sustituciones).
 Un registro con `sust_status = "SI"` y `sust_hierarchie = "New"` va a **New**.
 
-Función canónica implementada en todos los módulos de exportación:
+FunciÃ³n canÃ³nica implementada en todos los mÃ³dulos de exportaciÃ³n:
 
 ```javascript
 function getExportType(row) {
@@ -120,7 +120,7 @@ Estas validaciones ayudan a revisar, pero no deciden exportacion:
 - `GET /pn/:sku/sources`
 
 ## Outputs oficiales
-Carpeta: `data/output/wordpress/`
+Carpeta: `data/05-wordpress/`
 
 - `milu_wp_import.csv`
 - `milu_wp_discarded.csv`
@@ -139,3 +139,4 @@ Comandos legacy:
 - `npm run legacy:ai:conflicts`
 - `npm run legacy:export:review`
 - `npm run legacy:generate:synthetic`
+

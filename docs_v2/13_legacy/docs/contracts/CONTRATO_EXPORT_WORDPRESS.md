@@ -79,7 +79,7 @@ Aplicada **solo a entradas con `decision = import`**.
 - **`sust_status = SI` NO decide Superseded**. Es solo una bandera informativa de presencia en la tabla SUST.
 - `sust_superseded_list` es lista de referencia, no criterio.
 
-## 7. Outputs (carpeta [data/output/wordpress/](../../data/output/wordpress/))
+## 7. Outputs (carpeta [data/05-wordpress/](../../data/05-wordpress/))
 
 | Archivo | Contiene | Formato |
 |---|---|---|
@@ -124,11 +124,12 @@ No reactivar sin actualizar este contrato.
 1. La decisiÃ³n por PN se basa **solo** en `qa_revision_estado` + `qa_revision_accion` agregados.
 2. New/Superseded se decide **solo** por `sust_hierarchie`.
 3. El export es **idempotente** sobre los `engine_*.json`: no los modifica.
-4. Los outputs en `data/output/wordpress/` son **regenerables**; no editarlos a mano.
+4. Los outputs en `data/05-wordpress/` son **regenerables**; no editarlos a mano.
 
 ## 12. Riesgos / pendientes
 
 - **R1**: `measure_final` + `measurement_final` se escriben ambos al output (duplicaciÃ³n).
 - **R2**: Algunos PNs pueden tener filas con `sust_hierarchie` contradictorio entre engines. El export actual considera Superseded si **al menos una** fila lo indica; documentar criterio de empate si se replantea.
 - **R3**: Si un PN aparece en `import` pero hay una fila `Superseded`, se exporta a `milu_wp_superseded.json`, no a `milu_wp_import.json`. Confirmar con producto.
+
 

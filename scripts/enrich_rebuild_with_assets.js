@@ -24,7 +24,7 @@ const fs = require('fs');
 const path = require('path');
 const { ENGINE_JSON_FILES } = require('../engine_files');
 
-const REBUILD_DIR = path.join('data', 'output', 'rebuild');
+const REBUILD_DIR = path.join('data', '02-engine_rebuild');
 
 const WP_BASE_FOTOS_DEFAULT =
     'https://milu-naval.mystagingwebsite.com/wp-content/uploads/2026/01';
@@ -487,7 +487,7 @@ function main(argv) {
 
     const models = resolveRebuildModels(repoRoot, args);
     if (!models.length) {
-        console.error('[error] No se encontraron archivos engine_rebuild_*.json en data/output/rebuild/');
+        console.error('[error] No se encontraron archivos engine_rebuild_*.json en data/02-engine_rebuild/');
         return 1;
     }
 

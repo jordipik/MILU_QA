@@ -1,4 +1,4 @@
-PROCESO: IMPORT PDF -> BOOK PREVIEW -> APLICACION A ENGINES
+﻿PROCESO: IMPORT PDF -> BOOK PREVIEW -> APLICACION A ENGINES
 
 Objetivo
 - Extraer datos PDF en cadena para todos los motores.
@@ -35,7 +35,7 @@ Comando:
 python apply_all_book_previews.py
 
 Que hace
-- Recorre json_originales/book_preview_*.json
+- Recorre data/01-engine_preview/book_preview_*.json
 - Empareja con engine_<MODELO>.json de la raiz
 - Ejecuta el script unitario sin escribir en disco
 - Muestra resumen OK/FAIL/SKIP
@@ -90,3 +90,4 @@ python apply_all_book_previews.py
 python apply_all_book_previews.py --write --overwrite
 python apply_all_book_previews.py --write --overwrite --only 12V4000M40A 12V4000M53
 python depuracion_json.py
+

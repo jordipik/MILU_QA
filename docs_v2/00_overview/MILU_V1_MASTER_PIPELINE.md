@@ -1,4 +1,4 @@
-# MILU V1 Master Pipeline
+﻿# MILU V1 Master Pipeline
 
 ## Objetivo
 Consolidar el pipeline oficial de MILU V1 segun codigo real actual (frontend, backend y scripts), separando rutas oficiales y legacy.
@@ -45,19 +45,19 @@ Consolidar el pipeline oficial de MILU V1 segun codigo real actual (frontend, ba
    - Endpoint oficial: `POST /export/run-wordpress`.
 
 ## Pipeline oficial de rebuild (offline, separado del runtime)
-Este pipeline trabaja sobre `data/output/rebuild/engine_rebuild_<MODEL>.json` y no modifica `engine_<MODEL>.json`.
+Este pipeline trabaja sobre `data/02-engine_rebuild/engine_rebuild_<MODEL>.json` y no modifica `engine_<MODEL>.json`.
 
 1. REBUILD BASE
    - Script: `scripts/rebuild_engine_from_book_preview.js`.
-   - Salida: `data/output/rebuild/engine_rebuild_<MODEL>.json`.
+   - Salida: `data/02-engine_rebuild/engine_rebuild_<MODEL>.json`.
 2. ENRICH GESA/SUST SOBRE REBUILD
    - Script: `scripts/enrich_rebuild_with_gesa_sust.js`.
 3. ENRICH ASSETS VISUALES SOBRE REBUILD
    - Script: `scripts/enrich_rebuild_with_assets.js`.
    - Assets fuente: `fotos_articulos/`, `esquemas/`, `esquemas_pos_circulos/`.
    - Salidas:
-     - `data/output/rebuild/engine_rebuild_<MODEL>.json` enriquecido.
-     - `data/output/rebuild/assets_report_<MODEL>.json`.
+     - `data/02-engine_rebuild/engine_rebuild_<MODEL>.json` enriquecido.
+     - `data/02-engine_rebuild/assets_report_<MODEL>.json`.
 
 Comandos oficiales de Fase Assets:
 - `node scripts/enrich_rebuild_with_assets.js --engine <MODEL> --dry-run`
@@ -68,7 +68,7 @@ Comandos oficiales de Fase Assets:
 Garantias de separacion:
 - No toca `engine_<MODEL>.json`.
 - No ejecuta ni altera export WordPress (`POST /export/run-wordpress`).
-- Escribe solo en `data/output/rebuild/` y genera backup en modo `--write`.
+- Escribe solo en `data/02-engine_rebuild/` y genera backup en modo `--write`.
 
 ## Endpoints oficiales vs legacy relevantes
 - Oficiales actuales:
@@ -87,7 +87,7 @@ Garantias de separacion:
 Nota documental: `/copy-pdf-to-pdf-all-books` y `/recompute-pdf-auto` no deben presentarse como flujo oficial de PDF.
 
 ## Artefactos de datos
-- Entrada PDF intermedia oficial: `json_originales/book_preview_<MODEL>.json`.
+- Entrada PDF intermedia oficial: `data/01-engine_preview/book_preview_<MODEL>.json`.
 - Persistencia runtime: `engine_*.json`.
 - Persistencia de revision remota: `qa_revision_server_data.json`.
 
@@ -125,3 +125,4 @@ Validacion registrada:
 - MILU runtime usa archivos JSON en disco, no BD relacional.
 - El proceso offline oficial para consistencia global de los 9 engines sigue siendo `depuracion_json.py`.
 - En diagnostico de persistencia: validar `GET /health` y endpoints HTTP antes de asumir fallo de UI.
+

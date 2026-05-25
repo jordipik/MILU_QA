@@ -197,7 +197,7 @@ Ambiguedades detectadas:
 Flujo actual:
 
 1. [scripts/export_wordpress_milu.js](scripts/export_wordpress_milu.js) agrupa por PN y evalua QA.
-2. Genera JSON y CSV en data/output/wordpress.
+2. Genera JSON y CSV en data/05-wordpress.
 3. [server.js](server.js) expone estado, preview, file, download, trace.
 4. UI en [js/export-wordpress.js](js/export-wordpress.js) y panel export embebido en [js/qa-milu.js](js/qa-milu.js).
 
@@ -476,4 +476,5 @@ Recomendacion de gestion:
 - Mantener: nucleares y tecnicos activos.
 - Revisar/normalizar: duplicados semanticos (measure_final/measurement_final, model_final/MODEL/TYPE_final, etc).
 - Candidatos a aislamiento legacy: campos historicos de bajo uso operativo en UI/export.
+
 

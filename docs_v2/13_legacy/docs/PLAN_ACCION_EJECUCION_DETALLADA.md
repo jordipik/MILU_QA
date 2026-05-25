@@ -364,7 +364,7 @@ Objetivo: Cobertura minima de endpoints y flujos criticos.
 
 5. Export
    - POST /export/run-wordpress ejecuta sin error
-   - Archivos generados en data/output/wordpress/
+   - Archivos generados en data/05-wordpress/
    - Trazabilidad de SKU es consistente
 
 6. Error handling
@@ -624,4 +624,5 @@ TOTAL: ~3 meses para P0+P1+P2, P3 evolutiva.
 - No bloquea nada, prepara todo.
 
 Una vez P0 sea operativo (todos los documentos listos y validados), proceder a P1.1 (capa IO JSON).
+
 

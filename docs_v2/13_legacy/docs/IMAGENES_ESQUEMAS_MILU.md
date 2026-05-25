@@ -66,7 +66,7 @@ Modo **solo lectura** para auditorÃ­a multimedia.
 - `data/output/image_inventory.json`
 - `data/output/qa_index.json`
 - `qa_index.json`, `version.json`
-- Outputs de export: `data/output/wordpress/milu_wp_*.json`
+- Outputs de export: `data/05-wordpress/milu_wp_*.json`
 - Refs histÃ³ricas: `MILU_New_v506.json`, `MILU_Superseded_v506.json`, `product-export-2026-03-29-11-07.json`
 
 ### 3.2 Estructura esperada
@@ -217,4 +217,5 @@ Propuestas y mejoras pendientes: [proposals/images_pending_improvements.md](prop
 - Esquemas POS: [docs/images/esquemas_pos.md](images/esquemas_pos.md)
 - Performance: [docs/images/performance.md](images/performance.md)
 - Export WordPress de imÃ¡genes: [docs/images/wordpress_image_export.md](images/wordpress_image_export.md)
+
 

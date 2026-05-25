@@ -34,7 +34,7 @@ Consultar docs_v2 para versión actual.
 | C11 | `qa_imagenes.html` es solo lectura | ðŸŸ¢ baja (cumple) | No invoca `/save-json` ni `/apply-revision-to-engines`. | â€” | â€” | **NO**. |
 | C12 | Endpoints `/pn/*` legacy deben responder 410 | ðŸŸ¢ baja (cumple) | Verificado en `server.js` (responden `{ok:false, legacy:true}`). | â€” | â€” | **NO**. |
 | C13 | `qa_revision_sync.php` debe servir JSON, no el archivo PHP | ðŸŸ¢ baja (cumple) | Ruta Express registrada antes del static middleware. | Si en algÃºn despliegue se invierte el orden, el static servirÃ­a el archivo crudo. | Test smoke automatizado: `GET /qa_revision_sync.php` ha de devolver `Content-Type: application/json`. | **NO** â€” aÃ±adir como test futuro. |
-| C14 | El export es idempotente sobre `engine_*.json` (no los modifica) | ðŸŸ¢ baja (cumple) | [scripts/export_wordpress_milu.js](../../scripts/export_wordpress_milu.js) solo lee engines y escribe en `data/output/wordpress/`. | â€” | â€” | **NO**. |
+| C14 | El export es idempotente sobre `engine_*.json` (no los modifica) | ðŸŸ¢ baja (cumple) | [scripts/export_wordpress_milu.js](../../scripts/export_wordpress_milu.js) solo lee engines y escribe en `data/05-wordpress/`. | â€” | â€” | **NO**. |
 | C15 | `/save-json` deberÃ­a tener lista blanca de campos editables | ðŸŸ¡ media | Acepta cualquier campo. | [server.js](../../server.js) `/save-json` no filtra campos permitidos. | AÃ±adir lista blanca + validaciÃ³n de tipos en una fase posterior. | **NO** â€” fase 2 (smoke + payload validation). |
 | C16 | Build `dist/milu_publish/` duplica todo el cÃ³digo | ðŸŸ¢ baja | Es un artefacto de empaquetado. | Contiene copias de `js/*` con las mismas (in)consistencias. | No editar a mano; regenerar cuando se haga refactor. | **NO**. |
 | C17 | Doble escritura de `measurement_final` y `measure_final` en outputs CSV/JSON del export | ðŸŸ¡ media | â€” | [scripts/export_wordpress_milu.js#L325-L326](../../scripts/export_wordpress_milu.js) (objeto export) y [#L366](../../scripts/export_wordpress_milu.js) (header CSV). | Mantener solo `measure_final` en outputs nuevos cuando se haga refactor del script. | **NO** â€” riesgo de romper consumidores externos. |
@@ -68,7 +68,7 @@ Consultar docs_v2 para versión actual.
 ## Riesgos generales (no actuar aÃºn)
 
 - **G1**: Los `dist/milu_publish/js/*` divergirÃ¡n si se modifica solo `js/*`. Decidir si `dist/` es parte del repo activo.
-- **G2**: La carpeta `data/output/wordpress/` se sobrescribe en cada export. Consumidores externos deben pull antes del prÃ³ximo run.
+- **G2**: La carpeta `data/05-wordpress/` se sobrescribe en cada export. Consumidores externos deben pull antes del prÃ³ximo run.
 - **G3**: `/audit-log` rota a 10.000 entradas. Si se necesita histÃ³rico largo, hay que archivar antes.
 - **G4**: Sin tests automatizados, cualquier refactor sobre los puntos C1/C5/C15 requiere validaciÃ³n funcional manual.
 
@@ -77,4 +77,5 @@ Consultar docs_v2 para versión actual.
 1. **Tests smoke** de los endpoints (basados en [CONTRATO_ENDPOINTS_CRITICOS](CONTRATO_ENDPOINTS_CRITICOS.md)).
 2. **Validador de payload** en `/save-json` con whitelist de campos basada en [CONTRATO_JSON_ENGINE](CONTRATO_JSON_ENGINE.md).
 3. **Validador de filas** sobre `engine_*.json`: comprobar invariantes (`qa_revision_estado` vÃ¡lido, no `descartar` persistido, etc.). Solo reporte, no modificaciÃ³n.
+
 

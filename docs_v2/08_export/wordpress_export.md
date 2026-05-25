@@ -1,4 +1,4 @@
-# WordPress Export
+﻿# WordPress Export
 
 ## Objetivo
 Documentar extremo a extremo la ejecucion de export oficial QA-only.
@@ -8,7 +8,7 @@ Documentar extremo a extremo la ejecucion de export oficial QA-only.
 - Reglas QA (`qa_revision_estado`, `qa_revision_accion`).
 
 ## Outputs
-- Archivos de export y trazas en `data/output/wordpress/`.
+- Archivos de export y trazas en `data/05-wordpress/`.
 
 ## Scripts implicados
 - `scripts/export_wordpress_milu.js`.
@@ -45,3 +45,4 @@ Documentar extremo a extremo la ejecucion de export oficial QA-only.
 
 ## Ejemplo real
 - `exportacion.html` muestra banner: la decision de export se toma solo con `qa_revision_estado + qa_revision_accion` a nivel PN.
+

@@ -103,12 +103,12 @@ async function loadCoreData() {
   ];
 
   const wpTargets = [
-    "data/output/wordpress/milu_wp_import.json",
-    "data/output/wordpress/milu_wp_pending.json",
-    "data/output/wordpress/milu_wp_superseded.json",
-    "data/output/wordpress/milu_wp_discarded.json",
-    "data/output/wordpress/milu_wp_trace.json",
-    "data/output/wordpress/milu_wp_export_report.json",
+    "data/05-wordpress/milu_wp_import.json",
+    "data/05-wordpress/milu_wp_pending.json",
+    "data/05-wordpress/milu_wp_superseded.json",
+    "data/05-wordpress/milu_wp_discarded.json",
+    "data/05-wordpress/milu_wp_trace.json",
+    "data/05-wordpress/milu_wp_export_report.json",
     "MILU_New_v506.json",
     "MILU_Superseded_v506.json",
     "product-export-2026-03-29-11-07.json"

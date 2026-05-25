@@ -104,7 +104,7 @@ Ver [WORDPRESS_EXPORT_MILU.md](WORDPRESS_EXPORT_MILU.md). Resumen:
    - `decision = discard` si **todas** las filas del PN tienen `qa_revision_estado=ok` y `qa_revision_accion=eliminar`.
    - `decision = pending_review` en cualquier otro caso.
 5. ClasificaciÃ³n New / Superseded **solo** por `sust_hierarchie === "Superseded"`.
-6. Escribe en `data/output/wordpress/`: `milu_wp_import.{json,csv}`, `milu_wp_discarded.csv`, `milu_wp_pending_review.csv`, `milu_wp_export_summary.md`, opcional `milu_wp_trace.json`.
+6. Escribe en `data/05-wordpress/`: `milu_wp_import.{json,csv}`, `milu_wp_discarded.csv`, `milu_wp_pending_review.csv`, `milu_wp_export_summary.md`, opcional `milu_wp_trace.json`.
 
 ---
 
@@ -144,4 +144,5 @@ Detalle: [03_data_models.md](03_data_models.md).
 - Modelo JSON detallado (archivado): [archived/MILU_MODELO_DATOS_JSON.md](archived/MILU_MODELO_DATOS_JSON.md)
 - AR-1 carga incremental: [12_ar1_carga_incremental.md](12_ar1_carga_incremental.md)
 - Pipeline `depuracion_json.py`: [docs/modules/depuracion_json_py.md](modules/depuracion_json_py.md)
+
 

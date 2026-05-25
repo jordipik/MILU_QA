@@ -150,7 +150,7 @@ git commit -m "fix: move PDFs to .gitignore - reduce repo size"
 python3 << 'EOF'
 import csv
 for fname in ['milu_wp_import.csv', 'milu_wp_superseded.csv']:
-    with open(f'data/output/wordpress/{fname}') as f:
+    with open(f'data/05-wordpress/{fname}') as f:
         rows = list(csv.DictReader(f))
     print(f"✓ {fname}: {len(rows)} rows")
 EOF
@@ -233,4 +233,5 @@ EOF
 **Estado:** ✅ LISTA PARA EJECUTAR
 
 Para empezar: Lee **RESUMEN_EJECUTIVO_FINAL.md** (5 min)
+
 

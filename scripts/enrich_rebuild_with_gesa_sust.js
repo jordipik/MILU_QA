@@ -3,7 +3,7 @@
  * enrich_rebuild_with_gesa_sust.js
  *
  * FASE 4 (P4-1 + P4-2): Aplica enriquecimiento GESA y SUST sobre los archivos
- * reconstruidos en data/output/rebuild/engine_rebuild_<MODEL>.json.
+ * reconstruidos en data/02-engine_rebuild/engine_rebuild_<MODEL>.json.
  *
  * NO modifica engine_*.json originales.
  *
@@ -24,7 +24,7 @@ const { ENGINE_JSON_FILES } = require('../engine_files');
 // Constants
 // ---------------------------------------------------------------------------
 
-const REBUILD_DIR = path.join('data', 'output', 'rebuild');
+const REBUILD_DIR = path.join('data', '02-engine_rebuild');
 
 const GESA_FIELDS = [
     'gesa',
@@ -513,7 +513,7 @@ function main(argv) {
     // Resolve models
     const models = resolveRebuildModels(repoRoot, args);
     if (models.length === 0) {
-        console.error('[error] No se encontraron archivos engine_rebuild_*.json en data/output/rebuild/');
+        console.error('[error] No se encontraron archivos engine_rebuild_*.json en data/02-engine_rebuild/');
         return 1;
     }
     console.log(`\n[mode] ${args.write ? 'WRITE' : 'DRY_RUN'}`);

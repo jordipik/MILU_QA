@@ -130,7 +130,7 @@ Leyenda:
 ### DT-7. Pipeline export WordPress QA-only âœ… ACTUALIZADO
 - Estado: simplificado a decision QA humana por PN global.
 - AcciÃ³n: mantener `npm run export:wordpress` como unico flujo oficial.
-- Entregables base: `data/output/wordpress/*`.
+- Entregables base: `data/05-wordpress/*`.
 - Legacy archivado: `legacy/export_complex_ai/*`.
 - Scripts: `npm run export:wordpress`, `npm run legacy:ai:conflicts`.
 - Dificultad: M Â· Prioridad: ðŸ”´.
@@ -283,4 +283,5 @@ Leyenda:
 2. La UI sigue funcional contra `http://localhost:3000/qa_milu.html` despuÃ©s de cada cambio.
 3. Los `engine_*.json` no se modifican sin que pase por `/save-json` o el pipeline oficial.
 4. Cada tarea cerrada actualiza [11_progreso_remediacion.md](11_progreso_remediacion.md).
+
 

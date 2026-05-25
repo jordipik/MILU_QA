@@ -3,7 +3,7 @@ const path = require('path');
 
 const REPO_ROOT = path.resolve(__dirname, '..');
 const OUTPUT_DIR = path.join(REPO_ROOT, 'data', 'output');
-const WORDPRESS_OUTPUT_DIR = path.join(OUTPUT_DIR, 'wordpress');
+const WORDPRESS_OUTPUT_DIR = path.join(REPO_ROOT, 'data', '05-wordpress');
 const DOC_PATH = path.join(REPO_ROOT, 'docs', 'AUDITORIA_IMAGENES_ESQUEMAS_MILU.md');
 const AUDIT_JSON_PATH = path.join(OUTPUT_DIR, 'image_schema_audit.json');
 const INVENTORY_JSON_PATH = path.join(OUTPUT_DIR, 'image_inventory.json');
@@ -754,8 +754,8 @@ function buildMarkdownReport(context) {
     lines.push('');
     lines.push('## Campos y datasets actuales');
     lines.push('- engine_*.json: dataset principal consumido por qa_milu.html.');
-    lines.push('- data/output/wordpress/milu_wp_import.json y milu_wp_superseded.json: export actual a WordPress.');
-    lines.push('- data/output/wordpress/milu_wp_trace.json: traza por PN hacia source_records.');
+    lines.push('- data/05-wordpress/milu_wp_import.json y milu_wp_superseded.json: export actual a WordPress.');
+    lines.push('- data/05-wordpress/milu_wp_trace.json: traza por PN hacia source_records.');
     lines.push('- qa_index.json / qa_index_light.json: flujo legacy referenciado en app.js, no presente en el repo actual.');
     lines.push('');
     lines.push('## Flujo actual de generacion de rutas');
@@ -810,7 +810,7 @@ function buildMarkdownReport(context) {
     lines.push('');
     lines.push('## Recomendaciones');
     lines.push('- No cambiar logica productiva hasta revisar estos artefactos: image_inventory.json, image_schema_audit.json, image_inventory.csv y este informe.');
-    lines.push('- Antes de cualquier correccion, regenerar copia de seguridad de data/output/wordpress y de los engine_*.json afectados.');
+    lines.push('- Antes de cualquier correccion, regenerar copia de seguridad de data/05-wordpress y de los engine_*.json afectados.');
     lines.push('- Introducir una comprobacion automatica que falle si una ruta WordPress no encuentra fichero local equivalente o si solo se resuelve a placeholder.');
     lines.push('');
     return `${lines.join('\n')}\n`;

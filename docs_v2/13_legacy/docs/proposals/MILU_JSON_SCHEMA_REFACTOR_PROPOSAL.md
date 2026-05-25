@@ -51,10 +51,10 @@ Resumen del analisis sobre JSON actuales del pipeline y legacy:
 
 ### Export QA-only (WordPress)
 
-- `data/output/wordpress/milu_wp_import.json` (3573 filas, 23 campos)
-- `data/output/wordpress/milu_wp_superseded.json` (1890 filas, 23 campos)
-- `data/output/wordpress/milu_wp_pending_review.json` (644 filas, 23 campos)
-- `data/output/wordpress/milu_wp_discarded.json` (8 filas, 23 campos)
+- `data/05-wordpress/milu_wp_import.json` (3573 filas, 23 campos)
+- `data/05-wordpress/milu_wp_superseded.json` (1890 filas, 23 campos)
+- `data/05-wordpress/milu_wp_pending_review.json` (644 filas, 23 campos)
+- `data/05-wordpress/milu_wp_discarded.json` (8 filas, 23 campos)
 
 ### Legacy (referencia historica)
 
@@ -391,4 +391,5 @@ python scripts/dev/audit_json_fields.py
 python scripts/dev/audit_json_fields.py --include-glob "data/output/**/*.json"
 python scripts/dev/audit_json_fields.py --only-files --file zz_old/qa_index.json --file zz_old/df_116_bom.json
 ```
+
 

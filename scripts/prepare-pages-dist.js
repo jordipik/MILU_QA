@@ -30,7 +30,7 @@ const requiredStaticEntries = [
     'styles.css',
     'favicon.svg',
     'version.json',
-    'data/output/wordpress',
+    'data/05-wordpress',
     'qa_revision_sync.php',
     'save-json.php',
     'css/qa_imagenes.css',

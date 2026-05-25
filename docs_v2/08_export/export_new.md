@@ -1,4 +1,4 @@
-# Export NEW
+﻿# Export NEW
 
 ## Objetivo
 Documentar generacion de salida NEW para WordPress.
@@ -7,7 +7,7 @@ Documentar generacion de salida NEW para WordPress.
 - Registros por PN en `engine_*.json` con QA y SUST.
 
 ## Outputs
-- Dataset NEW dentro de artefactos `milu_wp_*` en `data/output/wordpress/`.
+- Dataset NEW dentro de artefactos `milu_wp_*` en `data/05-wordpress/`.
 
 ## Scripts implicados
 - `scripts/export_wordpress_milu.js`.
@@ -37,3 +37,4 @@ Documentar generacion de salida NEW para WordPress.
 
 ## Ejemplo real
 - `scripts/export_wordpress_milu.js` crea resumen `import/pending/discard` tras cada corrida.
+

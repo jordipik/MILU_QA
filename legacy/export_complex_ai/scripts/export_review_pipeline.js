@@ -4,7 +4,7 @@ const { ENGINE_JSON_FILES } = require('../../../engine_files');
 const mergeRules = require('./synthetic_merge_rules');
 
 const REPO_ROOT = path.resolve(__dirname, '../../..');
-const WORDPRESS_DIR = path.join(REPO_ROOT, 'data', 'output', 'wordpress');
+const WORDPRESS_DIR = path.join(REPO_ROOT, 'data', '05-wordpress');
 const EXPORT_REVIEW_DIR = path.join(REPO_ROOT, 'data', 'output', 'export_review');
 
 function ensureDir(dirPath) {

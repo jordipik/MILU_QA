@@ -409,7 +409,7 @@ def parse_args() -> ComparePaths:
     parser.add_argument("--semantic-superseded", type=str)
 
     parser.add_argument("--legacy-dir", type=str, default=str(REPO_ROOT / "data" / "output" / "wordpress_legacy"))
-    parser.add_argument("--semantic-dir", type=str, default=str(REPO_ROOT / "data" / "output" / "wordpress"))
+    parser.add_argument("--semantic-dir", type=str, default=str(REPO_ROOT / "data" / "05-wordpress"))
 
     parser.add_argument("--legacy-synthetic-new", type=str)
     parser.add_argument("--semantic-synthetic-new", type=str)

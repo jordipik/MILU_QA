@@ -52,13 +52,13 @@ Consultar docs_v2 para versión actual.
 
 | Endpoint | MÃ©todo | Entrada | Salida | Disco | Archivos | Riesgo | ValidaciÃ³n recomendada |
 |---|---|---|---|---|---|---|---|
-| `/export/run-wordpress` | POST | â€” | `{ok, result{wordpress,summary{import,pending,discard}}, run_state}` | RW | [data/output/wordpress/](../../data/output/wordpress/) | alto | post: contar archivos generados |
-| `/export/status` | GET | â€” | `{ok, run_state, timestamp, counts, files, report}` | R | `data/output/wordpress/*` | bajo | smoke |
+| `/export/run-wordpress` | POST | â€” | `{ok, result{wordpress,summary{import,pending,discard}}, run_state}` | RW | [data/05-wordpress/](../../data/05-wordpress/) | alto | post: contar archivos generados |
+| `/export/status` | GET | â€” | `{ok, run_state, timestamp, counts, files, report}` | R | `data/05-wordpress/*` | bajo | smoke |
 | `/export/preview` | GET | â€” | `{ok, summary, markdownSummary, rows[]}` | R | igual | bajo | smoke |
 | `/export/wordpress-decisions` | GET | â€” | `{ok, rows[], summary{total,import,pending,discard,qa_validated}}` | R | igual | bajo | totales coherentes con `/export/status` |
-| `/export/trace/:sku` | GET | path `:sku` | `{ok, sku, trace}` | R | [data/output/wordpress/milu_wp_trace.json](../../data/output/wordpress/milu_wp_trace.json) | bajo | sku conocido devuelve trace |
+| `/export/trace/:sku` | GET | path `:sku` | `{ok, sku, trace}` | R | [data/05-wordpress/milu_wp_trace.json](../../data/05-wordpress/milu_wp_trace.json) | bajo | sku conocido devuelve trace |
 | `/export/files` | GET | â€” | `{ok, files[], summary{totalFiles,totalSize,lastModified,byFolder}}` | R | [data/output/](../../data/output/) | bajo | smoke |
-| `/export/file` | GET | query `?folder=&name=` | `{ok, folder, name, size, mtime, type, truncated, preview_bytes, parsed?}` | R | `data/output/wordpress/<file>` | bajo | no exceder 512 KB en preview |
+| `/export/file` | GET | query `?folder=&name=` | `{ok, folder, name, size, mtime, type, truncated, preview_bytes, parsed?}` | R | `data/05-wordpress/<file>` | bajo | no exceder 512 KB en preview |
 | `/export/download` | GET | query `?folder=&name=` | binario + `Content-Disposition` | R | igual | bajo | hash o tamaÃ±o coherente |
 
 ## 5. Audit log
@@ -154,4 +154,5 @@ Extiende la Fase G manteniendo el contrato existente. Detalle:
 - Smoke: `npm run test:db-analytics` ejecuta 20 tests; `npm run test:all-smoke` cubre los 41 del proyecto.
 - Scripts nuevos: `npm run db:index` recrea los ï¿½ndices auxiliares en `data/db/milu_mirror.sqlite`.
 - UI: pï¿½ginas nuevas independientes (`analytics_search.html`, `analytics_pn_detail.html`, `analytics_engine_detail.html`). NO modifican `qa_milu.html`.
+
 

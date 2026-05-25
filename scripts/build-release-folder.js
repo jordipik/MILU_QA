@@ -230,15 +230,15 @@ function copyVersionJson(destDir) {
 }
 
 function copyStaticDataFolder(destDir) {
-    const srcPath = path.join(rootDir, 'data', 'output', 'wordpress');
-    const destPath = path.join(destDir, 'data', 'output', 'wordpress');
+    const srcPath = path.join(rootDir, 'data', '05-wordpress');
+    const destPath = path.join(destDir, 'data', '05-wordpress');
 
     if (!fs.existsSync(srcPath)) {
         return false;
     }
 
     if (isDryRun) {
-        console.log('[dry-run] copy data/output/wordpress');
+        console.log('[dry-run] copy data/05-wordpress');
         return true;
     }
 
@@ -282,7 +282,7 @@ function main() {
     console.log(`Output: dist/${outputFolderName}`);
     console.log(`Copied files: ${stats.copiedFiles}`);
     console.log(`Copied version.json: ${copiedVersionJson ? 'yes' : 'no'}`);
-    console.log(`Copied data/output/wordpress: ${copiedStaticDataFolder ? 'yes' : 'no'}`);
+    console.log(`Copied data/05-wordpress: ${copiedStaticDataFolder ? 'yes' : 'no'}`);
     console.log(`Skipped json files: ${stats.skippedFiles}`);
     console.log(`Skipped excluded dirs: ${stats.skippedDirs}`);
     console.log(`Cleanup old release dirs: ${removedReleaseDirs.length}`);
