@@ -16,6 +16,8 @@
     "qa:pdf-copy:validate:write": "node scripts/validate_pdf_copy_bulk.js --run-write",
     "rebuild:engine:dry": "node rebuild_engine_from_book_preview.js --all --dry-run",
     "rebuild:engine:preview": "node rebuild_engine_from_book_preview.js --all --write-preview",
+    "rebuild:enrich:dry": "node scripts/enrich_rebuild_with_gesa_sust.js --all --dry-run",
+    "rebuild:enrich:write": "node scripts/enrich_rebuild_with_gesa_sust.js --all --write",
     "legacy:generate:synthetic": "node generate_synthetic_exports.js",
     "export:wordpress": "node scripts/export_wordpress_milu.js",
     "legacy:ai:conflicts": "node legacy/export_complex_ai/scripts/ai_conflict_rules.js",
