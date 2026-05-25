@@ -4160,6 +4160,133 @@ function splitPosPartNoCombinedRect(text, rect, columns) {
 }
 
 /**
+ * Divide visualmente rects combinados POS + PART NO + DESIGNATION.
+ * Ejemplo: "7250 X59450700011 BRACKET WIRING HARNESS".
+ */
+function splitPosPartNoDesignationCombinedRect(text, rect, columns) {
+    if (!text || !rect || !columns || !columns.length) return null;
+
+    const raw = String(text).trim().replace(/\s+/g, ' ');
+    const match = raw.match(/^(\d{2,5}[A-Z]?)\s+([A-Z0-9][A-Z0-9./-]{5,})\s+(.+)$/i);
+    if (!match) return null;
+
+    const posText = (match[1] || '').trim();
+    const pnText = (match[2] || '').trim();
+    const designationText = (match[3] || '').trim();
+    if (!posText || !pnText || !designationText) return null;
+    if (!/^\d{2,5}[A-Z]?$/.test(posText)) return null;
+    if (!isLikelyPartNumber(pnText)) return null;
+    if (!isLikelyDesignationText(designationText) && !isLikelyShortDesignationTail(designationText)) return null;
+
+    const posColumn = columns.find((c) => c.key === 'pos');
+    const partNoColumn = columns.find((c) => c.key === 'part_no');
+    const designationColumn = columns.find((c) => c.key === 'designation');
+    if (!posColumn || !partNoColumn || !designationColumn) return null;
+
+    const rectRight = rect.left + rect.width;
+    const posOverlap = computeRectColumnOverlap(rect.left, rect.width, posColumn.x0, posColumn.x1);
+    const partNoOverlap = computeRectColumnOverlap(rect.left, rect.width, partNoColumn.x0, partNoColumn.x1);
+    const designationOverlap = computeRectColumnOverlap(rect.left, rect.width, designationColumn.x0, designationColumn.x1);
+    const crossesPartNoBoundary = rect.left < partNoColumn.x0 && rectRight > partNoColumn.x0;
+    const crossesDesignationBoundary = rect.left < designationColumn.x0 && rectRight > designationColumn.x0;
+    const overlapAll = posOverlap >= 0.05 && partNoOverlap >= 0.05 && designationOverlap >= 0.05;
+    const startsInDesignation = rect.left >= designationColumn.x0 - 4;
+    if (!crossesPartNoBoundary && !crossesDesignationBoundary && !overlapAll && !startsInDesignation) return null;
+
+    const totalLen = Math.max(1, raw.length);
+    const posRatio = Math.max(0.08, Math.min(0.2, posText.length / totalLen));
+    const pnRatio = Math.max(0.18, Math.min(0.4, pnText.length / totalLen));
+    const splitMethod = startsInDesignation && !crossesPartNoBoundary && !crossesDesignationBoundary && !overlapAll
+        ? 'designation-start'
+        : 'proportional';
+
+    let firstSplitX = rect.left + rect.width * posRatio;
+    let secondSplitX = rect.left + rect.width * (posRatio + pnRatio);
+    firstSplitX = Math.max(rect.left + 8, Math.min(rectRight - 16, firstSplitX));
+    secondSplitX = Math.max(firstSplitX + 8, Math.min(rectRight - 8, secondSplitX));
+
+    const posWidth = Math.max(8, firstSplitX - rect.left);
+    const pnWidth = Math.max(8, secondSplitX - firstSplitX);
+    const designationWidth = Math.max(8, rectRight - secondSplitX);
+
+    return {
+        splitType: 'pos_part_no_designation',
+        originalText: raw,
+        splitMethod,
+        firstSplitX,
+        secondSplitX,
+        posText,
+        pnText,
+        designationText,
+        parts: [
+            {
+                text: posText,
+                normalizedText: normalizePdfToken(posText),
+                left: rect.left,
+                top: rect.top,
+                width: posWidth,
+                height: rect.height,
+                centerY: rect.centerY,
+                _forcedKey: 'pos',
+                _splitInfo: {
+                    splitFromCombined: true,
+                    splitType: 'pos_part_no_designation',
+                    originalText: raw,
+                    posText,
+                    pnText,
+                    designationText,
+                    firstSplitX,
+                    secondSplitX,
+                    splitMethod
+                }
+            },
+            {
+                text: pnText,
+                normalizedText: normalizePdfToken(pnText),
+                left: firstSplitX,
+                top: rect.top,
+                width: pnWidth,
+                height: rect.height,
+                centerY: rect.centerY,
+                _forcedKey: 'part_no',
+                _splitInfo: {
+                    splitFromCombined: true,
+                    splitType: 'pos_part_no_designation',
+                    originalText: raw,
+                    posText,
+                    pnText,
+                    designationText,
+                    firstSplitX,
+                    secondSplitX,
+                    splitMethod
+                }
+            },
+            {
+                text: designationText,
+                normalizedText: normalizePdfToken(designationText),
+                left: secondSplitX,
+                top: rect.top,
+                width: designationWidth,
+                height: rect.height,
+                centerY: rect.centerY,
+                _forcedKey: 'designation',
+                _splitInfo: {
+                    splitFromCombined: true,
+                    splitType: 'pos_part_no_designation',
+                    originalText: raw,
+                    posText,
+                    pnText,
+                    designationText,
+                    firstSplitX,
+                    secondSplitX,
+                    splitMethod
+                }
+            }
+        ]
+    };
+}
+
+/**
  * Divide visualmente rects combinados PART NO + DESIGNATION.
  * Ejemplo: "X00E50208388 PRESSURE SENSOR" -> ["X00E50208388", "PRESSURE SENSOR"]
  */
@@ -4538,6 +4665,22 @@ export function buildHeaderColumnBodyHighlights() {
                 : [weightPart];
 
             boundaryParts.forEach((boundaryPart) => {
+                const posPartNoDesignationSplit = splitPosPartNoDesignationCombinedRect(boundaryPart.text, boundaryPart, columns);
+                if (posPartNoDesignationSplit) {
+                    finalParts.push(...posPartNoDesignationSplit.parts);
+                    partNoDesignationSplits.push({
+                        originalText: posPartNoDesignationSplit.originalText,
+                        posText: posPartNoDesignationSplit.posText,
+                        pnText: posPartNoDesignationSplit.pnText,
+                        designationText: posPartNoDesignationSplit.designationText,
+                        firstSplitX: Math.round(posPartNoDesignationSplit.firstSplitX),
+                        secondSplitX: Math.round(posPartNoDesignationSplit.secondSplitX),
+                        splitMethod: posPartNoDesignationSplit.splitMethod,
+                        splitType: posPartNoDesignationSplit.splitType
+                    });
+                    return;
+                }
+
                 const posPartNoSplit = splitPosPartNoCombinedRect(boundaryPart.text, boundaryPart, columns);
                 const posPartNoParts = posPartNoSplit ? posPartNoSplit.parts : [boundaryPart];
                 if (posPartNoSplit) {

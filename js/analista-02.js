@@ -631,6 +631,45 @@ function extractLeadingPnFromDesignation(designationValue, pnValue = '') {
 
 }
 
+function extractLeadingPosPnFromDesignation(designationValue, posValue = '', pnValue = '') {
+
+    const currentPos = normalizeString(posValue);
+    const currentPn = normalizeString(pnValue);
+    const designation = normalizeString(designationValue);
+    if ((currentPos && currentPn) || !designation) {
+
+        return { pos: currentPos, pn: currentPn, designation };
+
+    }
+
+    const match = designation.match(/^(\d{2,5}[A-Z]?)\s+([A-Z0-9][A-Z0-9./-]{5,})\s+(.+)$/i);
+    if (!match) {
+
+        return { pos: currentPos, pn: currentPn, designation };
+
+    }
+
+    const candidatePos = normalizeString(match[1]);
+    const candidatePn = normalizeString(match[2]);
+    const rest = normalizeString(match[3]);
+    if (!/^\d{2,5}[A-Z]?$/.test(candidatePos) || !looksLikeExtractedPartNumberToken(candidatePn) || !rest) {
+
+        return { pos: currentPos, pn: currentPn, designation };
+
+    }
+
+    return {
+
+        pos: currentPos || candidatePos,
+
+        pn: currentPn || candidatePn,
+
+        designation: rest
+
+    };
+
+}
+
 
 function normalizePdfReadFieldAlignment(values = {}) {
 
@@ -651,6 +690,17 @@ function normalizePdfReadFieldAlignment(values = {}) {
         weight_pdf: normalizeString(values.weight_pdf)
 
     };
+
+
+
+    const repairedPosPnDesignation = extractLeadingPosPnFromDesignation(
+        normalized.designation_pdf,
+        normalized.pos_pdf,
+        normalized.pn_pdf
+    );
+    normalized.pos_pdf = repairedPosPnDesignation.pos;
+    normalized.pn_pdf = repairedPosPnDesignation.pn;
+    normalized.designation_pdf = repairedPosPnDesignation.designation;
 
 
 

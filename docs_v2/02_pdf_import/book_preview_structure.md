@@ -3,6 +3,18 @@
 ## Objetivo
 Definir la estructura real de `book_preview_<MODEL>.json` consumida por los scripts de apply.
 
+## Contrato de paridad Overlay vs Extraccion
+- `book_preview_<MODEL>.json` es la fuente oficial de datos PDF para el pipeline runtime.
+- El overlay PDF es una ayuda de revision y diagnostico, no el artefacto oficial de datos.
+- La paridad requerida es semantica, no de implementacion: overlay y extraccion pueden calcular por rutas distintas, pero deben converger en las mismas reglas de split.
+- Reglas que deben mantenerse alineadas:
+	1. `POS + PN + DESIGNATION`
+	2. `PN + DESIGNATION`
+	3. `DESIGNATION` que empieza por `PN`
+	4. `DESIGNATION` que empieza por `POS + PN`
+- Si una regla se corrige solo en overlay, el usuario vera bien la tabla pero `book_preview` seguira mal.
+- Si una regla se corrige solo en extraccion, `book_preview` estara bien pero la revision humana seguira viendo columnas confusas.
+
 ## Inputs
 - Salida de `extractWholeBook` en `js/import-pdf.js`.
 
@@ -11,6 +23,8 @@ Definir la estructura real de `book_preview_<MODEL>.json` consumida por los scri
 
 ## Scripts implicados
 - `js/import-pdf.js`.
+- `js/pdf-viewer.js` como referencia visual que debe mantener paridad de reglas.
+- `js/analista-02.js` como flujo paralelo que debe producir la misma reparacion.
 - `apply_book_preview_to_engine.py`.
 
 ## Endpoints implicados
@@ -48,6 +62,7 @@ Definir la estructura real de `book_preview_<MODEL>.json` consumida por los scri
 ## Flujo paso a paso
 1. Cada pagina agrega un bloque a `pages[]`.
 2. Cada fila detectada guarda valores normalizados por columna PDF.
+3. La normalizacion downstream puede reparar fusiones de columnas heredadas del parser visual si la fila llega con `designation_pdf` contaminado por `PN` o por `POS + PN`.
 3. `downloadJsonPreview` emite archivo `book_preview_<MODEL>.json`.
 4. Scripts Python iteran `preview.pages[].rows[]` para match con engine.
 
@@ -97,10 +112,30 @@ Definir la estructura real de `book_preview_<MODEL>.json` consumida por los scri
 
 ## Riesgos / problemas conocidos
 - Si `pos_pdf` falta, la fila no puede hacer match fiable con engine.
+- La ausencia de `pos_pdf` puede venir de una fusion visual previa, no necesariamente de falta real en el PDF.
 - `confidence` bajo no bloquea exportacion del preview; requiere QA posterior.
+
+## Casos reales documentados
+- `12V4000M53`, pagina `803`: se reparo una fusion `PN + DESIGNATION`.
+- `12V4000M53`, pagina `669`: se reparo una fusion `POS + PN + DESIGNATION`.
+
+Ejemplo validado en pagina `669`:
+- `7250 -> X59450700011 -> BRACKET WIRING HARNESS`
+- `8400 -> X59650700018 -> RETAINER F. WIRING HARNESS`
+- `8570 -> X54750700009 -> CABLE CLAMP`
+- `8800 -> X59450700011 -> BRACKET WIRING HARNESS`
+- `9350 -> X59450700011 -> BRACKET WIRING HARNESS`
+- `9450 -> X59450700011 -> BRACKET WIRING HARNESS`
+- `9660 -> X59450700011 -> BRACKET WIRING HARNESS`
+- `9700 -> X59450700011 -> BRACKET WIRING HARNESS`
+
+Validacion:
+- ya no quedan filas de ese patron con `pos_pdf` vacio
+- `unresolvedCount = 0`
 
 ## Regla documental oficial
 - `book_preview_<MODEL>.json` es el artefacto puente oficial entre extraccion PDF y enrichment de `engine_<MODEL>.json`.
+- El apply oficial solo consume `book_preview_<MODEL>.json` a traves de `POST /api/pdf-preview/apply-to-engine`.
 
 ## TODO pendiente
 - Versionar schema JSON explicito de `book_preview`.

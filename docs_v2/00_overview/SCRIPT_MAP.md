@@ -7,7 +7,9 @@ Inventario de scripts y endpoints, con estado oficial/legacy validado en el codi
 
 | Componente | Tipo | Punto de entrada | Resultado | Estado |
 | --- | --- | --- | --- | --- |
+| `js/pdf-viewer.js` | Frontend visual | `import_pdf.html` y vistas PDF | Overlay diagnostico de columnas y splits visuales | OFFICIAL SUPPORT |
 | `js/import-pdf.js` | Frontend | `import_pdf.html` (`extractBookBtn`, `extractAllBooksBtn`) | Genera `book_preview_<MODEL>.json` | OFFICIAL |
+| `js/analista-02.js` | Frontend | Modal analista | Reutiliza reglas de extraccion y reparacion `_pdf` | OFFICIAL SUPPORT |
 | `apply_book_preview_to_engine.py` | Python | `POST /api/pdf-preview/apply-to-engine` (por libro) | Copia campos `_pdf` al engine | OFFICIAL |
 | `apply_all_book_previews.py` | Python | `POST /api/pdf-preview/apply-to-engine` (todos) | Ejecuta apply en lote | OFFICIAL |
 | `POST /api/pdf-preview/apply-to-engine` | Backend | UI recompute (`btnImportPdf`, `recomputeCopyBookBtn`) | Ejecuta scripts apply con `--write --overwrite` | OFFICIAL |
@@ -23,6 +25,40 @@ Inventario de scripts y endpoints, con estado oficial/legacy validado en el codi
 | `POST /recompute-pdf-auto-visual` | Backend | Flujo alternativo visual | Copia `_pdf` por comparacion visual | ALTERNATIVO |
 | `POST /copy-pdf-to-pdf-all-books` | Backend | Flujo historico | Copia `_pdf` batch visual | LEGACY/ALTERNATIVO |
 | `depuracion_json.py` | Python offline | Ejecucion manual | Normaliza y consolida engines | OFFICIAL OFFLINE |
+
+## Contrato de paridad Overlay vs Extraccion
+- `js/pdf-viewer.js` resuelve el overlay visual; `js/import-pdf.js` resuelve el artefacto oficial de datos.
+- El pipeline oficial de PDF es: `js/import-pdf.js -> book_preview_<MODEL>.json -> POST /api/pdf-preview/apply-to-engine -> engine_<MODEL>.json`.
+- `js/pdf-viewer.js` no sustituye `book_preview_<MODEL>.json`; solo debe mantenerse en paridad de reglas para revision humana fiable.
+- `js/analista-02.js` debe replicar la misma reparacion downstream que `js/import-pdf.js`.
+- Reglas a mantener alineadas:
+	1. `POS + PN + DESIGNATION`
+	2. `PN + DESIGNATION`
+	3. `DESIGNATION` que empieza por `PN`
+	4. `DESIGNATION` que empieza por `POS + PN`
+
+## Reparaciones PDF documentadas
+- `12V4000M53`, pagina `803`: fusion `PN + DESIGNATION`.
+- `12V4000M53`, pagina `669`: fusion `POS + PN + DESIGNATION`.
+- Puntos de implementacion:
+	- `js/pdf-viewer.js:4166`
+	- `js/pdf-viewer.js:4668`
+	- `js/import-pdf.js:302`
+	- `js/import-pdf.js:343`
+	- `js/analista-02.js:634`
+	- `js/analista-02.js:696`
+
+Validacion sintetica de pagina `669`:
+- `7250 -> X59450700011 -> BRACKET WIRING HARNESS`
+- `8400 -> X59650700018 -> RETAINER F. WIRING HARNESS`
+- `8570 -> X54750700009 -> CABLE CLAMP`
+- `8800 -> X59450700011 -> BRACKET WIRING HARNESS`
+- `9350 -> X59450700011 -> BRACKET WIRING HARNESS`
+- `9450 -> X59450700011 -> BRACKET WIRING HARNESS`
+- `9660 -> X59450700011 -> BRACKET WIRING HARNESS`
+- `9700 -> X59450700011 -> BRACKET WIRING HARNESS`
+- `unresolvedCount = 0`
+- overlay body: `381 -> 397`
 
 ## Botones UI auditados
 - `recompute_simple.html`
