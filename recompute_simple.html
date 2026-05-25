@@ -178,6 +178,40 @@
             }
         }
 
+        .recompute-simple-wrap .a2-recompute-compact {
+            grid-template-columns: repeat(6, minmax(0, 1fr));
+            grid-template-areas: none;
+            grid-auto-flow: row;
+        }
+
+        .recompute-simple-wrap .a2-recompute-compact .a2-recompute-card {
+            grid-area: auto !important;
+        }
+
+        .recompute-simple-wrap .a2-recompute-card[aria-label="Enriquecer assets multimedia sobre engine JSON"] .a2-step-index {
+            background: linear-gradient(135deg, #f7d56b, #e3a700);
+            color: #17344f;
+            border: 1px solid #c68c00;
+        }
+
+        @media (max-width: 1400px) {
+            .recompute-simple-wrap .a2-recompute-compact {
+                grid-template-columns: repeat(3, minmax(0, 1fr));
+            }
+        }
+
+        @media (max-width: 900px) {
+            .recompute-simple-wrap .a2-recompute-compact {
+                grid-template-columns: repeat(2, minmax(0, 1fr));
+            }
+        }
+
+        @media (max-width: 640px) {
+            .recompute-simple-wrap .a2-recompute-compact {
+                grid-template-columns: 1fr;
+            }
+        }
+
         .a2-recompute-card:first-child .a2-step-index {
             background: #7c3aed;
             color: #ffffff;
@@ -210,7 +244,7 @@
                 <h3>
                     <span class="a2-step-index">1</span>
                     <div>
-                        <span class="a2-step-title">CREACIÓN JSON REBUILD</span>
+                        <span class="a2-step-title">IMPORTAR PDF</span>
                         <p class="a2-step-desc"><strong>API</strong><br><strong>POST
                                 /api/recompute-simple/rebuild-json</strong></p>
                         <p class="a2-step-desc">Genera engine_rebuild_&lt;MODEL&gt;.json
@@ -223,7 +257,7 @@
                         <p class="a2-step-desc">El ID puntual no aplica a este paso.</p>
                     </div>
                 </h3>
-                <button id="btnImportPdf" type="button">CREACIÓN JSON REBUILD</button>
+                <button id="btnImportPdf" type="button">IMPORTAR PDF</button>
             </article>
 
             <article class="a2-recompute-card" aria-label="Actualizar campos SUST desde EXCEL_SUSTITUCION">
@@ -239,9 +273,23 @@
                 <button id="btnSust" type="button">ACTUALIZAR GESA + SUST</button>
             </article>
 
-            <article class="a2-recompute-card" aria-label="Calcular campos FINAL desde GESA">
+            <article class="a2-recompute-card" aria-label="Enriquecer assets multimedia sobre engine JSON">
                 <h3>
                     <span class="a2-step-index">3</span>
+                    <div>
+                        <span class="a2-step-title">ASSETS</span>
+                        <p class="a2-step-desc">POST /api/recompute-simple/enrich-assets</p>
+                        <p class="a2-step-desc">Actualiza filename_foto, ruta_foto, esquemas, esquemas_circulos,
+                            esquemas_circulos_all, ruta_esquemas_pos y exp_imagenes en engine_&lt;MODEL&gt;.json.</p>
+                        <p class="a2-step-desc">Usa fotos_articulos/, esquemas/ y esquemas_pos_circulos/.</p>
+                    </div>
+                </h3>
+                <button id="btnAssets" type="button">ASSETS</button>
+            </article>
+
+            <article class="a2-recompute-card" aria-label="Calcular campos FINAL desde GESA">
+                <h3>
+                    <span class="a2-step-index">4</span>
                     <div>
                         <span class="a2-step-title">Cálculo FINAL</span>
                         <p class="a2-step-desc">POST /copy-pdf-to-final-all-books</p>
@@ -253,7 +301,7 @@
 
             <article class="a2-recompute-card" aria-label="Recalcular errores">
                 <h3>
-                    <span class="a2-step-index">4</span>
+                    <span class="a2-step-index">5</span>
                     <div>
                         <span class="a2-step-title">Errores</span>
                         <p class="a2-step-desc">POST /recompute-qa-errors con scope/libro/id.</p>
@@ -264,7 +312,7 @@
 
             <article class="a2-recompute-card" aria-label="Recalcular estado y acción de revisión">
                 <h3>
-                    <span class="a2-step-index">5</span>
+                    <span class="a2-step-index">6</span>
                     <div>
                         <span class="a2-step-title">Estados</span>
                         <p class="a2-step-desc">POST /api/recompute-simple/update-states.</p>

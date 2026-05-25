@@ -34,6 +34,9 @@ Resumir el pipeline operativo real de MILU V1 por motor, sin asumir flujos histo
 
 ## Endpoints oficiales del pipeline
 - `POST /api/pdf-preview/apply-to-engine`
+- `POST /api/recompute-simple/update-gesa`
+- `POST /api/recompute-simple/update-sust`
+- `POST /api/recompute-simple/enrich-assets`
 - `POST /copy-pdf-to-final-all-books`
 - `POST /recompute-qa-errors`
 - `POST /api/recompute-simple/update-states`
@@ -49,7 +52,7 @@ Resumir el pipeline operativo real de MILU V1 por motor, sin asumir flujos histo
 
 ## Botones UI relacionados
 - Import PDF: `extractBookBtn`, `extractAllBooksBtn` (`import_pdf.html`).
-- Recompute simple: `btnImportPdf`, `btnFinal`, `btnErrors`, `btnStatuses`, `btnClearPdfFinal`.
+- Recompute simple: `btnImportPdf`, `btnSust`, `btnAssets`, `btnFinal`, `btnErrors`, `btnStatuses`, `btnClearPdfFinal`.
 - Analista modal: `recomputeCopyBookBtn`, `recomputeCalculateFinalBtn`, `recomputeRunBtn`, `recomputeRevisionStatusBtn`.
 
 ## Campos afectados
@@ -64,16 +67,22 @@ Pasos oficiales:
 3. Enriquecimiento visual de assets sobre rebuild: `scripts/enrich_rebuild_with_assets.js`.
 
 Comandos oficiales de assets:
-- `node scripts/enrich_rebuild_with_assets.js --engine <MODEL> --dry-run`
-- `node scripts/enrich_rebuild_with_assets.js --engine <MODEL> --write`
-- `node scripts/enrich_rebuild_with_assets.js --all --dry-run`
-- `node scripts/enrich_rebuild_with_assets.js --all --write`
+- rebuild:
+  - `node scripts/enrich_rebuild_with_assets.js --mode rebuild --engine <MODEL> --dry-run`
+  - `node scripts/enrich_rebuild_with_assets.js --mode rebuild --engine <MODEL> --write`
+  - `node scripts/enrich_rebuild_with_assets.js --mode rebuild --all --dry-run`
+  - `node scripts/enrich_rebuild_with_assets.js --mode rebuild --all --write`
+- engine (runtime):
+  - `node scripts/enrich_rebuild_with_assets.js --mode engine --engine <MODEL> --dry-run`
+  - `node scripts/enrich_rebuild_with_assets.js --mode engine --engine <MODEL> --write`
+  - `node scripts/enrich_rebuild_with_assets.js --mode engine --all --dry-run`
+  - `node scripts/enrich_rebuild_with_assets.js --mode engine --all --write`
 
 Reglas operativas de este paso:
 - `--dry-run` no escribe.
-- `--write` crea backup `engine_rebuild_<MODEL>.json.bak.<timestamp>`.
-- Escribe solo en `data/02-engine_rebuild/`.
-- No modifica `engine_<MODEL>.json`.
+- `--write` crea backup `*.bak.<timestamp>` sobre el archivo objetivo.
+- En `--mode rebuild` escribe en `data/02-engine_rebuild/`.
+- En `--mode engine` escribe en `engine_<MODEL>.json` en raiz.
 - No ejecuta ni modifica export WordPress.
 
 ## Flujo paso a paso
@@ -81,13 +90,14 @@ Reglas operativas de este paso:
 2. Extraccion PDF genera `book_preview_<MODEL>.json` en `import_pdf.html`.
 3. IMPORTAR PDF llama `POST /api/pdf-preview/apply-to-engine`.
 4. Backend ejecuta `apply_book_preview_to_engine.py` o `apply_all_book_previews.py` con `--write --overwrite`.
-5. OFFLINE opcional/recomendado antes de FINAL: actualizar campos GESA desde catalogo con `node scripts/update_gesa_fields_from_excel.js` (dry-run) o `node scripts/update_gesa_fields_from_excel.js --write`.
-6. CALCULO FINAL llama `POST /copy-pdf-to-final-all-books`.
-7. Backend aplica `FINAL_FIELDS_V1_MAPPINGS_BACKEND` y persiste `*_final`.
-8. ERRORES llama `POST /recompute-qa-errors` y recalcula `*_error`.
-9. ESTADOS llama `POST /api/recompute-simple/update-states` (o endpoint coexistente `/recalculate-revision-status`).
-10. Revision remota usa `/qa_revision_sync.php` y `/apply-revision-to-engines`.
-11. Export publica con `POST /export/run-wordpress`.
+5. GESA SUST runtime llama `POST /api/recompute-simple/update-gesa` y `POST /api/recompute-simple/update-sust`.
+6. ASSETS runtime llama `POST /api/recompute-simple/enrich-assets` (modo `engine`).
+7. CALCULO FINAL llama `POST /copy-pdf-to-final-all-books`.
+8. Backend aplica `FINAL_FIELDS_V1_MAPPINGS_BACKEND` y persiste `*_final`.
+9. ERRORES llama `POST /recompute-qa-errors` y recalcula `*_error`.
+10. ESTADOS llama `POST /api/recompute-simple/update-states` (o endpoint coexistente `/recalculate-revision-status`).
+11. Revision remota usa `/qa_revision_sync.php` y `/apply-revision-to-engines`.
+12. Export publica con `POST /export/run-wordpress`.
 
 ## Diagnostico activo
 - IMPORTAR PDF devuelve `stats`, `not_found_rows`, `action_required_conflicts`, `applied_manual_decisions`.
@@ -99,6 +109,7 @@ Reglas operativas de este paso:
 
 ## Alcance y filtros
 - IMPORTAR PDF y CALCULO FINAL ignoran `ID puntual` (trabajan por libro/todos).
+- GESA SUST y ASSETS ignoran `ID puntual` (trabajan por libro/todos).
 - ERRORES admite `scope` con libro e ID.
 - ESTADOS en `recompute_simple` usa endpoint por engine/ID; en modal analista permanece el endpoint global coexistente.
 - Actualizacion GESA desde `EXCEL_GESA2026.json` es OFFLINE (sin endpoint runtime), con match exacto `PART NUMBER == pn_final`, `--only` por motor y backup por engine en modo `--write`.

@@ -25,6 +25,7 @@ const path = require('path');
 const { ENGINE_JSON_FILES } = require('../engine_files');
 
 const REBUILD_DIR = path.join('data', '02-engine_rebuild');
+const ENGINE_REPORT_DIR = path.join('data', 'output', 'assets_engine_reports');
 
 const WP_BASE_FOTOS_DEFAULT =
     'https://milu-naval.mystagingwebsite.com/wp-content/uploads/2026/01';
@@ -59,8 +60,10 @@ function writeJson(filePath, data) {
     fs.writeFileSync(filePath, JSON.stringify(data, null, 2), 'utf8');
 }
 
-function ensureOutputDir(repoRoot) {
-    const dir = path.join(repoRoot, REBUILD_DIR);
+function ensureOutputDir(repoRoot, mode) {
+    const dir = mode === 'engine'
+        ? path.join(repoRoot, ENGINE_REPORT_DIR)
+        : path.join(repoRoot, REBUILD_DIR);
     fs.mkdirSync(dir, { recursive: true });
     return dir;
 }
@@ -79,27 +82,41 @@ function page4FromRow(row) {
     return digits[0].padStart(4, '0');
 }
 
-function resolveRebuildModels(repoRoot, options) {
+function resolveTargetModels(repoRoot, options) {
+    const mode = options.mode === 'engine' ? 'engine' : 'rebuild';
+
+    function targetExists(model) {
+        const targetPath = mode === 'engine'
+            ? path.join(repoRoot, `engine_${model}.json`)
+            : path.join(repoRoot, REBUILD_DIR, `engine_rebuild_${model}.json`);
+        return fs.existsSync(targetPath);
+    }
+
     if (options.all) {
         return ENGINE_JSON_FILES
             .map((f) => normalizeModelToken(f))
             .filter((model) => {
-                const rebuildPath = path.join(repoRoot, REBUILD_DIR, `engine_rebuild_${model}.json`);
-                return fs.existsSync(rebuildPath);
+                return targetExists(model);
             });
     }
 
     const model = normalizeModelToken(options.engine);
     if (!model) throw new Error('Debe indicar --engine <MODEL> o --all.');
-    const rebuildPath = path.join(repoRoot, REBUILD_DIR, `engine_rebuild_${model}.json`);
-    if (!fs.existsSync(rebuildPath)) {
-        throw new Error(`No existe el rebuild para ${model}: ${rebuildPath}`);
+
+    const targetPath = mode === 'engine'
+        ? path.join(repoRoot, `engine_${model}.json`)
+        : path.join(repoRoot, REBUILD_DIR, `engine_rebuild_${model}.json`);
+
+    if (!fs.existsSync(targetPath)) {
+        const targetType = mode === 'engine' ? 'engine' : 'rebuild';
+        throw new Error(`No existe el ${targetType} para ${model}: ${targetPath}`);
     }
     return [model];
 }
 
 function parseArgs(argv) {
     const args = {
+        mode: 'rebuild',
         engine: '',
         all: false,
         write: false,
@@ -114,6 +131,19 @@ function parseArgs(argv) {
         if (token === '--write') { args.write = true; continue; }
         if (token === '--dry-run') { args.write = false; continue; }
         if (token === '--help' || token === '-h') { args.help = true; continue; }
+
+        if (token === '--mode') {
+            const val = txt(argv[i + 1]).toLowerCase();
+            if (!val) throw new Error('Debe indicar un valor para --mode');
+            args.mode = val;
+            i++;
+            continue;
+        }
+
+        if (token.startsWith('--mode=')) {
+            args.mode = txt(token.slice('--mode='.length)).toLowerCase();
+            continue;
+        }
 
         if (token === '--engine') {
             const val = txt(argv[i + 1]);
@@ -164,18 +194,27 @@ function parseArgs(argv) {
         throw new Error('No puede usar --all y --engine al mismo tiempo.');
     }
 
+    if (!['rebuild', 'engine'].includes(args.mode)) {
+        throw new Error('mode debe ser rebuild o engine.');
+    }
+
     return args;
 }
 
 function printHelp() {
     console.log([
         'Uso:',
-        '  node scripts/enrich_rebuild_with_assets.js --engine 12V4000M40A --dry-run',
-        '  node scripts/enrich_rebuild_with_assets.js --engine 12V4000M40A --write',
-        '  node scripts/enrich_rebuild_with_assets.js --all --dry-run',
-        '  node scripts/enrich_rebuild_with_assets.js --all --write',
+        '  node scripts/enrich_rebuild_with_assets.js --mode rebuild --engine 12V4000M40A --dry-run',
+        '  node scripts/enrich_rebuild_with_assets.js --mode rebuild --engine 12V4000M40A --write',
+        '  node scripts/enrich_rebuild_with_assets.js --mode rebuild --all --dry-run',
+        '  node scripts/enrich_rebuild_with_assets.js --mode rebuild --all --write',
+        '  node scripts/enrich_rebuild_with_assets.js --mode engine --engine 12V4000M40A --dry-run',
+        '  node scripts/enrich_rebuild_with_assets.js --mode engine --engine 12V4000M40A --write',
+        '  node scripts/enrich_rebuild_with_assets.js --mode engine --all --dry-run',
+        '  node scripts/enrich_rebuild_with_assets.js --mode engine --all --write',
         '',
         'Opciones:',
+        '  --mode <rebuild|engine> Modo de trabajo (por defecto: rebuild)',
         '  --engine <MODEL>        Procesar un unico motor',
         '  --all                   Procesar todos los engines con rebuild disponible',
         '  --write                 Escribir cambios en engine_rebuild_<MODEL>.json',
@@ -314,8 +353,12 @@ function backupFile(filePath) {
 }
 
 function processModel(repoRoot, model, options, fotosIndex) {
-    const rebuildPath = path.join(repoRoot, REBUILD_DIR, `engine_rebuild_${model}.json`);
-    const rows = readJsonArray(rebuildPath, `engine_rebuild_${model}.json`);
+    const mode = options.mode === 'engine' ? 'engine' : 'rebuild';
+    const targetPath = mode === 'engine'
+        ? path.join(repoRoot, `engine_${model}.json`)
+        : path.join(repoRoot, REBUILD_DIR, `engine_rebuild_${model}.json`);
+    const targetLabel = mode === 'engine' ? `engine_${model}.json` : `engine_rebuild_${model}.json`;
+    const rows = readJsonArray(targetPath, targetLabel);
 
     const esquemasByPage = buildEsquemasIndex(repoRoot, model);
     const circulosByPagePos = buildCirculosIndex(repoRoot, model);
@@ -335,6 +378,7 @@ function processModel(repoRoot, model, options, fotosIndex) {
         circulos_all_equals_selected_count: 0,
         circulos_all_multiple_count: 0,
         circulos_all_empty_count: 0,
+        missing_assets_rows: 0,
         changed_rows: 0,
         changed_fields: 0,
         examples: {
@@ -449,13 +493,18 @@ function processModel(repoRoot, model, options, fotosIndex) {
             });
         }
 
+        const hasMissingAnyAsset = !fotoName || esquemasMatches.length === 0 || circleMatches.length === 0;
+        if (hasMissingAnyAsset) {
+            report.missing_assets_rows++;
+        }
+
         if (counters.rowChanged) {
             report.changed_rows++;
             report.changed_fields += counters.changedFields;
         }
     }
 
-    return { rows, report, rebuildPath };
+    return { rows, report, targetPath, mode };
 }
 
 function printModelSummary(result, mode) {
@@ -465,6 +514,129 @@ function printModelSummary(result, mode) {
     console.log(`  esquemas  found=${r.esquemas_found} missing=${r.esquemas_missing} multiple=${r.esquemas_multiple}`);
     console.log(`  circulos  found=${r.circulos_found} missing=${r.circulos_missing} multiple=${r.circulos_multiple}`);
     console.log(`  cambios   rows=${r.changed_rows} fields=${r.changed_fields}`);
+}
+
+function runEnrichAssets(options = {}) {
+    const repoRoot = options.rootDir || path.resolve(__dirname, '..');
+    const mode = options.mode === 'engine' ? 'engine' : 'rebuild';
+    const shouldWrite = Boolean(options.write);
+    const logger = options.logger || console.log;
+    const wpFotosBase = txt(options.wpFotosBase || WP_BASE_FOTOS_DEFAULT).replace(/\/$/, '');
+    const wpEsquemasBase = txt(options.wpEsquemasBase || WP_BASE_ESQUEMAS_POS_DEFAULT).replace(/\/$/, '');
+
+    ensureOutputDir(repoRoot, mode);
+
+    const models = resolveTargetModels(repoRoot, {
+        mode,
+        all: Boolean(options.all),
+        engine: options.engine || ''
+    });
+
+    const reportOutputDir = mode === 'engine'
+        ? path.join(repoRoot, ENGINE_REPORT_DIR)
+        : path.join(repoRoot, REBUILD_DIR);
+
+    const runModeLabel = shouldWrite ? 'WRITE' : 'DRY_RUN';
+    logger(`[mode] ${runModeLabel}`);
+    logger(`[target_mode] ${mode}`);
+    logger(`[models] ${models.join(', ')}`);
+    logger(`[wp_fotos_base] ${wpFotosBase}`);
+    logger(`[wp_esquemas_base] ${wpEsquemasBase}`);
+
+    const fotosIndex = buildFotosIndex(repoRoot);
+    logger(`[fotos] indexadas ${fotosIndex.size} PNs con imagen`);
+
+    const details = [];
+    let processed = 0;
+    let changedRowsTotal = 0;
+    let changedFieldsTotal = 0;
+    let recordsProcessed = 0;
+    let photosLinked = 0;
+    let schemasLinked = 0;
+    let schemaPosLinked = 0;
+    let missingAssets = 0;
+    let backupsCreated = 0;
+    const errors = [];
+
+    for (const model of models) {
+        let result;
+        try {
+            result = processModel(repoRoot, model, {
+                mode,
+                wpFotosBase,
+                wpEsquemasBase
+            }, fotosIndex);
+        } catch (err) {
+            const message = String(err && err.message ? err.message : err);
+            logger(`\n[error] ${model}: ${message}`);
+            errors.push({ model, error: message });
+            continue;
+        }
+
+        printModelSummary(result, runModeLabel);
+
+        const reportPrefix = mode === 'engine' ? 'assets_engine_report_' : 'assets_report_';
+        const reportPath = path.join(reportOutputDir, `${reportPrefix}${model}.json`);
+
+        let backupPath = null;
+        if (shouldWrite) {
+            backupPath = backupFile(result.targetPath);
+            writeJson(result.targetPath, result.rows);
+            backupsCreated += 1;
+            logger(`  -> backup: ${path.relative(repoRoot, backupPath).replace(/\\/g, '/')}`);
+            logger(`  -> escrito: ${path.relative(repoRoot, result.targetPath).replace(/\\/g, '/')}`);
+        }
+
+        writeJson(reportPath, result.report);
+        logger(`  -> reporte: ${path.relative(repoRoot, reportPath).replace(/\\/g, '/')}`);
+
+        processed++;
+        recordsProcessed += result.report.rows_total;
+        photosLinked += result.report.fotos_found;
+        schemasLinked += result.report.esquemas_found;
+        schemaPosLinked += result.report.circulos_found;
+        missingAssets += result.report.missing_assets_rows;
+        changedRowsTotal += result.report.changed_rows;
+        changedFieldsTotal += result.report.changed_fields;
+
+        details.push({
+            model,
+            mode,
+            rowsTotal: result.report.rows_total,
+            photosLinked: result.report.fotos_found,
+            schemasLinked: result.report.esquemas_found,
+            schemaPosLinked: result.report.circulos_found,
+            missingAssets: result.report.missing_assets_rows,
+            updatedRows: result.report.changed_rows,
+            updatedFields: result.report.changed_fields,
+            targetPath: path.relative(repoRoot, result.targetPath).replace(/\\/g, '/'),
+            reportPath: path.relative(repoRoot, reportPath).replace(/\\/g, '/'),
+            backupPath: backupPath ? path.relative(repoRoot, backupPath).replace(/\\/g, '/') : ''
+        });
+    }
+
+    logger('\n[summary]');
+    logger(`  - models_processed: ${processed}`);
+    logger(`  - changed_rows_total: ${changedRowsTotal}`);
+    logger(`  - changed_fields_total: ${changedFieldsTotal}`);
+
+    return {
+        ok: errors.length === 0,
+        mode,
+        dryRun: !shouldWrite,
+        enginesProcessed: processed,
+        recordsProcessed,
+        photosLinked,
+        schemasLinked,
+        schemaPosLinked,
+        updatedRows: changedRowsTotal,
+        updatedFields: changedFieldsTotal,
+        missingAssets,
+        backupCreated: shouldWrite ? backupsCreated > 0 : false,
+        backupsCreated,
+        details,
+        errors
+    };
 }
 
 function main(argv) {
@@ -482,69 +654,25 @@ function main(argv) {
         return 0;
     }
 
-    const repoRoot = path.resolve(__dirname, '..');
-    ensureOutputDir(repoRoot);
-
-    const models = resolveRebuildModels(repoRoot, args);
-    if (!models.length) {
-        console.error('[error] No se encontraron archivos engine_rebuild_*.json en data/02-engine_rebuild/');
+    try {
+        const result = runEnrichAssets({
+            rootDir: path.resolve(__dirname, '..'),
+            mode: args.mode,
+            engine: args.engine,
+            all: args.all,
+            write: args.write,
+            wpFotosBase: args.wpFotosBase,
+            wpEsquemasBase: args.wpEsquemasBase,
+            logger: console.log
+        });
+        return result.errors.length ? 1 : 0;
+    } catch (err) {
+        console.error(`[error] ${String(err && err.message ? err.message : err)}`);
         return 1;
     }
-
-    const mode = args.write ? 'WRITE' : 'DRY_RUN';
-    console.log(`[mode] ${mode}`);
-    console.log(`[models] ${models.join(', ')}`);
-    console.log(`[wp_fotos_base] ${args.wpFotosBase}`);
-    console.log(`[wp_esquemas_base] ${args.wpEsquemasBase}`);
-
-    const fotosIndex = buildFotosIndex(repoRoot);
-    console.log(`[fotos] indexadas ${fotosIndex.size} PNs con imagen`);
-
-    let processed = 0;
-    let changedRowsTotal = 0;
-    let changedFieldsTotal = 0;
-
-    for (const model of models) {
-        let result;
-        try {
-            result = processModel(repoRoot, model, {
-                wpFotosBase: args.wpFotosBase,
-                wpEsquemasBase: args.wpEsquemasBase
-            }, fotosIndex);
-        } catch (err) {
-            console.error(`\n[error] ${model}: ${err.message}`);
-            continue;
-        }
-
-        printModelSummary(result, mode);
-
-        const outDir = path.join(repoRoot, REBUILD_DIR);
-        const reportPath = path.join(outDir, `assets_report_${model}.json`);
-
-        if (args.write) {
-            const backupPath = backupFile(result.rebuildPath);
-            writeJson(result.rebuildPath, result.rows);
-            console.log(`  -> backup: ${path.relative(repoRoot, backupPath).replace(/\\/g, '/')}`);
-            console.log(`  -> escrito: ${path.relative(repoRoot, result.rebuildPath).replace(/\\/g, '/')}`);
-        }
-
-        writeJson(reportPath, result.report);
-        console.log(`  -> reporte: ${path.relative(repoRoot, reportPath).replace(/\\/g, '/')}`);
-
-        processed++;
-        changedRowsTotal += result.report.changed_rows;
-        changedFieldsTotal += result.report.changed_fields;
-    }
-
-    console.log('\n[summary]');
-    console.log(`  - models_processed: ${processed}`);
-    console.log(`  - changed_rows_total: ${changedRowsTotal}`);
-    console.log(`  - changed_fields_total: ${changedFieldsTotal}`);
-
-    return 0;
 }
 
-module.exports = { main };
+module.exports = { main, runEnrichAssets };
 
 if (require.main === module) {
     process.exitCode = main(process.argv) || 0;

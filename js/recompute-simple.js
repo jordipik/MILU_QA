@@ -12,6 +12,7 @@ const refs = {
     logPanel: document.getElementById('recomputeSimpleLogPanel'),
     btnImportPdf: document.getElementById('btnImportPdf'),
     btnSust: document.getElementById('btnSust'),
+    btnAssets: document.getElementById('btnAssets'),
     btnFinal: document.getElementById('btnFinal'),
     btnErrors: document.getElementById('btnErrors'),
     btnStatuses: document.getElementById('btnStatuses'),
@@ -23,6 +24,7 @@ const engineFileByModel = new Map();
 const actionButtons = [
     refs.btnImportPdf,
     refs.btnSust,
+    refs.btnAssets,
     refs.btnFinal,
     refs.btnErrors,
     refs.btnStatuses,
@@ -683,6 +685,49 @@ function renderResponseSummary(actionLabel, endpoint, responseData) {
         return;
     }
 
+    if (endpoint === '/api/recompute-simple/enrich-assets') {
+        const assets = data?.result || {};
+        const cards = [
+            { label: 'Motores procesados', value: String(Number(assets?.enginesProcessed) || 0) },
+            { label: 'Registros procesados', value: String(Number(assets?.recordsProcessed) || 0) },
+            { label: 'Fotos vinculadas', value: String(Number(assets?.photosLinked) || 0) },
+            { label: 'Esquemas vinculados', value: String(Number(assets?.schemasLinked) || 0) },
+            { label: 'Schema POS vinculados', value: String(Number(assets?.schemaPosLinked) || 0) },
+            { label: 'Filas actualizadas', value: String(Number(assets?.updatedRows) || 0) },
+            { label: 'Filas con faltantes', value: String(Number(assets?.missingAssets) || 0) },
+            { label: 'Backup creado', value: assets?.backupCreated ? 'si' : 'no' },
+            { label: 'Dry run', value: assets?.dryRun ? 'si' : 'no' }
+        ];
+
+        const details = Array.isArray(assets?.details) ? assets.details : [];
+        const rows = details.map((item) => [
+            String(item?.model || ''),
+            String(Number(item?.rowsTotal) || 0),
+            String(Number(item?.photosLinked) || 0),
+            String(Number(item?.schemasLinked) || 0),
+            String(Number(item?.schemaPosLinked) || 0),
+            String(Number(item?.updatedRows) || 0),
+            String(Number(item?.missingAssets) || 0),
+            String(item?.backupPath || '-')
+        ]);
+
+        const errors = Array.isArray(assets?.errors) ? assets.errors : [];
+        const warning = [
+            data?.ignoredId ? 'ID puntual ignorado para ASSETS en este alcance.' : '',
+            errors.length ? `Errores parciales: ${errors.map((item) => `${item?.model}: ${item?.error}`).join(' | ')}` : ''
+        ].filter(Boolean).join(' ');
+
+        renderResultPanel(
+            actionLabel,
+            endpoint,
+            cards,
+            ['Engine', 'Registros', 'Fotos', 'Esquemas', 'Schema POS', 'Actualizadas', 'Faltantes', 'Backup'],
+            rows,
+            warning
+        );
+        return;
+    }
+
     if (endpoint === '/api/pdf-preview/apply-to-engine') {
         const stats = data?.stats || {};
         const notFoundRows = Array.isArray(data?.not_found_rows) ? data.not_found_rows : [];
@@ -961,7 +1006,7 @@ async function loadEngines() {
 
 async function runImportPdf() {
     const scope = getScope();
-    if (scope.id) showIdIgnoredWarning('CREACIÓN JSON REBUILD');
+    if (scope.id) showIdIgnoredWarning('IMPORTAR PDF');
 
     const payload = {
         engine: scope.isAll ? 'ALL' : scope.model,
@@ -969,16 +1014,16 @@ async function runImportPdf() {
         backup: true
     };
 
-    setStatus(scope.isAll ? 'Ejecutando CREACIÓN JSON REBUILD para todos los libros...' : `Ejecutando CREACIÓN JSON REBUILD para ${scope.model}...`, '');
+    setStatus(scope.isAll ? 'Ejecutando IMPORTAR PDF para todos los libros...' : `Ejecutando IMPORTAR PDF para ${scope.model}...`, '');
     const data = await postJson('/api/recompute-simple/rebuild-json', payload, { allowPartial: true });
-    renderResponseSummary('CREACIÓN JSON REBUILD', '/api/recompute-simple/rebuild-json', data);
+    renderResponseSummary('IMPORTAR PDF', '/api/recompute-simple/rebuild-json', data);
 
     if (data?.ok === false || Number(data?.result?.modelsFailed) > 0) {
-        setStatus('CREACIÓN JSON REBUILD completado con incidencias. Revisa el panel de resultados.', 'warning');
+        setStatus('IMPORTAR PDF completado con incidencias. Revisa el panel de resultados.', 'warning');
         return;
     }
 
-    setStatus('CREACIÓN JSON REBUILD finalizado correctamente.', 'ok');
+    setStatus('IMPORTAR PDF finalizado correctamente.', 'ok');
 }
 
 async function runFinalCalculation() {
@@ -1013,6 +1058,29 @@ async function runUpdateSust() {
     renderResponseSummary('Actualizar GESA + SUST', '/api/recompute-simple/update-sust', sustData);
 
     setStatus('ACTUALIZAR GESA + SUST finalizado correctamente.', 'ok');
+}
+
+async function runAssets() {
+    const scope = getScope();
+    if (scope.id) showIdIgnoredWarning('ASSETS');
+
+    const payload = {
+        engine: scope.isAll ? 'ALL' : scope.model,
+        dryRun: false,
+        backup: true
+    };
+
+    setStatus(scope.isAll ? 'Ejecutando ASSETS para todos los libros...' : `Ejecutando ASSETS para ${scope.model}...`, '');
+    const data = await postJson('/api/recompute-simple/enrich-assets', payload, { allowPartial: true });
+    renderResponseSummary('ASSETS', '/api/recompute-simple/enrich-assets', data);
+
+    const hadErrors = Array.isArray(data?.result?.errors) && data.result.errors.length > 0;
+    if (hadErrors) {
+        setStatus('ASSETS finalizado con incidencias parciales. Revisa el panel de resultados.', 'warning');
+        return;
+    }
+
+    setStatus('ASSETS finalizado correctamente.', 'ok');
 }
 
 async function runErrors() {
@@ -1150,6 +1218,10 @@ function bindEvents() {
 
     if (refs.btnSust instanceof HTMLButtonElement) {
         refs.btnSust.addEventListener('click', () => runAction(runUpdateSust));
+    }
+
+    if (refs.btnAssets instanceof HTMLButtonElement) {
+        refs.btnAssets.addEventListener('click', () => runAction(runAssets));
     }
 
     if (refs.btnFinal instanceof HTMLButtonElement) {

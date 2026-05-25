@@ -11,6 +11,7 @@ const { updateRevisionStates, normalizeEngineToken } = require('./scripts/update
 const { runUpdateGesa } = require('./scripts/update_gesa_fields_from_excel');
 const { runUpdateSust } = require('./scripts/update_sust_fields');
 const { runRebuildFromPreview } = require('./scripts/rebuild_engine_from_book_preview');
+const { runEnrichAssets } = require('./scripts/enrich_rebuild_with_assets');
 const { runVisualCopyComparison, applyCanonicalPdfCopyToRow } = require('./scripts/qa_pdf_visual_copy');
 const { runPdfVisualCopyBatch } = require('./server/services/pdf-copy-batch');
 const { createRevisionSyncService } = require('./server/services/revision-sync');
@@ -643,6 +644,61 @@ app.post('/api/recompute-simple/update-sust', async (req, res) => {
             ok: true,
             result,
             ignoredId: Boolean(id)
+        });
+    } catch (error) {
+        return res.status(500).json({
+            ok: false,
+            error: String(error?.message || error || 'Error desconocido')
+        });
+    }
+});
+
+app.post('/api/recompute-simple/enrich-assets', async (req, res) => {
+    let engine;
+    let id;
+    let dryRun;
+    let backup;
+
+    try {
+        assertPayloadSize(req.body, { maxBytes: 12288 });
+        engine = assertString(req.body?.engine ?? 'ALL', { field: 'engine', allowEmpty: false, maxLength: 64 });
+        id = assertString(req.body?.id ?? '', { field: 'id', allowEmpty: true, maxLength: 128 });
+        dryRun = assertBooleanLike(req.body?.dryRun ?? false, 'dryRun');
+        backup = req.body?.backup === false ? false : true;
+
+        const normalizedEngine = normalizeEngineToken(engine);
+        if (!normalizedEngine) {
+            throw validationError({ code: 'INVALID_ENGINE', field: 'engine', message: 'engine es obligatorio' });
+        }
+    } catch (error) {
+        return isValidationError(error)
+            ? sendValidationError(res, error, { endpoint: '/api/recompute-simple/enrich-assets' })
+            : res.status(400).json({ ok: false, error: String(error?.message || error) });
+    }
+
+    try {
+        const normalizedEngine = normalizeEngineToken(engine);
+        const result = runEnrichAssets({
+            rootDir: __dirname,
+            mode: 'engine',
+            engine: normalizedEngine,
+            all: normalizedEngine === 'ALL',
+            write: !dryRun,
+            logger: console.log
+        });
+
+        const hasErrors = Array.isArray(result?.errors) && result.errors.length > 0;
+        const statusCode = hasErrors ? 207 : 200;
+
+        return res.status(statusCode).json({
+            ok: !hasErrors,
+            result,
+            ignoredId: Boolean(id),
+            notes: {
+                backupRequested: backup,
+                backupForcedOnWrite: !dryRun,
+                backupAlwaysOnWrite: true
+            }
         });
     } catch (error) {
         return res.status(500).json({

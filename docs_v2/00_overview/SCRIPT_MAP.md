@@ -14,6 +14,8 @@ Inventario de scripts y endpoints, con estado oficial/legacy validado en el codi
 | `apply_all_book_previews.py` | Python | `POST /api/pdf-preview/apply-to-engine` (todos) | Ejecuta apply en lote | OFFICIAL |
 | `POST /api/pdf-preview/apply-to-engine` | Backend | UI recompute (`btnImportPdf`, `recomputeCopyBookBtn`) | Ejecuta scripts apply con `--write --overwrite` | OFFICIAL |
 | `POST /copy-pdf-to-final-all-books` | Backend | UI recompute (`btnFinal`, `recomputeCalculateFinalBtn`) | Calcula `*_final` con `FINAL_FIELDS_V1_MAPPINGS_BACKEND` | OFFICIAL |
+| `scripts/enrich_rebuild_with_assets.js` (`--mode engine`) | Node runtime | `POST /api/recompute-simple/enrich-assets` | Enriquecimiento multimedia sobre `engine_<MODEL>.json` (fotos/esquemas/esquemas_pos) | OFFICIAL |
+| `POST /api/recompute-simple/enrich-assets` | Backend | UI recompute (`btnAssets`) | Ejecuta assets en modo engine con backup en write | OFFICIAL |
 | `scripts/update_gesa_fields_from_excel.js` | Node offline | Ejecucion manual (`node scripts/update_gesa_fields_from_excel.js [--only <MODEL>] [--write]`) | Actualiza solo campos GESA por match exacto `PART NUMBER == pn_final`, con backup por engine | OFFICIAL OFFLINE |
 | `POST /calculate-final-fields` + `copy_gesa_fields_to_final.py` | Backend + Python | Llamada legacy | Ruta heredada de final fields | LEGACY |
 | `recompute_engine_errors.js` | Node | `POST /recompute-qa-errors` | Recalcula `*_error`, `total_error`, `has_error` y opcion QA | OFFICIAL |
@@ -63,6 +65,8 @@ Validacion sintetica de pagina `669`:
 ## Botones UI auditados
 - `recompute_simple.html`
 	- `btnImportPdf` -> `POST /api/pdf-preview/apply-to-engine`
+	- `btnSust` -> `POST /api/recompute-simple/update-gesa` + `POST /api/recompute-simple/update-sust`
+	- `btnAssets` -> `POST /api/recompute-simple/enrich-assets`
 	- `btnFinal` -> `POST /copy-pdf-to-final-all-books`
 	- `btnErrors` -> `POST /recompute-qa-errors`
 	- `btnStatuses` -> `POST /api/recompute-simple/update-states`

@@ -26,22 +26,31 @@ Consolidar el pipeline oficial de MILU V1 segun codigo real actual (frontend, ba
    - Endpoint oficial: `POST /api/pdf-preview/apply-to-engine`.
    - Artefacto oficial previo: `book_preview_<MODEL>.json` generado por `js/import-pdf.js`.
    - Scripts: `apply_book_preview_to_engine.py` (libro) o `apply_all_book_previews.py` (todos).
-2. CALCULO FINAL
+2. GESA SUST
+   - UI principal: `recompute_simple.html` (`btnSust`).
+   - Endpoints oficiales: `POST /api/recompute-simple/update-gesa` y `POST /api/recompute-simple/update-sust`.
+   - Aplica enriquecimiento GESA y SUST sobre `engine_<MODEL>.json`.
+3. ASSETS
+   - UI principal: `recompute_simple.html` (`btnAssets`).
+   - Endpoint oficial: `POST /api/recompute-simple/enrich-assets`.
+   - Ejecuta `scripts/enrich_rebuild_with_assets.js` en modo `engine` para actualizar:
+     - `filename_foto`, `ruta_foto`, `esquemas`, `esquemas_circulos`, `esquemas_circulos_all`, `ruta_esquemas_pos`, `exp_imagenes`.
+4. CALCULO FINAL
    - UI principal: `recompute_simple.html` (`btnFinal`) y modal de `analista_02.html` (`recomputeCalculateFinalBtn`).
    - Endpoint oficial: `POST /copy-pdf-to-final-all-books`.
    - Motor de reglas: `FINAL_FIELDS_V1_MAPPINGS_BACKEND` en `server.js`.
-3. ERRORES
+5. ERRORES
    - UI principal: `recompute_simple.html` (`btnErrors`) y modal de `analista_02.html` (`recomputeRunBtn`).
    - Endpoint oficial: `POST /recompute-qa-errors`.
    - Script Node: `recompute_engine_errors.js`.
-4. ESTADOS
+6. ESTADOS
    - UI principal: `recompute_simple.html` (`btnStatuses`) y modal de `analista_02.html` (`recomputeRevisionStatusBtn`).
    - Endpoint recomendado: `POST /api/recompute-simple/update-states` (script `scripts/update_revision_states.js`).
    - Endpoint coexistente: `POST /recalculate-revision-status`.
-5. REVISION REMOTA Y APLICACION
+7. REVISION REMOTA Y APLICACION
    - `GET/POST /qa_revision_sync.php` (persistencia en `qa_revision_server_data.json`).
    - `POST /apply-revision-to-engines`.
-6. EXPORT
+8. EXPORT
    - Endpoint oficial: `POST /export/run-wordpress`.
 
 ## Pipeline oficial de rebuild (offline, separado del runtime)
@@ -60,19 +69,29 @@ Este pipeline trabaja sobre `data/02-engine_rebuild/engine_rebuild_<MODEL>.json`
      - `data/02-engine_rebuild/assets_report_<MODEL>.json`.
 
 Comandos oficiales de Fase Assets:
-- `node scripts/enrich_rebuild_with_assets.js --engine <MODEL> --dry-run`
-- `node scripts/enrich_rebuild_with_assets.js --engine <MODEL> --write`
-- `node scripts/enrich_rebuild_with_assets.js --all --dry-run`
-- `node scripts/enrich_rebuild_with_assets.js --all --write`
+- rebuild:
+   - `node scripts/enrich_rebuild_with_assets.js --mode rebuild --engine <MODEL> --dry-run`
+   - `node scripts/enrich_rebuild_with_assets.js --mode rebuild --engine <MODEL> --write`
+   - `node scripts/enrich_rebuild_with_assets.js --mode rebuild --all --dry-run`
+   - `node scripts/enrich_rebuild_with_assets.js --mode rebuild --all --write`
+- engine (runtime):
+   - `node scripts/enrich_rebuild_with_assets.js --mode engine --engine <MODEL> --dry-run`
+   - `node scripts/enrich_rebuild_with_assets.js --mode engine --engine <MODEL> --write`
+   - `node scripts/enrich_rebuild_with_assets.js --mode engine --all --dry-run`
+   - `node scripts/enrich_rebuild_with_assets.js --mode engine --all --write`
 
 Garantias de separacion:
-- No toca `engine_<MODEL>.json`.
+- En `mode rebuild` no toca `engine_<MODEL>.json`.
+- En `mode engine` toca solo `engine_<MODEL>.json` (raiz) y crea backup `engine_<MODEL>.json.bak.<timestamp>`.
 - No ejecuta ni altera export WordPress (`POST /export/run-wordpress`).
-- Escribe solo en `data/02-engine_rebuild/` y genera backup en modo `--write`.
+- En `mode rebuild` escribe solo en `data/02-engine_rebuild/` y genera backup en modo `--write`.
 
 ## Endpoints oficiales vs legacy relevantes
 - Oficiales actuales:
   - `POST /api/pdf-preview/apply-to-engine`
+   - `POST /api/recompute-simple/update-gesa`
+   - `POST /api/recompute-simple/update-sust`
+   - `POST /api/recompute-simple/enrich-assets`
   - `POST /copy-pdf-to-final-all-books`
   - `POST /recompute-qa-errors`
   - `POST /api/recompute-simple/update-states`
