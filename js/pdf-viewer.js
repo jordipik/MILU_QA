@@ -3615,6 +3615,17 @@ function isLikelyDesignationText(text) {
     return false;
 }
 
+function isLikelyShortDesignationTail(text) {
+    if (!text) return false;
+    const t = String(text).trim();
+    if (!t || t.length > 24) return false;
+    if (isLikelyPartNumber(t)) return false;
+    if (/^\d+[\d,\.]*\s*(?:g|kg|pc|pcs|ea|lb|lbs)?$/i.test(t)) return false;
+    if (t.split(/\s+/).every((tok) => isLikelyFnToken(tok))) return false;
+    if (!/[A-Z]/i.test(t)) return false;
+    return true;
+}
+
 const PDF_ALLOWED_FN_CODES = new Set([
     'AB',
     'AC',
@@ -4162,7 +4173,7 @@ function splitPartNoDesignationCombinedRect(text, rect, columns) {
     const designationText = (match[2] || '').trim();
     if (!pnText || !designationText) return null;
     if (!isLikelyPartNumber(pnText)) return null;
-    if (!isLikelyDesignationText(designationText)) return null;
+    if (!isLikelyDesignationText(designationText) && !isLikelyShortDesignationTail(designationText)) return null;
 
     // Evitar falsos positivos (solo unidades/peso/FN al final)
     if (/^(?:g|kg|pc|pcs|ea|lb|lbs)$/i.test(designationText)) return null;
@@ -4178,10 +4189,13 @@ function splitPartNoDesignationCombinedRect(text, rect, columns) {
     const rectRight = rect.left + rect.width;
     const crossesBoundary = rect.left < designationColumn.x0 && rectRight > designationColumn.x0;
     const overlapBoth = partNoOverlap >= 0.1 && designationOverlap >= 0.1;
-    if (!crossesBoundary && !overlapBoth) return null;
+    const startsInDesignation = rect.left >= designationColumn.x0 - 4;
+    if (!crossesBoundary && !overlapBoth && !startsInDesignation) return null;
 
     const splitRatio = Math.max(0.2, Math.min(0.8, pnText.length / Math.max(1, raw.length)));
-    const splitMethod = 'proportional';
+    const splitMethod = startsInDesignation && !crossesBoundary && !overlapBoth
+        ? 'designation-start'
+        : 'proportional';
     const smallGap = 1;
     let splitX = rect.left + rect.width * splitRatio;
     splitX = Math.max(rect.left + 8, Math.min(rectRight - 8, splitX));

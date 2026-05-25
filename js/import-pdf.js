@@ -273,8 +273,34 @@ function stripTrailingQtyFromDesignation(designation, qty) {
     return rawDesignation;
 }
 
+function looksLikeExtractedPartNumberToken(value) {
+    const token = normalizeString(value).toUpperCase();
+    if (!token || /\s/.test(token)) return false;
+    if (/^X00[A-Z0-9./-]+$/.test(token)) return true;
+    if (/^000[A-Z0-9./-]+$/.test(token)) return true;
+    if (/\d{6,}/.test(token)) return true;
+    return false;
+}
+
+function extractLeadingPnFromDesignation(designationValue, pnValue = '') {
+    const currentPn = normalizeString(pnValue);
+    const designation = normalizeString(designationValue);
+    if (currentPn || !designation) return { pn: currentPn, designation };
+
+    const match = designation.match(/^([A-Z0-9][A-Z0-9./-]{5,})\s+(.+)$/i);
+    if (!match) return { pn: currentPn, designation };
+
+    const candidatePn = normalizeString(match[1]);
+    const rest = normalizeString(match[2]);
+    if (!looksLikeExtractedPartNumberToken(candidatePn) || !rest) {
+        return { pn: currentPn, designation };
+    }
+
+    return { pn: candidatePn, designation: rest };
+}
+
 function normalizePdfReadFieldAlignment(values) {
-    return {
+    const normalized = {
         pos_pdf: normalizeString(values?.pos_pdf),
         pn_pdf: normalizeString(values?.pn_pdf),
         designation_pdf: normalizeString(values?.designation_pdf),
@@ -286,6 +312,12 @@ function normalizePdfReadFieldAlignment(values) {
         measure_pdf: normalizeString(values?.measure_pdf),
         norma_pdf: normalizeString(values?.norma_pdf)
     };
+
+    const repairedPnDesignation = extractLeadingPnFromDesignation(normalized.designation_pdf, normalized.pn_pdf);
+    normalized.pn_pdf = repairedPnDesignation.pn;
+    normalized.designation_pdf = repairedPnDesignation.designation;
+
+    return normalized;
 }
 
 function groupMarkedPdfRectsByRow(rectDebug = [], tolerance = 8) {
