@@ -26,6 +26,32 @@ Consolidar el pipeline oficial de MILU V1 segun codigo real actual (frontend, ba
 6. EXPORT
    - Endpoint oficial: `POST /export/run-wordpress`.
 
+## Pipeline oficial de rebuild (offline, separado del runtime)
+Este pipeline trabaja sobre `data/output/rebuild/engine_rebuild_<MODEL>.json` y no modifica `engine_<MODEL>.json`.
+
+1. REBUILD BASE
+   - Script: `scripts/rebuild_engine_from_book_preview.js`.
+   - Salida: `data/output/rebuild/engine_rebuild_<MODEL>.json`.
+2. ENRICH GESA/SUST SOBRE REBUILD
+   - Script: `scripts/enrich_rebuild_with_gesa_sust.js`.
+3. ENRICH ASSETS VISUALES SOBRE REBUILD
+   - Script: `scripts/enrich_rebuild_with_assets.js`.
+   - Assets fuente: `fotos_articulos/`, `esquemas/`, `esquemas_pos_circulos/`.
+   - Salidas:
+     - `data/output/rebuild/engine_rebuild_<MODEL>.json` enriquecido.
+     - `data/output/rebuild/assets_report_<MODEL>.json`.
+
+Comandos oficiales de Fase Assets:
+- `node scripts/enrich_rebuild_with_assets.js --engine <MODEL> --dry-run`
+- `node scripts/enrich_rebuild_with_assets.js --engine <MODEL> --write`
+- `node scripts/enrich_rebuild_with_assets.js --all --dry-run`
+- `node scripts/enrich_rebuild_with_assets.js --all --write`
+
+Garantias de separacion:
+- No toca `engine_<MODEL>.json`.
+- No ejecuta ni altera export WordPress (`POST /export/run-wordpress`).
+- Escribe solo en `data/output/rebuild/` y genera backup en modo `--write`.
+
 ## Endpoints oficiales vs legacy relevantes
 - Oficiales actuales:
   - `POST /api/pdf-preview/apply-to-engine`

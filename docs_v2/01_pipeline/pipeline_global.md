@@ -7,11 +7,14 @@ Resumir el pipeline operativo real de MILU V1 por motor, sin asumir flujos histo
 - PDF por motor.
 - `book_preview_*.json`.
 - `engine_*.json`.
+- `data/output/rebuild/engine_rebuild_<MODEL>.json` (pipeline rebuild offline).
 - `EXCEL_GESA2026.json` (cuando se ejecuta actualizacion OFFLINE de campos GESA).
 
 ## Outputs
 - `engine_*.json` consolidados para QA y export.
 - Export WordPress en `data/output/wordpress/`.
+- Rebuild enriquecido por assets en `data/output/rebuild/engine_rebuild_<MODEL>.json`.
+- Reporte de assets por rebuild en `data/output/rebuild/assets_report_<MODEL>.json`.
 
 ## UIs activas de recompute
 - `recompute_simple.html` (flujo operativo principal por pasos).
@@ -39,6 +42,27 @@ Resumir el pipeline operativo real de MILU V1 por motor, sin asumir flujos histo
 
 ## Campos afectados
 - `_pdf`, `_final`, `_error`, QA, y campos de export visual.
+
+## Pipeline rebuild (offline, separado)
+Objetivo: enriquecer visualmente `engine_rebuild_<MODEL>.json` sin tocar `engine_<MODEL>.json` ni export WordPress.
+
+Pasos oficiales:
+1. Construccion de rebuild por modelo: `scripts/rebuild_engine_from_book_preview.js`.
+2. Enriquecimiento GESA/SUST sobre rebuild: `scripts/enrich_rebuild_with_gesa_sust.js`.
+3. Enriquecimiento visual de assets sobre rebuild: `scripts/enrich_rebuild_with_assets.js`.
+
+Comandos oficiales de assets:
+- `node scripts/enrich_rebuild_with_assets.js --engine <MODEL> --dry-run`
+- `node scripts/enrich_rebuild_with_assets.js --engine <MODEL> --write`
+- `node scripts/enrich_rebuild_with_assets.js --all --dry-run`
+- `node scripts/enrich_rebuild_with_assets.js --all --write`
+
+Reglas operativas de este paso:
+- `--dry-run` no escribe.
+- `--write` crea backup `engine_rebuild_<MODEL>.json.bak.<timestamp>`.
+- Escribe solo en `data/output/rebuild/`.
+- No modifica `engine_<MODEL>.json`.
+- No ejecuta ni modifica export WordPress.
 
 ## Flujo paso a paso
 1. Extraccion PDF genera `book_preview_<MODEL>.json` en `import_pdf.html`.
