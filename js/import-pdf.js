@@ -37,6 +37,39 @@ const PREVIEW_COLUMNS = [
 ];
 
 let currentPreviewPayload = null;
+let importPdfTopbarResizeObserver = null;
+
+function syncImportPdfTopbarOffset() {
+    const body = document.body;
+    if (!(body instanceof HTMLBodyElement)) return;
+
+    const topbar = document.querySelector('header.a2-topbar');
+    const topbarHeight = topbar instanceof HTMLElement
+        ? Math.ceil(topbar.getBoundingClientRect().height)
+        : 0;
+
+    // Deja un margen visual pequeño bajo el topbar para que el visor respire.
+    const offset = Math.max(88, topbarHeight + 10);
+    body.style.setProperty('--importpdf-topbar-offset', `${offset}px`);
+}
+
+function initImportPdfViewportSync() {
+    syncImportPdfTopbarOffset();
+    window.addEventListener('resize', syncImportPdfTopbarOffset);
+
+    const topbar = document.querySelector('header.a2-topbar');
+    if (!(topbar instanceof HTMLElement) || typeof ResizeObserver === 'undefined') return;
+
+    if (importPdfTopbarResizeObserver) {
+        importPdfTopbarResizeObserver.disconnect();
+        importPdfTopbarResizeObserver = null;
+    }
+
+    importPdfTopbarResizeObserver = new ResizeObserver(() => {
+        syncImportPdfTopbarOffset();
+    });
+    importPdfTopbarResizeObserver.observe(topbar);
+}
 
 function normalizeString(value) {
     return String(value ?? '').trim().replace(/\s+/g, ' ');
@@ -1349,6 +1382,7 @@ function bindEvents() {
 }
 
 function init() {
+    initImportPdfViewportSync();
     populateEngineSelect();
     initPdfZoomControls();
     bindEvents();
