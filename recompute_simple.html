@@ -187,11 +187,6 @@
     </script>
 
     <main class="recompute-simple-wrap">
-        <header class="recompute-simple-head">
-            <h1>Recompute MILU Simple</h1>
-            <p>Página independiente para ejecutar recálculos oficiales por libro o todos los libros.</p>
-        </header>
-
         <section class="recompute-simple-controls" aria-label="Filtros de alcance">
             <div class="recompute-simple-field">
                 <label for="bookSelect">Libro</label>
@@ -209,24 +204,25 @@
                 <h3>
                     <span class="a2-step-index">1</span>
                     <div>
-                        <span class="a2-step-title">Importar de PDF</span>
+                        <span class="a2-step-title">Extract de PDF</span>
                         <p class="a2-step-desc">POST /api/pdf-preview/apply-to-engine</p>
                         <p class="a2-step-desc">El ID puntual no aplica a este paso.</p>
                     </div>
                 </h3>
-                <button id="btnImportPdf" type="button">IMPORTAR PDF</button>
+                <button id="btnImportPdf" type="button">EXTRACT PDF</button>
             </article>
 
             <article class="a2-recompute-card" aria-label="Actualizar campos SUST desde EXCEL_SUSTITUCION">
                 <h3>
                     <span class="a2-step-index">2</span>
                     <div>
-                        <span class="a2-step-title">Actualizar SUST</span>
+                        <span class="a2-step-title">Actualizar GESA + SUST</span>
+                        <p class="a2-step-desc">POST /api/recompute-simple/update-gesa</p>
                         <p class="a2-step-desc">POST /api/recompute-simple/update-sust</p>
-                        <p class="a2-step-desc">No toca campos PDF, FINAL, ERRORES ni QA.</p>
+                        <p class="a2-step-desc">Ejecuta GESA y luego SUST. No toca PDF/FINAL/ERRORES/QA.</p>
                     </div>
                 </h3>
-                <button id="btnSust" type="button">ACTUALIZAR SUST</button>
+                <button id="btnSust" type="button">ACTUALIZAR GESA + SUST</button>
             </article>
 
             <article class="a2-recompute-card" aria-label="Calcular campos FINAL desde GESA">

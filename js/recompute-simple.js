@@ -605,6 +605,39 @@ function renderResponseSummary(actionLabel, endpoint, responseData) {
         return;
     }
 
+    if (endpoint === '/api/recompute-simple/update-gesa') {
+        const cards = [
+            { label: 'Modo', value: String(result?.mode || '-') },
+            { label: 'Motores procesados', value: String(Number(result?.enginesProcesados) || 0) },
+            { label: 'Registros escaneados', value: String(Number(result?.registrosEscaneados) || 0) },
+            { label: 'Matches GESA', value: String(Number(result?.matchesGesa) || 0) },
+            { label: 'No encontrados', value: String(Number(result?.noEncontrados) || 0) },
+            { label: 'Registros modificados', value: String(Number(result?.registrosModificados) || 0) },
+            { label: 'Backups', value: String(Number(result?.backupsCreados) || 0) }
+        ];
+
+        const perEngine = Array.isArray(result?.engineDetails) ? result.engineDetails : [];
+        const rows = perEngine.map((item) => [
+            String(item?.engine || ''),
+            String(Number(item?.scanned) || 0),
+            String(Number(item?.matches) || 0),
+            String(Number(item?.noMatches) || 0),
+            String(Number(item?.modified) || 0),
+            item?.wroteFile ? 'si' : 'no',
+            String(item?.backup || '-')
+        ]);
+
+        renderResultPanel(
+            actionLabel,
+            endpoint,
+            cards,
+            ['Engine', 'Escaneados', 'Matches', 'No match', 'Modificados', 'Escrito', 'Backup'],
+            rows,
+            data?.ignoredId ? 'ID puntual ignorado para ACTUALIZAR GESA en este alcance.' : ''
+        );
+        return;
+    }
+
     if (endpoint === '/api/pdf-preview/apply-to-engine') {
         const stats = data?.stats || {};
         const notFoundRows = Array.isArray(data?.not_found_rows) ? data.not_found_rows : [];
@@ -870,40 +903,40 @@ async function loadEngines() {
 
 async function runImportPdf() {
     const scope = getScope();
-    if (scope.id) showIdIgnoredWarning('IMPORTAR PDF');
+    if (scope.id) showIdIgnoredWarning('EXTRACT PDF');
 
     const payload = scope.isAll ? {} : { engine: scope.model };
 
-    setStatus(scope.isAll ? 'Importando PDF para todos los libros...' : `Importando PDF para ${scope.model}...`, '');
+    setStatus(scope.isAll ? 'Ejecutando EXTRACT PDF para todos los libros...' : `Ejecutando EXTRACT PDF para ${scope.model}...`, '');
     let data = await postJson('/api/pdf-preview/apply-to-engine', payload);
-    renderResponseSummary('Importar de PDF', '/api/pdf-preview/apply-to-engine', data);
+    renderResponseSummary('Extract de PDF', '/api/pdf-preview/apply-to-engine', data);
 
     const conflicts = Array.isArray(data?.action_required_conflicts) ? data.action_required_conflicts : [];
     if (conflicts.length && !scope.isAll) {
         setStatus(`Se detectaron ${conflicts.length} conflicto(s) ambiguos. Esperando decisiones...`, 'warning');
-        appendLog('[IMPORTAR PDF] Conflictos ambiguos detectados', conflicts);
+        appendLog('[EXTRACT PDF] Conflictos ambiguos detectados', conflicts);
 
         const decisionResult = await requestImportConflictDecisions(conflicts);
         if (decisionResult?.cancelled) {
-            setStatus('IMPORTAR PDF cancelado por el usuario durante la resolución de conflictos.', 'warning');
-            appendLog('[IMPORTAR PDF] Resolución de conflictos cancelada por usuario.');
+            setStatus('EXTRACT PDF cancelado por el usuario durante la resolución de conflictos.', 'warning');
+            appendLog('[EXTRACT PDF] Resolución de conflictos cancelada por usuario.');
             return;
         }
 
         const conflictDecisions = decisionResult?.decisions || {};
         const decisionsCount = Object.keys(conflictDecisions).length;
         if (decisionsCount > 0) {
-            setStatus('Reejecutando IMPORTAR PDF con decisiones manuales...', '');
-            appendLog('[IMPORTAR PDF] Reintento con decisiones', conflictDecisions);
+            setStatus('Reejecutando EXTRACT PDF con decisiones manuales...', '');
+            appendLog('[EXTRACT PDF] Reintento con decisiones', conflictDecisions);
             data = await postJson('/api/pdf-preview/apply-to-engine', {
                 engine: scope.model,
                 conflictDecisions
             });
-            renderResponseSummary('Importar de PDF', '/api/pdf-preview/apply-to-engine', data);
+            renderResponseSummary('Extract de PDF', '/api/pdf-preview/apply-to-engine', data);
         }
     }
 
-    setStatus('IMPORTAR PDF finalizado correctamente.', 'ok');
+    setStatus('EXTRACT PDF finalizado correctamente.', 'ok');
 }
 
 async function runFinalCalculation() {
@@ -920,7 +953,7 @@ async function runFinalCalculation() {
 
 async function runUpdateSust() {
     const scope = getScope();
-    if (scope.id) showIdIgnoredWarning('ACTUALIZAR SUST');
+    if (scope.id) showIdIgnoredWarning('ACTUALIZAR GESA + SUST');
 
     const payload = {
         engine: scope.isAll ? 'ALL' : scope.model,
@@ -929,10 +962,15 @@ async function runUpdateSust() {
         dryRun: false
     };
 
+    setStatus(scope.isAll ? 'Actualizando GESA para todos los libros...' : `Actualizando GESA para ${scope.model}...`, '');
+    const gesaData = await postJson('/api/recompute-simple/update-gesa', payload);
+    renderResponseSummary('Actualizar GESA', '/api/recompute-simple/update-gesa', gesaData);
+
     setStatus(scope.isAll ? 'Actualizando SUST para todos los libros...' : `Actualizando SUST para ${scope.model}...`, '');
-    const data = await postJson('/api/recompute-simple/update-sust', payload);
-    renderResponseSummary('Actualizar SUST', '/api/recompute-simple/update-sust', data);
-    setStatus('ACTUALIZAR SUST finalizado correctamente.', 'ok');
+    const sustData = await postJson('/api/recompute-simple/update-sust', payload);
+    renderResponseSummary('Actualizar GESA + SUST', '/api/recompute-simple/update-sust', sustData);
+
+    setStatus('ACTUALIZAR GESA + SUST finalizado correctamente.', 'ok');
 }
 
 async function runErrors() {

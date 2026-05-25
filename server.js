@@ -8,6 +8,7 @@ const cors = require('cors');
 const { ENGINE_JSON_FILES } = require('./engine_files');
 const { recomputeEngineErrors, recomputeAllEngineErrors } = require('./recompute_engine_errors');
 const { updateRevisionStates, normalizeEngineToken } = require('./scripts/update_revision_states');
+const { runUpdateGesa } = require('./scripts/update_gesa_fields_from_excel');
 const { runUpdateSust } = require('./scripts/update_sust_fields');
 const { runVisualCopyComparison, applyCanonicalPdfCopyToRow } = require('./scripts/qa_pdf_visual_copy');
 const { runPdfVisualCopyBatch } = require('./server/services/pdf-copy-batch');
@@ -592,6 +593,56 @@ app.post('/api/recompute-simple/update-states', async (req, res) => {
 
         const statusCode = result.ok ? 200 : 207;
         return res.status(statusCode).json(result);
+    } catch (error) {
+        return res.status(500).json({
+            ok: false,
+            error: String(error?.message || error || 'Error desconocido')
+        });
+    }
+});
+
+app.post('/api/recompute-simple/update-gesa', async (req, res) => {
+    let engine;
+    let id;
+    let backup;
+    let dryRun;
+
+    try {
+        assertPayloadSize(req.body, { maxBytes: 12288 });
+        engine = assertString(req.body?.engine ?? 'ALL', { field: 'engine', allowEmpty: false, maxLength: 64 });
+        id = assertString(req.body?.id ?? '', { field: 'id', allowEmpty: true, maxLength: 128 });
+        backup = req.body?.backup === false ? false : true;
+        dryRun = assertBooleanLike(req.body?.dryRun ?? false, 'dryRun');
+
+        const normalizedEngine = normalizeEngineToken(engine);
+        if (!normalizedEngine) {
+            throw validationError({ code: 'INVALID_ENGINE', field: 'engine', message: 'engine es obligatorio' });
+        }
+
+        if (normalizedEngine === 'ALL' && id) {
+            throw validationError({ code: 'ID_NOT_ALLOWED_FOR_ALL_SCOPE', field: 'id', message: 'engine=ALL no admite id puntual' });
+        }
+    } catch (error) {
+        return isValidationError(error)
+            ? sendValidationError(res, error, { endpoint: '/api/recompute-simple/update-gesa' })
+            : res.status(400).json({ ok: false, error: String(error?.message || error) });
+    }
+
+    try {
+        const normalizedEngine = normalizeEngineToken(engine);
+        const result = runUpdateGesa({
+            engine: normalizedEngine,
+            all: normalizedEngine === 'ALL',
+            write: !dryRun,
+            backup,
+            rootDir: __dirname
+        });
+
+        return res.json({
+            ok: true,
+            result,
+            ignoredId: Boolean(id)
+        });
     } catch (error) {
         return res.status(500).json({
             ok: false,

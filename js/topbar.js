@@ -140,9 +140,9 @@ function initBackendStatusMonitor() {
 export function createTopbar(page) {
     const pages = {
         importpdf: {
-            title: 'Import PDF experimental',
-            subtitle: 'Extracción visual por página, solo lectura y preview JSON reutilizando el flujo PDF actual.',
-            active: 'IMPORT PDF'
+            title: 'Extract de PDF',
+            subtitle: 'Extract visual por página, solo lectura y preview JSON reutilizando el flujo PDF actual.',
+            active: 'EXTRACT'
         },
         pdf: {
             title: 'Panel de revisión visual',
@@ -203,7 +203,7 @@ export function createTopbar(page) {
             </div>
         </div>
         <nav class="a2-nav" aria-label="Navegacion">
-            <a href="${getNavTargetHref('importpdf')}" data-page="importpdf" class="${pageConfig.active === 'IMPORT PDF' ? 'active' : ''}">IMPORT PDF</a>
+            <a href="${getNavTargetHref('importpdf')}" data-page="importpdf" class="${pageConfig.active === 'EXTRACT' ? 'active' : ''}">EXTRACT</a>
             <a href="${getNavTargetHref('pdf')}" data-page="pdf" class="${pageConfig.active === 'PDF' ? 'active' : ''}">PDF</a>
             <a href="${getNavTargetHref('analisis')}" data-page="analisis" class="${pageConfig.active === 'ANALISIS' ? 'active' : ''}">ANALISIS</a>
             <a href="${appUrl('/recompute_simple.html')}" data-page="recompute" class="${pageConfig.active === 'RECOMPUTE' ? 'active' : ''}">RECOMPUTE</a>
