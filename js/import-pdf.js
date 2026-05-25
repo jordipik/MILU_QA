@@ -475,6 +475,73 @@ function countWarnings(rows = []) {
     return rows.reduce((total, row) => total + (Array.isArray(row?.warnings) ? row.warnings.length : 0), 0);
 }
 
+function isRowMissingPosPnWithDesignation(row = {}) {
+    return !normalizeString(row?.pos_pdf)
+        && !normalizeString(row?.pn_pdf)
+        && Boolean(normalizeString(row?.designation_pdf));
+}
+
+function rowHasStructuredDataForMultilineMerge(row = {}) {
+    const structuredKeys = [
+        'qty_pdf',
+        'units_pdf',
+        'weight_pdf',
+        'fn_pdf',
+        'measure_pdf',
+        'norma_pdf',
+        'model_type_pdf'
+    ];
+
+    return structuredKeys.some((key) => Boolean(normalizeString(row?.[key])));
+}
+
+function isValidPreviousRowForMultilineMerge(row = {}) {
+    return Boolean(normalizeString(row?.pos_pdf) || normalizeString(row?.pn_pdf));
+}
+
+function getCarryableWarningsFromMergedRow(row = {}) {
+    const localOnlyWarnings = new Set([
+        'pn-missing',
+        'pos-missing',
+        'designation-missing',
+        'low-confidence'
+    ]);
+
+    const warnings = Array.isArray(row?.warnings) ? row.warnings : [];
+    return warnings.filter((warning) => !localOnlyWarnings.has(String(warning || '').trim()));
+}
+
+function mergeMultilineDesignationRows(rows = [], sourcePage = 0) {
+    const normalizedRows = [];
+
+    rows.forEach((currentRow) => {
+        const previousRow = normalizedRows[normalizedRows.length - 1] || null;
+        const canMergeCurrentRow = isRowMissingPosPnWithDesignation(currentRow)
+            && !rowHasStructuredDataForMultilineMerge(currentRow)
+            && isValidPreviousRowForMultilineMerge(previousRow);
+
+        if (!canMergeCurrentRow) {
+            normalizedRows.push(currentRow);
+            return;
+        }
+
+        const previousDesignation = normalizeString(previousRow?.designation_pdf);
+        const currentDesignation = normalizeString(currentRow?.designation_pdf);
+        previousRow.designation_pdf = normalizeString(`${previousDesignation} ${currentDesignation}`);
+
+        const mergedWarnings = [
+            ...(Array.isArray(previousRow?.warnings) ? previousRow.warnings : []),
+            ...getCarryableWarningsFromMergedRow(currentRow),
+            'merged-multiline-designation'
+        ];
+        previousRow.warnings = Array.from(new Set(mergedWarnings));
+
+        console.info(`[PDF multiline merge] page=${sourcePage || 0} row=${Number(currentRow?.row_index || 0)} into previous row`);
+    });
+
+    return normalizedRows;
+}
+
 function getSelectedEngineModel() {
     const select = $('engineSelect');
     return select instanceof HTMLSelectElement ? String(select.value || '').trim() : '';
@@ -734,12 +801,13 @@ async function extractAllPdfRowsFromCurrentPage(options = {}) {
     }
 
     const sourcePage = Number(getSelectedPageNumber() || 0);
-    const rows = rowGroups.map((group, index) => buildPdfPageRowPreviewFromGroup(group, {
+    const rawRows = rowGroups.map((group, index) => buildPdfPageRowPreviewFromGroup(group, {
         sourcePage,
         rowIndex: index + 1,
         bomPdf,
         fgFgsPdf
     }));
+    const rows = mergeMultilineDesignationRows(rawRows, sourcePage);
 
     const headerDebug = getPdfHeaderColumnBodyDebug();
     const detectedHeaders = Array.isArray(headerDebug?.entries)
