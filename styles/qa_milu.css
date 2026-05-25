@@ -4195,6 +4195,416 @@
 
 
 
+/* PDF view compact overrides */
+
+.pdf-view .content {
+
+    padding: 6px 12px 10px;
+
+}
+
+
+
+.pdf-view .clear-filters.modern-control-deck {
+
+    margin: 6px 10px;
+
+    padding: 8px;
+
+    border-radius: 12px;
+
+}
+
+
+
+.pdf-view .toolbar-primary {
+
+    gap: 8px;
+
+    align-items: stretch;
+
+}
+
+
+
+.pdf-view .toolbar-pane-book {
+
+    align-items: stretch;
+
+    gap: 8px;
+
+    flex-wrap: wrap;
+
+}
+
+
+
+.pdf-view .book-pane-left {
+
+    flex: 2 1 520px;
+
+    align-items: stretch;
+
+    gap: 6px;
+
+}
+
+
+
+.pdf-view .book-pane-right.toolbar-mini-group-nav {
+
+    flex: 1 1 360px;
+
+}
+
+
+
+.pdf-view .book-pane-right,
+
+.pdf-view .book-pane-actions,
+
+.pdf-view .book-top-row {
+
+    margin-top: 0;
+
+}
+
+
+
+.pdf-view .toolbar-mini-group {
+
+    display: flex;
+
+    align-items: center;
+
+    gap: 6px;
+
+    flex-wrap: wrap;
+
+    min-height: 0;
+
+    padding: 6px 8px;
+
+    border: 1px solid #d7e1ef;
+
+    border-radius: 10px;
+
+    background: #ffffff;
+
+}
+
+
+
+.pdf-view .toolbar-mini-group-overlay {
+
+    flex: 1 1 260px;
+
+}
+
+
+
+.pdf-view .toolbar-mini-group-qa {
+
+    flex: 2 1 420px;
+
+}
+
+
+
+.pdf-view .book-pane-actions .bulk-edit {
+
+    margin-top: 0;
+
+    padding-top: 0;
+
+    border-top: 0;
+
+    grid-column: auto;
+
+    width: auto;
+
+}
+
+
+
+.pdf-view .pane-group-label {
+
+    display: inline-flex;
+
+    align-items: center;
+
+    font-size: 11px;
+
+    font-weight: 700;
+
+    letter-spacing: 0.03em;
+
+    text-transform: uppercase;
+
+    color: #5f6f88;
+
+    white-space: nowrap;
+
+    margin-right: 4px;
+
+}
+
+
+
+.pdf-view .book-pane-right-top,
+
+.pdf-view .book-pane-right-bottom {
+
+    gap: 6px;
+
+}
+
+
+
+.pdf-view .book-pane-right-bottom {
+
+    flex-wrap: wrap;
+
+}
+
+
+
+.pdf-view .modern-control-deck button,
+
+.pdf-view .modern-control-deck select,
+
+.pdf-view .modern-control-deck input {
+
+    min-height: 28px;
+
+    height: 28px;
+
+    font-size: 11px;
+
+    line-height: 1.15;
+
+    padding: 4px 8px;
+
+}
+
+
+
+.pdf-view .book-pane-actions .bulk-select,
+
+.pdf-view .book-top-row .column-view-select,
+
+.pdf-view #bookFilterSelect.book-main-select,
+
+.pdf-view #pageFilterSelect.page-main-select {
+
+    height: 28px;
+
+}
+
+
+
+.pdf-view .page-nav-btn {
+
+    width: 28px;
+
+    height: 28px;
+
+}
+
+
+
+.pdf-view .book-pane-actions .bulk-quick-actions {
+
+    gap: 4px;
+
+}
+
+
+
+.pdf-view .bulk-quick-btn {
+
+    width: 20px;
+
+    height: 20px;
+
+    font-size: 10px;
+
+}
+
+
+
+.pdf-view .lazy-engine-panel {
+
+    margin: 0 10px 6px;
+
+    padding: 6px 8px;
+
+    gap: 6px;
+
+}
+
+
+
+.pdf-view .lazy-group-label {
+
+    margin-right: 6px;
+
+}
+
+
+
+.pdf-view .stats {
+
+    margin: 6px 10px;
+
+    gap: 6px;
+
+    align-items: stretch;
+
+}
+
+
+
+.pdf-view .stats .qa-stats-row {
+
+    display: flex;
+
+    flex-wrap: nowrap;
+
+    gap: 6px;
+
+    width: 100%;
+
+}
+
+
+
+.pdf-view .stats .qa-stat-card {
+
+    flex: 1 1 0;
+
+    min-width: 0;
+
+    padding: 6px 8px;
+
+    gap: 2px;
+
+    border-radius: 10px;
+
+}
+
+
+
+.pdf-view .stats .qa-stat-label {
+
+    font-size: 10px;
+
+}
+
+
+
+.pdf-view .stats .qa-stat-inline-total,
+
+.pdf-view .stats .qa-stat-total-row {
+
+    gap: 4px;
+
+}
+
+
+
+.pdf-view .stats .qa-stat-inline-total strong,
+
+.pdf-view .stats .qa-stat-total-row strong {
+
+    font-size: 16px;
+
+}
+
+
+
+.pdf-view .stats .qa-stat-inline-separator {
+
+    font-size: 11px;
+
+}
+
+
+
+.pdf-view .stats .qa-stat-inline-unique {
+
+    font-size: 10px;
+
+    max-width: 100%;
+
+    overflow: hidden;
+
+    text-overflow: ellipsis;
+
+    white-space: nowrap;
+
+}
+
+
+
+@media (max-width: 1200px) {
+
+    .pdf-view .book-pane-right.toolbar-mini-group-nav {
+
+        flex-basis: 100%;
+
+    }
+
+
+
+    .pdf-view .book-pane-left {
+
+        flex-basis: 100%;
+
+    }
+
+
+
+    .pdf-view .stats .qa-stat-card {
+
+        flex: 1 1 0;
+
+    }
+
+}
+
+
+
+@media (max-width: 860px) {
+
+    .pdf-view .pane-group-label {
+
+        width: 100%;
+
+        margin-right: 0;
+
+    }
+
+
+
+    .pdf-view .stats .qa-stat-card {
+
+        flex: 1 1 calc(50% - 3px);
+
+        min-width: 130px;
+
+    }
+
+
+
+    .pdf-view .stats .qa-stats-row {
+
+        flex-wrap: wrap;
+
+    }
+
+}
+
         .revision-select:focus {
 
             outline: none;

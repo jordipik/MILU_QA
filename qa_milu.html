@@ -62,7 +62,7 @@
 
 
 
-<body>
+<body class="pdf-view">
 
     <!-- Topbar generado dinámicamente por js/topbar.js -->
 
@@ -88,7 +88,9 @@
 
                         <div class="toolbar-pane toolbar-pane-book">
 
-                            <div class="book-pane-right">
+                            <div class="book-pane-right toolbar-mini-group toolbar-mini-group-nav">
+
+                                <span class="pane-group-label">Navegación / carga PDF</span>
 
                                 <div class="book-pane-right-top">
 
@@ -116,6 +118,8 @@
                                     <button id="nextBookPageBtn" class="page-nav-btn" title="Página siguiente del libro"
                                         aria-label="Página siguiente">&#9654;</button>
 
+                                    <button id="clearFiltersBtn">Limpiar</button>
+
                                 </div>
 
                             </div>
@@ -126,9 +130,37 @@
 
                                 <span class="pane-label">Navegación</span>
 
-                                <div class="book-pane-actions">
+                                <div class="book-top-row toolbar-mini-group toolbar-mini-group-overlay">
 
-                                    <button id="clearFiltersBtn">Limpiar</button>
+                                    <span class="pane-group-label">Overlay / detección</span>
+
+                                    <button id="sortBookPagePosBtn">Ordenar</button>
+
+                                    <button id="togglePaginationBtn" type="button"
+                                        title="Activar o desactivar paginación">Paginación: ON</button>
+
+                                    <div class="view-toggle-inline">
+
+                                        <select id="columnViewSelect" class="filter-select column-view-select"
+                                            title="Seleccionar vista de tabla">
+
+                                            <option value="qa">Vista QA</option>
+
+                                            <option value="focus">Vista foco PN</option>
+
+                                            <option value="pdf" selected>Vista PDF</option>
+
+                                            <option value="errors">Vista errores</option>
+
+                                        </select>
+
+                                    </div>
+
+                                </div>
+
+                                <div class="book-pane-actions toolbar-mini-group toolbar-mini-group-qa">
+
+                                    <span class="pane-group-label">QA / edición</span>
 
                                     <button id="qaUndoLastChangeBtn" type="button"
                                         title="Deshacer último cambio guardado (Ctrl+Z)">Deshacer</button>
@@ -177,34 +209,6 @@
 
                                 </div>
 
-
-
-                                <div class="book-top-row">
-
-                                    <button id="sortBookPagePosBtn">Ordenar</button>
-
-                                    <button id="togglePaginationBtn" type="button"
-                                        title="Activar o desactivar paginación">Paginación: ON</button>
-
-                                    <div class="view-toggle-inline">
-
-                                        <select id="columnViewSelect" class="filter-select column-view-select"
-                                            title="Seleccionar vista de tabla">
-
-                                            <option value="qa">Vista QA</option>
-
-                                            <option value="focus">Vista foco PN</option>
-
-                                            <option value="pdf" selected>Vista PDF</option>
-
-                                            <option value="errors">Vista errores</option>
-
-                                        </select>
-
-                                    </div>
-
-                                </div>
-
                             </div>
 
                         </div>
@@ -228,6 +232,8 @@
 
 
                 <div id="lazyEnginePanel" class="lazy-engine-panel" hidden>
+
+                    <span class="pane-group-label lazy-group-label">Recalcular / refrescar</span>
 
                     <span id="lazyEngineInfo" class="lazy-engine-info">Modo carga incremental activo</span>
 
