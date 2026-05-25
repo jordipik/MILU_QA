@@ -42,6 +42,57 @@ function normalizeString(value) {
     return String(value ?? '').trim().replace(/\s+/g, ' ');
 }
 
+function normalizePdfText(text) {
+    return String(text || '')
+        .toUpperCase()
+        .replace(/\s+/g, ' ')
+        .replace(/[.:]/g, '')
+        .trim();
+}
+
+function getCurrentPdfPageText() {
+    const { textItems } = getPdfLastPageData();
+    if (!Array.isArray(textItems) || !textItems.length) return '';
+
+    return textItems
+        .map((item) => String(item?.str || '').trim())
+        .filter(Boolean)
+        .join(' ')
+        .replace(/\s+/g, ' ')
+        .trim();
+}
+
+function includesNormalizedToken(text, token) {
+    const escapedToken = String(token || '').replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+    if (!escapedToken) return false;
+    const tokenRegex = new RegExp(`(^|\\s)${escapedToken}(?=\\s|$)`);
+    return tokenRegex.test(text);
+}
+
+function isPartsTablePage(pageText) {
+    const text = normalizePdfText(pageText);
+    if (!text) return false;
+
+    const hasPos = includesNormalizedToken(text, 'POS');
+    const hasPartNo = includesNormalizedToken(text, 'PART NO') || includesNormalizedToken(text, 'PARTNO');
+    const hasDesignation = includesNormalizedToken(text, 'DESIGNATION');
+
+    const hasRequired = hasPos && hasPartNo && hasDesignation;
+
+    const optionalTokens = [
+        'QTY',
+        'UNITS',
+        'WEIGHT',
+        'FN',
+        'MEASUREMENT',
+        'STANDARD'
+    ];
+
+    const optionalHits = optionalTokens.filter((token) => includesNormalizedToken(text, token)).length;
+
+    return hasRequired && optionalHits >= 2;
+}
+
 function cleanupTopPdfFieldValue(value) {
     return String(value ?? '')
         .replace(/^[\s:\-]+/, '')
@@ -768,6 +819,27 @@ async function runTableDetection() {
 
 async function extractAllPdfRowsFromCurrentPage(options = {}) {
     const silent = options?.silent === true;
+    const sourcePage = Number(getSelectedPageNumber() || 0);
+    const pageText = getCurrentPdfPageText();
+    const hasPartsTableHeader = isPartsTablePage(pageText);
+
+    if (!hasPartsTableHeader) {
+        const pageWarnings = ['page-skipped-no-table-header'];
+        console.info('[PDF table guard] skipped page', sourcePage, 'no table header');
+
+        if (!silent) {
+            setActionStatus(`Pagina ${sourcePage}: omitida por no tener cabecera tabular de repuestos.`, 'ok');
+        }
+
+        return {
+            ok: true,
+            reason: 'page-skipped-no-table-header',
+            source_page: sourcePage,
+            rows_detected: 0,
+            page_warnings: pageWarnings,
+            rows: []
+        };
+    }
 
     let headerColumnBodyDebug = getPdfHeaderColumnBodyDebug();
     const hasRectDebug = Array.isArray(headerColumnBodyDebug?.rectDebug) && headerColumnBodyDebug.rectDebug.length > 0;
@@ -800,7 +872,6 @@ async function extractAllPdfRowsFromCurrentPage(options = {}) {
         console.warn('No se pudo detectar BOM/FG durante extractAllPdfRowsFromCurrentPage (import-pdf):', error);
     }
 
-    const sourcePage = Number(getSelectedPageNumber() || 0);
     const rawRows = rowGroups.map((group, index) => buildPdfPageRowPreviewFromGroup(group, {
         sourcePage,
         rowIndex: index + 1,
@@ -861,8 +932,9 @@ async function runExtractPdfPageRowsPreview() {
     }
 
     const rows = Array.isArray(result.rows) ? result.rows : [];
+    const pageWarnings = Array.isArray(result.page_warnings) ? result.page_warnings : [];
     const rowsWithPn = rows.filter((row) => normalizeString(row?.pn_pdf)).length;
-    const warningsCount = countWarnings(rows);
+    const warningsCount = countWarnings(rows) + pageWarnings.length;
     const sourcePage = Number(result.source_page || getSelectedPageNumber() || 0);
 
     const previewPayload = {
@@ -871,6 +943,7 @@ async function runExtractPdfPageRowsPreview() {
         rows_count: rows.length,
         rows_with_pn: rowsWithPn,
         warnings_count: warningsCount,
+        warnings: pageWarnings,
         rows
     };
 
@@ -884,7 +957,8 @@ async function runExtractPdfPageRowsPreview() {
         source_page: sourcePage,
         rows_count: rows.length,
         rows_with_pn: rowsWithPn,
-        warnings_count: warningsCount
+        warnings_count: warningsCount,
+        page_warnings: pageWarnings
     });
 
     downloadJsonPreview(previewPayload, `pdf_page_rows_preview_p${sourcePage || 0}.json`);
@@ -1012,15 +1086,17 @@ async function extractWholeBook(bookOverride = null) {
 
                 const result = await extractAllPdfRowsFromCurrentPage({ silent: true });
                 const rows = Array.isArray(result?.rows) ? result.rows : [];
+                const pageWarnings = Array.isArray(result?.page_warnings) ? result.page_warnings : [];
                 const rowsWithPn = rows.filter((row) => normalizeString(row?.pn_pdf)).length;
-                const warningsCount = countWarnings(rows);
+                const warningsCount = countWarnings(rows) + pageWarnings.length;
 
-                if (rows.length > 0 || !skipEmpty) {
+                if (rows.length > 0 || pageWarnings.length > 0 || !skipEmpty) {
                     pagesOut.push({
                         source_page: p,
                         rows_count: rows.length,
                         rows_with_pn: rowsWithPn,
                         warnings_count: warningsCount,
+                        warnings: pageWarnings,
                         rows
                     });
                     if (rows.length > 0) pagesWithRows++;

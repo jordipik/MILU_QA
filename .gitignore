@@ -21,3 +21,6 @@ data/snapshots/*/
 
 # Evitar versionar cambios de datos JSON locales.
 *.json
+
+# Backups JSON locales (ej: .json.backup, .json.backup-*, .json.backup.*)
+*.json.backup*
