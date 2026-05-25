@@ -274,6 +274,20 @@ function isSyntheticRebuildRow(row) {
     return /^RB-/i.test(id) && !legacyId;
 }
 
+function collectFieldOrder(rows) {
+    const order = [];
+    const seen = new Set();
+    for (const row of rows) {
+        if (!row || typeof row !== 'object') continue;
+        for (const key of Object.keys(row)) {
+            if (seen.has(key)) continue;
+            seen.add(key);
+            order.push(key);
+        }
+    }
+    return order;
+}
+
 function buildSyntheticPageStats(rows) {
     const pages = [];
     const pageCounts = {};
@@ -299,6 +313,13 @@ function buildSyntheticPageStats(rows) {
 }
 
 function compareModel(model, engineRows, rebuildRows) {
+    const engineFieldOrder = collectFieldOrder(engineRows);
+    const rebuildFieldOrder = collectFieldOrder(rebuildRows);
+    const engineFieldSet = new Set(engineFieldOrder);
+    const rebuildFieldSet = new Set(rebuildFieldOrder);
+    const missingFields = engineFieldOrder.filter((field) => !rebuildFieldSet.has(field));
+    const extraFields = rebuildFieldOrder.filter((field) => !engineFieldSet.has(field));
+
     const engineMap = buildIdMap(engineRows, false);
     const rebuildMap = buildIdMap(rebuildRows, true);
 
@@ -410,6 +431,27 @@ function compareModel(model, engineRows, rebuildRows) {
         });
     }
 
+    for (const field of missingFields) {
+        allDiffRowsForCsv.push({
+            model,
+            id: '',
+            diff_type: 'missing_field_in_rebuild',
+            field,
+            engine_value: 'present_in_engine',
+            rebuild_value: ''
+        });
+    }
+    for (const field of extraFields) {
+        allDiffRowsForCsv.push({
+            model,
+            id: '',
+            diff_type: 'extra_field_in_rebuild',
+            field,
+            engine_value: '',
+            rebuild_value: 'present_in_rebuild'
+        });
+    }
+
     const affectedAll = new Set([...hardIds, ...softIds]);
 
     const syntheticRebuildRowsSample = syntheticRebuildRows.slice(0, MAX_EXAMPLES).map((row) => ({
@@ -427,6 +469,10 @@ function compareModel(model, engineRows, rebuildRows) {
         summary: {
             total_engine: engineRows.length,
             total_rebuild: rebuildRows.length,
+            engine_field_count: engineFieldOrder.length,
+            rebuild_field_count: rebuildFieldOrder.length,
+            missing_fields_in_rebuild_total: missingFields.length,
+            extra_fields_in_rebuild_total: extraFields.length,
             ids_common: idsCommon.length,
             ids_missing_in_rebuild: missingInRebuild.length,
             ids_extra_in_rebuild: extraInRebuild.length,
@@ -436,6 +482,12 @@ function compareModel(model, engineRows, rebuildRows) {
             ids_affected_total: affectedAll.size
         },
         synthetic_rebuild_rows_total: syntheticRebuildRows.length,
+        field_contract: {
+            engine_fields: engineFieldOrder,
+            rebuild_fields: rebuildFieldOrder,
+            missing_fields_in_rebuild: missingFields,
+            extra_fields_in_rebuild: extraFields
+        },
         synthetic_rebuild_rows_sample: syntheticRebuildRowsSample,
         synthetic_page_stats: syntheticPageStats,
         samples: {
@@ -576,6 +628,10 @@ function runComparisonFlow(args) {
             console.log(`\n[model] ${model}`);
             console.log(`  - total_engine: ${modelReport.summary.total_engine}`);
             console.log(`  - total_rebuild: ${modelReport.summary.total_rebuild}`);
+            console.log(`  - engine_field_count: ${modelReport.summary.engine_field_count}`);
+            console.log(`  - rebuild_field_count: ${modelReport.summary.rebuild_field_count}`);
+            console.log(`  - missing_fields_in_rebuild_total: ${modelReport.summary.missing_fields_in_rebuild_total}`);
+            console.log(`  - extra_fields_in_rebuild_total: ${modelReport.summary.extra_fields_in_rebuild_total}`);
             console.log(`  - ids_common: ${modelReport.summary.ids_common}`);
             console.log(`  - ids_missing_in_rebuild: ${modelReport.summary.ids_missing_in_rebuild}`);
             console.log(`  - ids_extra_in_rebuild: ${modelReport.summary.ids_extra_in_rebuild}`);
@@ -592,6 +648,10 @@ function runComparisonFlow(args) {
     const totals = modelReports.reduce((acc, report) => {
         acc.total_engine += report.summary.total_engine;
         acc.total_rebuild += report.summary.total_rebuild;
+        acc.engine_field_count += report.summary.engine_field_count;
+        acc.rebuild_field_count += report.summary.rebuild_field_count;
+        acc.missing_fields_in_rebuild_total += report.summary.missing_fields_in_rebuild_total;
+        acc.extra_fields_in_rebuild_total += report.summary.extra_fields_in_rebuild_total;
         acc.ids_common += report.summary.ids_common;
         acc.ids_missing_in_rebuild += report.summary.ids_missing_in_rebuild;
         acc.ids_extra_in_rebuild += report.summary.ids_extra_in_rebuild;
@@ -603,6 +663,10 @@ function runComparisonFlow(args) {
     }, {
         total_engine: 0,
         total_rebuild: 0,
+        engine_field_count: 0,
+        rebuild_field_count: 0,
+        missing_fields_in_rebuild_total: 0,
+        extra_fields_in_rebuild_total: 0,
         ids_common: 0,
         ids_missing_in_rebuild: 0,
         ids_extra_in_rebuild: 0,
@@ -632,6 +696,10 @@ function runComparisonFlow(args) {
     console.log(`  - models_failed: ${failures.length}`);
     console.log(`  - total_engine: ${totals.total_engine}`);
     console.log(`  - total_rebuild: ${totals.total_rebuild}`);
+    console.log(`  - engine_field_count(sum_models): ${totals.engine_field_count}`);
+    console.log(`  - rebuild_field_count(sum_models): ${totals.rebuild_field_count}`);
+    console.log(`  - missing_fields_in_rebuild_total(sum_models): ${totals.missing_fields_in_rebuild_total}`);
+    console.log(`  - extra_fields_in_rebuild_total(sum_models): ${totals.extra_fields_in_rebuild_total}`);
     console.log(`  - ids_common: ${totals.ids_common}`);
     console.log(`  - ids_missing_in_rebuild: ${totals.ids_missing_in_rebuild}`);
     console.log(`  - ids_extra_in_rebuild: ${totals.ids_extra_in_rebuild}`);

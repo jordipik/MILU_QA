@@ -200,6 +200,114 @@ function defaultQaFields() {
     };
 }
 
+function collectFieldOrder(rows) {
+    const order = [];
+    const seen = new Set();
+    for (const row of rows) {
+        if (!row || typeof row !== 'object') continue;
+        for (const key of Object.keys(row)) {
+            if (seen.has(key)) continue;
+            seen.add(key);
+            order.push(key);
+        }
+    }
+    return order;
+}
+
+function pickDefaultFromStats(stats) {
+    if (stats.boolean > 0 && stats.number === 0 && stats.string === 0) {
+        return false;
+    }
+    if (stats.number > 0 && stats.boolean === 0 && stats.string === 0) {
+        return 0;
+    }
+    if (stats.string > 0) {
+        return stats.emptyString > 0 ? '' : null;
+    }
+    if (stats.number > 0) return 0;
+    if (stats.boolean > 0) return false;
+    return null;
+}
+
+function inferDefaultsByField(rows, orderedFields) {
+    const statsByField = new Map();
+
+    for (const row of rows) {
+        if (!row || typeof row !== 'object') continue;
+        for (const field of orderedFields) {
+            const value = row[field];
+            let stats = statsByField.get(field);
+            if (!stats) {
+                stats = {
+                    emptyString: 0,
+                    nullish: 0,
+                    string: 0,
+                    number: 0,
+                    boolean: 0,
+                    other: 0
+                };
+                statsByField.set(field, stats);
+            }
+
+            if (value == null) {
+                stats.nullish += 1;
+            } else if (typeof value === 'string') {
+                stats.string += 1;
+                if (value === '') stats.emptyString += 1;
+            } else if (typeof value === 'number') {
+                stats.number += 1;
+            } else if (typeof value === 'boolean') {
+                stats.boolean += 1;
+            } else {
+                stats.other += 1;
+            }
+        }
+    }
+
+    const out = {};
+    for (const field of orderedFields) {
+        const stats = statsByField.get(field) || {
+            emptyString: 0,
+            nullish: 0,
+            string: 0,
+            number: 0,
+            boolean: 0,
+            other: 0
+        };
+        out[field] = pickDefaultFromStats(stats);
+    }
+    return out;
+}
+
+function buildOfficialContract(engineRows) {
+    const orderedFields = collectFieldOrder(engineRows);
+    const defaultsByField = inferDefaultsByField(engineRows, orderedFields);
+    return {
+        orderedFields,
+        defaultsByField,
+        fieldSet: new Set(orderedFields)
+    };
+}
+
+function buildRowWithOfficialContract(baseRow, contract) {
+    const ordered = {};
+
+    for (const field of contract.orderedFields) {
+        if (Object.prototype.hasOwnProperty.call(baseRow, field)) {
+            ordered[field] = baseRow[field];
+        } else {
+            ordered[field] = contract.defaultsByField[field];
+        }
+    }
+
+    for (const key of Object.keys(baseRow)) {
+        if (contract.fieldSet.has(key)) continue;
+        ordered[key] = baseRow[key];
+    }
+
+    return ordered;
+}
+
 function toRebuildRow(model, sequence, page, previewRow, matchInfo) {
     const pos = t(previewRow.pos_pdf);
     const pn = t(previewRow.pn_pdf);
@@ -380,6 +488,7 @@ function runModel(repoRoot, model, options) {
 
     const preview = readJsonObject(previewPath, path.basename(previewPath));
     const engineRows = readJsonArray(enginePath, path.basename(enginePath));
+    const contract = buildOfficialContract(engineRows);
 
     const pagePosIdx = buildEnginePagePosIndex(engineRows);
     const pagePnIdx = buildEnginePagePnIndex(engineRows);
@@ -426,7 +535,14 @@ function runModel(repoRoot, model, options) {
             rows_generated_delta_vs_engine: 0,
             match_coverage_percent: 0
         },
-        duplicates: {}
+        duplicates: {},
+        field_contract: {
+            engine_field_count: contract.orderedFields.length,
+            generated_field_count: 0,
+            missing_vs_engine: [],
+            extra_vs_engine: [],
+            defaults_applied: []
+        }
     };
 
     const rebuildRows = [];
@@ -526,10 +642,11 @@ function runModel(repoRoot, model, options) {
         }
 
         const legacyRow = selectedIndex != null ? (engineRows[selectedIndex] || {}) : {};
-        const rebuildRow = toRebuildRow(model, sequence, page, row, {
+        const rebuildRowBase = toRebuildRow(model, sequence, page, row, {
             status,
             legacyId: t(legacyRow.ID)
         });
+        const rebuildRow = buildRowWithOfficialContract(rebuildRowBase, contract);
 
         rebuildRows.push(rebuildRow);
         sequence += 1;
@@ -548,6 +665,26 @@ function runModel(repoRoot, model, options) {
         : 0;
 
     report.duplicates = summarizeDuplicates(rebuildRows);
+
+    const generatedOrder = collectFieldOrder(rebuildRows);
+    const generatedSet = new Set(generatedOrder);
+    const missingVsEngine = contract.orderedFields.filter((field) => !generatedSet.has(field));
+    const extraVsEngine = generatedOrder.filter((field) => !contract.fieldSet.has(field));
+    const defaultsApplied = contract.orderedFields
+        .filter((field) => !Object.prototype.hasOwnProperty.call(toRebuildRow(model, 0, '', {}, { status: '', legacyId: '' }), field))
+        .map((field) => ({
+            field,
+            default_value: contract.defaultsByField[field],
+            reason: 'not_in_rebuild_logic'
+        }));
+
+    report.field_contract = {
+        engine_field_count: contract.orderedFields.length,
+        generated_field_count: generatedOrder.length,
+        missing_vs_engine: missingVsEngine,
+        extra_vs_engine: extraVsEngine,
+        defaults_applied: defaultsApplied
+    };
 
     return {
         model,

@@ -1,0 +1,68 @@
+ENGINE MODELS - COLUMN DIFF SUMMARY
+GENERATED: 2026-05-25T13:29:44.337Z
+MODELS: 9
+UNION_FIELDS: 143
+COMMON_FIELDS_IN_ALL_MODELS: 133
+
+------------------------------------------------------------
+MODEL: 12V4000M40A
+TOTAL_FIELDS: 143
+MISSING_FROM_UNION: 0
+EXCLUSIVE_FIELDS: 4
+EXCLUSIVE_LIST: fn_excel | measure_excel | qa_revision_confievision_confianza | qty_excel
+
+------------------------------------------------------------
+MODEL: 12V4000M53
+TOTAL_FIELDS: 139
+MISSING_FROM_UNION: 4
+EXCLUSIVE_FIELDS: 0
+MISSING_LIST: fn_excel | measure_excel | qa_revision_confievision_confianza | qty_excel
+
+------------------------------------------------------------
+MODEL: 12V4000M70
+TOTAL_FIELDS: 133
+MISSING_FROM_UNION: 10
+EXCLUSIVE_FIELDS: 0
+MISSING_LIST: fn_excel | measure_excel | pos_excel | qa_revision_confianza | qa_revision_confievision_confianza | qa_revision_fecha | qa_revision_motivo | qa_revision_origen | qa_revision_regla_aplicada | qty_excel
+
+------------------------------------------------------------
+MODEL: 16V4000M61
+TOTAL_FIELDS: 133
+MISSING_FROM_UNION: 10
+EXCLUSIVE_FIELDS: 0
+MISSING_LIST: fn_excel | measure_excel | pos_excel | qa_revision_confianza | qa_revision_confievision_confianza | qa_revision_fecha | qa_revision_motivo | qa_revision_origen | qa_revision_regla_aplicada | qty_excel
+
+------------------------------------------------------------
+MODEL: 16V4000M73
+TOTAL_FIELDS: 133
+MISSING_FROM_UNION: 10
+EXCLUSIVE_FIELDS: 0
+MISSING_LIST: fn_excel | measure_excel | pos_excel | qa_revision_confianza | qa_revision_confievision_confianza | qa_revision_fecha | qa_revision_motivo | qa_revision_origen | qa_revision_regla_aplicada | qty_excel
+
+------------------------------------------------------------
+MODEL: 16V4000M73L
+TOTAL_FIELDS: 133
+MISSING_FROM_UNION: 10
+EXCLUSIVE_FIELDS: 0
+MISSING_LIST: fn_excel | measure_excel | pos_excel | qa_revision_confianza | qa_revision_confievision_confianza | qa_revision_fecha | qa_revision_motivo | qa_revision_origen | qa_revision_regla_aplicada | qty_excel
+
+------------------------------------------------------------
+MODEL: 16V4000M90
+TOTAL_FIELDS: 133
+MISSING_FROM_UNION: 10
+EXCLUSIVE_FIELDS: 0
+MISSING_LIST: fn_excel | measure_excel | pos_excel | qa_revision_confianza | qa_revision_confievision_confianza | qa_revision_fecha | qa_revision_motivo | qa_revision_origen | qa_revision_regla_aplicada | qty_excel
+
+------------------------------------------------------------
+MODEL: 20V4000M93
+TOTAL_FIELDS: 133
+MISSING_FROM_UNION: 10
+EXCLUSIVE_FIELDS: 0
+MISSING_LIST: fn_excel | measure_excel | pos_excel | qa_revision_confianza | qa_revision_confievision_confianza | qa_revision_fecha | qa_revision_motivo | qa_revision_origen | qa_revision_regla_aplicada | qty_excel
+
+------------------------------------------------------------
+MODEL: 20V4000M93L
+TOTAL_FIELDS: 133
+MISSING_FROM_UNION: 10
+EXCLUSIVE_FIELDS: 0
+MISSING_LIST: fn_excel | measure_excel | pos_excel | qa_revision_confianza | qa_revision_confievision_confianza | qa_revision_fecha | qa_revision_motivo | qa_revision_origen | qa_revision_regla_aplicada | qty_excel
