@@ -816,7 +816,7 @@ function requestTypedConfirmation(message, expectedToken) {
     });
 }
 
-async function postJson(endpoint, payload) {
+async function postJson(endpoint, payload, options = {}) {
     appendLog(`POST ${endpoint}`, { payload });
 
     const response = await fetch(endpoint, {
@@ -835,7 +835,20 @@ async function postJson(endpoint, payload) {
 
     appendLog(`RESPONSE ${endpoint} [${response.status}]`, data);
 
-    if (!response.ok || !data || data.ok !== true) {
+    const allowPartial = Boolean(options.allowPartial);
+    const isPartialStatus = response.status === 207;
+
+    if (!response.ok || !data) {
+        throw new Error(normalizeText(data?.error) || `HTTP ${response.status}`);
+    }
+
+    if (data.ok !== true) {
+        if (allowPartial && isPartialStatus) {
+            appendLog(`[WARN] Respuesta parcial aceptada en ${endpoint} (HTTP 207).`, {
+                errors: Array.isArray(data?.errors) ? data.errors.length : 0
+            });
+            return data;
+        }
         throw new Error(normalizeText(data?.error) || `HTTP ${response.status}`);
     }
 
@@ -1015,12 +1028,17 @@ async function runErrors() {
 
 async function runStatuses() {
     const scope = getScope();
+    const backupEnabled = !scope.isAll;
 
     const payload = {
         engine: scope.isAll ? 'ALL' : scope.model,
         id: scope.isAll ? '' : scope.id,
-        backup: true
+        backup: backupEnabled
     };
+
+    if (!backupEnabled) {
+        appendLog('[AVISO] 5-ESTADOS en alcance TODOS se ejecuta sin backup para evitar errores ENOSPC por copias masivas.');
+    }
 
     if (scope.isAll) {
         setStatus('Recalculando ESTADOS para todos los libros...', '');
@@ -1030,11 +1048,17 @@ async function runStatuses() {
         setStatus(`Recalculando ESTADOS para ${scope.model}...`, '');
     }
 
-    const data = await postJson('/api/recompute-simple/update-states', payload);
+    const data = await postJson('/api/recompute-simple/update-states', payload, { allowPartial: true });
     renderResponseSummary('Recalcular estados', '/api/recompute-simple/update-states', data);
     if (Array.isArray(data?.errors) && data.errors.length) {
-        setStatus('ESTADOS recalculados con incidencias parciales. Revisa el log.', 'warning');
-        window.alert(`ESTADOS completado con ${data.errors.length} incidencia(s). Revisa el panel de resultados.`);
+        const diskFull = data.errors.some((entry) => /ENOSPC|no space left on device/i.test(String(entry?.message || '')));
+        if (diskFull) {
+            setStatus('ESTADOS con incidencias parciales: no hay espacio para crear backups.', 'warning');
+            window.alert(`ESTADOS completado con ${data.errors.length} incidencia(s). Falta espacio en disco para backups.`);
+        } else {
+            setStatus('ESTADOS recalculados con incidencias parciales. Revisa el log.', 'warning');
+            window.alert(`ESTADOS completado con ${data.errors.length} incidencia(s). Revisa el panel de resultados.`);
+        }
         return;
     }
 
