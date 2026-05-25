@@ -2149,7 +2149,14 @@ function openRecordModalFromShell(request = {}) {
 
     const targetBook = String(row?.engine_model ?? '').trim();
 
-    const targetPage = resolvePdfPage(row);
+    const requestedSourcePage = normalizePageNumber(
+        request?.source_page
+        ?? request?.sourcePage
+        ?? request?.page
+        ?? ''
+    );
+
+    const targetPage = requestedSourcePage || resolvePdfPage(row);
 
 
 

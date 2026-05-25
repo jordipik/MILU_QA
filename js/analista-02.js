@@ -4065,6 +4065,8 @@ function openEditRecordModalForRow(row = currentRow) {
 
             record: String(row?.pn_final ?? row?.['PART NO.'] ?? '').trim(),
 
+            source_page: String(row?.['Source Page'] ?? '').trim(),
+
             id: String(row?.ID ?? '').trim()
 
         });
@@ -4148,6 +4150,8 @@ function openExportRecordModalForRow(row = currentRow) {
             engine: String(row?.engine_model ?? '').trim(),
 
             record: String(row?.pn_final ?? row?.['PART NO.'] ?? '').trim(),
+
+            source_page: String(row?.['Source Page'] ?? '').trim(),
 
             id: String(row?.ID ?? '').trim()
 
@@ -9005,8 +9009,22 @@ async function syncPdfWithCurrentRow(row) {
 
     }
 
-    // Usa la misma función que el botón rojo: busca el PN/POS y dibuja la banda roja.
-    await highlightPdfLineForPnFinal(row);
+    const pnFinal = normalizeString(row?.pn_final);
+
+    if (pnFinal) {
+
+        // Si hay PN, usa el flujo completo de resaltado de fila.
+        await highlightPdfLineForPnFinal(row);
+
+    } else {
+
+        // Sin PN, al menos carga siempre la pagina Source Page del registro.
+        setPdfSelection(row);
+        await loadPdfWithPage(book, page);
+        setPdfExperimentalRowHighlights(null);
+        requestPdfRelayout();
+
+    }
 
     if (isDifferentPage) {
 
