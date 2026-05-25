@@ -11,6 +11,7 @@ const refs = {
     resultBody: document.getElementById('recomputeSimpleResultBody'),
     logPanel: document.getElementById('recomputeSimpleLogPanel'),
     btnImportPdf: document.getElementById('btnImportPdf'),
+    btnSust: document.getElementById('btnSust'),
     btnFinal: document.getElementById('btnFinal'),
     btnErrors: document.getElementById('btnErrors'),
     btnStatuses: document.getElementById('btnStatuses'),
@@ -21,6 +22,7 @@ const refs = {
 const engineFileByModel = new Map();
 const actionButtons = [
     refs.btnImportPdf,
+    refs.btnSust,
     refs.btnFinal,
     refs.btnErrors,
     refs.btnStatuses,
@@ -568,6 +570,41 @@ function renderResponseSummary(actionLabel, endpoint, responseData) {
         return;
     }
 
+    if (endpoint === '/api/recompute-simple/update-sust') {
+        const cards = [
+            { label: 'Modo', value: String(result?.mode || '-') },
+            { label: 'Motores procesados', value: String(Number(result?.enginesProcesados) || 0) },
+            { label: 'Registros escaneados', value: String(Number(result?.registrosEscaneados) || 0) },
+            { label: 'matched_new', value: String(Number(result?.matchedNew) || 0) },
+            { label: 'matched_superseded', value: String(Number(result?.matchedSuperseded) || 0) },
+            { label: 'not_found', value: String(Number(result?.notFound) || 0) },
+            { label: 'changed_rows', value: String(Number(result?.changedRows) || 0) },
+            { label: 'Backups', value: String(Number(result?.backupsCreated) || 0) }
+        ];
+
+        const perEngine = Array.isArray(result?.engineDetails) ? result.engineDetails : [];
+        const rows = perEngine.map((item) => [
+            String(item?.engine || ''),
+            String(Number(item?.scanned) || 0),
+            String(Number(item?.matched_new) || 0),
+            String(Number(item?.matched_superseded) || 0),
+            String(Number(item?.not_found) || 0),
+            String(Number(item?.changed_rows) || 0),
+            item?.wrote_file ? 'si' : 'no',
+            String(item?.backup || '-')
+        ]);
+
+        renderResultPanel(
+            actionLabel,
+            endpoint,
+            cards,
+            ['Engine', 'Escaneados', 'New', 'Superseded', 'No match', 'Cambiados', 'Escrito', 'Backup'],
+            rows,
+            data?.ignoredId ? 'ID puntual ignorado para ACTUALIZAR SUST en este alcance.' : ''
+        );
+        return;
+    }
+
     if (endpoint === '/api/pdf-preview/apply-to-engine') {
         const stats = data?.stats || {};
         const notFoundRows = Array.isArray(data?.not_found_rows) ? data.not_found_rows : [];
@@ -881,6 +918,23 @@ async function runFinalCalculation() {
     setStatus('CÁLCULO FINAL finalizado correctamente.', 'ok');
 }
 
+async function runUpdateSust() {
+    const scope = getScope();
+    if (scope.id) showIdIgnoredWarning('ACTUALIZAR SUST');
+
+    const payload = {
+        engine: scope.isAll ? 'ALL' : scope.model,
+        id: '',
+        backup: true,
+        dryRun: false
+    };
+
+    setStatus(scope.isAll ? 'Actualizando SUST para todos los libros...' : `Actualizando SUST para ${scope.model}...`, '');
+    const data = await postJson('/api/recompute-simple/update-sust', payload);
+    renderResponseSummary('Actualizar SUST', '/api/recompute-simple/update-sust', data);
+    setStatus('ACTUALIZAR SUST finalizado correctamente.', 'ok');
+}
+
 async function runErrors() {
     const scope = getScope();
     let payload;
@@ -1001,6 +1055,10 @@ function bindEvents() {
 
     if (refs.btnImportPdf instanceof HTMLButtonElement) {
         refs.btnImportPdf.addEventListener('click', () => runAction(runImportPdf));
+    }
+
+    if (refs.btnSust instanceof HTMLButtonElement) {
+        refs.btnSust.addEventListener('click', () => runAction(runUpdateSust));
     }
 
     if (refs.btnFinal instanceof HTMLButtonElement) {

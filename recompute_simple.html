@@ -217,9 +217,21 @@
                 <button id="btnImportPdf" type="button">IMPORTAR PDF</button>
             </article>
 
-            <article class="a2-recompute-card" aria-label="Calcular campos FINAL desde GESA">
+            <article class="a2-recompute-card" aria-label="Actualizar campos SUST desde EXCEL_SUSTITUCION">
                 <h3>
                     <span class="a2-step-index">2</span>
+                    <div>
+                        <span class="a2-step-title">Actualizar SUST</span>
+                        <p class="a2-step-desc">POST /api/recompute-simple/update-sust</p>
+                        <p class="a2-step-desc">No toca campos PDF, FINAL, ERRORES ni QA.</p>
+                    </div>
+                </h3>
+                <button id="btnSust" type="button">ACTUALIZAR SUST</button>
+            </article>
+
+            <article class="a2-recompute-card" aria-label="Calcular campos FINAL desde GESA">
+                <h3>
+                    <span class="a2-step-index">3</span>
                     <div>
                         <span class="a2-step-title">Cálculo FINAL</span>
                         <p class="a2-step-desc">POST /copy-pdf-to-final-all-books</p>
@@ -231,7 +243,7 @@
 
             <article class="a2-recompute-card" aria-label="Recalcular errores">
                 <h3>
-                    <span class="a2-step-index">3</span>
+                    <span class="a2-step-index">4</span>
                     <div>
                         <span class="a2-step-title">Errores</span>
                         <p class="a2-step-desc">POST /recompute-qa-errors con scope/libro/id.</p>
@@ -242,7 +254,7 @@
 
             <article class="a2-recompute-card" aria-label="Recalcular estado y acción de revisión">
                 <h3>
-                    <span class="a2-step-index">4</span>
+                    <span class="a2-step-index">5</span>
                     <div>
                         <span class="a2-step-title">Estados</span>
                         <p class="a2-step-desc">POST /api/recompute-simple/update-states.</p>
