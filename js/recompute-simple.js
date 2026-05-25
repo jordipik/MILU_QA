@@ -638,6 +638,51 @@ function renderResponseSummary(actionLabel, endpoint, responseData) {
         return;
     }
 
+    if (endpoint === '/api/recompute-simple/rebuild-json') {
+        const notes = data?.notes || {};
+        const cards = [
+            { label: 'Modo', value: String(result?.mode || '-') },
+            { label: 'Motores procesados', value: String(Number(result?.modelsProcessed) || 0) },
+            { label: 'Motores con error', value: String(Number(result?.modelsFailed) || 0) },
+            { label: 'Filas usadas', value: String(Number(result?.totals?.usedRows) || 0) },
+            { label: 'Filas generadas', value: String(Number(result?.totals?.rowsGenerated) || 0) },
+            { label: 'Ambiguos', value: String(Number(result?.totals?.ambiguous) || 0) },
+            { label: 'No encontrados', value: String(Number(result?.totals?.notFound) || 0) },
+            { label: 'Salida', value: String(result?.outputDir || notes?.writesOnlyTo || 'data/output/rebuild') }
+        ];
+
+        const perModel = Array.isArray(result?.results) ? result.results : [];
+        const rows = perModel.map((item) => [
+            String(item?.model || ''),
+            String(Number(item?.usedRows) || 0),
+            String(Number(item?.rowsGenerated) || 0),
+            String(Number(item?.ambiguous) || 0),
+            String(Number(item?.notFound) || 0),
+            String(item?.outputRebuild || '-'),
+            String(item?.outputEngineCopy || '-'),
+            String(item?.outputReport || '-')
+        ]);
+
+        const failures = Array.isArray(result?.failures) ? result.failures : [];
+        const warningLines = [];
+        if (notes?.backupIgnored) {
+            warningLines.push('backup se ignora en CREACIÓN JSON REBUILD (no se escriben engine_*.json).');
+        }
+        if (failures.length) {
+            warningLines.push(`Modelos con error: ${failures.map((item) => `${item?.model}: ${item?.error}`).join(' | ')}`);
+        }
+
+        renderResultPanel(
+            actionLabel,
+            endpoint,
+            cards,
+            ['Engine', 'Usadas', 'Generadas', 'Ambiguos', 'No match', 'JSON rebuild', 'Copia engine', 'Reporte'],
+            rows,
+            warningLines.join(' ')
+        );
+        return;
+    }
+
     if (endpoint === '/api/pdf-preview/apply-to-engine') {
         const stats = data?.stats || {};
         const notFoundRows = Array.isArray(data?.not_found_rows) ? data.not_found_rows : [];
@@ -916,40 +961,24 @@ async function loadEngines() {
 
 async function runImportPdf() {
     const scope = getScope();
-    if (scope.id) showIdIgnoredWarning('EXTRACT PDF');
+    if (scope.id) showIdIgnoredWarning('CREACIÓN JSON REBUILD');
 
-    const payload = scope.isAll ? {} : { engine: scope.model };
+    const payload = {
+        engine: scope.isAll ? 'ALL' : scope.model,
+        dryRun: false,
+        backup: true
+    };
 
-    setStatus(scope.isAll ? 'Ejecutando EXTRACT PDF para todos los libros...' : `Ejecutando EXTRACT PDF para ${scope.model}...`, '');
-    let data = await postJson('/api/pdf-preview/apply-to-engine', payload);
-    renderResponseSummary('Extract de PDF', '/api/pdf-preview/apply-to-engine', data);
+    setStatus(scope.isAll ? 'Ejecutando CREACIÓN JSON REBUILD para todos los libros...' : `Ejecutando CREACIÓN JSON REBUILD para ${scope.model}...`, '');
+    const data = await postJson('/api/recompute-simple/rebuild-json', payload, { allowPartial: true });
+    renderResponseSummary('CREACIÓN JSON REBUILD', '/api/recompute-simple/rebuild-json', data);
 
-    const conflicts = Array.isArray(data?.action_required_conflicts) ? data.action_required_conflicts : [];
-    if (conflicts.length && !scope.isAll) {
-        setStatus(`Se detectaron ${conflicts.length} conflicto(s) ambiguos. Esperando decisiones...`, 'warning');
-        appendLog('[EXTRACT PDF] Conflictos ambiguos detectados', conflicts);
-
-        const decisionResult = await requestImportConflictDecisions(conflicts);
-        if (decisionResult?.cancelled) {
-            setStatus('EXTRACT PDF cancelado por el usuario durante la resolución de conflictos.', 'warning');
-            appendLog('[EXTRACT PDF] Resolución de conflictos cancelada por usuario.');
-            return;
-        }
-
-        const conflictDecisions = decisionResult?.decisions || {};
-        const decisionsCount = Object.keys(conflictDecisions).length;
-        if (decisionsCount > 0) {
-            setStatus('Reejecutando EXTRACT PDF con decisiones manuales...', '');
-            appendLog('[EXTRACT PDF] Reintento con decisiones', conflictDecisions);
-            data = await postJson('/api/pdf-preview/apply-to-engine', {
-                engine: scope.model,
-                conflictDecisions
-            });
-            renderResponseSummary('Extract de PDF', '/api/pdf-preview/apply-to-engine', data);
-        }
+    if (data?.ok === false || Number(data?.result?.modelsFailed) > 0) {
+        setStatus('CREACIÓN JSON REBUILD completado con incidencias. Revisa el panel de resultados.', 'warning');
+        return;
     }
 
-    setStatus('EXTRACT PDF finalizado correctamente.', 'ok');
+    setStatus('CREACIÓN JSON REBUILD finalizado correctamente.', 'ok');
 }
 
 async function runFinalCalculation() {

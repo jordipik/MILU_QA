@@ -392,9 +392,11 @@ module.exports = {
     normalizeEngineToken
 };
 
-try {
-    main();
-} catch (error) {
-    console.error('UPDATE_GESA_FIELDS_FAILED:', String(error?.message || error));
-    process.exit(1);
+if (require.main === module) {
+    try {
+        main();
+    } catch (error) {
+        console.error('UPDATE_GESA_FIELDS_FAILED:', String(error?.message || error));
+        process.exit(1);
+    }
 }

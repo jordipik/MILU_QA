@@ -177,6 +177,12 @@
                 grid-template-columns: 1fr;
             }
         }
+
+        .a2-recompute-card:first-child .a2-step-index {
+            background: #7c3aed;
+            color: #ffffff;
+            border-color: #5b21b6;
+        }
     </style>
 </head>
 
@@ -200,16 +206,20 @@
         </section>
 
         <section class="a2-recompute-compact" aria-label="Acciones de recálculo">
-            <article class="a2-recompute-card" aria-label="Copiar datos leídos del PDF">
+            <article class="a2-recompute-card" aria-label="CREACION JSON REBUILD desde book preview">
                 <h3>
                     <span class="a2-step-index">1</span>
                     <div>
-                        <span class="a2-step-title">Extract de PDF</span>
-                        <p class="a2-step-desc">POST /api/pdf-preview/apply-to-engine</p>
+                        <span class="a2-step-title">CREACIÓN JSON REBUILD</span>
+                        <p class="a2-step-desc"><strong>API</strong><br><strong>POST /api/recompute-simple/rebuild-json</strong></p>
+                        <p class="a2-step-desc">Genera engine_rebuild_&lt;MODEL&gt;.json en<br><strong>data/output/rebuild</strong> para
+                            libro o todos.</p>
+                        <p class="a2-step-desc">Tambien crea la copia engine_&lt;MODEL&gt;.json en la misma carpeta de salida.</p>
+                        <p class="a2-step-desc"><strong>Esa copia engine_&lt;MODEL&gt;.json</strong><br><strong>hay que copiarla en la raiz de MILU.</strong></p>
                         <p class="a2-step-desc">El ID puntual no aplica a este paso.</p>
                     </div>
                 </h3>
-                <button id="btnImportPdf" type="button">EXTRACT PDF</button>
+                <button id="btnImportPdf" type="button">CREACIÓN JSON REBUILD</button>
             </article>
 
             <article class="a2-recompute-card" aria-label="Actualizar campos SUST desde EXCEL_SUSTITUCION">

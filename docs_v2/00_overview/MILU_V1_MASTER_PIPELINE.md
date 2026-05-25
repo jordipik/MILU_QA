@@ -3,6 +3,9 @@
 ## Objetivo
 Consolidar el pipeline oficial de MILU V1 segun codigo real actual (frontend, backend y scripts), separando rutas oficiales y legacy.
 
+## Referencia principal
+- Documento consolidado detallado: `MILU_V1_REBUILD_DOC_V2.md`
+
 ## Pipeline oficial (runtime)
 1. IMPORTAR PDF
    - UI principal: `recompute_simple.html` (`btnImportPdf`) y modal de `analista_02.html` (`recomputeCopyBookBtn`).

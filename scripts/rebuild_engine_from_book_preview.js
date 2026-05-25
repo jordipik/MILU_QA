@@ -704,14 +704,94 @@ function ensureOutputDir(repoRoot) {
 function writeOutputs(repoRoot, model, rebuildRows, report) {
     const outDir = ensureOutputDir(repoRoot);
     const rebuildPath = path.join(outDir, `engine_rebuild_${model}.json`);
+    const engineCopyPath = path.join(outDir, `engine_${model}.json`);
     const reportPath = path.join(outDir, `rebuild_report_${model}.json`);
 
     fs.writeFileSync(rebuildPath, `${JSON.stringify(rebuildRows, null, 2)}\n`, 'utf8');
+    fs.writeFileSync(engineCopyPath, `${JSON.stringify(rebuildRows, null, 2)}\n`, 'utf8');
     fs.writeFileSync(reportPath, `${JSON.stringify(report, null, 2)}\n`, 'utf8');
 
     return {
         rebuildPath,
+        engineCopyPath,
         reportPath
+    };
+}
+
+function resolveRequestedModels(engineToken) {
+    const normalized = normalizeModelToken(engineToken);
+    if (!normalized || normalized.toUpperCase() === 'ALL') {
+        return ENGINE_JSON_FILES
+            .map((file) => file.replace(/^engine_/i, '').replace(/\.json$/i, ''))
+            .sort((a, b) => a.localeCompare(b));
+    }
+
+    const expectedEngineFile = `engine_${normalized}.json`;
+    if (!ENGINE_JSON_FILES.includes(expectedEngineFile)) {
+        throw new Error(`Modelo no soportado para rebuild: ${normalized}`);
+    }
+
+    return [normalized];
+}
+
+function runRebuildFromPreview(options = {}) {
+    const repoRoot = path.resolve(__dirname, '..');
+    const dryRun = Boolean(options.dryRun);
+    const writePreview = !dryRun;
+    const models = resolveRequestedModels(options.engine || 'ALL');
+
+    const results = [];
+    const failures = [];
+
+    for (const model of models) {
+        try {
+            const result = runModel(repoRoot, model, { dryRun, writePreview });
+            const writtenPaths = writePreview
+                ? writeOutputs(repoRoot, model, result.rebuildRows, result.report)
+                : null;
+
+            results.push({
+                model,
+                rowsGenerated: Number(result?.report?.stats?.rows_generated) || 0,
+                usedRows: Number(result?.report?.stats?.used_rows) || 0,
+                ambiguous: Number(result?.report?.stats?.ambiguous) || 0,
+                notFound: Number(result?.report?.stats?.not_found) || 0,
+                outputRebuild: writtenPaths ? path.relative(repoRoot, writtenPaths.rebuildPath).replace(/\\/g, '/') : '',
+                outputEngineCopy: writtenPaths ? path.relative(repoRoot, writtenPaths.engineCopyPath).replace(/\\/g, '/') : '',
+                outputReport: writtenPaths ? path.relative(repoRoot, writtenPaths.reportPath).replace(/\\/g, '/') : '',
+                report: result.report
+            });
+        } catch (error) {
+            failures.push({
+                model,
+                error: String(error?.message || error)
+            });
+        }
+    }
+
+    const totals = results.reduce((acc, item) => {
+        acc.usedRows += item.usedRows;
+        acc.rowsGenerated += item.rowsGenerated;
+        acc.ambiguous += item.ambiguous;
+        acc.notFound += item.notFound;
+        return acc;
+    }, {
+        usedRows: 0,
+        rowsGenerated: 0,
+        ambiguous: 0,
+        notFound: 0
+    });
+
+    return {
+        ok: failures.length === 0,
+        mode: writePreview ? 'WRITE_PREVIEW' : 'DRY_RUN',
+        requestedEngine: normalizeModelToken(options.engine || 'ALL') || 'ALL',
+        modelsProcessed: results.length,
+        modelsFailed: failures.length,
+        totals,
+        results,
+        failures,
+        outputDir: OUTPUT_DIR.replace(/\\/g, '/')
     };
 }
 
@@ -737,6 +817,7 @@ function printModelSummary(result, writtenPaths) {
 
     if (writtenPaths) {
         console.log(`  - output_rebuild: ${writtenPaths.rebuildPath}`);
+        console.log(`  - output_engine_copy: ${writtenPaths.engineCopyPath}`);
         console.log(`  - output_report: ${writtenPaths.reportPath}`);
     }
 }
@@ -829,5 +910,6 @@ if (require.main === module) {
 module.exports = {
     main,
     runModel,
-    isOtherRow
+    isOtherRow,
+    runRebuildFromPreview
 };

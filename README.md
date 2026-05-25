@@ -52,6 +52,8 @@ dist/, json_originales/, zz_old/   Generados / históricos (no editar)
 
 Toda la documentación vive en [docs/](docs/README.md). Documentos canónicos (fuente única de verdad por tema):
 
+- Rebuild MILU V1 - DOC V2 consolidada: [docs_v2/00_overview/MILU_V1_REBUILD_DOC_V2.md](docs_v2/00_overview/MILU_V1_REBUILD_DOC_V2.md)
+
 - Arquitectura: [docs/ARQUITECTURA_MILU.md](docs/ARQUITECTURA_MILU.md)
 - Flujo de datos: [docs/FLUJO_DATOS_MILU.md](docs/FLUJO_DATOS_MILU.md)
 - QA / reglas y comprobaciones: [docs/QA_MILU.md](docs/QA_MILU.md)

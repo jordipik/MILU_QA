@@ -9,6 +9,7 @@ const { ENGINE_JSON_FILES } = require('./engine_files');
 const { recomputeEngineErrors, recomputeAllEngineErrors } = require('./recompute_engine_errors');
 const { updateRevisionStates, normalizeEngineToken } = require('./scripts/update_revision_states');
 const { runUpdateSust } = require('./scripts/update_sust_fields');
+const { runRebuildFromPreview } = require('./scripts/rebuild_engine_from_book_preview');
 const { runVisualCopyComparison, applyCanonicalPdfCopyToRow } = require('./scripts/qa_pdf_visual_copy');
 const { runPdfVisualCopyBatch } = require('./server/services/pdf-copy-batch');
 const { createRevisionSyncService } = require('./server/services/revision-sync');
@@ -641,6 +642,53 @@ app.post('/api/recompute-simple/update-sust', async (req, res) => {
             ok: true,
             result,
             ignoredId: Boolean(id)
+        });
+    } catch (error) {
+        return res.status(500).json({
+            ok: false,
+            error: String(error?.message || error || 'Error desconocido')
+        });
+    }
+});
+
+app.post('/api/recompute-simple/rebuild-json', async (req, res) => {
+    let engine;
+    let dryRun;
+    let backup;
+
+    try {
+        assertPayloadSize(req.body, { maxBytes: 12288 });
+        engine = assertString(req.body?.engine ?? 'ALL', { field: 'engine', allowEmpty: false, maxLength: 64 });
+        dryRun = assertBooleanLike(req.body?.dryRun ?? false, 'dryRun');
+        backup = assertBooleanLike(req.body?.backup ?? true, 'backup');
+
+        const normalizedEngine = normalizeEngineToken(engine);
+        if (!normalizedEngine) {
+            throw validationError({ code: 'INVALID_ENGINE', field: 'engine', message: 'engine es obligatorio' });
+        }
+    } catch (error) {
+        return isValidationError(error)
+            ? sendValidationError(res, error, { endpoint: '/api/recompute-simple/rebuild-json' })
+            : res.status(400).json({ ok: false, error: String(error?.message || error) });
+    }
+
+    try {
+        const normalizedEngine = normalizeEngineToken(engine);
+        const result = runRebuildFromPreview({
+            engine: normalizedEngine,
+            dryRun
+        });
+
+        const statusCode = result.ok ? 200 : 207;
+        return res.status(statusCode).json({
+            ok: result.ok,
+            result,
+            notes: {
+                backupIgnored: true,
+                backupRequested: backup,
+                writesOnlyTo: 'data/output/rebuild',
+                engineFilesModified: false
+            }
         });
     } catch (error) {
         return res.status(500).json({
