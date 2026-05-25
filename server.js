@@ -708,6 +708,109 @@ app.post('/api/recompute-simple/enrich-assets', async (req, res) => {
     }
 });
 
+app.post('/api/recompute-simple/recompute-hermanos', async (req, res) => {
+    let engine;
+    let dryRun;
+    let backup;
+
+    try {
+        assertPayloadSize(req.body, { maxBytes: 12288 });
+        engine = assertString(req.body?.engine ?? 'ALL', { field: 'engine', allowEmpty: false, maxLength: 64 });
+        dryRun = assertBooleanLike(req.body?.dryRun ?? false, 'dryRun');
+        backup = assertBooleanLike(req.body?.backup ?? true, 'backup');
+        resolveEngineFilesForRecompute(engine);
+    } catch (error) {
+        return isValidationError(error)
+            ? sendValidationError(res, error, { endpoint: '/api/recompute-simple/recompute-hermanos' })
+            : res.status(400).json({ ok: false, error: String(error?.message || error) });
+    }
+
+    try {
+        const targetFiles = resolveEngineFilesForRecompute(engine);
+        const items = [];
+        const perEngine = [];
+        let recordsScanned = 0;
+
+        for (const file of targetFiles) {
+            const filePath = path.join(__dirname, file);
+            const raw = await fs.promises.readFile(filePath, 'utf8');
+            const json = JSON.parse(raw);
+            if (!Array.isArray(json)) {
+                throw new Error(`Contenido JSON invalido en ${file}: se esperaba array.`);
+            }
+
+            const uniquePnRows = new Map();
+            let fileScannedRows = 0;
+
+            for (const row of json) {
+                if (!isOkImportarRow(row)) continue;
+                fileScannedRows += 1;
+                recordsScanned += 1;
+
+                const pn = getRowPn(row);
+                const currentId = normalizeText(row?.ID);
+                if (!pn || !currentId) continue;
+
+                const key = lowerKey(pn);
+                if (!uniquePnRows.has(key)) {
+                    uniquePnRows.set(key, {
+                        pn,
+                        current_id: currentId,
+                        current_engine_file: file
+                    });
+                }
+            }
+
+            const fileItems = Array.from(uniquePnRows.values());
+            items.push(...fileItems);
+            perEngine.push({
+                engine: file,
+                records_scanned: fileScannedRows,
+                pn_groups_detected: fileItems.length
+            });
+        }
+
+        // Reutiliza la logica oficial de Analisis para hermanos/copias via el mismo motor backend.
+        const siblingResult = await applySiblingBulkUpdates(items, { dryRun, backup });
+        const itemResults = Array.isArray(siblingResult?.item_results) ? siblingResult.item_results : [];
+
+        const result = {
+            books_processed: targetFiles.length,
+            records_scanned: recordsScanned,
+            pn_groups_detected: items.length,
+            pns_with_changes: Number(siblingResult?.pns_with_changes || 0),
+            planned_updates: Number(siblingResult?.planned_updates || 0),
+            rows_updated: Number(siblingResult?.rows_updated || 0),
+            files_touched: siblingResult?.files_touched || [],
+            errors: siblingResult?.errors || [],
+            backup_paths: siblingResult?.backup_paths || [],
+            dry_run: Boolean(siblingResult?.dry_run),
+            item_results: itemResults,
+            per_engine: perEngine.map((entry) => {
+                const fileItemResults = itemResults.filter((item) => normalizeEngineFileName(item?.current_engine_file) === entry.engine);
+                return {
+                    engine: entry.engine,
+                    records_scanned: entry.records_scanned,
+                    pn_groups_detected: entry.pn_groups_detected,
+                    pns_with_changes: fileItemResults.filter((item) => Number(item?.planned_updates || 0) > 0).length,
+                    rows_updated: fileItemResults.reduce((acc, item) => acc + Number(item?.planned_updates || 0), 0)
+                };
+            })
+        };
+
+        const statusCode = result.errors.length > 0 ? 207 : 200;
+        return res.status(statusCode).json({
+            ok: result.errors.length === 0,
+            result
+        });
+    } catch (error) {
+        return res.status(500).json({
+            ok: false,
+            error: String(error?.message || error || 'Error desconocido')
+        });
+    }
+});
+
 app.post('/api/recompute-simple/update-gesa', async (req, res) => {
     let engine;
     let id;
@@ -1789,6 +1892,183 @@ function idsEquivalent(a, b) {
     return normalizeIdForCompare(aText) === normalizeIdForCompare(bText);
 }
 
+function isOkImportarRow(row) {
+    return lowerKey(row?.qa_revision_estado) === 'ok' && lowerKey(row?.qa_revision_accion) === 'importar';
+}
+
+function resolveEngineFilesForRecompute(engine) {
+    const normalizedEngine = normalizeEngineToken(engine);
+    if (!normalizedEngine) {
+        throw validationError({ code: 'INVALID_ENGINE', field: 'engine', message: 'engine es obligatorio' });
+    }
+    if (normalizedEngine === 'ALL') {
+        return [...ENGINE_JSON_FILES];
+    }
+
+    const matchedFile = ENGINE_JSON_FILES.find((file) => engineFileKey(file) === engineFileKey(normalizedEngine));
+    if (!matchedFile) {
+        throw validationError({ code: 'ENGINE_NOT_ALLOWED', field: 'engine', message: `Motor no permitido: ${engine}` });
+    }
+    return [matchedFile];
+}
+
+async function applySiblingBulkUpdates(itemsRaw, options = {}) {
+    const dryRun = Boolean(options?.dryRun);
+    const backup = Boolean(options?.backup);
+    const data = pnReviewQaCacheService.load();
+    const nowIso = new Date().toISOString();
+    const updatesByFile = new Map();
+    const itemResults = [];
+    const errors = [];
+
+    for (const item of itemsRaw) {
+        const pn = normalizeText(item?.pn);
+        const key = pnKey(pn);
+        const currentId = normalizeText(item?.current_id);
+        const currentEngineFile = normalizeEngineFileName(item?.current_engine_file || item?.current_engine || '');
+        const currentEngineKey = engineFileKey(currentEngineFile);
+
+        if (!pn || !key) {
+            itemResults.push({
+                pn,
+                current_id: currentId,
+                current_engine_file: currentEngineFile,
+                found_sources: 0,
+                target_siblings: 0,
+                planned_updates: 0,
+                skipped: true,
+                reason: 'missing-pn'
+            });
+            continue;
+        }
+
+        const detail = data.index.get(key);
+        if (!detail) {
+            itemResults.push({
+                pn,
+                current_id: currentId,
+                current_engine_file: currentEngineFile,
+                found_sources: 0,
+                target_siblings: 0,
+                planned_updates: 0,
+                skipped: true,
+                reason: 'pn-not-found'
+            });
+            continue;
+        }
+
+        const allSources = Array.isArray(detail.source_rows_all) ? detail.source_rows_all : [];
+        let targetSiblings = 0;
+        let plannedUpdates = 0;
+
+        for (const src of allSources) {
+            const srcId = normalizeText(src?.ID);
+            const srcFile = normalizeEngineFileName(src?.source_file || src?.engine_file || '');
+            const srcFileKey = engineFileKey(srcFile);
+            if (!srcId || !srcFile || !ENGINE_JSON_FILES.includes(srcFile)) continue;
+
+            if (srcId === currentId && srcFileKey === currentEngineKey) {
+                continue;
+            }
+
+            const estado = lowerKey(src?.qa_revision_estado);
+            const accion = lowerKey(src?.qa_revision_accion);
+            if (estado === 'ok' && accion === 'copia') {
+                continue;
+            }
+
+            targetSiblings += 1;
+
+            let ids = updatesByFile.get(srcFile);
+            if (!ids) {
+                ids = new Set();
+                updatesByFile.set(srcFile, ids);
+            }
+
+            const beforeSize = ids.size;
+            ids.add(String(srcId));
+            if (ids.size > beforeSize) {
+                plannedUpdates += 1;
+            }
+        }
+
+        itemResults.push({
+            pn,
+            current_id: currentId,
+            current_engine_file: currentEngineFile,
+            found_sources: allSources.length,
+            target_siblings: targetSiblings,
+            planned_updates: plannedUpdates,
+            skipped: false
+        });
+    }
+
+    const filesTouched = [];
+    const backupPaths = [];
+    let rowsUpdated = 0;
+
+    for (const [file, idSet] of updatesByFile.entries()) {
+        if (!ENGINE_JSON_FILES.includes(file)) {
+            errors.push({ file, error: 'Archivo no permitido' });
+            continue;
+        }
+
+        const filePath = path.join(__dirname, file);
+        try {
+            await withSaveJsonFileLock(file, async () => {
+                const raw = await fs.promises.readFile(filePath, 'utf8');
+                const json = JSON.parse(raw);
+                if (!Array.isArray(json)) {
+                    throw new Error('Contenido JSON invalido: se esperaba array.');
+                }
+
+                let touched = false;
+                for (const row of json) {
+                    const rowId = normalizeText(row?.ID);
+                    if (!rowId || !idSet.has(String(rowId))) continue;
+                    row.qa_revision_estado = 'ok';
+                    row.qa_revision_accion = 'copia';
+                    row.qa_revision_updated_at = nowIso;
+                    rowsUpdated += 1;
+                    touched = true;
+                }
+
+                if (touched && !dryRun) {
+                    if (backup) {
+                        const backupPath = `${filePath}.backup.${Date.now()}`;
+                        await fs.promises.copyFile(filePath, backupPath);
+                        backupPaths.push(path.basename(backupPath));
+                    }
+                    await writeJsonAtomic(filePath, json);
+                    filesTouched.push(file);
+                }
+            });
+        } catch (error) {
+            errors.push({ file, error: String(error?.message || error) });
+        }
+    }
+
+    const plannedUpdates = itemResults.reduce((acc, item) => acc + Number(item?.planned_updates || 0), 0);
+    const pnsWithChanges = itemResults.filter((item) => Number(item?.planned_updates || 0) > 0).length;
+
+    if (!dryRun && (filesTouched.length > 0 || errors.length > 0)) {
+        pnReviewQaCacheService.invalidate();
+    }
+
+    return {
+        scanned_items: itemResults.length,
+        pns_with_changes: pnsWithChanges,
+        planned_updates: plannedUpdates,
+        rows_updated: dryRun ? plannedUpdates : rowsUpdated,
+        files_touched: filesTouched,
+        item_results: itemResults,
+        errors,
+        backup_paths: backupPaths,
+        dry_run: dryRun,
+        backup_requested: backup
+    };
+}
+
 app.get('/pn-review/list', async (req, res) => {
     try {
         const data = pnReviewQaCacheService.load();
@@ -1893,146 +2173,11 @@ app.post('/pn-review/apply-siblings-bulk', async (req, res) => {
     }
 
     try {
-        const data = pnReviewQaCacheService.load();
-        const nowIso = new Date().toISOString();
-        const updatesByFile = new Map();
-        const itemResults = [];
-        const errors = [];
-
-        for (const item of itemsRaw) {
-            const pn = normalizeText(item?.pn);
-            const key = pnKey(pn);
-            const currentId = normalizeText(item?.current_id);
-            const currentEngineFile = normalizeEngineFileName(item?.current_engine_file || item?.current_engine || '');
-            const currentEngineKey = engineFileKey(currentEngineFile);
-
-            if (!pn || !key) {
-                itemResults.push({
-                    pn,
-                    current_id: currentId,
-                    found_sources: 0,
-                    target_siblings: 0,
-                    planned_updates: 0,
-                    skipped: true,
-                    reason: 'missing-pn'
-                });
-                continue;
-            }
-
-            const detail = data.index.get(key);
-            if (!detail) {
-                itemResults.push({
-                    pn,
-                    current_id: currentId,
-                    found_sources: 0,
-                    target_siblings: 0,
-                    planned_updates: 0,
-                    skipped: true,
-                    reason: 'pn-not-found'
-                });
-                continue;
-            }
-
-            const allSources = Array.isArray(detail.source_rows_all) ? detail.source_rows_all : [];
-            let targetSiblings = 0;
-            let plannedUpdates = 0;
-
-            for (const src of allSources) {
-                const srcId = normalizeText(src?.ID);
-                const srcFile = normalizeEngineFileName(src?.source_file || src?.engine_file || '');
-                const srcFileKey = engineFileKey(srcFile);
-                if (!srcId || !srcFile || !ENGINE_JSON_FILES.includes(srcFile)) continue;
-
-                if (srcId === currentId && srcFileKey === currentEngineKey) {
-                    continue;
-                }
-
-                const estado = lowerKey(src?.qa_revision_estado);
-                const accion = lowerKey(src?.qa_revision_accion);
-                if (estado === 'ok' && accion === 'copia') {
-                    continue;
-                }
-
-                targetSiblings += 1;
-
-                let ids = updatesByFile.get(srcFile);
-                if (!ids) {
-                    ids = new Set();
-                    updatesByFile.set(srcFile, ids);
-                }
-
-                const beforeSize = ids.size;
-                ids.add(String(srcId));
-                if (ids.size > beforeSize) {
-                    plannedUpdates += 1;
-                }
-            }
-
-            itemResults.push({
-                pn,
-                current_id: currentId,
-                found_sources: allSources.length,
-                target_siblings: targetSiblings,
-                planned_updates: plannedUpdates,
-                skipped: false
-            });
-        }
-
-        const filesTouched = [];
-        let rowsUpdated = 0;
-
-        for (const [file, idSet] of updatesByFile.entries()) {
-            if (!ENGINE_JSON_FILES.includes(file)) {
-                errors.push({ file, error: 'Archivo no permitido' });
-                continue;
-            }
-
-            const filePath = path.join(__dirname, file);
-            try {
-                await withSaveJsonFileLock(file, async () => {
-                    const raw = await fs.promises.readFile(filePath, 'utf8');
-                    const json = JSON.parse(raw);
-                    if (!Array.isArray(json)) {
-                        throw new Error('Contenido JSON invalido: se esperaba array.');
-                    }
-
-                    let touched = false;
-                    for (const row of json) {
-                        const rowId = normalizeText(row?.ID);
-                        if (!rowId || !idSet.has(String(rowId))) continue;
-                        row.qa_revision_estado = 'ok';
-                        row.qa_revision_accion = 'copia';
-                        row.qa_revision_updated_at = nowIso;
-                        rowsUpdated += 1;
-                        touched = true;
-                    }
-
-                    if (touched) {
-                        await writeJsonAtomic(filePath, json);
-                        filesTouched.push(file);
-                    }
-                });
-            } catch (error) {
-                errors.push({ file, error: String(error?.message || error) });
-            }
-        }
-
-        pnReviewQaCacheService.invalidate();
-
-        const plannedUpdates = itemResults.reduce((acc, item) => acc + Number(item?.planned_updates || 0), 0);
-        const pnsWithChanges = itemResults.filter((item) => Number(item?.planned_updates || 0) > 0).length;
+        const result = await applySiblingBulkUpdates(itemsRaw, { dryRun: false, backup: false });
 
         return res.json({
-            ok: errors.length === 0,
-            result: {
-                scanned_items: itemResults.length,
-                pns_with_changes: pnsWithChanges,
-                planned_updates: plannedUpdates,
-                rows_updated: rowsUpdated,
-                files_touched: filesTouched,
-                item_results: itemResults,
-                errors
-            }
+            ok: Array.isArray(result?.errors) ? result.errors.length === 0 : true,
+            result
         });
     } catch (error) {
         return res.status(500).json({ ok: false, error: String(error?.message || error) });

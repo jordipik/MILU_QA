@@ -13,6 +13,7 @@ const refs = {
     btnImportPdf: document.getElementById('btnImportPdf'),
     btnSust: document.getElementById('btnSust'),
     btnAssets: document.getElementById('btnAssets'),
+    btnHermanos: document.getElementById('btnHermanos'),
     btnFinal: document.getElementById('btnFinal'),
     btnErrors: document.getElementById('btnErrors'),
     btnStatuses: document.getElementById('btnStatuses'),
@@ -25,6 +26,7 @@ const actionButtons = [
     refs.btnImportPdf,
     refs.btnSust,
     refs.btnAssets,
+    refs.btnHermanos,
     refs.btnFinal,
     refs.btnErrors,
     refs.btnStatuses,
@@ -728,6 +730,43 @@ function renderResponseSummary(actionLabel, endpoint, responseData) {
         return;
     }
 
+    if (endpoint === '/api/recompute-simple/recompute-hermanos') {
+        const siblings = data?.result || {};
+        const cards = [
+            { label: 'Libros procesados', value: String(Number(siblings?.books_processed) || 0) },
+            { label: 'Registros escaneados', value: String(Number(siblings?.records_scanned) || 0) },
+            { label: 'Grupos PN detectados', value: String(Number(siblings?.pn_groups_detected) || 0) },
+            { label: 'PN con cambios', value: String(Number(siblings?.pns_with_changes) || 0) },
+            { label: 'Registros actualizados', value: String(Number(siblings?.rows_updated) || 0) },
+            { label: 'Backups', value: String(Number((siblings?.backup_paths || []).length) || 0) },
+            { label: 'Dry run', value: siblings?.dry_run ? 'si' : 'no' }
+        ];
+
+        const perEngine = Array.isArray(siblings?.per_engine) ? siblings.per_engine : [];
+        const rows = perEngine.map((item) => [
+            String(item?.engine || ''),
+            String(Number(item?.records_scanned) || 0),
+            String(Number(item?.pn_groups_detected) || 0),
+            String(Number(item?.pns_with_changes) || 0),
+            String(Number(item?.rows_updated) || 0)
+        ]);
+
+        const errors = Array.isArray(siblings?.errors) ? siblings.errors : [];
+        const warning = errors.length
+            ? `Errores parciales: ${errors.map((item) => `${item?.file || 'bulk'}: ${item?.error || 'Error desconocido'}`).join(' | ')}`
+            : '';
+
+        renderResultPanel(
+            actionLabel,
+            endpoint,
+            cards,
+            ['Libro', 'Escaneados', 'Grupos PN', 'PN con cambios', 'Actualizados'],
+            rows,
+            warning
+        );
+        return;
+    }
+
     if (endpoint === '/api/pdf-preview/apply-to-engine') {
         const stats = data?.stats || {};
         const notFoundRows = Array.isArray(data?.not_found_rows) ? data.not_found_rows : [];
@@ -1083,6 +1122,30 @@ async function runAssets() {
     setStatus('ASSETS finalizado correctamente.', 'ok');
 }
 
+async function runHermanos() {
+    const scope = getScope();
+    if (scope.id) showIdIgnoredWarning('HERMANOS / COPIAS');
+
+    const payload = {
+        engine: scope.isAll ? 'ALL' : scope.model,
+        dryRun: false,
+        backup: true
+    };
+
+    // Reutiliza la logica oficial de Analisis para hermanos/copias a traves del wrapper recompute_simple.
+    setStatus(scope.isAll ? 'Recalculando HERMANOS / COPIAS para todos los libros...' : `Recalculando HERMANOS / COPIAS para ${scope.model}...`, '');
+    const data = await postJson('/api/recompute-simple/recompute-hermanos', payload, { allowPartial: true });
+    renderResponseSummary('Recalcular hermanos', '/api/recompute-simple/recompute-hermanos', data);
+
+    const hadErrors = Array.isArray(data?.result?.errors) && data.result.errors.length > 0;
+    if (hadErrors) {
+        setStatus('HERMANOS / COPIAS finalizado con incidencias parciales. Revisa el panel de resultados.', 'warning');
+        return;
+    }
+
+    setStatus('HERMANOS / COPIAS finalizado correctamente.', 'ok');
+}
+
 async function runErrors() {
     const scope = getScope();
     let payload;
@@ -1222,6 +1285,10 @@ function bindEvents() {
 
     if (refs.btnAssets instanceof HTMLButtonElement) {
         refs.btnAssets.addEventListener('click', () => runAction(runAssets));
+    }
+
+    if (refs.btnHermanos instanceof HTMLButtonElement) {
+        refs.btnHermanos.addEventListener('click', () => runAction(runHermanos));
     }
 
     if (refs.btnFinal instanceof HTMLButtonElement) {

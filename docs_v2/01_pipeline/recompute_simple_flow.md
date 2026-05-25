@@ -7,6 +7,7 @@ Documentar el flujo real de la pagina `recompute_simple.html` como orquestador o
 - `btnImportPdf` -> `POST /api/recompute-simple/rebuild-json`
 - `btnSust` -> `POST /api/recompute-simple/update-gesa` + `POST /api/recompute-simple/update-sust`
 - `btnAssets` -> `POST /api/recompute-simple/enrich-assets`
+- `btnHermanos` -> `POST /api/recompute-simple/recompute-hermanos`
 - `btnFinal` -> `POST /copy-pdf-to-final-all-books`
 - `btnErrors` -> `POST /recompute-qa-errors`
 - `btnStatuses` -> `POST /api/recompute-simple/update-states`
@@ -19,6 +20,7 @@ Documentar el flujo real de la pagina `recompute_simple.html` como orquestador o
 Comportamiento real:
 - IMPORTAR PDF y CALCULO FINAL ignoran ID puntual.
 - GESA SUST y ASSETS ignoran ID puntual.
+- HERMANOS COPIAS ignora ID puntual y reutiliza la logica oficial de Analisis (`/pn-review/apply-siblings-bulk`) via wrapper recompute.
 - ERRORES usa `scope` (`all`, `book`, `current`) segun libro/ID.
 - ESTADOS usa payload `{ engine, id, backup }` hacia `/api/recompute-simple/update-states`.
 
@@ -26,9 +28,10 @@ Comportamiento real:
 1. IMPORTAR PDF
 2. GESA SUST
 3. ASSETS
-4. CALCULO FINAL
-5. ERRORES
-6. ESTADOS
+4. HERMANOS COPIAS
+5. CALCULO FINAL
+6. ERRORES
+7. ESTADOS
 
 ## Endpoint ASSETS runtime
 - `POST /api/recompute-simple/enrich-assets`
