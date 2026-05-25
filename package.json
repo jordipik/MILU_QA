@@ -14,6 +14,8 @@
     "qa:pdf-copy:batch:write:no-backup": "node scripts/run_visual_pdf_copy_batch.js --write-pdf --no-backup",
     "qa:pdf-copy:validate": "node scripts/validate_pdf_copy_bulk.js",
     "qa:pdf-copy:validate:write": "node scripts/validate_pdf_copy_bulk.js --run-write",
+    "rebuild:engine:dry": "node rebuild_engine_from_book_preview.js --all --dry-run",
+    "rebuild:engine:preview": "node rebuild_engine_from_book_preview.js --all --write-preview",
     "legacy:generate:synthetic": "node generate_synthetic_exports.js",
     "export:wordpress": "node scripts/export_wordpress_milu.js",
     "legacy:ai:conflicts": "node legacy/export_complex_ai/scripts/ai_conflict_rules.js",
