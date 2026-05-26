@@ -293,24 +293,9 @@
                 <button id="btnAssets" type="button">ASSETS</button>
             </article>
 
-            <article class="a2-recompute-card" aria-label="Recalcular copias y hermanos por PN">
-                <h3>
-                    <span class="a2-step-index">4</span>
-                    <div>
-                        <span class="a2-step-title">HERMANOS / COPIAS</span>
-                        <p class="a2-step-desc">POST /api/recompute-simple/recompute-hermanos</p>
-                        <p class="a2-step-desc">Recalcula copias/hermanos por PN para un libro o para todos los libros.
-                        </p>
-                        <p class="a2-step-desc">Reutiliza la lógica oficial de Analisis para el cálculo bulk de
-                            hermanos.</p>
-                    </div>
-                </h3>
-                <button id="btnHermanos" type="button">RECALCULAR HERMANOS</button>
-            </article>
-
             <article class="a2-recompute-card" aria-label="Calcular campos FINAL desde GESA">
                 <h3>
-                    <span class="a2-step-index">5</span>
+                    <span class="a2-step-index">4</span>
                     <div>
                         <span class="a2-step-title">Cálculo FINAL</span>
                         <p class="a2-step-desc">POST /copy-pdf-to-final-all-books</p>
@@ -322,7 +307,7 @@
 
             <article class="a2-recompute-card" aria-label="Recalcular errores">
                 <h3>
-                    <span class="a2-step-index">6</span>
+                    <span class="a2-step-index">5</span>
                     <div>
                         <span class="a2-step-title">Errores</span>
                         <p class="a2-step-desc">POST /recompute-qa-errors con scope/libro/id.</p>
@@ -333,7 +318,7 @@
 
             <article class="a2-recompute-card" aria-label="Recalcular estado y acción de revisión">
                 <h3>
-                    <span class="a2-step-index">7</span>
+                    <span class="a2-step-index">6</span>
                     <div>
                         <span class="a2-step-title">Estados</span>
                         <p class="a2-step-desc">POST /api/recompute-simple/update-states.</p>
@@ -341,6 +326,21 @@
                     </div>
                 </h3>
                 <button id="btnStatuses" type="button" class="is-warning">ESTADOS</button>
+            </article>
+
+            <article class="a2-recompute-card" aria-label="Recalcular copias y hermanos por PN">
+                <h3>
+                    <span class="a2-step-index">7</span>
+                    <div>
+                        <span class="a2-step-title">HERMANOS / COPIAS</span>
+                        <p class="a2-step-desc">POST /api/recompute-simple/recompute-hermanos</p>
+                        <p class="a2-step-desc">Recalcula copias/hermanos por PN para un libro o para todos los libros.
+                        </p>
+                        <p class="a2-step-desc">Reutiliza la lógica oficial de Analisis para el cálculo bulk de
+                            hermanos.</p>
+                    </div>
+                </h3>
+                <button id="btnHermanos" type="button">RECALCULAR HERMANOS</button>
             </article>
         </section>
 
