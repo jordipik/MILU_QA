@@ -53,7 +53,7 @@
 
         body.importpdf-view .ip-main {
             display: grid;
-            grid-template-columns: minmax(300px, 360px) minmax(0, 1fr);
+            grid-template-columns: minmax(320px, calc((100% - 10px) / 2)) minmax(0, calc((100% - 10px) / 2));
             gap: 10px;
             height: 100%;
             min-height: 0;
@@ -186,7 +186,7 @@
         body.importpdf-view .ip-control-buttons,
         body.importpdf-view .ip-book-buttons {
             display: grid;
-            grid-template-columns: repeat(2, minmax(0, 1fr));
+            grid-template-columns: repeat(5, minmax(0, 1fr));
             gap: 6px;
         }
 
@@ -207,7 +207,7 @@
 
         body.importpdf-view .ip-summary-grid {
             display: grid;
-            grid-template-columns: repeat(2, minmax(0, 1fr));
+            grid-template-columns: repeat(5, minmax(0, 1fr));
             gap: 6px;
         }
 
@@ -220,7 +220,7 @@
 
         body.importpdf-view .ip-summary-item .label {
             display: block;
-            font-size: 10px;
+            font-size: 9px;
             text-transform: uppercase;
             letter-spacing: 0.06em;
             color: var(--muted);
@@ -229,13 +229,13 @@
         body.importpdf-view .ip-summary-item .value {
             display: block;
             margin-top: 4px;
-            font-size: 18px;
+            font-size: 15px;
             font-weight: 800;
             line-height: 1.1;
         }
 
         body.importpdf-view .ip-summary-wide {
-            grid-column: 1 / -1;
+            grid-column: auto;
         }
 
         body.importpdf-view .ip-status {
@@ -394,7 +394,7 @@
 
         @media (max-width: 1280px) {
             body.importpdf-view .ip-main {
-                grid-template-columns: minmax(280px, 330px) minmax(0, 1fr);
+                grid-template-columns: minmax(300px, calc((100% - 10px) / 2)) minmax(0, calc((100% - 10px) / 2));
             }
         }
 
@@ -421,6 +421,14 @@
             body.importpdf-view .ip-left {
                 order: 2;
                 overflow: visible;
+            }
+
+            body.importpdf-view .ip-summary-grid {
+                grid-template-columns: repeat(2, minmax(0, 1fr));
+            }
+
+            body.importpdf-view .ip-summary-wide {
+                grid-column: 1 / -1;
             }
         }
 
