@@ -595,33 +595,135 @@ function getCarryableWarningsFromMergedRow(row = {}) {
     return warnings.filter((warning) => !localOnlyWarnings.has(String(warning || '').trim()));
 }
 
-function mergeMultilineDesignationRows(rows = [], sourcePage = 0) {
-    const normalizedRows = [];
+function rowHasMultilineCandidateWarning(row = {}) {
+    const warnings = Array.isArray(row?.warnings) ? row.warnings : [];
+    return warnings.includes('multiline-candidate');
+}
 
-    rows.forEach((currentRow) => {
-        const previousRow = normalizedRows[normalizedRows.length - 1] || null;
-        const canMergeCurrentRow = isRowMissingPosPnWithDesignation(currentRow)
-            && !rowHasStructuredDataForMultilineMerge(currentRow)
-            && isValidPreviousRowForMultilineMerge(previousRow);
+function getMergeableRowFields(row = {}) {
+    const keys = [
+        'designation_pdf',
+        'model_type_pdf',
+        'measure_pdf',
+        'norma_pdf',
+        'fn_pdf',
+        'qty_pdf',
+        'units_pdf',
+        'weight_pdf'
+    ];
 
-        if (!canMergeCurrentRow) {
-            normalizedRows.push(currentRow);
+    return keys.reduce((acc, key) => {
+        const value = normalizeString(row?.[key]);
+        if (value) acc[key] = value;
+        return acc;
+    }, {});
+}
+
+function scoreMergeTarget(targetRow = {}, sourceFields = {}) {
+    const appendableKeys = new Set([
+        'designation_pdf',
+        'model_type_pdf',
+        'measure_pdf',
+        'norma_pdf',
+        'fn_pdf'
+    ]);
+
+    let score = 0;
+    Object.entries(sourceFields).forEach(([key, value]) => {
+        if (!value) return;
+        const targetValue = normalizeString(targetRow?.[key]);
+        if (!targetValue) {
+            score += 3;
+            return;
+        }
+        if (appendableKeys.has(key)) {
+            score += 1;
+            return;
+        }
+        score -= 2;
+    });
+
+    return score;
+}
+
+function applyMergedFieldsIntoTarget(targetRow = {}, sourceFields = {}) {
+    const appendableKeys = new Set([
+        'designation_pdf',
+        'model_type_pdf',
+        'measure_pdf',
+        'norma_pdf',
+        'fn_pdf'
+    ]);
+
+    let mergedDesignation = false;
+
+    Object.entries(sourceFields).forEach(([key, value]) => {
+        const current = normalizeString(targetRow?.[key]);
+        if (!current) {
+            targetRow[key] = value;
+            if (key === 'designation_pdf') mergedDesignation = true;
             return;
         }
 
-        const previousDesignation = normalizeString(previousRow?.designation_pdf);
-        const currentDesignation = normalizeString(currentRow?.designation_pdf);
-        previousRow.designation_pdf = normalizeString(`${previousDesignation} ${currentDesignation}`);
+        if (!appendableKeys.has(key)) return;
+
+        targetRow[key] = normalizeString(`${current} ${value}`);
+        if (key === 'designation_pdf') mergedDesignation = true;
+    });
+
+    return { mergedDesignation };
+}
+
+function mergeMultilineDesignationRows(rows = [], sourcePage = 0) {
+    const normalizedRows = Array.isArray(rows) ? rows.map((row) => ({ ...row })) : [];
+
+    let index = 0;
+    while (index < normalizedRows.length) {
+        const currentRow = normalizedRows[index];
+        const mergeableFields = getMergeableRowFields(currentRow);
+
+        const canTryMerge = !normalizeString(currentRow?.pos_pdf)
+            && !normalizeString(currentRow?.pn_pdf)
+            && Object.keys(mergeableFields).length > 0
+            && rowHasMultilineCandidateWarning(currentRow);
+
+        if (!canTryMerge) {
+            index += 1;
+            continue;
+        }
+
+        const previousRow = index > 0 ? normalizedRows[index - 1] : null;
+        const nextRow = index + 1 < normalizedRows.length ? normalizedRows[index + 1] : null;
+        const previousValid = isValidPreviousRowForMultilineMerge(previousRow);
+        const nextValid = isValidPreviousRowForMultilineMerge(nextRow);
+
+        if (!previousValid && !nextValid) {
+            index += 1;
+            continue;
+        }
+
+        const previousScore = previousValid ? scoreMergeTarget(previousRow, mergeableFields) : Number.NEGATIVE_INFINITY;
+        const nextScore = nextValid ? scoreMergeTarget(nextRow, mergeableFields) : Number.NEGATIVE_INFINITY;
+
+        const targetRow = nextScore > previousScore ? nextRow : previousRow;
+        const targetDirection = targetRow === nextRow ? 'next' : 'previous';
+        const { mergedDesignation } = applyMergedFieldsIntoTarget(targetRow, mergeableFields);
 
         const mergedWarnings = [
-            ...(Array.isArray(previousRow?.warnings) ? previousRow.warnings : []),
+            ...(Array.isArray(targetRow?.warnings) ? targetRow.warnings : []),
             ...getCarryableWarningsFromMergedRow(currentRow),
-            'merged-multiline-designation'
+            'merged-multiline-row'
         ];
-        previousRow.warnings = Array.from(new Set(mergedWarnings));
+        if (mergedDesignation) mergedWarnings.push('merged-multiline-designation');
+        targetRow.warnings = Array.from(new Set(mergedWarnings));
 
-        console.info(`[PDF multiline merge] page=${sourcePage || 0} row=${Number(currentRow?.row_index || 0)} into previous row`);
-    });
+        console.info(
+            `[PDF multiline merge] page=${sourcePage || 0} row=${Number(currentRow?.row_index || 0)} into ${targetDirection} row=${Number(targetRow?.row_index || 0)}`
+        );
+
+        normalizedRows.splice(index, 1);
+        if (targetDirection === 'previous' && index > 0) index -= 1;
+    }
 
     return normalizedRows;
 }
