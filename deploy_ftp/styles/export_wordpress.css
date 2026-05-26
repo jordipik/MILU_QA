@@ -1,0 +1,677 @@
+:root {
+    --page-bg: #f3f0e8;
+    --page-ink: #1c2b2d;
+    --muted: #66767a;
+    --panel: rgba(255, 255, 255, 0.84);
+    --panel-strong: #ffffff;
+    --line: #d9d2c4;
+    --line-strong: #baa88d;
+    --accent: #0e5a52;
+    --accent-soft: #d4ece8;
+    --accent-ink: #0b3f3a;
+    --hero-a: #102a43;
+    --hero-b: #1f4e5f;
+    --warn: #b45c27;
+    --danger: #9f2d2d;
+    --ok: #1d6b50;
+    --shadow: 0 18px 40px rgba(22, 32, 37, 0.12);
+}
+
+* {
+    box-sizing: border-box;
+}
+
+html,
+body {
+    margin: 0;
+    min-height: 100%;
+}
+
+body {
+    font-family: "IBM Plex Sans", "Segoe UI", sans-serif;
+    color: var(--page-ink);
+    background:
+        radial-gradient(circle at top left, rgba(255, 238, 201, 0.92), transparent 28%),
+        radial-gradient(circle at 100% 0%, rgba(151, 205, 195, 0.38), transparent 26%),
+        linear-gradient(180deg, #f8f4eb 0%, #f1ece1 100%);
+}
+
+button,
+input,
+select {
+    font: inherit;
+}
+
+.ewx-shell {
+    max-width: none;
+    width: 100%;
+    margin: 0;
+    padding: 18px clamp(14px, 2vw, 28px) 22px;
+}
+
+.ewx-hero {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    gap: 18px;
+    align-items: start;
+    padding: 22px;
+    border-radius: 28px;
+    background:
+        radial-gradient(circle at 0% 0%, rgba(255, 255, 255, 0.16), transparent 32%),
+        linear-gradient(135deg, var(--hero-a), var(--hero-b));
+    color: #f7fafc;
+    box-shadow: var(--shadow);
+}
+
+.ewx-eyebrow,
+.eyebrow {
+    margin: 0;
+    text-transform: uppercase;
+    letter-spacing: 0.12em;
+    font-size: 11px;
+    font-weight: 700;
+    opacity: 0.78;
+}
+
+.ewx-hero h1,
+.ewx-panel-head h2 {
+    margin: 6px 0;
+    font-family: "Space Grotesk", "Segoe UI", sans-serif;
+    line-height: 1.05;
+}
+
+.ewx-hero h1 {
+    font-size: clamp(30px, 4vw, 46px);
+}
+
+.ewx-subtitle {
+    max-width: 76ch;
+    margin: 0;
+    color: rgba(247, 250, 252, 0.88);
+}
+
+.ewx-links {
+    display: flex;
+    gap: 14px;
+    flex-wrap: wrap;
+    margin-top: 14px;
+}
+
+.ewx-links a {
+    color: #effcf8;
+    text-decoration: none;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.32);
+}
+
+.ewx-links a:hover {
+    border-bottom-color: rgba(255, 255, 255, 0.82);
+}
+
+.ewx-hero-actions,
+.ewx-detail-actions {
+    display: flex;
+    gap: 10px;
+    flex-wrap: wrap;
+    justify-content: flex-end;
+}
+
+.ewx-hero-actions button,
+.ewx-detail-actions button {
+    height: 42px;
+    padding: 0 14px;
+    border-radius: 12px;
+    border: 1px solid transparent;
+    cursor: pointer;
+    font-weight: 600;
+}
+
+.ewx-hero-actions button,
+.ewx-detail-actions button:not(.secondary) {
+    background: linear-gradient(135deg, #dcefe9, #f5fffd);
+    color: #0a342e;
+}
+
+.ewx-hero-actions button.secondary,
+.ewx-detail-actions button.secondary {
+    background: rgba(255, 255, 255, 0.1);
+    color: #f3fbff;
+    border-color: rgba(255, 255, 255, 0.26);
+}
+
+.ewx-detail-actions button.secondary {
+    background: #f6fbfa;
+    color: #163b36;
+    border-color: #c8ddd9;
+}
+
+.ewx-hero-actions button:hover,
+.ewx-detail-actions button:hover {
+    transform: translateY(-1px);
+}
+
+.ewx-summary {
+    display: grid;
+    grid-template-columns: repeat(6, minmax(0, 1fr));
+    gap: 12px;
+    margin-top: 6px;
+}
+
+.ewx-summary-card-actions {
+    display: flex;
+    align-items: center;
+    justify-content: flex-end;
+}
+
+.ewx-card-actions {
+    width: 100%;
+    display: flex;
+    gap: 10px;
+    justify-content: flex-end;
+    flex-wrap: wrap;
+}
+
+.ewx-card-actions button {
+    height: 42px;
+    padding: 0 14px;
+    border-radius: 12px;
+    border: 1px solid #d7e4e1;
+    cursor: pointer;
+    font-weight: 600;
+    background: linear-gradient(135deg, #dcefe9, #f5fffd);
+    color: #0a342e;
+}
+
+.ewx-card-actions button.secondary {
+    background: #f6fbfa;
+    color: #163b36;
+    border-color: #c8ddd9;
+}
+
+.ewx-card-actions button:hover {
+    transform: translateY(-1px);
+}
+
+.ewx-summary-card {
+    display: grid;
+    gap: 6px;
+    padding: 14px 16px;
+    border-radius: 18px;
+    background: var(--panel);
+    border: 1px solid rgba(255, 255, 255, 0.55);
+    backdrop-filter: blur(6px);
+    box-shadow: 0 10px 24px rgba(24, 34, 40, 0.06);
+}
+
+.ewx-status-filter {
+    cursor: pointer;
+    transition: all 0.18s ease;
+    position: relative;
+}
+
+.ewx-status-filter:hover:not([aria-pressed="true"]) {
+    transform: translateY(-2px);
+    box-shadow: 0 14px 32px rgba(24, 34, 40, 0.12);
+}
+
+/* NEW - Status filter styles */
+.ewx-status-filter[data-tab="new"] {
+    background: linear-gradient(135deg, #f0faf7, #f7fcfb);
+    border-color: #c8e0db;
+    color: #1d6b50;
+}
+
+.ewx-status-filter[data-tab="new"]:hover:not([aria-pressed="true"]) {
+    background: linear-gradient(135deg, #e8f6f2, #f2faf8);
+    border-color: #a8d4cc;
+}
+
+.ewx-status-filter[data-tab="new"][aria-pressed="true"] {
+    background: linear-gradient(135deg, #d4ece8, #e8f8f5);
+    border: 2px solid #1d6b50;
+    padding: 13px 15px;
+    box-shadow:
+        0 0 0 3px rgba(29, 107, 80, 0.1),
+        0 10px 24px rgba(29, 107, 80, 0.15);
+}
+
+/* SUPERSEDED - Status filter styles */
+.ewx-status-filter[data-tab="superseded"] {
+    background: linear-gradient(135deg, #f0f5fb, #f7fafd);
+    border-color: #c8dae6;
+    color: #315d8b;
+}
+
+.ewx-status-filter[data-tab="superseded"]:hover:not([aria-pressed="true"]) {
+    background: linear-gradient(135deg, #e8f0f8, #f2f8fc);
+    border-color: #a8c5dd;
+}
+
+.ewx-status-filter[data-tab="superseded"][aria-pressed="true"] {
+    background: linear-gradient(135deg, #d9e9f6, #ecf3fb);
+    border: 2px solid #315d8b;
+    padding: 13px 15px;
+    box-shadow:
+        0 0 0 3px rgba(49, 93, 139, 0.1),
+        0 10px 24px rgba(49, 93, 139, 0.15);
+}
+
+/* PENDING - Status filter styles */
+.ewx-status-filter[data-tab="pending"] {
+    background: linear-gradient(135deg, #fdf6f0, #fffbf7);
+    border-color: #ead5c2;
+    color: #b45c27;
+}
+
+.ewx-status-filter[data-tab="pending"]:hover:not([aria-pressed="true"]) {
+    background: linear-gradient(135deg, #fceee6, #fef9f4);
+    border-color: #dfc2ad;
+}
+
+.ewx-status-filter[data-tab="pending"][aria-pressed="true"] {
+    background: linear-gradient(135deg, #f9dcc4, #fef3eb);
+    border: 2px solid #b45c27;
+    padding: 13px 15px;
+    box-shadow:
+        0 0 0 3px rgba(180, 92, 39, 0.1),
+        0 10px 24px rgba(180, 92, 39, 0.15);
+}
+
+/* DISCARDED - Status filter styles */
+.ewx-status-filter[data-tab="discarded"] {
+    background: linear-gradient(135deg, #fef0f0, #fffafb);
+    border-color: #e8caca;
+    color: #9f2d2d;
+}
+
+.ewx-status-filter[data-tab="discarded"]:hover:not([aria-pressed="true"]) {
+    background: linear-gradient(135deg, #fce6e6, #fef4f5);
+    border-color: #deb5b5;
+}
+
+.ewx-status-filter[data-tab="discarded"][aria-pressed="true"] {
+    background: linear-gradient(135deg, #f5d5d5, #fce9e9);
+    border: 2px solid #9f2d2d;
+    padding: 13px 15px;
+    box-shadow:
+        0 0 0 3px rgba(159, 45, 45, 0.1),
+        0 10px 24px rgba(159, 45, 45, 0.15);
+}
+
+.ewx-summary-card-wide {
+    grid-column: span 1;
+}
+
+.ewx-summary-card .label {
+    font-size: 11px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    color: inherit;
+    opacity: 0.82;
+}
+
+.ewx-summary-card strong {
+    font-family: "Space Grotesk", "Segoe UI", sans-serif;
+    font-size: clamp(20px, 2vw, 28px);
+    color: inherit;
+}
+
+button.ewx-summary-card {
+    border: none;
+    cursor: pointer;
+    font-family: inherit;
+    text-align: left;
+}
+
+button.ewx-summary-card:focus {
+    outline: none;
+}
+
+button.ewx-summary-card:focus-visible {
+    outline: 2px solid var(--accent);
+    outline-offset: 2px;
+}
+
+.ewx-workbench {
+    display: grid;
+    grid-template-columns: minmax(300px, 420px) minmax(0, 1fr);
+    gap: 14px;
+    margin-top: 14px;
+    min-height: calc(100vh - 180px);
+}
+
+.ewx-sidebar,
+.ewx-detail {
+    display: flex;
+    flex-direction: column;
+    min-height: 0;
+    border-radius: 22px;
+    background: var(--panel);
+    border: 1px solid rgba(255, 255, 255, 0.58);
+    backdrop-filter: blur(6px);
+    box-shadow: var(--shadow);
+    overflow: hidden;
+}
+
+.ewx-panel-head {
+    display: flex;
+    justify-content: space-between;
+    align-items: start;
+    gap: 12px;
+    padding: 18px 18px 12px;
+}
+
+.ewx-status {
+    align-self: center;
+    padding: 6px 10px;
+    border-radius: 999px;
+    background: #eef8f6;
+    color: #1f6158;
+    font-size: 12px;
+    font-weight: 600;
+}
+
+.ewx-filters {
+    display: grid;
+    gap: 10px;
+    padding: 0 18px 12px;
+}
+
+.ewx-filters input,
+.ewx-filters select {
+    width: 100%;
+    height: 42px;
+    border-radius: 12px;
+    border: 1px solid var(--line);
+    background: rgba(255, 255, 255, 0.82);
+    padding: 0 12px;
+    color: var(--page-ink);
+}
+
+.ewx-sidebar-meta,
+.ewx-detail-summary {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 10px;
+    padding: 0 18px 12px;
+    flex-wrap: wrap;
+}
+
+.ewx-source-chip,
+.ewx-source-pill {
+    display: inline-flex;
+    align-items: center;
+    min-height: 28px;
+    padding: 4px 10px;
+    border-radius: 999px;
+    background: #fff7eb;
+    border: 1px solid #ecd8b6;
+    color: #754d10;
+    font-size: 12px;
+    font-family: "IBM Plex Mono", Consolas, monospace;
+}
+
+.ewx-detail-sources {
+    display: flex;
+    gap: 8px;
+    flex-wrap: wrap;
+}
+
+.ewx-visible-count,
+.ewx-detail-count,
+.ewx-detail-meta {
+    color: var(--muted);
+    font-size: 13px;
+}
+
+.ewx-detail-head {
+    padding-bottom: 10px;
+    border-bottom: 1px solid rgba(186, 168, 141, 0.38);
+}
+
+.ewx-toggle {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    min-height: 42px;
+    padding: 0 12px;
+    border-radius: 12px;
+    border: 1px solid #d7e4e1;
+    background: #fbfffe;
+    color: #27413d;
+    font-size: 13px;
+    font-weight: 600;
+}
+
+.ewx-pn-list {
+    flex: 1;
+    min-height: 0;
+    overflow-y: auto;
+    display: flex;
+    flex-direction: column;
+    padding: 0 12px 8px;
+}
+
+.ewx-pn-row {
+    display: flex;
+    flex-direction: column;
+    gap: 1px;
+    width: 100%;
+    padding: 6px 8px;
+    border: none;
+    border-bottom: 1px solid #ede8df;
+    background: transparent;
+    text-align: left;
+    cursor: pointer;
+    transition: background 100ms ease;
+}
+
+.ewx-pn-row:hover {
+    background: rgba(200, 182, 150, 0.15);
+}
+
+.ewx-pn-row.is-selected {
+    background: linear-gradient(90deg, #eaf6f4, #f4fbfa);
+    border-bottom-color: #80b7ad;
+}
+
+.ewx-pn-row-pn {
+    font-size: 13px;
+    font-weight: 600;
+    color: #1e3035;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.ewx-pn-row-desc {
+    font-size: 11px;
+    color: var(--muted);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.ewx-empty-list,
+.ewx-empty-table {
+    color: var(--muted);
+    text-align: center;
+    padding: 22px;
+}
+
+.ewx-pagination {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    padding: 8px 12px;
+    border-top: 1px solid #ede8df;
+    flex-shrink: 0;
+}
+
+.ewx-page-btn {
+    width: 28px;
+    height: 28px;
+    border-radius: 6px;
+    border: 1px solid #d8d0c4;
+    background: #fff;
+    cursor: pointer;
+    font-size: 18px;
+    line-height: 1;
+    color: #4a6268;
+    transition: background 100ms ease;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.ewx-page-btn:disabled {
+    opacity: 0.35;
+    cursor: default;
+}
+
+.ewx-page-btn:not(:disabled):hover {
+    background: #eaf6f4;
+    border-color: #80b7ad;
+}
+
+.ewx-page-info {
+    font-size: 12px;
+    color: var(--muted);
+    min-width: 50px;
+    text-align: center;
+}
+
+.ewx-compare-wrap {
+    flex: 1;
+    min-height: 0;
+    overflow: auto;
+    padding: 0 18px 18px;
+}
+
+.ewx-compare-table {
+    width: 100%;
+    min-width: 760px;
+    border-collapse: separate;
+    border-spacing: 0;
+    font-size: 12px;
+}
+
+.ewx-compare-table th,
+.ewx-compare-table td {
+    padding: 9px 10px;
+    border-bottom: 1px solid #eee5d8;
+    vertical-align: top;
+    text-align: left;
+}
+
+.ewx-compare-table thead th {
+    position: sticky;
+    top: 0;
+    z-index: 2;
+    background: #f7f1e7;
+    color: #355056;
+    font-weight: 700;
+}
+
+.ewx-compare-table tbody tr:hover td {
+    background: rgba(255, 251, 245, 0.84);
+}
+
+.ewx-compare-table td.field-name {
+    width: 220px;
+    color: #42585d;
+    font-family: "IBM Plex Mono", Consolas, monospace;
+}
+
+.ewx-compare-table td.cell-diff {
+    background: rgba(159, 45, 45, 0.1);
+    color: #5e1f1f;
+}
+
+.ewx-compare-table td.cell-diff-warn {
+    background: rgba(180, 92, 39, 0.12);
+    color: #754115;
+}
+
+.ewx-toast-container {
+    position: fixed;
+    top: 16px;
+    right: 16px;
+    z-index: 2000;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.ewx-toast {
+    min-width: 220px;
+    max-width: 360px;
+    padding: 10px 12px;
+    border-radius: 12px;
+    color: #ffffff;
+    box-shadow: 0 14px 28px rgba(18, 25, 29, 0.18);
+    animation: ewx-toast-in 180ms ease-out;
+}
+
+.ewx-toast.info {
+    background: #315d8b;
+}
+
+.ewx-toast.success {
+    background: var(--ok);
+}
+
+.ewx-toast.error {
+    background: var(--danger);
+}
+
+.ewx-toast.is-leaving {
+    opacity: 0;
+    transition: opacity 220ms ease;
+}
+
+@keyframes ewx-toast-in {
+    from {
+        opacity: 0;
+        transform: translateY(-8px);
+    }
+
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+@media (max-width: 1200px) {
+    .ewx-summary {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+
+    .ewx-workbench {
+        grid-template-columns: 1fr;
+    }
+
+    .ewx-pn-list {
+        max-height: 360px;
+    }
+}
+
+@media (max-width: 720px) {
+    .ewx-summary {
+        grid-template-columns: 1fr;
+    }
+
+    .ewx-detail-actions,
+    .ewx-card-actions {
+        justify-content: stretch;
+    }
+
+    .ewx-card-actions button,
+    .ewx-detail-actions button,
+    .ewx-toggle {
+        width: 100%;
+        justify-content: center;
+    }
+}

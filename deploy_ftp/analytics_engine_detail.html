@@ -1,0 +1,32 @@
+<!DOCTYPE html>
+<html lang="es">
+
+<head>
+    <meta charset="UTF-8">
+    <title>MILU · Analytics · Detalle motor</title>
+    <link rel="stylesheet" href="styles/analytics.css">
+</head>
+
+<body class="analytics">
+    <nav class="analytics-nav">
+        <span class="brand">MILU · Analytics</span>
+        <a href="analytics_dashboard.html">Dashboard</a>
+        <a href="analytics_images.html">Imágenes</a>
+        <a href="analytics_qa.html">QA</a>
+        <a href="analytics_pn.html">PN</a>
+        <a href="analytics_export.html">Export</a>
+        <a href="analytics_search.html">Buscar</a>
+        <span class="right">read-only · sqlite_mirror</span>
+    </nav>
+    <main class="analytics-main">
+        <p class="analytics-breadcrumb"><a href="analytics_dashboard.html">← Volver al dashboard</a></p>
+        <h1 id="title">Detalle motor <span id="status" class="analytics-status"></span></h1>
+        <div id="stats" class="analytics-block"></div>
+        <h2>Filas (paginadas)</h2>
+        <div id="paging" class="analytics-paging"></div>
+        <div id="rows" class="analytics-block"></div>
+    </main>
+    <script type="module" src="js/analytics/analytics-engine-detail.js"></script>
+</body>
+
+</html>

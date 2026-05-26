@@ -1,0 +1,36 @@
+<!DOCTYPE html>
+<html lang="es">
+
+<head>
+    <meta charset="UTF-8">
+    <title>MILU · Analytics · Buscar PN</title>
+    <link rel="stylesheet" href="styles/analytics.css">
+</head>
+
+<body class="analytics">
+    <nav class="analytics-nav">
+        <span class="brand">MILU · Analytics</span>
+        <a href="analytics_dashboard.html">Dashboard</a>
+        <a href="analytics_images.html">Imágenes</a>
+        <a href="analytics_qa.html">QA</a>
+        <a href="analytics_pn.html">PN</a>
+        <a href="analytics_export.html">Export</a>
+        <a href="analytics_search.html" class="active">Buscar</a>
+        <span class="right">read-only · sqlite_mirror</span>
+    </nav>
+    <main class="analytics-main">
+        <h1>Buscador global de PN <span id="status" class="analytics-status"></span></h1>
+        <p class="lead">Busca por <code>pn_final</code>, <code>PART NO.</code> o <code>designation_final</code>. Mínimo
+            2 caracteres.</p>
+        <form id="search-form" class="search-form" autocomplete="off">
+            <input type="text" id="q" name="q" placeholder="Ej: 304017, BOLT, CRANK..." minlength="2" required>
+            <input type="number" id="limit" name="limit" value="50" min="1" max="500" title="limit">
+            <button type="submit">Buscar</button>
+        </form>
+        <p class="footnote" id="meta"></p>
+        <div id="results" class="analytics-block"></div>
+    </main>
+    <script type="module" src="js/analytics/analytics-search.js"></script>
+</body>
+
+</html>

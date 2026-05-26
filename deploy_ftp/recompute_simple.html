@@ -1,0 +1,382 @@
+<!doctype html>
+<html lang="es">
+
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <link rel="icon" type="image/svg+xml" href="favicon.svg" />
+    <title>MILU - Recompute Simple</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link
+        href="https://fonts.googleapis.com/css2?family=Manrope:wght@500;600;700;800&family=IBM+Plex+Mono:wght@400;500&display=swap"
+        rel="stylesheet">
+    <link rel="stylesheet" href="styles/analista_02.css" />
+    <style>
+        body {
+            margin: 0;
+            background: linear-gradient(180deg, #e8eef6 0%, #f5f8fc 55%, #ecf2fa 100%);
+            font-family: Manrope, sans-serif;
+            color: #17344f;
+        }
+
+        .recompute-simple-wrap {
+            max-width: 1240px;
+            margin: 24px auto;
+            padding: 0 14px 18px;
+        }
+
+        .recompute-simple-head {
+            margin-bottom: 12px;
+        }
+
+        .recompute-simple-head h1 {
+            margin: 0;
+            font-size: 24px;
+        }
+
+        .recompute-simple-head p {
+            margin: 6px 0 0;
+            color: #4c6a82;
+            font-size: 14px;
+        }
+
+        .recompute-simple-controls {
+            display: grid;
+            grid-template-columns: minmax(230px, 320px) minmax(180px, 240px) 1fr;
+            gap: 12px;
+            margin-bottom: 12px;
+            background: #eaf1f8;
+            border: 1px solid #ccddec;
+            border-radius: 14px;
+            padding: 12px;
+        }
+
+        .recompute-simple-field {
+            display: flex;
+            flex-direction: column;
+            gap: 6px;
+        }
+
+        .recompute-simple-field label {
+            font-size: 12px;
+            font-weight: 700;
+            color: #2a4b66;
+        }
+
+        .recompute-simple-field select,
+        .recompute-simple-field input {
+            border: 1px solid #b7ccdf;
+            border-radius: 10px;
+            height: 38px;
+            padding: 0 10px;
+            font-size: 14px;
+            color: #18364f;
+            background: #ffffff;
+        }
+
+        .recompute-simple-scope {
+            display: flex;
+            align-items: flex-end;
+            font-size: 12px;
+            color: #55738c;
+            font-family: 'IBM Plex Mono', Consolas, monospace;
+        }
+
+        .recompute-simple-log {
+            margin-top: 12px;
+            border: 1px solid #cfdce9;
+            border-radius: 10px;
+            background: #f8fbff;
+            overflow: hidden;
+        }
+
+        .recompute-simple-log-head {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 10px;
+            border-bottom: 1px solid #dbe7f3;
+            padding: 8px 10px;
+            background: #edf4fb;
+        }
+
+        .recompute-simple-log-head strong {
+            font-size: 13px;
+            color: #1f4769;
+        }
+
+        .recompute-simple-log-head button {
+            border: 1px solid #a6bdd1;
+            border-radius: 8px;
+            height: 28px;
+            padding: 0 10px;
+            cursor: pointer;
+            background: #ffffff;
+            color: #234b6c;
+            font-size: 11px;
+            font-weight: 700;
+        }
+
+        #recomputeSimpleStatus {
+            margin: 0;
+            padding: 9px 11px;
+            border-bottom: 1px solid #dbe7f3;
+            font-size: 12px;
+            color: #36536d;
+            font-family: 'IBM Plex Mono', Consolas, monospace;
+            background: #f2f8ff;
+        }
+
+        #recomputeSimpleStatus.is-ok {
+            color: #16613f;
+            background: #eefaf2;
+        }
+
+        #recomputeSimpleStatus.is-error {
+            color: #9f2f23;
+            background: #fff3f1;
+        }
+
+        #recomputeSimpleStatus.is-warning {
+            color: #8a6110;
+            background: #fff9ea;
+        }
+
+        #recomputeSimpleLogPanel {
+            margin: 0;
+            padding: 10px;
+            min-height: 170px;
+            max-height: 330px;
+            overflow: auto;
+            white-space: pre-wrap;
+            word-break: break-word;
+            font-size: 12px;
+            line-height: 1.45;
+            color: #183247;
+            font-family: 'IBM Plex Mono', Consolas, monospace;
+        }
+
+        @media (max-width: 980px) {
+            .recompute-simple-controls {
+                grid-template-columns: 1fr 1fr;
+            }
+
+            .recompute-simple-scope {
+                grid-column: 1 / -1;
+            }
+        }
+
+        @media (max-width: 640px) {
+            .recompute-simple-wrap {
+                margin: 12px auto;
+                padding: 0 10px 14px;
+            }
+
+            .recompute-simple-controls {
+                grid-template-columns: 1fr;
+            }
+        }
+
+        .recompute-simple-wrap .a2-recompute-compact {
+            grid-template-columns: repeat(5, minmax(0, 1fr));
+            grid-template-areas: none;
+            grid-auto-flow: row;
+        }
+
+        .recompute-simple-wrap .a2-recompute-compact .a2-recompute-card {
+            grid-area: auto !important;
+        }
+
+        .recompute-simple-wrap .a2-recompute-card[aria-label="Enriquecer assets multimedia sobre engine JSON"] .a2-step-index {
+            background: linear-gradient(135deg, #f7d56b, #e3a700);
+            color: #17344f;
+            border: 1px solid #c68c00;
+        }
+
+        .recompute-simple-wrap .a2-recompute-card[aria-label="Recalcular copias y hermanos por PN"] .a2-step-index {
+            background: linear-gradient(135deg, #ff8f00, #ff5a36);
+            color: #ffffff;
+            border: 1px solid #d94d00;
+        }
+
+        @media (max-width: 1400px) {
+            .recompute-simple-wrap .a2-recompute-compact {
+                grid-template-columns: repeat(3, minmax(0, 1fr));
+            }
+        }
+
+        @media (max-width: 900px) {
+            .recompute-simple-wrap .a2-recompute-compact {
+                grid-template-columns: repeat(2, minmax(0, 1fr));
+            }
+        }
+
+        @media (max-width: 640px) {
+            .recompute-simple-wrap .a2-recompute-compact {
+                grid-template-columns: 1fr;
+            }
+        }
+
+        .a2-recompute-card:first-child .a2-step-index {
+            background: #7c3aed;
+            color: #ffffff;
+            border-color: #5b21b6;
+        }
+    </style>
+</head>
+
+<body>
+    <script type="module">
+        import { initTopbar } from './js/topbar.js';
+        initTopbar('recompute');
+    </script>
+
+    <main class="recompute-simple-wrap">
+        <section class="recompute-simple-controls" aria-label="Filtros de alcance">
+            <div class="recompute-simple-field">
+                <label for="bookSelect">Libro</label>
+                <select id="bookSelect" aria-label="Selector de libro"></select>
+            </div>
+            <div class="recompute-simple-field">
+                <label for="idInput">ID puntual (opcional)</label>
+                <input id="idInput" type="search" placeholder="Ej: 1199999" autocomplete="off" />
+            </div>
+            <div id="scopeSummary" class="recompute-simple-scope" aria-live="polite">Cargando motores...</div>
+        </section>
+
+        <section class="a2-recompute-compact" aria-label="Acciones de recálculo">
+            <article class="a2-recompute-card" aria-label="CREACION JSON REBUILD desde book preview">
+                <h3>
+                    <span class="a2-step-index">1</span>
+                    <div>
+                        <span class="a2-step-title">ENGINE REBUILD</span>
+                        <p class="a2-step-desc"><strong>API</strong><br><strong>POST
+                                /api/recompute-simple/rebuild-json</strong></p>
+                        <p class="a2-step-desc">Genera engine_rebuild_&lt;MODEL&gt;.json
+                            en<br><strong>data/02-engine_rebuild</strong> para
+                            libro o todos.</p>
+                        <p class="a2-step-desc">Tambien crea la copia engine_&lt;MODEL&gt;.json en la misma carpeta de
+                            salida.</p>
+                        <p class="a2-step-desc"><strong>Esa copia engine_&lt;MODEL&gt;.json</strong><br><strong>hay que
+                                copiarla en la raiz de MILU.</strong></p>
+                        <p class="a2-step-desc">El ID puntual no aplica a este paso.</p>
+                    </div>
+                </h3>
+                <button id="btnImportPdf" type="button">ENGINE REBUILD</button>
+            </article>
+
+            <article class="a2-recompute-card" aria-label="Actualizar campos SUST desde EXCEL_SUSTITUCION">
+                <h3>
+                    <span class="a2-step-index">2</span>
+                    <div>
+                        <span class="a2-step-title">Actualizar GESA + SUST</span>
+                        <p class="a2-step-desc">POST /api/recompute-simple/update-gesa</p>
+                        <p class="a2-step-desc">POST /api/recompute-simple/update-sust</p>
+                        <p class="a2-step-desc">Ejecuta GESA y luego SUST. No toca PDF/FINAL/ERRORES/QA.</p>
+                    </div>
+                </h3>
+                <button id="btnSust" type="button">ACTUALIZAR GESA + SUST</button>
+            </article>
+
+            <article class="a2-recompute-card" aria-label="Enriquecer assets multimedia sobre engine JSON">
+                <h3>
+                    <span class="a2-step-index">3</span>
+                    <div>
+                        <span class="a2-step-title">ASSETS</span>
+                        <p class="a2-step-desc">POST /api/recompute-simple/enrich-assets</p>
+                        <p class="a2-step-desc">Actualiza filename_foto, ruta_foto, esquemas, esquemas_circulos,
+                            esquemas_circulos_all, ruta_esquemas_pos y exp_imagenes en engine_&lt;MODEL&gt;.json.</p>
+                        <p class="a2-step-desc">Usa fotos_articulos/, esquemas/ y esquemas_pos_circulos/.</p>
+                    </div>
+                </h3>
+                <button id="btnAssets" type="button">ASSETS</button>
+            </article>
+
+            <article class="a2-recompute-card" aria-label="Calcular campos FINAL desde GESA">
+                <h3>
+                    <span class="a2-step-index">4</span>
+                    <div>
+                        <span class="a2-step-title">Cálculo FINAL</span>
+                        <p class="a2-step-desc">POST /copy-pdf-to-final-all-books</p>
+                        <p class="a2-step-desc">El ID puntual no aplica a este paso.</p>
+                    </div>
+                </h3>
+                <button id="btnFinal" type="button" class="is-success">CÁLCULO FINAL</button>
+            </article>
+
+            <article class="a2-recompute-card" aria-label="Recalcular errores">
+                <h3>
+                    <span class="a2-step-index">5</span>
+                    <div>
+                        <span class="a2-step-title">Errores</span>
+                        <p class="a2-step-desc">POST /recompute-qa-errors con scope/libro/id.</p>
+                    </div>
+                </h3>
+                <button id="btnErrors" type="button">ERRORES</button>
+            </article>
+
+            <article class="a2-recompute-card" aria-label="Recalcular estado y acción de revisión">
+                <h3>
+                    <span class="a2-step-index">6</span>
+                    <div>
+                        <span class="a2-step-title">Estados</span>
+                        <p class="a2-step-desc">POST /api/recompute-simple/update-states.</p>
+                        <p class="a2-step-desc">Soporta libro, todos o ID puntual (con libro).</p>
+                    </div>
+                </h3>
+                <button id="btnStatuses" type="button" class="is-warning">ESTADOS</button>
+            </article>
+
+            <article class="a2-recompute-card" aria-label="Recalcular copias y hermanos por PN">
+                <h3>
+                    <span class="a2-step-index">7</span>
+                    <div>
+                        <span class="a2-step-title">HERMANOS / COPIAS</span>
+                        <p class="a2-step-desc">POST /api/recompute-simple/recompute-hermanos</p>
+                        <p class="a2-step-desc">Recalcula copias/hermanos por PN para un libro o para todos los libros.
+                        </p>
+                        <p class="a2-step-desc">Reutiliza la lógica oficial de Analisis para el cálculo bulk de
+                            hermanos.</p>
+                    </div>
+                </h3>
+                <button id="btnHermanos" type="button">RECALCULAR HERMANOS</button>
+            </article>
+        </section>
+
+        <section class="a2-recompute-danger" aria-label="Vaciar campos _pdf, _final y _error y marcar revision"
+            style="margin-top:12px;padding:9px 12px;border:1px solid #d1d5db;background:#f9fafb;border-radius:10px;display:flex;align-items:center;justify-content:space-between;gap:12px;">
+            <div>
+                <span class="a2-step-title">Vaciar _pdf/_final/_error y marcar revisión</span>
+                <p class="a2-step-desc" style="margin-top:4px;">qa_revision_estado=pendiente, qa_revision_accion=revisar
+                    y qa_revision_updated_at=timestamp actual.</p>
+            </div>
+            <button id="btnClearPdfFinal" type="button"
+                style="border:1px solid #6b7280;border-radius:10px;height:34px;padding:0 14px;cursor:pointer;color:#fff;font-size:11px;font-weight:700;letter-spacing:0.01em;background:linear-gradient(135deg,#9ca3af,#6b7280);">
+                VACIAR + MARCAR REVISION
+            </button>
+        </section>
+
+        <section id="recomputeSimpleResultPanel" class="recompute-result-panel" aria-label="Resumen de ejecución"
+            style="margin-top:12px;" hidden>
+            <div class="recompute-result-head">
+                <h3 id="recomputeSimpleResultTitle">Resumen</h3>
+                <p id="recomputeSimpleResultMeta" class="recompute-result-meta"></p>
+            </div>
+            <div id="recomputeSimpleResultBody" class="recompute-result-body"></div>
+        </section>
+
+        <section class="recompute-simple-log" aria-label="Estado y log">
+            <div class="recompute-simple-log-head">
+                <strong>Estado y log</strong>
+                <button id="btnClearLog" type="button">LIMPIAR LOG</button>
+            </div>
+            <p id="recomputeSimpleStatus">Listo para ejecutar.</p>
+            <pre id="recomputeSimpleLogPanel">Inicializando...</pre>
+        </section>
+    </main>
+
+    <script type="module" src="./js/recompute-simple.js"></script>
+</body>
+
+</html>

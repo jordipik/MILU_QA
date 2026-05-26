@@ -1,0 +1,73 @@
+/**
+ * Estado global compartido de la aplicación qa_milu.
+ * Todos los módulos importan este objeto y lo modifican directamente.
+ */
+import { getQaCheckDefinitions } from './qa-checks.js';
+
+export const state = {
+    allData: [],
+    filteredData: [],
+    tableMode: 'qa',
+    currentPage: 1,
+    pageSize: 50,
+    paginationEnabled: true,
+    MIN_PAGE_SIZE: 5,
+    sortKey: 'book_page_pos',
+    sortAsc: true,
+    filters: {},
+    groupedVisible: false,
+    selectedRevisionRowKey: '',
+    revisionPnIndex: new Map(),
+    recentRevisionKeys: [],
+    leftTableReviewedOnly: true,
+    displayRowCount: 0,
+    columnView: 'pdf',
+    newPnSet: new Set(),
+    miluNewData: [],
+    supersededPnSet: new Set(),
+    miluSupersededData: [],
+    publishedMap: new Map(),
+    productExportPnSet: new Set(),
+    // Set de basenames (en minúsculas) de archivos presentes en esquemas_pos_circulos/
+    // Cargado en background desde /api/esquemas-pos-index al arrancar la app.
+    esquemasPosFileSet: new Set(),
+    mainDataSourceLabel: 'engine_*.json',
+    // AR-1: catalogo de motores y carga incremental.
+    engineCatalog: [],
+    loadedEngineFiles: new Set(),
+    incrementalLoadingEnabled: false,
+    currentPdfDocument: null,
+    currentPdfSource: '',
+    currentPdfPageNumber: 0,
+    currentPdfRenderTask: null,
+    currentPdfRequestToken: 0,
+    currentPdfSelection: null,
+    currentPdfSelectionRects: [],
+    currentPdfReadTokens: [],
+    currentPdfExperimentalRowHighlights: [],
+    currentPdfExperimentalRowSearch: null,
+    currentPdfExperimentalColumnDetection: null,
+    currentPdfHeaderColumnBodyHighlights: [],
+    currentPdfHeaderColumnBodyDebug: null,
+    currentPdfLastTextItems: [],
+    currentPdfLastViewport: null,
+    currentPdfLastTextSource: '',
+    currentPdfLastTextPageNumber: 0,
+    currentPdfTableParserDebug: {
+        enabled: false,
+        overlayStyle: 'advanced',
+        lastResult: null
+    },
+    currentPdfZoom: 'fit',
+    rightPanelTab: 'pdf',
+    qaErrorCheckDefinitions: getQaCheckDefinitions(),
+    activeQaErrorChecks: new Set(),
+    qaChecksScopedRows: null,
+    backendWritable: null,
+    backendStatusMessage: 'Backend: comprobando...',
+    exportPreviewRows: [],
+    exportTraceCache: {},
+    selectedExportSku: '',
+    exportPreviewSortKey: '',
+    exportPreviewSortAsc: true
+};
