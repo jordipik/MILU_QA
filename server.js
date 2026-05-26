@@ -743,19 +743,17 @@ app.post('/api/recompute-simple/recompute-hermanos', async (req, res) => {
             let fileScannedRows = 0;
 
             for (const row of json) {
-                if (!isOkImportarRow(row)) continue;
                 fileScannedRows += 1;
                 recordsScanned += 1;
 
                 const pn = getRowPn(row);
-                const currentId = normalizeText(row?.ID);
-                if (!pn || !currentId) continue;
+                if (!pn) continue;
 
                 const key = lowerKey(pn);
                 if (!uniquePnRows.has(key)) {
                     uniquePnRows.set(key, {
                         pn,
-                        current_id: currentId,
+                        current_id: normalizeText(row?.ID),
                         current_engine_file: file
                     });
                 }
@@ -1896,6 +1894,66 @@ function isOkImportarRow(row) {
     return lowerKey(row?.qa_revision_estado) === 'ok' && lowerKey(row?.qa_revision_accion) === 'importar';
 }
 
+function getSiblingRowSourcePage(row) {
+    return normalizeText(row?.['Source Page'] || row?.source_page || row?.page || row?.PAGE);
+}
+
+function getSiblingRowPos(row) {
+    return normalizeText(row?.pos_final || row?.POS || row?.pos || row?.position);
+}
+
+function getSiblingRowEngineKey(row) {
+    const sourceFile = normalizeEngineFileName(row?.source_file || row?.engine_file || '');
+    if (sourceFile) {
+        return engineFileKey(sourceFile);
+    }
+    return lowerKey(row?.engine_model || row?.engine || row?.model);
+}
+
+function toComparableNumber(value) {
+    const text = normalizeText(value);
+    if (!text) return null;
+
+    const compact = text.replace(/\s+/g, '').replace(',', '.');
+    const num = Number(compact);
+    return Number.isFinite(num) ? num : null;
+}
+
+function compareNumberText(aValue, bValue) {
+    const aNum = toComparableNumber(aValue);
+    const bNum = toComparableNumber(bValue);
+    if (aNum != null && bNum != null && aNum !== bNum) return aNum - bNum;
+    if (aNum != null && bNum == null) return -1;
+    if (aNum == null && bNum != null) return 1;
+
+    const aText = lowerKey(aValue);
+    const bText = lowerKey(bValue);
+    if (aText === bText) return 0;
+    return aText.localeCompare(bText, 'es', { numeric: true, sensitivity: 'base' });
+}
+
+function compareSiblingRowsStable(a, b) {
+    const byEngine = getSiblingRowEngineKey(a).localeCompare(getSiblingRowEngineKey(b), 'es', { numeric: true, sensitivity: 'base' });
+    if (byEngine !== 0) return byEngine;
+
+    const byPage = compareNumberText(getSiblingRowSourcePage(a), getSiblingRowSourcePage(b));
+    if (byPage !== 0) return byPage;
+
+    const byPos = compareNumberText(getSiblingRowPos(a), getSiblingRowPos(b));
+    if (byPos !== 0) return byPos;
+
+    return compareNumberText(normalizeIdForCompare(a?.ID), normalizeIdForCompare(b?.ID));
+}
+
+function getSiblingRowToken(row) {
+    const rowId = normalizeText(row?.ID);
+    const rowPn = pnKey(getRowPn(row));
+    const rowPage = lowerKey(getSiblingRowSourcePage(row));
+    const rowPos = lowerKey(getSiblingRowPos(row));
+    if (!rowId || !rowPn) return '';
+    return `${normalizeIdForCompare(rowId)}|${rowPn}|${rowPage}|${rowPos}`;
+}
+
 function resolveEngineFilesForRecompute(engine) {
     const normalizedEngine = normalizeEngineToken(engine);
     if (!normalizedEngine) {
@@ -1921,33 +1979,42 @@ async function applySiblingBulkUpdates(itemsRaw, options = {}) {
     const itemResults = [];
     const errors = [];
 
-    for (const item of itemsRaw) {
+    const selectedPnByKey = new Map();
+    for (const item of Array.isArray(itemsRaw) ? itemsRaw : []) {
         const pn = normalizeText(item?.pn);
         const key = pnKey(pn);
-        const currentId = normalizeText(item?.current_id);
-        const currentEngineFile = normalizeEngineFileName(item?.current_engine_file || item?.current_engine || '');
-        const currentEngineKey = engineFileKey(currentEngineFile);
+        if (!pn || !key || selectedPnByKey.has(key)) continue;
+        selectedPnByKey.set(key, {
+            pn,
+            current_id: normalizeText(item?.current_id),
+            current_engine_file: normalizeEngineFileName(item?.current_engine_file || item?.current_engine || '')
+        });
+    }
 
-        if (!pn || !key) {
-            itemResults.push({
-                pn,
-                current_id: currentId,
-                current_engine_file: currentEngineFile,
-                found_sources: 0,
-                target_siblings: 0,
-                planned_updates: 0,
-                skipped: true,
-                reason: 'missing-pn'
-            });
-            continue;
+    const scheduleUpdate = (sourceRow, desired) => {
+        const sourceFile = normalizeEngineFileName(sourceRow?.source_file || sourceRow?.engine_file || '');
+        if (!sourceFile || !ENGINE_JSON_FILES.includes(sourceFile)) return false;
+
+        const token = getSiblingRowToken(sourceRow);
+        if (!token) return false;
+
+        let fileTargets = updatesByFile.get(sourceFile);
+        if (!fileTargets) {
+            fileTargets = new Map();
+            updatesByFile.set(sourceFile, fileTargets);
         }
 
+        fileTargets.set(token, desired);
+        return true;
+    };
+
+    for (const [key, selected] of selectedPnByKey.entries()) {
         const detail = data.index.get(key);
         if (!detail) {
             itemResults.push({
-                pn,
-                current_id: currentId,
-                current_engine_file: currentEngineFile,
+                pn: selected.pn,
+                current_id: selected.current_id,
+                current_engine_file: selected.current_engine_file,
                 found_sources: 0,
                 target_siblings: 0,
                 planned_updates: 0,
@@ -1958,47 +2025,70 @@ async function applySiblingBulkUpdates(itemsRaw, options = {}) {
         }
 
         const allSources = Array.isArray(detail.source_rows_all) ? detail.source_rows_all : [];
-        let targetSiblings = 0;
+        const normalizedSources = allSources
+            .filter((src) => {
+                const sourceFile = normalizeEngineFileName(src?.source_file || src?.engine_file || '');
+                return Boolean(sourceFile && ENGINE_JSON_FILES.includes(sourceFile));
+            })
+            .filter((src) => pnKey(getRowPn(src)) === key);
+
+        if (normalizedSources.length === 0) {
+            itemResults.push({
+                pn: selected.pn,
+                current_id: selected.current_id,
+                current_engine_file: selected.current_engine_file,
+                found_sources: 0,
+                target_siblings: 0,
+                planned_updates: 0,
+                skipped: true,
+                reason: 'pn-without-sources'
+            });
+            continue;
+        }
+
+        const ordered = [...normalizedSources].sort(compareSiblingRowsStable);
+        const existingOkImportar = ordered.filter((row) => isOkImportarRow(row));
+        const winner = existingOkImportar[0] || ordered[0];
+        const winnerToken = getSiblingRowToken(winner);
+        const winnerId = normalizeText(winner?.ID);
+        const winnerPn = normalizeText(getRowPn(winner));
+
         let plannedUpdates = 0;
+        for (const source of ordered) {
+            const sourceToken = getSiblingRowToken(source);
+            if (!sourceToken) continue;
 
-        for (const src of allSources) {
-            const srcId = normalizeText(src?.ID);
-            const srcFile = normalizeEngineFileName(src?.source_file || src?.engine_file || '');
-            const srcFileKey = engineFileKey(srcFile);
-            if (!srcId || !srcFile || !ENGINE_JSON_FILES.includes(srcFile)) continue;
+            const isWinner = sourceToken === winnerToken;
+            const desired = isWinner
+                ? {
+                    qa_revision_estado: 'ok',
+                    qa_revision_accion: 'importar',
+                    copia_de_id: '',
+                    copia_de_pn: ''
+                }
+                : {
+                    qa_revision_estado: 'ok',
+                    qa_revision_accion: 'copia',
+                    copia_de_id: winnerId,
+                    copia_de_pn: winnerPn
+                };
 
-            if (srcId === currentId && srcFileKey === currentEngineKey) {
-                continue;
-            }
-
-            const estado = lowerKey(src?.qa_revision_estado);
-            const accion = lowerKey(src?.qa_revision_accion);
-            if (estado === 'ok' && accion === 'copia') {
-                continue;
-            }
-
-            targetSiblings += 1;
-
-            let ids = updatesByFile.get(srcFile);
-            if (!ids) {
-                ids = new Set();
-                updatesByFile.set(srcFile, ids);
-            }
-
-            const beforeSize = ids.size;
-            ids.add(String(srcId));
-            if (ids.size > beforeSize) {
+            const scheduled = scheduleUpdate(source, desired);
+            if (scheduled) {
                 plannedUpdates += 1;
             }
         }
 
         itemResults.push({
-            pn,
-            current_id: currentId,
-            current_engine_file: currentEngineFile,
-            found_sources: allSources.length,
-            target_siblings: targetSiblings,
+            pn: selected.pn,
+            current_id: selected.current_id,
+            current_engine_file: selected.current_engine_file,
+            found_sources: ordered.length,
+            target_siblings: Math.max(0, ordered.length - 1),
             planned_updates: plannedUpdates,
+            winner_id: winnerId,
+            winner_engine_file: normalizeEngineFileName(winner?.source_file || winner?.engine_file || ''),
+            winner_was_existing_ok_importar: existingOkImportar.length > 0,
             skipped: false
         });
     }
@@ -2007,7 +2097,7 @@ async function applySiblingBulkUpdates(itemsRaw, options = {}) {
     const backupPaths = [];
     let rowsUpdated = 0;
 
-    for (const [file, idSet] of updatesByFile.entries()) {
+    for (const [file, targetMap] of updatesByFile.entries()) {
         if (!ENGINE_JSON_FILES.includes(file)) {
             errors.push({ file, error: 'Archivo no permitido' });
             continue;
@@ -2024,10 +2114,38 @@ async function applySiblingBulkUpdates(itemsRaw, options = {}) {
 
                 let touched = false;
                 for (const row of json) {
-                    const rowId = normalizeText(row?.ID);
-                    if (!rowId || !idSet.has(String(rowId))) continue;
-                    row.qa_revision_estado = 'ok';
-                    row.qa_revision_accion = 'copia';
+                    const rowToken = getSiblingRowToken({
+                        ...row,
+                        source_file: file
+                    });
+                    if (!rowToken) continue;
+
+                    const desired = targetMap.get(rowToken);
+                    if (!desired) continue;
+
+                    const currentEstado = lowerKey(row?.qa_revision_estado);
+                    const currentAccion = lowerKey(row?.qa_revision_accion);
+                    const currentCopiaId = normalizeText(row?.copia_de_id);
+                    const currentCopiaPn = normalizeText(row?.copia_de_pn);
+
+                    const desiredEstado = lowerKey(desired.qa_revision_estado);
+                    const desiredAccion = lowerKey(desired.qa_revision_accion);
+                    const desiredCopiaId = normalizeText(desired.copia_de_id);
+                    const desiredCopiaPn = normalizeText(desired.copia_de_pn);
+
+                    if (
+                        currentEstado === desiredEstado
+                        && currentAccion === desiredAccion
+                        && currentCopiaId === desiredCopiaId
+                        && currentCopiaPn === desiredCopiaPn
+                    ) {
+                        continue;
+                    }
+
+                    row.qa_revision_estado = desired.qa_revision_estado;
+                    row.qa_revision_accion = desired.qa_revision_accion;
+                    row.copia_de_id = desired.copia_de_id;
+                    row.copia_de_pn = desired.copia_de_pn;
                     row.qa_revision_updated_at = nowIso;
                     rowsUpdated += 1;
                     touched = true;
@@ -2049,7 +2167,7 @@ async function applySiblingBulkUpdates(itemsRaw, options = {}) {
     }
 
     const plannedUpdates = itemResults.reduce((acc, item) => acc + Number(item?.planned_updates || 0), 0);
-    const pnsWithChanges = itemResults.filter((item) => Number(item?.planned_updates || 0) > 0).length;
+    const pnsWithChanges = itemResults.filter((item) => Number(item?.target_siblings || 0) > 0).length;
 
     if (!dryRun && (filesTouched.length > 0 || errors.length > 0)) {
         pnReviewQaCacheService.invalidate();
