@@ -1,6 +1,6 @@
 # deploy_ftp report
 
-- Fecha: 2026-05-26T16:59:20.889Z
+- Fecha: 2026-05-26T17:17:48.830Z
 - Carpeta destino: deploy_ftp/
 - Seed pages auditadas: 21
 - Archivos copiados: 76
@@ -174,11 +174,11 @@
 - js/exportacion.js:19 | /export/ | runWordpress: apiUrl('/export/run-wordpress'),
 - js/exportacion.js:20 | /export/ | status: apiUrl('/export/status')
 - js/qa-auditoria.js:14 | localhost:3000 | isLocalhost ? 'http://localhost:3000/audit-log' : '',
-- js/qa-milu.js:1690 | /export/ | const payload = await fetchExportJson(`/export/trace/${encodeURIComponent(normalizedSku)}`);
-- js/qa-milu.js:1718 | /export/ | const payload = await fetchExportJson('/export/preview');
-- js/qa-milu.js:300 | localhost:3000 | isLocalhost ? 'http://localhost:3000/audit-log' : '',
-- js/qa-milu.js:4999 | /api/ | const posIndexResponse = await fetch(apiUrl('/api/esquemas-pos-index'));
-- js/qa-milu.js:7586 | /export/ | await runExportPipeline('/export/run-wordpress', 'WordPress export');
+- js/qa-milu.js:1725 | /export/ | const payload = await fetchExportJson(`/export/trace/${encodeURIComponent(normalizedSku)}`);
+- js/qa-milu.js:1771 | /export/ | const payload = await fetchExportJson('/export/preview');
+- js/qa-milu.js:327 | localhost:3000 | isLocalhost ? 'http://localhost:3000/audit-log' : '',
+- js/qa-milu.js:5054 | /api/ | const posIndexResponse = await fetch(apiUrl('/api/esquemas-pos-index'));
+- js/qa-milu.js:7643 | /export/ | await runExportPipeline('/export/run-wordpress', 'WordPress export');
 - js/recompute-simple.js:1057 | /api/ | const data = await postJson('/api/recompute-simple/rebuild-json', payload, { allowPartial: true });
 - js/recompute-simple.js:1057 | /recompute | const data = await postJson('/api/recompute-simple/rebuild-json', payload, { allowPartial: true });
 - js/recompute-simple.js:1058 | /api/ | renderResponseSummary('IMPORTAR PDF', '/api/recompute-simple/rebuild-json', data);

@@ -28,7 +28,18 @@ import {
     saveColumnViewPreference
 } from './column-view.js';
 import { isInlineEditableTarget, cancelInlineEdit } from './cell-editor.js';
-import { initPdfZoomControls, loadPdfClear, loadPdfWithPage, renderPdfPage, requestPdfRelayout, setPdfSelection } from './pdf-viewer.js';
+import {
+    buildHeaderColumnBodyHighlights,
+    clearPdfHeaderColumnBodyHighlights,
+    clearPdfHeaderOnlyOverlay,
+    initPdfZoomControls,
+    loadPdfClear,
+    loadPdfWithPage,
+    renderPdfPage,
+    requestPdfRelayout,
+    runPdfHeaderOnlyDetection,
+    setPdfSelection
+} from './pdf-viewer.js';
 import { updateSchemasInline, renderSelectedRowPosPanel, renderSelectedRowPosTop } from './schemas.js';
 import { getEngineJsonForRow } from './helpers.js';
 import {
@@ -92,6 +103,22 @@ function resolveApiBasePath() {
 const API_BASE_PATH = resolveApiBasePath();
 
 const apiUrl = (pathname) => `${API_BASE_PATH}${pathname}`;
+
+
+
+function canCallBackendApiEndpoints() {
+
+    const params = new URLSearchParams(window.location.search);
+
+    if (params.get('forceApi') === '1') return true;
+
+
+
+    const port = String(window.location.port || '').trim();
+
+    return port === '3000';
+
+}
 
 
 
@@ -1663,6 +1690,14 @@ function renderExportPreviewRows(rows) {
 
 async function loadExportTraceForSku(sku) {
 
+    if (!canCallBackendApiEndpoints()) {
+
+        renderExportTrace(null, String(sku || '').trim());
+
+        return;
+
+    }
+
     const normalizedSku = String(sku || '').trim();
 
     if (!normalizedSku) {
@@ -1712,6 +1747,24 @@ async function loadExportTraceForSku(sku) {
 
 
 async function loadExportPreview() {
+
+    if (!canCallBackendApiEndpoints()) {
+
+        state.exportPreviewRows = [];
+
+        state.selectedExportSku = '';
+
+        renderExportSummary({});
+
+        renderExportPreviewRows([]);
+
+        renderExportTrace(null, '');
+
+        setExportRunStatus('Preview no disponible en hosting estatico (sin endpoint /export).', 'warn');
+
+        return;
+
+    }
 
     try {
 
@@ -4994,25 +5047,29 @@ async function loadOptionalCatalogsInBackground() {
 
     // porque la columna ESQ_POS depende de este Set para evitar falsos MISS.
 
-    try {
+    if (canCallBackendApiEndpoints()) {
 
-        const posIndexResponse = await fetch(apiUrl('/api/esquemas-pos-index'));
+        try {
 
-        if (posIndexResponse.ok) {
+            const posIndexResponse = await fetch(apiUrl('/api/esquemas-pos-index'));
 
-            const posIndexData = await posIndexResponse.json();
+            if (posIndexResponse.ok) {
 
-            if (posIndexData.ok && Array.isArray(posIndexData.files)) {
+                const posIndexData = await posIndexResponse.json();
 
-                state.esquemasPosFileSet = new Set(posIndexData.files);
+                if (posIndexData.ok && Array.isArray(posIndexData.files)) {
+
+                    state.esquemasPosFileSet = new Set(posIndexData.files);
+
+                }
 
             }
 
+        } catch (e) {
+
+            console.warn('[loadOptionalCatalogsInBackground] No se pudo cargar índice esquemas_pos:', e);
+
         }
-
-    } catch (e) {
-
-        console.warn('[loadOptionalCatalogsInBackground] No se pudo cargar índice esquemas_pos:', e);
 
     }
 
