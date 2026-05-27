@@ -15,6 +15,8 @@
     "qa:pdf-copy:batch:write:no-backup": "node scripts/run_visual_pdf_copy_batch.js --write-pdf --no-backup",
     "qa:pdf-copy:validate": "node scripts/validate_pdf_copy_bulk.js",
     "qa:pdf-copy:validate:write": "node scripts/validate_pdf_copy_bulk.js --run-write",
+    "qa:esquemas-pos:missing": "python scripts/generate_missing_esquema_pos_batch.py --all-engines",
+    "qa:esquemas-pos:missing:dry": "python scripts/generate_missing_esquema_pos_batch.py --all-engines --no-write-images --no-write-json",
     "rebuild:engine:dry": "node rebuild_engine_from_book_preview.js --all --dry-run",
     "rebuild:engine:preview": "node rebuild_engine_from_book_preview.js --all --write-preview",
     "rebuild:enrich:dry": "node scripts/enrich_rebuild_with_gesa_sust.js --all --dry-run",
