@@ -44,8 +44,21 @@ export function getPnKey(row) {
  * Ej: source_file='12V4000M40A.xlsx' → 'engine_12V4000M40A.json'
  */
 export function getEngineJsonForRow(row) {
-    const sf = String(row?.source_file || '').replace('.xlsx', '').trim();
-    return sf ? `engine_${sf}.json` : null;
+    const engineModel = String(row?.engine_model || '').trim();
+    if (engineModel) {
+        return `engine_${engineModel}.json`;
+    }
+
+    const sourceFile = String(row?.source_file || '').trim();
+    if (!sourceFile) return null;
+
+    const normalized = sourceFile
+        .replace(/^book_preview_/i, '')
+        .replace(/^engine_/i, '')
+        .replace(/\.(xlsx|json)$/i, '')
+        .trim();
+
+    return normalized ? `engine_${normalized}.json` : null;
 }
 
 export function inferEngineModelFromFileName(fileName) {
