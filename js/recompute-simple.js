@@ -14,6 +14,7 @@ const refs = {
     btnSust: document.getElementById('btnSust'),
     btnAssets: document.getElementById('btnAssets'),
     btnHermanos: document.getElementById('btnHermanos'),
+    btnEsquemaPosMissing: document.getElementById('btnEsquemaPosMissing'),
     btnFinal: document.getElementById('btnFinal'),
     btnErrors: document.getElementById('btnErrors'),
     btnStatuses: document.getElementById('btnStatuses'),
@@ -27,6 +28,7 @@ const actionButtons = [
     refs.btnSust,
     refs.btnAssets,
     refs.btnHermanos,
+    refs.btnEsquemaPosMissing,
     refs.btnFinal,
     refs.btnErrors,
     refs.btnStatuses,
@@ -767,6 +769,45 @@ function renderResponseSummary(actionLabel, endpoint, responseData) {
         return;
     }
 
+    if (endpoint === '/api/recompute-simple/generate-missing-esquema-pos') {
+        const output = data?.result || {};
+        const perEngine = Array.isArray(output?.results) ? output.results : [];
+        const cards = [
+            { label: 'Motores', value: String(Number(perEngine.length) || 0) },
+            { label: 'Registros sin esquema', value: String(perEngine.reduce((acc, item) => acc + Number(item?.rows_missing_before || 0), 0)) },
+            { label: 'Procesados', value: String(perEngine.reduce((acc, item) => acc + Number(item?.processed || 0), 0)) },
+            { label: 'Generados', value: String(perEngine.reduce((acc, item) => acc + Number(item?.generated || 0), 0)) },
+            { label: 'Ya existentes', value: String(perEngine.reduce((acc, item) => acc + Number(item?.already_exists || 0), 0)) },
+            { label: 'Vinculados', value: String(perEngine.reduce((acc, item) => acc + Number(item?.linked || 0), 0)) },
+            { label: 'Errores', value: String(perEngine.reduce((acc, item) => acc + Number(item?.errors || 0), 0)) }
+        ];
+
+        const rows = perEngine.map((item) => [
+            String(item?.engine || ''),
+            String(Number(item?.rows_missing_before) || 0),
+            String(Number(item?.processed) || 0),
+            String(Number(item?.generated) || 0),
+            String(Number(item?.already_exists) || 0),
+            String(Number(item?.linked) || 0),
+            String(Number(item?.errors) || 0),
+            item?.json_updated ? 'si' : 'no'
+        ]);
+
+        const warning = output?.reportPath
+            ? `Reporte: ${String(output.reportPath)}`
+            : '';
+
+        renderResultPanel(
+            actionLabel,
+            endpoint,
+            cards,
+            ['Engine', 'Sin esquema', 'Procesados', 'Generados', 'Existentes', 'Vinculados', 'Errores', 'JSON actualizado'],
+            rows,
+            warning
+        );
+        return;
+    }
+
     if (endpoint === '/api/pdf-preview/apply-to-engine') {
         const stats = data?.stats || {};
         const notFoundRows = Array.isArray(data?.not_found_rows) ? data.not_found_rows : [];
@@ -1146,6 +1187,39 @@ async function runHermanos() {
     setStatus('HERMANOS / COPIAS finalizado correctamente.', 'ok');
 }
 
+async function runEsquemaPosMissing() {
+    const scope = getScope();
+    if (scope.id) showIdIgnoredWarning('ESQUEMA POS FALTANTES');
+
+    const payload = {
+        engine: scope.isAll ? 'ALL' : scope.model,
+        writeImages: true,
+        writeJson: true,
+        overwrite: false,
+        limit: 0
+    };
+
+    setStatus(
+        scope.isAll
+            ? 'Generando y vinculando esquema POS faltantes para todos los libros...'
+            : `Generando y vinculando esquema POS faltantes para ${scope.model}...`,
+        ''
+    );
+
+    const data = await postJson('/api/recompute-simple/generate-missing-esquema-pos', payload, { allowPartial: true });
+    renderResponseSummary('Generar esquema POS faltantes', '/api/recompute-simple/generate-missing-esquema-pos', data);
+
+    const perEngine = Array.isArray(data?.result?.results) ? data.result.results : [];
+    const hasErrors = perEngine.some((item) => Number(item?.errors || 0) > 0 || String(item?.status || '').toLowerCase() === 'error');
+
+    if (hasErrors) {
+        setStatus('ESQUEMA POS FALTANTES finalizado con incidencias parciales. Revisa el panel de resultados.', 'warning');
+        return;
+    }
+
+    setStatus('ESQUEMA POS FALTANTES finalizado correctamente.', 'ok');
+}
+
 async function runErrors() {
     const scope = getScope();
     let payload;
@@ -1289,6 +1363,10 @@ function bindEvents() {
 
     if (refs.btnHermanos instanceof HTMLButtonElement) {
         refs.btnHermanos.addEventListener('click', () => runAction(runHermanos));
+    }
+
+    if (refs.btnEsquemaPosMissing instanceof HTMLButtonElement) {
+        refs.btnEsquemaPosMissing.addEventListener('click', () => runAction(runEsquemaPosMissing));
     }
 
     if (refs.btnFinal instanceof HTMLButtonElement) {

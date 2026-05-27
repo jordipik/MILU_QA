@@ -200,6 +200,12 @@
             border: 1px solid #d94d00;
         }
 
+        .recompute-simple-wrap .a2-recompute-card[aria-label="Generar y vincular esquemas POS faltantes"] .a2-step-index {
+            background: linear-gradient(135deg, #0f766e, #14b8a6);
+            color: #ffffff;
+            border: 1px solid #0e766e;
+        }
+
         @media (max-width: 1400px) {
             .recompute-simple-wrap .a2-recompute-compact {
                 grid-template-columns: repeat(3, minmax(0, 1fr));
@@ -341,6 +347,19 @@
                     </div>
                 </h3>
                 <button id="btnHermanos" type="button">RECALCULAR HERMANOS</button>
+            </article>
+
+            <article class="a2-recompute-card" aria-label="Generar y vincular esquemas POS faltantes">
+                <h3>
+                    <span class="a2-step-index">8</span>
+                    <div>
+                        <span class="a2-step-title">ESQUEMA POS FALTANTES</span>
+                        <p class="a2-step-desc">POST /api/recompute-simple/generate-missing-esquema-pos</p>
+                        <p class="a2-step-desc">Busca registros sin ruta_esquemas_pos, genera la imagen de esquema POS y la vincula en engine_&lt;MODEL&gt;.json.</p>
+                        <p class="a2-step-desc">Actualiza esquemas_circulos_all, esquemas_circulos, ruta_esquemas_pos y exp_imagenes.</p>
+                    </div>
+                </h3>
+                <button id="btnEsquemaPosMissing" type="button">GENERAR ESQUEMA POS</button>
             </article>
         </section>
 

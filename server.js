@@ -809,6 +809,165 @@ app.post('/api/recompute-simple/recompute-hermanos', async (req, res) => {
     }
 });
 
+app.post('/api/recompute-simple/generate-missing-esquema-pos', async (req, res) => {
+    let engine;
+    let id;
+    let writeImages;
+    let writeJson;
+    let overwrite;
+    let limit;
+
+    try {
+        assertPayloadSize(req.body, { maxBytes: 12288 });
+        engine = assertString(req.body?.engine ?? 'ALL', { field: 'engine', allowEmpty: false, maxLength: 64 });
+        id = assertString(req.body?.id ?? '', { field: 'id', allowEmpty: true, maxLength: 128 });
+        writeImages = assertBooleanLike(req.body?.writeImages ?? true, 'writeImages');
+        writeJson = assertBooleanLike(req.body?.writeJson ?? true, 'writeJson');
+        overwrite = assertBooleanLike(req.body?.overwrite ?? false, 'overwrite');
+
+        const parsedLimit = Number(req.body?.limit ?? 0);
+        if (!Number.isFinite(parsedLimit) || parsedLimit < 0 || parsedLimit > 100000) {
+            throw validationError({ code: 'INVALID_LIMIT', field: 'limit', message: 'limit debe ser un numero entre 0 y 100000' });
+        }
+        limit = Math.floor(parsedLimit);
+
+        const normalizedEngine = normalizeEngineToken(engine);
+        if (!normalizedEngine) {
+            throw validationError({ code: 'INVALID_ENGINE', field: 'engine', message: 'engine es obligatorio' });
+        }
+
+        if (normalizedEngine === 'ALL' && id) {
+            throw validationError({ code: 'ID_NOT_ALLOWED_FOR_ALL_SCOPE', field: 'id', message: 'engine=ALL no admite id puntual' });
+        }
+    } catch (error) {
+        return isValidationError(error)
+            ? sendValidationError(res, error, { endpoint: '/api/recompute-simple/generate-missing-esquema-pos' })
+            : res.status(400).json({ ok: false, error: String(error?.message || error) });
+    }
+
+    try {
+        const os = require('os');
+        const normalizedEngine = normalizeEngineToken(engine);
+        const reportPath = path.join(os.tmpdir(), `milu_missing_esquema_pos_report_${Date.now()}_${process.pid}.json`);
+
+        const args = ['scripts/generate_missing_esquema_pos_batch.py'];
+        if (normalizedEngine === 'ALL') {
+            args.push('--all-engines');
+        } else {
+            args.push('--engine', normalizedEngine);
+        }
+
+        args.push(writeImages ? '--write-images' : '--no-write-images');
+        args.push(writeJson ? '--write-json' : '--no-write-json');
+        if (overwrite) {
+            args.push('--overwrite');
+        }
+        if (limit > 0) {
+            args.push('--limit', String(limit));
+        }
+        args.push('--report', reportPath);
+
+        const execResult = await new Promise((resolve, reject) => {
+            const python = spawn('python', args, {
+                cwd: __dirname,
+                stdio: ['pipe', 'pipe', 'pipe'],
+                env: { ...process.env, PYTHONIOENCODING: 'utf-8' }
+            });
+
+            let stdout = '';
+            let stderr = '';
+
+            python.stdout.on('data', (chunk) => {
+                stdout += chunk.toString();
+            });
+
+            python.stderr.on('data', (chunk) => {
+                stderr += chunk.toString();
+            });
+
+            python.on('error', reject);
+            python.on('close', (code) => {
+                let report = null;
+                try {
+                    if (fs.existsSync(reportPath)) {
+                        report = JSON.parse(fs.readFileSync(reportPath, 'utf8'));
+                    }
+                } catch (reportError) {
+                    return reject(reportError);
+                } finally {
+                    try {
+                        if (fs.existsSync(reportPath)) {
+                            fs.unlinkSync(reportPath);
+                        }
+                    } catch (_cleanupError) {
+                        // noop
+                    }
+                }
+
+                resolve({
+                    code: Number(code),
+                    stdout,
+                    stderr,
+                    report
+                });
+            });
+        });
+
+        const report = execResult.report && typeof execResult.report === 'object'
+            ? execResult.report
+            : { results: [] };
+        const hasErrors = Array.isArray(report?.results)
+            ? report.results.some((item) => Number(item?.errors || 0) > 0 || String(item?.status || '').toLowerCase() === 'error')
+            : execResult.code !== 0;
+
+        if (execResult.code === 0) {
+            return res.status(200).json({
+                ok: true,
+                result: {
+                    ...report,
+                    reportPath
+                },
+                ignoredId: Boolean(id),
+                notes: {
+                    writeImages,
+                    writeJson,
+                    overwrite,
+                    limit
+                }
+            });
+        }
+
+        if (hasErrors && report) {
+            return res.status(207).json({
+                ok: false,
+                error: 'Proceso completado con incidencias parciales',
+                result: {
+                    ...report,
+                    reportPath
+                },
+                ignoredId: Boolean(id),
+                notes: {
+                    writeImages,
+                    writeJson,
+                    overwrite,
+                    limit,
+                    exitCode: execResult.code
+                }
+            });
+        }
+
+        return res.status(500).json({
+            ok: false,
+            error: String(execResult.stderr || execResult.stdout || `Error ejecutando batch de esquema POS (code=${execResult.code})`)
+        });
+    } catch (error) {
+        return res.status(500).json({
+            ok: false,
+            error: String(error?.message || error || 'Error desconocido')
+        });
+    }
+});
+
 app.post('/api/recompute-simple/update-gesa', async (req, res) => {
     let engine;
     let id;
@@ -3054,30 +3213,28 @@ app.get('/delete-json.php', (_req, res) => {
     res.json({ ok: true, service: 'milu-delete-backend', route: '/delete-json.php' });
 });
 
-// Índice de archivos existentes en esquemas_pos_circulos/.
-// Devuelve un array plano de basenames (sin ruta) para que el frontend pueda
-// construir un Set y comprobar existencia sin hacer fetch por cada fila.
-// Cacheado en memoria: se recalcula en cada arranque del servidor.
-let _esquemasPosIndexCache = null;
 app.get('/api/esquemas-pos-index', async (_req, res) => {
     try {
-        if (!_esquemasPosIndexCache) {
-            const baseDir = path.join(__dirname, 'esquemas_pos_circulos');
-            const folders = await fs.promises.readdir(baseDir);
-            const allFiles = [];
-            for (const folder of folders) {
-                const folderPath = path.join(baseDir, folder);
-                let stat;
-                try { stat = await fs.promises.stat(folderPath); } catch { continue; }
-                if (!stat.isDirectory()) continue;
-                const files = await fs.promises.readdir(folderPath);
-                for (const file of files) {
-                    allFiles.push(file.toLowerCase());
+        const baseDir = path.join(__dirname, 'esquemas_pos_circulos');
+        const allFiles = [];
+
+        async function walkDirRecursive(currentDir) {
+            const entries = await fs.promises.readdir(currentDir, { withFileTypes: true });
+            for (const entry of entries) {
+                const fullPath = path.join(currentDir, entry.name);
+                if (entry.isDirectory()) {
+                    await walkDirRecursive(fullPath);
+                    continue;
                 }
+                if (!entry.isFile()) continue;
+                if (!/\.(webp|png|jpe?g)$/i.test(entry.name)) continue;
+                allFiles.push(entry.name.toLowerCase());
             }
-            _esquemasPosIndexCache = allFiles;
         }
-        res.json({ ok: true, files: _esquemasPosIndexCache });
+
+        await walkDirRecursive(baseDir);
+        const files = [...new Set(allFiles)];
+        res.json({ ok: true, files });
     } catch (err) {
         console.error('[esquemas-pos-index] Error:', err.message);
         res.json({ ok: false, files: [], error: String(err.message) });
