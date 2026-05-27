@@ -8732,6 +8732,88 @@ function initHeaderDetectionHandlers() {
 
     }
 
+    const generateEsquemaPosBtn = document.getElementById('generateMissingEsquemaPosBtn');
+    if (generateEsquemaPosBtn instanceof HTMLButtonElement) {
+        generateEsquemaPosBtn.addEventListener('click', async () => {
+            if (!canCallBackendApiEndpoints()) {
+                showToast('La generación de esquema POS requiere backend local en localhost:3000.', 'warning');
+                return;
+            }
+
+            const revisionKey = String(state.selectedRevisionRowKey || '').trim();
+            if (!revisionKey) {
+                showToast('Selecciona un registro antes de generar el esquema POS.', 'warning');
+                return;
+            }
+
+            const row = getRowByRevisionKey(revisionKey);
+            if (!row) {
+                showToast('No se pudo resolver la fila seleccionada.', 'error');
+                return;
+            }
+
+            const engine = String(val(row, 'engine_model', '') || '').trim();
+            const id = String(val(row, 'ID', '') || '').trim();
+            if (!engine || !id) {
+                showToast('La fila seleccionada no tiene engine_model o ID válidos.', 'error');
+                return;
+            }
+
+            const shouldWrite = window.confirm(
+                'Se generará la imagen en esquemas_pos_circulos para el registro seleccionado.\n\n¿Continuar?'
+            );
+            if (!shouldWrite) return;
+
+            const payload = {
+                engine,
+                id,
+                pdf: `${engine}.pdf`,
+                outDir: 'esquemas_pos_circulos',
+                dryRun: false,
+                writeImages: true,
+                overwrite: false,
+                pageOffset: -1,
+                dpi: 200,
+                format: 'webp',
+                quality: 90
+            };
+
+            const previousLabel = generateEsquemaPosBtn.textContent;
+            generateEsquemaPosBtn.disabled = true;
+            generateEsquemaPosBtn.textContent = 'Generando...';
+
+            try {
+                const response = await fetch(apiUrl('/api/esquemas-pos/generate-one'), {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(payload)
+                });
+                const result = await response.json().catch(() => ({}));
+
+                if (!response.ok || !result?.ok) {
+                    const errorMessage = String(result?.error || `HTTP ${response.status}`);
+                    showToast(`No se pudo generar el esquema POS: ${errorMessage}`, 'error');
+                    return;
+                }
+
+                const report = result.report || {};
+                const status = String(report.status || '').trim();
+                if (status === 'generated') {
+                    showToast(`Esquema POS generado: ${report.filename || 'archivo creado'}`, 'success');
+                } else if (status === 'already_exists') {
+                    showToast(`El archivo ya existe: ${report.filename || 'sin nombre'}`, 'info');
+                } else {
+                    showToast(`Proceso completado con estado ${status || 'desconocido'}.`, 'warning');
+                }
+            } catch (error) {
+                showToast(`Error llamando al backend: ${error?.message || error}`, 'error');
+            } finally {
+                generateEsquemaPosBtn.disabled = false;
+                generateEsquemaPosBtn.textContent = previousLabel || 'Generar esquema POS';
+            }
+        });
+    }
+
 
 
     // Botón: Cerrar panel de Headers

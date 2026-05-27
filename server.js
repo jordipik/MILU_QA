@@ -3084,6 +3084,143 @@ app.get('/api/esquemas-pos-index', async (_req, res) => {
     }
 });
 
+app.post('/api/esquemas-pos/generate-one', async (req, res) => {
+    const tag = '[api:esquemas-pos:generate-one]';
+    const os = require('os');
+
+    let engine;
+    let id;
+    let pdf;
+    let outDir;
+    let dryRun;
+    let writeImages;
+    let overwrite;
+    let pageOffset;
+    let dpi;
+    let format;
+    let quality;
+
+    try {
+        assertPayloadSize(req.body, { maxBytes: 16384 });
+
+        engine = assertString(req.body?.engine, { field: 'engine', allowEmpty: false, maxLength: 64 });
+        id = assertString(req.body?.id, { field: 'id', allowEmpty: false, maxLength: 128 });
+        pdf = assertString(req.body?.pdf, { field: 'pdf', allowEmpty: false, maxLength: 260 });
+        outDir = assertString(req.body?.outDir ?? 'esquemas_pos_circulos', { field: 'outDir', allowEmpty: false, maxLength: 260 });
+
+        dryRun = assertBooleanLike(req.body?.dryRun ?? false, 'dryRun');
+        writeImages = assertBooleanLike(req.body?.writeImages ?? true, 'writeImages');
+        overwrite = assertBooleanLike(req.body?.overwrite ?? false, 'overwrite');
+
+        pageOffset = Number(req.body?.pageOffset ?? -1);
+        dpi = Number(req.body?.dpi ?? 200);
+        quality = Number(req.body?.quality ?? 90);
+        format = String(req.body?.format ?? 'webp').trim().toLowerCase();
+
+        if (!/^[A-Za-z0-9._-]+$/.test(engine)) {
+            throw validationError({ code: 'INVALID_ENGINE', field: 'engine', message: 'engine contiene caracteres no permitidos' });
+        }
+        if (!/^[A-Za-z0-9._:-]+$/.test(id)) {
+            throw validationError({ code: 'INVALID_ID', field: 'id', message: 'id contiene caracteres no permitidos' });
+        }
+        if (!/^[A-Za-z0-9._\-\\/ ]+$/.test(pdf) || pdf.includes('..')) {
+            throw validationError({ code: 'INVALID_PDF_PATH', field: 'pdf', message: 'pdf contiene una ruta no permitida' });
+        }
+        if (!/^[A-Za-z0-9._\-\\/ ]+$/.test(outDir) || outDir.includes('..')) {
+            throw validationError({ code: 'INVALID_OUT_DIR', field: 'outDir', message: 'outDir contiene una ruta no permitida' });
+        }
+        if (!Number.isInteger(pageOffset) || pageOffset < -50 || pageOffset > 50) {
+            throw validationError({ code: 'INVALID_PAGE_OFFSET', field: 'pageOffset', message: 'pageOffset debe ser entero entre -50 y 50' });
+        }
+        if (!Number.isFinite(dpi) || dpi < 72 || dpi > 600) {
+            throw validationError({ code: 'INVALID_DPI', field: 'dpi', message: 'dpi debe estar entre 72 y 600' });
+        }
+        if (!Number.isFinite(quality) || quality < 1 || quality > 100) {
+            throw validationError({ code: 'INVALID_QUALITY', field: 'quality', message: 'quality debe estar entre 1 y 100' });
+        }
+        if (!['webp', 'png', 'jpg', 'jpeg', 'tiff'].includes(format)) {
+            throw validationError({ code: 'INVALID_FORMAT', field: 'format', message: 'format no soportado' });
+        }
+    } catch (error) {
+        return isValidationError(error)
+            ? sendValidationError(res, error, { endpoint: '/api/esquemas-pos/generate-one' })
+            : res.status(400).json({ ok: false, error: String(error?.message || error) });
+    }
+
+    const reportPath = path.join(os.tmpdir(), `milu_generate_esquema_pos_${Date.now()}_${process.pid}.json`);
+    const args = [
+        'generate_esquema_pos.py',
+        '--engine', engine,
+        '--id', id,
+        '--pdf', pdf,
+        '--out-dir', outDir,
+        '--page-offset', String(pageOffset),
+        '--dpi', String(Math.round(dpi)),
+        '--format', format,
+        '--quality', String(Math.round(quality)),
+        '--out-report', reportPath
+    ];
+
+    if (dryRun || !writeImages) args.push('--dry-run');
+    if (writeImages) args.push('--write-images');
+    if (overwrite) args.push('--overwrite');
+
+    try {
+        console.log(`${tag} spawn python ${args.join(' ')}`);
+
+        const python = spawn('python', args, {
+            cwd: __dirname,
+            stdio: ['pipe', 'pipe', 'pipe'],
+            windowsHide: true,
+            env: { ...process.env, PYTHONIOENCODING: 'utf-8' }
+        });
+
+        let stdout = '';
+        let stderr = '';
+
+        python.stdout.on('data', (chunk) => {
+            stdout += String(chunk || '');
+        });
+        python.stderr.on('data', (chunk) => {
+            stderr += String(chunk || '');
+        });
+
+        python.on('error', (error) => {
+            console.error(`${tag} spawn error:`, error);
+            return res.status(500).json({
+                ok: false,
+                error: `No se pudo lanzar python: ${String(error?.message || error)}`
+            });
+        });
+
+        python.on('close', async (code) => {
+            let report = null;
+            try {
+                if (fs.existsSync(reportPath)) {
+                    report = JSON.parse(await fs.promises.readFile(reportPath, 'utf8'));
+                    await fs.promises.unlink(reportPath).catch(() => { });
+                }
+            } catch (error) {
+                console.warn(`${tag} report parse error:`, error);
+            }
+
+            const ok = code === 0;
+            const statusCode = ok ? 200 : 422;
+            return res.status(statusCode).json({
+                ok,
+                exitCode: code,
+                report,
+                stdout,
+                stderr,
+                error: ok ? null : `python generate_esquema_pos.py salio con code=${code}`
+            });
+        });
+    } catch (error) {
+        console.error(`${tag} backend error:`, error);
+        return res.status(500).json({ ok: false, error: String(error?.message || error || 'Error desconocido') });
+    }
+});
+
 // Configurar express.static con tipos MIME correctos incluyendo charset
 const staticOptions = {
     setHeaders: (res, path) => {
