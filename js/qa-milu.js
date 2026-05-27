@@ -8732,6 +8732,118 @@ function initHeaderDetectionHandlers() {
 
     }
 
+    const generateEsquemaBtn = document.getElementById('generateMissingEsquemaBtn');
+    if (generateEsquemaBtn instanceof HTMLButtonElement) {
+        generateEsquemaBtn.addEventListener('click', async () => {
+            if (!canCallBackendApiEndpoints()) {
+                showToast('La generación de esquema requiere backend local en localhost:3000.', 'warning');
+                return;
+            }
+
+            const revisionKey = String(state.selectedRevisionRowKey || '').trim();
+            if (!revisionKey) {
+                showToast('Selecciona un registro antes de generar el esquema.', 'warning');
+                return;
+            }
+
+            const row = getRowByRevisionKey(revisionKey);
+            if (!row) {
+                showToast('No se pudo resolver la fila seleccionada.', 'error');
+                return;
+            }
+
+            const engine = String(val(row, 'engine_model', '') || '').trim();
+            const id = String(val(row, 'ID', '') || '').trim();
+            const sourcePageHint = Number(val(row, 'Source Page', NaN));
+            const posHintRaw = String(val(row, 'pos_final', '') || val(row, 'POS', '') || '').trim();
+            const posHint = posHintRaw.replace(/\D+/g, '');
+            const partNoHint = String(val(row, 'PART NO.', '') || '').trim();
+            const designationHint = String(val(row, 'DESIGNATION', '') || '').trim();
+            if (!engine || !id) {
+                showToast('La fila seleccionada no tiene engine_model o ID válidos.', 'error');
+                return;
+            }
+
+            const shouldWrite = window.confirm(
+                'Se generará la imagen en esquemas para el registro seleccionado.\n\n¿Continuar?'
+            );
+            if (!shouldWrite) return;
+
+            const payload = {
+                engine,
+                id,
+                pdf: `${engine}.pdf`,
+                outDir: 'esquemas',
+                dryRun: false,
+                writeImages: true,
+                overwrite: false,
+                pageOffset: -1,
+                dpi: 200,
+                format: 'png',
+                quality: 90,
+                sourcePageHint: Number.isFinite(sourcePageHint) ? Math.trunc(sourcePageHint) : null,
+                posHint,
+                partNoHint,
+                designationHint,
+                autoRedFrames: false,
+                preferManualFramedPdf: true
+            };
+
+            const previousLabel = generateEsquemaBtn.textContent;
+            generateEsquemaBtn.disabled = true;
+            generateEsquemaBtn.textContent = 'Generando...';
+
+            try {
+                const response = await fetch(apiUrl('/api/esquemas/generate-one'), {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(payload)
+                });
+                const result = await response.json().catch(() => ({}));
+
+                if (!response.ok || !result?.ok) {
+                    const reportReason = String(result?.report?.reason || '').trim();
+                    const stderr = String(result?.stderr || '').trim();
+                    const backendError = String(result?.error || '').trim();
+                    const errorMessage = reportReason || backendError || stderr || `HTTP ${response.status}`;
+                    showToast(`No se pudo generar el esquema: ${errorMessage}`, 'error');
+                    return;
+                }
+
+                const report = result.report || {};
+                const status = String(report.status || '').trim();
+                const generatedFilename = String(report.filename || '').trim();
+                if ((status === 'generated' || status === 'already_exists') && generatedFilename) {
+                    try {
+                        const engineFile = getEngineJsonForRow(row);
+                        if (engineFile) {
+                            await saveCellToServer(engineFile, id, 'esquemas', generatedFilename);
+                            row.esquemas = generatedFilename;
+                            const refreshed = refreshVisibleRowByRevisionKey(revisionKey);
+                            if (!refreshed) renderTable();
+                            renderPagination();
+                            fillSideRecordForm(row, revisionKey);
+                        }
+                    } catch (persistError) {
+                        console.warn('[esquema] no se pudo persistir campo esquemas:', persistError);
+                    }
+                }
+                if (status === 'generated') {
+                    showToast(`Esquema generado: ${report.filename || 'archivo creado'}`, 'success');
+                } else if (status === 'already_exists') {
+                    showToast(`El archivo ya existe: ${report.filename || 'sin nombre'}`, 'info');
+                } else {
+                    showToast(`Proceso completado con estado ${status || 'desconocido'}.`, 'warning');
+                }
+            } catch (error) {
+                showToast(`Error llamando al backend: ${error?.message || error}`, 'error');
+            } finally {
+                generateEsquemaBtn.disabled = false;
+                generateEsquemaBtn.textContent = previousLabel || 'Generar esquema';
+            }
+        });
+    }
+
     const generateEsquemaPosBtn = document.getElementById('generateMissingEsquemaPosBtn');
     if (generateEsquemaPosBtn instanceof HTMLButtonElement) {
         generateEsquemaPosBtn.addEventListener('click', async () => {
@@ -8754,6 +8866,11 @@ function initHeaderDetectionHandlers() {
 
             const engine = String(val(row, 'engine_model', '') || '').trim();
             const id = String(val(row, 'ID', '') || '').trim();
+            const sourcePageHint = Number(val(row, 'Source Page', NaN));
+            const posHintRaw = String(val(row, 'pos_final', '') || val(row, 'POS', '') || '').trim();
+            const posHint = posHintRaw.replace(/\D+/g, '');
+            const partNoHint = String(val(row, 'PART NO.', '') || '').trim();
+            const designationHint = String(val(row, 'DESIGNATION', '') || '').trim();
             if (!engine || !id) {
                 showToast('La fila seleccionada no tiene engine_model o ID válidos.', 'error');
                 return;
@@ -8775,7 +8892,13 @@ function initHeaderDetectionHandlers() {
                 pageOffset: -1,
                 dpi: 200,
                 format: 'webp',
-                quality: 90
+                quality: 90,
+                sourcePageHint: Number.isFinite(sourcePageHint) ? Math.trunc(sourcePageHint) : null,
+                posHint,
+                partNoHint,
+                designationHint,
+                autoRedFrames: false,
+                preferManualFramedPdf: true
             };
 
             const previousLabel = generateEsquemaPosBtn.textContent;
@@ -8791,7 +8914,10 @@ function initHeaderDetectionHandlers() {
                 const result = await response.json().catch(() => ({}));
 
                 if (!response.ok || !result?.ok) {
-                    const errorMessage = String(result?.error || `HTTP ${response.status}`);
+                    const reportReason = String(result?.report?.reason || '').trim();
+                    const stderr = String(result?.stderr || '').trim();
+                    const backendError = String(result?.error || '').trim();
+                    const errorMessage = reportReason || backendError || stderr || `HTTP ${response.status}`;
                     showToast(`No se pudo generar el esquema POS: ${errorMessage}`, 'error');
                     return;
                 }
