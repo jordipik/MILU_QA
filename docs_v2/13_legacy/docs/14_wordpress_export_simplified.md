@@ -16,9 +16,9 @@ La decision final de exportacion depende solo de QA humana.
 
 ## ClasificaciÃ³n New / Superseded (REGLA OBLIGATORIA)
 
-La separaciÃ³n entre registros **New** y **Superseded** se basa **exclusivamente** en:
+La separaciÃ³n entre registros **New** y **Superseded** se basa en:
 
-- **Superseded**: `sust_hierarchie === "Superseded"`
+- **Superseded**: `sust_hierarchie === "Superseded"` o `hierarchie_final === "Superseded"`
 - **New**: todos los registros que NO tengan `sust_hierarchie === "Superseded"`
 
 **IMPORTANTE:** `sust_status === "SI"` **NO** determina si un registro se exporta como Superseded.
@@ -29,9 +29,26 @@ FunciÃ³n canÃ³nica implementada en todos los mÃ³dulos de exportaciÃ³n:
 
 ```javascript
 function getExportType(row) {
-    return String(row?.sust_hierarchie ?? '').trim() === 'Superseded' ? 'superseded' : 'new';
+      const h1 = String(row?.sust_hierarchie ?? '').trim();
+      const h2 = String(row?.hierarchie_final ?? '').trim();
+      return (h1 === 'Superseded' || h2 === 'Superseded') ? 'superseded' : 'new';
 }
 ```
+
+## Reglas sinteticas de salida (WordPress)
+
+- Base QA-only intacta: solo `ok/importar` se considera exportable.
+- Superseded real: se exporta en Superseded y no en New.
+- Superseded sintetico desde `sust_superseded_list` o `subst_pnlist_final` para cada New exportable:
+   - split por coma, trim y sin vacios
+   - si PN ya existe en cualquier `engine_*.json`, se omite
+   - si no existe, se crea sintetico con `synthetic_source="sust_superseded_list"` y `data_quality="unknown_superseded"`
+- Caso huerfano: Superseded real sin PN New real en engines
+   - se exporta Superseded real
+   - se crea New sintetico con `synthetic_source="orphan_superseded_new"` y `data_quality="unknown_new_from_superseded"`
+- Dedupe por PN dentro de New y dentro de Superseded:
+   - prioridad registro real sobre sintetico
+   - despues mayor completitud de campos
 
 ## Entradas
 - 9 archivos `engine_*.json` del repo.
@@ -125,16 +142,28 @@ Estas validaciones ayudan a revisar, pero no deciden exportacion:
 - `GET /pn/:sku/sources`
 
 ## Outputs oficiales
-Carpeta: `data/05-wordpress/`
+Carpeta principal: `data/05-wordpress/`
+
+Carpeta espejo para auditoria: `data/output/wordpress/`
 
 - `milu_wp_import.csv`
 - `milu_wp_discarded.csv`
 - `milu_wp_pending_review.csv`
 - `milu_wp_import.json`
 - `milu_wp_export_summary.md`
+- `milu_wp_export_report.json`
 
 Opcional:
 - `milu_wp_trace.json`
+
+Metricas de auditoria requeridas:
+- `total_new_real`
+- `total_new_synthetic`
+- `total_superseded_real`
+- `total_superseded_synthetic_from_list`
+- `total_superseded_omitted_existing`
+- `total_orphan_superseded_generated_new`
+- `duplicates_avoided`
 
 ## Legacy archivado
 La logica compleja anterior se mantiene solo como referencia en:

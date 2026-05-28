@@ -23,20 +23,42 @@ Consultar docs_v2 para versión actual.
 
 ## 2. ClasificaciÃ³n New / Superseded (regla obligatoria)
 
-La separaciÃ³n entre **New** y **Superseded** se basa **exclusivamente** en `sust_hierarchie`:
+La separaciÃ³n entre **New** y **Superseded** se basa en la jerarquÃ­a SUST final:
 
-- **Superseded** si `sust_hierarchie === "Superseded"`.
+- **Superseded** si `sust_hierarchie === "Superseded"` o `hierarchie_final === "Superseded"`.
 - **New** en cualquier otro caso (incluidos `"New"`, vacÃ­o, otros valores).
 
-> **`sust_status === "SI"` NO determina si un registro se exporta como Superseded.** Solo indica que el PN aparece en relaciones SUST del Excel de sustituciones. Un registro con `sust_status = "SI"` y `sust_hierarchie = "New"` va a **New**.
+> **`sust_status === "SI"` NO determina por si solo si un registro se exporta como Superseded.**
 
-FunciÃ³n canÃ³nica usada por todos los mÃ³dulos de exportaciÃ³n:
+FunciÃ³n canÃ³nica usada por el export oficial:
 
 ```javascript
 function getExportType(row) {
-    return String(row?.sust_hierarchie ?? '').trim() === 'Superseded' ? 'superseded' : 'new';
+      const h1 = String(row?.sust_hierarchie ?? '').trim();
+      const h2 = String(row?.hierarchie_final ?? '').trim();
+      return (h1 === 'Superseded' || h2 === 'Superseded') ? 'superseded' : 'new';
 }
 ```
+
+### 2.1 Reglas de registros sintÃ©ticos (solo salida WordPress)
+
+- Base QA-only intacta: solo PN con `qa_revision_estado=ok` y `qa_revision_accion=importar`.
+- Superseded real: entra siempre en export Superseded y no va al export New.
+- Superseded sintÃ©tico desde lista:
+   - Para cada New exportable se parsea `sust_superseded_list` y `subst_pnlist_final` por coma.
+   - Si un PN listado ya existe en cualquier `engine_*.json`, no se genera duplicado sintÃ©tico.
+   - Si no existe, se crea Superseded sintÃ©tico con:
+      - `synthetic_source = "sust_superseded_list"`
+      - `data_quality = "unknown_superseded"`
+      - trazabilidad `synthetic_parent_id`, `synthetic_parent_pn`, `synthetic_parent_engine`.
+- Caso huÃ©rfano Superseded real sin New real:
+   - Se exporta igualmente el Superseded real.
+   - Se crea New sintÃ©tico mÃ­nimo con:
+      - `synthetic_source = "orphan_superseded_new"`
+      - `data_quality = "unknown_new_from_superseded"`
+      - trazabilidad `synthetic_child_id`, `synthetic_child_pn`, `synthetic_child_engine`.
+
+Los sintÃ©ticos existen solo en salida de export y nunca se persisten en `engine_*.json`.
 
 ---
 
@@ -144,14 +166,27 @@ Respuesta: `{ ok, sku, decision_applied, rows_updated, files_touched, errors }`.
 
 ## 10. Outputs oficiales
 
-Carpeta: `data/05-wordpress/`.
+Carpeta principal: `data/05-wordpress/`.
+
+Carpeta espejo de auditorÃ­a: `data/output/wordpress/`.
 
 - `milu_wp_import.json`
 - `milu_wp_import.csv`
 - `milu_wp_discarded.csv`
 - `milu_wp_pending_review.csv`
 - `milu_wp_export_summary.md`
+- `milu_wp_export_report.json`
 - Opcional: `milu_wp_trace.json` (manifest de trazabilidad).
+
+MÃ©tricas mÃ­nimas en `milu_wp_export_report.json`:
+
+- `total_new_real`
+- `total_new_synthetic`
+- `total_superseded_real`
+- `total_superseded_synthetic_from_list`
+- `total_superseded_omitted_existing`
+- `total_orphan_superseded_generated_new`
+- `duplicates_avoided`
 
 Detalle de outputs de imagen y manifest: [docs/images/wordpress_image_export.md](images/wordpress_image_export.md).
 

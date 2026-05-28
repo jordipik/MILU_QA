@@ -5,6 +5,7 @@ const { getExportField, getExportType, isExportable } = require('../js/export-fi
 
 const REPO_ROOT = path.resolve(__dirname, '..');
 const OUTPUT_DIR = path.join(REPO_ROOT, 'data', '05-wordpress');
+const AUDIT_OUTPUT_DIR = path.join(REPO_ROOT, 'data', 'output', 'wordpress');
 
 function ensureDir(dirPath) {
     fs.mkdirSync(dirPath, { recursive: true });
@@ -62,6 +63,13 @@ function uniq(values) {
     return [...new Set(values.filter(Boolean))];
 }
 
+function splitCommaList(value) {
+    return value
+        .split(',')
+        .map((item) => collapseSpaces(item))
+        .filter(Boolean);
+}
+
 function pickMostFrequent(values) {
     const counts = new Map();
     let bestKey = '';
@@ -91,6 +99,25 @@ function getPn(row) {
     return t(getExportField(row, 'pn_final', row.pn));
 }
 
+function getNewPartNumber(row) {
+    return pickMostFrequent([
+        row.new_pn_final,
+        row.sust_new_part_number,
+        row['New Part Number']
+    ]);
+}
+
+function getSupersededListValue(row) {
+    return pickMostFrequent([
+        row.subst_pnlist_final,
+        row.sust_superseded_list
+    ]);
+}
+
+function getHierarchy(row) {
+    return t(getExportField(row, 'hierarchie_final', row?.sust_hierarchie));
+}
+
 function getDesignation(row) {
     return pickMostFrequent([
         row.designation_final,
@@ -114,6 +141,37 @@ function getWeight(row) {
         row.weight_gesa,
         row.WEIGHT
     ]);
+}
+
+function getEngineName(row) {
+    return t(row.engine_model || row.model || row.engine || row.__engine_file);
+}
+
+function getSourceId(row) {
+    return t(row.ID || row.rebuild_legacy_engine_id);
+}
+
+function getSourcePage(row) {
+    return t(row['Source Page'] || row.rebuild_source_page);
+}
+
+function isSupersededRow(row) {
+    const hierarchy = key(getHierarchy(row));
+    if (hierarchy === 'superseded') return true;
+    return getExportType(row) === 'superseded';
+}
+
+function completenessScore(row) {
+    let score = 0;
+    if (t(row.sku || row.pn || row.pn_final || row['PART NO.'])) score += 5;
+    if (t(row.designation_final || row.DESIGNATION)) score += 3;
+    if (t(row.measurement_final || row.measure_final)) score += 2;
+    if (t(row.weight_final)) score += 1;
+    if (t(row.new_pn_final || row.sust_new_part_number)) score += 1;
+    if (t(row.sust_superseded_list || row.subst_pnlist_final)) score += 1;
+    if (t(row.engines)) score += 1;
+    if (t(row.source_ids)) score += 1;
+    return score;
 }
 
 function isInternalDebugRecord(row) {
@@ -188,9 +246,9 @@ function decideByQa(rows, qaSummary) {
 }
 
 function buildAggregates(rows) {
-    const engines = uniq(rows.map((row) => t(row.engine_model || row.model || row.engine || row.__engine_file))).join(', ');
-    const sourceIds = uniq(rows.map((row) => t(row.ID))).join(', ');
-    const sourcePages = uniq(rows.map((row) => t(row['Source Page']))).join(', ');
+    const engines = uniq(rows.map((row) => getEngineName(row))).join(', ');
+    const sourceIds = uniq(rows.map((row) => getSourceId(row))).join(', ');
+    const sourcePages = uniq(rows.map((row) => getSourcePage(row))).join(', ');
 
     return { engines, sourceIds, sourcePages };
 }
@@ -198,9 +256,9 @@ function buildAggregates(rows) {
 function buildTraceEntry(sku, rows, merged, decisionMeta, qaSummary) {
     const sourceRecords = rows.map((row) => ({
         id: t(row.ID),
-        engine_model: t(row.engine_model || row.model || row.engine),
+        engine_model: getEngineName(row),
         source_file: t(row.__engine_file),
-        source_page: t(row['Source Page']),
+        source_page: getSourcePage(row),
         pos: t(row.POS || row.pos_final),
         bom: t(row['BOM-No.']),
         designation_final: getDesignation(row),
@@ -247,22 +305,258 @@ function isQaPendingOrReviewRow(row) {
     return false;
 }
 
-function isSupersededRow(row) {
-    return getExportType(row) === 'superseded';
+function parseArgs(argv) {
+    const args = Array.isArray(argv) ? argv : [];
+    return {
+        dryRun: args.includes('--dry-run')
+    };
 }
 
-function run() {
-    ensureDir(OUTPUT_DIR);
+function addExample(auditExamples, keyName, payload, max = 5) {
+    if (!Array.isArray(auditExamples[keyName])) return;
+    if (auditExamples[keyName].length >= max) return;
+    auditExamples[keyName].push(payload);
+}
+
+function buildMergedRow(rows, options = {}) {
+    const sourceRows = Array.isArray(rows) ? rows : [];
+    const sku = t(options.sku || pickMostFrequent(sourceRows.map((row) => getPn(row))));
+    const hierarchy = t(options.hierarchy || pickMostFrequent(sourceRows.map((row) => getHierarchy(row))) || 'New');
+    const agg = buildAggregates(sourceRows);
+    const qaSummary = buildQaSummary(sourceRows);
+
+    const designation = t(options.designation || pickMostFrequent(sourceRows.map((row) => getDesignation(row))));
+    const measurement = t(options.measurement || pickMostFrequent(sourceRows.map((row) => getMeasurement(row))));
+    const weight = t(options.weight || pickMostFrequent(sourceRows.map((row) => getWeight(row))));
+    const newPn = t(options.newPn || pickMostFrequent(sourceRows.map((row) => getNewPartNumber(row))));
+    const supersededList = t(options.supersededList || pickMostFrequent(sourceRows.map((row) => getSupersededListValue(row))));
+
+    return {
+        sku,
+        pn: sku,
+        pn_final: sku,
+        'PART NO.': sku,
+        designation_final: designation,
+        DESIGNATION: designation,
+        measure_final: measurement,
+        measurement_final: measurement,
+        weight_final: weight,
+        sust_hierarchie: hierarchy,
+        hierarchie_final: hierarchy,
+        sust_new_part_number: newPn,
+        new_pn_final: newPn,
+        sust_superseded_list: supersededList,
+        subst_pnlist_final: supersededList,
+        decision: t(options.decision || 'import'),
+        reason: t(options.reason || 'qa_ok_importar_found'),
+        qa_validated: options.qaValidated !== false,
+        occurrences: sourceRows.length,
+        apariciones: sourceRows.length,
+        total_occurrences_global: sourceRows.length,
+        engines: agg.engines,
+        motores: agg.engines,
+        source_ids: agg.sourceIds,
+        source_pages: agg.sourcePages,
+        qa_revision_estado: 'ok',
+        qa_revision_accion: 'importar',
+        qa_summary_json: JSON.stringify(qaSummary),
+        import_decision: t(options.decision || 'import'),
+        import_reason: t(options.reason || 'qa_ok_importar_found'),
+        synthetic_source: t(options.syntheticSource || ''),
+        data_quality: t(options.dataQuality || ''),
+        synthetic_parent_id: t(options.syntheticParentId || ''),
+        synthetic_parent_pn: t(options.syntheticParentPn || ''),
+        synthetic_parent_engine: t(options.syntheticParentEngine || ''),
+        synthetic_child_id: t(options.syntheticChildId || ''),
+        synthetic_child_pn: t(options.syntheticChildPn || ''),
+        synthetic_child_engine: t(options.syntheticChildEngine || ''),
+        dedupe_trace: ''
+    };
+}
+
+function makeSyntheticSuperseded(parentRow, supersededPn) {
+    const parentPn = getPn(parentRow);
+    const parentId = getSourceId(parentRow);
+    const parentEngine = getEngineName(parentRow);
+    const designation = getDesignation(parentRow);
+
+    return buildMergedRow([parentRow], {
+        sku: supersededPn,
+        hierarchy: 'Superseded',
+        designation,
+        measurement: getMeasurement(parentRow),
+        weight: '',
+        newPn: parentPn,
+        decision: 'import',
+        reason: 'synthetic_superseded_from_list',
+        qaValidated: true,
+        syntheticSource: 'sust_superseded_list',
+        dataQuality: 'unknown_superseded',
+        syntheticParentId: parentId,
+        syntheticParentPn: parentPn,
+        syntheticParentEngine: parentEngine
+    });
+}
+
+function makeSyntheticNewFromOrphanSuperseded(supersededRow, newPn) {
+    const childPn = getPn(supersededRow);
+    const childId = getSourceId(supersededRow);
+    const childEngine = getEngineName(supersededRow);
+    const designation = pickMostFrequent([
+        supersededRow['Denomination (New Part Number)'],
+        supersededRow.designation_final,
+        supersededRow.DESIGNATION
+    ]);
+
+    return buildMergedRow([supersededRow], {
+        sku: newPn,
+        hierarchy: 'New',
+        designation,
+        measurement: '',
+        weight: '',
+        newPn: '',
+        supersededList: '',
+        decision: 'import',
+        reason: 'synthetic_new_from_orphan_superseded',
+        qaValidated: true,
+        syntheticSource: 'orphan_superseded_new',
+        dataQuality: 'unknown_new_from_superseded',
+        syntheticChildId: childId,
+        syntheticChildPn: childPn,
+        syntheticChildEngine: childEngine
+    });
+}
+
+function chooseBetterCandidate(current, incoming) {
+    const currentSynthetic = Boolean(t(current.synthetic_source));
+    const incomingSynthetic = Boolean(t(incoming.synthetic_source));
+    if (currentSynthetic !== incomingSynthetic) {
+        return incomingSynthetic ? current : incoming;
+    }
+
+    const currentScore = completenessScore(current);
+    const incomingScore = completenessScore(incoming);
+    if (incomingScore !== currentScore) {
+        return incomingScore > currentScore ? incoming : current;
+    }
+
+    const currentOcc = Number(current.occurrences || 0);
+    const incomingOcc = Number(incoming.occurrences || 0);
+    if (incomingOcc !== currentOcc) {
+        return incomingOcc > currentOcc ? incoming : current;
+    }
+
+    return current;
+}
+
+function dedupeByPn(candidates, audit, dedupeBucketName) {
+    const byPn = new Map();
+    for (const row of candidates) {
+        const pn = t(row.sku || row.pn || row.pn_final || row['PART NO.']);
+        if (!pn) continue;
+        const pnKey = key(pn);
+        if (!byPn.has(pnKey)) {
+            byPn.set(pnKey, { ...row, sku: pn, pn: pn, pn_final: pn, 'PART NO.': pn });
+            continue;
+        }
+
+        audit.duplicates_avoided += 1;
+        const kept = byPn.get(pnKey);
+        const winner = chooseBetterCandidate(kept, row);
+        const loser = winner === kept ? row : kept;
+
+        const traceParts = uniq([
+            t(winner.dedupe_trace),
+            t(`kept:${winner.synthetic_source || 'real'}:${winner.reason || ''}`),
+            t(`dropped:${loser.synthetic_source || 'real'}:${loser.reason || ''}`)
+        ]).filter(Boolean);
+        winner.dedupe_trace = traceParts.join(' | ');
+
+        byPn.set(pnKey, winner);
+
+        addExample(audit.examples, dedupeBucketName, {
+            pn,
+            kept_source: t(winner.synthetic_source || 'real'),
+            dropped_source: t(loser.synthetic_source || 'real'),
+            kept_reason: t(winner.reason),
+            dropped_reason: t(loser.reason)
+        });
+    }
+    return [...byPn.values()];
+}
+
+function writeOutputs(dirPath, payload) {
+    ensureDir(dirPath);
+
+    const {
+        importRows,
+        supersededRows,
+        pendingRows,
+        discardedRows,
+        traceBySku,
+        report,
+        summary,
+        headers
+    } = payload;
+
     [
         'milu_wp_new_import.csv',
         'milu_wp_new_import.json',
         'milu_wp_superseded_import.csv',
         'milu_wp_superseded_import.json',
         'milu_wp_pending_review.csv',
-        'milu_wp_pending_review.json'
-    ].forEach((name) => removeIfExists(path.join(OUTPUT_DIR, name)));
+        'milu_wp_pending_review.json',
+        'milu_wp_import.csv',
+        'milu_wp_import.json',
+        'milu_wp_superseded.csv',
+        'milu_wp_superseded.json',
+        'milu_wp_pending.csv',
+        'milu_wp_pending.json',
+        'milu_wp_discarded.csv',
+        'milu_wp_discarded.json',
+        'milu_wp_trace.json',
+        'milu_wp_export_summary.md',
+        'milu_wp_export_report.json'
+    ].forEach((name) => removeIfExists(path.join(dirPath, name)));
+
+    writeCsv(path.join(dirPath, 'milu_wp_import.csv'), importRows, headers);
+    writeCsv(path.join(dirPath, 'milu_wp_superseded.csv'), supersededRows, headers);
+    writeCsv(path.join(dirPath, 'milu_wp_pending.csv'), pendingRows, headers);
+    writeCsv(path.join(dirPath, 'milu_wp_discarded.csv'), discardedRows, headers);
+
+    writeJson(path.join(dirPath, 'milu_wp_import.json'), importRows);
+    writeJson(path.join(dirPath, 'milu_wp_superseded.json'), supersededRows);
+    writeJson(path.join(dirPath, 'milu_wp_pending.json'), pendingRows);
+    writeJson(path.join(dirPath, 'milu_wp_discarded.json'), discardedRows);
+
+    writeJson(path.join(dirPath, 'milu_wp_new_import.json'), importRows);
+    writeJson(path.join(dirPath, 'milu_wp_superseded_import.json'), supersededRows);
+    writeJson(path.join(dirPath, 'milu_wp_pending_review.json'), pendingRows);
+
+    writeCsv(path.join(dirPath, 'milu_wp_new_import.csv'), importRows, headers);
+    writeCsv(path.join(dirPath, 'milu_wp_superseded_import.csv'), supersededRows, headers);
+    writeCsv(path.join(dirPath, 'milu_wp_pending_review.csv'), pendingRows, headers);
+
+    writeJson(path.join(dirPath, 'milu_wp_trace.json'), traceBySku);
+    fs.writeFileSync(path.join(dirPath, 'milu_wp_export_summary.md'), `${summary}\n`, 'utf8');
+    writeJson(path.join(dirPath, 'milu_wp_export_report.json'), report);
+}
+
+function run(options = {}) {
+    const dryRun = Boolean(options.dryRun);
+    const writeAuditMirror = options.writeAuditMirror !== false;
+
+    ensureDir(OUTPUT_DIR);
+    if (writeAuditMirror) ensureDir(AUDIT_OUTPUT_DIR);
 
     const allRows = loadEngineRows();
+
+    const allRealPnKeys = new Set();
+    for (const row of allRows) {
+        const pn = getPn(row);
+        if (!pn) continue;
+        allRealPnKeys.add(key(pn));
+    }
 
     const byPn = new Map();
     for (const row of allRows) {
@@ -273,11 +567,31 @@ function run() {
         byPn.get(pnKey).rows.push(row);
     }
 
-    const importRows = [];
-    const supersededRows = [];
+    const newCandidates = [];
+    const supersededCandidates = [];
     const pendingRows = [];
     const discardedRows = [];
     const traceBySku = {};
+
+    const audit = {
+        total_new_real: 0,
+        total_new_synthetic: 0,
+        total_superseded_real: 0,
+        total_superseded_synthetic_from_list: 0,
+        total_superseded_omitted_existing: 0,
+        total_orphan_superseded_generated_new: 0,
+        duplicates_avoided: 0,
+        examples: {
+            new_real: [],
+            new_synthetic: [],
+            superseded_real: [],
+            superseded_synthetic_from_list: [],
+            superseded_omitted_existing: [],
+            orphan_superseded_generated_new: [],
+            duplicates_new: [],
+            duplicates_superseded: []
+        }
+    };
 
     for (const group of byPn.values()) {
         const rows = group.rows;
@@ -304,52 +618,120 @@ function run() {
         }
 
         const qaSummary = buildQaSummary(selectedRows);
-        const agg = buildAggregates(selectedRows);
-
-        const designation = pickMostFrequent(selectedRows.map(getDesignation));
-        const measurement = pickMostFrequent(selectedRows.map(getMeasurement));
-        const weight = pickMostFrequent(selectedRows.map(getWeight));
-        const pnNew = pickMostFrequent(selectedRows.map((row) => row?.sust_new_part_number));
-        const supersededList = pickMostFrequent(selectedRows.map((row) => row?.sust_superseded_list));
-        const hasSuperseded = selectedRows.some((row) => isSupersededRow(row));
-
-        const merged = {
-            sku,
-            pn: sku,
-            pn_new: pnNew,
-            sust_superseded_list: supersededList,
-            designation_final: designation,
-            measure_final: measurement,
-            measurement_final: measurement,
-            weight_final: weight,
-            decision: decisionMeta.decision,
-            reason: decisionMeta.reason,
-            qa_validated: decisionMeta.qa_validated,
-            occurrences: selectedRows.length,
-            apariciones: selectedRows.length,
-            total_occurrences_global: selectedRows.length,
-            engines: agg.engines,
-            motores: agg.engines,
-            source_ids: agg.sourceIds,
-            source_pages: agg.sourcePages,
-            qa_revision_estado: decisionMeta.decision === 'discard' ? 'ok' : (decisionMeta.decision === 'import' ? 'ok' : 'pendiente'),
-            qa_revision_accion: decisionMeta.decision === 'discard' ? 'eliminar' : (decisionMeta.decision === 'import' ? 'importar' : 'revisar'),
-            qa_summary_json: JSON.stringify(qaSummary),
-            import_decision: decisionMeta.decision,
-            import_reason: decisionMeta.reason
-        };
 
         if (decisionMeta.decision === 'import') {
-            if (hasSuperseded) supersededRows.push(merged);
-            else importRows.push(merged);
+            const realSupersededRows = selectedRows.filter((row) => isSupersededRow(row));
+            const realNewRows = selectedRows.filter((row) => !isSupersededRow(row));
+
+            if (realNewRows.length > 0) {
+                const mergedNew = buildMergedRow(realNewRows, {
+                    sku,
+                    hierarchy: 'New',
+                    decision: decisionMeta.decision,
+                    reason: decisionMeta.reason,
+                    qaValidated: decisionMeta.qa_validated
+                });
+                newCandidates.push(mergedNew);
+                audit.total_new_real += 1;
+                addExample(audit.examples, 'new_real', { pn: sku, engines: mergedNew.engines });
+
+                for (const row of realNewRows) {
+                    const listValues = uniq([
+                        ...splitCommaList(t(row.sust_superseded_list)),
+                        ...splitCommaList(t(row.subst_pnlist_final))
+                    ]);
+
+                    for (const supersededPn of listValues) {
+                        const supersededKey = key(supersededPn);
+                        if (!supersededKey) continue;
+
+                        if (allRealPnKeys.has(supersededKey)) {
+                            audit.total_superseded_omitted_existing += 1;
+                            addExample(audit.examples, 'superseded_omitted_existing', {
+                                parent_pn: sku,
+                                omitted_pn: supersededPn
+                            });
+                            continue;
+                        }
+
+                        const syntheticSuperseded = makeSyntheticSuperseded(row, supersededPn);
+                        supersededCandidates.push(syntheticSuperseded);
+                        audit.total_superseded_synthetic_from_list += 1;
+                        addExample(audit.examples, 'superseded_synthetic_from_list', {
+                            parent_pn: sku,
+                            synthetic_pn: supersededPn
+                        });
+                    }
+                }
+            }
+
+            if (realSupersededRows.length > 0) {
+                const mergedSuperseded = buildMergedRow(realSupersededRows, {
+                    sku,
+                    hierarchy: 'Superseded',
+                    decision: decisionMeta.decision,
+                    reason: decisionMeta.reason,
+                    qaValidated: decisionMeta.qa_validated
+                });
+                supersededCandidates.push(mergedSuperseded);
+                audit.total_superseded_real += 1;
+                addExample(audit.examples, 'superseded_real', { pn: sku, engines: mergedSuperseded.engines });
+
+                for (const supersededRow of realSupersededRows) {
+                    const orphanNewPn = getNewPartNumber(supersededRow);
+                    if (!orphanNewPn) continue;
+                    if (allRealPnKeys.has(key(orphanNewPn))) continue;
+
+                    const syntheticNew = makeSyntheticNewFromOrphanSuperseded(supersededRow, orphanNewPn);
+                    newCandidates.push(syntheticNew);
+                    audit.total_new_synthetic += 1;
+                    audit.total_orphan_superseded_generated_new += 1;
+                    addExample(audit.examples, 'orphan_superseded_generated_new', {
+                        superseded_pn: getPn(supersededRow),
+                        synthetic_new_pn: orphanNewPn
+                    });
+                    addExample(audit.examples, 'new_synthetic', {
+                        source: 'orphan_superseded_new',
+                        synthetic_new_pn: orphanNewPn
+                    });
+                }
+            }
         } else if (decisionMeta.decision === 'discard') {
-            discardedRows.push(merged);
+            const mergedDiscard = buildMergedRow(selectedRows, {
+                sku,
+                hierarchy: 'New',
+                decision: decisionMeta.decision,
+                reason: decisionMeta.reason,
+                qaValidated: decisionMeta.qa_validated
+            });
+            mergedDiscard.qa_revision_estado = 'ok';
+            mergedDiscard.qa_revision_accion = 'eliminar';
+            discardedRows.push(mergedDiscard);
         } else {
-            pendingRows.push(merged);
+            const mergedPending = buildMergedRow(selectedRows, {
+                sku,
+                hierarchy: isSupersededRow(selectedRows[0]) ? 'Superseded' : 'New',
+                decision: decisionMeta.decision,
+                reason: decisionMeta.reason,
+                qaValidated: decisionMeta.qa_validated
+            });
+            mergedPending.qa_revision_estado = 'pendiente';
+            mergedPending.qa_revision_accion = 'revisar';
+            pendingRows.push(mergedPending);
         }
 
-        traceBySku[sku] = buildTraceEntry(sku, selectedRows, merged, decisionMeta, qaSummary);
+        const compactedForTrace = buildMergedRow(selectedRows, {
+            sku,
+            hierarchy: isSupersededRow(selectedRows[0]) ? 'Superseded' : 'New',
+            decision: decisionMeta.decision,
+            reason: decisionMeta.reason,
+            qaValidated: decisionMeta.qa_validated
+        });
+        traceBySku[sku] = buildTraceEntry(sku, selectedRows, compactedForTrace, decisionMeta, qaSummary);
     }
+
+    const importRows = dedupeByPn(newCandidates, audit, 'duplicates_new');
+    const supersededRows = dedupeByPn(supersededCandidates, audit, 'duplicates_superseded');
 
     const sortBySku = (a, b) => String(a.sku || '').localeCompare(String(b.sku || ''), 'es', { numeric: true, sensitivity: 'base' });
     importRows.sort(sortBySku);
@@ -359,9 +741,27 @@ function run() {
 
     const headers = [
         'sku',
+        'pn_final',
+        'PART NO.',
         'designation_final',
+        'DESIGNATION',
+        'sust_hierarchie',
+        'hierarchie_final',
+        'sust_new_part_number',
+        'new_pn_final',
+        'sust_superseded_list',
+        'subst_pnlist_final',
         'measurement_final',
         'weight_final',
+        'synthetic_source',
+        'data_quality',
+        'synthetic_parent_id',
+        'synthetic_parent_pn',
+        'synthetic_parent_engine',
+        'synthetic_child_id',
+        'synthetic_child_pn',
+        'synthetic_child_engine',
+        'dedupe_trace',
         'decision',
         'reason',
         'qa_validated',
@@ -374,19 +774,9 @@ function run() {
         'import_reason'
     ];
 
-    writeCsv(path.join(OUTPUT_DIR, 'milu_wp_import.csv'), importRows, headers);
-    writeCsv(path.join(OUTPUT_DIR, 'milu_wp_superseded.csv'), supersededRows, headers);
-    writeCsv(path.join(OUTPUT_DIR, 'milu_wp_pending.csv'), pendingRows, headers);
-    writeCsv(path.join(OUTPUT_DIR, 'milu_wp_discarded.csv'), discardedRows, headers);
-
-    writeJson(path.join(OUTPUT_DIR, 'milu_wp_import.json'), importRows);
-    writeJson(path.join(OUTPUT_DIR, 'milu_wp_superseded.json'), supersededRows);
-    writeJson(path.join(OUTPUT_DIR, 'milu_wp_pending.json'), pendingRows);
-    writeJson(path.join(OUTPUT_DIR, 'milu_wp_discarded.json'), discardedRows);
-    writeJson(path.join(OUTPUT_DIR, 'milu_wp_trace.json'), traceBySku);
-
     const report = {
         generated_at: new Date().toISOString(),
+        dry_run: dryRun,
         engines_processed: ENGINE_JSON_FILES.length,
         occurrences_processed: allRows.length,
         pn_unique: byPn.size,
@@ -397,10 +787,22 @@ function run() {
             pending: pendingRows.length,
             discard: discardedRows.length
         },
+        superseded_audit: {
+            total_new_real: audit.total_new_real,
+            total_new_synthetic: audit.total_new_synthetic,
+            total_superseded_real: audit.total_superseded_real,
+            total_superseded_synthetic_from_list: audit.total_superseded_synthetic_from_list,
+            total_superseded_omitted_existing: audit.total_superseded_omitted_existing,
+            total_orphan_superseded_generated_new: audit.total_orphan_superseded_generated_new,
+            duplicates_avoided: audit.duplicates_avoided,
+            examples: audit.examples
+        },
         rules: {
-            rule_1: 'Si un PN tiene filas ok/importar => se exporta como NEW o SUPERSEDED (segun marcas de superseded)',
-            rule_2: 'Si no tiene import y tiene pendiente/revisar => PENDING',
-            rule_3: 'Si no tiene import ni pending/revisar y tiene ok/eliminar => DISCARDED'
+            rule_qa: 'Base QA-only intacta: solo PN con ok/importar entra en export',
+            rule_real_superseded: 'SUP real: sust_hierarchie=Superseded o hierarchie_final=Superseded',
+            rule_synthetic_superseded: 'SUP sintetico desde sust_superseded_list/subst_pnlist_final para NEW exportables',
+            rule_orphan_superseded: 'SUP real huerfano genera NEW sintetico minimo cuando no existe PN new real',
+            rule_dedupe: 'Dedupe por PN dentro de NEW y SUP: real > sintetico > mayor completitud'
         }
     };
 
@@ -408,6 +810,7 @@ function run() {
         '# MILU WordPress Export Summary (QA only)',
         '',
         `Generated at: ${report.generated_at}`,
+        `Dry run: ${dryRun ? 'yes' : 'no'}`,
         '',
         '## Totals',
         `- Engines processed: ${report.engines_processed}`,
@@ -416,28 +819,56 @@ function run() {
         `- Importables (total): ${report.totals.import}`,
         `- New: ${report.totals.new}`,
         `- Superseded: ${report.totals.superseded}`,
-        `- Pending review: ${report.totals.pending_review}`,
+        `- Pending review: ${report.totals.pending}`,
         `- Discarded: ${report.totals.discard}`,
         '',
-        '## Official Rules',
-        '- Rule 1: if PN has ok/importar rows => export as NEW or SUPERSEDED',
-        '- Rule 2: if no import and PN has pendiente/revisar => PENDING',
-        '- Rule 3: if no import and no pending/revisar, and PN has ok/eliminar => DISCARDED',
+        '## Superseded Audit',
+        `- Total New reales: ${audit.total_new_real}`,
+        `- Total New sinteticos: ${audit.total_new_synthetic}`,
+        `- Total Superseded reales: ${audit.total_superseded_real}`,
+        `- Total Superseded sinteticos desde lista: ${audit.total_superseded_synthetic_from_list}`,
+        `- Total Superseded omitidos por existir en JSON: ${audit.total_superseded_omitted_existing}`,
+        `- Total Superseded huerfanos que generan New sintetico: ${audit.total_orphan_superseded_generated_new}`,
+        `- Duplicados evitados: ${audit.duplicates_avoided}`,
         '',
-        'La decision final depende solo de QA humana.'
+        '## Official Rules',
+        '- Rule 1: Base QA-only: solo ok/importar entra en export.',
+        '- Rule 2: Superseded real por sust_hierarchie/hierarchie_final = Superseded.',
+        '- Rule 3: Superseded sintetico desde sust_superseded_list/subst_pnlist_final (sin duplicar PNs reales).',
+        '- Rule 4: Superseded real huerfano puede crear New sintetico minimo.',
+        '- Rule 5: Dedupe por PN dentro de cada salida, priorizando real y mayor completitud.'
     ].join('\n');
 
-    fs.writeFileSync(path.join(OUTPUT_DIR, 'milu_wp_export_summary.md'), `${summary}\n`, 'utf8');
-    writeJson(path.join(OUTPUT_DIR, 'milu_wp_export_report.json'), report);
+    const payload = {
+        importRows,
+        supersededRows,
+        pendingRows,
+        discardedRows,
+        traceBySku,
+        report,
+        summary,
+        headers
+    };
+
+    if (!dryRun) {
+        writeOutputs(OUTPUT_DIR, payload);
+        if (writeAuditMirror) {
+            writeOutputs(AUDIT_OUTPUT_DIR, payload);
+        }
+    }
+
     console.log(JSON.stringify(report, null, 2));
+    return payload;
 }
 
 if (require.main === module) {
-    run();
+    const cliOptions = parseArgs(process.argv.slice(2));
+    run(cliOptions);
 }
 
 module.exports = {
     buildQaSummary,
     decideByQa,
-    run
+    run,
+    parseArgs
 };

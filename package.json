@@ -23,6 +23,7 @@
     "rebuild:enrich:write": "node scripts/enrich_rebuild_with_gesa_sust.js --all --write",
     "legacy:generate:synthetic": "node generate_synthetic_exports.js",
     "export:wordpress": "node scripts/export_wordpress_milu.js",
+    "export:wordpress:validate": "node scripts/validate_wordpress_superseded_export.js",
     "legacy:ai:conflicts": "node legacy/export_complex_ai/scripts/ai_conflict_rules.js",
     "legacy:export:review": "node legacy/export_complex_ai/scripts/export_review_pipeline.js all",
     "pages:prepare": "node scripts/prepare-pages-dist.js",
