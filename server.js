@@ -12,7 +12,6 @@ const { runUpdateGesa } = require('./scripts/update_gesa_fields_from_excel');
 const { runUpdateSust } = require('./scripts/update_sust_fields');
 const { runRebuildFromPreview } = require('./scripts/rebuild_engine_from_book_preview');
 const { runEnrichAssets } = require('./scripts/enrich_rebuild_with_assets');
-const { runGenerateAllSchemes } = require('./build_generate_all_schemes');
 const { runVisualCopyComparison, applyCanonicalPdfCopyToRow } = require('./scripts/qa_pdf_visual_copy');
 const { runPdfVisualCopyBatch } = require('./server/services/pdf-copy-batch');
 const { createRevisionSyncService } = require('./server/services/revision-sync');
@@ -960,55 +959,6 @@ app.post('/api/recompute-simple/generate-missing-esquema-pos', async (req, res) 
         return res.status(500).json({
             ok: false,
             error: String(execResult.stderr || execResult.stdout || `Error ejecutando batch de esquema POS (code=${execResult.code})`)
-        });
-    } catch (error) {
-        return res.status(500).json({
-            ok: false,
-            error: String(error?.message || error || 'Error desconocido')
-        });
-    }
-});
-
-app.post('/api/recompute-simple/generate-schemes', async (req, res) => {
-    let engine;
-    let id;
-    let dryRun;
-    let backup;
-    let overwrite;
-
-    try {
-        assertPayloadSize(req.body, { maxBytes: 12288 });
-        engine = assertString(req.body?.engine ?? 'ALL', { field: 'engine', allowEmpty: false, maxLength: 64 });
-        id = assertString(req.body?.id ?? '', { field: 'id', allowEmpty: true, maxLength: 128 });
-        dryRun = assertBooleanLike(req.body?.dryRun ?? true, 'dryRun');
-        backup = assertBooleanLike(req.body?.backup ?? true, 'backup');
-        overwrite = assertBooleanLike(req.body?.overwrite ?? false, 'overwrite');
-
-        const normalizedEngine = normalizeEngineToken(engine);
-        if (!normalizedEngine) {
-            throw validationError({ code: 'INVALID_ENGINE', field: 'engine', message: 'engine es obligatorio' });
-        }
-    } catch (error) {
-        return isValidationError(error)
-            ? sendValidationError(res, error, { endpoint: '/api/recompute-simple/generate-schemes' })
-            : res.status(400).json({ ok: false, error: String(error?.message || error) });
-    }
-
-    try {
-        const normalizedEngine = normalizeEngineToken(engine);
-        const result = await runGenerateAllSchemes({
-            rootDir: __dirname,
-            engine: normalizedEngine,
-            id,
-            dryRun,
-            backup,
-            overwrite
-        });
-
-        const statusCode = Number(result?.errors || 0) > 0 ? 207 : 200;
-        return res.status(statusCode).json({
-            ok: Number(result?.errors || 0) === 0,
-            result
         });
     } catch (error) {
         return res.status(500).json({
