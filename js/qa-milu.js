@@ -8924,6 +8924,31 @@ function initHeaderDetectionHandlers() {
 
                 const report = result.report || {};
                 const status = String(report.status || '').trim();
+                const generatedFilename = String(report.filename || '').trim();
+                if ((status === 'generated' || status === 'already_exists') && generatedFilename) {
+                    try {
+                        const engineFile = getEngineJsonForRow(row);
+                        const publicPosUrl = `https://milu-naval.mystagingwebsite.com/wp-content/uploads/2026/02/${generatedFilename}`;
+                        const nextCirculosAll = mergeImageValues(row?.esquemas_circulos_all || '', generatedFilename);
+                        const nextExpImagenes = mergeImageValues(row?.exp_imagenes || '', publicPosUrl);
+                        if (engineFile) {
+                            await saveCellToServer(engineFile, id, 'esquemas_circulos', generatedFilename);
+                            await saveCellToServer(engineFile, id, 'ruta_esquemas_pos', publicPosUrl);
+                            await saveCellToServer(engineFile, id, 'exp_imagenes', nextExpImagenes);
+                            await saveCellToServer(engineFile, id, 'esquemas_circulos_all', nextCirculosAll);
+                            row.esquemas_circulos = generatedFilename;
+                            row.ruta_esquemas_pos = publicPosUrl;
+                            row.exp_imagenes = nextExpImagenes;
+                            row.esquemas_circulos_all = nextCirculosAll;
+                            const refreshed = refreshVisibleRowByRevisionKey(revisionKey);
+                            if (!refreshed) renderTable();
+                            renderPagination();
+                            fillSideRecordForm(row, revisionKey);
+                        }
+                    } catch (persistError) {
+                        console.warn('[esquema-pos] no se pudo persistir campos de esquema POS:', persistError);
+                    }
+                }
                 if (status === 'generated') {
                     showToast(`Esquema POS generado: ${report.filename || 'archivo creado'}`, 'success');
                 } else if (status === 'already_exists') {

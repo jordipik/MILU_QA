@@ -13,6 +13,7 @@ const refs = {
     btnImportPdf: document.getElementById('btnImportPdf'),
     btnSust: document.getElementById('btnSust'),
     btnAssets: document.getElementById('btnAssets'),
+    btnGenerateSchemes: document.getElementById('btnGenerateSchemes'),
     btnHermanos: document.getElementById('btnHermanos'),
     btnEsquemaPosMissing: document.getElementById('btnEsquemaPosMissing'),
     btnFinal: document.getElementById('btnFinal'),
@@ -27,6 +28,7 @@ const actionButtons = [
     refs.btnImportPdf,
     refs.btnSust,
     refs.btnAssets,
+    refs.btnGenerateSchemes,
     refs.btnHermanos,
     refs.btnEsquemaPosMissing,
     refs.btnFinal,
@@ -808,6 +810,45 @@ function renderResponseSummary(actionLabel, endpoint, responseData) {
         return;
     }
 
+    if (endpoint === '/api/recompute-simple/generate-schemes') {
+        const output = data?.result || {};
+        const cards = [
+            { label: 'Procesados', value: String(Number(output?.processed) || 0) },
+            { label: 'generatedBase', value: String(Number(output?.generatedBase) || 0) },
+            { label: 'alreadyExistsBase', value: String(Number(output?.alreadyExistsBase) || 0) },
+            { label: 'generatedPos', value: String(Number(output?.generatedPos) || 0) },
+            { label: 'alreadyExistsPos', value: String(Number(output?.alreadyExistsPos) || 0) },
+            { label: 'linked', value: String(Number(output?.linked) || 0) },
+            { label: 'changedRows', value: String(Number(output?.changedRows) || 0) },
+            { label: 'notFound', value: String(Number(output?.notFound) || 0) },
+            { label: 'errors', value: String(Number(output?.errors) || 0) }
+        ];
+
+        const perEngine = Array.isArray(output?.perEngine) ? output.perEngine : [];
+        const rows = perEngine.map((item) => [
+            String(item?.engine || ''),
+            String(Number(item?.processed) || 0),
+            String(Number(item?.generatedBase) || 0),
+            String(Number(item?.alreadyExistsBase) || 0),
+            String(Number(item?.generatedPos) || 0),
+            String(Number(item?.alreadyExistsPos) || 0),
+            String(Number(item?.linked) || 0),
+            String(Number(item?.changedRows) || 0),
+            String(Number(item?.notFound) || 0),
+            String(Number(item?.errors) || 0)
+        ]);
+
+        renderResultPanel(
+            actionLabel,
+            endpoint,
+            cards,
+            ['Engine', 'Procesados', 'generatedBase', 'alreadyExistsBase', 'generatedPos', 'alreadyExistsPos', 'linked', 'changedRows', 'notFound', 'errors'],
+            rows,
+            output?.dryRun ? 'Dry run activo: no se escribieron cambios en engine_*.json.' : ''
+        );
+        return;
+    }
+
     if (endpoint === '/api/pdf-preview/apply-to-engine') {
         const stats = data?.stats || {};
         const notFoundRows = Array.isArray(data?.not_found_rows) ? data.not_found_rows : [];
@@ -1163,6 +1204,37 @@ async function runAssets() {
     setStatus('ASSETS finalizado correctamente.', 'ok');
 }
 
+async function runGenerateSchemes() {
+    const scope = getScope();
+
+    const payload = {
+        engine: scope.isAll ? 'ALL' : scope.model,
+        id: scope.id,
+        dryRun: false,
+        backup: true,
+        overwrite: false
+    };
+
+    setStatus(
+        scope.isAll
+            ? 'Generando y vinculando esquemas para todos los libros...'
+            : (scope.id
+                ? `Generando y vinculando esquemas para ${scope.model} (ID ${scope.id})...`
+                : `Generando y vinculando esquemas para ${scope.model}...`),
+        ''
+    );
+
+    const data = await postJson('/api/recompute-simple/generate-schemes', payload, { allowPartial: true });
+    renderResponseSummary('Generar esquemas', '/api/recompute-simple/generate-schemes', data);
+
+    if (Number(data?.result?.errors || 0) > 0) {
+        setStatus('GENERAR ESQUEMAS finalizado con incidencias parciales. Revisa el panel de resultados.', 'warning');
+        return;
+    }
+
+    setStatus('GENERAR ESQUEMAS finalizado correctamente.', 'ok');
+}
+
 async function runHermanos() {
     const scope = getScope();
     if (scope.id) showIdIgnoredWarning('HERMANOS / COPIAS');
@@ -1359,6 +1431,10 @@ function bindEvents() {
 
     if (refs.btnAssets instanceof HTMLButtonElement) {
         refs.btnAssets.addEventListener('click', () => runAction(runAssets));
+    }
+
+    if (refs.btnGenerateSchemes instanceof HTMLButtonElement) {
+        refs.btnGenerateSchemes.addEventListener('click', () => runAction(runGenerateSchemes));
     }
 
     if (refs.btnHermanos instanceof HTMLButtonElement) {

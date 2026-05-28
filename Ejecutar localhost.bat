@@ -11,10 +11,19 @@ if not exist server.js (
 for %%A in (server.js) do set SERVER_SIZE=%%~zA
 if %SERVER_SIZE% EQU 0 goto :SERVER_EMPTY
 
+set PORT=3000
+
+for /f "tokens=5" %%P in ('netstat -ano ^| findstr /R /C:":%PORT% .*LISTENING"') do (
+	for /f "tokens=1" %%I in ('tasklist /FI "IMAGENAME eq node.exe" /FI "PID eq %%P" /NH ^| findstr /I "node.exe"') do (
+		echo Cerrando node.exe en puerto %PORT% ^(PID %%P^)...
+		taskkill /PID %%P /F >nul 2>&1
+	)
+)
+
+timeout /t 1 /nobreak >nul
 start /b node server.js
 timeout /t 2 /nobreak >nul
-start http://localhost:3000/qa_milu.html
-wait
+start http://localhost:%PORT%/qa_milu.html
 goto :EOF
 
 :SERVER_EMPTY

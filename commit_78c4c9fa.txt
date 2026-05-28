@@ -1,5 +1,0 @@
-﻿commit 78c4c9facb1530cb4a8b061629c3691bced5c18a
-Author: jordipik <jordipiquero@gmail.com>
-Date:   Sun May 3 17:16:43 2026 +0200
-
-    Nueva logica de exportacion a wordpress
