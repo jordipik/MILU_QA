@@ -3,6 +3,7 @@ const express = require('express');
 const fs = require('fs');
 const path = require('path');
 const { spawn } = require('child_process');
+const crypto = require('crypto');
 const bodyParser = require('body-parser');
 const cors = require('cors');
 const { ENGINE_JSON_FILES } = require('./engine_files');
@@ -670,6 +671,10 @@ app.post('/api/recompute-simple/enrich-assets', async (req, res) => {
         if (!normalizedEngine) {
             throw validationError({ code: 'INVALID_ENGINE', field: 'engine', message: 'engine es obligatorio' });
         }
+
+        if (normalizedEngine === 'ALL' && id) {
+            throw validationError({ code: 'ID_NOT_ALLOWED_FOR_ALL_SCOPE', field: 'id', message: 'engine=ALL no admite id puntual' });
+        }
     } catch (error) {
         return isValidationError(error)
             ? sendValidationError(res, error, { endpoint: '/api/recompute-simple/enrich-assets' })
@@ -677,27 +682,139 @@ app.post('/api/recompute-simple/enrich-assets', async (req, res) => {
     }
 
     try {
+        const os = require('os');
         const normalizedEngine = normalizeEngineToken(engine);
-        const result = runEnrichAssets({
-            rootDir: __dirname,
-            mode: 'engine',
-            engine: normalizedEngine,
-            all: normalizedEngine === 'ALL',
-            write: !dryRun,
-            logger: console.log
+
+        const reportPath = path.join(os.tmpdir(), `milu_recompute_assets_${Date.now()}_${process.pid}.json`);
+        const args = ['rebuild_assets_for_record.py'];
+
+        if (normalizedEngine === 'ALL') {
+            args.push('--all');
+        } else {
+            args.push('--engine', normalizedEngine);
+            if (id) {
+                args.push('--id', id);
+            } else {
+                args.push('--all-book');
+            }
+        }
+
+        if (!dryRun) {
+            args.push('--write');
+        }
+
+        args.push('--report', reportPath);
+
+        const execResult = await new Promise((resolve, reject) => {
+            const pythonCmd = process.env.MILU_PYTHON && String(process.env.MILU_PYTHON).trim()
+                ? String(process.env.MILU_PYTHON).trim()
+                : 'python';
+
+            const python = spawn(pythonCmd, args, {
+                cwd: __dirname,
+                stdio: ['pipe', 'pipe', 'pipe'],
+                windowsHide: true,
+                env: { ...process.env, PYTHONIOENCODING: 'utf-8' }
+            });
+
+            let stdout = '';
+            let stderr = '';
+
+            python.stdout.on('data', (chunk) => {
+                stdout += chunk.toString();
+            });
+
+            python.stderr.on('data', (chunk) => {
+                stderr += chunk.toString();
+            });
+
+            python.on('error', reject);
+            python.on('close', async (code) => {
+                let report = null;
+                try {
+                    if (fs.existsSync(reportPath)) {
+                        report = JSON.parse(await fs.promises.readFile(reportPath, 'utf8'));
+                    }
+                } catch (reportError) {
+                    return reject(reportError);
+                } finally {
+                    try {
+                        if (fs.existsSync(reportPath)) {
+                            fs.unlinkSync(reportPath);
+                        }
+                    } catch (_cleanupError) {
+                        // noop
+                    }
+                }
+
+                resolve({
+                    code: Number(code),
+                    stdout,
+                    stderr,
+                    report
+                });
+            });
         });
 
-        const hasErrors = Array.isArray(result?.errors) && result.errors.length > 0;
+        const report = execResult.report && typeof execResult.report === 'object'
+            ? execResult.report
+            : {};
+        const engineReports = Array.isArray(report?.engine_reports) ? report.engine_reports : [];
+        const recordsByEngine = engineReports.map((engineReport) => {
+            const records = Array.isArray(engineReport?.records) ? engineReport.records : [];
+            const missingAssets = records.reduce((acc, record) => {
+                const logs = Array.isArray(record?.logs) ? record.logs : [];
+                const hasMiss = logs.some((line) => String(line || '').startsWith('[MISS]'));
+                return acc + (hasMiss ? 1 : 0);
+            }, 0);
+
+            return {
+                model: String(engineReport?.engine || ''),
+                rowsTotal: Number(engineReport?.records_processed || records.length || 0),
+                photosLinked: 0,
+                schemasLinked: records.reduce((acc, record) => acc + Number(record?.schemes_found || 0), 0),
+                schemaPosLinked: records.reduce((acc, record) => acc + Number(record?.pos_found || 0), 0),
+                updatedRows: records.reduce((acc, record) => acc + (record?.json_updated ? 1 : 0), 0),
+                missingAssets,
+                backupPath: '-'
+            };
+        });
+
+        const errors = engineReports
+            .filter((engineReport) => String(engineReport?.status || '').toLowerCase() !== 'ok')
+            .map((engineReport) => ({
+                model: String(engineReport?.engine || ''),
+                error: String(engineReport?.reason || 'Error desconocido')
+            }));
+
+        const result = {
+            enginesProcessed: Number(engineReports.length || 0),
+            recordsProcessed: Number(report?.records_processed || 0),
+            photosLinked: 0,
+            schemasLinked: Number(report?.schemes_found || 0),
+            schemaPosLinked: Number(report?.pos_found || 0),
+            updatedRows: Number(report?.records_with_json_update || 0),
+            missingAssets: recordsByEngine.reduce((acc, item) => acc + Number(item?.missingAssets || 0), 0),
+            backupCreated: false,
+            dryRun: !Boolean(report?.write),
+            details: recordsByEngine,
+            errors,
+            rawReport: report
+        };
+
+        const hasErrors = errors.length > 0 || execResult.code !== 0;
         const statusCode = hasErrors ? 207 : 200;
 
         return res.status(statusCode).json({
             ok: !hasErrors,
             result,
-            ignoredId: Boolean(id),
+            ignoredId: false,
             notes: {
                 backupRequested: backup,
-                backupForcedOnWrite: !dryRun,
-                backupAlwaysOnWrite: true
+                backupApplied: false,
+                endpointRunner: 'rebuild_assets_for_record.py',
+                exitCode: execResult.code,
+                stderr: execResult.stderr || ''
             }
         });
     } catch (error) {
@@ -706,6 +823,487 @@ app.post('/api/recompute-simple/enrich-assets', async (req, res) => {
             error: String(error?.message || error || 'Error desconocido')
         });
     }
+});
+
+const ENRICH_ASSETS_JOB_TTL_MS = 1000 * 60 * 30;
+const ENRICH_ASSETS_LOG_LIMIT = 300;
+const enrichAssetsJobs = new Map();
+
+function cleanupFileIfExists(filePath) {
+    try {
+        if (filePath && fs.existsSync(filePath)) {
+            fs.unlinkSync(filePath);
+        }
+    } catch (_error) {
+        // noop
+    }
+}
+
+function pruneEnrichAssetsJobs() {
+    const now = Date.now();
+    for (const [jobId, job] of enrichAssetsJobs.entries()) {
+        if (!job || !job.finishedAt) continue;
+        if (now - job.finishedAt > ENRICH_ASSETS_JOB_TTL_MS) {
+            enrichAssetsJobs.delete(jobId);
+        }
+    }
+}
+
+function parseEnrichAssetsPayload(body) {
+    assertPayloadSize(body, { maxBytes: 12288 });
+    const engine = assertString(body?.engine ?? 'ALL', { field: 'engine', allowEmpty: false, maxLength: 64 });
+    const id = assertString(body?.id ?? '', { field: 'id', allowEmpty: true, maxLength: 128 });
+    const dryRun = assertBooleanLike(body?.dryRun ?? false, 'dryRun');
+    const backup = body?.backup === false ? false : true;
+
+    const normalizedEngine = normalizeEngineToken(engine);
+    if (!normalizedEngine) {
+        throw validationError({ code: 'INVALID_ENGINE', field: 'engine', message: 'engine es obligatorio' });
+    }
+
+    if (normalizedEngine === 'ALL' && id) {
+        throw validationError({ code: 'ID_NOT_ALLOWED_FOR_ALL_SCOPE', field: 'id', message: 'engine=ALL no admite id puntual' });
+    }
+
+    return {
+        engine,
+        id,
+        dryRun,
+        backup,
+        normalizedEngine
+    };
+}
+
+function buildEnrichAssetsCommand(payload) {
+    const os = require('os');
+    const reportPath = path.join(os.tmpdir(), `milu_recompute_assets_${Date.now()}_${process.pid}_${Math.floor(Math.random() * 100000)}.json`);
+    const args = ['rebuild_assets_for_record.py'];
+
+    if (payload.normalizedEngine === 'ALL') {
+        args.push('--all');
+    } else {
+        args.push('--engine', payload.normalizedEngine);
+        if (payload.id) {
+            args.push('--id', payload.id);
+        } else {
+            args.push('--all-book');
+        }
+    }
+
+    if (!payload.dryRun) {
+        args.push('--write');
+    }
+
+    args.push('--report', reportPath);
+
+    return { args, reportPath };
+}
+
+function buildEnrichAssetsResponse(execResult, backupRequested) {
+    const report = execResult?.report && typeof execResult.report === 'object'
+        ? execResult.report
+        : {};
+    const engineReports = Array.isArray(report?.engine_reports) ? report.engine_reports : [];
+    const recordsByEngine = engineReports.map((engineReport) => {
+        const records = Array.isArray(engineReport?.records) ? engineReport.records : [];
+        const missingAssets = records.reduce((acc, record) => {
+            const logs = Array.isArray(record?.logs) ? record.logs : [];
+            const hasMiss = logs.some((line) => String(line || '').startsWith('[MISS]'));
+            return acc + (hasMiss ? 1 : 0);
+        }, 0);
+
+        return {
+            model: String(engineReport?.engine || ''),
+            rowsTotal: Number(engineReport?.records_processed || records.length || 0),
+            photosLinked: 0,
+            schemasLinked: records.reduce((acc, record) => acc + Number(record?.schemes_found || 0), 0),
+            schemaPosLinked: records.reduce((acc, record) => acc + Number(record?.pos_found || 0), 0),
+            updatedRows: records.reduce((acc, record) => acc + (record?.json_updated ? 1 : 0), 0),
+            missingAssets,
+            backupPath: '-'
+        };
+    });
+
+    const errors = engineReports
+        .filter((engineReport) => String(engineReport?.status || '').toLowerCase() !== 'ok')
+        .map((engineReport) => ({
+            model: String(engineReport?.engine || ''),
+            error: String(engineReport?.reason || 'Error desconocido')
+        }));
+
+    const result = {
+        enginesProcessed: Number(engineReports.length || 0),
+        recordsProcessed: Number(report?.records_processed || 0),
+        photosLinked: 0,
+        schemasLinked: Number(report?.schemes_found || 0),
+        schemaPosLinked: Number(report?.pos_found || 0),
+        updatedRows: Number(report?.records_with_json_update || 0),
+        missingAssets: recordsByEngine.reduce((acc, item) => acc + Number(item?.missingAssets || 0), 0),
+        backupCreated: false,
+        dryRun: !Boolean(report?.write),
+        details: recordsByEngine,
+        errors,
+        rawReport: report
+    };
+
+    const hasErrors = errors.length > 0 || Number(execResult?.code) !== 0;
+    const statusCode = hasErrors ? 207 : 200;
+
+    return {
+        statusCode,
+        payload: {
+            ok: !hasErrors,
+            result,
+            ignoredId: false,
+            notes: {
+                backupRequested: backupRequested !== false,
+                backupApplied: false,
+                endpointRunner: 'rebuild_assets_for_record.py',
+                exitCode: Number(execResult?.code) || 0,
+                stderr: String(execResult?.stderr || '')
+            }
+        }
+    };
+}
+
+async function tryCountRecordsForAssets(payload) {
+    try {
+        const targetFiles = resolveEngineFilesForRecompute(payload.normalizedEngine);
+        let total = 0;
+
+        for (const file of targetFiles) {
+            const filePath = path.join(__dirname, file);
+            if (!fs.existsSync(filePath)) continue;
+            const raw = await fs.promises.readFile(filePath, 'utf8');
+            const rows = JSON.parse(raw);
+            if (!Array.isArray(rows)) continue;
+
+            if (payload.id) {
+                total += rows.some((row) => normalizeText(row?.ID) === payload.id) ? 1 : 0;
+            } else {
+                total += rows.length;
+            }
+        }
+
+        return total > 0 ? total : null;
+    } catch (_error) {
+        return null;
+    }
+}
+
+function pushJobLog(job, stream, line) {
+    const text = String(line || '').replace(/\r/g, '').trim();
+    if (!text) return;
+    job.logSeq += 1;
+    job.logs.push({
+        seq: job.logSeq,
+        at: new Date().toISOString(),
+        stream,
+        line: text
+    });
+    if (job.logs.length > ENRICH_ASSETS_LOG_LIMIT) {
+        job.logs = job.logs.slice(job.logs.length - ENRICH_ASSETS_LOG_LIMIT);
+    }
+
+    if (text.startsWith('[RECORD]')) {
+        job.processedRecords += 1;
+        job.lastMessage = text;
+    } else if (text.startsWith('[REPORT]')) {
+        job.lastMessage = 'Reporte generado';
+    }
+}
+
+function serializeEnrichAssetsJob(job) {
+    const isDone = ['completed', 'failed', 'cancelled'].includes(String(job?.status || ''));
+    const total = Number(job?.totalRecords || 0);
+    const processed = Number(job?.processedRecords || 0);
+
+    let percent = null;
+    if (total > 0) {
+        if (isDone) {
+            percent = 100;
+        } else {
+            percent = Math.min(99, Math.floor((processed / total) * 100));
+        }
+    }
+
+    return {
+        ok: true,
+        job: {
+            id: job.id,
+            status: job.status,
+            createdAt: job.createdAt,
+            startedAt: job.startedAt,
+            finishedAt: job.finishedAt,
+            pid: job.pid || null,
+            cancelRequested: Boolean(job.cancelRequested),
+            cancellable: !isDone,
+            progress: {
+                totalRecords: total || null,
+                processedRecords: processed,
+                percent,
+                lastMessage: job.lastMessage || ''
+            },
+            logs: job.logs.slice(-40),
+            result: job.resultPayload || null,
+            error: job.error || null,
+            exitCode: Number.isFinite(job.exitCode) ? job.exitCode : null
+        }
+    };
+}
+
+async function runEnrichAssetsSync(payload) {
+    const { args, reportPath } = buildEnrichAssetsCommand(payload);
+
+    const execResult = await new Promise((resolve, reject) => {
+        const pythonCmd = process.env.MILU_PYTHON && String(process.env.MILU_PYTHON).trim()
+            ? String(process.env.MILU_PYTHON).trim()
+            : 'python';
+
+        const python = spawn(pythonCmd, args, {
+            cwd: __dirname,
+            stdio: ['pipe', 'pipe', 'pipe'],
+            windowsHide: true,
+            env: { ...process.env, PYTHONIOENCODING: 'utf-8' }
+        });
+
+        let stdout = '';
+        let stderr = '';
+
+        python.stdout.on('data', (chunk) => {
+            stdout += chunk.toString();
+        });
+
+        python.stderr.on('data', (chunk) => {
+            stderr += chunk.toString();
+        });
+
+        python.on('error', reject);
+        python.on('close', async (code) => {
+            let report = null;
+            try {
+                if (fs.existsSync(reportPath)) {
+                    report = JSON.parse(await fs.promises.readFile(reportPath, 'utf8'));
+                }
+            } catch (reportError) {
+                return reject(reportError);
+            } finally {
+                cleanupFileIfExists(reportPath);
+            }
+
+            resolve({
+                code: Number(code),
+                stdout,
+                stderr,
+                report
+            });
+        });
+    });
+
+    return buildEnrichAssetsResponse(execResult, payload.backup);
+}
+
+async function createEnrichAssetsJob(payload) {
+    pruneEnrichAssetsJobs();
+
+    const { args, reportPath } = buildEnrichAssetsCommand(payload);
+    const pythonCmd = process.env.MILU_PYTHON && String(process.env.MILU_PYTHON).trim()
+        ? String(process.env.MILU_PYTHON).trim()
+        : 'python';
+
+    const jobId = crypto.randomUUID();
+    const job = {
+        id: jobId,
+        status: 'starting',
+        createdAt: new Date().toISOString(),
+        startedAt: null,
+        finishedAt: null,
+        pid: null,
+        cancelRequested: false,
+        totalRecords: await tryCountRecordsForAssets(payload),
+        processedRecords: 0,
+        lastMessage: 'Inicializando proceso ASSETS...',
+        logs: [],
+        logSeq: 0,
+        error: null,
+        exitCode: null,
+        resultPayload: null,
+        child: null
+    };
+
+    enrichAssetsJobs.set(jobId, job);
+
+    try {
+        const child = spawn(pythonCmd, args, {
+            cwd: __dirname,
+            stdio: ['pipe', 'pipe', 'pipe'],
+            windowsHide: true,
+            env: { ...process.env, PYTHONIOENCODING: 'utf-8' }
+        });
+
+        job.child = child;
+        job.pid = child.pid || null;
+        job.startedAt = new Date().toISOString();
+        job.status = 'running';
+
+        let stdoutBuffer = '';
+        let stderrBuffer = '';
+        let stdoutRaw = '';
+        let stderrRaw = '';
+
+        child.stdout.on('data', (chunk) => {
+            const text = chunk.toString();
+            stdoutRaw += text;
+            stdoutBuffer += text;
+
+            const lines = stdoutBuffer.split(/\r?\n/);
+            stdoutBuffer = lines.pop() || '';
+            lines.forEach((line) => pushJobLog(job, 'stdout', line));
+        });
+
+        child.stderr.on('data', (chunk) => {
+            const text = chunk.toString();
+            stderrRaw += text;
+            stderrBuffer += text;
+
+            const lines = stderrBuffer.split(/\r?\n/);
+            stderrBuffer = lines.pop() || '';
+            lines.forEach((line) => pushJobLog(job, 'stderr', line));
+        });
+
+        child.on('error', (error) => {
+            job.status = 'failed';
+            job.error = `No se pudo lanzar python: ${String(error?.message || error)}`;
+            job.finishedAt = new Date().toISOString();
+            job.exitCode = -1;
+            cleanupFileIfExists(reportPath);
+        });
+
+        child.on('close', async (code) => {
+            if (stdoutBuffer) pushJobLog(job, 'stdout', stdoutBuffer);
+            if (stderrBuffer) pushJobLog(job, 'stderr', stderrBuffer);
+
+            let report = null;
+            try {
+                if (fs.existsSync(reportPath)) {
+                    report = JSON.parse(await fs.promises.readFile(reportPath, 'utf8'));
+                }
+            } catch (reportError) {
+                job.status = 'failed';
+                job.error = String(reportError?.message || reportError);
+                job.finishedAt = new Date().toISOString();
+                job.exitCode = Number(code);
+                cleanupFileIfExists(reportPath);
+                return;
+            }
+
+            cleanupFileIfExists(reportPath);
+
+            job.exitCode = Number(code);
+            job.finishedAt = new Date().toISOString();
+            job.child = null;
+
+            if (job.cancelRequested) {
+                job.status = 'cancelled';
+                job.error = 'Proceso cancelado por usuario';
+                return;
+            }
+
+            const response = buildEnrichAssetsResponse({
+                code: Number(code),
+                stdout: stdoutRaw,
+                stderr: stderrRaw,
+                report
+            }, payload.backup);
+
+            job.resultPayload = response.payload;
+
+            if (response.payload.ok === true) {
+                job.status = 'completed';
+                job.error = null;
+            } else {
+                job.status = 'failed';
+                job.error = normalizeText(response?.payload?.notes?.stderr) || 'ASSETS finalizado con incidencias';
+            }
+        });
+    } catch (error) {
+        job.status = 'failed';
+        job.error = String(error?.message || error || 'Error desconocido');
+        job.finishedAt = new Date().toISOString();
+        cleanupFileIfExists(reportPath);
+    }
+
+    return job;
+}
+
+app.post('/api/recompute-simple/enrich-assets/start', async (req, res) => {
+    let payload;
+    try {
+        payload = parseEnrichAssetsPayload(req.body || {});
+    } catch (error) {
+        return isValidationError(error)
+            ? sendValidationError(res, error, { endpoint: '/api/recompute-simple/enrich-assets/start' })
+            : res.status(400).json({ ok: false, error: String(error?.message || error) });
+    }
+
+    try {
+        const job = await createEnrichAssetsJob(payload);
+        return res.json({
+            ok: true,
+            jobId: job.id,
+            status: job.status,
+            progress: {
+                totalRecords: job.totalRecords,
+                processedRecords: job.processedRecords,
+                percent: 0,
+                lastMessage: job.lastMessage
+            }
+        });
+    } catch (error) {
+        return res.status(500).json({
+            ok: false,
+            error: String(error?.message || error || 'Error desconocido')
+        });
+    }
+});
+
+app.get('/api/recompute-simple/enrich-assets/jobs/:jobId', (req, res) => {
+    pruneEnrichAssetsJobs();
+    const jobId = normalizeText(req.params?.jobId);
+    const job = enrichAssetsJobs.get(jobId);
+
+    if (!job) {
+        return res.status(404).json({ ok: false, error: 'Trabajo de ASSETS no encontrado' });
+    }
+
+    return res.json(serializeEnrichAssetsJob(job));
+});
+
+app.post('/api/recompute-simple/enrich-assets/jobs/:jobId/cancel', (req, res) => {
+    pruneEnrichAssetsJobs();
+    const jobId = normalizeText(req.params?.jobId);
+    const job = enrichAssetsJobs.get(jobId);
+
+    if (!job) {
+        return res.status(404).json({ ok: false, error: 'Trabajo de ASSETS no encontrado' });
+    }
+
+    if (['completed', 'failed', 'cancelled'].includes(String(job.status))) {
+        return res.json({ ok: true, alreadyFinished: true, status: job.status });
+    }
+
+    job.cancelRequested = true;
+    job.lastMessage = 'Cancelación solicitada por usuario...';
+
+    try {
+        if (job.child && typeof job.child.kill === 'function') {
+            job.child.kill();
+        }
+    } catch (_error) {
+        // noop
+    }
+
+    return res.json({ ok: true, status: 'cancelling' });
 });
 
 app.post('/api/recompute-simple/recompute-hermanos', async (req, res) => {

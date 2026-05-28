@@ -188,6 +188,11 @@
             grid-area: auto !important;
         }
 
+        .recompute-simple-wrap .a2-recompute-card[aria-label="Enriquecer assets multimedia sobre engine JSON"] {
+            order: 99;
+            grid-column: span 2;
+        }
+
         .recompute-simple-wrap .a2-recompute-card[aria-label="Enriquecer assets multimedia sobre engine JSON"] .a2-step-index {
             background: linear-gradient(135deg, #f7d56b, #e3a700);
             color: #17344f;
@@ -200,18 +205,6 @@
             border: 1px solid #d94d00;
         }
 
-        .recompute-simple-wrap .a2-recompute-card[aria-label="Generar y vincular esquemas POS faltantes"] .a2-step-index {
-            background: linear-gradient(135deg, #0f766e, #14b8a6);
-            color: #ffffff;
-            border: 1px solid #0e766e;
-        }
-
-        .recompute-simple-wrap .a2-recompute-card[aria-label="Generar y vincular esquemas base y POS"] .a2-step-index {
-            background: linear-gradient(135deg, #0f766e, #0ea5e9);
-            color: #ffffff;
-            border: 1px solid #0b7db0;
-        }
-
         @media (max-width: 1400px) {
             .recompute-simple-wrap .a2-recompute-compact {
                 grid-template-columns: repeat(3, minmax(0, 1fr));
@@ -222,11 +215,19 @@
             .recompute-simple-wrap .a2-recompute-compact {
                 grid-template-columns: repeat(2, minmax(0, 1fr));
             }
+
+            .recompute-simple-wrap .a2-recompute-card[aria-label="Enriquecer assets multimedia sobre engine JSON"] {
+                grid-column: span 2;
+            }
         }
 
         @media (max-width: 640px) {
             .recompute-simple-wrap .a2-recompute-compact {
                 grid-template-columns: 1fr;
+            }
+
+            .recompute-simple-wrap .a2-recompute-card[aria-label="Enriquecer assets multimedia sobre engine JSON"] {
+                grid-column: span 1;
             }
         }
 
@@ -234,6 +235,67 @@
             background: #7c3aed;
             color: #ffffff;
             border-color: #5b21b6;
+        }
+
+        .a2-assets-progress {
+            margin-top: 10px;
+            border: 1px solid #cfe0f2;
+            border-radius: 10px;
+            background: #f7fbff;
+            padding: 8px;
+            display: grid;
+            gap: 8px;
+        }
+
+        .a2-assets-progress-head {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 10px;
+            font-size: 11px;
+            color: #35516c;
+            font-weight: 700;
+            letter-spacing: 0.01em;
+        }
+
+        .a2-assets-progress-track {
+            width: 100%;
+            height: 10px;
+            border-radius: 999px;
+            border: 1px solid #c4d8ee;
+            background: #e8f1fb;
+            overflow: hidden;
+        }
+
+        .a2-assets-progress-bar {
+            width: 0%;
+            height: 100%;
+            background: linear-gradient(90deg, #0ea5e9, #0f766e);
+            transition: width 0.25s ease;
+        }
+
+        .a2-assets-progress-meta {
+            font-size: 11px;
+            color: #4a647d;
+            font-family: 'IBM Plex Mono', Consolas, monospace;
+        }
+
+        .a2-assets-progress-cancel {
+            justify-self: end;
+            border: 1px solid #b91c1c;
+            color: #fff;
+            background: linear-gradient(135deg, #ef4444, #b91c1c);
+            border-radius: 8px;
+            height: 30px;
+            padding: 0 10px;
+            font-size: 11px;
+            font-weight: 700;
+            cursor: pointer;
+        }
+
+        .a2-assets-progress-cancel:disabled {
+            cursor: not-allowed;
+            opacity: 0.55;
         }
     </style>
 </head>
@@ -293,36 +355,35 @@
 
             <article class="a2-recompute-card" aria-label="Enriquecer assets multimedia sobre engine JSON">
                 <h3>
-                    <span class="a2-step-index">3</span>
+                    <span class="a2-step-index">7</span>
                     <div>
                         <span class="a2-step-title">ASSETS</span>
                         <p class="a2-step-desc">POST /api/recompute-simple/enrich-assets</p>
+                        <p class="a2-step-desc">Paso final recomendado tras recalcular datos base, QA y hermanos/copias.
+                        </p>
                         <p class="a2-step-desc">Actualiza filename_foto, ruta_foto, esquemas, esquemas_circulos,
                             esquemas_circulos_all, ruta_esquemas_pos y exp_imagenes en engine_&lt;MODEL&gt;.json.</p>
                         <p class="a2-step-desc">Usa fotos_articulos/, esquemas/ y esquemas_pos_circulos/.</p>
                     </div>
                 </h3>
                 <button id="btnAssets" type="button">ASSETS</button>
-            </article>
-
-            <article class="a2-recompute-card" aria-label="Generar y vincular esquemas base y POS">
-                <h3>
-                    <span class="a2-step-index">4</span>
-                    <div>
-                        <span class="a2-step-title">GENERAR ESQUEMAS</span>
-                        <p class="a2-step-desc">POST /api/recompute-simple/generate-schemes</p>
-                        <p class="a2-step-desc">Genera esquema base (sin círculo) y esquema POS, y vincula campos en
-                            engine_&lt;MODEL&gt;.json.</p>
-                        <p class="a2-step-desc">Actualiza: esquemas, esquemas_circulos, esquemas_circulos_all,
-                            ruta_esquemas_pos y exp_imagenes.</p>
+                <div id="assetsProgressWrap" class="a2-assets-progress" hidden>
+                    <div class="a2-assets-progress-head">
+                        <span id="assetsProgressLabel">Preparando ASSETS...</span>
+                        <span id="assetsProgressPercent">0%</span>
                     </div>
-                </h3>
-                <button id="btnGenerateSchemes" type="button">GENERAR ESQUEMAS</button>
+                    <div class="a2-assets-progress-track" aria-label="Progreso ASSETS">
+                        <div id="assetsProgressBar" class="a2-assets-progress-bar"></div>
+                    </div>
+                    <div id="assetsProgressMeta" class="a2-assets-progress-meta">Esperando inicio...</div>
+                    <button id="btnAssetsCancel" class="a2-assets-progress-cancel" type="button" disabled>CANCELAR
+                        ASSETS</button>
+                </div>
             </article>
 
             <article class="a2-recompute-card" aria-label="Calcular campos FINAL desde GESA">
                 <h3>
-                    <span class="a2-step-index">5</span>
+                    <span class="a2-step-index">3</span>
                     <div>
                         <span class="a2-step-title">Cálculo FINAL</span>
                         <p class="a2-step-desc">POST /copy-pdf-to-final-all-books</p>
@@ -334,7 +395,7 @@
 
             <article class="a2-recompute-card" aria-label="Recalcular errores">
                 <h3>
-                    <span class="a2-step-index">6</span>
+                    <span class="a2-step-index">4</span>
                     <div>
                         <span class="a2-step-title">Errores</span>
                         <p class="a2-step-desc">POST /recompute-qa-errors con scope/libro/id.</p>
@@ -345,7 +406,7 @@
 
             <article class="a2-recompute-card" aria-label="Recalcular estado y acción de revisión">
                 <h3>
-                    <span class="a2-step-index">7</span>
+                    <span class="a2-step-index">5</span>
                     <div>
                         <span class="a2-step-title">Estados</span>
                         <p class="a2-step-desc">POST /api/recompute-simple/update-states.</p>
@@ -357,7 +418,7 @@
 
             <article class="a2-recompute-card" aria-label="Recalcular copias y hermanos por PN">
                 <h3>
-                    <span class="a2-step-index">8</span>
+                    <span class="a2-step-index">6</span>
                     <div>
                         <span class="a2-step-title">HERMANOS / COPIAS</span>
                         <p class="a2-step-desc">POST /api/recompute-simple/recompute-hermanos</p>
@@ -368,21 +429,6 @@
                     </div>
                 </h3>
                 <button id="btnHermanos" type="button">RECALCULAR HERMANOS</button>
-            </article>
-
-            <article class="a2-recompute-card" aria-label="Generar y vincular esquemas POS faltantes">
-                <h3>
-                    <span class="a2-step-index">9</span>
-                    <div>
-                        <span class="a2-step-title">ESQUEMA POS FALTANTES</span>
-                        <p class="a2-step-desc">POST /api/recompute-simple/generate-missing-esquema-pos</p>
-                        <p class="a2-step-desc">Busca registros sin ruta_esquemas_pos, genera la imagen de esquema POS y
-                            la vincula en engine_&lt;MODEL&gt;.json.</p>
-                        <p class="a2-step-desc">Actualiza esquemas_circulos_all, esquemas_circulos, ruta_esquemas_pos y
-                            exp_imagenes.</p>
-                    </div>
-                </h3>
-                <button id="btnEsquemaPosMissing" type="button">GENERAR ESQUEMA POS</button>
             </article>
         </section>
 

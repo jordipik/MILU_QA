@@ -1101,15 +1101,22 @@ async function runUpdateSust() {
 
 async function runAssets() {
     const scope = getScope();
-    if (scope.id) showIdIgnoredWarning('ASSETS');
 
     const payload = {
         engine: scope.isAll ? 'ALL' : scope.model,
+        id: scope.id,
         dryRun: false,
         backup: true
     };
 
-    setStatus(scope.isAll ? 'Ejecutando ASSETS para todos los libros...' : `Ejecutando ASSETS para ${scope.model}...`, '');
+    setStatus(
+        scope.isAll
+            ? 'Ejecutando ASSETS para todos los libros...'
+            : (scope.id
+                ? `Ejecutando ASSETS para ${scope.model} (ID ${scope.id})...`
+                : `Ejecutando ASSETS para ${scope.model}...`),
+        ''
+    );
     const data = await postJson('/api/recompute-simple/enrich-assets', payload, { allowPartial: true });
     renderResponseSummary('ASSETS', '/api/recompute-simple/enrich-assets', data);
 

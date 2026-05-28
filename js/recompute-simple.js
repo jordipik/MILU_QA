@@ -13,14 +13,18 @@ const refs = {
     btnImportPdf: document.getElementById('btnImportPdf'),
     btnSust: document.getElementById('btnSust'),
     btnAssets: document.getElementById('btnAssets'),
-    btnGenerateSchemes: document.getElementById('btnGenerateSchemes'),
+    btnAssetsCancel: document.getElementById('btnAssetsCancel'),
     btnHermanos: document.getElementById('btnHermanos'),
-    btnEsquemaPosMissing: document.getElementById('btnEsquemaPosMissing'),
     btnFinal: document.getElementById('btnFinal'),
     btnErrors: document.getElementById('btnErrors'),
     btnStatuses: document.getElementById('btnStatuses'),
     btnClearPdfFinal: document.getElementById('btnClearPdfFinal'),
-    btnClearLog: document.getElementById('btnClearLog')
+    btnClearLog: document.getElementById('btnClearLog'),
+    assetsProgressWrap: document.getElementById('assetsProgressWrap'),
+    assetsProgressLabel: document.getElementById('assetsProgressLabel'),
+    assetsProgressPercent: document.getElementById('assetsProgressPercent'),
+    assetsProgressBar: document.getElementById('assetsProgressBar'),
+    assetsProgressMeta: document.getElementById('assetsProgressMeta')
 };
 
 const engineFileByModel = new Map();
@@ -28,9 +32,7 @@ const actionButtons = [
     refs.btnImportPdf,
     refs.btnSust,
     refs.btnAssets,
-    refs.btnGenerateSchemes,
     refs.btnHermanos,
-    refs.btnEsquemaPosMissing,
     refs.btnFinal,
     refs.btnErrors,
     refs.btnStatuses,
@@ -38,6 +40,9 @@ const actionButtons = [
 ].filter((node) => node instanceof HTMLButtonElement);
 
 let logLines = [];
+let currentAssetsJobId = '';
+let assetsLastLogSeq = 0;
+let assetsCancelRequested = false;
 
 function normalizeText(value) {
     return String(value == null ? '' : value).trim();
@@ -100,6 +105,85 @@ function setBusy(isBusy) {
     actionButtons.forEach((button) => {
         button.disabled = Boolean(isBusy);
     });
+}
+
+function setAssetsProgressVisible(visible) {
+    if (!(refs.assetsProgressWrap instanceof HTMLElement)) return;
+    refs.assetsProgressWrap.hidden = !visible;
+}
+
+function setAssetsCancelEnabled(enabled) {
+    if (refs.btnAssetsCancel instanceof HTMLButtonElement) {
+        refs.btnAssetsCancel.disabled = !enabled;
+    }
+}
+
+function updateAssetsProgress({ percent = 0, label = '', meta = '' } = {}) {
+    const safePercent = Number.isFinite(Number(percent)) ? Math.max(0, Math.min(100, Number(percent))) : 0;
+    if (refs.assetsProgressPercent instanceof HTMLElement) {
+        refs.assetsProgressPercent.textContent = `${safePercent}%`;
+    }
+    if (refs.assetsProgressBar instanceof HTMLElement) {
+        refs.assetsProgressBar.style.width = `${safePercent}%`;
+    }
+    if (refs.assetsProgressLabel instanceof HTMLElement) {
+        refs.assetsProgressLabel.textContent = label || 'Procesando ASSETS...';
+    }
+    if (refs.assetsProgressMeta instanceof HTMLElement) {
+        refs.assetsProgressMeta.textContent = meta || '';
+    }
+}
+
+function resetAssetsProgressUi() {
+    currentAssetsJobId = '';
+    assetsLastLogSeq = 0;
+    assetsCancelRequested = false;
+    setAssetsCancelEnabled(false);
+    updateAssetsProgress({ percent: 0, label: 'Preparando ASSETS...', meta: 'Esperando inicio...' });
+    setAssetsProgressVisible(false);
+}
+
+function delay(ms) {
+    return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
+async function getJson(endpoint, options = {}) {
+    const response = await fetch(endpoint, {
+        method: 'GET',
+        headers: { 'Content-Type': 'application/json' }
+    });
+
+    const raw = await response.text();
+    let data = null;
+    try {
+        data = raw ? JSON.parse(raw) : null;
+    } catch (_error) {
+        data = { ok: false, error: raw || `HTTP ${response.status}` };
+    }
+
+    if (!response.ok || !data || data.ok === false) {
+        throw new Error(normalizeText(data?.error) || `HTTP ${response.status}`);
+    }
+
+    return data;
+}
+
+async function cancelAssetsJob() {
+    if (!currentAssetsJobId) return;
+    if (assetsCancelRequested) return;
+
+    assetsCancelRequested = true;
+    setAssetsCancelEnabled(false);
+    setStatus('Cancelando ASSETS...', 'warning');
+    appendLog('[ASSETS] Cancelación solicitada por usuario.');
+
+    try {
+        await postJson(`/api/recompute-simple/enrich-assets/jobs/${encodeURIComponent(currentAssetsJobId)}/cancel`, {});
+    } catch (error) {
+        const message = String(error?.message || error || 'No se pudo cancelar ASSETS');
+        appendLog(`[ASSETS][WARN] ${message}`);
+        setStatus(message, 'warning');
+    }
 }
 
 function currentScopeLabel() {
@@ -1183,56 +1267,98 @@ async function runUpdateSust() {
 
 async function runAssets() {
     const scope = getScope();
-    if (scope.id) showIdIgnoredWarning('ASSETS');
-
-    const payload = {
-        engine: scope.isAll ? 'ALL' : scope.model,
-        dryRun: false,
-        backup: true
-    };
-
-    setStatus(scope.isAll ? 'Ejecutando ASSETS para todos los libros...' : `Ejecutando ASSETS para ${scope.model}...`, '');
-    const data = await postJson('/api/recompute-simple/enrich-assets', payload, { allowPartial: true });
-    renderResponseSummary('ASSETS', '/api/recompute-simple/enrich-assets', data);
-
-    const hadErrors = Array.isArray(data?.result?.errors) && data.result.errors.length > 0;
-    if (hadErrors) {
-        setStatus('ASSETS finalizado con incidencias parciales. Revisa el panel de resultados.', 'warning');
-        return;
-    }
-
-    setStatus('ASSETS finalizado correctamente.', 'ok');
-}
-
-async function runGenerateSchemes() {
-    const scope = getScope();
 
     const payload = {
         engine: scope.isAll ? 'ALL' : scope.model,
         id: scope.id,
         dryRun: false,
-        backup: true,
-        overwrite: false
+        backup: true
     };
 
     setStatus(
         scope.isAll
-            ? 'Generando y vinculando esquemas para todos los libros...'
+            ? 'Ejecutando ASSETS para todos los libros...'
             : (scope.id
-                ? `Generando y vinculando esquemas para ${scope.model} (ID ${scope.id})...`
-                : `Generando y vinculando esquemas para ${scope.model}...`),
+                ? `Ejecutando ASSETS para ${scope.model} (ID ${scope.id})...`
+                : `Ejecutando ASSETS para ${scope.model}...`),
         ''
     );
 
-    const data = await postJson('/api/recompute-simple/generate-schemes', payload, { allowPartial: true });
-    renderResponseSummary('Generar esquemas', '/api/recompute-simple/generate-schemes', data);
+    try {
+        const startData = await postJson('/api/recompute-simple/enrich-assets/start', payload);
+        const jobId = normalizeText(startData?.jobId);
+        if (!jobId) {
+            throw new Error('No se recibió jobId para ASSETS.');
+        }
 
-    if (Number(data?.result?.errors || 0) > 0) {
-        setStatus('GENERAR ESQUEMAS finalizado con incidencias parciales. Revisa el panel de resultados.', 'warning');
-        return;
+        currentAssetsJobId = jobId;
+        assetsLastLogSeq = 0;
+        assetsCancelRequested = false;
+        setAssetsProgressVisible(true);
+        setAssetsCancelEnabled(true);
+        updateAssetsProgress({
+            percent: Number(startData?.progress?.percent) || 0,
+            label: 'ASSETS en ejecución',
+            meta: `Job ${jobId}`
+        });
+        appendLog(`[ASSETS] Job iniciado: ${jobId}`);
+
+        while (currentAssetsJobId === jobId) {
+            const statusData = await getJson(`/api/recompute-simple/enrich-assets/jobs/${encodeURIComponent(jobId)}`);
+            const job = statusData?.job || {};
+            const progress = job?.progress || {};
+
+            const meta = (progress?.totalRecords && Number(progress.totalRecords) > 0)
+                ? `Procesados ${Number(progress.processedRecords) || 0}/${Number(progress.totalRecords) || 0}`
+                : `Procesados ${Number(progress.processedRecords) || 0}`;
+
+            updateAssetsProgress({
+                percent: Number(progress?.percent) || 0,
+                label: normalizeText(progress?.lastMessage) || 'ASSETS en ejecución...',
+                meta
+            });
+
+            const logs = Array.isArray(job?.logs) ? job.logs : [];
+            logs
+                .filter((entry) => Number(entry?.seq || 0) > assetsLastLogSeq)
+                .forEach((entry) => {
+                    const seq = Number(entry?.seq || 0);
+                    if (seq > assetsLastLogSeq) assetsLastLogSeq = seq;
+                    const stream = normalizeText(entry?.stream || 'stdout').toUpperCase();
+                    appendLog(`[ASSETS][${stream}] ${String(entry?.line || '')}`);
+                });
+
+            if (job?.status === 'completed') {
+                const resultPayload = job?.result || null;
+                if (resultPayload) {
+                    renderResponseSummary('ASSETS', '/api/recompute-simple/enrich-assets', resultPayload);
+                    const hadErrors = Array.isArray(resultPayload?.result?.errors) && resultPayload.result.errors.length > 0;
+                    if (hadErrors) {
+                        setStatus('ASSETS finalizado con incidencias parciales. Revisa el panel de resultados.', 'warning');
+                    } else {
+                        setStatus('ASSETS finalizado correctamente.', 'ok');
+                    }
+                } else {
+                    setStatus('ASSETS finalizado, pero sin payload de resultado.', 'warning');
+                }
+                break;
+            }
+
+            if (job?.status === 'cancelled') {
+                renderResultEmpty('ASSETS cancelado por usuario.');
+                setStatus('ASSETS cancelado por usuario.', 'warning');
+                break;
+            }
+
+            if (job?.status === 'failed') {
+                throw new Error(normalizeText(job?.error) || 'ASSETS finalizó con error.');
+            }
+
+            await delay(1200);
+        }
+    } finally {
+        resetAssetsProgressUi();
     }
-
-    setStatus('GENERAR ESQUEMAS finalizado correctamente.', 'ok');
 }
 
 async function runHermanos() {
@@ -1257,39 +1383,6 @@ async function runHermanos() {
     }
 
     setStatus('HERMANOS / COPIAS finalizado correctamente.', 'ok');
-}
-
-async function runEsquemaPosMissing() {
-    const scope = getScope();
-    if (scope.id) showIdIgnoredWarning('ESQUEMA POS FALTANTES');
-
-    const payload = {
-        engine: scope.isAll ? 'ALL' : scope.model,
-        writeImages: true,
-        writeJson: true,
-        overwrite: false,
-        limit: 0
-    };
-
-    setStatus(
-        scope.isAll
-            ? 'Generando y vinculando esquema POS faltantes para todos los libros...'
-            : `Generando y vinculando esquema POS faltantes para ${scope.model}...`,
-        ''
-    );
-
-    const data = await postJson('/api/recompute-simple/generate-missing-esquema-pos', payload, { allowPartial: true });
-    renderResponseSummary('Generar esquema POS faltantes', '/api/recompute-simple/generate-missing-esquema-pos', data);
-
-    const perEngine = Array.isArray(data?.result?.results) ? data.result.results : [];
-    const hasErrors = perEngine.some((item) => Number(item?.errors || 0) > 0 || String(item?.status || '').toLowerCase() === 'error');
-
-    if (hasErrors) {
-        setStatus('ESQUEMA POS FALTANTES finalizado con incidencias parciales. Revisa el panel de resultados.', 'warning');
-        return;
-    }
-
-    setStatus('ESQUEMA POS FALTANTES finalizado correctamente.', 'ok');
 }
 
 async function runErrors() {
@@ -1433,16 +1526,12 @@ function bindEvents() {
         refs.btnAssets.addEventListener('click', () => runAction(runAssets));
     }
 
-    if (refs.btnGenerateSchemes instanceof HTMLButtonElement) {
-        refs.btnGenerateSchemes.addEventListener('click', () => runAction(runGenerateSchemes));
+    if (refs.btnAssetsCancel instanceof HTMLButtonElement) {
+        refs.btnAssetsCancel.addEventListener('click', cancelAssetsJob);
     }
 
     if (refs.btnHermanos instanceof HTMLButtonElement) {
         refs.btnHermanos.addEventListener('click', () => runAction(runHermanos));
-    }
-
-    if (refs.btnEsquemaPosMissing instanceof HTMLButtonElement) {
-        refs.btnEsquemaPosMissing.addEventListener('click', () => runAction(runEsquemaPosMissing));
     }
 
     if (refs.btnFinal instanceof HTMLButtonElement) {
@@ -1475,6 +1564,7 @@ async function init() {
     }
 
     bindEvents();
+    resetAssetsProgressUi();
     renderResultEmpty('Aún no hay ejecuciones. Lanza una acción para ver resumen y detalle por tabla.');
     appendLog('Inicializando recompute simple...');
     await loadEngines();
