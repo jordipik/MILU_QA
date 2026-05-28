@@ -50,9 +50,18 @@ dist/, json_originales/, zz_old/   Generados / históricos (no editar)
 
 ## Documentación
 
-Toda la documentación vive en [docs/](docs/README.md). Documentos canónicos (fuente única de verdad por tema):
+La documentación oficial de pipeline MILU V1 vive en `docs_v2/` (canónica para flujo operativo actual). El contenido en `docs/` se mantiene como soporte histórico/complementario.
+
+Documento principal canónico:
 
 - Rebuild MILU V1 - DOC V2 consolidada: [docs_v2/00_overview/MILU_V1_REBUILD_DOC_V2.md](docs_v2/00_overview/MILU_V1_REBUILD_DOC_V2.md)
+- Master pipeline: [docs_v2/00_overview/MILU_V1_MASTER_PIPELINE.md](docs_v2/00_overview/MILU_V1_MASTER_PIPELINE.md)
+- Pipeline global: [docs_v2/01_pipeline/pipeline_global.md](docs_v2/01_pipeline/pipeline_global.md)
+- Script map: [docs_v2/00_overview/SCRIPT_MAP.md](docs_v2/00_overview/SCRIPT_MAP.md)
+- Assets visuales: [docs_v2/05_assets/imagenes_esquemas_pipeline.md](docs_v2/05_assets/imagenes_esquemas_pipeline.md)
+- Official vs legacy: [docs_v2/13_legacy/official_vs_legacy.md](docs_v2/13_legacy/official_vs_legacy.md)
+
+Documentación de soporte en `docs/`:
 
 - Arquitectura: [docs/ARQUITECTURA_MILU.md](docs/ARQUITECTURA_MILU.md)
 - Flujo de datos: [docs/FLUJO_DATOS_MILU.md](docs/FLUJO_DATOS_MILU.md)
@@ -95,6 +104,16 @@ Ante un fallo, validar en este orden antes de tocar UI:
 4. Frontend
 
 Para persistencia: servidor levantado → respuesta HTTP → payload del frontend → escritura en `qa_revision_server_data.json` o `engine_*.json`.
+
+## Assets incremental (estado actual)
+
+- `rebuild_assets_for_record.py` es OFFICIAL / ACTIVE para rebuild incremental de `esquemas` y `esquemas_pos`.
+- Inferencia automatica de pagina de esquema por metadatos `FG/FGS` + `BOM-No.` (sin offset manual).
+- Deteccion OCR robusta para POS concatenados (ejemplo validado: `170155` contiene `155`).
+- Persistencia incremental/idempotente:
+	- si archivo existe y JSON coincide: no regenerar
+	- si archivo existe y JSON esta desincronizado: reparar JSON
+	- si POS no detecta match nuevo pero hay assets validos: reutilizar assets
 
 ## Convenciones
 

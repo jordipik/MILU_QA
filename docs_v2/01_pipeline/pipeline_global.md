@@ -28,6 +28,16 @@ Resumir el pipeline operativo real de MILU V1 por motor, sin asumir flujos histo
 - Rebuild enriquecido por assets en `data/02-engine_rebuild/engine_rebuild_<MODEL>.json`.
 - Reporte de assets por rebuild en `data/02-engine_rebuild/assets_report_<MODEL>.json`.
 
+## Pipeline oficial por fases (OFFICIAL)
+1. IMPORTAR PDF
+2. GESA/SUST
+3. ASSETS
+4. CALCULO FINAL
+5. ERRORES
+6. ESTADOS
+
+Nota: ASSETS es fase oficial del pipeline (no paso accesorio).
+
 ## UIs activas de recompute
 - `recompute_simple.html` (flujo operativo principal por pasos).
 - `analista_02.html` (modal recompute integrado, coexistente).
@@ -92,6 +102,16 @@ Reglas operativas de este paso:
 4. Backend ejecuta `apply_book_preview_to_engine.py` o `apply_all_book_previews.py` con `--write --overwrite`.
 5. GESA SUST runtime llama `POST /api/recompute-simple/update-gesa` y `POST /api/recompute-simple/update-sust`.
 6. ASSETS runtime llama `POST /api/recompute-simple/enrich-assets` (modo `engine`).
+   - Modelo DOC_V2 para assets:
+     - FASE A (esquemas generales): resolver candidatos, comprobar `esquemas/`, sincronizar `esquemas`, generar faltantes.
+     - FASE B (esquemas_pos): buscar POS sobre esquemas base, comprobar `esquemas_pos_circulos/`, generar faltantes, sincronizar `esquemas_circulos_all`, `esquemas_circulos`, `ruta_esquemas_pos`, actualizar `exp_imagenes`.
+   - Regla de idempotencia:
+     - Si archivo existe y JSON coincide, no se regenera ni se reescribe.
+     - Se evalua por separado existencia fisica de archivo y estado de campo JSON.
+   - Validacion reciente (OFFICIAL):
+     - inferencia automatica de pagina de esquema por metadatos `FG/FGS` + `BOM-No.`
+     - logging de trazabilidad: `[AUTO] pagina esquema inferida por metadatos FG/BOM: <page>`
+     - deteccion OCR robusta para POS concatenados (ejemplo: `170155` permite match de `155`)
 7. CALCULO FINAL llama `POST /copy-pdf-to-final-all-books`.
 8. Backend aplica `FINAL_FIELDS_V1_MAPPINGS_BACKEND` y persiste `*_final`.
 9. ERRORES llama `POST /recompute-qa-errors` y recalcula `*_error`.
@@ -146,6 +166,47 @@ Validacion documentada para pagina `669`:
 - Persistencia en JSON de disco (sin transacciones DB).
 - `POST /recompute-pdf-auto` permanece referenciado en zonas legacy del frontend, pero backend lo mantiene desactivado (410).
 - Si overlay y extraccion dejan de compartir reglas equivalentes de split, la revision humana puede validar una tabla distinta de la que realmente llegara al engine.
+- Historico de assets legacy: mezcla de esquema base y esquema_pos en un unico flujo, provocando regeneracion innecesaria y desincronizacion JSON.
+
+## Validacion operativa reciente (caso real)
+- engine: `12V4000M40A`
+- registro: `RB-12V4000M40A-000245`
+- resultados:
+  - esquema detectado sin offset manual
+  - POS `155` detectado y exportado
+  - archivo generado: `12V4000M40A-0045-01-155.webp`
+  - persistencia JSON validada en campos:
+    - `esquemas_circulos_all`
+    - `esquemas_circulos`
+    - `ruta_esquemas_pos`
+    - `exp_imagenes`
+
+Comandos validados:
+- `python rebuild_assets_for_record.py --engine 12V4000M40A --id RB-12V4000M40A-000245 --dry-run`
+- `python rebuild_assets_for_record.py --engine 12V4000M40A --id RB-12V4000M40A-000245 --write`
+
+## Campos de assets y responsabilidad
+| Campo | Responsabilidad |
+| --- | --- |
+| `esquemas` | imagenes generales sin circulo POS |
+| `esquemas_circulos_all` | todos los matches de esquema_pos |
+| `esquemas_circulos` | match principal de esquema_pos |
+| `ruta_esquemas_pos` | URL principal de esquema_pos |
+| `exp_imagenes` | agregacion exportable de imagenes |
+
+## Nombres y directorios oficiales de assets
+- Esquema general: `BOOK-PAGE-XX.png` (ej: `12V4000M40A-0012-01.png`).
+- Esquema POS: `BOOK-PAGE-XX-POS.webp` (ej: `12V4000M40A-0012-01-80.webp`).
+- Directorios oficiales:
+  - `esquemas/`
+  - `esquemas_pos_circulos/`
+- No editar manualmente estos directorios salvo tarea explicita.
+
+## Relacion con export WordPress
+- Export depende de assets y rutas consistentes en JSON.
+- `exp_imagenes` depende de la sincronizacion de assets.
+- `esquemas_pos` es exportable cuando `ruta_esquemas_pos` queda resuelta.
+- Es posible reparar JSON de assets sin regenerar imagenes (modo solo-sync).
 
 ## TODO pendiente
 - Congelar un contrato versionado unico para final fields.

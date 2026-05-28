@@ -6,6 +6,7 @@ import io
 import json
 import math
 import os
+import shutil
 import re
 import sys
 import tempfile
@@ -30,6 +31,52 @@ NUM_RE = re.compile(r"^\d+$")
 STRIP_PUNCT = ",;:.()[]{}"
 SPLIT_RE = re.compile(r"[\n\r\t,;]+")
 FILENAME_RE = re.compile(r"^(?P<engine>.+)-(?P<page>\d{4})-(?P<box>\d{2})-(?P<pos>\d+)\.[A-Za-z0-9]+$")
+
+
+def resolve_tesseract_executable() -> Optional[Path]:
+    env_cmd = os.environ.get("TESSERACT_CMD") or os.environ.get("TESSERACT_PATH")
+    candidates: List[Path] = []
+    if env_cmd:
+        candidates.append(Path(env_cmd))
+
+    from_path = shutil.which("tesseract")
+    if from_path:
+        candidates.append(Path(from_path))
+
+    candidates.extend([
+        Path(r"C:\Program Files\Tesseract-OCR\tesseract.exe"),
+        Path(r"C:\Program Files (x86)\Tesseract-OCR\tesseract.exe"),
+    ])
+
+    for candidate in candidates:
+        try:
+            if candidate.exists() and candidate.is_file():
+                return candidate
+        except Exception:
+            continue
+    return None
+
+
+def ensure_tesseract_ready() -> bool:
+    if pytesseract is None:
+        return False
+
+    try:
+        _ = pytesseract.get_tesseract_version()
+        return True
+    except Exception:
+        pass
+
+    candidate = resolve_tesseract_executable()
+    if candidate is None:
+        return False
+
+    try:
+        pytesseract.pytesseract.tesseract_cmd = str(candidate)
+        _ = pytesseract.get_tesseract_version()
+        return True
+    except Exception:
+        return False
 
 
 def coerce_int(value: Any) -> Optional[int]:
@@ -72,6 +119,19 @@ def split_pos_candidates(text: str) -> List[str]:
             if pos:
                 out.append(pos)
     return out
+
+
+def token_matches_target_pos(token_pos: str, target_pos: str) -> bool:
+    if token_pos == target_pos:
+        return True
+
+    # OCR puede pegar POS vecinas en un unico token (ej: 170155).
+    if target_pos and len(token_pos) > len(target_pos):
+        extra = len(token_pos) - len(target_pos)
+        if extra <= 3 and (token_pos.startswith(target_pos) or token_pos.endswith(target_pos)):
+            return True
+
+    return False
 
 
 def rect_union(rects: Sequence[fitz.Rect]) -> fitz.Rect:
@@ -309,11 +369,7 @@ def run_ocr_tokens(
     blue_delta: int = 35,
     dilate: int = 0,
 ) -> List[Dict[str, Any]]:
-    if pytesseract is None:
-        return []
-    try:
-        _ = pytesseract.get_tesseract_version()
-    except Exception:
+    if not ensure_tesseract_ready():
         return []
 
     img_for_ocr = preprocess_for_ocr_blue(img_rgb, blue_bmin=blue_bmin, blue_delta=blue_delta, dilate=dilate)
@@ -600,7 +656,7 @@ def detect_pos_items(page: fitz.Page, clip_inner: fitz.Rect, target_pos: str, dp
         if not clip_inner.contains(rect):
             continue
         for candidate in split_pos_candidates(word):
-            if candidate == target_pos:
+            if token_matches_target_pos(candidate, target_pos):
                 items.append({
                     "pos": candidate,
                     "source": "TEXT",
@@ -612,7 +668,7 @@ def detect_pos_items(page: fitz.Page, clip_inner: fitz.Rect, target_pos: str, dp
         return items
 
     ocr_items = run_ocr_tokens(render_clip(page, clip_inner, dpi=dpi))
-    return [item for item in ocr_items if item["pos"] == target_pos]
+    return [item for item in ocr_items if token_matches_target_pos(item["pos"], target_pos)]
 
 
 def choose_match(matches: Sequence[Dict[str, Any]], record: Dict[str, Any]) -> Dict[str, Any]:

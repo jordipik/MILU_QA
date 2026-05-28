@@ -35,6 +35,31 @@ Consolidar el pipeline oficial de MILU V1 segun codigo real actual (frontend, ba
    - Endpoint oficial: `POST /api/recompute-simple/enrich-assets`.
    - Ejecuta `scripts/enrich_rebuild_with_assets.js` en modo `engine` para actualizar:
      - `filename_foto`, `ruta_foto`, `esquemas`, `esquemas_circulos`, `esquemas_circulos_all`, `ruta_esquemas_pos`, `exp_imagenes`.
+    - Modelo operativo DOC_V2 (OFFICIAL): pipeline de assets separado en dos fases.
+       - FASE A - ESQUEMAS GENERALES (sin circulo POS):
+          1. resolver esquemas esperados por registro
+          2. comprobar existencia fisica en `esquemas/`
+          3. sincronizar campo `esquemas`
+          4. generar solo faltantes
+       - FASE B - ESQUEMAS_POS (con POS marcado):
+          1. partir de los esquemas generales ya resueltos
+          2. buscar POS visualmente
+          3. comprobar existencia fisica en `esquemas_pos_circulos/`
+          4. generar solo faltantes
+          5. sincronizar `esquemas_circulos_all`, `esquemas_circulos`, `ruta_esquemas_pos`
+          6. actualizar `exp_imagenes` sin duplicados
+    - Regla de idempotencia (OFFICIAL):
+       - Si archivo existe y JSON ya coincide, no hacer nada.
+       - Distinguir siempre estado de archivo fisico vs estado de campos JSON.
+    - Nombres oficiales de archivo:
+       - esquema general: `BOOK-PAGE-XX.png` (ej: `12V4000M40A-0012-01.png`)
+       - esquema_pos: `BOOK-PAGE-XX-POS.webp` (ej: `12V4000M40A-0012-01-80.webp`)
+    - Script incremental recomendado para este modelo: `rebuild_assets_for_record.py` (OFFICIAL / ACTIVE).
+    - Capacidades validadas en codigo real:
+       - inferencia automatica de pagina de esquema por metadatos `FG/FGS` y `BOM-No.` (sin offset manual)
+       - traza explicita de inferencia: `[AUTO] pagina esquema inferida por metadatos FG/BOM: <page>`
+       - deteccion OCR robusta para POS concatenados (ejemplo: `170155` contiene `155`)
+       - sincronizacion incremental JSON sin regeneracion innecesaria
 4. CALCULO FINAL
    - UI principal: `recompute_simple.html` (`btnFinal`) y modal de `analista_02.html` (`recomputeCalculateFinalBtn`).
    - Endpoint oficial: `POST /copy-pdf-to-final-all-books`.
@@ -79,6 +104,38 @@ Comandos oficiales de Fase Assets:
    - `node scripts/enrich_rebuild_with_assets.js --mode engine --engine <MODEL> --write`
    - `node scripts/enrich_rebuild_with_assets.js --mode engine --all --dry-run`
    - `node scripts/enrich_rebuild_with_assets.js --mode engine --all --write`
+
+Comandos del orquestador incremental de assets (OFFICIAL / ACTIVE):
+- registro:
+   - `python rebuild_assets_for_record.py --engine 12V4000M40A --id 1100400 --write`
+- libro:
+   - `python rebuild_assets_for_record.py --engine 12V4000M40A --all-book --write`
+- todos:
+   - `python rebuild_assets_for_record.py --all --write`
+- flags principales:
+   - `--dry-run`
+   - `--write`
+   - `--force-regenerate`
+   - `--only-sync-json`
+
+## Validacion real end-to-end (OFFICIAL)
+- Caso validado: `engine=12V4000M40A`, registro `RB-12V4000M40A-000245`.
+- Resultado validado:
+   - esquema localizado correctamente sin offset manual
+   - POS `155` detectado en escenario OCR concatenado
+   - salida generada: `12V4000M40A-0045-01-155.webp`
+   - persistencia JSON correcta en `engine_12V4000M40A.json`
+
+Comandos de validacion:
+- dry-run:
+   - `python rebuild_assets_for_record.py --engine 12V4000M40A --id RB-12V4000M40A-000245 --dry-run`
+- write:
+   - `python rebuild_assets_for_record.py --engine 12V4000M40A --id RB-12V4000M40A-000245 --write`
+
+Comportamiento esperado:
+- si el asset existe y JSON coincide, no se regenera
+- si el asset existe y JSON esta desincronizado, se repara JSON
+- si POS no se detecta pero hay assets validos en JSON/disco, se reutilizan
 
 Garantias de separacion:
 - En `mode rebuild` no toca `engine_<MODEL>.json`.
@@ -144,4 +201,13 @@ Validacion registrada:
 - MILU runtime usa archivos JSON en disco, no BD relacional.
 - El proceso offline oficial para consistencia global de los 9 engines sigue siendo `depuracion_json.py`.
 - En diagnostico de persistencia: validar `GET /health` y endpoints HTTP antes de asumir fallo de UI.
+
+## Riesgos historicos (legacy assets)
+- Mezcla de deteccion de esquemas base, POS y sincronizacion JSON en un mismo flujo.
+- Regeneracion innecesaria sin comprobar reutilizacion de archivos existentes.
+- Casos de imagen correcta con JSON vacio/desincronizado.
+- Mezcla conceptual entre `esquemas` (base) y `esquemas_pos` (con marca POS).
+
+## Vision objetivo
+Sistema incremental, reparable y desacoplado de logica legacy, preparado para recompute parcial, QA visual, rebuild, sincronizacion incremental y export WordPress.
 

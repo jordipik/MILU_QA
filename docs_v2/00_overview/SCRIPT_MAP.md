@@ -15,6 +15,7 @@ Inventario de scripts y endpoints, con estado oficial/legacy validado en el codi
 | `POST /api/pdf-preview/apply-to-engine` | Backend | UI recompute (`btnImportPdf`, `recomputeCopyBookBtn`) | Ejecuta scripts apply con `--write --overwrite` | OFFICIAL |
 | `POST /copy-pdf-to-final-all-books` | Backend | UI recompute (`btnFinal`, `recomputeCalculateFinalBtn`) | Calcula `*_final` con `FINAL_FIELDS_V1_MAPPINGS_BACKEND` | OFFICIAL |
 | `scripts/enrich_rebuild_with_assets.js` (`--mode engine`) | Node runtime | `POST /api/recompute-simple/enrich-assets` | Enriquecimiento multimedia sobre `engine_<MODEL>.json` (fotos/esquemas/esquemas_pos) | OFFICIAL |
+| `rebuild_assets_for_record.py` | Python incremental | CLI por `--id`, `--all-book`, `--all` | Rebuild incremental de `esquemas` y `esquemas_pos`, inferencia automatica de pagina por FG/BOM y sincronizacion JSON idempotente | OFFICIAL / ACTIVE |
 | `POST /api/recompute-simple/enrich-assets` | Backend | UI recompute (`btnAssets`) | Ejecuta assets en modo engine con backup en write | OFFICIAL |
 | `scripts/update_gesa_fields_from_excel.js` | Node offline | Ejecucion manual (`node scripts/update_gesa_fields_from_excel.js [--only <MODEL>] [--write]`) | Actualiza solo campos GESA por match exacto `PART NUMBER == pn_final`, con backup por engine | OFFICIAL OFFLINE |
 | `POST /calculate-final-fields` + `copy_gesa_fields_to_final.py` | Backend + Python | Llamada legacy | Ruta heredada de final fields | LEGACY |
@@ -81,3 +82,29 @@ Validacion sintetica de pagina `669`:
 - PDF: `pos_pdf`, `pn_pdf`, `designation_pdf`, `model_type_pdf`, `qty_pdf`, `units_pdf`, `weight_pdf`, `fn_pdf`, `measure_pdf`, `norma_pdf`, `bom_pdf`, `fg_fgs_pdf`
 - Final: `pos_final`, `pn_final`, `designation_final`, `model_type_final`, `qty_final`, `units_final`, `weight_final`, `fn_final`, `measure_final`, `norma_final`, `fg_fgs_final`, `bom_final`, `nsn_final`, `normalizado_final`
 - Error/QA: `*_error`, `total_error`, `has_error`, `qa_revision_estado`, `qa_revision_accion`
+
+## Assets pipeline (OFFICIAL MODEL)
+- Separacion conceptual:
+	- `esquemas`: imagen base sin circulo POS.
+	- `esquemas_pos`: imagen con POS marcado (`esquemas_circulos_all`, `esquemas_circulos`, `ruta_esquemas_pos`).
+- Regla de idempotencia:
+	- Si archivo existe y JSON coincide, no hacer nada.
+	- Archivo existente y JSON vacio/desincronizado: sincronizar JSON sin regenerar.
+- Logging operativo esperado por registro:
+	- `[AUTO] pagina esquema inferida por metadatos FG/BOM: <page>`
+	- `[OK] esquema existente`
+	- `[SYNC] json esquemas actualizado`
+	- `[GEN] esquema generado`
+	- `[OK] esquema_pos existente`
+	- `[GEN] esquema_pos generado`
+	- `[SYNC] json POS actualizado`
+	- `[MISS] pos no encontrado`
+- Flags clave del orquestador incremental:
+	- `--dry-run`
+	- `--write`
+	- `--force-regenerate`
+	- `--only-sync-json`
+
+Regla OCR validada:
+- el motor de deteccion POS admite submatch numerico robusto en tokens OCR concatenados.
+- ejemplo validado: token OCR `170155` contiene POS objetivo `155`.

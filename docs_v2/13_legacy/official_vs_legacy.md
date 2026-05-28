@@ -11,6 +11,27 @@ Separar rutas oficiales vigentes de rutas legacy/alternativas que aun existen en
 - `GET/POST /qa_revision_sync.php`
 - `POST /apply-revision-to-engines`
 - `POST /export/run-wordpress`
+- `POST /api/recompute-simple/enrich-assets` (assets runtime)
+
+## OFFICIAL (modelo de assets)
+- Separar `esquemas` (base) de `esquemas_pos` (POS marcado).
+- Ejecutar assets en dos fases: A esquemas generales, B esquemas_pos.
+- Regla de idempotencia: si archivo existe y JSON coincide, no hacer nada.
+- Reparacion permitida: sincronizar JSON sin regenerar imagenes.
+- Inference oficial de pagina de esquema por metadatos `FG/FGS` + `BOM-No.` (sin offset manual).
+- Regla OCR oficial para POS concatenados: admitir submatch numerico valido (ejemplo `170155` contiene `155`).
+
+## OFFICIAL / ACTIVE
+- `rebuild_assets_for_record.py`
+  - CLI incremental por registro/libro/todos.
+  - Estado actual: OFFICIAL / ACTIVE.
+  - Responsabilidad: rebuild incremental de esquemas y esquemas_pos, inferencia automatica de pagina de esquema y sincronizacion JSON.
+  - Logging de trazabilidad operativo:
+    - `[AUTO] pagina esquema inferida por metadatos FG/BOM: <page>`
+    - `[OK] esquema existente`
+    - `[GEN] esquema_pos generado`
+    - `[SYNC] json actualizado`
+    - `[MISS] pos no encontrado`
 
 ## LEGACY (coexistente)
 - `POST /calculate-final-fields`

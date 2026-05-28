@@ -23,6 +23,7 @@ Fuentes documentales base:
 - `docs_v2/02_pdf_import/apply_book_preview_to_engine.md`
 - `docs_v2/02_pdf_import/book_preview_structure.md`
 - `docs_v2/04_final_calculation/final_fields_v1.md`
+- `docs_v2/05_assets/imagenes_esquemas_pipeline.md`
 - `docs_v2/06_error_system/recompute_errors.md`
 - `docs_v2/07_revision_system/qa_revision_flow.md`
 - `docs_v2/08_export/wordpress_export.md`
@@ -45,6 +46,7 @@ Fuentes de implementacion auditadas:
 - `scripts/rebuild_engine_from_book_preview.js`
 - `scripts/enrich_rebuild_with_gesa_sust.js`
 - `scripts/enrich_rebuild_with_assets.js`
+- `rebuild_assets_for_record.py` (NEW/WIP, orquestador incremental de assets)
 - `scripts/export_wordpress_milu.js`
 - `depuracion_json.py`
 

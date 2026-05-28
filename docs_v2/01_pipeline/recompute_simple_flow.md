@@ -40,6 +40,28 @@ Comportamiento real:
 - Origen de assets: `fotos_articulos/`, `esquemas/`, `esquemas_pos_circulos/`.
 - En modo escritura crea backup `engine_<MODEL>.json.bak.<timestamp>`.
 
+Modelo conceptual oficial DOC_V2 para ASSETS:
+- FASE A - ESQUEMAS GENERALES:
+	1. detectar/resolver esquemas esperados
+	2. comprobar existencia fisica en `esquemas/`
+	3. sincronizar `esquemas`
+	4. generar faltantes
+- FASE B - ESQUEMAS_POS:
+	1. partir de esquemas base existentes
+	2. buscar POS visualmente
+	3. comprobar existencia fisica en `esquemas_pos_circulos/`
+	4. generar faltantes
+	5. sincronizar `esquemas_circulos_all`, `esquemas_circulos`, `ruta_esquemas_pos`
+	6. actualizar `exp_imagenes`
+
+Regla de idempotencia de assets:
+- Si archivo existe y JSON ya coincide, no hacer nada.
+- Distinguir siempre `existe archivo` de `existe campo JSON`.
+
+Orquestador incremental (NEW/WIP):
+- `rebuild_assets_for_record.py` (registro/libro/todos).
+- Flags: `--dry-run`, `--write`, `--force-regenerate`, `--only-sync-json`.
+
 ## Salidas clave de UI
 - Resumen visual por accion (KPIs + tablas).
 - Tabla interactiva de `not_found_rows` para IMPORTAR PDF.
