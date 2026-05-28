@@ -358,12 +358,15 @@
                     <span class="a2-step-index">7</span>
                     <div>
                         <span class="a2-step-title">ASSETS</span>
-                        <p class="a2-step-desc">POST /api/recompute-simple/enrich-assets</p>
-                        <p class="a2-step-desc">Paso final recomendado tras recalcular datos base, QA y hermanos/copias.
-                        </p>
-                        <p class="a2-step-desc">Actualiza filename_foto, ruta_foto, esquemas, esquemas_circulos,
-                            esquemas_circulos_all, ruta_esquemas_pos y exp_imagenes en engine_&lt;MODEL&gt;.json.</p>
-                        <p class="a2-step-desc">Usa fotos_articulos/, esquemas/ y esquemas_pos_circulos/.</p>
+                        <p class="a2-step-desc">POST /api/recompute-simple/enrich-assets/start</p>
+                        <p class="a2-step-desc">Lanza un job asíncrono con progreso y cancelación (polling de estado en
+                            vivo).</p>
+                        <p class="a2-step-desc">Ejecuta rebuild_assets_for_record.py para un ID puntual, un libro o
+                            todos
+                            los libros según el alcance seleccionado.</p>
+                        <p class="a2-step-desc">Genera/reutiliza esquemas base y POS y actualiza enlaces de assets:
+                            esquemas, esquemas_circulos, esquemas_circulos_all, ruta_esquemas_pos,
+                            exp_imagenes, filename_foto y ruta_foto.</p>
                     </div>
                 </h3>
                 <button id="btnAssets" type="button">ASSETS</button>

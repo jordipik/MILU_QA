@@ -465,10 +465,11 @@ class EngineContext:
         matches = self.find_matching_pages_for_row(row, source_page)
         return matches[0] if matches else None
 
-    def get_pos_items_for_clip(self, page_num: int, clip: fitz.Rect, dpi: int) -> List[Dict[str, Any]]:
+    def get_pos_items_for_clip(self, page_num: int, clip: fitz.Rect, dpi: int, enable_ocr: bool = True) -> List[Dict[str, Any]]:
         key = (
             int(page_num),
             int(dpi),
+            bool(enable_ocr),
             (
                 round(float(clip.x0), 2),
                 round(float(clip.y0), 2),
@@ -481,7 +482,7 @@ class EngineContext:
             return cached
 
         page = self.doc.load_page(page_num - 1)
-        items = detect_pos_items_all(page, clip, dpi=int(dpi))
+        items = detect_pos_items_all(page, clip, dpi=int(dpi), enable_ocr=bool(enable_ocr))
         self.clip_pos_cache[key] = items
         return items
 
@@ -490,44 +491,15 @@ def filter_items_by_target_pos(items: Sequence[Dict[str, Any]], target_pos: str)
     return [item for item in items if token_matches_target_pos(str(item.get("pos") or ""), target_pos)]
 
 
-def process_record(
+def resolve_selected_targets_for_row(
     row: Dict[str, Any],
     engine: str,
     context: EngineContext,
-    args: argparse.Namespace,
-    base_output_dir: Path,
-    pos_output_dir: Path,
-    base_lookup_dirs: Sequence[Path],
-    pos_lookup_dirs: Sequence[Path],
-) -> Dict[str, Any]:
-    row_id = str(row.get("ID") or "").strip() or None
-    source_page = coerce_int(row.get("Source Page") or row.get("page4"))
-    pos_value = normalize_pos(row.get("pos_final") or row.get("POS"))
-
-    result = {
-        "engine": engine,
-        "id": row_id,
-        "source_page": source_page,
-        "schemes_found": 0,
-        "schemes_generated": 0,
-        "pos_found": 0,
-        "pos_generated": 0,
-        "json_updated": False,
-        "status": "ok",
-        "logs": [],
-    }
-
-    if row_id is None:
-        result["status"] = "skip"
-        result["logs"].append("[MISS] registro sin ID")
-        return result
-
-    if source_page is None:
-        result["status"] = "skip"
-        result["logs"].append("[MISS] Source Page no disponible")
-        return result
-
-    tried_pages = choose_tried_pages(source_page, int(args.page_offset))
+    source_page: int,
+    page_offset: int,
+) -> Tuple[List[Tuple[int, List[fitz.Rect]]], List[str]]:
+    logs: List[str] = []
+    tried_pages = choose_tried_pages(source_page, int(page_offset))
     preferred_page = infer_preferred_page_from_row(row, engine)
     if preferred_page is not None and preferred_page not in tried_pages:
         tried_pages = [preferred_page, *tried_pages]
@@ -549,23 +521,29 @@ def process_record(
         if inferred_targets and len(inferred_targets) > len(selected_targets):
             selected_targets = inferred_targets
             inferred_pages_label = ",".join(str(page_num) for page_num, _ in selected_targets)
-            result["logs"].append(f"[AUTO] paginas esquema inferidas por metadatos FG/BOM: {inferred_pages_label}")
+            logs.append(f"[AUTO] paginas esquema inferidas por metadatos FG/BOM: {inferred_pages_label}")
 
     if not selected_targets:
         inferred_pages = context.find_matching_pages_for_row(row, source_page)
         selected_targets = [(page_num, context.get_boxes(page_num)) for page_num in inferred_pages if context.get_boxes(page_num)]
         if selected_targets:
             inferred_pages_label = ",".join(str(page_num) for page_num, _ in selected_targets)
-            result["logs"].append(f"[AUTO] paginas esquema inferidas por metadatos FG/BOM: {inferred_pages_label}")
+            logs.append(f"[AUTO] paginas esquema inferidas por metadatos FG/BOM: {inferred_pages_label}")
 
-    if not selected_targets:
-        result["status"] = "skip"
-        result["logs"].append("[MISS] no se detectaron esquemas en paginas candidatas")
-        return result
+    return selected_targets, logs
 
-    result["schemes_found"] = sum(len(page_boxes) for _, page_boxes in selected_targets)
 
+def build_shared_base_assets_for_targets(
+    engine: str,
+    context: EngineContext,
+    selected_targets: Sequence[Tuple[int, Sequence[fitz.Rect]]],
+    args: argparse.Namespace,
+    base_output_dir: Path,
+    base_lookup_dirs: Sequence[Path],
+) -> Tuple[List[str], int]:
     present_base: List[str] = []
+    generated = 0
+
     for page_num, boxes in selected_targets:
         page = context.doc.load_page(page_num - 1)
         for box_index, box in enumerate(boxes, start=1):
@@ -575,9 +553,7 @@ def process_record(
             exists = existing_name is not None
 
             if exists and not args.force_regenerate:
-                keep_name = str(existing_name)
-                result["logs"].append(f"[OK] esquema existente: {keep_name}")
-                present_base.append(keep_name)
+                present_base.append(str(existing_name))
                 continue
 
             if args.only_sync_json:
@@ -588,11 +564,95 @@ def process_record(
             action_gen = (not exists) or args.force_regenerate
             if action_gen:
                 if bool(args.write):
-                    image = render_base_image(page, box, frame_pad_pt=float(args.frame_pad_pt), dpi=int(args.dpi))
+                    image = render_base_image(page, fitz.Rect(box), frame_pad_pt=float(args.frame_pad_pt), dpi=int(args.dpi))
                     save_image(image, path, img_format=BASE_EXT, quality=95)
-                result["schemes_generated"] += 1
-                result["logs"].append(f"[GEN] esquema generado: {filename}")
+                generated += 1
                 present_base.append(filename)
+
+    return present_base, generated
+
+
+def process_record(
+    row: Dict[str, Any],
+    engine: str,
+    context: EngineContext,
+    args: argparse.Namespace,
+    base_output_dir: Path,
+    pos_output_dir: Path,
+    base_lookup_dirs: Sequence[Path],
+    pos_lookup_dirs: Sequence[Path],
+    shared_selected_targets: Optional[List[Tuple[int, List[fitz.Rect]]]] = None,
+    shared_target_logs: Optional[Sequence[str]] = None,
+    shared_base_filenames: Optional[Sequence[str]] = None,
+    shared_schemes_generated: int = 0,
+    shared_mode: bool = False,
+    enable_ocr_override: Optional[bool] = None,
+) -> Dict[str, Any]:
+    row_id = str(row.get("ID") or "").strip() or None
+    source_page = coerce_int(row.get("Source Page") or row.get("page4"))
+    pos_value = normalize_pos(row.get("pos_final") or row.get("POS"))
+
+    result = {
+        "engine": engine,
+        "id": row_id,
+        "source_page": source_page,
+        "schemes_found": 0,
+        "schemes_generated": 0,
+        "pos_found": 0,
+        "pos_generated": 0,
+        "json_updated": False,
+        "status": "ok",
+        "logs": [],
+    }
+
+    enable_ocr = bool(args.ocr) if enable_ocr_override is None else bool(enable_ocr_override)
+
+    if row_id is None:
+        result["status"] = "skip"
+        result["logs"].append("[MISS] registro sin ID")
+        return result
+
+    if source_page is None:
+        result["status"] = "skip"
+        result["logs"].append("[MISS] Source Page no disponible")
+        return result
+
+    if shared_selected_targets is not None:
+        selected_targets = shared_selected_targets
+        if shared_target_logs:
+            result["logs"].extend(shared_target_logs)
+        if shared_mode:
+            result["logs"].append(f"[SHARED] esquemas base reutilizados por pagina Source Page={source_page}")
+    else:
+        selected_targets, target_logs = resolve_selected_targets_for_row(
+            row,
+            engine,
+            context,
+            source_page,
+            int(args.page_offset),
+        )
+        result["logs"].extend(target_logs)
+
+    if not selected_targets:
+        result["status"] = "skip"
+        result["logs"].append("[MISS] no se detectaron esquemas en paginas candidatas")
+        return result
+
+    result["schemes_found"] = sum(len(page_boxes) for _, page_boxes in selected_targets)
+
+    if shared_base_filenames is not None:
+        present_base = list(shared_base_filenames)
+        result["schemes_generated"] += int(shared_schemes_generated or 0)
+    else:
+        present_base, generated = build_shared_base_assets_for_targets(
+            engine,
+            context,
+            selected_targets,
+            args,
+            base_output_dir,
+            base_lookup_dirs,
+        )
+        result["schemes_generated"] += int(generated)
 
     expected_esquemas = join_csv(present_base)
     changed_base = set_if_changed(row, "esquemas", expected_esquemas)
@@ -613,7 +673,7 @@ def process_record(
                 if clip_inner.x1 <= clip_inner.x0 or clip_inner.y1 <= clip_inner.y0:
                     clip_inner = fitz.Rect(clip_outer)
 
-                all_items = context.get_pos_items_for_clip(page_num, clip_inner, dpi=int(args.dpi))
+                all_items = context.get_pos_items_for_clip(page_num, clip_inner, dpi=int(args.dpi), enable_ocr=enable_ocr)
                 items = filter_items_by_target_pos(all_items, pos_value)
                 if not items:
                     # Escala de fallback: algunos POS quedan fuera del marco inicial del esquema.
@@ -634,7 +694,7 @@ def process_record(
                         if key in tried_rects:
                             continue
                         tried_rects.add(key)
-                        all_items = context.get_pos_items_for_clip(page_num, clip_fallback, dpi=int(args.dpi))
+                        all_items = context.get_pos_items_for_clip(page_num, clip_fallback, dpi=int(args.dpi), enable_ocr=enable_ocr)
                         items = filter_items_by_target_pos(all_items, pos_value)
                         if items:
                             break
@@ -645,18 +705,7 @@ def process_record(
         result["pos_found"] = len(pos_match_objects)
 
         if not pos_match_objects:
-            fallback_existing = collect_existing_pos_from_json_from_dirs(
-                row,
-                engine,
-                pos_value,
-                pos_lookup_dirs,
-            )
-            if fallback_existing:
-                present_pos.extend(fallback_existing)
-                for name in fallback_existing:
-                    result["logs"].append(f"[OK] esquema_pos existente: {name}")
-            else:
-                result["logs"].append("[MISS] pos no encontrado")
+            result["logs"].append("[MISS] pos no encontrado")
 
         for page_num, box_index, box, items in pos_match_objects:
             filename = f"{engine}-{page_num:04d}-{box_index:02d}-{pos_value}.{POS_EXT}"
@@ -726,6 +775,12 @@ def parse_args(argv: Optional[Sequence[str]] = None) -> argparse.Namespace:
     parser.add_argument("--book", default=None, help="Filtro opcional por source_file/book_set/engine_model")
     parser.add_argument("--all", action="store_true", help="Procesa todos los engines")
     parser.add_argument("--limit", type=int, default=0, help="Limita registros procesados por engine (0 = sin limite)")
+    parser.add_argument(
+        "--group-by-page",
+        action=argparse.BooleanOptionalAction,
+        default=True,
+        help="Reutiliza deteccion/generacion base por Source Page (default: True)",
+    )
 
     parser.add_argument("--write", action="store_true", help="Persiste cambios (JSON e imagenes)")
     parser.add_argument("--dry-run", action="store_true", help="No persiste cambios")
@@ -739,6 +794,18 @@ def parse_args(argv: Optional[Sequence[str]] = None) -> argparse.Namespace:
     parser.add_argument("--page-offset", type=int, default=0, help="Offset alternativo sobre Source Page")
     parser.add_argument("--dpi", type=int, default=200, help="DPI de render")
     parser.add_argument("--quality", type=int, default=90, help="Calidad WEBP POS")
+    parser.add_argument(
+        "--ocr",
+        action=argparse.BooleanOptionalAction,
+        default=True,
+        help="Activa OCR cuando no hay coincidencias en texto (default: True)",
+    )
+    parser.add_argument(
+        "--ocr-second-pass",
+        action=argparse.BooleanOptionalAction,
+        default=True,
+        help="Primer pase sin OCR y reintento OCR solo para misses de POS (default: True)",
+    )
     parser.add_argument("--frame-pad-pt", type=float, default=0.5, help="Margen de recorte en puntos")
     parser.add_argument("--pos-fallback-pad-pt", type=float, default=45.0, help="Margen extra para fallback de deteccion POS")
 
@@ -805,11 +872,27 @@ def process_engine(engine: str, args: argparse.Namespace) -> Dict[str, Any]:
 
     context = EngineContext(engine=engine, pdf_path=pdf_path)
     changed_any = False
+    two_phase_ocr = bool(getattr(args, "ocr_second_pass", True)) and bool(getattr(args, "ocr", True))
 
     report_rows: List[Dict[str, Any]] = []
     try:
-        for idx in indexes:
+        def should_retry_with_ocr(row_report: Dict[str, Any]) -> bool:
+            logs = [str(line or "") for line in row_report.get("logs", [])]
+            return any(line.startswith("[MISS] pos no encontrado") for line in logs)
+
+        def run_row(
+            idx: int,
+            shared_selected_targets: Optional[List[Tuple[int, List[fitz.Rect]]]] = None,
+            shared_target_logs: Optional[Sequence[str]] = None,
+            shared_base_filenames: Optional[Sequence[str]] = None,
+            shared_schemes_generated: int = 0,
+            shared_mode: bool = False,
+        ) -> None:
+            nonlocal changed_any
+
             row = rows[idx]
+            original_row_state = dict(row)
+            first_pass_ocr_override: Optional[bool] = False if two_phase_ocr else None
             row_report = process_record(
                 row,
                 engine,
@@ -819,7 +902,37 @@ def process_engine(engine: str, args: argparse.Namespace) -> Dict[str, Any]:
                 pos_output_dir=pos_output_dir,
                 base_lookup_dirs=base_lookup_dirs,
                 pos_lookup_dirs=pos_lookup_dirs,
+                shared_selected_targets=shared_selected_targets,
+                shared_target_logs=shared_target_logs,
+                shared_base_filenames=shared_base_filenames,
+                shared_schemes_generated=shared_schemes_generated,
+                shared_mode=shared_mode,
+                enable_ocr_override=first_pass_ocr_override,
             )
+
+            if two_phase_ocr and should_retry_with_ocr(row_report):
+                row.clear()
+                row.update(original_row_state)
+                retry_report = process_record(
+                    row,
+                    engine,
+                    context,
+                    args,
+                    base_output_dir=base_output_dir,
+                    pos_output_dir=pos_output_dir,
+                    base_lookup_dirs=base_lookup_dirs,
+                    pos_lookup_dirs=pos_lookup_dirs,
+                    shared_selected_targets=shared_selected_targets,
+                    shared_target_logs=shared_target_logs,
+                    shared_base_filenames=shared_base_filenames,
+                    shared_schemes_generated=shared_schemes_generated,
+                    shared_mode=shared_mode,
+                    enable_ocr_override=True,
+                )
+                retry_logs = ["[OCR2] reintento OCR tras miss en pase rapido", *retry_report.get("logs", [])]
+                retry_report["logs"] = retry_logs
+                row_report = retry_report
+
             report_rows.append(row_report)
             changed_any = changed_any or bool(row_report.get("json_updated"))
 
@@ -827,6 +940,75 @@ def process_engine(engine: str, args: argparse.Namespace) -> Dict[str, Any]:
             print(f"[RECORD] engine={engine} id={rec.get('id')} source_page={rec.get('source_page')}")
             for line in rec.get("logs", []):
                 print(line)
+
+        if not bool(getattr(args, "group_by_page", True)):
+            for idx in indexes:
+                run_row(idx)
+        else:
+            grouped_indexes: Dict[int, List[int]] = {}
+            passthrough_indexes: List[int] = []
+            group_order: List[int] = []
+
+            for idx in indexes:
+                source_page = coerce_int(rows[idx].get("Source Page") or rows[idx].get("page4"))
+                if source_page is None:
+                    passthrough_indexes.append(idx)
+                    continue
+                if source_page not in grouped_indexes:
+                    grouped_indexes[source_page] = []
+                    group_order.append(source_page)
+                grouped_indexes[source_page].append(idx)
+
+            for idx in passthrough_indexes:
+                run_row(idx)
+
+            for source_page in group_order:
+                page_indexes = grouped_indexes.get(source_page, [])
+                if not page_indexes:
+                    continue
+
+                shared_row_indexes: List[int] = []
+                fallback_row_indexes: List[int] = []
+                for idx in page_indexes:
+                    preferred_page = infer_preferred_page_from_row(rows[idx], engine)
+                    if preferred_page is not None and preferred_page != source_page:
+                        fallback_row_indexes.append(idx)
+                    else:
+                        shared_row_indexes.append(idx)
+
+                page_boxes = context.get_boxes(source_page)
+                if page_boxes and shared_row_indexes:
+                    shared_targets: Optional[List[Tuple[int, List[fitz.Rect]]]] = [(source_page, page_boxes)]
+                    shared_target_logs: List[str] = []
+                else:
+                    shared_targets = None
+                    shared_target_logs = []
+
+                shared_base_filenames: Optional[List[str]] = None
+                shared_generated_count = 0
+
+                if shared_targets and shared_row_indexes:
+                    shared_base_filenames, shared_generated_count = build_shared_base_assets_for_targets(
+                        engine,
+                        context,
+                        shared_targets,
+                        args,
+                        base_output_dir,
+                        base_lookup_dirs,
+                    )
+
+                for row_offset, idx in enumerate(shared_row_indexes):
+                    run_row(
+                        idx,
+                        shared_selected_targets=shared_targets,
+                        shared_target_logs=shared_target_logs,
+                        shared_base_filenames=shared_base_filenames,
+                        shared_schemes_generated=shared_generated_count if row_offset == 0 else 0,
+                        shared_mode=bool(shared_targets),
+                    )
+
+                for idx in fallback_row_indexes:
+                    run_row(idx)
     finally:
         context.close()
 

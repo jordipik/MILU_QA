@@ -122,14 +122,20 @@ def split_pos_candidates(text: str) -> List[str]:
 
 
 def token_matches_target_pos(token_pos: str, target_pos: str) -> bool:
-    if token_pos == target_pos:
+    token_norm = normalize_pos(token_pos)
+    target_norm = normalize_pos(target_pos)
+    if not token_norm or not target_norm:
+        return False
+
+    if token_norm == target_norm:
         return True
 
-    # OCR puede pegar POS vecinas en un unico token (ej: 170155).
-    if target_pos and len(token_pos) > len(target_pos):
-        extra = len(token_pos) - len(target_pos)
-        if extra <= 3 and (token_pos.startswith(target_pos) or token_pos.endswith(target_pos)):
+    # Equivalencia numerica para casos con ceros a la izquierda (ej: 05 vs 5).
+    try:
+        if int(token_norm) == int(target_norm):
             return True
+    except Exception:
+        pass
 
     return False
 
@@ -648,12 +654,18 @@ def resolve_record_by_hints(
     return None, f"ID no encontrado y fallback ambiguo: {len(candidates)} candidatos para Source Page+POS"
 
 
-def detect_pos_items(page: fitz.Page, clip_inner: fitz.Rect, target_pos: str, dpi: int) -> List[Dict[str, Any]]:
-    all_items = detect_pos_items_all(page, clip_inner, dpi)
+def detect_pos_items(
+    page: fitz.Page,
+    clip_inner: fitz.Rect,
+    target_pos: str,
+    dpi: int,
+    enable_ocr: bool = True,
+) -> List[Dict[str, Any]]:
+    all_items = detect_pos_items_all(page, clip_inner, dpi, enable_ocr=enable_ocr)
     return [item for item in all_items if token_matches_target_pos(item["pos"], target_pos)]
 
 
-def detect_pos_items_all(page: fitz.Page, clip_inner: fitz.Rect, dpi: int) -> List[Dict[str, Any]]:
+def detect_pos_items_all(page: fitz.Page, clip_inner: fitz.Rect, dpi: int, enable_ocr: bool = True) -> List[Dict[str, Any]]:
     items: List[Dict[str, Any]] = []
     words = page.get_text("words")
     for x0, y0, x1, y1, word, *_ in words:
@@ -670,6 +682,9 @@ def detect_pos_items_all(page: fitz.Page, clip_inner: fitz.Rect, dpi: int) -> Li
 
     if items:
         return items
+
+    if not enable_ocr:
+        return []
 
     return run_ocr_tokens(render_clip(page, clip_inner, dpi=dpi))
 
@@ -808,7 +823,7 @@ def process_record(args: argparse.Namespace) -> Dict[str, Any]:
                     if clip_inner.x1 <= clip_inner.x0 or clip_inner.y1 <= clip_inner.y0:
                         clip_inner = fitz.Rect(clip_outer)
 
-                    items = detect_pos_items(page, clip_inner, pos_value, dpi=args.dpi)
+                    items = detect_pos_items(page, clip_inner, pos_value, dpi=args.dpi, enable_ocr=bool(args.ocr))
                     if not items:
                         clip_fallback = expand_box_in_page(clip_outer, page.rect, float(args.pos_fallback_pad_pt))
                         if (
@@ -817,7 +832,7 @@ def process_record(args: argparse.Namespace) -> Dict[str, Any]:
                             or clip_fallback.x1 != clip_outer.x1
                             or clip_fallback.y1 != clip_outer.y1
                         ):
-                            fallback_items = detect_pos_items(page, clip_fallback, pos_value, dpi=args.dpi)
+                            fallback_items = detect_pos_items(page, clip_fallback, pos_value, dpi=args.dpi, enable_ocr=bool(args.ocr))
                             if fallback_items:
                                 items = fallback_items
                                 clip_outer = clip_fallback
@@ -914,6 +929,12 @@ def parse_args(argv: Optional[Sequence[str]] = None) -> argparse.Namespace:
     parser.add_argument("--dpi", type=int, default=200, help="DPI de render")
     parser.add_argument("--format", default="webp", help="Formato de salida, por defecto webp")
     parser.add_argument("--quality", type=int, default=90, help="Calidad para WEBP/JPG")
+    parser.add_argument(
+        "--ocr",
+        action=argparse.BooleanOptionalAction,
+        default=True,
+        help="Activa OCR cuando no hay coincidencias en texto (default: True)",
+    )
     parser.add_argument("--out-report", default=None, help="Ruta opcional al JSON de reporte")
     parser.add_argument("--without-circle", action="store_true", help="Exporta el esquema sin marcar el circulo de POS")
     parser.add_argument("--frame-pad-pt", type=float, default=0.5, help="Margen adicional del recorte alrededor del box detectado")

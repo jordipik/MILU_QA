@@ -865,11 +865,16 @@ function parseEnrichAssetsPayload(body) {
         throw validationError({ code: 'ID_NOT_ALLOWED_FOR_ALL_SCOPE', field: 'id', message: 'engine=ALL no admite id puntual' });
     }
 
+    const ocr = assertBooleanLike(body?.ocr ?? true, 'ocr');
+    const ocrSecondPass = assertBooleanLike(body?.ocrSecondPass ?? true, 'ocrSecondPass');
+
     return {
         engine,
         id,
         dryRun,
         backup,
+        ocr,
+        ocrSecondPass,
         normalizedEngine
     };
 }
@@ -892,6 +897,13 @@ function buildEnrichAssetsCommand(payload) {
 
     if (!payload.dryRun) {
         args.push('--write');
+    }
+
+    if (payload.ocr === false) {
+        args.push('--no-ocr');
+    }
+    if (payload.ocrSecondPass === false) {
+        args.push('--no-ocr-second-pass');
     }
 
     args.push('--report', reportPath);
