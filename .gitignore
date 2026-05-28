@@ -6,6 +6,7 @@ zz_copias/backups_repo_root/
 # Resultados generados de comparaciones QA PDF.
 qa_pdf_compare_engine_*.json
 zz_old/
+esquemas/
 esquemas_pos_circulos/
 fotos_articulos/
 fotos_motores/
@@ -24,3 +25,7 @@ data/snapshots/*/
 
 # Backups JSON locales (ej: .json.backup, .json.backup-*, .json.backup.*)
 *.json.backup*
+
+# Recursos de imagen generados/locales.
+*.png
+*.webp

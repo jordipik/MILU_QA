@@ -649,6 +649,11 @@ def resolve_record_by_hints(
 
 
 def detect_pos_items(page: fitz.Page, clip_inner: fitz.Rect, target_pos: str, dpi: int) -> List[Dict[str, Any]]:
+    all_items = detect_pos_items_all(page, clip_inner, dpi)
+    return [item for item in all_items if token_matches_target_pos(item["pos"], target_pos)]
+
+
+def detect_pos_items_all(page: fitz.Page, clip_inner: fitz.Rect, dpi: int) -> List[Dict[str, Any]]:
     items: List[Dict[str, Any]] = []
     words = page.get_text("words")
     for x0, y0, x1, y1, word, *_ in words:
@@ -656,19 +661,17 @@ def detect_pos_items(page: fitz.Page, clip_inner: fitz.Rect, target_pos: str, dp
         if not clip_inner.contains(rect):
             continue
         for candidate in split_pos_candidates(word):
-            if token_matches_target_pos(candidate, target_pos):
-                items.append({
-                    "pos": candidate,
-                    "source": "TEXT",
-                    "conf": None,
-                    "rect_pdf": rect,
-                })
+            items.append({
+                "pos": candidate,
+                "source": "TEXT",
+                "conf": None,
+                "rect_pdf": rect,
+            })
 
     if items:
         return items
 
-    ocr_items = run_ocr_tokens(render_clip(page, clip_inner, dpi=dpi))
-    return [item for item in ocr_items if token_matches_target_pos(item["pos"], target_pos)]
+    return run_ocr_tokens(render_clip(page, clip_inner, dpi=dpi))
 
 
 def choose_match(matches: Sequence[Dict[str, Any]], record: Dict[str, Any]) -> Dict[str, Any]:

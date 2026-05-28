@@ -17,7 +17,7 @@ if str(ROOT_DIR) not in sys.path:
 
 from generate_esquema_pos import (
     coerce_int,
-    detect_pos_items,
+    detect_pos_items_all,
     draw_circle,
     expand_box_in_page,
     get_scheme_boxes,
@@ -25,6 +25,7 @@ from generate_esquema_pos import (
     render_clip,
     resolve_pdf_path,
     save_image,
+    token_matches_target_pos,
 )
 from python_lib.engine_constants import ENGINE_FILES
 from python_lib.json_io import load_engine_json, save_engine_json
@@ -32,7 +33,8 @@ from python_lib.json_io import load_engine_json, save_engine_json
 DEFAULT_BASE_DIR = "esquemas"
 DEFAULT_POS_DIR = "esquemas_pos_circulos"
 DEFAULT_URL_BASE = "https://milu-naval.mystagingwebsite.com/wp-content/uploads/2026/02"
-BASE_EXT = "png"
+BASE_EXT = "webp"
+LEGACY_BASE_EXTS: Tuple[str, ...] = ("png",)
 POS_EXT = "webp"
 POS_NAME_RE = re.compile(r"^(?P<engine>.+)-(?P<page>\d{4})-(?P<box>\d{2})-(?P<pos>\d+)\.[A-Za-z0-9]+$")
 BASE_NAME_RE = re.compile(r"^(?P<engine>.+)-(?P<page>\d{4})-(?P<box>\d{2})\.[A-Za-z0-9]+$")
@@ -101,7 +103,12 @@ def parse_pos_filename(filename: str) -> Optional[Dict[str, Any]]:
     }
 
 
-def collect_existing_pos_from_json(record: Dict[str, Any], engine: str, pos_value: str, pos_dir: Path) -> List[str]:
+def collect_existing_pos_from_json_from_dirs(
+    record: Dict[str, Any],
+    engine: str,
+    pos_value: str,
+    pos_lookup_dirs: Sequence[Path],
+) -> List[str]:
     out: List[str] = []
     seen = set()
     sources = [
@@ -116,8 +123,7 @@ def collect_existing_pos_from_json(record: Dict[str, Any], engine: str, pos_valu
             continue
         if parsed["engine"] != engine or parsed["pos"] != pos_value:
             continue
-        path = pos_dir / name
-        if not path.exists():
+        if not asset_exists_in_dirs(name, pos_lookup_dirs):
             continue
         key = name.lower()
         if key in seen:
@@ -125,6 +131,42 @@ def collect_existing_pos_from_json(record: Dict[str, Any], engine: str, pos_valu
         seen.add(key)
         out.append(name)
     return out
+
+
+def resolve_engine_asset_dirs(base_dir: Path, pos_dir: Path, engine: str) -> Tuple[Path, Path, List[Path], List[Path]]:
+    base_candidates = [
+        base_dir / f"{engine}_esquemas",
+        base_dir / engine,
+    ]
+    pos_candidates = [
+        pos_dir / f"{engine}-POS",
+        pos_dir / f"{engine}_POS",
+        pos_dir / engine,
+    ]
+
+    base_engine_dir = next((path for path in base_candidates if path.exists()), base_candidates[0])
+    pos_engine_dir = next((path for path in pos_candidates if path.exists()), pos_candidates[0])
+
+    base_lookup_dirs = [base_engine_dir, base_dir]
+    pos_lookup_dirs = [pos_engine_dir, pos_dir]
+    return base_engine_dir, pos_engine_dir, base_lookup_dirs, pos_lookup_dirs
+
+
+def asset_exists_in_dirs(filename: str, lookup_dirs: Sequence[Path]) -> bool:
+    return any((directory / filename).exists() for directory in lookup_dirs)
+
+
+def find_existing_base_filename(engine: str, page_num: int, box_index: int, lookup_dirs: Sequence[Path]) -> Optional[str]:
+    preferred = f"{engine}-{page_num:04d}-{box_index:02d}.{BASE_EXT}"
+    if asset_exists_in_dirs(preferred, lookup_dirs):
+        return preferred
+
+    for ext in LEGACY_BASE_EXTS:
+        legacy_name = f"{engine}-{page_num:04d}-{box_index:02d}.{ext}"
+        if asset_exists_in_dirs(legacy_name, lookup_dirs):
+            return legacy_name
+
+    return None
 
 
 def choose_tried_pages(source_page: Optional[int], page_offset: int) -> List[int]:
@@ -353,6 +395,7 @@ class EngineContext:
         self.doc = fitz.open(pdf_path)
         self.page_boxes_cache: Dict[int, List[fitz.Rect]] = {}
         self.page_meta_cache: Dict[int, Dict[str, str]] = {}
+        self.clip_pos_cache: Dict[Tuple[int, int, Tuple[float, float, float, float]], List[Dict[str, Any]]] = {}
 
     def close(self) -> None:
         self.doc.close()
@@ -380,15 +423,14 @@ class EngineContext:
         self.page_meta_cache[page_num] = meta
         return meta
 
-    def find_best_page_for_row(self, row: Dict[str, Any], source_page: int) -> Optional[int]:
+    def find_matching_pages_for_row(self, row: Dict[str, Any], source_page: int) -> List[int]:
         row_meta = extract_row_meta(row)
         row_fgfgs = row_meta["fgfgs"]
         row_bom = row_meta["bom"]
         if not row_fgfgs and not row_bom:
-            return None
+            return []
 
-        best_page: Optional[int] = None
-        best_score = -10**9
+        scored_pages: List[Tuple[int, int]] = []
 
         for page_num in range(1, len(self.doc) + 1):
             boxes = self.get_boxes(page_num)
@@ -400,28 +442,52 @@ class EngineContext:
             page_bom = meta.get("bom") or ""
 
             score = 0
-            if row_fgfgs and page_fgfgs:
-                if row_fgfgs == page_fgfgs:
-                    score += 80
-                else:
+            if row_fgfgs:
+                if not page_fgfgs or row_fgfgs != page_fgfgs:
                     continue
+                score += 80
 
-            if row_bom and page_bom:
-                if row_bom == page_bom:
-                    score += 120
-                else:
+            if row_bom:
+                if not page_bom or row_bom != page_bom:
                     continue
+                score += 120
 
             if row_fgfgs and row_bom:
                 score += 20
 
             score -= abs(page_num - source_page)
+            scored_pages.append((score, page_num))
 
-            if score > best_score:
-                best_score = score
-                best_page = page_num
+        scored_pages.sort(key=lambda item: (-item[0], abs(item[1] - source_page), item[1]))
+        return [page_num for _, page_num in scored_pages]
 
-        return best_page
+    def find_best_page_for_row(self, row: Dict[str, Any], source_page: int) -> Optional[int]:
+        matches = self.find_matching_pages_for_row(row, source_page)
+        return matches[0] if matches else None
+
+    def get_pos_items_for_clip(self, page_num: int, clip: fitz.Rect, dpi: int) -> List[Dict[str, Any]]:
+        key = (
+            int(page_num),
+            int(dpi),
+            (
+                round(float(clip.x0), 2),
+                round(float(clip.y0), 2),
+                round(float(clip.x1), 2),
+                round(float(clip.y1), 2),
+            ),
+        )
+        cached = self.clip_pos_cache.get(key)
+        if cached is not None:
+            return cached
+
+        page = self.doc.load_page(page_num - 1)
+        items = detect_pos_items_all(page, clip, dpi=int(dpi))
+        self.clip_pos_cache[key] = items
+        return items
+
+
+def filter_items_by_target_pos(items: Sequence[Dict[str, Any]], target_pos: str) -> List[Dict[str, Any]]:
+    return [item for item in items if token_matches_target_pos(str(item.get("pos") or ""), target_pos)]
 
 
 def process_record(
@@ -429,8 +495,10 @@ def process_record(
     engine: str,
     context: EngineContext,
     args: argparse.Namespace,
-    base_dir: Path,
-    pos_dir: Path,
+    base_output_dir: Path,
+    pos_output_dir: Path,
+    base_lookup_dirs: Sequence[Path],
+    pos_lookup_dirs: Sequence[Path],
 ) -> Dict[str, Any]:
     row_id = str(row.get("ID") or "").strip() or None
     source_page = coerce_int(row.get("Source Page") or row.get("page4"))
@@ -466,55 +534,65 @@ def process_record(
     elif preferred_page is not None:
         tried_pages = [preferred_page, *[p for p in tried_pages if p != preferred_page]]
 
-    selected_page: Optional[int] = None
-    boxes: List[fitz.Rect] = []
+    selected_targets: List[Tuple[int, List[fitz.Rect]]] = []
 
     for page_num in tried_pages:
         boxes = context.get_boxes(page_num)
         if boxes:
-            selected_page = page_num
+            selected_targets = [(page_num, boxes)]
             break
 
-    if selected_page is None:
-        inferred_page = context.find_best_page_for_row(row, source_page)
-        if inferred_page is not None:
-            boxes = context.get_boxes(inferred_page)
-            if boxes:
-                selected_page = inferred_page
-                result["logs"].append(f"[AUTO] pagina esquema inferida por metadatos FG/BOM: {inferred_page}")
+    source_has_boxes = bool(context.get_boxes(source_page))
+    if selected_targets and not source_has_boxes:
+        inferred_pages = context.find_matching_pages_for_row(row, source_page)
+        inferred_targets = [(page_num, context.get_boxes(page_num)) for page_num in inferred_pages if context.get_boxes(page_num)]
+        if inferred_targets and len(inferred_targets) > len(selected_targets):
+            selected_targets = inferred_targets
+            inferred_pages_label = ",".join(str(page_num) for page_num, _ in selected_targets)
+            result["logs"].append(f"[AUTO] paginas esquema inferidas por metadatos FG/BOM: {inferred_pages_label}")
 
-    if selected_page is None:
+    if not selected_targets:
+        inferred_pages = context.find_matching_pages_for_row(row, source_page)
+        selected_targets = [(page_num, context.get_boxes(page_num)) for page_num in inferred_pages if context.get_boxes(page_num)]
+        if selected_targets:
+            inferred_pages_label = ",".join(str(page_num) for page_num, _ in selected_targets)
+            result["logs"].append(f"[AUTO] paginas esquema inferidas por metadatos FG/BOM: {inferred_pages_label}")
+
+    if not selected_targets:
         result["status"] = "skip"
         result["logs"].append("[MISS] no se detectaron esquemas en paginas candidatas")
         return result
 
-    page = context.doc.load_page(selected_page - 1)
-    result["schemes_found"] = len(boxes)
+    result["schemes_found"] = sum(len(page_boxes) for _, page_boxes in selected_targets)
 
     present_base: List[str] = []
-    for box_index, box in enumerate(boxes, start=1):
-        filename = f"{engine}-{selected_page:04d}-{box_index:02d}.{BASE_EXT}"
-        path = base_dir / filename
-        exists = path.exists()
+    for page_num, boxes in selected_targets:
+        page = context.doc.load_page(page_num - 1)
+        for box_index, box in enumerate(boxes, start=1):
+            filename = f"{engine}-{page_num:04d}-{box_index:02d}.{BASE_EXT}"
+            path = base_output_dir / filename
+            existing_name = find_existing_base_filename(engine, page_num, box_index, base_lookup_dirs)
+            exists = existing_name is not None
 
-        if exists and not args.force_regenerate:
-            result["logs"].append(f"[OK] esquema existente: {filename}")
-            present_base.append(filename)
-            continue
+            if exists and not args.force_regenerate:
+                keep_name = str(existing_name)
+                result["logs"].append(f"[OK] esquema existente: {keep_name}")
+                present_base.append(keep_name)
+                continue
 
-        if args.only_sync_json:
-            if exists:
+            if args.only_sync_json:
+                if exists:
+                    present_base.append(filename)
+                continue
+
+            action_gen = (not exists) or args.force_regenerate
+            if action_gen:
+                if bool(args.write):
+                    image = render_base_image(page, box, frame_pad_pt=float(args.frame_pad_pt), dpi=int(args.dpi))
+                    save_image(image, path, img_format=BASE_EXT, quality=95)
+                result["schemes_generated"] += 1
+                result["logs"].append(f"[GEN] esquema generado: {filename}")
                 present_base.append(filename)
-            continue
-
-        action_gen = (not exists) or args.force_regenerate
-        if action_gen:
-            if bool(args.write):
-                image = render_base_image(page, box, frame_pad_pt=float(args.frame_pad_pt), dpi=int(args.dpi))
-                save_image(image, path, img_format=BASE_EXT, quality=95)
-            result["schemes_generated"] += 1
-            result["logs"].append(f"[GEN] esquema generado: {filename}")
-            present_base.append(filename)
 
     expected_esquemas = join_csv(present_base)
     changed_base = set_if_changed(row, "esquemas", expected_esquemas)
@@ -522,48 +600,57 @@ def process_record(
         result["logs"].append("[SYNC] json esquemas actualizado")
 
     present_pos: List[str] = []
-    pos_match_objects: List[Tuple[int, fitz.Rect, List[Dict[str, Any]]]] = []
+    pos_match_objects: List[Tuple[int, int, fitz.Rect, List[Dict[str, Any]]]] = []
 
     if pos_value is None:
         result["logs"].append("[MISS] pos no encontrado: pos_final/POS vacio")
     else:
-        for box_index, box in enumerate(boxes, start=1):
-            clip_outer = expand_box_in_page(fitz.Rect(box), page.rect, float(args.frame_pad_pt))
-            clip_inner = fitz.Rect(clip_outer.x0 + 1.0, clip_outer.y0 + 1.0, clip_outer.x1 - 1.0, clip_outer.y1 - 1.0)
-            if clip_inner.x1 <= clip_inner.x0 or clip_inner.y1 <= clip_inner.y0:
-                clip_inner = fitz.Rect(clip_outer)
+        for page_num, boxes in selected_targets:
+            page = context.doc.load_page(page_num - 1)
+            for box_index, box in enumerate(boxes, start=1):
+                clip_outer = expand_box_in_page(fitz.Rect(box), page.rect, float(args.frame_pad_pt))
+                clip_inner = fitz.Rect(clip_outer.x0 + 1.0, clip_outer.y0 + 1.0, clip_outer.x1 - 1.0, clip_outer.y1 - 1.0)
+                if clip_inner.x1 <= clip_inner.x0 or clip_inner.y1 <= clip_inner.y0:
+                    clip_inner = fitz.Rect(clip_outer)
 
-            items = detect_pos_items(page, clip_inner, pos_value, dpi=int(args.dpi))
-            if not items:
-                # Escala de fallback: algunos POS quedan fuera del marco inicial del esquema.
-                pads = [
-                    float(args.pos_fallback_pad_pt),
-                    max(float(args.pos_fallback_pad_pt), 120.0),
-                    max(float(args.pos_fallback_pad_pt), 260.0),
-                ]
-                tried_rects = set()
-                for pad in pads:
-                    clip_fallback = expand_box_in_page(clip_outer, page.rect, pad)
-                    key = (
-                        round(clip_fallback.x0, 2),
-                        round(clip_fallback.y0, 2),
-                        round(clip_fallback.x1, 2),
-                        round(clip_fallback.y1, 2),
-                    )
-                    if key in tried_rects:
-                        continue
-                    tried_rects.add(key)
-                    items = detect_pos_items(page, clip_fallback, pos_value, dpi=int(args.dpi))
-                    if items:
-                        break
-            if not items:
-                continue
-            pos_match_objects.append((box_index, box, items))
+                all_items = context.get_pos_items_for_clip(page_num, clip_inner, dpi=int(args.dpi))
+                items = filter_items_by_target_pos(all_items, pos_value)
+                if not items:
+                    # Escala de fallback: algunos POS quedan fuera del marco inicial del esquema.
+                    pads = [
+                        float(args.pos_fallback_pad_pt),
+                        max(float(args.pos_fallback_pad_pt), 120.0),
+                        max(float(args.pos_fallback_pad_pt), 260.0),
+                    ]
+                    tried_rects = set()
+                    for pad in pads:
+                        clip_fallback = expand_box_in_page(clip_outer, page.rect, pad)
+                        key = (
+                            round(clip_fallback.x0, 2),
+                            round(clip_fallback.y0, 2),
+                            round(clip_fallback.x1, 2),
+                            round(clip_fallback.y1, 2),
+                        )
+                        if key in tried_rects:
+                            continue
+                        tried_rects.add(key)
+                        all_items = context.get_pos_items_for_clip(page_num, clip_fallback, dpi=int(args.dpi))
+                        items = filter_items_by_target_pos(all_items, pos_value)
+                        if items:
+                            break
+                if not items:
+                    continue
+                pos_match_objects.append((page_num, box_index, box, items))
 
         result["pos_found"] = len(pos_match_objects)
 
         if not pos_match_objects:
-            fallback_existing = collect_existing_pos_from_json(row, engine, pos_value, pos_dir)
+            fallback_existing = collect_existing_pos_from_json_from_dirs(
+                row,
+                engine,
+                pos_value,
+                pos_lookup_dirs,
+            )
             if fallback_existing:
                 present_pos.extend(fallback_existing)
                 for name in fallback_existing:
@@ -571,10 +658,10 @@ def process_record(
             else:
                 result["logs"].append("[MISS] pos no encontrado")
 
-        for box_index, box, items in pos_match_objects:
-            filename = f"{engine}-{selected_page:04d}-{box_index:02d}-{pos_value}.{POS_EXT}"
-            path = pos_dir / filename
-            exists = path.exists()
+        for page_num, box_index, box, items in pos_match_objects:
+            filename = f"{engine}-{page_num:04d}-{box_index:02d}-{pos_value}.{POS_EXT}"
+            path = pos_output_dir / filename
+            exists = asset_exists_in_dirs(filename, pos_lookup_dirs)
 
             if exists and not args.force_regenerate:
                 result["logs"].append(f"[OK] esquema_pos existente: {filename}")
@@ -589,6 +676,7 @@ def process_record(
             action_gen = (not exists) or args.force_regenerate
             if action_gen:
                 if bool(args.write):
+                    page = context.doc.load_page(page_num - 1)
                     image = render_pos_image(
                         page,
                         box,
@@ -711,6 +799,10 @@ def process_engine(engine: str, args: argparse.Namespace) -> Dict[str, Any]:
     base_dir.mkdir(parents=True, exist_ok=True)
     pos_dir.mkdir(parents=True, exist_ok=True)
 
+    base_output_dir, pos_output_dir, base_lookup_dirs, pos_lookup_dirs = resolve_engine_asset_dirs(base_dir, pos_dir, engine)
+    base_output_dir.mkdir(parents=True, exist_ok=True)
+    pos_output_dir.mkdir(parents=True, exist_ok=True)
+
     context = EngineContext(engine=engine, pdf_path=pdf_path)
     changed_any = False
 
@@ -718,7 +810,16 @@ def process_engine(engine: str, args: argparse.Namespace) -> Dict[str, Any]:
     try:
         for idx in indexes:
             row = rows[idx]
-            row_report = process_record(row, engine, context, args, base_dir=base_dir, pos_dir=pos_dir)
+            row_report = process_record(
+                row,
+                engine,
+                context,
+                args,
+                base_output_dir=base_output_dir,
+                pos_output_dir=pos_output_dir,
+                base_lookup_dirs=base_lookup_dirs,
+                pos_lookup_dirs=pos_lookup_dirs,
+            )
             report_rows.append(row_report)
             changed_any = changed_any or bool(row_report.get("json_updated"))
 
