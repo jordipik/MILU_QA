@@ -56,7 +56,7 @@ const QA_ARTICULOS_FIELD_FALLBACKS = {
     subst_pnlist_final: ['sust_superseded_list'],
 
     ruta_foto: ['filename_foto'],
-    ruta_esquemas_pos: ['exp_imagenes'],
+    ruta_esquemas_pos: [],
     esquemas: ['esquemas'],
     esquemas_circulos: ['esquemas_circulos'],
     esquemas_circulos_all: ['esquemas_circulos_all'],

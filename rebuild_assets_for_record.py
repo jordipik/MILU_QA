@@ -302,12 +302,7 @@ def extract_row_meta(row: Dict[str, Any]) -> Dict[str, str]:
 
 
 def infer_preferred_page_from_row(row: Dict[str, Any], engine: str) -> Optional[int]:
-    candidates = [
-        *split_csv(row.get("esquemas")),
-        *split_csv(row.get("esquemas_circulos_all")),
-        *split_csv(row.get("esquemas_circulos")),
-        *split_csv(row.get("ruta_esquemas_pos")),
-    ]
+    candidates = [*split_csv(row.get("esquemas"))]
 
     for token in candidates:
         name = Path(token).name
@@ -318,6 +313,39 @@ def infer_preferred_page_from_row(row: Dict[str, Any], engine: str) -> Optional[
         if parsed_base and parsed_base.group("engine") == engine:
             return int(parsed_base.group("page"))
     return None
+
+
+def resolve_targets_from_esquemas_field(
+    row: Dict[str, Any],
+    engine: str,
+    context: EngineContext,
+) -> List[Tuple[int, List[fitz.Rect]]]:
+    by_page: Dict[int, List[int]] = {}
+    for token in split_csv(row.get("esquemas")):
+        name = Path(token).name
+        match = BASE_NAME_RE.match(name)
+        if not match:
+            continue
+        if match.group("engine") != engine:
+            continue
+        page_num = int(match.group("page"))
+        box_idx = int(match.group("box"))
+        by_page.setdefault(page_num, []).append(box_idx)
+
+    targets: List[Tuple[int, List[fitz.Rect]]] = []
+    for page_num in sorted(by_page.keys()):
+        boxes = context.get_boxes(page_num)
+        if not boxes:
+            continue
+        requested = sorted(set(by_page[page_num]))
+        filtered: List[fitz.Rect] = []
+        for box_idx in requested:
+            if 1 <= box_idx <= len(boxes):
+                filtered.append(boxes[box_idx - 1])
+        if filtered:
+            targets.append((page_num, filtered))
+
+    return targets
 
 
 def render_base_image(page: fitz.Page, box: fitz.Rect, frame_pad_pt: float, dpi: int) -> Image.Image:
@@ -497,8 +525,20 @@ def resolve_selected_targets_for_row(
     context: EngineContext,
     source_page: int,
     page_offset: int,
+    strict_esquemas_only: bool = True,
 ) -> Tuple[List[Tuple[int, List[fitz.Rect]]], List[str]]:
     logs: List[str] = []
+
+    strict_targets = resolve_targets_from_esquemas_field(row, engine, context)
+    if strict_targets:
+        pages_label = ",".join(str(page_num) for page_num, _ in strict_targets)
+        logs.append(f"[STRICT] targets desde campo esquemas: {pages_label}")
+        return strict_targets, logs
+
+    if strict_esquemas_only:
+        logs.append("[MISS] no hay targets validos en campo esquemas (modo estricto)")
+        return [], logs
+
     tried_pages = choose_tried_pages(source_page, int(page_offset))
     preferred_page = infer_preferred_page_from_row(row, engine)
     if preferred_page is not None and preferred_page not in tried_pages:
@@ -630,6 +670,7 @@ def process_record(
             context,
             source_page,
             int(args.page_offset),
+            strict_esquemas_only=bool(args.strict_esquemas_only),
         )
         result["logs"].extend(target_logs)
 
@@ -677,10 +718,11 @@ def process_record(
                 items = filter_items_by_target_pos(all_items, pos_value)
                 if not items:
                     # Escala de fallback: algunos POS quedan fuera del marco inicial del esquema.
+                    # Evitamos expansiones extremas (260pt) porque pueden invadir esquemas vecinos
+                    # y generar falsos positivos cruzados entre boxes de la misma pagina.
                     pads = [
                         float(args.pos_fallback_pad_pt),
                         max(float(args.pos_fallback_pad_pt), 120.0),
-                        max(float(args.pos_fallback_pad_pt), 260.0),
                     ]
                     tried_rects = set()
                     for pad in pads:
@@ -695,8 +737,27 @@ def process_record(
                             continue
                         tried_rects.add(key)
                         all_items = context.get_pos_items_for_clip(page_num, clip_fallback, dpi=int(args.dpi), enable_ocr=enable_ocr)
-                        items = filter_items_by_target_pos(all_items, pos_value)
-                        if items:
+                        candidate_items = filter_items_by_target_pos(all_items, pos_value)
+                        if not candidate_items:
+                            continue
+
+                        # En fallback solo aceptamos matches TEXT que sigan dentro (o muy cerca)
+                        # del box original para evitar contaminar con POS de esquemas vecinos.
+                        safe_clip = expand_box_in_page(clip_outer, page.rect, 18.0)
+                        safe_items: List[Dict[str, Any]] = []
+                        for item in candidate_items:
+                            if str(item.get("source") or "") != "TEXT":
+                                continue
+                            rect = item.get("rect_pdf")
+                            if rect is None:
+                                continue
+                            cx = (float(rect.x0) + float(rect.x1)) / 2.0
+                            cy = (float(rect.y0) + float(rect.y1)) / 2.0
+                            if safe_clip.x0 <= cx <= safe_clip.x1 and safe_clip.y0 <= cy <= safe_clip.y1:
+                                safe_items.append(item)
+
+                        if safe_items:
+                            items = safe_items
                             break
                 if not items:
                     continue
@@ -780,6 +841,12 @@ def parse_args(argv: Optional[Sequence[str]] = None) -> argparse.Namespace:
         action=argparse.BooleanOptionalAction,
         default=True,
         help="Reutiliza deteccion/generacion base por Source Page (default: True)",
+    )
+    parser.add_argument(
+        "--strict-esquemas-only",
+        action=argparse.BooleanOptionalAction,
+        default=True,
+        help="Usa exclusivamente targets de campo esquemas; sin fallback a otros campos (default: True)",
     )
 
     parser.add_argument("--write", action="store_true", help="Persiste cambios (JSON e imagenes)")

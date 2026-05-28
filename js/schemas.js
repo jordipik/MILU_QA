@@ -206,6 +206,21 @@ export function getSchemasForBookPage(bookValue, pageValue) {
 export function getPosSchemasForRow(row) {
     if (!row) return [];
     const book = String(val(row, 'engine_model', '') || '').trim();
+    const bookLower = book.toLowerCase();
+
+    const isLikelyPosSchemaToken = (rawToken) => {
+        const fileName = extractFileNameFromPath(rawToken);
+        if (!fileName) return false;
+        const nameNoExt = stripFileExtension(fileName).toLowerCase();
+
+        if (bookLower && nameNoExt.startsWith(`${bookLower}-`)) {
+            const tail = nameNoExt.slice(bookLower.length + 1);
+            return /^\d{4}-\d{2}-\d+$/.test(tail);
+        }
+
+        return /-\d{4}-\d{2}-\d+$/.test(nameNoExt);
+    };
+
     const itemsByLabel = new Map();
     const mergeItem = (rawToken, preferredPath = '') => {
         const cleanToken = String(rawToken || '').trim();
@@ -223,9 +238,11 @@ export function getPosSchemasForRow(row) {
         candidates.forEach(path => { if (!existing.has(path)) { existing.add(path); item.candidates.push(path); } });
     };
     splitSchemaTokens(row?.ruta_esquemas_pos).forEach(r => mergeItem(r, r));
-    // exp_imagenes suele contener la URL final publicada; se valida tambien
-    // contra la carpeta local esquemas_pos_circulos/<BOOK>-POS/ por basename.
-    splitSchemaTokens(row?.exp_imagenes).forEach(r => mergeItem(r, r));
+    // exp_imagenes puede mezclar fotos y otros assets; solo aceptamos tokens
+    // que cumplan el patron esperado de esquema POS (<BOOK>-####-##-POS).
+    splitSchemaTokens(row?.exp_imagenes).forEach(r => {
+        if (isLikelyPosSchemaToken(r)) mergeItem(r, r);
+    });
     splitSchemaTokens(row?.esquemas_circulos).forEach(t => mergeItem(t));
     return [...itemsByLabel.values()]
         .filter(item => item.candidates.length > 0)

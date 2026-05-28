@@ -35,7 +35,7 @@ const COMPACT_FIELD_FALLBACKS = {
     measure_final: ['measurement_final', 'MEASUREMENT / STANDARD'],
     norma_final: ['norma', 'STANDARD'],
     ruta_foto: ['filename_foto'],
-    ruta_esquemas_pos: ['exp_imagenes']
+    ruta_esquemas_pos: []
 };
 
 const virtualTableState = {
