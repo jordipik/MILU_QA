@@ -2,68 +2,79 @@
 
 ## Estado
 - OFFICIAL: modelo conceptual, responsabilidades de campos, formatos, directorios, idempotencia.
-- OFFICIAL / ACTIVE: orquestador `rebuild_assets_for_record.py`.
-- LEGACY: flujos mezclados que unen esquema base + POS + sync JSON sin separacion por fases.
+- OFFICIAL / ACTIVE: orquestador `rebuild_assets_for_record.py` para sincronizacion/generacion incremental.
+- LEGACY: flujos mezclados que unian descubrimiento de esquema + deteccion POS + sync JSON.
 
 ## Objetivo
-Definir el pipeline oficial de assets visuales de MILU separando:
-- esquemas generales (sin circulo POS)
-- esquemas_pos (con POS marcado)
+Definir el pipeline oficial de imagenes de MILU separando:
+- calculo de `esquemas` por BOM (fuente maestra)
+- derivacion de circulos desde `esquemas + POS`
 
-Este pipeline debe ser incremental, idempotente, reparable, reutilizable y no destructivo.
+## Flujo oficial de imagenes
+```text
+PDF
+ └─ BOM
+      └─ bloque BOM continuo
+            └─ esquemas
+                  └─ POS
+                        └─ esquemas_circulos
+```
 
-## Alcance
-Aplica a:
-- runtime (`engine_*.json`)
-- recompute por pasos
-- rebuild offline (enriquecimiento de assets)
-- QA visual
-- export WordPress
+## Regla oficial para `esquemas`
+- prioridad BOM por fila: `bom_final`, `BOM-No.`, `bom_pdf`.
+- si BOM queda vacio: `esquemas = ""`.
+- si BOM no existe en el mapa del PDF: `esquemas = ""`.
+- los bloques BOM se forman por continuidad de paginas y firma BOM estable.
+- no se parte un bloque por cantidad de esquemas.
+- si un BOM aparece en paginas consecutivas, todas pertenecen al mismo bloque.
 
-## FASE A - ESQUEMAS GENERALES (OFFICIAL)
-Responsabilidad: resolver imagenes base de esquema sin circulo.
+## FASE A - CALCULO DE ESQUEMAS POR BOM (OFFICIAL)
+Responsabilidad: recalcular el campo `esquemas` por regla BOM.
 
 Campo de salida:
 - `esquemas`
 
-Flujo:
-1. Cargar registro (`engine`, `id` o alcance por libro/todos).
-2. Resolver esquemas esperados por pagina/caja.
-3. Comprobar existencia fisica en `esquemas/`.
-4. Sincronizar JSON (`esquemas`) si hay diferencia.
-5. Generar solo archivos faltantes (o forzados).
+Script de referencia:
+- `rebuild_schemes_by_bom.py` (solo recalcula `esquemas`).
 
-Regla:
-- Si el archivo existe y el JSON ya coincide, no hacer nada.
-
-## FASE B - ESQUEMAS_POS (OFFICIAL)
-Responsabilidad: detectar POS dentro de esquemas base y generar imagen con circulo rojo.
+## FASE B - DERIVACION DE CIRCULOS DESDE ESQUEMAS + POS (OFFICIAL)
+Responsabilidad: derivar campos de circulos usando `esquemas` ya resuelto.
 
 Campos de salida:
 - `esquemas_circulos_all`
 - `esquemas_circulos`
 - `ruta_esquemas_pos`
-- `exp_imagenes` (agregacion exportable, sin duplicados)
+- `exp_imagenes` (opcional, segun flag)
 
-Flujo:
-1. Partir de esquemas generales existentes.
-2. Buscar POS visualmente.
-3. Comprobar existencia fisica en `esquemas_pos_circulos/`.
-4. Generar solo archivos faltantes (o forzados).
-5. Sincronizar JSON POS.
-6. Actualizar `exp_imagenes` con la ruta principal POS.
+Script de referencia:
+- `rebuild_schemes_circles_from_esquemas.py`.
 
-Regla:
-- Si el archivo existe y el JSON ya coincide, no hacer nada.
-- Si el archivo existe pero JSON esta vacio/roto, sincronizar JSON sin regenerar.
+Regla clave:
+- `esquemas_circulos*` y `ruta_esquemas_pos` son derivados de `esquemas + POS`.
+- no determinan que esquemas pertenecen al registro.
+
+## ASSETS runtime
+Responsabilidad:
+- consumir resultados previos (`esquemas` y derivados) y sincronizar enlaces/estado.
+- no redefinir la regla de asignacion de `esquemas`.
+
+Endpoint UI principal:
+- `POST /api/recompute-simple/enrich-assets/start`
+
+Estado/cancelacion de job:
+- `GET /api/recompute-simple/enrich-assets/jobs/:jobId`
+- `POST /api/recompute-simple/enrich-assets/jobs/:jobId/cancel`
+
+Compatibilidad:
+- `POST /api/recompute-simple/enrich-assets` queda como via sincronica.
 
 ## Responsabilidad por campo
 | Campo | Responsabilidad |
 | --- | --- |
-| `esquemas` | imagenes generales |
-| `esquemas_circulos_all` | todos los matches POS |
-| `esquemas_circulos` | match principal POS |
-| `ruta_esquemas_pos` | URL principal del match principal |
+| `esquemas` | fuente maestra calculada por BOM |
+| `esquemas_circulos_all` | todos los matches POS derivados |
+| `esquemas_circulos` | match principal POS derivado |
+| `ruta_esquemas_pos` | URL principal derivada del match principal |
 | `exp_imagenes` | agregacion exportable (foto + esquema_pos) |
 
 ## Formatos oficiales de nombre
@@ -77,7 +88,7 @@ Regla:
 - `esquemas_pos_circulos/`
 
 Regla operativa:
-- No editar manualmente estos directorios salvo tarea explicita.
+- no editar manualmente estos directorios salvo tarea explicita.
 
 ## Modo incremental por alcance (OFFICIAL / ACTIVE)
 Script:
@@ -94,72 +105,18 @@ Flags:
 - `--force-regenerate`
 - `--only-sync-json`
 
-Capacidades validadas:
-- inferencia automatica de pagina de esquema por metadatos `FG/FGS` + `BOM-No.`
-- traza de inferencia para debug y QA: `[AUTO] pagina esquema inferida por metadatos FG/BOM: <page>`
-  - equivalente documental: `[AUTO] inferred schema page from FG/BOM metadata`
-- deteccion POS robusta en tokens OCR concatenados
-
-## Logging estandar por registro
-- `[AUTO] pagina esquema inferida por metadatos FG/BOM: <page>`
-- `[OK] esquema existente`
-- `[SYNC] json esquemas actualizado`
-- `[GEN] esquema generado`
-- `[OK] esquema_pos existente`
-- `[GEN] esquema_pos generado`
-- `[SYNC] json POS actualizado`
-- `[MISS] pos no encontrado`
-
-## Regla OCR actualizada para POS concatenados
-Antes:
-- coincidencia exacta del token OCR con el POS objetivo.
-
-Ahora:
-- se admite submatch numerico valido cuando el token OCR contiene el POS completo y la deteccion es consistente en el clip del esquema.
-- ejemplo validado: `170155` contiene `155` y se acepta como match para POS `155`.
-
-## Caso real validado - registro 000245
-Datos:
-- engine: `12V4000M40A`
-- registro: `RB-12V4000M40A-000245`
-
-Resultado:
-- esquema detectado correctamente sin offset manual
-- POS `155` detectado correctamente
-- output generado: `12V4000M40A-0045-01-155.webp`
-
-Persistencia JSON validada en `engine_12V4000M40A.json`:
-- `esquemas_circulos_all`
-- `esquemas_circulos`
-- `ruta_esquemas_pos`
-- `exp_imagenes`
-
-## Validacion operativa
-Dry-run registro:
-- `python rebuild_assets_for_record.py --engine 12V4000M40A --id RB-12V4000M40A-000245 --dry-run`
-- resultado esperado: sin regeneracion innecesaria, idempotencia correcta.
-
-Write registro:
-- `python rebuild_assets_for_record.py --engine 12V4000M40A --id RB-12V4000M40A-000245 --write`
-- resultado esperado: imagen generada cuando falta, JSON persistido correctamente.
+## Logging de referencia
+- `rebuild_schemes_by_bom.py`: estados `MISS_NO_BOM`, `MISS_BOM_NOT_FOUND`, `MISS_NO_PAGE_FOR_GROUP`, `WARN_BOM_GROUP_BY_NEAREST_PAGE`, `OK`.
+- `rebuild_schemes_circles_from_esquemas.py`: estados por derivacion de circulos y misses de POS/esquema.
 
 ## Relacion con export WordPress
-- Export depende de assets correctos y rutas consistentes.
+- export depende de assets correctos y rutas consistentes.
 - `exp_imagenes` depende de la sincronizacion de assets.
-- `ruta_esquemas_pos` habilita export de esquema_pos.
-- Se puede reparar JSON de assets sin regenerar imagenes.
+- `ruta_esquemas_pos` habilita export de esquema POS.
+- se puede reparar JSON de assets sin regenerar imagenes.
 
 ## Riesgos historicos (LEGACY)
-- Logica mezclada de deteccion de esquema base + deteccion POS + sync JSON.
-- Regeneracion innecesaria por no reutilizar imagenes existentes.
-- Inconsistencia entre estado de archivo y estado JSON.
-- Mezcla conceptual entre `esquemas` y `esquemas_pos`.
-
-## Vision objetivo
-Sistema incremental, reparable y desacoplado de logica legacy, preparado para:
-- recompute parcial
-- QA visual
-- rebuild
-- sincronizacion incremental
-- export WordPress
-- regeneracion masiva controlada
+- logica mezclada de descubrimiento de esquema + deteccion POS + sync JSON.
+- regeneracion innecesaria por no reutilizar imagenes existentes.
+- inconsistencia entre estado de archivo y estado JSON.
+- mezcla conceptual entre `esquemas` (fuente maestra) y campos derivados de circulos.

@@ -32,22 +32,14 @@ Consolidar el pipeline oficial de MILU V1 segun codigo real actual (frontend, ba
    - Aplica enriquecimiento GESA y SUST sobre `engine_<MODEL>.json`.
 3. ASSETS
    - UI principal: `recompute_simple.html` (`btnAssets`).
-   - Endpoint oficial: `POST /api/recompute-simple/enrich-assets`.
+   - Endpoint oficial UI: `POST /api/recompute-simple/enrich-assets/start`.
+   - Seguimiento/cancelacion: `GET /api/recompute-simple/enrich-assets/jobs/:jobId` y `POST /api/recompute-simple/enrich-assets/jobs/:jobId/cancel`.
+   - Endpoint sincronico de compatibilidad: `POST /api/recompute-simple/enrich-assets`.
    - Ejecuta `scripts/enrich_rebuild_with_assets.js` en modo `engine` para actualizar:
      - `filename_foto`, `ruta_foto`, `esquemas`, `esquemas_circulos`, `esquemas_circulos_all`, `ruta_esquemas_pos`, `exp_imagenes`.
     - Modelo operativo DOC_V2 (OFFICIAL): pipeline de assets separado en dos fases.
-       - FASE A - ESQUEMAS GENERALES (sin circulo POS):
-          1. resolver esquemas esperados por registro
-          2. comprobar existencia fisica en `esquemas/`
-          3. sincronizar campo `esquemas`
-          4. generar solo faltantes
-       - FASE B - ESQUEMAS_POS (con POS marcado):
-          1. partir de los esquemas generales ya resueltos
-          2. buscar POS visualmente
-          3. comprobar existencia fisica en `esquemas_pos_circulos/`
-          4. generar solo faltantes
-          5. sincronizar `esquemas_circulos_all`, `esquemas_circulos`, `ruta_esquemas_pos`
-          6. actualizar `exp_imagenes` sin duplicados
+       - FASE A - ESQUEMAS: calculo por BOM y bloque BOM continuo.
+       - FASE B - CIRCULOS: derivacion de `esquemas_circulos*` y `ruta_esquemas_pos` desde `esquemas + POS`.
     - Regla de idempotencia (OFFICIAL):
        - Si archivo existe y JSON ya coincide, no hacer nada.
        - Distinguir siempre estado de archivo fisico vs estado de campos JSON.
@@ -56,10 +48,9 @@ Consolidar el pipeline oficial de MILU V1 segun codigo real actual (frontend, ba
        - esquema_pos: `BOOK-PAGE-XX-POS.webp` (ej: `12V4000M40A-0012-01-80.webp`)
     - Script incremental recomendado para este modelo: `rebuild_assets_for_record.py` (OFFICIAL / ACTIVE).
     - Capacidades validadas en codigo real:
-       - inferencia automatica de pagina de esquema por metadatos `FG/FGS` y `BOM-No.` (sin offset manual)
-       - traza explicita de inferencia: `[AUTO] pagina esquema inferida por metadatos FG/BOM: <page>`
-       - deteccion OCR robusta para POS concatenados (ejemplo: `170155` contiene `155`)
-       - sincronizacion incremental JSON sin regeneracion innecesaria
+       - `esquemas` como fuente maestra y campos de circulos como derivados.
+       - sincronizacion incremental JSON sin regeneracion innecesaria.
+       - ASSETS consume resultados previos y no redefine la pertenencia de `esquemas`.
 4. CALCULO FINAL
    - UI principal: `recompute_simple.html` (`btnFinal`) y modal de `analista_02.html` (`recomputeCalculateFinalBtn`).
    - Endpoint oficial: `POST /copy-pdf-to-final-all-books`.
@@ -72,11 +63,21 @@ Consolidar el pipeline oficial de MILU V1 segun codigo real actual (frontend, ba
    - UI principal: `recompute_simple.html` (`btnStatuses`) y modal de `analista_02.html` (`recomputeRevisionStatusBtn`).
    - Endpoint recomendado: `POST /api/recompute-simple/update-states` (script `scripts/update_revision_states.js`).
    - Endpoint coexistente: `POST /recalculate-revision-status`.
-7. REVISION REMOTA Y APLICACION
+
+Orden oficial de recompute (runtime):
+1. IMPORTAR PDF
+2. GESA / SUST
+3. ASSETS
+4. CALCULO FINAL
+5. ERRORES
+6. ESTADOS
+
+Etapas posteriores al recompute:
+- REVISION REMOTA Y APLICACION:
    - `GET/POST /qa_revision_sync.php` (persistencia en `qa_revision_server_data.json`).
    - `POST /apply-revision-to-engines`.
-8. EXPORT
-   - Endpoint oficial: `POST /export/run-wordpress`.
+- EXPORT:
+   - endpoint oficial: `POST /export/run-wordpress`.
 
 ## Pipeline oficial de rebuild (offline, separado del runtime)
 Este pipeline trabaja sobre `data/02-engine_rebuild/engine_rebuild_<MODEL>.json` y no modifica `engine_<MODEL>.json`.
@@ -122,7 +123,7 @@ Comandos del orquestador incremental de assets (OFFICIAL / ACTIVE):
 - Caso validado: `engine=12V4000M40A`, registro `RB-12V4000M40A-000245`.
 - Resultado validado:
    - esquema localizado correctamente sin offset manual
-   - POS `155` detectado en escenario OCR concatenado
+   - POS `155` detectado correctamente
    - salida generada: `12V4000M40A-0045-01-155.webp`
    - persistencia JSON correcta en `engine_12V4000M40A.json`
 
@@ -148,7 +149,10 @@ Garantias de separacion:
   - `POST /api/pdf-preview/apply-to-engine`
    - `POST /api/recompute-simple/update-gesa`
    - `POST /api/recompute-simple/update-sust`
-   - `POST /api/recompute-simple/enrich-assets`
+   - `POST /api/recompute-simple/enrich-assets/start`
+   - `GET /api/recompute-simple/enrich-assets/jobs/:jobId`
+   - `POST /api/recompute-simple/enrich-assets/jobs/:jobId/cancel`
+   - `POST /api/recompute-simple/enrich-assets` (compatibilidad sincronica)
   - `POST /copy-pdf-to-final-all-books`
   - `POST /recompute-qa-errors`
   - `POST /api/recompute-simple/update-states`
@@ -202,11 +206,26 @@ Validacion registrada:
 - El proceso offline oficial para consistencia global de los 9 engines sigue siendo `depuracion_json.py`.
 - En diagnostico de persistencia: validar `GET /health` y endpoints HTTP antes de asumir fallo de UI.
 
+## Regla oficial de esquemas y circulos
+```text
+PDF
+ └─ BOM
+   └─ bloque BOM continuo
+      └─ esquemas
+         └─ POS
+            └─ esquemas_circulos
+```
+
+- prioridad BOM por fila: `bom_final`, `BOM-No.`, `bom_pdf`.
+- si BOM esta vacio o no existe en mapa PDF: `esquemas = ""`.
+- si un BOM aparece en paginas consecutivas, se mantiene en un unico bloque continuo.
+- `esquemas_circulos`, `esquemas_circulos_all`, `ruta_esquemas_pos` se derivan de `esquemas + POS`.
+
 ## Riesgos historicos (legacy assets)
 - Mezcla de deteccion de esquemas base, POS y sincronizacion JSON en un mismo flujo.
 - Regeneracion innecesaria sin comprobar reutilizacion de archivos existentes.
 - Casos de imagen correcta con JSON vacio/desincronizado.
-- Mezcla conceptual entre `esquemas` (base) y `esquemas_pos` (con marca POS).
+- Mezcla conceptual entre `esquemas` (base) y campos derivados de circulos.
 
 ## Vision objetivo
 Sistema incremental, reparable y desacoplado de logica legacy, preparado para recompute parcial, QA visual, rebuild, sincronizacion incremental y export WordPress.

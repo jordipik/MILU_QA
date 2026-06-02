@@ -203,10 +203,47 @@ export function getSchemasForBookPage(bookValue, pageValue) {
     return [...schemaSet].sort((a, b) => a.localeCompare(b, undefined, { numeric: true }));
 }
 
+function normalizeNumericToken(value) {
+    const digits = String(value || '').replace(/[^0-9]/g, '');
+    if (!digits) return '';
+    return String(Number(digits));
+}
+
+function normalizePosToken(value) {
+    const raw = String(value || '').trim();
+    if (!raw) return '';
+    if (/^\d+$/.test(raw)) return String(Number(raw));
+    return raw.toUpperCase();
+}
+
+function parsePosSchemaTokenIdentity(rawToken) {
+    const fileName = extractFileNameFromPath(rawToken);
+    if (!fileName) return null;
+    const nameNoExt = stripFileExtension(fileName);
+    const match = nameNoExt.match(/^(.+)-(\d{4})-(\d{2})-([A-Za-z0-9]+)$/);
+    if (!match) return null;
+    return {
+        book: String(match[1] || '').toLowerCase(),
+        page: normalizeNumericToken(match[2]),
+        pos: normalizePosToken(match[4])
+    };
+}
+
 export function getPosSchemasForRow(row) {
     if (!row) return [];
     const book = String(val(row, 'engine_model', '') || '').trim();
+    const bookLower = book.toLowerCase();
+    const rowPage = normalizeNumericToken(val(row, 'Source Page', ''));
+    const rowPos = normalizePosToken(val(row, 'POS', ''));
     const itemsByLabel = new Map();
+    const matchesSelectedRow = (rawToken) => {
+        const parsed = parsePosSchemaTokenIdentity(rawToken);
+        if (!parsed) return true;
+        if (bookLower && parsed.book && parsed.book !== bookLower) return false;
+        if (rowPage && parsed.page && parsed.page !== rowPage) return false;
+        if (rowPos && parsed.pos && parsed.pos !== rowPos) return false;
+        return true;
+    };
     const mergeItem = (rawToken, preferredPath = '') => {
         const cleanToken = String(rawToken || '').trim();
         if (!cleanToken) return;
@@ -222,11 +259,17 @@ export function getPosSchemasForRow(row) {
         const existing = new Set(item.candidates);
         candidates.forEach(path => { if (!existing.has(path)) { existing.add(path); item.candidates.push(path); } });
     };
-    splitSchemaTokens(row?.ruta_esquemas_pos).forEach(r => mergeItem(r, r));
+    splitSchemaTokens(row?.ruta_esquemas_pos).forEach(r => {
+        if (matchesSelectedRow(r)) mergeItem(r, r);
+    });
     // exp_imagenes suele contener la URL final publicada; se valida tambien
     // contra la carpeta local esquemas_pos_circulos/<BOOK>-POS/ por basename.
-    splitSchemaTokens(row?.exp_imagenes).forEach(r => mergeItem(r, r));
-    splitSchemaTokens(row?.esquemas_circulos).forEach(t => mergeItem(t));
+    splitSchemaTokens(row?.exp_imagenes).forEach(r => {
+        if (matchesSelectedRow(r)) mergeItem(r, r);
+    });
+    splitSchemaTokens(row?.esquemas_circulos).forEach(t => {
+        if (matchesSelectedRow(t)) mergeItem(t);
+    });
     return [...itemsByLabel.values()]
         .filter(item => item.candidates.length > 0)
         .sort((a, b) => a.label.localeCompare(b.label, undefined, { numeric: true }));

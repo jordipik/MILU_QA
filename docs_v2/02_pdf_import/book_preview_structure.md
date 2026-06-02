@@ -21,6 +21,12 @@ Definir la estructura real de `book_preview_<MODEL>.json` consumida por los scri
 ## Outputs
 - JSON con metadata de ejecucion y array de paginas/filas.
 
+## Limites de responsabilidad
+- `book_preview_<MODEL>.json` describe extraccion PDF (`*_pdf`).
+- No define `esquemas`.
+- No define `esquemas_circulos*` ni `ruta_esquemas_pos`.
+- Esos campos se calculan/desarrollan en etapas posteriores del pipeline de imagenes.
+
 ## Scripts implicados
 - `js/import-pdf.js`.
 - `js/pdf-viewer.js` como referencia visual que debe mantener paridad de reglas.

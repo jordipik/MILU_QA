@@ -46,7 +46,10 @@ Nota: ASSETS es fase oficial del pipeline (no paso accesorio).
 - `POST /api/pdf-preview/apply-to-engine`
 - `POST /api/recompute-simple/update-gesa`
 - `POST /api/recompute-simple/update-sust`
-- `POST /api/recompute-simple/enrich-assets`
+- `POST /api/recompute-simple/enrich-assets/start`
+- `GET /api/recompute-simple/enrich-assets/jobs/:jobId`
+- `POST /api/recompute-simple/enrich-assets/jobs/:jobId/cancel`
+- `POST /api/recompute-simple/enrich-assets` (compatibilidad sincronica)
 - `POST /copy-pdf-to-final-all-books`
 - `POST /recompute-qa-errors`
 - `POST /api/recompute-simple/update-states`
@@ -101,17 +104,17 @@ Reglas operativas de este paso:
 3. IMPORTAR PDF llama `POST /api/pdf-preview/apply-to-engine`.
 4. Backend ejecuta `apply_book_preview_to_engine.py` o `apply_all_book_previews.py` con `--write --overwrite`.
 5. GESA SUST runtime llama `POST /api/recompute-simple/update-gesa` y `POST /api/recompute-simple/update-sust`.
-6. ASSETS runtime llama `POST /api/recompute-simple/enrich-assets` (modo `engine`).
+6. ASSETS runtime llama `POST /api/recompute-simple/enrich-assets/start` y opera con jobs (status/cancel).
    - Modelo DOC_V2 para assets:
-     - FASE A (esquemas generales): resolver candidatos, comprobar `esquemas/`, sincronizar `esquemas`, generar faltantes.
-     - FASE B (esquemas_pos): buscar POS sobre esquemas base, comprobar `esquemas_pos_circulos/`, generar faltantes, sincronizar `esquemas_circulos_all`, `esquemas_circulos`, `ruta_esquemas_pos`, actualizar `exp_imagenes`.
+     - FASE A (esquemas): calculo por BOM y bloque BOM continuo.
+     - FASE B (circulos): derivacion por `esquemas + POS`.
    - Regla de idempotencia:
      - Si archivo existe y JSON coincide, no se regenera ni se reescribe.
      - Se evalua por separado existencia fisica de archivo y estado de campo JSON.
-   - Validacion reciente (OFFICIAL):
-     - inferencia automatica de pagina de esquema por metadatos `FG/FGS` + `BOM-No.`
-     - logging de trazabilidad: `[AUTO] pagina esquema inferida por metadatos FG/BOM: <page>`
-     - deteccion OCR robusta para POS concatenados (ejemplo: `170155` permite match de `155`)
+   - Regla funcional:
+     - `esquemas` es la fuente maestra.
+     - `esquemas_circulos*` y `ruta_esquemas_pos` son campos derivados.
+     - ASSETS consume resultados previos y no redefine la pertenencia de `esquemas`.
 7. CALCULO FINAL llama `POST /copy-pdf-to-final-all-books`.
 8. Backend aplica `FINAL_FIELDS_V1_MAPPINGS_BACKEND` y persiste `*_final`.
 9. ERRORES llama `POST /recompute-qa-errors` y recalcula `*_error`.
@@ -129,10 +132,26 @@ Reglas operativas de este paso:
 
 ## Alcance y filtros
 - IMPORTAR PDF y CALCULO FINAL ignoran `ID puntual` (trabajan por libro/todos).
-- GESA SUST y ASSETS ignoran `ID puntual` (trabajan por libro/todos).
+- GESA SUST ignoran `ID puntual` (trabajan por libro/todos).
+- ASSETS soporta `ID puntual` cuando `engine != ALL`.
 - ERRORES admite `scope` con libro e ID.
 - ESTADOS en `recompute_simple` usa endpoint por engine/ID; en modal analista permanece el endpoint global coexistente.
 - Actualizacion GESA desde `EXCEL_GESA2026.json` es OFFLINE (sin endpoint runtime), con match exacto `PART NUMBER == pn_final`, `--only` por motor y backup por engine en modo `--write`.
+
+## Regla oficial de esquemas y circulos
+```text
+PDF
+ └─ BOM
+  └─ bloque BOM continuo
+    └─ esquemas
+      └─ POS
+        └─ esquemas_circulos
+```
+
+- prioridad BOM por fila: `bom_final`, `BOM-No.`, `bom_pdf`.
+- si BOM esta vacio o no existe en mapa PDF: `esquemas = ""`.
+- bloques BOM por continuidad de paginas y firma estable; no por cantidad de esquemas.
+- `esquemas_circulos`, `esquemas_circulos_all`, `ruta_esquemas_pos` derivan de `esquemas + POS`.
 
 ## Estado operativo actual
 - Flujo principal estable sobre `recompute_simple.html`.
@@ -167,6 +186,7 @@ Validacion documentada para pagina `669`:
 - `POST /recompute-pdf-auto` permanece referenciado en zonas legacy del frontend, pero backend lo mantiene desactivado (410).
 - Si overlay y extraccion dejan de compartir reglas equivalentes de split, la revision humana puede validar una tabla distinta de la que realmente llegara al engine.
 - Historico de assets legacy: mezcla de esquema base y esquema_pos en un unico flujo, provocando regeneracion innecesaria y desincronizacion JSON.
+- Historico de assets legacy: mezcla de esquema base y campos derivados de circulos en un unico flujo, provocando regeneracion innecesaria y desincronizacion JSON.
 
 ## Validacion operativa reciente (caso real)
 - engine: `12V4000M40A`
@@ -189,9 +209,9 @@ Comandos validados:
 | Campo | Responsabilidad |
 | --- | --- |
 | `esquemas` | imagenes generales sin circulo POS |
-| `esquemas_circulos_all` | todos los matches de esquema_pos |
-| `esquemas_circulos` | match principal de esquema_pos |
-| `ruta_esquemas_pos` | URL principal de esquema_pos |
+| `esquemas_circulos_all` | todos los matches de circulo derivados |
+| `esquemas_circulos` | match principal de circulo derivado |
+| `ruta_esquemas_pos` | URL principal derivada |
 | `exp_imagenes` | agregacion exportable de imagenes |
 
 ## Nombres y directorios oficiales de assets
@@ -205,7 +225,7 @@ Comandos validados:
 ## Relacion con export WordPress
 - Export depende de assets y rutas consistentes en JSON.
 - `exp_imagenes` depende de la sincronizacion de assets.
-- `esquemas_pos` es exportable cuando `ruta_esquemas_pos` queda resuelta.
+- la imagen de circulo es exportable cuando `ruta_esquemas_pos` queda resuelta.
 - Es posible reparar JSON de assets sin regenerar imagenes (modo solo-sync).
 
 ## TODO pendiente

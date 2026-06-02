@@ -3,6 +3,10 @@
 ## Objetivo
 Documentar el enlace de esquemas por posicion (circulos) y su validacion.
 
+Regla base:
+- `esquemas_circulos`, `esquemas_circulos_all` y `ruta_esquemas_pos` derivan de `esquemas + POS`.
+- No determinan que esquema base pertenece al registro.
+
 ## Inputs
 - `ruta_esquemas_pos`, `esquemas_circulos`, `exp_imagenes`, `engine_model`.
 
@@ -27,6 +31,9 @@ Documentar el enlace de esquemas por posicion (circulos) y su validacion.
 1. UI extrae tokens de ruta y nombres de esquema POS.
 2. Genera candidatos de ruta con prefijo de libro y extensiones.
 3. Cruza con indice local para marcar cobertura (`ok`, `missing`, `empty`).
+
+Dependencia funcional:
+- Si `esquemas` cambia por recalculo BOM, los campos de circulos deben regenerarse/sincronizarse sobre ese nuevo `esquemas`.
 
 ## Riesgos / problemas conocidos
 - `exp_imagenes` puede mezclar rutas publicadas y rutas locales, complicando validacion.

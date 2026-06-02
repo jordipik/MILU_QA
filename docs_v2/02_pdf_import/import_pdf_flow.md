@@ -29,6 +29,11 @@ Documentar el flujo de extraccion de tablas PDF y su aplicacion sobre `engine_*.
 - `book_preview_<MODEL>.json` descargado por navegador.
 - Actualizacion de `_pdf` en `engine_*.json` al aplicar preview.
 
+## Limites de este flujo
+- IMPORTAR PDF no determina `esquemas` ni `esquemas_circulos`.
+- El calculo de `esquemas` pertenece al flujo BOM (`rebuild_schemes_by_bom.py`).
+- `esquemas_circulos*` y `ruta_esquemas_pos` son derivados posteriores desde `esquemas + POS`.
+
 ## Scripts implicados
 - Frontend oficial de extraccion: `js/import-pdf.js` (`extractWholeBook`, `extractAllBooks`).
 - Frontend de overlay/diagnostico visual: `js/pdf-viewer.js`.

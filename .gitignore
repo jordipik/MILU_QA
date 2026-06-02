@@ -29,3 +29,10 @@ data/snapshots/*/
 # Recursos de imagen generados/locales.
 *.png
 *.webp
+
+# Logs y temporales locales grandes
+*.log
+
+# Cache de Python
+__pycache__/
+*.pyc

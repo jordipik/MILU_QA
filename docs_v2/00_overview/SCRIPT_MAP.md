@@ -14,9 +14,13 @@ Inventario de scripts y endpoints, con estado oficial/legacy validado en el codi
 | `apply_all_book_previews.py` | Python | `POST /api/pdf-preview/apply-to-engine` (todos) | Ejecuta apply en lote | OFFICIAL |
 | `POST /api/pdf-preview/apply-to-engine` | Backend | UI recompute (`btnImportPdf`, `recomputeCopyBookBtn`) | Ejecuta scripts apply con `--write --overwrite` | OFFICIAL |
 | `POST /copy-pdf-to-final-all-books` | Backend | UI recompute (`btnFinal`, `recomputeCalculateFinalBtn`) | Calcula `*_final` con `FINAL_FIELDS_V1_MAPPINGS_BACKEND` | OFFICIAL |
-| `scripts/enrich_rebuild_with_assets.js` (`--mode engine`) | Node runtime | `POST /api/recompute-simple/enrich-assets` | Enriquecimiento multimedia sobre `engine_<MODEL>.json` (fotos/esquemas/esquemas_pos) | OFFICIAL |
-| `rebuild_assets_for_record.py` | Python incremental | CLI por `--id`, `--all-book`, `--all` | Rebuild incremental de `esquemas` y `esquemas_pos`, inferencia automatica de pagina por FG/BOM y sincronizacion JSON idempotente | OFFICIAL / ACTIVE |
-| `POST /api/recompute-simple/enrich-assets` | Backend | UI recompute (`btnAssets`) | Ejecuta assets en modo engine con backup en write | OFFICIAL |
+| `scripts/enrich_rebuild_with_assets.js` (`--mode engine`) | Node runtime | `POST /api/recompute-simple/enrich-assets` | Enriquecimiento multimedia sobre `engine_<MODEL>.json` (compatibilidad sincronica) | OFFICIAL (COMPAT) |
+| `rebuild_schemes_by_bom.py` | Python | CLI por `--id`, `--all-book`, `--all` | Recalcula solo `esquemas` por BOM (`bom_final`, `BOM-No.`, `bom_pdf`) y bloque BOM continuo | OFFICIAL |
+| `rebuild_schemes_circles_from_esquemas.py` | Python | CLI por `--id`, `--all-book`, `--all` | Deriva `esquemas_circulos*` y `ruta_esquemas_pos` desde `esquemas + POS` | OFFICIAL |
+| `rebuild_assets_for_record.py` | Python incremental | CLI por `--id`, `--all-book`, `--all` | Sincroniza/genera assets usando resultados previos de esquemas y circulos | OFFICIAL / ACTIVE |
+| `POST /api/recompute-simple/enrich-assets/start` | Backend | UI recompute (`btnAssets`) | Inicia job ASSETS asincrono con progreso y cancelacion | OFFICIAL |
+| `GET /api/recompute-simple/enrich-assets/jobs/:jobId` | Backend | Polling UI (`btnAssets`) | Consulta estado/progreso de job ASSETS | OFFICIAL |
+| `POST /api/recompute-simple/enrich-assets/jobs/:jobId/cancel` | Backend | UI (`btnAssets`) | Cancela job ASSETS en curso | OFFICIAL |
 | `scripts/update_gesa_fields_from_excel.js` | Node offline | Ejecucion manual (`node scripts/update_gesa_fields_from_excel.js [--only <MODEL>] [--write]`) | Actualiza solo campos GESA por match exacto `PART NUMBER == pn_final`, con backup por engine | OFFICIAL OFFLINE |
 | `POST /calculate-final-fields` + `copy_gesa_fields_to_final.py` | Backend + Python | Llamada legacy | Ruta heredada de final fields | LEGACY |
 | `recompute_engine_errors.js` | Node | `POST /recompute-qa-errors` | Recalcula `*_error`, `total_error`, `has_error` y opcion QA | OFFICIAL |
@@ -67,7 +71,7 @@ Validacion sintetica de pagina `669`:
 - `recompute_simple.html`
 	- `btnImportPdf` -> `POST /api/pdf-preview/apply-to-engine`
 	- `btnSust` -> `POST /api/recompute-simple/update-gesa` + `POST /api/recompute-simple/update-sust`
-	- `btnAssets` -> `POST /api/recompute-simple/enrich-assets`
+	- `btnAssets` -> `POST /api/recompute-simple/enrich-assets/start` (polling en `/jobs/:jobId`)
 	- `btnFinal` -> `POST /copy-pdf-to-final-all-books`
 	- `btnErrors` -> `POST /recompute-qa-errors`
 	- `btnStatuses` -> `POST /api/recompute-simple/update-states`
@@ -86,18 +90,18 @@ Validacion sintetica de pagina `669`:
 ## Assets pipeline (OFFICIAL MODEL)
 - Separacion conceptual:
 	- `esquemas`: imagen base sin circulo POS.
-	- `esquemas_pos`: imagen con POS marcado (`esquemas_circulos_all`, `esquemas_circulos`, `ruta_esquemas_pos`).
+	- campos derivados de circulos: `esquemas_circulos_all`, `esquemas_circulos`, `ruta_esquemas_pos`.
 - Regla de idempotencia:
 	- Si archivo existe y JSON coincide, no hacer nada.
 	- Archivo existente y JSON vacio/desincronizado: sincronizar JSON sin regenerar.
 - Logging operativo esperado por registro:
-	- `[AUTO] pagina esquema inferida por metadatos FG/BOM: <page>`
+	- `esquemas` es la fuente maestra; los circulos se derivan desde `esquemas + POS`.
 	- `[OK] esquema existente`
 	- `[SYNC] json esquemas actualizado`
 	- `[GEN] esquema generado`
-	- `[OK] esquema_pos existente`
-	- `[GEN] esquema_pos generado`
-	- `[SYNC] json POS actualizado`
+	- `[OK] circulo existente`
+	- `[GEN] circulo generado`
+	- `[SYNC] json de circulos actualizado`
 	- `[MISS] pos no encontrado`
 - Flags clave del orquestador incremental:
 	- `--dry-run`
@@ -105,6 +109,16 @@ Validacion sintetica de pagina `669`:
 	- `--force-regenerate`
 	- `--only-sync-json`
 
-Regla OCR validada:
-- el motor de deteccion POS admite submatch numerico robusto en tokens OCR concatenados.
-- ejemplo validado: token OCR `170155` contiene POS objetivo `155`.
+## Regla oficial de imagenes
+```text
+PDF
+ └─ BOM
+	└─ bloque BOM continuo
+		└─ esquemas
+			└─ POS
+				└─ esquemas_circulos
+```
+
+- BOM por prioridad: `bom_final`, `BOM-No.`, `bom_pdf`.
+- sin BOM o BOM no encontrado: `esquemas` vacio.
+- bloques BOM por continuidad de paginas; no por cantidad de esquemas.
