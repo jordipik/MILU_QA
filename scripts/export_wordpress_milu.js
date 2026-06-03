@@ -2,10 +2,12 @@ const fs = require('fs');
 const path = require('path');
 const { ENGINE_JSON_FILES } = require('../engine_files');
 const { getExportField, getExportType, isExportable } = require('../js/export-field-helper');
+const { runUpdateFgFgs } = require('./update_fg_fgs_fields');
 
 const REPO_ROOT = path.resolve(__dirname, '..');
 const OUTPUT_DIR = path.join(REPO_ROOT, 'data', '05-wordpress');
 const AUDIT_OUTPUT_DIR = path.join(REPO_ROOT, 'data', 'output', 'wordpress');
+const FG_FGS_CATALOG_PATH = path.join(REPO_ROOT, 'EXCEL_FG-FGS.json');
 
 function ensureDir(dirPath) {
     fs.mkdirSync(dirPath, { recursive: true });
@@ -17,6 +19,21 @@ function readJson(filePath, fallback = null) {
     } catch (_) {
         return fallback;
     }
+}
+
+function buildFgFgsCatalogIndex() {
+    const rows = readJson(FG_FGS_CATALOG_PATH, []);
+    if (!Array.isArray(rows)) return new Map();
+
+    const index = new Map();
+    for (const row of rows) {
+        const code = normalizeFgCode(row?.code);
+        const model = t(row?.model).toUpperCase();
+        const description = collapseSpaces(row?.description);
+        if (!code || !model || !description) continue;
+        index.set(`${model}::${code}`, description);
+    }
+    return index;
 }
 
 function writeJson(filePath, data) {
@@ -93,6 +110,129 @@ function pickMostFrequent(values) {
         }
     }
     return bestKey ? bestValue : '';
+}
+
+function splitCsvValues(value) {
+    return String(value == null ? '' : value)
+        .split(',')
+        .map((item) => collapseSpaces(item))
+        .filter(Boolean);
+}
+
+function joinUnique(values) {
+    return uniq(values.filter(Boolean)).join(', ');
+}
+
+function normalizeFgCode(rawValue) {
+    const text = t(rawValue);
+    if (!text) return '';
+    const firstChunk = text.split('-')[0].trim();
+    const digits = firstChunk.replace(/\D/g, '');
+    if (!digits) return firstChunk;
+    const asNumber = Number.parseInt(digits, 10);
+    return Number.isFinite(asNumber) ? String(asNumber) : digits;
+}
+
+function normalizeModelTypeShort(rawValue) {
+    const text = t(rawValue);
+    if (!text) return '';
+
+    const noPrefix = text.replace(/^engine_/i, '').replace(/\.json$/i, '');
+    if (/^\d+V4000M/i.test(noPrefix)) {
+        return noPrefix.replace('V4000M', 'VM');
+    }
+
+    if (/^\d+VM/i.test(noPrefix)) {
+        return noPrefix;
+    }
+
+    return '';
+}
+
+function normalizeEngineForSynthetic(rawValue) {
+    const text = t(rawValue);
+    if (!text) return '';
+
+    const noPrefix = text.replace(/^engine_/i, '').replace(/\.json$/i, '');
+    if (/^\d+V4000M/i.test(noPrefix)) {
+        return noPrefix;
+    }
+
+    const shortMatch = noPrefix.match(/^(\d+)V(M.+)$/i);
+    if (shortMatch) {
+        return `${shortMatch[1]}V4000${shortMatch[2].toUpperCase()}`;
+    }
+
+    return noPrefix;
+}
+
+function normalizeEngineModelForLookup(rawValue) {
+    return normalizeEngineForSynthetic(rawValue).toUpperCase();
+}
+
+function extractPrimaryFgCode(row) {
+    return normalizeFgCode(pickMostFrequent([
+        row?.fg_code,
+        row?.fg_fgs_final,
+        row?.['FG/FGS']
+    ]));
+}
+
+function deriveModelTypeToken(row) {
+    return normalizeModelTypeShort(pickMostFrequent([
+        row?.engine_model,
+        row?.engine,
+        row?.__engine_file,
+        row?.model,
+        row?.model_type_final
+    ]));
+}
+
+function deriveFgDescription() {
+    return '';
+}
+
+const FG_FGS_INDEX = buildFgFgsCatalogIndex();
+
+function lookupFgDescriptionByCodeAndModel(code, engineModel) {
+    const normalizedCode = normalizeFgCode(code);
+    const normalizedModel = normalizeEngineModelForLookup(engineModel);
+    if (!normalizedCode || !normalizedModel) return '';
+    return t(FG_FGS_INDEX.get(`${normalizedModel}::${normalizedCode}`));
+}
+
+function deriveExpCategorias(rows) {
+    const values = [];
+    for (const row of rows) {
+        const modelType = deriveModelTypeToken(row);
+        const fgCode = extractPrimaryFgCode(row);
+        if (!modelType || !fgCode) continue;
+        values.push(`${modelType}-${fgCode}`);
+    }
+    return joinUnique(values);
+}
+
+function deriveExpImagenes(rows, syntheticOnly = false) {
+    const images = [];
+    for (const row of rows) {
+        const fileName = t(row?.filename_foto);
+        const esquemaPath = t(row?.ruta_esquemas_pos);
+        if (fileName) images.push(fileName);
+        if (esquemaPath) images.push(esquemaPath);
+    }
+    const merged = joinUnique(images);
+    if (merged) return merged;
+    if (syntheticOnly) {
+        return 'https://milu-naval.mystagingwebsite.com/wp-content/uploads/2026/01/sin_imagen.jpeg';
+    }
+    return '';
+}
+
+function mergeCsvField(a, b) {
+    return joinUnique([
+        ...splitCsvValues(a),
+        ...splitCsvValues(b)
+    ]);
 }
 
 function getPn(row) {
@@ -330,12 +470,29 @@ function buildMergedRow(rows, options = {}) {
     const weight = t(options.weight || pickMostFrequent(sourceRows.map((row) => getWeight(row))));
     const newPn = t(options.newPn || pickMostFrequent(sourceRows.map((row) => getNewPartNumber(row))));
     const supersededList = t(options.supersededList || pickMostFrequent(sourceRows.map((row) => getSupersededListValue(row))));
+    const engineBase = t(options.engine || pickMostFrequent(sourceRows.map((row) => getEngineName(row))));
+    const engine = options.syntheticSource ? normalizeEngineForSynthetic(engineBase) : engineBase;
+    const modelType = t(options.modelType || joinUnique(sourceRows.map((row) => deriveModelTypeToken(row))));
+    const fgCodeRaw = t(options.fgCode || pickMostFrequent(sourceRows.map((row) => extractPrimaryFgCode(row))));
+    const fgCode = normalizeFgCode(fgCodeRaw);
+    const resolvedFgDescription = t(options.fgDescription || lookupFgDescriptionByCodeAndModel(fgCode, engine));
+    const fgDescription = resolvedFgDescription || deriveFgDescription();
+    const fgCodeDescription = t(options.fgCodeDescription || [fgCode, fgDescription].filter(Boolean).join(' '));
+    const expCategorias = t(options.expCategorias || deriveExpCategorias(sourceRows));
+    const expImagenes = t(options.expImagenes || deriveExpImagenes(sourceRows, Boolean(options.syntheticSource)));
 
     return {
         sku,
         pn: sku,
         pn_final: sku,
         'PART NO.': sku,
+        engine,
+        model_type: modelType,
+        fg_code: fgCode,
+        fg_description: fgDescription,
+        fg_code_description: fgCodeDescription,
+        exp_categorias: expCategorias,
+        exp_imagenes: expImagenes,
         designation_final: designation,
         DESIGNATION: designation,
         measure_final: measurement,
@@ -465,6 +622,15 @@ function dedupeByPn(candidates, audit, dedupeBucketName) {
         const winner = chooseBetterCandidate(kept, row);
         const loser = winner === kept ? row : kept;
 
+        winner.model_type = mergeCsvField(winner.model_type, loser.model_type);
+        winner.exp_categorias = mergeCsvField(winner.exp_categorias, loser.exp_categorias);
+        winner.exp_imagenes = mergeCsvField(winner.exp_imagenes, loser.exp_imagenes);
+        if (!t(winner.fg_code)) winner.fg_code = t(loser.fg_code);
+        if (!t(winner.fg_description)) winner.fg_description = t(loser.fg_description);
+        if (!t(winner.fg_code_description)) {
+            winner.fg_code_description = t(loser.fg_code_description);
+        }
+
         const traceParts = uniq([
             t(winner.dedupe_trace),
             t(`kept:${winner.synthetic_source || 'real'}:${winner.reason || ''}`),
@@ -545,6 +711,13 @@ function writeOutputs(dirPath, payload) {
 function run(options = {}) {
     const dryRun = Boolean(options.dryRun);
     const writeAuditMirror = options.writeAuditMirror !== false;
+
+    const fgUpdateSummary = runUpdateFgFgs({
+        all: true,
+        write: true,
+        backup: false,
+        rootDir: REPO_ROOT
+    });
 
     ensureDir(OUTPUT_DIR);
     if (writeAuditMirror) ensureDir(AUDIT_OUTPUT_DIR);
@@ -743,6 +916,13 @@ function run(options = {}) {
         'sku',
         'pn_final',
         'PART NO.',
+        'engine',
+        'model_type',
+        'fg_code',
+        'fg_description',
+        'fg_code_description',
+        'exp_categorias',
+        'exp_imagenes',
         'designation_final',
         'DESIGNATION',
         'sust_hierarchie',
@@ -777,6 +957,7 @@ function run(options = {}) {
     const report = {
         generated_at: new Date().toISOString(),
         dry_run: dryRun,
+        fg_fgs_update: fgUpdateSummary,
         engines_processed: ENGINE_JSON_FILES.length,
         occurrences_processed: allRows.length,
         pn_unique: byPn.size,
