@@ -9,6 +9,39 @@ const OUTPUT_DIR = path.join(REPO_ROOT, 'data', '05-wordpress');
 const AUDIT_OUTPUT_DIR = path.join(REPO_ROOT, 'data', 'output', 'wordpress');
 const FG_FGS_CATALOG_PATH = path.join(REPO_ROOT, 'EXCEL_FG-FGS.json');
 
+const NEW_V506_HEADERS = [
+    'Id',
+    'fecha_version',
+    'POS',
+    'designation',
+    'engine',
+    'model_type',
+    'type',
+    'pn',
+    'nsn',
+    'GESA_NORM',
+    'GESA_NORMALIZADO',
+    'fg_code',
+    'fg_description',
+    'fg_code_description',
+    'weight',
+    'weight_txt',
+    'measurement',
+    'TIPOARTICULO',
+    'PAG',
+    'BOM_no',
+    'esquema_general',
+    'exp_motor',
+    'exp_categorias',
+    'atributo',
+    'SUST_TIPO',
+    'new_pn_relacionado',
+    'old_pn_relacionados',
+    'EN_EXCEL_SUSTITUCION',
+    'ruta_foto',
+    'exp_imagenes'
+];
+
 function ensureDir(dirPath) {
     fs.mkdirSync(dirPath, { recursive: true });
 }
@@ -295,6 +328,10 @@ function getSourcePage(row) {
     return t(row['Source Page'] || row.rebuild_source_page);
 }
 
+function getPos(row) {
+    return t(row.POS || row.pos_final);
+}
+
 function isSupersededRow(row) {
     const hierarchy = key(getHierarchy(row));
     if (hierarchy === 'superseded') return true;
@@ -481,7 +518,54 @@ function buildMergedRow(rows, options = {}) {
     const expCategorias = t(options.expCategorias || deriveExpCategorias(sourceRows));
     const expImagenes = t(options.expImagenes || deriveExpImagenes(sourceRows, Boolean(options.syntheticSource)));
 
+    const id = t(options.id || pickMostFrequent(sourceRows.map((row) => getSourceId(row))));
+    const fechaVersion = t(options.fechaVersion || pickMostFrequent(sourceRows.map((row) => row.fecha_version)));
+    const pos = t(options.pos || pickMostFrequent(sourceRows.map((row) => getPos(row))));
+    const type = t(options.type || pickMostFrequent(sourceRows.map((row) => row.type)));
+    const nsn = t(options.nsn || pickMostFrequent(sourceRows.map((row) => row.nsn)));
+    const gesaNorm = t(options.gesaNorm || pickMostFrequent(sourceRows.map((row) => row.GESA_NORM)));
+    const gesaNormalizado = t(options.gesaNormalizado || pickMostFrequent(sourceRows.map((row) => row.GESA_NORMALIZADO)));
+    const weightTxt = t(options.weightTxt || pickMostFrequent(sourceRows.map((row) => row.weight_txt)) || weight);
+    const tipoArticulo = t(options.tipoArticulo || pickMostFrequent(sourceRows.map((row) => row.TIPOARTICULO)));
+    const pag = t(options.pag || pickMostFrequent(sourceRows.map((row) => row.PAG || getSourcePage(row))));
+    const bomNo = t(options.bomNo || pickMostFrequent(sourceRows.map((row) => row.BOM_no || row['BOM-No.'])));
+    const esquemaGeneral = t(options.esquemaGeneral || pickMostFrequent(sourceRows.map((row) => row.esquema_general)));
+    const expMotor = t(options.expMotor || pickMostFrequent(sourceRows.map((row) => row.exp_motor)) || engine);
+    const atributo = t(options.atributo || pickMostFrequent(sourceRows.map((row) => row.atributo)));
+    const enExcelSustitucion = t(options.enExcelSustitucion || pickMostFrequent(sourceRows.map((row) => row.EN_EXCEL_SUSTITUCION)));
+    const rutaFoto = t(options.rutaFoto || pickMostFrequent(sourceRows.map((row) => row.ruta_foto || row.filename_foto)));
+
     return {
+        Id: id,
+        fecha_version: fechaVersion,
+        POS: pos,
+        designation: designation,
+        engine,
+        model_type: modelType,
+        type,
+        pn: sku,
+        nsn,
+        GESA_NORM: gesaNorm,
+        GESA_NORMALIZADO: gesaNormalizado,
+        fg_code: fgCode,
+        fg_description: fgDescription,
+        fg_code_description: fgCodeDescription,
+        weight,
+        weight_txt: weightTxt,
+        measurement,
+        TIPOARTICULO: tipoArticulo,
+        PAG: pag,
+        BOM_no: bomNo,
+        esquema_general: esquemaGeneral,
+        exp_motor: expMotor,
+        exp_categorias: expCategorias,
+        atributo,
+        SUST_TIPO: hierarchy,
+        new_pn_relacionado: newPn,
+        old_pn_relacionados: supersededList,
+        EN_EXCEL_SUSTITUCION: enExcelSustitucion,
+        ruta_foto: rutaFoto,
+        exp_imagenes: expImagenes,
         sku,
         pn: sku,
         pn_final: sku,
@@ -912,47 +996,7 @@ function run(options = {}) {
     pendingRows.sort(sortBySku);
     discardedRows.sort(sortBySku);
 
-    const headers = [
-        'sku',
-        'pn_final',
-        'PART NO.',
-        'engine',
-        'model_type',
-        'fg_code',
-        'fg_description',
-        'fg_code_description',
-        'exp_categorias',
-        'exp_imagenes',
-        'designation_final',
-        'DESIGNATION',
-        'sust_hierarchie',
-        'hierarchie_final',
-        'sust_new_part_number',
-        'new_pn_final',
-        'sust_superseded_list',
-        'subst_pnlist_final',
-        'measurement_final',
-        'weight_final',
-        'synthetic_source',
-        'data_quality',
-        'synthetic_parent_id',
-        'synthetic_parent_pn',
-        'synthetic_parent_engine',
-        'synthetic_child_id',
-        'synthetic_child_pn',
-        'synthetic_child_engine',
-        'dedupe_trace',
-        'decision',
-        'reason',
-        'qa_validated',
-        'occurrences',
-        'engines',
-        'source_ids',
-        'source_pages',
-        'qa_summary_json',
-        'import_decision',
-        'import_reason'
-    ];
+    const headers = [...NEW_V506_HEADERS];
 
     const report = {
         generated_at: new Date().toISOString(),
