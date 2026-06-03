@@ -4095,8 +4095,26 @@ app.get('/export/file', (req, res) => {
     }
     const fullPath = path.join(EXPORT_BASE_DIR, folder, name);
     if (!fs.existsSync(fullPath)) {
-        return res.status(404).json({ ok: false, error: 'Archivo no encontrado.' });
+        console.warn('[EXPORT FILE] Missing file', {
+            folder,
+            name,
+            fullPath
+        });
+        return res.status(404).json({
+            ok: false,
+            error: 'Archivo no encontrado.',
+            folder,
+            name,
+            full_path: fullPath
+        });
     }
+
+    console.info('[EXPORT FILE] Loading export file', {
+        folder,
+        name,
+        fullPath
+    });
+
     try {
         const stat = fs.statSync(fullPath);
         const ext = path.extname(name).toLowerCase();
@@ -4112,6 +4130,7 @@ app.get('/export/file', (req, res) => {
             ok: true,
             folder,
             name,
+            full_path: fullPath,
             size: stat.size,
             mtime: stat.mtime.toISOString(),
             type: ext.replace(/^\./, ''),
@@ -4165,8 +4184,26 @@ app.get('/export/download', (req, res) => {
     }
     const fullPath = path.join(EXPORT_BASE_DIR, folder, name);
     if (!fs.existsSync(fullPath)) {
-        return res.status(404).json({ ok: false, error: 'Archivo no encontrado.' });
+        console.warn('[EXPORT DOWNLOAD] Missing file', {
+            folder,
+            name,
+            fullPath
+        });
+        return res.status(404).json({
+            ok: false,
+            error: 'Archivo no encontrado.',
+            folder,
+            name,
+            full_path: fullPath
+        });
     }
+
+    console.info('[EXPORT DOWNLOAD] Sending export file', {
+        folder,
+        name,
+        fullPath
+    });
+
     return res.download(fullPath, name);
 });
 
