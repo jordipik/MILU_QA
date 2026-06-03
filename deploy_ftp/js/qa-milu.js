@@ -40,7 +40,7 @@ import {
     runPdfHeaderOnlyDetection,
     setPdfSelection
 } from './pdf-viewer.js';
-import { updateSchemasInline, renderSelectedRowPosPanel, renderSelectedRowPosTop } from './schemas.js';
+import { updateSchemasInline, updateSchemasFromRow, renderSelectedRowPosPanel, renderSelectedRowPosTop } from './schemas.js';
 import { getEngineJsonForRow } from './helpers.js';
 import {
     applyFilters,
@@ -2113,6 +2113,8 @@ function selectRevisionRowByKey(revisionKey) {
     renderSelectedRowPosPanel(row);
 
     renderSelectedRowPosTop(row);
+
+    updateSchemasFromRow(row);
 
     document.dispatchEvent(new CustomEvent('qa:selected-row-changed', {
 
@@ -8034,6 +8036,8 @@ function attachGlobalEvents() {
 
         renderSelectedRowPosTop(row);
 
+        updateSchemasFromRow(row);
+
         document.dispatchEvent(new CustomEvent('qa:selected-row-changed', {
 
             detail: { revisionKey: rowKey }
@@ -8227,6 +8231,8 @@ function attachGlobalEvents() {
         renderSelectedRowPosPanel(row);
 
         renderSelectedRowPosTop(row);
+
+        updateSchemasFromRow(row);
 
         document.dispatchEvent(new CustomEvent('qa:selected-row-changed', {
 

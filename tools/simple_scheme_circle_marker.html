@@ -114,6 +114,54 @@
             margin-bottom: 8px;
         }
 
+        .schema-list {
+            display: flex;
+            flex-direction: column;
+            gap: 4px;
+            margin-bottom: 10px;
+        }
+
+        .schema-item {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            padding: 6px 10px;
+            border: 1px solid var(--line);
+            border-radius: 8px;
+            font-size: 12px;
+            cursor: pointer;
+            background: #faf6f0;
+            transition: background 0.12s;
+        }
+
+        .schema-item:hover {
+            background: #efe6da;
+        }
+
+        .schema-item.active {
+            background: #d4edda;
+            border-color: var(--accent2);
+            font-weight: 600;
+        }
+
+        .schema-item .schema-thumb-mini {
+            width: 36px;
+            height: 28px;
+            object-fit: cover;
+            border-radius: 4px;
+            border: 1px solid var(--line);
+            flex-shrink: 0;
+            background: #ddd;
+        }
+
+        .schema-section-label {
+            font-size: 11px;
+            color: var(--muted);
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            margin-bottom: 4px;
+        }
+
         textarea {
             min-height: 180px;
             white-space: pre;
@@ -165,6 +213,11 @@
             <h1>Simple Circle Marker</h1>
             <p class="hint">Clic normal: deja un solo circulo. Ctrl + clic: anade otro circulo.</p>
 
+            <div id="schemaLinkedSection" hidden>
+                <p class="schema-section-label">Esquemas vinculados al registro</p>
+                <div id="schemaLinkedList" class="schema-list"></div>
+            </div>
+
             <div class="field">
                 <label for="imgFile">Imagen esquema</label>
                 <input id="imgFile" type="file" accept="image/*" />
@@ -203,6 +256,13 @@
             <div class="row">
                 <button id="saveGenerateBtn" type="button">Guardar imagen + actualizar JSON</button>
             </div>
+            <div class="row">
+                <button id="saveGeneralSchemaBtn" class="secondary" type="button">Guardar esquema general en
+                    esquemas_circulos</button>
+            </div>
+            <div class="row">
+                <button id="saveJsonOnlyBtn" class="secondary" type="button">Guardar archivo sin imagen</button>
+            </div>
             <div class="chip" id="statusChip">Estado: listo</div>
 
             <div class="field">
@@ -224,6 +284,8 @@
         const undoBtn = document.getElementById("undoBtn");
         const clearBtn = document.getElementById("clearBtn");
         const saveGenerateBtn = document.getElementById("saveGenerateBtn");
+        const saveGeneralSchemaBtn = document.getElementById("saveGeneralSchemaBtn");
+        const saveJsonOnlyBtn = document.getElementById("saveJsonOnlyBtn");
         const baseName = document.getElementById("baseName");
         const engineValue = document.getElementById("engineValue");
         const idsInput = document.getElementById("idsInput");
@@ -234,6 +296,7 @@
         const img = document.getElementById("img");
 
         let circles = [];
+        let currentObjectUrl = "";
 
         function clamp(v, min, max) {
             return Math.max(min, Math.min(max, v));
@@ -297,12 +360,125 @@
             const id = String(params.get("id") || "").trim();
             const pos = String(params.get("pos") || "").trim();
             const d = String(params.get("diameter") || "").trim();
+            const schemas = String(params.get("schemas") || "").trim();
 
             if (base) baseName.value = base;
             if (engine) engineValue.value = engine;
             if (id && !idsInput.value.trim()) idsInput.value = id;
             if (pos && !posInput.value.trim()) posInput.value = pos;
             if (d && /^\d+$/.test(d)) diameter.value = d;
+
+            if (schemas) {
+                const tokens = schemas.split(",").map(s => s.trim()).filter(Boolean);
+                renderSchemaLinkedList(tokens, engine || inferEngineFromBase(base), base);
+            }
+
+            // Auto-load the base image if available
+            if (base) {
+                const eng = engine || inferEngineFromBase(base);
+                const candidates = buildSchemaUrlCandidates(base, eng);
+                if (candidates.length) loadImageFromCandidates(candidates, base);
+            }
+        }
+
+        function buildSchemaUrlCandidates(fileName, engine) {
+            const eng = String(engine || "").trim();
+            const file = String(fileName || "").trim();
+            if (!file) return [];
+            const candidates = [];
+            if (eng) {
+                candidates.push(`/esquemas/${eng}_esquemas/${file}`);
+                candidates.push(`/esquemas/${eng}/${file}`);
+            }
+            // fallback: try to infer engine from filename
+            const m = file.match(/^(.+)-\d{4}-\d{2}\.[A-Za-z0-9]+$/);
+            const inferredEng = m ? m[1] : "";
+            if (inferredEng) {
+                candidates.push(`/esquemas/${inferredEng}_esquemas/${file}`);
+                candidates.push(`/esquemas/${inferredEng}/${file}`);
+            }
+            candidates.push(`/esquemas/${file}`);
+            return [...new Set(candidates)];
+        }
+
+        async function loadImageFromCandidates(urlCandidates, fileName) {
+            statusChip.textContent = "Estado: cargando imagen...";
+            try {
+                let blob = null;
+                let lastError = "HTTP 404";
+                for (const candidate of urlCandidates) {
+                    const res = await fetch(candidate);
+                    if (res.ok) {
+                        blob = await res.blob();
+                        break;
+                    }
+                    lastError = `HTTP ${res.status}`;
+                }
+                if (!blob) throw new Error(lastError);
+                if (currentObjectUrl) URL.revokeObjectURL(currentObjectUrl);
+                const objectUrl = URL.createObjectURL(blob);
+                currentObjectUrl = objectUrl;
+                img.onload = () => {
+                    stage.style.width = img.width + "px";
+                    stage.style.height = img.height + "px";
+                    circles = [];
+                    redraw();
+                    statusChip.textContent = "Estado: imagen cargada";
+                };
+                img.src = objectUrl;
+                baseName.value = fileName;
+                try {
+                    const ext = (String(fileName || "").split(".").pop() || "webp").toLowerCase();
+                    const mimeByExt = { webp: "image/webp", png: "image/png", jpg: "image/jpeg", jpeg: "image/jpeg" };
+                    const fileForInput = new File([blob], fileName, { type: mimeByExt[ext] || blob.type || "image/webp" });
+                    const transfer = new DataTransfer();
+                    transfer.items.add(fileForInput);
+                    imgFile.files = transfer.files;
+                } catch (_err) {
+                    // Algunos navegadores pueden restringir la asignacion de input.files.
+                }
+            } catch (err) {
+                statusChip.textContent = `Estado: error al cargar imagen (${err.message})`;
+            }
+        }
+
+        function renderSchemaLinkedList(tokens, engine, currentBase) {
+            const section = document.getElementById("schemaLinkedSection");
+            const list = document.getElementById("schemaLinkedList");
+            if (!section || !list || !tokens.length) return;
+
+            list.innerHTML = "";
+            tokens.forEach(token => {
+                const item = document.createElement("div");
+                item.className = "schema-item" + (token === currentBase ? " active" : "");
+                item.dataset.fileName = token;
+
+                const thumb = document.createElement("img");
+                thumb.className = "schema-thumb-mini";
+                thumb.alt = "";
+                const thumbCandidates = buildSchemaUrlCandidates(token, engine);
+                if (thumbCandidates.length) thumb.src = thumbCandidates[0];
+                thumb.onerror = () => { thumb.style.visibility = "hidden"; };
+
+                const label = document.createElement("span");
+                label.textContent = token;
+
+                item.appendChild(thumb);
+                item.appendChild(label);
+
+                item.addEventListener("click", () => {
+                    list.querySelectorAll(".schema-item").forEach(el => el.classList.remove("active"));
+                    item.classList.add("active");
+                    const eng = String(engineValue.value || "").trim() || inferEngineFromBase(token);
+                    const imgCandidates = buildSchemaUrlCandidates(token, eng);
+                    if (imgCandidates.length) loadImageFromCandidates(imgCandidates, token);
+                    else { baseName.value = token; statusChip.textContent = "Estado: URL desconocida, usa el selector de archivo"; }
+                });
+
+                list.appendChild(item);
+            });
+
+            section.hidden = false;
         }
 
         function inferEngineFromBase(base) {
@@ -310,50 +486,152 @@
             return m ? m[1] : "";
         }
 
-        async function saveGenerateAll() {
+        function buildItemsFromForm() {
             if (!circles.length) {
-                statusChip.textContent = "Estado: no hay circulos";
-                return;
+                throw new Error("No hay circulos");
             }
 
             const base = String(baseName.value || "").trim();
             if (!base) {
-                statusChip.textContent = "Estado: falta Base esquema";
-                return;
+                throw new Error("Falta Base esquema");
             }
 
             const ids = splitTokens(idsInput.value);
             const poss = splitTokens(posInput.value);
             if (ids.length !== circles.length) {
-                statusChip.textContent = `Estado: IDs (${ids.length}) != circulos (${circles.length})`;
-                return;
+                throw new Error(`IDs (${ids.length}) != circulos (${circles.length})`);
             }
             if (poss.length !== circles.length) {
-                statusChip.textContent = `Estado: POS (${poss.length}) != circulos (${circles.length})`;
-                return;
+                throw new Error(`POS (${poss.length}) != circulos (${circles.length})`);
             }
 
             const engine = String(engineValue.value || "").trim() || inferEngineFromBase(base);
-            const items = circles.map((c, i) => ({
-                id: ids[i],
-                base,
+            if (!engine) {
+                throw new Error("No se pudo inferir engine");
+            }
+
+            return {
                 engine,
-                pos: poss[i],
-                item: { px: [c.x, c.y, c.w, c.h] },
-            }));
+                base,
+                ids,
+                items: circles.map((c, i) => ({
+                    id: ids[i],
+                    base,
+                    engine,
+                    pos: poss[i],
+                    item: { px: [c.x, c.y, c.w, c.h] },
+                })),
+            };
+        }
+
+        async function saveGeneralSchemaField() {
+            const base = String(baseName.value || "").trim();
+            if (!base) {
+                statusChip.textContent = "Estado: falta Base esquema";
+                return;
+            }
+            const engine = String(engineValue.value || "").trim() || inferEngineFromBase(base);
+            if (!engine) {
+                statusChip.textContent = "Estado: falta engine";
+                return;
+            }
+            const ids = splitTokens(idsInput.value);
+            if (!ids.length) {
+                statusChip.textContent = "Estado: falta ID";
+                return;
+            }
+
+            statusChip.textContent = "Estado: guardando esquemas_circulos...";
+            const file = `engine_${engine}.json`;
+            try {
+                for (const id of ids) {
+                    const res = await fetch("/save-json", {
+                        method: "POST",
+                        headers: { "Content-Type": "application/json" },
+                        body: JSON.stringify({
+                            file,
+                            id,
+                            field: "esquemas_circulos",
+                            value: base,
+                        }),
+                    });
+                    const data = await res.json().catch(() => ({}));
+                    if (!res.ok || data?.ok === false) {
+                        throw new Error(data?.error || `HTTP ${res.status}`);
+                    }
+                }
+                statusChip.textContent = `Estado: OK (esquemas_circulos=${base})`;
+            } catch (err) {
+                statusChip.textContent = `Estado: error guardando esquemas_circulos (${String(err && err.message || err)})`;
+            }
+        }
+
+        async function saveJsonOnly() {
+            let form;
+            try {
+                form = buildItemsFromForm();
+            } catch (err) {
+                statusChip.textContent = `Estado: ${String(err && err.message || err)}`;
+                return;
+            }
+
+            statusChip.textContent = "Estado: guardando JSON sin imagen...";
+            try {
+                const res = await fetch("/api/apply-batch", {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({ items: form.items }),
+                });
+                if (res.status === 404) {
+                    throw new Error("Endpoint /api/apply-batch no disponible. Reinicia node server.js");
+                }
+                const data = await res.json();
+                if (!res.ok || !data.ok) {
+                    throw new Error(data.error || `HTTP ${res.status}`);
+                }
+                statusChip.textContent = `Estado: OK JSON (${data.count || form.items.length})`;
+            } catch (err) {
+                statusChip.textContent = `Estado: error JSON (${String(err && err.message || err)})`;
+            }
+        }
+
+        async function saveGenerateAll() {
+            let form;
+            try {
+                form = buildItemsFromForm();
+            } catch (err) {
+                statusChip.textContent = `Estado: ${String(err && err.message || err)}`;
+                return;
+            }
 
             statusChip.textContent = "Estado: guardando y generando...";
             try {
                 const res = await fetch("/api/apply-generate-batch", {
                     method: "POST",
                     headers: { "Content-Type": "application/json" },
-                    body: JSON.stringify({ items }),
+                    body: JSON.stringify({ items: form.items }),
                 });
+                if (res.status === 404) {
+                    throw new Error("Endpoint /api/apply-generate-batch no disponible. Reinicia node server.js");
+                }
                 const data = await res.json();
                 if (!res.ok || !data.ok) {
                     throw new Error(data.error || `HTTP ${res.status}`);
                 }
-                statusChip.textContent = `Estado: OK (${data.count || items.length} procesados)`;
+                const firstImage = Array.isArray(data.image_files) && data.image_files.length ? data.image_files[0] : "";
+                statusChip.textContent = firstImage
+                    ? `Estado: OK (${data.count || form.items.length}) -> ${firstImage}`
+                    : `Estado: OK (${data.count || form.items.length} procesados)`;
+
+                // Try to close the marker window after a successful save.
+                setTimeout(() => {
+                    window.close();
+                    setTimeout(() => {
+                        if (!window.closed) {
+                            statusChip.textContent = `${statusChip.textContent} | Cierra esta pestaña manualmente`;
+                        }
+                    }, 250);
+                }, 600);
             } catch (err) {
                 statusChip.textContent = `Estado: error (${String(err && err.message || err)})`;
             }
@@ -416,6 +694,8 @@
         });
 
         saveGenerateBtn.addEventListener("click", saveGenerateAll);
+        saveGeneralSchemaBtn.addEventListener("click", saveGeneralSchemaField);
+        saveJsonOnlyBtn.addEventListener("click", saveJsonOnly);
 
         applyQueryPrefill();
 

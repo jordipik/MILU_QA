@@ -157,7 +157,7 @@ export function updateSchemasImageInline(bookValue, schemas) {
         const empty = document.createElement('span'); empty.className = 'schemas-images-empty'; empty.textContent = '';
         strip.appendChild(empty); return;
     }
-    schemas.slice(0, 3).forEach(schemaToken => {
+    schemas.forEach(schemaToken => {
         const candidates = buildSchemaImageCandidates(bookValue, schemaToken);
         if (!candidates.length) return;
         const link = document.createElement('a');
@@ -286,6 +286,20 @@ export function updateSchemasInline(bookValue, pageValue) {
     const joined = schemas.join(', ');
     if (inlineEl) { inlineEl.textContent = joined; inlineEl.title = joined; }
     updateSchemasImageInline(bookValue, schemas);
+}
+
+export function updateSchemasFromRow(row) {
+    const inlineEl = document.getElementById('schemasInlineList');
+    const book = String(val(row, 'engine_model', '') || '').trim();
+    const schemas = splitSchemaTokens(row?.esquemas);
+    if (!schemas.length) {
+        if (inlineEl) { inlineEl.textContent = '—'; inlineEl.title = 'Sin esquemas vinculados para este registro'; }
+        updateSchemasImageInline(book, []);
+        return;
+    }
+    const joined = schemas.join(', ');
+    if (inlineEl) { inlineEl.textContent = joined; inlineEl.title = joined; }
+    updateSchemasImageInline(book, schemas);
 }
 
 // ─── Panel de posición seleccionada ─────────────────────────────────────────

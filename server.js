@@ -4219,6 +4219,276 @@ app.post('/api/esquemas-pos/generate-one', async (req, res) => {
     }
 });
 
+app.post('/api/apply-batch', async (req, res) => {
+    const tag = '[api:apply-batch]';
+
+    function inferEngineFromBase(baseName) {
+        const match = String(baseName || '').match(/^(.+)-\d{4}-\d{2}\.[A-Za-z0-9]+$/);
+        return match ? String(match[1]) : '';
+    }
+
+    function normalizePayloadItem(payload) {
+        const recordId = assertString(payload?.id, { field: 'id', allowEmpty: false, maxLength: 128 });
+        const base = assertString(payload?.base, { field: 'base', allowEmpty: false, maxLength: 260 });
+        const engineRaw = assertString(payload?.engine ?? '', { field: 'engine', allowEmpty: true, maxLength: 64 });
+        const pos = assertString(payload?.pos, { field: 'pos', allowEmpty: false, maxLength: 64 });
+        const pxRaw = Array.isArray(payload?.item?.px) ? payload.item.px : null;
+        if (!pxRaw || pxRaw.length !== 4) {
+            throw validationError({ code: 'INVALID_PX', field: 'item.px', message: 'item.px debe ser lista de 4 valores' });
+        }
+
+        const px = pxRaw.map((value) => Math.round(Number(value)));
+        if (px.some((value) => !Number.isFinite(value))) {
+            throw validationError({ code: 'INVALID_PX_VALUE', field: 'item.px', message: 'item.px contiene valores no numericos' });
+        }
+
+        const engine = engineRaw || inferEngineFromBase(base);
+        if (!engine) {
+            throw validationError({ code: 'INVALID_ENGINE', field: 'engine', message: 'No se pudo inferir engine desde base' });
+        }
+
+        if (!/^[A-Za-z0-9._:-]+$/.test(recordId)) {
+            throw validationError({ code: 'INVALID_ID', field: 'id', message: 'id contiene caracteres no permitidos' });
+        }
+        if (!/^[A-Za-z0-9._-]+$/.test(engine)) {
+            throw validationError({ code: 'INVALID_ENGINE', field: 'engine', message: 'engine contiene caracteres no permitidos' });
+        }
+        if (!/^[A-Za-z0-9._-]+$/.test(path.basename(base))) {
+            throw validationError({ code: 'INVALID_BASE', field: 'base', message: 'base contiene caracteres no permitidos' });
+        }
+        if (!/^[A-Za-z0-9._-]+$/.test(pos)) {
+            throw validationError({ code: 'INVALID_POS', field: 'pos', message: 'pos contiene caracteres no permitidos' });
+        }
+
+        return { recordId, base: path.basename(base), engine, pos, px };
+    }
+
+    function upsertOverride(entries, item) {
+        const found = entries.find((entry) =>
+            String(entry?.id || '').trim() === item.recordId
+            && String(entry?.base || '').trim() === item.base
+            && String(entry?.pos || '').trim() === item.pos
+        );
+        if (found) {
+            found.item = { px: item.px };
+            return false;
+        }
+        entries.push({
+            id: item.recordId,
+            base: item.base,
+            pos: item.pos,
+            item: { px: item.px }
+        });
+        return true;
+    }
+
+    const overridePath = path.join(__dirname, 'rebuild_schemes_circles_manual_overrides.json');
+
+    try {
+        assertPayloadSize(req.body, { maxBytes: 1024 * 1024 });
+        const itemsRaw = Array.isArray(req.body?.items) ? req.body.items : null;
+        if (!itemsRaw || !itemsRaw.length) {
+            throw validationError({ code: 'INVALID_ITEMS', field: 'items', message: 'items debe ser una lista no vacia' });
+        }
+
+        const items = itemsRaw.map((raw) => normalizePayloadItem(raw));
+
+        let entries = [];
+        if (fs.existsSync(overridePath)) {
+            const raw = JSON.parse(await fs.promises.readFile(overridePath, 'utf8'));
+            if (Array.isArray(raw)) entries = raw.filter((entry) => entry && typeof entry === 'object');
+            else if (raw && typeof raw === 'object' && Array.isArray(raw.overrides)) entries = raw.overrides.filter((entry) => entry && typeof entry === 'object');
+        }
+
+        let createdCount = 0;
+        items.forEach((item) => {
+            const created = upsertOverride(entries, item);
+            if (created) createdCount += 1;
+        });
+
+        await fs.promises.writeFile(overridePath, `${JSON.stringify(entries, null, 4)}\n`, 'utf8');
+        return res.json({
+            ok: true,
+            count: items.length,
+            created_count: createdCount,
+            overrides_json: path.basename(overridePath)
+        });
+    } catch (error) {
+        if (isValidationError(error)) {
+            return sendValidationError(res, error, { endpoint: '/api/apply-batch' });
+        }
+        console.error(`${tag} error:`, error);
+        return res.status(400).json({ ok: false, error: String(error?.message || error) });
+    }
+});
+
+app.post('/api/apply-generate-batch', async (req, res) => {
+    const tag = '[api:apply-generate-batch]';
+    const os = require('os');
+
+    function inferEngineFromBase(baseName) {
+        const match = String(baseName || '').match(/^(.+)-\d{4}-\d{2}\.[A-Za-z0-9]+$/);
+        return match ? String(match[1]) : '';
+    }
+
+    function normalizePayloadItem(payload) {
+        const recordId = assertString(payload?.id, { field: 'id', allowEmpty: false, maxLength: 128 });
+        const base = assertString(payload?.base, { field: 'base', allowEmpty: false, maxLength: 260 });
+        const engineRaw = assertString(payload?.engine ?? '', { field: 'engine', allowEmpty: true, maxLength: 64 });
+        const pos = assertString(payload?.pos, { field: 'pos', allowEmpty: false, maxLength: 64 });
+        const pxRaw = Array.isArray(payload?.item?.px) ? payload.item.px : null;
+        if (!pxRaw || pxRaw.length !== 4) {
+            throw validationError({ code: 'INVALID_PX', field: 'item.px', message: 'item.px debe ser lista de 4 valores' });
+        }
+
+        const px = pxRaw.map((value) => Math.round(Number(value)));
+        if (px.some((value) => !Number.isFinite(value))) {
+            throw validationError({ code: 'INVALID_PX_VALUE', field: 'item.px', message: 'item.px contiene valores no numericos' });
+        }
+
+        const engine = engineRaw || inferEngineFromBase(base);
+        if (!engine) {
+            throw validationError({ code: 'INVALID_ENGINE', field: 'engine', message: 'No se pudo inferir engine desde base' });
+        }
+
+        if (!/^[A-Za-z0-9._:-]+$/.test(recordId)) {
+            throw validationError({ code: 'INVALID_ID', field: 'id', message: 'id contiene caracteres no permitidos' });
+        }
+        if (!/^[A-Za-z0-9._-]+$/.test(engine)) {
+            throw validationError({ code: 'INVALID_ENGINE', field: 'engine', message: 'engine contiene caracteres no permitidos' });
+        }
+        if (!/^[A-Za-z0-9._-]+$/.test(path.basename(base))) {
+            throw validationError({ code: 'INVALID_BASE', field: 'base', message: 'base contiene caracteres no permitidos' });
+        }
+        if (!/^[A-Za-z0-9._-]+$/.test(pos)) {
+            throw validationError({ code: 'INVALID_POS', field: 'pos', message: 'pos contiene caracteres no permitidos' });
+        }
+
+        return { recordId, base: path.basename(base), engine, pos, px };
+    }
+
+    function upsertOverride(entries, item) {
+        const found = entries.find((entry) =>
+            String(entry?.id || '').trim() === item.recordId
+            && String(entry?.base || '').trim() === item.base
+            && String(entry?.pos || '').trim() === item.pos
+        );
+        if (found) {
+            found.item = { px: item.px };
+            return false;
+        }
+        entries.push({
+            id: item.recordId,
+            base: item.base,
+            pos: item.pos,
+            item: { px: item.px }
+        });
+        return true;
+    }
+
+    const overridePath = path.join(__dirname, 'rebuild_schemes_circles_manual_overrides.json');
+    const pythonBin = process.env.MILU_PYTHON || 'python';
+
+    try {
+        assertPayloadSize(req.body, { maxBytes: 1024 * 1024 });
+        const itemsRaw = Array.isArray(req.body?.items) ? req.body.items : null;
+        if (!itemsRaw || !itemsRaw.length) {
+            throw validationError({ code: 'INVALID_ITEMS', field: 'items', message: 'items debe ser una lista no vacia' });
+        }
+
+        const items = itemsRaw.map((raw) => normalizePayloadItem(raw));
+
+        let entries = [];
+        if (fs.existsSync(overridePath)) {
+            const raw = JSON.parse(await fs.promises.readFile(overridePath, 'utf8'));
+            if (Array.isArray(raw)) entries = raw.filter((entry) => entry && typeof entry === 'object');
+            else if (raw && typeof raw === 'object' && Array.isArray(raw.overrides)) entries = raw.overrides.filter((entry) => entry && typeof entry === 'object');
+        }
+
+        let createdCount = 0;
+        items.forEach((item) => {
+            const created = upsertOverride(entries, item);
+            if (created) createdCount += 1;
+        });
+
+        await fs.promises.writeFile(overridePath, `${JSON.stringify(entries, null, 4)}\n`, 'utf8');
+
+        const imageFiles = [];
+        const errors = [];
+
+        for (const item of items) {
+            const reportPath = path.join(os.tmpdir(), `milu_manual_circle_${Date.now()}_${process.pid}_${Math.random().toString(16).slice(2)}.json`);
+            const args = [
+                'rebuild_schemes_circles_from_esquemas.py',
+                '--engine', item.engine,
+                '--id', item.recordId,
+                '--write',
+                '--force-regenerate',
+                '--overrides-json', overridePath,
+                '--report', reportPath
+            ];
+
+            const runResult = await new Promise((resolve) => {
+                const child = spawn(pythonBin, args, {
+                    cwd: __dirname,
+                    stdio: ['pipe', 'pipe', 'pipe'],
+                    windowsHide: true,
+                    env: { ...process.env, PYTHONIOENCODING: 'utf-8' }
+                });
+
+                let stdout = '';
+                let stderr = '';
+                child.stdout.on('data', (chunk) => { stdout += String(chunk || ''); });
+                child.stderr.on('data', (chunk) => { stderr += String(chunk || ''); });
+                child.on('error', (error) => resolve({ ok: false, code: -1, stdout, stderr, error: String(error?.message || error) }));
+                child.on('close', (code) => resolve({ ok: code === 0, code, stdout, stderr, error: null }));
+            });
+
+            const imageFile = `${path.parse(item.base).name}-${item.pos}.webp`;
+            imageFiles.push(imageFile);
+
+            if (!runResult.ok) {
+                errors.push({
+                    id: item.recordId,
+                    pos: item.pos,
+                    error: runResult.error || runResult.stderr || runResult.stdout || `python exited with ${runResult.code}`
+                });
+            }
+
+            if (fs.existsSync(reportPath)) {
+                await fs.promises.unlink(reportPath).catch(() => { });
+            }
+        }
+
+        if (errors.length) {
+            console.error(`${tag} partial errors:`, errors);
+            return res.status(207).json({
+                ok: false,
+                error: 'Algunos registros no se pudieron generar',
+                count: items.length,
+                created_count: createdCount,
+                image_files: imageFiles,
+                overrides_json: path.basename(overridePath),
+                errors
+            });
+        }
+
+        return res.json({
+            ok: true,
+            count: items.length,
+            created_count: createdCount,
+            image_files: imageFiles,
+            overrides_json: path.basename(overridePath)
+        });
+    } catch (error) {
+        if (isValidationError(error)) {
+            return sendValidationError(res, error, { endpoint: '/api/apply-generate-batch' });
+        }
+        console.error(`${tag} error:`, error);
+        return res.status(400).json({ ok: false, error: String(error?.message || error) });
+    }
+});
+
 // Configurar express.static con tipos MIME correctos incluyendo charset
 const staticOptions = {
     setHeaders: (res, path) => {
