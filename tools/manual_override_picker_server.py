@@ -76,7 +76,7 @@ def parse_payload_item(payload: Dict[str, Any]) -> Tuple[str, str, str, str, Lis
 
 def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(
-        description="Servidor local para manual_override_picker.html con API de escritura en overrides JSON"
+        description="Servidor local para simple_scheme_circle_marker.html con API de escritura en overrides JSON"
     )
     parser.add_argument("--host", default="127.0.0.1", help="Host bind")
     parser.add_argument("--port", type=int, default=8765, help="Puerto")
@@ -144,8 +144,8 @@ class PickerHandler(SimpleHTTPRequestHandler):
         self.wfile.write(raw)
 
     def do_GET(self) -> None:
-        if self.path in {"/", "/manual_override_picker.html"}:
-            self.path = "/manual_override_picker.html"
+        if self.path in {"/", "/simple_scheme_circle_marker.html", "/manual_override_picker.html"}:
+            self.path = "/simple_scheme_circle_marker.html"
             return super().do_GET()
 
         if self.path == "/api/health":

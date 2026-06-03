@@ -343,10 +343,38 @@ function buildPosStrip(row, stripEl, metaEl, opts = {}) {
     }
 }
 
+function updateSchemaMarkerLink(row) {
+    const link = document.getElementById('schemasMarkerLink');
+    if (!link) return;
+
+    if (!row) {
+        link.hidden = true;
+        link.href = 'tools/simple_scheme_circle_marker.html';
+        return;
+    }
+
+    const engine = String(val(row, 'engine_model', '') || '').trim();
+    const id = String(val(row, 'ID', '') || '').trim();
+    const pos = String(val(row, 'POS', '') || val(row, 'pos_final', '') || '').trim();
+
+    const baseToken = splitSchemaTokens(row?.esquemas)[0] || '';
+    const base = extractFileNameFromPath(baseToken) || String(baseToken || '').trim();
+
+    const params = new URLSearchParams();
+    if (base) params.set('base', base);
+    if (engine) params.set('engine', engine);
+    if (id) params.set('id', id);
+    if (pos) params.set('pos', pos);
+
+    link.href = `tools/simple_scheme_circle_marker.html${params.toString() ? `?${params.toString()}` : ''}`;
+    link.hidden = false;
+}
+
 export function renderSelectedRowPosPanel(row) {
     const strip = document.getElementById('selectedPosStrip');
     const meta = document.getElementById('selectedPosMeta');
     if (!strip || !meta) return;
+    updateSchemaMarkerLink(row);
     buildPosStrip(row, strip, meta, { emptyText: 'Sin selección', showMeta: true });
 }
 
