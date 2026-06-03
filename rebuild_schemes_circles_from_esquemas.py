@@ -531,7 +531,7 @@ def process_record(
         return report
 
     if report["missing"]:
-        report["status"] = "WARN_PARTIAL"
+        report["status"] = "OK_PARTIAL"
         report["reason"] = "; ".join(missing_reasons)
         return report
 
@@ -623,6 +623,17 @@ def build_summary(engine_reports: Sequence[Dict[str, Any]], args: argparse.Names
         key = str(rec.get("status") or "ERROR")
         totals[key] = totals.get(key, 0) + 1
 
+    def is_real_error(status: str) -> bool:
+        key = str(status or "").strip().upper()
+        # OK_PARTIAL NO cuenta como error: hay al menos un esquema valido para el registro.
+        if key in {"OK", "OK_PARTIAL"}:
+            return False
+        return key.startswith("MISS_") or key == "ERROR"
+
+    records_ok = sum(1 for rec in records if str(rec.get("status") or "").strip().upper() == "OK")
+    records_ok_partial = sum(1 for rec in records if str(rec.get("status") or "").strip().upper() == "OK_PARTIAL")
+    records_error_total = sum(1 for rec in records if is_real_error(str(rec.get("status") or "")))
+
     return {
         "write": bool(args.write),
         "dry_run": bool(args.dry_run),
@@ -631,6 +642,9 @@ def build_summary(engine_reports: Sequence[Dict[str, Any]], args: argparse.Names
         "engines": [report.get("engine") for report in engine_reports],
         "records_processed": len(records),
         "records_changed": sum(1 for rec in records if rec.get("changed")),
+        "records_ok": records_ok,
+        "records_ok_partial": records_ok_partial,
+        "records_error_total": records_error_total,
         "totals_by_status": totals,
         "generated_total": sum(len(rec.get("generated", [])) for rec in records),
         "reused_total": sum(len(rec.get("reused", [])) for rec in records),
