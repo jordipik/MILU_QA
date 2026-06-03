@@ -583,8 +583,8 @@ export function sortData(data, key, asc) {
     }
 
     if (key === 'has_esquema_pos') {
-        // Ordena: ok (0) → missing (1) → empty (2)
-        const order = { ok: 0, missing: 1, empty: 2 };
+        // Ordena: ok (0) -> missing (1) -> empty (2) -> sin (3)
+        const order = { ok: 0, missing: 1, empty: 2, sin: 3 };
         return [...data].sort((a, b) => {
             const va = order[getEsquemaPosStatus(a)] ?? 3;
             const vb = order[getEsquemaPosStatus(b)] ?? 3;
@@ -647,7 +647,7 @@ export function applyFilters(data) {
                     break;
                 }
                 case 'has_esquema_pos': {
-                    // Valores posibles del filtro: 'ok' | 'missing' | 'empty'
+                    // Valores posibles del filtro: 'ok' | 'missing' | 'empty' | 'sin'
                     // Compara contra el estado derivado de ruta_esquemas_pos + índice local
                     rowValue = getEsquemaPosStatus(row);
                     break;
@@ -1041,10 +1041,16 @@ function basename(value) {
 }
 
 // Devuelve el estado del esquema pos para la fila:
-//   'empty'   — no hay referencias en ruta_esquemas_pos / exp_imagenes / esquemas_circulos
+//   'sin'     — no hay esquemas base en el registro
+//   'empty'   — hay esquemas pero no hay referencias en ruta_esquemas_pos / exp_imagenes / esquemas_circulos
 //   'ok'      — existe al menos un candidato en state.esquemasPosFileSet
 //   'missing' — hay referencias pero no se encuentra archivo local
 function getEsquemaPosStatus(row) {
+    const hasEsquemaBase = String(getCompactFieldValue(row, 'esquemas', '') || '')
+        .split(/[,;|\n]+/)
+        .some(token => String(token || '').trim() !== '');
+    if (!hasEsquemaBase) return 'sin';
+
     // Mismo criterio que usa la UI de esquemas para resolver imágenes:
     // combina ruta_esquemas_pos + esquemas_circulos y evalúa sus candidatos.
     const rowForSchemas = {
@@ -1070,6 +1076,8 @@ function renderEsquemaPosCell(row) {
         return `<span class="badge-pos-ok" title="Archivo encontrado">OK</span>`;
     } else if (status === 'missing') {
         return `<span class="badge-pos-missing" title="Archivo no encontrado${ruta ? `: ${escapeHtml(ruta)}` : ''}">MISS</span>`;
+    } else if (status === 'sin') {
+        return `<span class="badge-pos-none" title="Sin esquemas base">SIN</span>`;
     }
     return `<span class="badge-pos-empty" title="Sin esquema_pos">FALTA</span>`;
 }

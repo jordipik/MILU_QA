@@ -4097,6 +4097,8 @@
 
         .badge-pos-missing,
 
+        .badge-pos-none,
+
         .badge-pos-empty {
 
             display: inline-flex;
@@ -4164,6 +4166,24 @@
             background: rgba(225, 29, 72, 0.14);
 
             border-color: rgba(225, 29, 72, 0.42);
+
+            font-size: 9px;
+
+        }
+
+
+
+        .badge-pos-none {
+
+            min-width: 32px;
+
+            padding: 0 6px;
+
+            color: #374151;
+
+            background: rgba(107, 114, 128, 0.14);
+
+            border-color: rgba(107, 114, 128, 0.35);
 
             font-size: 9px;
 
@@ -9114,6 +9134,8 @@
         .badge-pos-ok,
 
         .badge-pos-missing,
+
+        .badge-pos-none,
 
         .badge-pos-empty {
 

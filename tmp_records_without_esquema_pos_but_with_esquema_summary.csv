@@ -1,0 +1,10 @@
+engine_file,rows_total,rows_with_esquema,rows_without_esquema_pos_but_with_esquema
+engine_12V4000M40A.json,2766,2757,157
+engine_12V4000M53.json,6707,5826,247
+engine_12V4000M70.json,5607,5348,74
+engine_16V4000M61.json,5348,4986,55
+engine_16V4000M73.json,12694,12438,398
+engine_16V4000M73L.json,11735,10857,284
+engine_16V4000M90.json,2850,2815,23
+engine_20V4000M93.json,14807,14395,462
+engine_20V4000M93L.json,7167,7017,166

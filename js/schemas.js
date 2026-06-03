@@ -232,58 +232,46 @@ function parsePosSchemaTokenIdentity(rawToken) {
 export function getPosSchemasForRow(row) {
     if (!row) return [];
     const book = String(val(row, 'engine_model', '') || '').trim();
-    const bookLower = book.toLowerCase();
-    const rowPage = normalizeNumericToken(val(row, 'Source Page', ''));
-    const rowPos = normalizePosToken(val(row, 'POS', ''));
-
-    const isLikelyPosSchemaToken = (rawToken) => {
-        const fileName = extractFileNameFromPath(rawToken);
-        if (!fileName) return false;
-        const nameNoExt = stripFileExtension(fileName).toLowerCase();
-
-        if (bookLower && nameNoExt.startsWith(`${bookLower}-`)) {
-            const tail = nameNoExt.slice(bookLower.length + 1);
-            return /^\d{4}-\d{2}-\d+$/.test(tail);
-        }
-
-        return /-\d{4}-\d{2}-\d+$/.test(nameNoExt);
-    };
 
     const itemsByLabel = new Map();
-    const matchesSelectedRow = (rawToken) => {
-        const parsed = parsePosSchemaTokenIdentity(rawToken);
-        if (!parsed) return true;
-        if (bookLower && parsed.book && parsed.book !== bookLower) return false;
-        if (rowPage && parsed.page && parsed.page !== rowPage) return false;
-        if (rowPos && parsed.pos && parsed.pos !== rowPos) return false;
-        return true;
+
+    const getExistingCandidates = (candidates) => {
+        if (!Array.isArray(candidates) || candidates.length === 0) return [];
+        if (!state?.esquemasPosFileSet || state.esquemasPosFileSet.size === 0) return candidates;
+
+        return candidates.filter((candidate) => {
+            const fileName = extractFileNameFromPath(candidate).toLowerCase();
+            return fileName && state.esquemasPosFileSet.has(fileName);
+        });
     };
+
     const mergeItem = (rawToken, preferredPath = '') => {
         const cleanToken = String(rawToken || '').trim();
         if (!cleanToken) return;
         const fileName = extractFileNameFromPath(cleanToken) || cleanToken;
         const label = stripFileExtension(fileName);
         if (!label) return;
-        const candidates = [
+        const allCandidates = [
             ...buildSchemaPosImageCandidates(book, preferredPath || cleanToken),
             ...buildSchemaPosImageCandidates(book, cleanToken)
         ];
+
+        const candidates = getExistingCandidates(allCandidates);
+        if (!candidates.length) return;
+
         if (!itemsByLabel.has(label)) itemsByLabel.set(label, { label, candidates: [] });
         const item = itemsByLabel.get(label);
         const existing = new Set(item.candidates);
         candidates.forEach(path => { if (!existing.has(path)) { existing.add(path); item.candidates.push(path); } });
     };
-    splitSchemaTokens(row?.ruta_esquemas_pos).forEach(r => {
-        if (matchesSelectedRow(r)) mergeItem(r, r);
-    });
-    // exp_imagenes puede mezclar fotos y otros assets; solo aceptamos tokens
-    // que cumplan el patron esperado de esquema POS (<BOOK>-####-##-POS).
-    splitSchemaTokens(row?.exp_imagenes).forEach(r => {
-        if (isLikelyPosSchemaToken(r) && matchesSelectedRow(r)) mergeItem(r, r);
-    });
-    splitSchemaTokens(row?.esquemas_circulos).forEach(t => {
-        if (matchesSelectedRow(t)) mergeItem(t);
-    });
+
+    // Resolver esquema_pos sin filtrar por página/POS: lo único que cuenta es
+    // si existe el archivo candidato en el índice local de esquemas_pos.
+    splitSchemaTokens(row?.ruta_esquemas_pos).forEach(r => mergeItem(r, r));
+    splitSchemaTokens(row?.exp_imagenes).forEach(r => mergeItem(r, r));
+    splitSchemaTokens(row?.esquemas_circulos).forEach(t => mergeItem(t));
+    splitSchemaTokens(row?.esquemas_circulos_all).forEach(t => mergeItem(t));
+
     return [...itemsByLabel.values()]
         .filter(item => item.candidates.length > 0)
         .sort((a, b) => a.label.localeCompare(b.label, undefined, { numeric: true }));

@@ -38,6 +38,10 @@ DEFAULT_URL_BASE = "https://milu-naval.mystagingwebsite.com/wp-content/uploads/2
 POS_EXT = "webp"
 
 
+def _normalize_key(value: Any) -> str:
+    return str(value or "").strip().lower()
+
+
 def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(
         description="Recalcula campos de esquemas_circulos usando SOLO el campo esquemas + POS."
@@ -84,6 +88,11 @@ def build_parser() -> argparse.ArgumentParser:
         default=True,
         help="Prioriza pdf/03-Libros_Marcos_modificados_a_mano",
     )
+    parser.add_argument(
+        "--overrides-json",
+        default="",
+        help="JSON opcional con overrides manuales de deteccion POS",
+    )
 
     return parser
 
@@ -116,11 +125,7 @@ def parse_args(argv: Optional[Sequence[str]] = None) -> argparse.Namespace:
 
 
 def pick_pos(row: Dict[str, Any]) -> Optional[str]:
-    for key in ("POS", "pos_final", "pos_pdf", "pos"):
-        pos = normalize_pos(row.get(key))
-        if pos:
-            return pos
-    return None
+    return normalize_pos(row.get("pos_final"))
 
 
 def parse_base_scheme_filename(token: str) -> Optional[Tuple[str, int, int, str]]:
@@ -208,7 +213,11 @@ def detect_pos_items_for_box(
 
         safe_clip = expand_box_in_page(clip_outer, page.rect, 18.0)
         safe_items: List[Dict[str, Any]] = []
+        ocr_items: List[Dict[str, Any]] = []
         for item in candidate_items:
+            if str(item.get("source") or "") == "OCR":
+                ocr_items.append(item)
+                continue
             if str(item.get("source") or "") != "TEXT":
                 continue
             rect = item.get("rect_pdf")
@@ -221,6 +230,11 @@ def detect_pos_items_for_box(
 
         if safe_items:
             return safe_items
+
+        # Si el texto embebido del PDF no coincide, permitimos fallback por OCR
+        # para no perder POS claramente visibles en la imagen del esquema.
+        if ocr_items:
+            return ocr_items
 
     return []
 
@@ -244,9 +258,14 @@ def render_pos_image(
     dy_px = int(round((clip_inner.y0 - clip_outer.y0) * zoom))
 
     for item in items:
-        if item.get("source") == "OCR":
+        source = str(item.get("source") or "")
+        if source in {"OCR", "MANUAL_OCR_INNER"}:
             x, y, width, height = item["px"]
             draw_circle(draw, x + dx_px, y + dy_px, width, height, line_width=6)
+            continue
+        if source == "MANUAL_OCR_OUTER":
+            x, y, width, height = item["px"]
+            draw_circle(draw, x, y, width, height, line_width=6)
             continue
 
         rect = item["rect_pdf"]
@@ -274,23 +293,90 @@ def build_exp_imagenes(ruta_foto: Any, ruta_esquemas_pos: str) -> str:
     return ", ".join(merged)
 
 
+def load_manual_overrides(path_value: str) -> Dict[Tuple[str, str, str], List[Dict[str, Any]]]:
+    if not str(path_value or "").strip():
+        return {}
+
+    path = Path(path_value)
+    if not path.is_absolute():
+        path = ROOT_DIR / path
+    if not path.exists():
+        return {}
+
+    raw = json.loads(path.read_text(encoding="utf-8"))
+    entries: List[Dict[str, Any]]
+    if isinstance(raw, list):
+        entries = raw
+    elif isinstance(raw, dict) and isinstance(raw.get("overrides"), list):
+        entries = list(raw.get("overrides") or [])
+    else:
+        return {}
+
+    indexed: Dict[Tuple[str, str, str], List[Dict[str, Any]]] = {}
+    for entry in entries:
+        if not isinstance(entry, dict):
+            continue
+        rid = _normalize_key(entry.get("id"))
+        base_name = Path(str(entry.get("base") or "").strip()).name.lower()
+        pos_value = _normalize_key(entry.get("pos"))
+        if not rid or not base_name or not pos_value:
+            continue
+
+        item = entry.get("item")
+        if isinstance(item, dict):
+            items = [item]
+        else:
+            items = [x for x in (entry.get("items") or []) if isinstance(x, dict)]
+        if not items:
+            continue
+
+        normalized_items: List[Dict[str, Any]] = []
+        for item_data in items:
+            rect = item_data.get("rect_pdf")
+            px = item_data.get("px")
+            if isinstance(rect, (list, tuple)) and len(rect) == 4:
+                normalized_items.append(
+                    {
+                        "source": "MANUAL_RECT",
+                        "rect_pdf": fitz.Rect(float(rect[0]), float(rect[1]), float(rect[2]), float(rect[3])),
+                    }
+                )
+                continue
+            if isinstance(px, (list, tuple)) and len(px) == 4:
+                normalized_items.append(
+                    {
+                        "source": "MANUAL_OCR_INNER",
+                        "px": (int(px[0]), int(px[1]), int(px[2]), int(px[3])),
+                    }
+                )
+
+        if not normalized_items:
+            continue
+
+        key = (rid, base_name, pos_value)
+        indexed[key] = normalized_items
+
+    return indexed
+
+
+def get_manual_override_items(
+    overrides: Dict[Tuple[str, str, str], List[Dict[str, Any]]],
+    record_id: str,
+    base_name: str,
+    pos_value: str,
+) -> List[Dict[str, Any]]:
+    if not overrides:
+        return []
+    key = (_normalize_key(record_id), Path(base_name).name.lower(), _normalize_key(pos_value))
+    return list(overrides.get(key) or [])
+
+
 def apply_derived_fields(
     row: Dict[str, Any],
-    next_all: str,
     next_one: str,
-    next_url: str,
-    update_exp_imagenes: bool,
 ) -> bool:
-    changed = False
-    changed = set_if_changed(row, "esquemas_circulos_all", next_all) or changed
-    changed = set_if_changed(row, "esquemas_circulos", next_one) or changed
-    changed = set_if_changed(row, "ruta_esquemas_pos", next_url) or changed
-
-    if update_exp_imagenes:
-        next_exp = build_exp_imagenes(row.get("ruta_foto"), next_url)
-        changed = set_if_changed(row, "exp_imagenes", next_exp) or changed
-
-    return changed
+    # Este script solo debe actualizar esquemas_circulos.
+    return set_if_changed(row, "esquemas_circulos", next_one)
 
 
 def process_record(
@@ -300,6 +386,7 @@ def process_record(
     args: argparse.Namespace,
     pos_output_dir: Path,
     pos_lookup_dirs: Sequence[Path],
+    manual_overrides: Dict[Tuple[str, str, str], List[Dict[str, Any]]],
 ) -> Dict[str, Any]:
     record_id = str(row.get("ID") or "").strip()
     pn_value = str(row.get("PART NO.") or row.get("pn_final") or "").strip()
@@ -327,19 +414,14 @@ def process_record(
         "missing": [],
         "reason": "",
         "changed": False,
+        "manual_override_used": False,
     }
 
     base_tokens = split_csv(esquemas_raw)
     if not base_tokens:
         changed = False
         if args.write:
-            changed = apply_derived_fields(
-                row,
-                next_all="",
-                next_one="",
-                next_url="",
-                update_exp_imagenes=bool(args.update_exp_imagenes),
-            )
+            changed = apply_derived_fields(row, next_one="")
         report["status"] = "MISS_NO_ESQUEMAS"
         report["reason"] = "Campo esquemas vacio"
         report["changed"] = bool(changed)
@@ -348,15 +430,9 @@ def process_record(
     if not pos_value:
         changed = False
         if args.write:
-            changed = apply_derived_fields(
-                row,
-                next_all="",
-                next_one="",
-                next_url="",
-                update_exp_imagenes=bool(args.update_exp_imagenes),
-            )
+            changed = apply_derived_fields(row, next_one="")
         report["status"] = "MISS_NO_POS"
-        report["reason"] = "POS no disponible en prioridad POS/pos_final/pos_pdf/pos"
+        report["reason"] = "pos_final no disponible"
         report["changed"] = bool(changed)
         return report
 
@@ -391,16 +467,21 @@ def process_record(
             continue
 
         box = boxes[box_index - 1]
-        items = detect_pos_items_for_box(
-            context=context,
-            page_num=page_num,
-            box=box,
-            target_pos=pos_value,
-            dpi=int(args.dpi),
-            frame_pad_pt=float(args.frame_pad_pt),
-            pos_fallback_pad_pt=float(args.pos_fallback_pad_pt),
-            enable_ocr=bool(args.ocr),
-        )
+        manual_items = get_manual_override_items(manual_overrides, record_id=record_id, base_name=base_name, pos_value=pos_value)
+        if manual_items:
+            items = manual_items
+            report["manual_override_used"] = True
+        else:
+            items = detect_pos_items_for_box(
+                context=context,
+                page_num=page_num,
+                box=box,
+                target_pos=pos_value,
+                dpi=int(args.dpi),
+                frame_pad_pt=float(args.frame_pad_pt),
+                pos_fallback_pad_pt=float(args.pos_fallback_pad_pt),
+                enable_ocr=bool(args.ocr),
+            )
         if not items:
             report["missing"].append(target_name)
             missing_reasons.append(f"POS {pos_value} no encontrada en esquema {base_name}")
@@ -440,13 +521,7 @@ def process_record(
 
     changed = False
     if args.write:
-        changed = apply_derived_fields(
-            row,
-            next_all=next_all,
-            next_one=next_one,
-            next_url=next_url,
-            update_exp_imagenes=bool(args.update_exp_imagenes),
-        )
+        changed = apply_derived_fields(row, next_one=next_one)
 
     report["changed"] = bool(changed)
 
@@ -495,6 +570,7 @@ def process_engine(engine: str, args: argparse.Namespace) -> Dict[str, Any]:
 
     changed_any = False
     record_reports: List[Dict[str, Any]] = []
+    manual_overrides = load_manual_overrides(str(args.overrides_json or ""))
 
     context = EngineContext(engine=engine, pdf_path=pdf_path)
     try:
@@ -507,6 +583,7 @@ def process_engine(engine: str, args: argparse.Namespace) -> Dict[str, Any]:
                 args=args,
                 pos_output_dir=pos_output_dir,
                 pos_lookup_dirs=pos_lookup_dirs,
+                manual_overrides=manual_overrides,
             )
             record_reports.append(rec_report)
             changed_any = changed_any or bool(rec_report.get("changed"))
@@ -514,7 +591,8 @@ def process_engine(engine: str, args: argparse.Namespace) -> Dict[str, Any]:
             print(
                 f"[RECORD] engine={engine} id={rec_report.get('id')} "
                 f"status={rec_report.get('status')} generated={len(rec_report.get('generated', []))} "
-                f"reused={len(rec_report.get('reused', []))} missing={len(rec_report.get('missing', []))}"
+                f"reused={len(rec_report.get('reused', []))} missing={len(rec_report.get('missing', []))} "
+                f"manual={bool(rec_report.get('manual_override_used'))}"
             )
     finally:
         context.close()

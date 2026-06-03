@@ -137,6 +137,16 @@ def token_matches_target_pos(token_pos: str, target_pos: str) -> bool:
     except Exception:
         pass
 
+    # Tolerancia para OCR concatenado (ej: "2540" para etiquetas vecinas "25" y "40").
+    # Solo se aplica para objetivos de 2+ digitos y cuando el token parece
+    # la concatenacion de dos etiquetas del mismo largo.
+    if token_norm.isdigit() and target_norm.isdigit() and len(target_norm) >= 2:
+        if len(token_norm) == len(target_norm) * 2:
+            left = token_norm[: len(target_norm)]
+            right = token_norm[len(target_norm):]
+            if left == target_norm or right == target_norm:
+                return True
+
     return False
 
 
@@ -680,13 +690,16 @@ def detect_pos_items_all(page: fitz.Page, clip_inner: fitz.Rect, dpi: int, enabl
                 "rect_pdf": rect,
             })
 
-    if items:
+    if not enable_ocr:
         return items
 
-    if not enable_ocr:
-        return []
+    # OCR debe ejecutarse tambien cuando ya hay texto para capturar casos mixtos
+    # donde el POS objetivo no llega por capa de texto pero si es visible en raster.
+    ocr_items = run_ocr_tokens(render_clip(page, clip_inner, dpi=dpi))
+    if ocr_items:
+        items.extend(ocr_items)
 
-    return run_ocr_tokens(render_clip(page, clip_inner, dpi=dpi))
+    return items
 
 
 def choose_match(matches: Sequence[Dict[str, Any]], record: Dict[str, Any]) -> Dict[str, Any]:

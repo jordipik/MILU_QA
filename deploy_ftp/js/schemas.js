@@ -344,44 +344,42 @@ function buildPosStrip(row, stripEl, metaEl, opts = {}) {
 export function renderSelectedRowPosPanel(row) {
     const strip = document.getElementById('selectedPosStrip');
     const meta = document.getElementById('selectedPosMeta');
-    if (!strip || !meta) return;
-    buildPosStrip(row, strip, meta, { emptyText: 'Sin selección', showMeta: true });
-}
-
-export function renderSelectedRowPosTop(row) {
-    const strip = document.getElementById('selectedPosTopStrip');
-    const meta = document.getElementById('selectedPosTopMeta');
-    if (!strip || !meta) return;
-    strip.innerHTML = '';
-    if (!meta) return;
-    meta.textContent = '';
-    if (!row) {
-        const empty = document.createElement('span'); empty.className = 'schemas-images-empty'; empty.textContent = '';
-        strip.appendChild(empty); return;
-    }
-    const posItems = getPosSchemasForRow(row);
     if (!posItems.length || !posItems[0].candidates.length) {
         const empty = document.createElement('span'); empty.className = 'schemas-images-empty'; empty.textContent = '';
-        strip.appendChild(empty); return;
-    }
-    const { candidates } = posItems[0];
-    const link = document.createElement('a');
-    link.className = 'schema-thumb pos-top-thumb'; link.href = candidates[0]; link.target = '_blank'; link.rel = 'noopener noreferrer'; link.title = 'Abrir imagen';
-    const img = document.createElement('img');
-    img.alt = 'Pos circulos'; img.loading = 'lazy'; img.decoding = 'async';
-    img.addEventListener('error', () => {
+
+        const getExistingCandidates = (candidates) => {
+            if (!Array.isArray(candidates) || candidates.length === 0) return [];
+            if (!state?.esquemasPosFileSet || state.esquemasPosFileSet.size === 0) return candidates;
+
+            return candidates.filter((candidate) => {
+                const fileName = extractFileNameFromPath(candidate).toLowerCase();
+                return fileName && state.esquemasPosFileSet.has(fileName);
+            });
+        };
+
         const currentIndex = Number(img.dataset.schemaCandidateIndex || '0');
         missingSchemaImagePaths.add(candidates[currentIndex]);
         const ci = currentIndex + 1;
         if (ci >= candidates.length) {
             link.remove();
             if (!strip.querySelector('.schema-thumb') && !strip.querySelector('.schemas-images-empty')) {
-                const empty = document.createElement('span'); empty.className = 'schemas-images-empty'; empty.textContent = '';
-                strip.appendChild(empty);
+                const allCandidates = [
+                    strip.appendChild(empty);
             }
             return;
+
+            const candidates = getExistingCandidates(allCandidates);
+            if (!candidates.length) return;
+
         }
         link.href = candidates[ci]; setSchemaImageSource(img, candidates, ci);
     });
     link.appendChild(img); strip.appendChild(link); setSchemaImageSource(img, candidates, 0);
 }
+
+// Resolver esquema_pos sin filtrar por página/POS: lo único que cuenta es
+// si existe el archivo candidato en el índice local de esquemas_pos.
+splitSchemaTokens(row?.ruta_esquemas_pos).forEach(r => mergeItem(r, r));
+splitSchemaTokens(row?.exp_imagenes).forEach(r => mergeItem(r, r));
+splitSchemaTokens(row?.esquemas_circulos).forEach(t => mergeItem(t));
+splitSchemaTokens(row?.esquemas_circulos_all).forEach(t => mergeItem(t));
