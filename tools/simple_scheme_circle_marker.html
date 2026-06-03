@@ -486,6 +486,17 @@
             return m ? m[1] : "";
         }
 
+        function closeWindowAfterSuccess() {
+            setTimeout(() => {
+                window.close();
+                setTimeout(() => {
+                    if (!window.closed) {
+                        statusChip.textContent = `${statusChip.textContent} | Cierra esta pestaña manualmente`;
+                    }
+                }, 250);
+            }, 600);
+        }
+
         function buildItemsFromForm() {
             if (!circles.length) {
                 throw new Error("No hay circulos");
@@ -561,6 +572,7 @@
                     }
                 }
                 statusChip.textContent = `Estado: OK (esquemas_circulos=${base})`;
+                closeWindowAfterSuccess();
             } catch (err) {
                 statusChip.textContent = `Estado: error guardando esquemas_circulos (${String(err && err.message || err)})`;
             }
@@ -590,6 +602,7 @@
                     throw new Error(data.error || `HTTP ${res.status}`);
                 }
                 statusChip.textContent = `Estado: OK JSON (${data.count || form.items.length})`;
+                closeWindowAfterSuccess();
             } catch (err) {
                 statusChip.textContent = `Estado: error JSON (${String(err && err.message || err)})`;
             }
@@ -622,16 +635,7 @@
                 statusChip.textContent = firstImage
                     ? `Estado: OK (${data.count || form.items.length}) -> ${firstImage}`
                     : `Estado: OK (${data.count || form.items.length} procesados)`;
-
-                // Try to close the marker window after a successful save.
-                setTimeout(() => {
-                    window.close();
-                    setTimeout(() => {
-                        if (!window.closed) {
-                            statusChip.textContent = `${statusChip.textContent} | Cierra esta pestaña manualmente`;
-                        }
-                    }, 250);
-                }, 600);
+                closeWindowAfterSuccess();
             } catch (err) {
                 statusChip.textContent = `Estado: error (${String(err && err.message || err)})`;
             }

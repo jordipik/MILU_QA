@@ -4095,6 +4095,8 @@
 
         .badge-pos-ok,
 
+        .badge-pos-general,
+
         .badge-pos-missing,
 
         .badge-pos-none,
@@ -4103,6 +4105,7 @@
 
             display: inline-flex;
 
+            .badge-pos-general,
             align-items: center;
 
             justify-content: center;
@@ -4137,6 +4140,21 @@
 
         }
 
+        .badge-pos-general {
+
+            min-width: 32px;
+
+            padding: 0 6px;
+
+            color: #1d4ed8;
+
+            background: rgba(59, 130, 246, 0.14);
+
+            border-color: rgba(59, 130, 246, 0.38);
+
+            font-size: 9px;
+
+        }
 
 
         .badge-pos-missing {

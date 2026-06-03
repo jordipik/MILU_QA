@@ -40,7 +40,7 @@ import {
     runPdfHeaderOnlyDetection,
     setPdfSelection
 } from './pdf-viewer.js';
-import { updateSchemasInline, updateSchemasFromRow, renderSelectedRowPosPanel, renderSelectedRowPosTop } from './schemas.js';
+import { updateSchemasInline, updateSchemasFromRow, renderSelectedRowPosPanel, renderSelectedRowPosTop, splitSchemaTokens, extractFileNameFromPath } from './schemas.js';
 import { getEngineJsonForRow } from './helpers.js';
 import {
     applyFilters,
@@ -5319,6 +5319,37 @@ function getLoadedEngineFilesSet() {
 
 }
 
+function isDoubleClickOnColumnP(target) {
+    const cell = target?.closest?.('td');
+    if (!(cell instanceof HTMLTableCellElement)) return false;
+    const table = cell.closest('table');
+    if (!(table instanceof HTMLTableElement)) return false;
+    const headerCell = table.querySelector(`thead th:nth-child(${cell.cellIndex + 1})`);
+    const headerText = String(headerCell?.textContent || '').trim().toUpperCase();
+    return headerText === 'P';
+}
+
+function buildMarkerUrlForRow(row) {
+    const engine = String(val(row, 'engine_model', '') || '').trim();
+    const id = String(val(row, 'ID', '') || '').trim();
+    const pos = String(val(row, 'POS', '') || val(row, 'pos_final', '') || '').trim();
+
+    const baseToken = splitSchemaTokens(row?.esquemas)[0] || '';
+    const base = extractFileNameFromPath(baseToken) || String(baseToken || '').trim();
+    const allSchemas = splitSchemaTokens(row?.esquemas)
+        .map(t => extractFileNameFromPath(t) || String(t || '').trim())
+        .filter(Boolean);
+
+    const params = new URLSearchParams();
+    if (base) params.set('base', base);
+    if (engine) params.set('engine', engine);
+    if (id) params.set('id', id);
+    if (pos) params.set('pos', pos);
+    if (allSchemas.length) params.set('schemas', allSchemas.join(','));
+
+    return `tools/simple_scheme_circle_marker.html${params.toString() ? `?${params.toString()}` : ''}`;
+}
+
 
 
 function getEngineCatalogList() {
@@ -8066,6 +8097,14 @@ function attachGlobalEvents() {
 
         if (!row) return;
 
+        if (isDoubleClickOnColumnP(target)) {
+            const markerUrl = buildMarkerUrlForRow(row);
+            window.open(markerUrl, '_blank', 'noopener,noreferrer');
+            event.preventDefault();
+            event.stopPropagation();
+            return;
+        }
+
         const copyCell = target.closest('td[data-copy-to-final][data-copy-from-field]');
 
         if (copyCell instanceof HTMLTableCellElement) {
@@ -8263,6 +8302,14 @@ function attachGlobalEvents() {
         const row = state.allData.find(item => getRevisionKey(item) === revisionKey);
 
         if (!row) return;
+
+        if (isDoubleClickOnColumnP(target)) {
+            const markerUrl = buildMarkerUrlForRow(row);
+            window.open(markerUrl, '_blank', 'noopener,noreferrer');
+            event.preventDefault();
+            event.stopPropagation();
+            return;
+        }
 
         const copyCell = target.closest('td[data-copy-to-final][data-copy-from-field]');
 

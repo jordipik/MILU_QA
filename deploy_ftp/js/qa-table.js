@@ -583,11 +583,11 @@ export function sortData(data, key, asc) {
     }
 
     if (key === 'has_esquema_pos') {
-        // Ordena: ok (0) -> missing (1) -> empty (2) -> sin (3)
-        const order = { ok: 0, missing: 1, empty: 2, sin: 3 };
+        // Ordena: general (0) -> ok (1) -> missing (2) -> empty (3) -> sin (4)
+        const order = { general: 0, ok: 1, missing: 2, empty: 3, sin: 4 };
         return [...data].sort((a, b) => {
-            const va = order[getEsquemaPosStatus(a)] ?? 3;
-            const vb = order[getEsquemaPosStatus(b)] ?? 3;
+            const va = order[getEsquemaPosStatus(a)] ?? 4;
+            const vb = order[getEsquemaPosStatus(b)] ?? 4;
             return asc ? va - vb : vb - va;
         });
     }
@@ -647,7 +647,7 @@ export function applyFilters(data) {
                     break;
                 }
                 case 'has_esquema_pos': {
-                    // Valores posibles del filtro: 'ok' | 'missing' | 'empty' | 'sin'
+                    // Valores posibles del filtro: 'general' | 'ok' | 'missing' | 'empty' | 'sin'
                     // Compara contra el estado derivado de ruta_esquemas_pos + índice local
                     rowValue = getEsquemaPosStatus(row);
                     break;
@@ -1040,16 +1040,29 @@ function basename(value) {
     return normalizePath(value);
 }
 
+function splitSchemaTokensLocal(rawValue) {
+    return String(rawValue || '').split(/[,;|\n]+/).map(token => String(token || '').trim()).filter(Boolean);
+}
+
+function isGeneralSchemaFileName(value) {
+    return /^.+-\d{4}-\d{2}\.(png|webp|jpg|jpeg)$/i.test(String(value || '').trim());
+}
+
 // Devuelve el estado del esquema pos para la fila:
 //   'sin'     — no hay esquemas base en el registro
 //   'empty'   — hay esquemas pero no hay referencias en ruta_esquemas_pos / exp_imagenes / esquemas_circulos
 //   'ok'      — existe al menos un candidato en state.esquemasPosFileSet
 //   'missing' — hay referencias pero no se encuentra archivo local
 function getEsquemaPosStatus(row) {
-    const hasEsquemaBase = String(getCompactFieldValue(row, 'esquemas', '') || '')
-        .split(/[,;|\n]+/)
-        .some(token => String(token || '').trim() !== '');
+    const esquemaTokens = splitSchemaTokensLocal(getCompactFieldValue(row, 'esquemas', ''));
+    const hasEsquemaBase = esquemaTokens.length > 0;
     if (!hasEsquemaBase) return 'sin';
+
+    const esquemaBasenames = new Set(esquemaTokens.map(token => basename(token)).filter(Boolean));
+    const generalCircleMatch = splitSchemaTokensLocal(getCompactFieldValue(row, 'esquemas_circulos', ''))
+        .map(token => basename(token))
+        .find(token => token && isGeneralSchemaFileName(token) && esquemaBasenames.has(token));
+    if (generalCircleMatch) return 'general';
 
     // Mismo criterio que usa la UI de esquemas para resolver imágenes:
     // combina ruta_esquemas_pos + esquemas_circulos y evalúa sus candidatos.
@@ -1074,6 +1087,8 @@ function renderEsquemaPosCell(row) {
     const ruta = String(getCompactFieldValue(row, 'ruta_esquemas_pos', '') || '').trim();
     if (status === 'ok') {
         return `<span class="badge-pos-ok" title="Archivo encontrado">OK</span>`;
+    } else if (status === 'general') {
+        return `<span class="badge-pos-general" title="esquemas_circulos contiene un esquema general presente en esquemas">ESQ</span>`;
     } else if (status === 'missing') {
         return `<span class="badge-pos-missing" title="Archivo no encontrado${ruta ? `: ${escapeHtml(ruta)}` : ''}">MISS</span>`;
     } else if (status === 'sin') {
