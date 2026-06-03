@@ -1583,6 +1583,367 @@ app.post('/api/recompute-simple/generate-missing-esquema-pos', async (req, res) 
     }
 });
 
+function getPythonCmd() {
+    return process.env.MILU_PYTHON && String(process.env.MILU_PYTHON).trim()
+        ? String(process.env.MILU_PYTHON).trim()
+        : 'python';
+}
+
+async function runPythonScriptWithReport({ scriptName, scriptArgs = [], reportPrefix = 'milu_report' }) {
+    const os = require('os');
+    const reportPath = path.join(os.tmpdir(), `${reportPrefix}_${Date.now()}_${process.pid}.json`);
+    const args = [scriptName, ...scriptArgs, '--report', reportPath];
+
+    const execResult = await new Promise((resolve, reject) => {
+        const python = spawn(getPythonCmd(), args, {
+            cwd: __dirname,
+            stdio: ['pipe', 'pipe', 'pipe'],
+            windowsHide: true,
+            env: { ...process.env, PYTHONIOENCODING: 'utf-8' }
+        });
+
+        let stdout = '';
+        let stderr = '';
+
+        python.stdout.on('data', (chunk) => {
+            stdout += String(chunk || '');
+        });
+
+        python.stderr.on('data', (chunk) => {
+            stderr += String(chunk || '');
+        });
+
+        python.on('error', reject);
+        python.on('close', async (code) => {
+            let report = null;
+            try {
+                if (fs.existsSync(reportPath)) {
+                    report = JSON.parse(await fs.promises.readFile(reportPath, 'utf8'));
+                }
+            } catch (reportError) {
+                return reject(reportError);
+            } finally {
+                cleanupFileIfExists(reportPath);
+            }
+
+            resolve({
+                code: Number(code),
+                stdout,
+                stderr,
+                report,
+                reportPath
+            });
+        });
+    });
+
+    return execResult;
+}
+
+function tryResolveManualPickerRecord(engineFile, recordId) {
+    const idNeedle = normalizeText(recordId);
+    if (!engineFile || !idNeedle) return null;
+
+    try {
+        const filePath = path.join(__dirname, engineFile);
+        if (!fs.existsSync(filePath)) return null;
+        const rows = JSON.parse(fs.readFileSync(filePath, 'utf8'));
+        if (!Array.isArray(rows)) return null;
+        return rows.find((row) => normalizeText(row?.ID) === idNeedle) || null;
+    } catch (_error) {
+        return null;
+    }
+}
+
+function pickFirstCsvToken(value) {
+    const raw = normalizeText(value);
+    if (!raw) return '';
+    const tokens = raw
+        .split(/[,;\n]/)
+        .map((item) => normalizeText(item))
+        .filter(Boolean);
+    return tokens[0] || '';
+}
+
+function pickRecordPageForManualPicker(row) {
+    if (!row || typeof row !== 'object') return '';
+    const candidates = ['Source Page', 'source_page', 'PAG', 'page', 'source_page_num'];
+    for (const key of candidates) {
+        const value = normalizeText(row?.[key]);
+        if (value) return value;
+    }
+    return '';
+}
+
+app.post('/api/recompute-simple/rebuild-schemes-by-bom', async (req, res) => {
+    let engine;
+    let id;
+    let dryRun;
+    let forceRegenerate;
+
+    try {
+        assertPayloadSize(req.body, { maxBytes: 12288 });
+        engine = assertString(req.body?.engine ?? 'ALL', { field: 'engine', allowEmpty: false, maxLength: 64 });
+        id = assertString(req.body?.id ?? '', { field: 'id', allowEmpty: true, maxLength: 128 });
+        dryRun = assertBooleanLike(req.body?.dryRun ?? true, 'dryRun');
+        forceRegenerate = assertBooleanLike(req.body?.forceRegenerate ?? false, 'forceRegenerate');
+
+        const normalizedEngine = normalizeEngineToken(engine);
+        if (!normalizedEngine) {
+            throw validationError({ code: 'INVALID_ENGINE', field: 'engine', message: 'engine es obligatorio' });
+        }
+        if (normalizedEngine === 'ALL' && id) {
+            throw validationError({ code: 'ID_NOT_ALLOWED_FOR_ALL_SCOPE', field: 'id', message: 'engine=ALL no admite id puntual' });
+        }
+    } catch (error) {
+        return isValidationError(error)
+            ? sendValidationError(res, error, { endpoint: '/api/recompute-simple/rebuild-schemes-by-bom' })
+            : res.status(400).json({ ok: false, error: String(error?.message || error) });
+    }
+
+    try {
+        const normalizedEngine = normalizeEngineToken(engine);
+        const scriptArgs = [];
+
+        if (normalizedEngine === 'ALL') {
+            scriptArgs.push('--all');
+        } else {
+            scriptArgs.push('--engine', normalizedEngine);
+            if (id) scriptArgs.push('--id', id);
+            else scriptArgs.push('--all-book');
+        }
+
+        if (dryRun) scriptArgs.push('--dry-run');
+        else scriptArgs.push('--write');
+
+        if (forceRegenerate) {
+            scriptArgs.push('--force-regenerate');
+        }
+
+        const execResult = await runPythonScriptWithReport({
+            scriptName: 'rebuild_schemes_by_bom.py',
+            scriptArgs,
+            reportPrefix: 'milu_rebuild_schemes_by_bom'
+        });
+
+        const report = execResult.report && typeof execResult.report === 'object'
+            ? execResult.report
+            : { engine_reports: [], totals: {} };
+
+        const payload = {
+            result: {
+                ...report,
+                report_path: execResult.reportPath
+            },
+            notes: {
+                exitCode: execResult.code,
+                stderr: String(execResult.stderr || ''),
+                dryRun: Boolean(dryRun)
+            },
+            ignoredId: false
+        };
+
+        if (execResult.code === 0) {
+            return res.status(200).json({ ok: true, ...payload });
+        }
+
+        if (execResult.report) {
+            return res.status(207).json({
+                ok: false,
+                error: 'Proceso completado con incidencias parciales',
+                ...payload
+            });
+        }
+
+        return res.status(500).json({
+            ok: false,
+            error: String(execResult.stderr || execResult.stdout || `Error ejecutando rebuild_schemes_by_bom.py (code=${execResult.code})`)
+        });
+    } catch (error) {
+        return res.status(500).json({
+            ok: false,
+            error: String(error?.message || error || 'Error desconocido')
+        });
+    }
+});
+
+app.post('/api/recompute-simple/rebuild-schemes-circles-from-esquemas', async (req, res) => {
+    let engine;
+    let id;
+    let dryRun;
+    let forceRegenerate;
+    let useManualOverrides;
+    let overridesJson;
+
+    try {
+        assertPayloadSize(req.body, { maxBytes: 12288 });
+        engine = assertString(req.body?.engine ?? 'ALL', { field: 'engine', allowEmpty: false, maxLength: 64 });
+        id = assertString(req.body?.id ?? '', { field: 'id', allowEmpty: true, maxLength: 128 });
+        dryRun = assertBooleanLike(req.body?.dryRun ?? true, 'dryRun');
+        forceRegenerate = assertBooleanLike(req.body?.forceRegenerate ?? false, 'forceRegenerate');
+        useManualOverrides = assertBooleanLike(req.body?.useManualOverrides ?? true, 'useManualOverrides');
+        overridesJson = assertString(
+            req.body?.overridesJson ?? 'rebuild_schemes_circles_manual_overrides.json',
+            { field: 'overridesJson', allowEmpty: true, maxLength: 260 }
+        );
+
+        const normalizedEngine = normalizeEngineToken(engine);
+        if (!normalizedEngine) {
+            throw validationError({ code: 'INVALID_ENGINE', field: 'engine', message: 'engine es obligatorio' });
+        }
+        if (normalizedEngine === 'ALL' && id) {
+            throw validationError({ code: 'ID_NOT_ALLOWED_FOR_ALL_SCOPE', field: 'id', message: 'engine=ALL no admite id puntual' });
+        }
+    } catch (error) {
+        return isValidationError(error)
+            ? sendValidationError(res, error, { endpoint: '/api/recompute-simple/rebuild-schemes-circles-from-esquemas' })
+            : res.status(400).json({ ok: false, error: String(error?.message || error) });
+    }
+
+    try {
+        const normalizedEngine = normalizeEngineToken(engine);
+        const scriptArgs = [];
+
+        if (normalizedEngine === 'ALL') {
+            scriptArgs.push('--all');
+        } else {
+            scriptArgs.push('--engine', normalizedEngine);
+            if (id) scriptArgs.push('--id', id);
+            else scriptArgs.push('--all-book');
+        }
+
+        if (dryRun) scriptArgs.push('--dry-run');
+        else scriptArgs.push('--write');
+
+        if (forceRegenerate) {
+            scriptArgs.push('--force-regenerate');
+        }
+
+        if (useManualOverrides && overridesJson) {
+            scriptArgs.push('--overrides-json', overridesJson);
+        }
+
+        const execResult = await runPythonScriptWithReport({
+            scriptName: 'rebuild_schemes_circles_from_esquemas.py',
+            scriptArgs,
+            reportPrefix: 'milu_rebuild_schemes_circles_from_esquemas'
+        });
+
+        const report = execResult.report && typeof execResult.report === 'object'
+            ? execResult.report
+            : { engine_reports: [], totals_by_status: {} };
+
+        const payload = {
+            result: {
+                ...report,
+                report_path: execResult.reportPath
+            },
+            notes: {
+                exitCode: execResult.code,
+                stderr: String(execResult.stderr || ''),
+                dryRun: Boolean(dryRun),
+                useManualOverrides: Boolean(useManualOverrides),
+                overridesJson: overridesJson || ''
+            },
+            ignoredId: false
+        };
+
+        if (execResult.code === 0) {
+            return res.status(200).json({ ok: true, ...payload });
+        }
+
+        if (execResult.report) {
+            return res.status(207).json({
+                ok: false,
+                error: 'Proceso completado con incidencias parciales',
+                ...payload
+            });
+        }
+
+        return res.status(500).json({
+            ok: false,
+            error: String(execResult.stderr || execResult.stdout || `Error ejecutando rebuild_schemes_circles_from_esquemas.py (code=${execResult.code})`)
+        });
+    } catch (error) {
+        return res.status(500).json({
+            ok: false,
+            error: String(error?.message || error || 'Error desconocido')
+        });
+    }
+});
+
+app.post('/api/recompute-simple/manual-override-picker', async (req, res) => {
+    let engine;
+    let id;
+    let page;
+    let baseScheme;
+    let pos;
+
+    try {
+        assertPayloadSize(req.body, { maxBytes: 16384 });
+        engine = assertString(req.body?.engine ?? '', { field: 'engine', allowEmpty: false, maxLength: 64 });
+        id = assertString(req.body?.id ?? '', { field: 'id', allowEmpty: true, maxLength: 128 });
+        page = assertString(req.body?.page ?? '', { field: 'page', allowEmpty: true, maxLength: 32 });
+        baseScheme = assertString(req.body?.baseScheme ?? '', { field: 'baseScheme', allowEmpty: true, maxLength: 260 });
+        pos = assertString(req.body?.pos ?? '', { field: 'pos', allowEmpty: true, maxLength: 64 });
+
+        const normalizedEngine = normalizeEngineToken(engine);
+        if (!normalizedEngine || normalizedEngine === 'ALL') {
+            throw validationError({ code: 'INVALID_ENGINE', field: 'engine', message: 'Selecciona un engine concreto para abrir el picker manual' });
+        }
+    } catch (error) {
+        return isValidationError(error)
+            ? sendValidationError(res, error, { endpoint: '/api/recompute-simple/manual-override-picker' })
+            : res.status(400).json({ ok: false, error: String(error?.message || error) });
+    }
+
+    try {
+        const normalizedEngine = normalizeEngineToken(engine);
+        const [engineFile] = resolveEngineFilesForRecompute(normalizedEngine);
+        const record = tryResolveManualPickerRecord(engineFile, id);
+
+        const resolvedBase = baseScheme || pickFirstCsvToken(record?.esquemas);
+        const resolvedPos = pos || normalizeText(record?.pos_final || record?.POS || '');
+        const resolvedPage = page || pickRecordPageForManualPicker(record);
+
+        const pickerParams = new URLSearchParams();
+        pickerParams.set('engine', normalizedEngine);
+        if (id) pickerParams.set('id', id);
+        if (resolvedPos) pickerParams.set('pos', resolvedPos);
+        if (resolvedBase) pickerParams.set('base', path.basename(resolvedBase));
+        if (resolvedPage) pickerParams.set('page', resolvedPage);
+
+        if (record) {
+            const schemasValue = normalizeText(record?.esquemas);
+            if (schemasValue) pickerParams.set('schemas', schemasValue);
+        }
+
+        const pickerUrl = `/tools/manual_override_picker.html?${pickerParams.toString()}`;
+        return res.json({
+            ok: true,
+            mode: 'embedded-express',
+            pickerUrl,
+            rebuildEndpoint: '/api/recompute-simple/rebuild-schemes-circles-from-esquemas',
+            overridesJson: 'rebuild_schemes_circles_manual_overrides.json',
+            context: {
+                engine: normalizedEngine,
+                id: id || '',
+                page: resolvedPage || '',
+                baseScheme: resolvedBase || '',
+                pos: resolvedPos || ''
+            },
+            notes: {
+                pickerHtml: '/tools/manual_override_picker.html',
+                localManualServerCommand: 'python tools/manual_override_picker_server.py --overrides-json rebuild_schemes_circles_manual_overrides.json'
+            }
+        });
+    } catch (error) {
+        return res.status(500).json({
+            ok: false,
+            error: String(error?.message || error || 'Error desconocido')
+        });
+    }
+});
+
 app.post('/api/recompute-simple/update-gesa', async (req, res) => {
     let engine;
     let id;

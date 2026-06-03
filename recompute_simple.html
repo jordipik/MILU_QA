@@ -189,7 +189,6 @@
         }
 
         .recompute-simple-wrap .a2-recompute-card[aria-label="Enriquecer assets multimedia sobre engine JSON"] {
-            order: 99;
             grid-column: span 2;
         }
 
@@ -203,6 +202,24 @@
             background: linear-gradient(135deg, #ff8f00, #ff5a36);
             color: #ffffff;
             border: 1px solid #d94d00;
+        }
+
+        .recompute-simple-wrap .a2-recompute-card[aria-label="Recalcular esquemas generales por BOM"] .a2-step-index {
+            background: linear-gradient(135deg, #22c55e, #15803d);
+            color: #ffffff;
+            border: 1px solid #166534;
+        }
+
+        .recompute-simple-wrap .a2-recompute-card[aria-label="Recalcular esquemas POS desde esquemas"] .a2-step-index {
+            background: linear-gradient(135deg, #0ea5e9, #0369a1);
+            color: #ffffff;
+            border: 1px solid #075985;
+        }
+
+        .recompute-simple-wrap .a2-recompute-card[aria-label="Normalizar y abrir picker de overrides manuales"] .a2-step-index {
+            background: linear-gradient(135deg, #f97316, #c2410c);
+            color: #ffffff;
+            border: 1px solid #9a3412;
         }
 
         @media (max-width: 1400px) {
@@ -297,6 +314,52 @@
             cursor: not-allowed;
             opacity: 0.55;
         }
+
+        .a2-card-actions {
+            display: grid;
+            grid-template-columns: repeat(2, minmax(0, 1fr));
+            gap: 8px;
+            margin-top: 8px;
+        }
+
+        .a2-card-actions button {
+            margin: 0;
+            width: 100%;
+        }
+
+        .a2-card-actions button.is-secondary {
+            border: 1px solid #9bb0c4;
+            background: #ffffff;
+            color: #21445f;
+        }
+
+        .a2-inline-form {
+            display: grid;
+            grid-template-columns: repeat(2, minmax(0, 1fr));
+            gap: 8px;
+            margin-top: 8px;
+        }
+
+        .a2-inline-form input {
+            border: 1px solid #b7ccdf;
+            border-radius: 8px;
+            height: 32px;
+            padding: 0 8px;
+            font-size: 12px;
+            color: #18364f;
+            background: #ffffff;
+        }
+
+        .a2-inline-form input.a2-span-2 {
+            grid-column: span 2;
+        }
+
+        .a2-step-note {
+            margin: 6px 0 0;
+            font-size: 11px;
+            color: #4b647d;
+            font-family: 'IBM Plex Mono', Consolas, monospace;
+        }
     </style>
 </head>
 
@@ -353,37 +416,6 @@
                 <button id="btnSust" type="button">ACTUALIZAR GESA + SUST</button>
             </article>
 
-            <article class="a2-recompute-card" aria-label="Enriquecer assets multimedia sobre engine JSON">
-                <h3>
-                    <span class="a2-step-index">7</span>
-                    <div>
-                        <span class="a2-step-title">ASSETS</span>
-                        <p class="a2-step-desc">POST /api/recompute-simple/enrich-assets/start</p>
-                        <p class="a2-step-desc">Lanza un job asíncrono con progreso y cancelación (polling de estado en
-                            vivo).</p>
-                        <p class="a2-step-desc">Ejecuta rebuild_assets_for_record.py para un ID puntual, un libro o
-                            todos
-                            los libros según el alcance seleccionado.</p>
-                        <p class="a2-step-desc">Genera/reutiliza esquemas base y POS y actualiza enlaces de assets:
-                            esquemas, esquemas_circulos, esquemas_circulos_all, ruta_esquemas_pos,
-                            exp_imagenes, filename_foto y ruta_foto.</p>
-                    </div>
-                </h3>
-                <button id="btnAssets" type="button">ASSETS</button>
-                <div id="assetsProgressWrap" class="a2-assets-progress" hidden>
-                    <div class="a2-assets-progress-head">
-                        <span id="assetsProgressLabel">Preparando ASSETS...</span>
-                        <span id="assetsProgressPercent">0%</span>
-                    </div>
-                    <div class="a2-assets-progress-track" aria-label="Progreso ASSETS">
-                        <div id="assetsProgressBar" class="a2-assets-progress-bar"></div>
-                    </div>
-                    <div id="assetsProgressMeta" class="a2-assets-progress-meta">Esperando inicio...</div>
-                    <button id="btnAssetsCancel" class="a2-assets-progress-cancel" type="button" disabled>CANCELAR
-                        ASSETS</button>
-                </div>
-            </article>
-
             <article class="a2-recompute-card" aria-label="Calcular campos FINAL desde GESA">
                 <h3>
                     <span class="a2-step-index">3</span>
@@ -432,6 +464,92 @@
                     </div>
                 </h3>
                 <button id="btnHermanos" type="button">RECALCULAR HERMANOS</button>
+            </article>
+
+            <article class="a2-recompute-card" aria-label="Enriquecer assets multimedia sobre engine JSON">
+                <h3>
+                    <span class="a2-step-index">7</span>
+                    <div>
+                        <span class="a2-step-title">ASSETS</span>
+                        <p class="a2-step-desc">POST /api/recompute-simple/enrich-assets/start</p>
+                        <p class="a2-step-desc">Lanza un job asíncrono con progreso y cancelación (polling de estado en
+                            vivo).</p>
+                        <p class="a2-step-desc">Ejecuta rebuild_assets_for_record.py para un ID puntual, un libro o
+                            todos
+                            los libros según el alcance seleccionado.</p>
+                        <p class="a2-step-desc">Genera/reutiliza esquemas base y POS y actualiza enlaces de assets:
+                            esquemas, esquemas_circulos, esquemas_circulos_all, ruta_esquemas_pos,
+                            exp_imagenes, filename_foto y ruta_foto.</p>
+                    </div>
+                </h3>
+                <button id="btnAssets" type="button">ASSETS</button>
+                <div id="assetsProgressWrap" class="a2-assets-progress" hidden>
+                    <div class="a2-assets-progress-head">
+                        <span id="assetsProgressLabel">Preparando ASSETS...</span>
+                        <span id="assetsProgressPercent">0%</span>
+                    </div>
+                    <div class="a2-assets-progress-track" aria-label="Progreso ASSETS">
+                        <div id="assetsProgressBar" class="a2-assets-progress-bar"></div>
+                    </div>
+                    <div id="assetsProgressMeta" class="a2-assets-progress-meta">Esperando inicio...</div>
+                    <button id="btnAssetsCancel" class="a2-assets-progress-cancel" type="button" disabled>CANCELAR
+                        ASSETS</button>
+                </div>
+            </article>
+
+            <article class="a2-recompute-card" aria-label="Recalcular esquemas generales por BOM">
+                <h3>
+                    <span class="a2-step-index">8</span>
+                    <div>
+                        <span class="a2-step-title">ESQUEMAS GENERALES</span>
+                        <p class="a2-step-desc">POST /api/recompute-simple/rebuild-schemes-by-bom</p>
+                        <p class="a2-step-desc">Usa exclusivamente rebuild_schemes_by_bom.py para recalcular campo
+                            esquemas por BOM.</p>
+                        <p class="a2-step-desc">Soporta todos, libro o ID puntual (con libro).</p>
+                    </div>
+                </h3>
+                <div class="a2-card-actions">
+                    <button id="btnSchemesByBomDryRun" type="button" class="is-secondary">8 DRY RUN</button>
+                    <button id="btnSchemesByBomWrite" type="button">8 WRITE</button>
+                </div>
+            </article>
+
+            <article class="a2-recompute-card" aria-label="Recalcular esquemas POS desde esquemas">
+                <h3>
+                    <span class="a2-step-index">9</span>
+                    <div>
+                        <span class="a2-step-title">ESQUEMAS POS</span>
+                        <p class="a2-step-desc">POST /api/recompute-simple/rebuild-schemes-circles-from-esquemas</p>
+                        <p class="a2-step-desc">Usa exclusivamente rebuild_schemes_circles_from_esquemas.py partiendo
+                            de esquemas.</p>
+                        <p class="a2-step-desc">Aplica overrides manuales de
+                            rebuild_schemes_circles_manual_overrides.json si existen.</p>
+                    </div>
+                </h3>
+                <div class="a2-card-actions">
+                    <button id="btnSchemesPosDryRun" type="button" class="is-secondary">9 DRY RUN</button>
+                    <button id="btnSchemesPosWrite" type="button">9 WRITE</button>
+                </div>
+            </article>
+
+            <article class="a2-recompute-card" aria-label="Normalizar y abrir picker de overrides manuales">
+                <h3>
+                    <span class="a2-step-index">10</span>
+                    <div>
+                        <span class="a2-step-title">NORMALIZAR OVERRIDES MANUALES</span>
+                        <p class="a2-step-desc">POST /api/recompute-simple/manual-override-picker</p>
+                        <p class="a2-step-desc">Prepara y abre manual_override_picker.html para marcar círculo y
+                            guardar override por engine/página/base/ID/POS.</p>
+                    </div>
+                </h3>
+                <div class="a2-inline-form">
+                    <input id="manualPickerPage" type="search" placeholder="Página (opcional)" autocomplete="off" />
+                    <input id="manualPickerPos" type="search" placeholder="POS (opcional)" autocomplete="off" />
+                    <input id="manualPickerBase" class="a2-span-2" type="search"
+                        placeholder="Esquema base (ej: 12V4000M40A-0072-01.webp)" autocomplete="off" />
+                </div>
+                <button id="btnManualOverridePicker" type="button">ABRIR PICKER MANUAL</button>
+                <p class="a2-step-note">Sugerido: tras guardar override, ejecutar la tarjeta 9 en WRITE.</p>
             </article>
         </section>
 

@@ -15,6 +15,14 @@ const refs = {
     btnAssets: document.getElementById('btnAssets'),
     btnAssetsCancel: document.getElementById('btnAssetsCancel'),
     btnHermanos: document.getElementById('btnHermanos'),
+    btnSchemesByBomDryRun: document.getElementById('btnSchemesByBomDryRun'),
+    btnSchemesByBomWrite: document.getElementById('btnSchemesByBomWrite'),
+    btnSchemesPosDryRun: document.getElementById('btnSchemesPosDryRun'),
+    btnSchemesPosWrite: document.getElementById('btnSchemesPosWrite'),
+    manualPickerPage: document.getElementById('manualPickerPage'),
+    manualPickerPos: document.getElementById('manualPickerPos'),
+    manualPickerBase: document.getElementById('manualPickerBase'),
+    btnManualOverridePicker: document.getElementById('btnManualOverridePicker'),
     btnFinal: document.getElementById('btnFinal'),
     btnErrors: document.getElementById('btnErrors'),
     btnStatuses: document.getElementById('btnStatuses'),
@@ -33,6 +41,11 @@ const actionButtons = [
     refs.btnSust,
     refs.btnAssets,
     refs.btnHermanos,
+    refs.btnSchemesByBomDryRun,
+    refs.btnSchemesByBomWrite,
+    refs.btnSchemesPosDryRun,
+    refs.btnSchemesPosWrite,
+    refs.btnManualOverridePicker,
     refs.btnFinal,
     refs.btnErrors,
     refs.btnStatuses,
@@ -933,6 +946,128 @@ function renderResponseSummary(actionLabel, endpoint, responseData) {
         return;
     }
 
+    if (endpoint === '/api/recompute-simple/rebuild-schemes-by-bom') {
+        const output = data?.result || {};
+        const engineReports = Array.isArray(output?.engine_reports) ? output.engine_reports : [];
+        const records = engineReports.flatMap((report) => Array.isArray(report?.records) ? report.records : []);
+
+        const statusCounts = records.reduce((acc, record) => {
+            const key = normalizeText(record?.status) || 'ERROR';
+            acc[key] = (acc[key] || 0) + 1;
+            return acc;
+        }, {});
+
+        const totals = output?.totals || {};
+        const cards = [
+            { label: 'Registros procesados', value: String(Number(totals?.records_processed) || records.length || 0) },
+            { label: 'Registros cambiados', value: String(Number(totals?.records_changed) || 0) },
+            { label: 'OK', value: String(Number(statusCounts.OK) || 0) },
+            { label: 'MISS_NO_BOM', value: String(Number(statusCounts.MISS_NO_BOM) || 0) },
+            { label: 'MISS_BOM_NOT_FOUND', value: String(Number(statusCounts.MISS_BOM_NOT_FOUND) || 0) },
+            { label: 'MISS_NO_PAGE_FOR_GROUP', value: String(Number(statusCounts.MISS_NO_PAGE_FOR_GROUP) || 0) },
+            { label: 'Esquemas encontrados', value: String(Number(totals?.schemes_found) || 0) },
+            { label: 'Esquemas generados', value: String(Number(totals?.schemes_generated) || 0) }
+        ];
+
+        const rows = engineReports.map((item) => {
+            const itemRecords = Array.isArray(item?.records) ? item.records : [];
+            const itemStatus = itemRecords.reduce((acc, record) => {
+                const key = normalizeText(record?.status) || 'ERROR';
+                acc[key] = (acc[key] || 0) + 1;
+                return acc;
+            }, {});
+
+            return [
+                String(item?.engine || ''),
+                String(Number(item?.records_processed) || itemRecords.length || 0),
+                String(Number(item?.records_changed) || 0),
+                String(Number(itemStatus.OK) || 0),
+                String(Number(itemStatus.MISS_NO_BOM) || 0),
+                String(Number(itemStatus.MISS_BOM_NOT_FOUND) || 0),
+                String(Number(item?.schemes_found) || 0),
+                String(Number(item?.schemes_generated) || 0)
+            ];
+        });
+
+        const reportPath = normalizeText(output?.report_path || data?.notes?.reportPath);
+        renderResultPanel(
+            actionLabel,
+            endpoint,
+            cards,
+            ['Engine', 'Procesados', 'Cambiados', 'OK', 'MISS_NO_BOM', 'MISS_BOM_NOT_FOUND', 'Schemes found', 'Schemes generated'],
+            rows,
+            reportPath ? `Reporte: ${reportPath}` : ''
+        );
+        return;
+    }
+
+    if (endpoint === '/api/recompute-simple/rebuild-schemes-circles-from-esquemas') {
+        const output = data?.result || {};
+        const totalsByStatus = output?.totals_by_status || {};
+        const perEngine = Array.isArray(output?.engine_reports) ? output.engine_reports : [];
+        const cards = [
+            { label: 'Registros procesados', value: String(Number(output?.records_processed) || 0) },
+            { label: 'Registros cambiados', value: String(Number(output?.records_changed) || 0) },
+            { label: 'OK', value: String(Number(output?.records_ok) || 0) },
+            { label: 'OK_PARTIAL', value: String(Number(output?.records_ok_partial) || 0) },
+            { label: 'MISS_NO_ESQUEMAS', value: String(Number(totalsByStatus?.MISS_NO_ESQUEMAS) || 0) },
+            { label: 'MISS_NO_POS', value: String(Number(totalsByStatus?.MISS_NO_POS) || 0) },
+            { label: 'MISS_POS_NOT_FOUND_IN_SCHEME', value: String(Number(totalsByStatus?.MISS_POS_NOT_FOUND_IN_SCHEME) || 0) },
+            { label: 'Errores (MISS/ERROR)', value: String(Number(output?.records_error_total) || 0) }
+        ];
+
+        const rows = perEngine.map((item) => {
+            const status = item?.status_counts || {};
+            return [
+                String(item?.engine || ''),
+                String(Number(item?.records_processed) || 0),
+                String(Number(item?.json_updated ? 1 : 0)),
+                String(Number(status?.OK) || 0),
+                String(Number(status?.OK_PARTIAL) || 0),
+                String(Number(status?.MISS_NO_ESQUEMAS) || 0),
+                String(Number(status?.MISS_NO_POS) || 0),
+                String(Number(status?.MISS_POS_NOT_FOUND_IN_SCHEME) || 0)
+            ];
+        });
+
+        const reportPath = normalizeText(output?.report_path || data?.notes?.reportPath);
+        renderResultPanel(
+            actionLabel,
+            endpoint,
+            cards,
+            ['Engine', 'Procesados', 'JSON actualizado', 'OK', 'OK_PARTIAL', 'MISS_NO_ESQUEMAS', 'MISS_NO_POS', 'MISS_POS_NOT_FOUND_IN_SCHEME'],
+            rows,
+            reportPath ? `Reporte: ${reportPath}` : ''
+        );
+        return;
+    }
+
+    if (endpoint === '/api/recompute-simple/manual-override-picker') {
+        const cards = [
+            { label: 'Modo', value: String(data?.mode || 'embedded-express') },
+            { label: 'Engine', value: String(data?.context?.engine || '-') },
+            { label: 'ID', value: String(data?.context?.id || '-') },
+            { label: 'Página', value: String(data?.context?.page || '-') },
+            { label: 'POS', value: String(data?.context?.pos || '-') },
+            { label: 'Overrides JSON', value: String(data?.overridesJson || '-') }
+        ];
+
+        const rows = [[
+            String(data?.pickerUrl || '-'),
+            String(data?.rebuildEndpoint || '/api/recompute-simple/rebuild-schemes-circles-from-esquemas')
+        ]];
+
+        renderResultPanel(
+            actionLabel,
+            endpoint,
+            cards,
+            ['URL picker', 'Endpoint recompute POS'],
+            rows,
+            'Tras guardar override, ejecuta la tarjeta 9 en WRITE para regenerar esquemas_circulos.'
+        );
+        return;
+    }
+
     if (endpoint === '/api/pdf-preview/apply-to-engine') {
         const stats = data?.stats || {};
         const notFoundRows = Array.isArray(data?.not_found_rows) ? data.not_found_rows : [];
@@ -1385,6 +1520,101 @@ async function runHermanos() {
     setStatus('HERMANOS / COPIAS finalizado correctamente.', 'ok');
 }
 
+async function runRebuildSchemesByBom(dryRun = true) {
+    const scope = getScope();
+    const payload = {
+        engine: scope.isAll ? 'ALL' : scope.model,
+        id: scope.id,
+        dryRun: Boolean(dryRun)
+    };
+
+    if (scope.isAll) {
+        setStatus(`Ejecutando 8 · ESQUEMAS GENERALES para todos los libros (${dryRun ? 'DRY RUN' : 'WRITE'})...`, '');
+    } else if (scope.id) {
+        setStatus(`Ejecutando 8 · ESQUEMAS GENERALES para ${scope.model} (ID ${scope.id}) (${dryRun ? 'DRY RUN' : 'WRITE'})...`, '');
+    } else {
+        setStatus(`Ejecutando 8 · ESQUEMAS GENERALES para ${scope.model} (${dryRun ? 'DRY RUN' : 'WRITE'})...`, '');
+    }
+
+    const data = await postJson('/api/recompute-simple/rebuild-schemes-by-bom', payload, { allowPartial: true });
+    renderResponseSummary(
+        `8 · Esquemas generales (${dryRun ? 'DRY RUN' : 'WRITE'})`,
+        '/api/recompute-simple/rebuild-schemes-by-bom',
+        data
+    );
+
+    if (data?.ok === false) {
+        setStatus('8 · ESQUEMAS GENERALES completado con incidencias. Revisa el resumen y log.', 'warning');
+        return;
+    }
+    setStatus('8 · ESQUEMAS GENERALES finalizado correctamente.', 'ok');
+}
+
+async function runRebuildSchemesCircles(dryRun = true) {
+    const scope = getScope();
+    const payload = {
+        engine: scope.isAll ? 'ALL' : scope.model,
+        id: scope.id,
+        dryRun: Boolean(dryRun),
+        useManualOverrides: true,
+        overridesJson: 'rebuild_schemes_circles_manual_overrides.json'
+    };
+
+    if (scope.isAll) {
+        setStatus(`Ejecutando 9 · ESQUEMAS POS para todos los libros (${dryRun ? 'DRY RUN' : 'WRITE'})...`, '');
+    } else if (scope.id) {
+        setStatus(`Ejecutando 9 · ESQUEMAS POS para ${scope.model} (ID ${scope.id}) (${dryRun ? 'DRY RUN' : 'WRITE'})...`, '');
+    } else {
+        setStatus(`Ejecutando 9 · ESQUEMAS POS para ${scope.model} (${dryRun ? 'DRY RUN' : 'WRITE'})...`, '');
+    }
+
+    const data = await postJson('/api/recompute-simple/rebuild-schemes-circles-from-esquemas', payload, { allowPartial: true });
+    renderResponseSummary(
+        `9 · Esquemas POS (${dryRun ? 'DRY RUN' : 'WRITE'})`,
+        '/api/recompute-simple/rebuild-schemes-circles-from-esquemas',
+        data
+    );
+
+    if (data?.ok === false) {
+        setStatus('9 · ESQUEMAS POS completado con incidencias. Revisa el resumen y log.', 'warning');
+        return;
+    }
+    setStatus('9 · ESQUEMAS POS finalizado correctamente.', 'ok');
+}
+
+async function runManualOverridePicker() {
+    const scope = getScope();
+    const payload = {
+        engine: scope.isAll ? '' : scope.model,
+        id: scope.id,
+        page: refs.manualPickerPage instanceof HTMLInputElement ? normalizeText(refs.manualPickerPage.value) : '',
+        pos: refs.manualPickerPos instanceof HTMLInputElement ? normalizeText(refs.manualPickerPos.value) : '',
+        baseScheme: refs.manualPickerBase instanceof HTMLInputElement ? normalizeText(refs.manualPickerBase.value) : ''
+    };
+
+    if (!payload.engine) {
+        throw new Error('Para abrir el picker manual, selecciona un libro (no "Todos los libros").');
+    }
+
+    setStatus('Preparando 10 · NORMALIZAR OVERRIDES MANUALES...', '');
+    const data = await postJson('/api/recompute-simple/manual-override-picker', payload);
+    renderResponseSummary('10 · Normalizar overrides manuales', '/api/recompute-simple/manual-override-picker', data);
+
+    const pickerUrl = normalizeText(data?.pickerUrl);
+    if (!pickerUrl) {
+        throw new Error('No se recibió pickerUrl desde el backend.');
+    }
+
+    const popup = window.open(pickerUrl, '_blank', 'noopener,noreferrer');
+    if (!popup) {
+        setStatus('Picker preparado, pero el navegador bloqueó la ventana emergente.', 'warning');
+        appendLog('[AVISO] Popup bloqueado. Abre manualmente la URL del picker desde el resumen.');
+        return;
+    }
+
+    setStatus('Picker manual abierto. Marca círculo, guarda override y luego ejecuta la tarjeta 9 en WRITE.', 'ok');
+}
+
 async function runErrors() {
     const scope = getScope();
     let payload;
@@ -1532,6 +1762,26 @@ function bindEvents() {
 
     if (refs.btnHermanos instanceof HTMLButtonElement) {
         refs.btnHermanos.addEventListener('click', () => runAction(runHermanos));
+    }
+
+    if (refs.btnSchemesByBomDryRun instanceof HTMLButtonElement) {
+        refs.btnSchemesByBomDryRun.addEventListener('click', () => runAction(() => runRebuildSchemesByBom(true)));
+    }
+
+    if (refs.btnSchemesByBomWrite instanceof HTMLButtonElement) {
+        refs.btnSchemesByBomWrite.addEventListener('click', () => runAction(() => runRebuildSchemesByBom(false)));
+    }
+
+    if (refs.btnSchemesPosDryRun instanceof HTMLButtonElement) {
+        refs.btnSchemesPosDryRun.addEventListener('click', () => runAction(() => runRebuildSchemesCircles(true)));
+    }
+
+    if (refs.btnSchemesPosWrite instanceof HTMLButtonElement) {
+        refs.btnSchemesPosWrite.addEventListener('click', () => runAction(() => runRebuildSchemesCircles(false)));
+    }
+
+    if (refs.btnManualOverridePicker instanceof HTMLButtonElement) {
+        refs.btnManualOverridePicker.addEventListener('click', () => runAction(runManualOverridePicker));
     }
 
     if (refs.btnFinal instanceof HTMLButtonElement) {
