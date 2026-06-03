@@ -78,6 +78,7 @@ def make_process_args(engine: str, row_id: str, pdf: str, out_dir: str, write_im
         frame_pad_pt=0.5,
         auto_frame_pad_pt=20.0,
         pos_fallback_pad_pt=45.0,
+        ocr=True,
         auto_red_frames=False,
         preprocess_min_width_ratio=0.5,
         preprocess_border_width=2.0,

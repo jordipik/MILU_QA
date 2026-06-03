@@ -510,7 +510,13 @@ class EngineContext:
             return cached
 
         page = self.doc.load_page(page_num - 1)
-        items = detect_pos_items_all(page, clip, dpi=int(dpi), enable_ocr=bool(enable_ocr))
+        # Prefer embedded PDF text and use OCR only as fallback.
+        # This avoids duplicate matches (TEXT + OCR) and reduces OCR overhead.
+        text_items = detect_pos_items_all(page, clip, dpi=int(dpi), enable_ocr=False)
+        if text_items or not bool(enable_ocr):
+            items = text_items
+        else:
+            items = detect_pos_items_all(page, clip, dpi=int(dpi), enable_ocr=True)
         self.clip_pos_cache[key] = items
         return items
 

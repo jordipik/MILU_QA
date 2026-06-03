@@ -1459,19 +1459,25 @@ app.post('/api/recompute-simple/generate-missing-esquema-pos', async (req, res) 
     try {
         const os = require('os');
         const normalizedEngine = normalizeEngineToken(engine);
-        const reportPath = path.join(os.tmpdir(), `milu_missing_esquema_pos_report_${Date.now()}_${process.pid}.json`);
+        const reportPath = path.join(os.tmpdir(), `milu_rebuild_schemes_circles_report_${Date.now()}_${process.pid}.json`);
 
-        const args = ['scripts/generate_missing_esquema_pos_batch.py'];
+        const args = ['rebuild_schemes_circles_from_esquemas.py'];
         if (normalizedEngine === 'ALL') {
-            args.push('--all-engines');
+            args.push('--all');
+        } else if (id) {
+            args.push('--engine', normalizedEngine, '--id', id);
         } else {
-            args.push('--engine', normalizedEngine);
+            args.push('--engine', normalizedEngine, '--all-book');
         }
 
-        args.push(writeImages ? '--write-images' : '--no-write-images');
-        args.push(writeJson ? '--write-json' : '--no-write-json');
+        // En el script oficial, write/dry-run aplican conjuntamente a imagen + JSON.
+        if (writeImages && writeJson) {
+            args.push('--write');
+        } else {
+            args.push('--dry-run');
+        }
         if (overwrite) {
-            args.push('--overwrite');
+            args.push('--force-regenerate');
         }
         if (limit > 0) {
             args.push('--limit', String(limit));
@@ -1526,10 +1532,8 @@ app.post('/api/recompute-simple/generate-missing-esquema-pos', async (req, res) 
 
         const report = execResult.report && typeof execResult.report === 'object'
             ? execResult.report
-            : { results: [] };
-        const hasErrors = Array.isArray(report?.results)
-            ? report.results.some((item) => Number(item?.errors || 0) > 0 || String(item?.status || '').toLowerCase() === 'error')
-            : execResult.code !== 0;
+            : { engine_reports: [] };
+        const hasErrors = execResult.code !== 0;
 
         if (execResult.code === 0) {
             return res.status(200).json({
@@ -1538,7 +1542,7 @@ app.post('/api/recompute-simple/generate-missing-esquema-pos', async (req, res) 
                     ...report,
                     reportPath
                 },
-                ignoredId: Boolean(id),
+                ignoredId: false,
                 notes: {
                     writeImages,
                     writeJson,
@@ -1556,7 +1560,7 @@ app.post('/api/recompute-simple/generate-missing-esquema-pos', async (req, res) 
                     ...report,
                     reportPath
                 },
-                ignoredId: Boolean(id),
+                ignoredId: false,
                 notes: {
                     writeImages,
                     writeJson,
@@ -4124,23 +4128,22 @@ app.post('/api/esquemas-pos/generate-one', async (req, res) => {
             : res.status(400).json({ ok: false, error: String(error?.message || error) });
     }
 
-    const reportPath = path.join(os.tmpdir(), `milu_generate_esquema_pos_${Date.now()}_${process.pid}.json`);
+    const reportPath = path.join(os.tmpdir(), `milu_rebuild_esquema_pos_one_${Date.now()}_${process.pid}.json`);
     const args = [
-        'generate_esquema_pos.py',
+        'rebuild_schemes_circles_from_esquemas.py',
         '--engine', engine,
         '--id', id,
-        '--pdf', pdf,
-        '--out-dir', outDir,
-        '--page-offset', String(pageOffset),
-        '--dpi', String(Math.round(dpi)),
-        '--format', format,
-        '--quality', String(Math.round(quality)),
-        '--out-report', reportPath
+        '--pos-dir', outDir,
+        '--report', reportPath
     ];
 
-    if (dryRun || !writeImages) args.push('--dry-run');
-    if (writeImages) args.push('--write-images');
-    if (overwrite) args.push('--overwrite');
+    // En el script oficial, write/dry-run aplican conjuntamente a imagen + JSON.
+    if (dryRun || !writeImages) {
+        args.push('--dry-run');
+    } else {
+        args.push('--write');
+    }
+    if (overwrite) args.push('--force-regenerate');
 
     try {
         console.log(`${tag} spawn python ${args.join(' ')}`);
@@ -4181,15 +4184,33 @@ app.post('/api/esquemas-pos/generate-one', async (req, res) => {
                 console.warn(`${tag} report parse error:`, error);
             }
 
-            const ok = code === 0;
+            const firstRecord = report?.engine_reports?.[0]?.records?.[0] || null;
+            const generatedList = Array.isArray(firstRecord?.generated) ? firstRecord.generated : [];
+            const reusedList = Array.isArray(firstRecord?.reused) ? firstRecord.reused : [];
+            const inferredFilename = String(generatedList[0] || reusedList[0] || '').trim();
+            const inferredStatus = inferredFilename
+                ? (generatedList.length > 0 ? 'generated' : 'already_exists')
+                : (String(firstRecord?.status || '').startsWith('MISS_') ? 'pos_not_found' : 'error');
+
+            const legacyReport = {
+                id,
+                engine,
+                status: inferredStatus,
+                filename: inferredFilename || null,
+                reason: String(firstRecord?.reason || '').trim() || null,
+                source: 'rebuild_schemes_circles_from_esquemas',
+                raw: report
+            };
+
+            const ok = code === 0 && (inferredStatus === 'generated' || inferredStatus === 'already_exists');
             const statusCode = ok ? 200 : 422;
             return res.status(statusCode).json({
                 ok,
                 exitCode: code,
-                report,
+                report: legacyReport,
                 stdout,
                 stderr,
-                error: ok ? null : `python generate_esquema_pos.py salio con code=${code}`
+                error: ok ? null : `python rebuild_schemes_circles_from_esquemas.py salio con code=${code}`
             });
         });
     } catch (error) {

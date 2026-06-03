@@ -671,8 +671,18 @@ def detect_pos_items(
     dpi: int,
     enable_ocr: bool = True,
 ) -> List[Dict[str, Any]]:
-    all_items = detect_pos_items_all(page, clip_inner, dpi, enable_ocr=enable_ocr)
-    return [item for item in all_items if token_matches_target_pos(item["pos"], target_pos)]
+    # 1) Primero intenta SOLO texto embebido en PDF.
+    text_items = detect_pos_items_all(page, clip_inner, dpi, enable_ocr=False)
+    text_matches = [item for item in text_items if token_matches_target_pos(item["pos"], target_pos)]
+    if text_matches:
+        return text_matches
+
+    # 2) OCR solo como fallback cuando no hay match por texto.
+    if not enable_ocr:
+        return []
+
+    ocr_items = run_ocr_tokens(render_clip(page, clip_inner, dpi=dpi))
+    return [item for item in ocr_items if token_matches_target_pos(item["pos"], target_pos)]
 
 
 def detect_pos_items_all(page: fitz.Page, clip_inner: fitz.Rect, dpi: int, enable_ocr: bool = True) -> List[Dict[str, Any]]:
@@ -693,8 +703,7 @@ def detect_pos_items_all(page: fitz.Page, clip_inner: fitz.Rect, dpi: int, enabl
     if not enable_ocr:
         return items
 
-    # OCR debe ejecutarse tambien cuando ya hay texto para capturar casos mixtos
-    # donde el POS objetivo no llega por capa de texto pero si es visible en raster.
+    # OCR opcional para consumidores que necesitan todos los candidatos.
     ocr_items = run_ocr_tokens(render_clip(page, clip_inner, dpi=dpi))
     if ocr_items:
         items.extend(ocr_items)
@@ -836,20 +845,8 @@ def process_record(args: argparse.Namespace) -> Dict[str, Any]:
                     if clip_inner.x1 <= clip_inner.x0 or clip_inner.y1 <= clip_inner.y0:
                         clip_inner = fitz.Rect(clip_outer)
 
+                    # Busqueda estricta: solo dentro del marco rojo recortado.
                     items = detect_pos_items(page, clip_inner, pos_value, dpi=args.dpi, enable_ocr=bool(args.ocr))
-                    if not items:
-                        clip_fallback = expand_box_in_page(clip_outer, page.rect, float(args.pos_fallback_pad_pt))
-                        if (
-                            clip_fallback.x0 != clip_outer.x0
-                            or clip_fallback.y0 != clip_outer.y0
-                            or clip_fallback.x1 != clip_outer.x1
-                            or clip_fallback.y1 != clip_outer.y1
-                        ):
-                            fallback_items = detect_pos_items(page, clip_fallback, pos_value, dpi=args.dpi, enable_ocr=bool(args.ocr))
-                            if fallback_items:
-                                items = fallback_items
-                                clip_outer = clip_fallback
-                                clip_inner = clip_fallback
                     if not items:
                         continue
 
