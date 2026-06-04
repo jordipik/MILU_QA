@@ -156,6 +156,30 @@ function joinUnique(values) {
     return uniq(values.filter(Boolean)).join(', ');
 }
 
+function joinUniqueSorted(values, maxItems = 0) {
+    const seen = new Set();
+    const uniqueValues = [];
+    for (const raw of values) {
+        const value = collapseSpaces(raw);
+        if (!value) continue;
+        const valueKey = key(value);
+        if (seen.has(valueKey)) continue;
+        seen.add(valueKey);
+        uniqueValues.push(value);
+    }
+
+    uniqueValues.sort((a, b) => a.localeCompare(b, 'es', { sensitivity: 'base', numeric: true }));
+    const sliced = maxItems > 0 ? uniqueValues.slice(0, maxItems) : uniqueValues;
+    return sliced.join(', ');
+}
+
+function splitMultiValues(value) {
+    return String(value == null ? '' : value)
+        .split(/[|,;]+/)
+        .map((item) => collapseSpaces(item))
+        .filter(Boolean);
+}
+
 function normalizeFgCode(rawValue) {
     const text = t(rawValue);
     if (!text) return '';
@@ -242,27 +266,27 @@ function deriveExpCategorias(rows) {
         if (!modelType || !fgCode) continue;
         values.push(`${modelType}-${fgCode}`);
     }
-    return joinUnique(values);
+    return joinUniqueSorted(values);
 }
 
-function deriveExpImagenes(rows, syntheticOnly = false) {
+function deriveExpImagenes(rows) {
+    const SIN_IMAGEN = 'https://milu-naval.mystagingwebsite.com/wp-content/uploads/2026/01/sin_imagen.jpeg';
     const images = [];
     for (const row of rows) {
         const fileName = t(row?.filename_foto);
+        const rutaFoto = splitMultiValues(row?.ruta_foto);
         const esquemaPath = t(row?.ruta_esquemas_pos);
         if (fileName) images.push(fileName);
+        if (rutaFoto.length > 0) images.push(...rutaFoto);
         if (esquemaPath) images.push(esquemaPath);
     }
-    const merged = joinUnique(images);
+    const merged = joinUniqueSorted(images, 10);
     if (merged) return merged;
-    if (syntheticOnly) {
-        return 'https://milu-naval.mystagingwebsite.com/wp-content/uploads/2026/01/sin_imagen.jpeg';
-    }
-    return '';
+    return SIN_IMAGEN;
 }
 
 function mergeCsvField(a, b) {
-    return joinUnique([
+    return joinUniqueSorted([
         ...splitCsvValues(a),
         ...splitCsvValues(b)
     ]);
@@ -470,6 +494,20 @@ function isQaOkImportRow(row) {
     return isExportable(row);
 }
 
+function isQaOkCopyRow(row) {
+    return key(getExportField(row, 'qa_revision_estado')) === 'ok' && key(getExportField(row, 'qa_revision_accion')) === 'copia';
+}
+
+function hasImportableRow(rows) {
+    return rows.some((row) => isQaOkImportRow(row));
+}
+
+function getConsolidationRows(rows) {
+    const allRows = Array.isArray(rows) ? rows : [];
+    const scoped = allRows.filter((row) => isQaOkImportRow(row) || isQaOkCopyRow(row));
+    return scoped.length > 0 ? scoped : allRows;
+}
+
 function isQaOkDeleteRow(row) {
     return key(getExportField(row, 'qa_revision_estado')) === 'ok' && key(getExportField(row, 'qa_revision_accion')) === 'eliminar';
 }
@@ -497,9 +535,12 @@ function addExample(auditExamples, keyName, payload, max = 5) {
 
 function buildMergedRow(rows, options = {}) {
     const sourceRows = Array.isArray(rows) ? rows : [];
+    const consolidatedRows = Array.isArray(options.consolidatedRows) && options.consolidatedRows.length > 0
+        ? options.consolidatedRows
+        : sourceRows;
     const sku = t(options.sku || pickMostFrequent(sourceRows.map((row) => getPn(row))));
     const hierarchy = t(options.hierarchy || pickMostFrequent(sourceRows.map((row) => getHierarchy(row))) || 'New');
-    const agg = buildAggregates(sourceRows);
+    const agg = buildAggregates(consolidatedRows);
     const qaSummary = buildQaSummary(sourceRows);
 
     const designation = t(options.designation || pickMostFrequent(sourceRows.map((row) => getDesignation(row))));
@@ -507,16 +548,17 @@ function buildMergedRow(rows, options = {}) {
     const weight = t(options.weight || pickMostFrequent(sourceRows.map((row) => getWeight(row))));
     const newPn = t(options.newPn || pickMostFrequent(sourceRows.map((row) => getNewPartNumber(row))));
     const supersededList = t(options.supersededList || pickMostFrequent(sourceRows.map((row) => getSupersededListValue(row))));
-    const engineBase = t(options.engine || pickMostFrequent(sourceRows.map((row) => getEngineName(row))));
+    const engineValues = consolidatedRows.map((row) => getEngineName(row));
+    const engineBase = t(options.engine || joinUniqueSorted(engineValues));
     const engine = options.syntheticSource ? normalizeEngineForSynthetic(engineBase) : engineBase;
-    const modelType = t(options.modelType || joinUnique(sourceRows.map((row) => deriveModelTypeToken(row))));
+    const modelType = t(options.modelType || joinUniqueSorted(consolidatedRows.map((row) => deriveModelTypeToken(row))));
     const fgCodeRaw = t(options.fgCode || pickMostFrequent(sourceRows.map((row) => extractPrimaryFgCode(row))));
     const fgCode = normalizeFgCode(fgCodeRaw);
     const resolvedFgDescription = t(options.fgDescription || lookupFgDescriptionByCodeAndModel(fgCode, engine));
     const fgDescription = resolvedFgDescription || deriveFgDescription();
     const fgCodeDescription = t(options.fgCodeDescription || [fgCode, fgDescription].filter(Boolean).join(' '));
-    const expCategorias = t(options.expCategorias || deriveExpCategorias(sourceRows));
-    const expImagenes = t(options.expImagenes || deriveExpImagenes(sourceRows, Boolean(options.syntheticSource)));
+    const expCategorias = t(options.expCategorias || deriveExpCategorias(consolidatedRows));
+    const expImagenes = t(options.expImagenes || deriveExpImagenes(consolidatedRows));
 
     const id = t(options.id || pickMostFrequent(sourceRows.map((row) => getSourceId(row))));
     const fechaVersion = t(options.fechaVersion || pickMostFrequent(sourceRows.map((row) => row.fecha_version)));
@@ -527,11 +569,18 @@ function buildMergedRow(rows, options = {}) {
     const gesaNormalizado = t(options.gesaNormalizado || pickMostFrequent(sourceRows.map((row) => row.GESA_NORMALIZADO)));
     const weightTxt = t(options.weightTxt || pickMostFrequent(sourceRows.map((row) => row.weight_txt)) || weight);
     const tipoArticulo = t(options.tipoArticulo || pickMostFrequent(sourceRows.map((row) => row.TIPOARTICULO)));
-    const pag = t(options.pag || pickMostFrequent(sourceRows.map((row) => row.PAG || getSourcePage(row))));
+    const pag = t(options.pag || joinUniqueSorted(consolidatedRows.flatMap((row) => splitMultiValues(row.PAG || getSourcePage(row)))));
     const bomNo = t(options.bomNo || pickMostFrequent(sourceRows.map((row) => row.BOM_no || row['BOM-No.'])));
-    const esquemaGeneral = t(options.esquemaGeneral || pickMostFrequent(sourceRows.map((row) => row.esquema_general)));
-    const expMotor = t(options.expMotor || pickMostFrequent(sourceRows.map((row) => row.exp_motor)) || engine);
-    const atributo = t(options.atributo || pickMostFrequent(sourceRows.map((row) => row.atributo)));
+    const esquemaGeneral = t(options.esquemaGeneral || joinUniqueSorted(consolidatedRows.flatMap((row) => [
+        ...splitMultiValues(row.esquema_general),
+        ...splitMultiValues(row.esquemas)
+    ])));
+    const expMotor = t(options.expMotor || joinUniqueSorted(consolidatedRows.flatMap((row) => {
+        const fromField = splitMultiValues(row.exp_motor);
+        if (fromField.length > 0) return fromField;
+        return splitMultiValues(getEngineName(row));
+    })) || engine);
+    const atributo = t(options.atributo || joinUniqueSorted(consolidatedRows.flatMap((row) => splitMultiValues(row.atributo))));
     const enExcelSustitucion = t(options.enExcelSustitucion || pickMostFrequent(sourceRows.map((row) => row.EN_EXCEL_SUSTITUCION)));
     const rutaFoto = t(options.rutaFoto || pickMostFrequent(sourceRows.map((row) => row.ruta_foto || row.filename_foto)));
 
@@ -875,6 +924,7 @@ function run(options = {}) {
         }
 
         const qaSummary = buildQaSummary(selectedRows);
+        const consolidationRows = getConsolidationRows(rows);
 
         if (decisionMeta.decision === 'import') {
             const realSupersededRows = selectedRows.filter((row) => isSupersededRow(row));
@@ -886,7 +936,8 @@ function run(options = {}) {
                     hierarchy: 'New',
                     decision: decisionMeta.decision,
                     reason: decisionMeta.reason,
-                    qaValidated: decisionMeta.qa_validated
+                    qaValidated: decisionMeta.qa_validated,
+                    consolidatedRows: consolidationRows
                 });
                 newCandidates.push(mergedNew);
                 audit.total_new_real += 1;
@@ -928,7 +979,8 @@ function run(options = {}) {
                     hierarchy: 'Superseded',
                     decision: decisionMeta.decision,
                     reason: decisionMeta.reason,
-                    qaValidated: decisionMeta.qa_validated
+                    qaValidated: decisionMeta.qa_validated,
+                    consolidatedRows: consolidationRows
                 });
                 supersededCandidates.push(mergedSuperseded);
                 audit.total_superseded_real += 1;
@@ -982,7 +1034,8 @@ function run(options = {}) {
             hierarchy: isSupersededRow(selectedRows[0]) ? 'Superseded' : 'New',
             decision: decisionMeta.decision,
             reason: decisionMeta.reason,
-            qaValidated: decisionMeta.qa_validated
+                qaValidated: decisionMeta.qa_validated,
+                consolidatedRows: consolidationRows
         });
         traceBySku[sku] = buildTraceEntry(sku, selectedRows, compactedForTrace, decisionMeta, qaSummary);
     }
@@ -1094,6 +1147,9 @@ if (require.main === module) {
 module.exports = {
     buildQaSummary,
     decideByQa,
+    buildMergedRow,
+    getConsolidationRows,
+    hasImportableRow,
     run,
     parseArgs
 };
