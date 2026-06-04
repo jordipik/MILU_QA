@@ -1,14 +1,14 @@
 # MILU_V104_PN_GESA_SUST_MODEL
 
-Fecha: 2026-06-04
+Fecha: 2026-06-05
 
 ## Objetivo
 
-Definir tratamiento de GESA y SUST como datos únicos por PN, no por fila aislada.
+Tratar GESA y SUST como datos de entidad PN (unicos por PN), no como datos aislados por aparicion.
 
-## Regla
+## Regla funcional
 
-Para cada PN consolidado:
+Para cada PN:
 
 1. Consolidar una sola vez:
    - GESA
@@ -16,14 +16,11 @@ Para cada PN consolidado:
    - norma
    - sustituciones
    - new_pn
-   - superseded list
-2. Si hay varios valores:
-   - conservar principal canónico por orden estable
-   - registrar conflicto explícito
-3. Nunca mezclar estados incompatibles sin marca de conflicto:
-   - New y Superseded para el mismo PN
+   - superseded/subst list
+2. Elegir canonico por orden estable de principal para campos unicos.
+3. Cuando haya conflicto, no pisar: conservar variante y marcar conflicto.
 
-## Campos canónicos
+## Campos unicos por PN
 
 - gesa_final
 - nsn_final
@@ -33,16 +30,23 @@ Para cada PN consolidado:
 - new_pn_final
 - hierarchie_final
 
-## Campos acumulativos de soporte
+## Campos acumulativos por PN
 
 - subst_pnlist_final
 - sust_superseded_list
 
-## Política de conflicto
+## Politica de conflicto
 
-1. Campo único con conflicto:
-   - principal canónico
-   - lista de variantes ordenadas
-   - bandera conflictiva
-2. Campo acumulativo:
-   - unión deduplicada con orden estable
+1. Si campo unico tiene mas de un valor:
+   - valor canonico del principal
+   - lista de variantes distintas
+   - flag de conflicto para auditoria
+2. Si campo acumulativo tiene multiples valores:
+   - union deduplicada y ordenada
+3. Conflicto critico:
+   - mismo PN con estado New y Superseded a la vez
+
+## Resultado esperado en WordPress consolidado
+
+- GESA/SUST no se pierden aunque vivan en una copia.
+- Se evita inconsistencia por escoger una sola fila sin consolidar hermanos.

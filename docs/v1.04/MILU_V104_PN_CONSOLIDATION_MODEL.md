@@ -1,58 +1,56 @@
 # MILU_V104_PN_CONSOLIDATION_MODEL
 
-Fecha: 2026-06-04
+Fecha: 2026-06-05
 
 ## Objetivo
 
-Definir el modelo canónico de entidad única por PN para WordPress.
+Definir el modelo canonico para construir una entidad unica por PN y exportar una sola ficha en WordPress.
 
-Principio central:
+Regla central:
 
-- Un PN normalizado debe producir una sola ficha funcional.
-- Los registros hermanos no compiten entre sí; aportan información acumulada.
+- Cada PN sale una sola vez.
+- Los hermanos/copias del mismo PN no compiten: acumulan informacion.
 
-## Normalización de PN
+## Universo auditado
 
-Regla de normalización usada en esta fase:
+- Fuentes: 9 archivos engine_*.json.
+- Registros totales: 69681.
+- PN unicos reales normalizados: 5860.
+- PN con una sola aparicion: 812.
+- PN con varias apariciones: 5048.
 
-1. Tomar `pn_final`; si no existe, usar `PART NO.`; luego `pn`; luego `sku`.
-2. Convertir a mayúsculas.
-3. Eliminar espacios internos y externos.
+## Normalizacion oficial de PN
 
-Ejemplo:
+Para agrupar registros hermanos:
 
-- `Z=KKN 19/19-25.019` y `Z=KKN19/19-25.019` quedan en el mismo PN normalizado.
+1. Tomar pn_final; fallback PART NO.; fallback pn_raw/pn_excel/pn_pdf.
+2. trim.
+3. uppercase.
+4. eliminar espacios internos multiples y separacion espuria.
 
-## Universo real medido
+Ejemplo: Z=KKN 19/19-25.019 y Z=KKN19/19-25.019 son el mismo PN.
 
-- Registros totales en engines: 69681
-- PN únicos reales normalizados: 5860
-- PN con una sola aparición: 812
-- PN con varias apariciones (hermanos/copias): 5048
+## Entidad canonicamente consolidada por PN
 
-## Modelo canónico por bloque
+### Identidad
 
-### 1) Identidad
-
-Campos base:
+Campos:
 
 - pn_final
 - designation_final
 - model_type_final
 - engine
-- libros y páginas de aparición
+- libros/paginas de aparicion
 - IDs origen
 
 Regla:
 
-- `pn_final`: valor único obligatorio de la entidad.
-- `designation_final`: valor canónico principal + lista de variantes si hay discrepancias.
-- `model_type_final`: lista acumulada única ordenada.
-- `engine`: lista acumulada única ordenada.
-- libros/páginas: lista acumulada única ordenada.
-- IDs origen: lista acumulada única ordenada.
+- pn_final es unico y obligatorio.
+- designation_final usa valor canonico de principal + variantes si hay conflicto.
+- model_type_final y engine se consolidan como lista unica ordenada.
+- libros/paginas e IDs origen se consolidan como listas unicas ordenadas.
 
-### 2) GESA
+### GESA
 
 Campos:
 
@@ -65,14 +63,11 @@ Campos:
 
 Regla:
 
-- Si el campo es semánticamente único por PN (NSN, norma, normalizado):
-  - mantener valor canónico si hay un único valor;
-  - si hay conflicto, mantener valor principal + lista de conflicto documentada.
-- `weight_final` y `measure_final`:
-  - mantener valor canónico principal;
-  - conservar variantes en metadata de conflicto.
+- nsn_final, norma_final y normalizado_final se tratan como unicos por PN.
+- Si hay mas de un valor: guardar canonico + variantes + bandera de conflicto.
+- weight_final y measure_final se guardan canonicos y se retienen variantes trazables.
 
-### 3) SUST
+### SUST
 
 Campos:
 
@@ -83,11 +78,11 @@ Campos:
 
 Regla:
 
-- `new_pn_final` y `hierarchie_final`: únicos canónicos por PN.
-- `subst_pnlist_final`: lista acumulada única ordenada.
-- En conflicto New/Superseded para el mismo PN, marcar inconsistencia funcional.
+- sust_status_final, new_pn_final y hierarchie_final se tratan como unicos por PN.
+- subst_pnlist_final es acumulable (lista unica ordenada).
+- Nunca mezclar New/Superseded sin conflicto explicito.
 
-### 4) BOM y FG
+### BOM y FG
 
 Campos:
 
@@ -99,10 +94,10 @@ Campos:
 
 Regla:
 
-- `bom_final`, `fg_code`, `fg_description`, `fg_code_description`: acumulables por contexto (tabla/página/modelo).
-- Conservar lista única ordenada, más valor principal para vista resumida.
+- Es informacion de contexto tabla/pagina/BOM: consolidar en listas unicas ordenadas.
+- Mantener un valor principal para visualizacion resumida.
 
-### 5) Assets
+### Assets
 
 Campos:
 
@@ -114,30 +109,56 @@ Campos:
 
 Regla:
 
-- Todos acumulables.
-- Dedupe estable por: engine, página, archivo, posición.
-- Nunca perder esquema o esquema_pos por estar en una copia.
+- Acumular todos los assets de todos los hermanos.
+- Deduplicar en orden estable: engine, pagina, nombre archivo, posicion.
+- Nunca descartar assets por no estar en la fila principal.
 
-### 6) WordPress
+### WordPress
 
 Campos:
 
 - exp_imagenes
 - exp_categorias
-- datos visibles y filtros
+- datos visibles/filtros
 
 Regla:
 
-- `exp_imagenes`: acumulación de fotos y esquemas_pos deduplicados.
-- `exp_categorias`: acumulación de model_type + fg_code + contexto engine/libro cuando aplique.
+- exp_imagenes = foto principal (si existe) + fotos adicionales + esquemas_pos unicos de todos los hermanos.
+- fallback sin_imagen solo si no existe ningun asset real.
+- exp_categorias = acumulacion unica de categorias derivadas de todos los hermanos.
 
-## Tipos de campo en consolidación
+## Politica de consolidacion por tipo de campo
 
-### Canónicos (único por PN)
+Campos unicos por PN:
 
 - pn_final
 - nsn_final
 - norma_final
+- normalizado_final
+- sust_status_final
+- new_pn_final
+- hierarchie_final
+
+Campos acumulables:
+
+- model_type_final
+- engine
+- libros/paginas
+- IDs origen
+- bom_final
+- fg_fgs_final
+- fg_code/fg_description/fg_code_description
+- filename_foto/ruta_foto
+- esquemas/esquemas_circulos/ruta_esquemas_pos
+- exp_categorias
+
+## Regla de conflicto
+
+Cuando hay valores diferentes para el mismo PN:
+
+1. No machacar valores sin criterio.
+2. Si el dato es acumulable: lista unica ordenada.
+3. Si el dato es unico: seleccionar canonico por orden estable de principal y conservar variantes conflictivas para auditoria.
 - normalizado_final
 - sust_status_final
 - new_pn_final

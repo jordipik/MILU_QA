@@ -1,45 +1,52 @@
 # MILU_V104_WORDPRESS_PN_UNIQUENESS_AUDIT
 
-Fecha: 2026-06-04
+Fecha: 2026-06-05
 
 ## Alcance
 
-Auditoría del export WordPress actual en:
+Auditoria de export WordPress real usando:
 
-- data/05-wordpress/milu_wp_import.csv
-- data/05-wordpress/milu_wp_superseded.csv
+- data/output/wordpress/milu_wp_new_import.csv
+- data/output/wordpress/milu_wp_superseded.csv
+
+No se modificaron datos ni scripts en esta fase.
 
 ## Volumen y unicidad
 
-| Validación | Valor |
+| Validacion | Valor |
 |---|---:|
-| Filas totales exportadas | 8631 |
-| Filas import | 5501 |
-| Filas superseded | 3130 |
-| PN únicos exportados | 8630 |
-| PN duplicados en export | 1 |
-| PN exportables en engines no exportados | 0 |
+| filas new | 5501 |
+| filas superseded | 3130 |
+| filas totales | 8631 |
+| PN unicos en export total | 8630 |
+| filas duplicadas por PN | 1 |
+| PN exportables no presentes | 0 |
 
-## Estados funcionales respecto a engines
+Detalle de duplicado:
 
-| Validación | Valor |
-|---|---:|
-| PN con al menos un Importar en engines y presentes en WordPress | 5860 |
-| PN con fuente tipo Copia en engines y presentes en WordPress | 5048 |
-| PN con más de una fila en WordPress | 1 |
+- PN: Z=KKN19/19-25.019
+- aparece 2 veces en superseded por variacion de formato.
 
-## Pérdida de valor por no consolidar hermanos
+## Validaciones funcionales pedidas
 
-Comparación funcional entre valor potencial por consolidación de hermanos y valor visible en fila WordPress actual.
+1. Cuantas filas salen: 8631.
+2. Cuantos PN unicos salen: 8630.
+3. Cuantos PN salen duplicados: 1.
+4. Cuantos PN exportables no salen: 0.
+5. Cuantos PN salen como Importar: 5860 (inferido desde fuente engines para PN exportados).
+6. Cuantos PN salen como Copia: 0 en CSV exportado; 5048 PN exportados tienen hermanos tipo Copia en origen.
+7. PN con mas de una fila Importar: 0 en fuente; 1 duplicado de salida por normalizacion.
+8. PN cuyas copias tienen assets no presentes en fila principal WordPress: 4810.
+9. PN donde GESA/SUST se pierde por vivir en copia/no principal: 414.
+10. PN donde esquemas/esquemas_pos se pierden por estar en hermanos no consolidados: 4810.
 
-| Pérdida detectada | PN afectados |
-|---|---:|
-| Assets presentes en hermanos pero ausentes en fila WordPress principal | 1744 |
-| GESA/SUST presentes en hermanos pero ausentes en fila WordPress principal | 62 |
-| esquema_pos presente en hermanos pero ausente en fila WordPress principal | 1637 |
+## Resultado esperado de esta fase
 
-## Conclusión de fase
+Valor perdido por exportar principal-only es alto y estructural:
 
-- El export actual cumple volumen, pero no unicidad perfecta por PN.
-- La principal deuda funcional es la pérdida de información de hermanos en assets y esquema_pos.
-- El rediseño debe ser por entidad PN consolidada, no por fila individual marcada Importar.
+- 4810 PN pierden assets.
+- 414 PN pierden informacion GESA/SUST potencialmente relevante.
+
+Conclusion:
+
+- El problema no es solo duplicidad puntual; es perdida sistematica por no consolidar hermanos en una entidad unica por PN.

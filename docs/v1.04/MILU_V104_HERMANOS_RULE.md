@@ -1,21 +1,17 @@
 # MILU_V104_HERMANOS_RULE
 
-Fecha: 2026-06-04
+Fecha: 2026-06-05
 
-## Objetivo
-
-Definir una regla determinista y estable de hermanos para consolidación por PN.
-
-## Regla oficial
+## Regla oficial determinista de hermanos
 
 Para cada PN normalizado:
 
-1. Ordenar apariciones por criterio estable:
-   - engine o libro
+1. Orden estable de apariciones:
+   - modelo/libro
    - source_page
    - pos
    - ID
-2. Primera aparición:
+2. Primera aparicion:
    - qa_revision_estado = ok
    - qa_revision_accion = Importar
 3. Resto de apariciones:
@@ -24,22 +20,22 @@ Para cada PN normalizado:
 
 ## Invariantes obligatorias
 
-Nunca debe existir:
+Nunca debe haber:
 
-- más de un Importar para el mismo PN
-- cero Importar para un PN exportable
-- Copia sin Importar principal
-- PN duplicado en salida WordPress
+1. Dos Importar para el mismo PN.
+2. Cero Importar para un PN exportable.
+3. Copia sin Importar principal.
+4. PN duplicado en WordPress.
 
-## Validación real del estado actual
+## Validacion de snapshot actual
 
-Sobre 5860 PN únicos:
+Base auditada: 5860 PN unicos.
 
-- PN con más de un Importar: 0
-- PN exportables sin Importar: 0
-- PN con Copia sin Importar principal: 0
+- PN con mas de un Importar: 0.
+- PN sin Importar: 0.
+- PN con Copia sin Importar principal: 0.
 
-Conclusión:
+Lectura:
 
-- La lógica de marcado de hermanos en engines cumple la regla determinista base.
-- El problema principal se desplaza al plano de export WordPress (unicidad por PN y consolidación de valor).
+- La regla de hermanos en engines esta sana.
+- La deuda funcional principal no esta en el marcado Importar/Copia interno, sino en la consolidacion de la salida WordPress por PN.

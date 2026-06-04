@@ -1,86 +1,52 @@
 # MILU_V104_WORDPRESS_CONSOLIDATED_EXPORT_SPEC
 
-Fecha: 2026-06-04
+Fecha: 2026-06-05
 
-## Especificación funcional del nuevo export consolidado
+## Objetivo
 
-## 1) Input
+Redefinir el export para que WordPress reciba una unica ficha consolidada por PN.
 
-- Todos los engine_*.json
+## Regla de export consolidado
 
-## 2) Agrupación
+1. Input: todos los engine_*.json.
+2. Agrupacion: por PN normalizado.
+3. Seleccion de principal: primera aparicion por orden estable (modelo/libro, source_page, pos, ID).
+4. Estado: principal = ok/Importar; hermanos = ok/Copia.
+5. Salida: una sola fila WordPress por PN normalizado.
+6. Campos de fila: canonicos del principal cuando aplique.
+7. GESA/SUST: consolidados por PN.
+8. engines/libros/paginas: acumulados.
+9. BOM/FG: acumulados cuando aportan contexto.
+10. fotos: acumuladas y deduplicadas.
+11. esquemas: acumulados y deduplicados.
+12. esquemas_pos: acumulados y deduplicados.
+13. categorias: acumuladas y deduplicadas.
+14. exp_imagenes: foto principal si existe + fotos adicionales + esquemas_pos unicos de todos los hermanos.
+15. fallback sin_imagen: solo si no hay nada mejor.
+16. exp_categorias: acumular todas las categorias derivadas de todos los hermanos (model_type, fg_code, engine/libro cuando aplique).
+17. Superseded: consolidar por PN, no por fila individual.
 
-- Agrupar por PN normalizado
+## Politica de conflicto
 
-## 3) Selección de principal
+- Campo unico por PN con conflicto: conservar canonico + variantes conflictivas auditables.
+- Campo acumulable: union unica ordenada.
 
-- Orden estable por:
-  - engine/libro
-  - source_page
-  - pos
-  - ID
-- Primera fila = principal
+## Validaciones obligatorias
 
-## 4) Estado funcional
+1. PN unico en new y superseded.
+2. cero duplicados por formato de PN.
+3. assets de hermanos incluidos en la fila final.
+4. GESA/SUST incluidos aunque esten en copia.
+5. si hay esquema y POS encontrado, debe existir esquema_pos enlazado.
 
-- principal = ok / Importar
-- hermanos = ok / Copia
+## KPI de aceptacion
 
-## 5) Salida WordPress
+- duplicados WordPress por PN = 0.
+- perdida de assets por principal-only = 0.
+- perdida de GESA/SUST por principal-only = 0.
+- perdida de esquema_pos por no consolidar hermanos = 0.
 
-- Exactamente una fila por PN normalizado
+## Notas de compatibilidad
 
-## 6) Contenido de fila consolidada
-
-### Valores canónicos del principal (cuando aplique)
-
-- pn
-- designation principal
-- campos únicos por PN
-
-### Valores consolidados por PN
-
-- GESA/SUST consolidados
-- engines/libros/páginas acumulados
-- BOM/FG acumulados cuando aportan contexto
-- fotos acumuladas
-- esquemas acumulados
-- esquemas_pos acumulados
-- categorías acumuladas
-
-## 7) Regla exp_imagenes
-
-Construcción obligatoria:
-
-1. foto principal, si existe
-2. fotos adicionales únicas
-3. esquemas_pos únicos de todos los hermanos
-4. fallback sin_imagen solo cuando no exista ninguna alternativa real
-
-## 8) Regla exp_categorias
-
-Acumular en una lista única ordenada:
-
-- model_type
-- fg_code
-- engine/libro si aplica al filtro visual
-
-## 9) Superseded
-
-- Consolidar por PN, no por fila individual.
-- Evitar duplicados por variaciones de formato del mismo PN.
-
-## 10) Validaciones obligatorias
-
-1. PN único en import WordPress
-2. cero duplicados
-3. assets de hermanos incluidos
-4. GESA/SUST incluidos aunque estén en copia
-5. esquema_pos presente cuando hay esquema y POS encontrado
-
-## 11) Métricas de aceptación mínimas
-
-- PN duplicados en WordPress: 0
-- PN con pérdida de assets por no consolidación: 0
-- PN con pérdida de esquema_pos de hermanos: 0
-- PN con pérdida de GESA/SUST de hermanos: 0
+- No cambia endpoints en esta fase de especificacion.
+- Se conserva estructura de salida CSV/JSON ya consumida por UI, cambiando la logica de composicion por PN.

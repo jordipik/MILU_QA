@@ -1,61 +1,64 @@
 # MILU_V104_PN_ASSETS_CONSOLIDATION
 
-Fecha: 2026-06-04
+Fecha: 2026-06-05
 
 ## Regla de negocio
 
 - Las fotos son escasas.
-- Los esquemas existen para la mayoría.
-- El contexto de esquema es de tabla/BOM/página y no solo de fila individual.
-- La ficha WordPress por PN debe incluir todos los assets aportados por hermanos/copias.
+- Los esquemas son frecuentes.
+- El contexto de esquema pertenece a BOM/tabla/pagina, no solo a la fila individual.
+- La ficha WordPress consolidada por PN debe incluir todos los assets aportados por hermanos.
 
-## Regla de consolidación por PN
+## Regla de consolidacion por PN
 
-Para cada PN:
+Para cada PN consolidado:
 
-1. Recoger todas sus filas hermanas.
-2. Acumular:
+1. Reunir todos los hermanos/copias del PN.
+2. Agrupar todos sus valores de:
    - esquemas
    - esquemas_circulos
    - ruta_esquemas_pos
-   - fotos
-3. Deduplicar con orden estable:
+   - fotos (filename_foto/ruta_foto)
+3. Deduplicar manteniendo orden estable por:
    - engine
-   - página
+   - pagina
    - nombre de archivo
-   - posición
-4. Incluir todos los esquemas y esquemas_pos en la ficha final del PN.
+   - posicion
+4. Incluir en WordPress todos los esquemas y esquemas_pos encontrados en cualquier hermano.
+5. Si un registro tiene esquema pero no esquema_pos, registrar error funcional.
 
-## Métricas solicitadas
+## Metricas solicitadas
 
-| Métrica | Valor |
+| Metrica | Valor |
 |---|---:|
-| Registros con esquema y sin esquema_pos | 4318 |
-| PN con algún esquema_pos | 4968 |
-| PN con esquema pero cero esquema_pos | 486 |
-| PN cuyos hermanos sí aportan esquema_pos | 1639 |
-| PN que mejorarían al consolidar assets por hermanos | 145 |
-| esquemas_pos existentes en disco pero no enlazados | 3559 |
-| PN con esquema asignado y POS no encontrado | 38 |
+| registros con esquema y sin esquema_pos | 4466 |
+| PN con algun esquema_pos | 4947 |
+| PN con esquema pero cero esquema_pos | 500 |
+| PN cuyos hermanos si aportan esquema_pos | 1656 |
+| PN que mejorarian consolidando assets por hermanos | 4810 |
+| esquemas_pos existentes en disco pero no enlazados | 3683 |
+| esquemas asignados pero POS no encontrado | 604 |
 
-## Clasificación de errores (a-e)
+## Clasificacion funcional (a-e)
 
-Clasificación basada en señales disponibles en este snapshot.
-
-| Clase | Definición | Casos |
+| Clase | Definicion | Casos |
 |---|---|---:|
-| a | POS no encontrado en ningún esquema | 81 |
-| b | POS repetido varias veces en un esquema | 0 (sin evidencia automática) |
-| c | esquema existe pero círculo no generado | 1563 |
-| d | ruta_esquemas_pos vacío aunque imagen existe en disco | 2674 |
-| e | esquema asignado incorrecto | 0 (sin evidencia automática en esta pasada) |
+| a | POS no encontrado en ningun esquema | 604 |
+| b | POS repetido varias veces en un esquema (ambiguous) | 12 |
+| c | esquema existe pero circulo no generado | 1774 |
+| d | ruta_esquemas_pos vacio aunque imagen existe en disco | 2674 |
+| e | esquema asignado incorrecto (page-pn-pos-mismatch) | 10 |
 
-Nota de método:
+## Reglas complementarias
 
-- b y e dependen de información geométrica más fina; aquí se reporta solo lo verificable con campos actuales y presencia en disco.
+1. Si un PN aparece en varios esquemas: incluir todos.
+2. No asumir que aparece en todos los esquemas.
+3. No eliminar esquemas solo porque el POS no aparezca en alguno.
+4. Si el mismo POS aparece repetido en un esquema y el generador produce multiples ocurrencias, conservarlas.
+5. Si el generador solo produce una ocurrencia, marcar caso ambiguo.
 
 ## Lectura funcional
 
-- La consolidación por PN tiene alto impacto: 1639 PN recuperan esquema_pos desde hermanos.
-- El mayor problema real está en enlaces finales vacíos pese a evidencia en disco (clase d).
-- Hay deuda relevante de generación de círculos (clase c).
+- El mayor impacto esta en consolidacion por hermanos: 4810 PN recuperan assets que hoy se pierden en principal-only.
+- Hay 1656 PN en los que el principal no tiene esquema_pos pero algun hermano si.
+- La deuda mas grande de pipeline actual es la brecha entre esquema/circulo y enlace final ruta_esquemas_pos.

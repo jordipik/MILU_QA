@@ -1,50 +1,54 @@
 # MILU_V104_PN_CONSOLIDATION_EXECUTIVE_SUMMARY
 
-Fecha: 2026-06-04
+Fecha: 2026-06-05
 
-## Respuestas directas
+## Respuestas ejecutivas
 
-1. ¿Cuántos PN únicos reales hay?
+1. Cuantos PN unicos reales hay:
 
-- 5860
+- 5860.
 
-2. ¿Cuántos PN salen hoy en WordPress?
+2. Cuantos PN salen hoy en WordPress:
 
-- 8630 PN únicos en 8631 filas (import + superseded).
+- 8630 PN unicos en 8631 filas (new + superseded).
 
-3. ¿Cuántos salen duplicados?
+3. Cuantos salen duplicados:
 
-- 1 PN duplicado por variación de formato.
+- 1 PN duplicado (Z=KKN19/19-25.019, por variacion de formato).
 
-4. ¿Cuántos pierden assets por tenerlos en hermanos?
+4. Cuantos pierden assets por tenerlos en hermanos:
 
-- 1744 PN.
+- 4810 PN.
 
-5. ¿Cuántos tienen esquema pero no esquema_pos?
+5. Cuantos tienen esquema pero no esquema_pos:
 
-- 486 PN.
+- 500 PN.
 
-6. ¿Cuántos podrían mejorar consolidando hermanos?
+6. Cuantos podrian mejorar consolidando hermanos:
 
-- 1639 PN mejorarían recuperando esquema_pos desde hermanos.
-- 145 PN mejorarían al menos un asset completo desde hermanos.
+- 4810 PN mejorarian por assets.
+- 1656 PN recuperarian esquema_pos desde hermanos cuando principal no lo tiene.
 
-7. ¿Qué cambio tendría más impacto inmediato?
+7. Que cambio tendria mas impacto inmediato:
 
-- Consolidar assets y esquema_pos por PN en una única ficha WordPress.
+- Export consolidado por PN normalizado, acumulando assets y esquema_pos de todos los hermanos.
 
-8. ¿Qué tres acciones ejecutar primero?
+8. Que tres acciones ejecutar primero:
 
-1. Normalizar PN en export final y bloquear duplicados por formato.
-2. Consolidar ruta_esquemas_pos y exp_imagenes con aporte de hermanos.
-3. Consolidar GESA/SUST por PN con validación de conflictos antes de salida.
+1. Normalizar PN en salida final y garantizar unicidad por PN.
+2. Consolidar exp_imagenes/ruta_esquemas_pos con aporte de todos los hermanos.
+3. Consolidar GESA/SUST por PN y validar conflictos antes de escribir export.
 
-## Diagnóstico ejecutivo
+## Diagnostico ejecutivo
 
-- La regla de hermanos en engines está funcionalmente sana.
-- El mayor problema no está en el marcado Importar/Copia, sino en la pérdida de valor al exportar por fila sin consolidación.
-- El rediseño por entidad PN única tiene impacto inmediato y medible en calidad WordPress.
+- La regla de hermanos en engines esta correcta (0 PN con doble Importar, 0 sin Importar).
+- La perdida de valor actual es estructural por export principal-only.
+- El objetivo correcto no es llenar campos aislados: es una ficha unica y consolidada por PN en WordPress.
 
-## Decisión recomendada
+## Decision recomendada
 
-- Avanzar a implementación de export consolidado por PN con validaciones obligatorias de unicidad y de no pérdida de información entre hermanos.
+Avanzar a implementacion del export consolidado por PN con validaciones obligatorias de:
+
+- unicidad por PN,
+- inclusion completa de assets de hermanos,
+- inclusion de GESA/SUST aunque esten en copias.
