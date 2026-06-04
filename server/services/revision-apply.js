@@ -1,6 +1,6 @@
 'use strict';
 
-const { applyRevisionPayload } = require('../../apply_revision_to_engines');
+const { applyRevisionPayload } = require('./revision-apply-core');
 
 function createRevisionApplyService(options = {}) {
     const repoRoot = options.repoRoot || process.cwd();

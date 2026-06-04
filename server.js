@@ -116,6 +116,19 @@ function normalizeText(value) {
     return String(value == null ? '' : value).trim();
 }
 
+function isDangerousWriteEnabled() {
+    const raw = String(process.env.SERVER_ENABLE_DANGEROUS_WRITE || '').trim().toLowerCase();
+    return raw === 'true' || raw === '1' || raw === 'yes';
+}
+
+function dangerousWriteForbidden(res, endpoint) {
+    return res.status(403).json({
+        ok: false,
+        endpoint,
+        error: 'Dangerous write disabled. Set SERVER_ENABLE_DANGEROUS_WRITE=true to enable.'
+    });
+}
+
 function lowerKey(value) {
     return normalizeText(value).toLowerCase();
 }
@@ -471,13 +484,6 @@ function stripLegacyQaFields(value) {
     return value;
 }
 
-function legacyQaPipelineDisabled(res) {
-    return res.status(410).json({
-        ok: false,
-        error: 'El pipeline legado de qa_errors persistidos en engine_*.json esta desactivado.'
-    });
-}
-
 app.use(cors());
 app.use(bodyParser.json({ limit: '10mb' }));
 
@@ -685,6 +691,10 @@ app.post('/api/recompute-simple/enrich-assets', async (req, res) => {
     try {
         const os = require('os');
         const normalizedEngine = normalizeEngineToken(engine);
+
+        if (!dryRun && !isDangerousWriteEnabled()) {
+            return dangerousWriteForbidden(res, '/api/recompute-simple/enrich-assets');
+        }
 
         const reportPath = path.join(os.tmpdir(), `milu_recompute_assets_${Date.now()}_${process.pid}.json`);
         const args = ['rebuild_assets_for_record.py'];
@@ -1337,6 +1347,10 @@ app.post('/api/recompute-simple/recompute-hermanos', async (req, res) => {
     }
 
     try {
+        if (!dryRun && !isDangerousWriteEnabled()) {
+            return dangerousWriteForbidden(res, '/api/recompute-simple/recompute-hermanos');
+        }
+
         const targetFiles = resolveEngineFilesForRecompute(engine);
         const items = [];
         const perEngine = [];
@@ -1702,6 +1716,10 @@ app.post('/api/recompute-simple/rebuild-schemes-by-bom', async (req, res) => {
 
     try {
         const normalizedEngine = normalizeEngineToken(engine);
+        if (!dryRun && !isDangerousWriteEnabled()) {
+            return dangerousWriteForbidden(res, '/api/recompute-simple/rebuild-schemes-by-bom');
+        }
+
         const scriptArgs = [];
 
         if (normalizedEngine === 'ALL') {
@@ -1801,6 +1819,10 @@ app.post('/api/recompute-simple/rebuild-schemes-circles-from-esquemas', async (r
 
     try {
         const normalizedEngine = normalizeEngineToken(engine);
+        if (!dryRun && !isDangerousWriteEnabled()) {
+            return dangerousWriteForbidden(res, '/api/recompute-simple/rebuild-schemes-circles-from-esquemas');
+        }
+
         const scriptArgs = [];
 
         if (normalizedEngine === 'ALL') {
@@ -2151,6 +2173,10 @@ app.post('/calculate-final-fields', async (req, res) => {
 app.post('/api/pdf-preview/apply-to-engine', async (req, res) => {
     const tag = '[apply_book_preview_to_engine]';
     try {
+        if (!isDangerousWriteEnabled()) {
+            return dangerousWriteForbidden(res, '/api/pdf-preview/apply-to-engine');
+        }
+
         const path = require('path');
         const fs = require('fs');
         const os = require('os');
@@ -2345,14 +2371,6 @@ app.post('/recalculate-revision-status', async (req, res) => {
     }
 });
 
-app.post('/recompute-pdf-auto', async (req, res) => {
-    return res.status(410).json({
-        ok: false,
-        legacy: true,
-        error: 'Endpoint legacy desactivado. Use /recompute-pdf-auto-visual.'
-    });
-});
-
 app.post('/recompute-pdf-auto-visual', async (req, res) => {
     let file;
     let id;
@@ -2375,6 +2393,10 @@ app.post('/recompute-pdf-auto-visual', async (req, res) => {
     }
 
     try {
+        if (!dryRun && !isDangerousWriteEnabled()) {
+            return dangerousWriteForbidden(res, '/recompute-pdf-auto-visual');
+        }
+
         console.log(`[pdf-copy] fn=runVisualCopyComparison caller=endpoint endpoint=/recompute-pdf-auto-visual file=${file} id=${id || '-'} dryRun=${Boolean(dryRun)}`);
         const comparisonResult = await runVisualCopyComparison({
             file,
@@ -2424,6 +2446,10 @@ app.post('/copy-pdf-to-pdf-all-books', async (req, res) => {
         const writePdf = assertBooleanLike(payload.writePdf ?? true, 'writePdf');
         const backup = assertBooleanLike(payload.backup ?? true, 'backup');
         const clearPdfBeforeCopy = assertBooleanLike(payload.clearPdfBeforeCopy ?? true, 'clearPdfBeforeCopy');
+
+        if (writePdf && !isDangerousWriteEnabled()) {
+            return dangerousWriteForbidden(res, '/copy-pdf-to-pdf-all-books');
+        }
 
         const result = await runPdfVisualCopyBatch({
             writePdf,
@@ -2582,6 +2608,10 @@ app.post('/copy-pdf-to-final-all-books', async (req, res) => {
             ? [...new Set(files)]
             : (file ? [file] : [...ENGINE_JSON_FILES]);
 
+        if (!isDangerousWriteEnabled()) {
+            return dangerousWriteForbidden(res, '/copy-pdf-to-final-all-books');
+        }
+
         const invalidFiles = requestedFiles.filter((entry) => !ENGINE_JSON_FILES.includes(entry));
         if (invalidFiles.length > 0) {
             throw validationError({
@@ -2736,6 +2766,10 @@ app.post('/clear-engine-fields', async (req, res) => {
         const resetQaRevision = assertBooleanLike(payload.resetQaRevision ?? false, 'resetQaRevision');
         const qaRevisionUpdatedAt = new Date().toISOString();
 
+        if (!dryRun && !isDangerousWriteEnabled()) {
+            return dangerousWriteForbidden(res, '/clear-engine-fields');
+        }
+
         const perFile = [];
         let grandRecords = 0;
         let grandFields = 0;
@@ -2858,6 +2892,10 @@ app.post('/apply-revision-to-engines', async (req, res) => {
     const payload = req.body;
 
     try {
+        if (!isDangerousWriteEnabled()) {
+            return dangerousWriteForbidden(res, '/apply-revision-to-engines');
+        }
+
         validateRevisionApplyPayload(payload);
         const result = await revisionApplyService.applyFromApi(payload);
         return res.json({ ok: true, result });
@@ -2868,17 +2906,6 @@ app.post('/apply-revision-to-engines', async (req, res) => {
         return res.status(500).json({ ok: false, error: String(error?.message || error) });
     }
 });
-
-function legacyExportEndpoint(res, endpointName) {
-    return res.status(410).json({
-        ok: false,
-        legacy: true,
-        endpoint: endpointName,
-        error: 'Endpoint legacy desactivado en flujo oficial QA-only. Use /export/run-wordpress.'
-    });
-}
-
-app.post('/export/run-synthetic', async (_req, res) => legacyExportEndpoint(res, 'run-synthetic'));
 
 app.post('/export/run-wordpress', async (_req, res) => {
     try {
@@ -2900,8 +2927,6 @@ app.post('/export/run-wordpress', async (_req, res) => {
         return res.status(status).json({ ok: false, error: String(error?.message || error), run_state: exportRunState });
     }
 });
-
-app.post('/export/run-ai-conflicts', async (_req, res) => legacyExportEndpoint(res, 'run-ai-conflicts'));
 
 app.get('/export/preview', async (_req, res) => {
     try {
@@ -3829,12 +3854,6 @@ app.post('/pn-review/by-id/:id/apply-decision', async (req, res) => {
     });
 });
 
-app.get('/pn/list', async (_req, res) => legacyExportEndpoint(res, 'pn/list'));
-
-app.get('/pn/:sku', async (_req, res) => legacyExportEndpoint(res, 'pn/:sku'));
-
-app.get('/pn/:sku/sources', async (_req, res) => legacyExportEndpoint(res, 'pn/:sku/sources'));
-
 // =============================================================================
 // Export Manager — listado de archivos generados, preview y orquestador (lock).
 // =============================================================================
@@ -4206,8 +4225,6 @@ app.get('/export/download', (req, res) => {
 
     return res.download(fullPath, name);
 });
-
-app.post('/export/run-all', async (_req, res) => legacyExportEndpoint(res, 'run-all'));
 
 app.get('/audit-log', async (req, res) => {
     const limitRaw = Number(req.query?.limit);
@@ -4788,6 +4805,10 @@ app.post('/api/apply-generate-batch', async (req, res) => {
     const pythonBin = process.env.MILU_PYTHON || 'python';
 
     try {
+        if (!isDangerousWriteEnabled()) {
+            return dangerousWriteForbidden(res, '/api/apply-generate-batch');
+        }
+
         assertPayloadSize(req.body, { maxBytes: 1024 * 1024 });
         const itemsRaw = Array.isArray(req.body?.items) ? req.body.items : null;
         if (!itemsRaw || !itemsRaw.length) {
@@ -5364,10 +5385,6 @@ app.post('/copy-pdf-to-pdf', async (req, res) => {
         const status = Number(error?.status || 500);
         return res.status(status).json({ ok: false, error: String(error?.message || error) });
     }
-});
-
-app.post('/apply-qa-checks-filter', async (req, res) => {
-    return legacyQaPipelineDisabled(res);
 });
 
 app.listen(PORT, () => {

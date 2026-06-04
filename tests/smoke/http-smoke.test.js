@@ -142,14 +142,16 @@ describe('MILU smoke HTTP', () => {
     });
 
     describe('PN Review — solo lectura', () => {
-        test('GET /pn-review/list -> ok + rows/total', async () => {
-            const res = await requestText('/pn-review/list', { method: 'GET' }, TIMEOUT_MS);
+        test('GET /pn-review/list?limit=25 -> ok + rows/total paginado', async () => {
+            const res = await requestText('/pn-review/list?limit=25', { method: 'GET' }, TIMEOUT_MS);
             assert.equal(res.status, 200);
             assertJsonContentType(res);
             const body = parseJsonOrThrow(res);
             assert.equal(body.ok, true, 'Falta ok=true');
-            assert.ok(Array.isArray(body.rows) || typeof body.total === 'number',
-                'Falta rows[] o total');
+            assert.ok(Array.isArray(body.rows), 'rows debe ser array');
+            assert.ok(body.rows.length <= 25, `rows excede limit=25 (${body.rows.length})`);
+            assert.ok(typeof body.total === 'number' && body.total >= body.rows.length,
+                `total invalido: total=${body.total}, rows=${body.rows.length}`);
         });
 
         test('GET /pn-review/:sku/sources -> ok + rows para SKU existente', async () => {
@@ -196,30 +198,21 @@ describe('MILU smoke HTTP', () => {
         });
     });
 
-    describe('Endpoints legacy desactivados (deben responder 410)', () => {
-        const legacyGet = ['/pn/list'];
-        const legacyPost = ['/export/run-synthetic', '/export/run-ai-conflicts', '/export/run-all'];
+    describe('Endpoints legacy eliminados (no deben resolver 200)', () => {
+        const removedGet = ['/pn/list', '/pn/TEST-SKU', '/pn/TEST-SKU/sources'];
+        const removedPost = ['/export/run-synthetic', '/export/run-ai-conflicts', '/export/run-all', '/apply-qa-checks-filter', '/recompute-pdf-auto'];
 
-        for (const p of legacyGet) {
-            test(`GET ${p} -> 410`, async () => {
+        for (const p of removedGet) {
+            test(`GET ${p} -> no 200`, async () => {
                 const res = await requestText(p, { method: 'GET' }, TIMEOUT_MS);
-                assert.equal(res.status, 410, `Esperado 410 en ${p}, recibido ${res.status}`);
-                // intentar parsear: debe indicar legacy
-                try {
-                    const body = parseJsonOrThrow(res);
-                    assert.equal(body.legacy, true, 'Respuesta legacy debería incluir legacy:true');
-                } catch { /* no JSON: aceptable mientras el código sea 410 */ }
+                assert.notEqual(res.status, 200, `No se espera 200 en endpoint eliminado ${p}`);
             });
         }
 
-        for (const p of legacyPost) {
-            test(`POST ${p} -> 410`, async () => {
+        for (const p of removedPost) {
+            test(`POST ${p} -> no 200`, async () => {
                 const res = await postJson(p, {}, TIMEOUT_MS);
-                assert.equal(res.status, 410, `Esperado 410 en ${p}, recibido ${res.status}`);
-                try {
-                    const body = parseJsonOrThrow(res);
-                    assert.equal(body.legacy, true, 'Respuesta legacy debería incluir legacy:true');
-                } catch { /* no JSON: aceptable mientras el código sea 410 */ }
+                assert.notEqual(res.status, 200, `No se espera 200 en endpoint eliminado ${p}`);
             });
         }
     });
