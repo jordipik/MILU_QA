@@ -3483,6 +3483,7 @@ app.get('/pn-review/:sku/sources', async (req, res) => {
     }
 });
 
+// DEPRECATED: use POST /api/recompute-simple/recompute-hermanos.
 app.post('/pn-review/apply-siblings-bulk', async (req, res) => {
     let itemsRaw;
     try {
@@ -3494,10 +3495,18 @@ app.post('/pn-review/apply-siblings-bulk', async (req, res) => {
     }
 
     try {
-        const result = await applySiblingBulkUpdates(itemsRaw, { dryRun: false, backup: false });
+        if (!isDangerousWriteEnabled()) {
+            return dangerousWriteForbidden(res, '/pn-review/apply-siblings-bulk');
+        }
+
+        console.warn('[DEPRECATED] POST /pn-review/apply-siblings-bulk invoked. Use /api/recompute-simple/recompute-hermanos.');
+
+        const result = await applySiblingBulkUpdates(itemsRaw, { dryRun: false, backup: true });
 
         return res.json({
             ok: Array.isArray(result?.errors) ? result.errors.length === 0 : true,
+            deprecated: true,
+            warning: 'Use /api/recompute-simple/recompute-hermanos.',
             result
         });
     } catch (error) {

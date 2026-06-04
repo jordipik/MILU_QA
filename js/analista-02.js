@@ -10526,32 +10526,18 @@ async function applyPnCopyPropagationForCurrentBook() {
 
                     appendHermanosProgressLog('Ejecutando modo rápido backend (bulk)...', 'ok');
 
-                    const BULK_MAX_ITEMS_PER_REQUEST = 150;
-                    const BULK_MAX_BYTES_PER_REQUEST = 24000;
-                    const bulkBatches = [];
-                    let currentBatch = [];
-
-                    for (const item of bulkItems) {
-                        const candidateBatch = [...currentBatch, item];
-                        const candidateBytes = JSON.stringify({ items: candidateBatch }).length;
-                        const exceedsItems = candidateBatch.length > BULK_MAX_ITEMS_PER_REQUEST;
-                        const exceedsBytes = candidateBytes > BULK_MAX_BYTES_PER_REQUEST;
-
-                        if (currentBatch.length > 0 && (exceedsItems || exceedsBytes)) {
-                            bulkBatches.push(currentBatch);
-                            currentBatch = [item];
-                            continue;
-                        }
-
-                        currentBatch = candidateBatch;
+                    const engineFiles = Array.from(new Set(
+                        bulkItems
+                            .map((entry) => String(entry?.current_engine_file || '').trim())
+                            .filter(Boolean)
+                    ));
+                    if (engineFiles.length !== 1) {
+                        throw new Error(`Se esperaba 1 engine para bulk y se detectaron ${engineFiles.length || 0}.`);
                     }
-
-                    if (currentBatch.length > 0) {
-                        bulkBatches.push(currentBatch);
-                    }
+                    const targetEngine = engineFiles[0];
 
                     appendHermanosProgressLog(
-                        `Bulk dividido en ${bulkBatches.length} lote(s) para compatibilidad con límites de payload.`,
+                        `Bulk oficial por engine: ${targetEngine}.`,
                         ''
                     );
 
@@ -10560,57 +10546,50 @@ async function applyPnCopyPropagationForCurrentBook() {
                     let totalNoSiblingPn = 0;
                     const aggregatedErrors = [];
 
-                    for (let batchIndex = 0; batchIndex < bulkBatches.length; batchIndex += 1) {
-                        const items = bulkBatches[batchIndex];
-                        const response = await fetch('/pn-review/apply-siblings-bulk', {
+                    const response = await fetch('/api/recompute-simple/recompute-hermanos', {
 
-                            method: 'POST',
+                        method: 'POST',
 
-                            headers: { 'Content-Type': 'application/json' },
+                        headers: { 'Content-Type': 'application/json' },
 
-                            body: JSON.stringify({ items })
+                        body: JSON.stringify({ engine: targetEngine, dryRun: false, backup: true })
 
-                        });
+                    });
 
-                        const payload = await response.json().catch(() => ({}));
-                        if (!response.ok || !payload?.result) {
-                            const code = String(payload?.code || '').trim();
-                            const detail = code ? `${code}: ${String(payload?.error || `HTTP ${response.status}`)}` : String(payload?.error || `HTTP ${response.status}`);
-                            throw new Error(`Lote ${batchIndex + 1}/${bulkBatches.length} (${items.length} PN): ${detail}`);
-                        }
-
-                        const result = payload.result;
-                        totalPnsWithPropagation += Number(result?.pns_with_changes || 0);
-                        totalRowsUpdated += Number(result?.rows_updated || 0);
-                        if (Array.isArray(result?.item_results)) {
-                            totalNoSiblingPn += result.item_results.filter((item) => Number(item?.target_siblings || 0) === 0).length;
-                        }
-                        if (Array.isArray(result?.errors) && result.errors.length > 0) {
-                            aggregatedErrors.push(
-                                ...result.errors.map((entry) => `${entry.file || 'bulk'}: ${entry.error || 'Error desconocido'}`)
-                            );
-                        }
-
-                        const processedByBatch = Math.min(
-                            summary.scannedUniquePn,
-                            Math.floor(((batchIndex + 1) / bulkBatches.length) * summary.scannedUniquePn)
-                        );
-                        renderHermanosProgress({
-
-                            currentLabel: `Bulk en servidor: lote ${batchIndex + 1}/${bulkBatches.length} completado.`,
-
-                            processedPn: processedByBatch,
-
-                            totalPn: summary.scannedUniquePn,
-
-                            scannedRows: summary.scannedRows,
-
-                            propagatedRows: totalRowsUpdated,
-
-                            pnsWithPropagation: totalPnsWithPropagation
-
-                        });
+                    const payload = await response.json().catch(() => ({}));
+                    if (!response.ok || !payload?.result) {
+                        const code = String(payload?.code || '').trim();
+                        const detail = code ? `${code}: ${String(payload?.error || `HTTP ${response.status}`)}` : String(payload?.error || `HTTP ${response.status}`);
+                        throw new Error(`Bulk oficial (${targetEngine}): ${detail}`);
                     }
+
+                    const result = payload.result;
+                    totalPnsWithPropagation += Number(result?.pns_with_changes || 0);
+                    totalRowsUpdated += Number(result?.rows_updated || 0);
+                    if (Array.isArray(result?.item_results)) {
+                        totalNoSiblingPn += result.item_results.filter((item) => Number(item?.target_siblings || 0) === 0).length;
+                    }
+                    if (Array.isArray(result?.errors) && result.errors.length > 0) {
+                        aggregatedErrors.push(
+                            ...result.errors.map((entry) => `${entry.file || 'bulk'}: ${entry.error || 'Error desconocido'}`)
+                        );
+                    }
+
+                    renderHermanosProgress({
+
+                        currentLabel: `Bulk en servidor: engine ${targetEngine} completado.`,
+
+                        processedPn: summary.scannedUniquePn,
+
+                        totalPn: summary.scannedUniquePn,
+
+                        scannedRows: summary.scannedRows,
+
+                        propagatedRows: totalRowsUpdated,
+
+                        pnsWithPropagation: totalPnsWithPropagation
+
+                    });
 
                     summary.pnsWithPropagation = totalPnsWithPropagation;
 
