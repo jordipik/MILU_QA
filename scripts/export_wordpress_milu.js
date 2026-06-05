@@ -1056,8 +1056,8 @@ function run(options = {}) {
             hierarchy: isSupersededRow(selectedRows[0]) ? 'Superseded' : 'New',
             decision: decisionMeta.decision,
             reason: decisionMeta.reason,
-                qaValidated: decisionMeta.qa_validated,
-                consolidatedRows: consolidationRows
+            qaValidated: decisionMeta.qa_validated,
+            consolidatedRows: consolidationRows
         });
         traceBySku[sku] = buildTraceEntry(sku, selectedRows, compactedForTrace, decisionMeta, qaSummary);
     }

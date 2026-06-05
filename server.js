@@ -1603,6 +1603,32 @@ function getPythonCmd() {
         : 'python';
 }
 
+function parseJsonObjectFromText(rawText) {
+    const text = String(rawText || '').trim();
+    if (!text) return null;
+
+    try {
+        const parsed = JSON.parse(text);
+        if (parsed && typeof parsed === 'object') return parsed;
+    } catch (_error) {
+        // try extracting from mixed stdout
+    }
+
+    const firstBrace = text.indexOf('{');
+    const lastBrace = text.lastIndexOf('}');
+    if (firstBrace < 0 || lastBrace <= firstBrace) return null;
+
+    try {
+        const extracted = text.slice(firstBrace, lastBrace + 1);
+        const parsed = JSON.parse(extracted);
+        if (parsed && typeof parsed === 'object') return parsed;
+    } catch (_error) {
+        return null;
+    }
+
+    return null;
+}
+
 async function runPythonScriptWithReport({ scriptName, scriptArgs = [], reportPrefix = 'milu_report' }) {
     const os = require('os');
     const reportPath = path.join(os.tmpdir(), `${reportPrefix}_${Date.now()}_${process.pid}.json`);
@@ -2050,6 +2076,123 @@ app.post('/api/recompute-simple/update-fg-fgs', async (req, res) => {
         return res.json({
             ok: true,
             result
+        });
+    } catch (error) {
+        return res.status(500).json({
+            ok: false,
+            error: String(error?.message || error || 'Error desconocido')
+        });
+    }
+});
+
+app.post('/api/recompute-simple/fill-missing-fg-fgs', async (req, res) => {
+    let engine;
+    let dryRun;
+    let backup;
+
+    try {
+        assertPayloadSize(req.body, { maxBytes: 12288 });
+        engine = assertString(req.body?.engine ?? 'ALL', { field: 'engine', allowEmpty: false, maxLength: 64 });
+        dryRun = assertBooleanLike(req.body?.dryRun ?? true, 'dryRun');
+        backup = req.body?.backup === false ? false : true;
+
+        const normalizedEngine = normalizeEngineToken(engine);
+        if (!normalizedEngine) {
+            throw validationError({ code: 'INVALID_ENGINE', field: 'engine', message: 'engine es obligatorio' });
+        }
+    } catch (error) {
+        return isValidationError(error)
+            ? sendValidationError(res, error, { endpoint: '/api/recompute-simple/fill-missing-fg-fgs' })
+            : res.status(400).json({ ok: false, error: String(error?.message || error) });
+    }
+
+    try {
+        const normalizedEngine = normalizeEngineToken(engine);
+        if (!dryRun && !isDangerousWriteEnabled()) {
+            return dangerousWriteForbidden(res, '/api/recompute-simple/fill-missing-fg-fgs');
+        }
+
+        const args = ['scripts/fill_missing_fg_fgs_by_bom.py', '--engine', normalizedEngine];
+        if (dryRun) args.push('--dry-run');
+        else args.push('--write');
+        if (backup) args.push('--backup');
+
+        const execResult = await new Promise((resolve, reject) => {
+            const python = spawn(getPythonCmd(), args, {
+                cwd: __dirname,
+                stdio: ['pipe', 'pipe', 'pipe'],
+                windowsHide: true,
+                env: { ...process.env, PYTHONIOENCODING: 'utf-8' }
+            });
+
+            let stdout = '';
+            let stderr = '';
+
+            python.stdout.on('data', (chunk) => {
+                stdout += String(chunk || '');
+            });
+
+            python.stderr.on('data', (chunk) => {
+                stderr += String(chunk || '');
+            });
+
+            python.on('error', reject);
+            python.on('close', (code) => {
+                resolve({
+                    code: Number(code),
+                    stdout,
+                    stderr
+                });
+            });
+        });
+
+        const parsed = parseJsonObjectFromText(execResult.stdout);
+        if (!parsed) {
+            return res.status(500).json({
+                ok: false,
+                error: 'No se pudo parsear JSON del script fill_missing_fg_fgs_by_bom.py',
+                notes: {
+                    exitCode: execResult.code,
+                    stderr: String(execResult.stderr || ''),
+                    stdout: String(execResult.stdout || '')
+                }
+            });
+        }
+
+        const totals = parsed?.totals || {};
+        const payload = {
+            ok: execResult.code === 0,
+            dryRun: Boolean(dryRun),
+            engine: normalizedEngine,
+            summary: {
+                recordsProcessed: Number(totals.processed) || 0,
+                alreadyHadFgFgs: Number(totals.untouched_existing) || 0,
+                missingFgFgs: Number(totals.empty_fg_fgs_final) || 0,
+                withBom: Number(totals.with_bom) || 0,
+                withoutBom: Number(totals.without_bom) || 0,
+                bomFound: Number(totals.bom_found) || 0,
+                bomNotFound: Number(totals.bom_not_found) || 0,
+                recordsFillable: Number(totals.fillable) || 0,
+                recordsUpdated: Number(dryRun ? totals.fillable : (parsed?.engines || []).reduce((acc, item) => acc + (Number(item?.write_changes) || 0), 0)) || 0,
+                conflicts: Number(parsed?.catalog_conflicts) || 0
+            },
+            reportPath: path.join('docs', 'v1.04', 'FG_FGS_FILL_MISSING_DRYRUN_REPORT.md'),
+            notes: {
+                mode: String(parsed?.mode || (dryRun ? 'DRY-RUN' : 'WRITE')),
+                exitCode: execResult.code,
+                stderr: String(execResult.stderr || ''),
+                stdout: String(execResult.stdout || '')
+            }
+        };
+
+        if (execResult.code === 0) {
+            return res.status(200).json(payload);
+        }
+
+        return res.status(500).json({
+            ok: false,
+            error: String(execResult.stderr || execResult.stdout || 'Error ejecutando fill_missing_fg_fgs_by_bom.py'),
+            ...payload
         });
     } catch (error) {
         return res.status(500).json({

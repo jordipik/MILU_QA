@@ -466,35 +466,29 @@
                 <button id="btnHermanos" type="button">RECALCULAR HERMANOS</button>
             </article>
 
-            <article class="a2-recompute-card" aria-label="Enriquecer assets multimedia sobre engine JSON">
+            <article class="a2-recompute-card" aria-label="Completar FG/FGS por BOM en registros vacios">
                 <h3>
                     <span class="a2-step-index">7</span>
                     <div>
-                        <span class="a2-step-title">ASSETS</span>
-                        <p class="a2-step-desc">POST /api/recompute-simple/enrich-assets/start</p>
-                        <p class="a2-step-desc">Lanza un job asíncrono con progreso y cancelación (polling de estado en
-                            vivo).</p>
-                        <p class="a2-step-desc">Ejecuta rebuild_assets_for_record.py para un ID puntual, un libro o
-                            todos
-                            los libros según el alcance seleccionado.</p>
-                        <p class="a2-step-desc">Genera/reutiliza esquemas base y POS y actualiza enlaces de assets:
-                            esquemas, esquemas_circulos, esquemas_circulos_all, ruta_esquemas_pos,
-                            exp_imagenes, filename_foto y ruta_foto.</p>
+                        <span class="a2-step-title">Completar FG/FGS por BOM</span>
+                        <p class="a2-step-desc">POST /api/recompute-simple/fill-missing-fg-fgs</p>
+                        <p class="a2-step-desc">Rellena solo los registros que tienen fg_fgs_final vacio usando bom_final
+                            como clave. No sobrescribe valores existentes.</p>
+                        <p class="a2-step-desc">Solo rellena fg_fgs_final vacio. No sobrescribe valores existentes. En modo
+                            escritura requiere SERVER_ENABLE_DANGEROUS_WRITE=true.</p>
                     </div>
                 </h3>
-                <button id="btnAssets" type="button">ASSETS</button>
-                <div id="assetsProgressWrap" class="a2-assets-progress" hidden>
-                    <div class="a2-assets-progress-head">
-                        <span id="assetsProgressLabel">Preparando ASSETS...</span>
-                        <span id="assetsProgressPercent">0%</span>
-                    </div>
-                    <div class="a2-assets-progress-track" aria-label="Progreso ASSETS">
-                        <div id="assetsProgressBar" class="a2-assets-progress-bar"></div>
-                    </div>
-                    <div id="assetsProgressMeta" class="a2-assets-progress-meta">Esperando inicio...</div>
-                    <button id="btnAssetsCancel" class="a2-assets-progress-cancel" type="button" disabled>CANCELAR
-                        ASSETS</button>
+                <div class="a2-inline-form">
+                    <label style="display:flex;align-items:center;gap:8px;font-size:12px;color:#244864;">
+                        <input id="chkFillMissingDryRun" type="checkbox" checked />
+                        <span>Dry-run</span>
+                    </label>
+                    <label style="display:flex;align-items:center;gap:8px;font-size:12px;color:#244864;">
+                        <input id="chkFillMissingBackup" type="checkbox" checked />
+                        <span>Backup</span>
+                    </label>
                 </div>
+                <button id="btnFillMissingFgFgs" type="button">EJECUTAR FG/FGS FALTANTES</button>
             </article>
 
             <article class="a2-recompute-card" aria-label="Recalcular esquemas generales por BOM">

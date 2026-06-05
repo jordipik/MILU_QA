@@ -12,6 +12,9 @@ const refs = {
     logPanel: document.getElementById('recomputeSimpleLogPanel'),
     btnImportPdf: document.getElementById('btnImportPdf'),
     btnSust: document.getElementById('btnSust'),
+    btnFillMissingFgFgs: document.getElementById('btnFillMissingFgFgs'),
+    chkFillMissingDryRun: document.getElementById('chkFillMissingDryRun'),
+    chkFillMissingBackup: document.getElementById('chkFillMissingBackup'),
     btnAssets: document.getElementById('btnAssets'),
     btnAssetsCancel: document.getElementById('btnAssetsCancel'),
     btnHermanos: document.getElementById('btnHermanos'),
@@ -39,6 +42,7 @@ const engineFileByModel = new Map();
 const actionButtons = [
     refs.btnImportPdf,
     refs.btnSust,
+    refs.btnFillMissingFgFgs,
     refs.btnAssets,
     refs.btnHermanos,
     refs.btnSchemesByBomDryRun,
@@ -831,6 +835,42 @@ function renderResponseSummary(actionLabel, endpoint, responseData) {
         return;
     }
 
+    if (endpoint === '/api/recompute-simple/fill-missing-fg-fgs') {
+        const summary = data?.summary || {};
+        const cards = [
+            { label: 'Procesados', value: String(Number(summary?.recordsProcessed) || 0) },
+            { label: 'Ya tenian FG/FGS', value: String(Number(summary?.alreadyHadFgFgs) || 0) },
+            { label: 'Vacios', value: String(Number(summary?.missingFgFgs) || 0) },
+            { label: 'Con BOM', value: String(Number(summary?.withBom) || 0) },
+            { label: 'Sin BOM', value: String(Number(summary?.withoutBom) || 0) },
+            { label: 'BOM encontrado', value: String(Number(summary?.bomFound) || 0) },
+            { label: 'BOM no encontrado', value: String(Number(summary?.bomNotFound) || 0) },
+            { label: 'Rellenables', value: String(Number(summary?.recordsFillable) || 0) },
+            { label: 'Actualizados', value: String(Number(summary?.recordsUpdated) || 0) },
+            { label: 'Conflictos', value: String(Number(summary?.conflicts) || 0) }
+        ];
+
+        const rows = [[
+            String(data?.engine || '-'),
+            data?.dryRun ? 'si' : 'no',
+            String(data?.reportPath || '-')
+        ]];
+
+        const note = data?.dryRun
+            ? 'Simulacion dry-run: no se escribieron cambios en engine_*.json.'
+            : 'Modo write ejecutado.';
+
+        renderResultPanel(
+            actionLabel,
+            endpoint,
+            cards,
+            ['Engine', 'Dry run', 'Report path'],
+            rows,
+            note
+        );
+        return;
+    }
+
     if (endpoint === '/api/recompute-simple/recompute-hermanos') {
         const siblings = data?.result || {};
         const cards = [
@@ -1496,6 +1536,49 @@ async function runAssets() {
     }
 }
 
+async function runFillMissingFgFgsByBom() {
+    const scope = getScope();
+    if (scope.id) showIdIgnoredWarning('7 · COMPLETAR FG/FGS POR BOM');
+
+    const dryRun = refs.chkFillMissingDryRun instanceof HTMLInputElement
+        ? Boolean(refs.chkFillMissingDryRun.checked)
+        : true;
+    const backup = refs.chkFillMissingBackup instanceof HTMLInputElement
+        ? Boolean(refs.chkFillMissingBackup.checked)
+        : true;
+
+    const payload = {
+        engine: scope.isAll ? 'ALL' : scope.model,
+        dryRun,
+        backup
+    };
+
+    if (scope.isAll) {
+        setStatus(`Ejecutando 7 · COMPLETAR FG/FGS por BOM para todos los libros (${dryRun ? 'DRY RUN' : 'WRITE'})...`, '');
+    } else {
+        setStatus(`Ejecutando 7 · COMPLETAR FG/FGS por BOM para ${scope.model} (${dryRun ? 'DRY RUN' : 'WRITE'})...`, '');
+    }
+
+    let data;
+    try {
+        data = await postJson('/api/recompute-simple/fill-missing-fg-fgs', payload);
+    } catch (error) {
+        const message = String(error?.message || error || 'Error desconocido');
+        if (/dangerous write disabled|SERVER_ENABLE_DANGEROUS_WRITE/i.test(message)) {
+            throw new Error('Write bloqueado por seguridad: activa SERVER_ENABLE_DANGEROUS_WRITE=true para ejecutar sin dry-run.');
+        }
+        throw error;
+    }
+
+    renderResponseSummary('7 · Completar FG/FGS por BOM', '/api/recompute-simple/fill-missing-fg-fgs', data);
+
+    if (data?.dryRun) {
+        setStatus('7 · COMPLETAR FG/FGS ejecutado en simulacion (dry-run).', 'ok');
+    } else {
+        setStatus('7 · COMPLETAR FG/FGS ejecutado en modo escritura.', 'ok');
+    }
+}
+
 async function runHermanos() {
     const scope = getScope();
     if (scope.id) showIdIgnoredWarning('HERMANOS / COPIAS');
@@ -1752,8 +1835,8 @@ function bindEvents() {
         refs.btnSust.addEventListener('click', () => runAction(runUpdateSust));
     }
 
-    if (refs.btnAssets instanceof HTMLButtonElement) {
-        refs.btnAssets.addEventListener('click', () => runAction(runAssets));
+    if (refs.btnFillMissingFgFgs instanceof HTMLButtonElement) {
+        refs.btnFillMissingFgFgs.addEventListener('click', () => runAction(runFillMissingFgFgsByBom));
     }
 
     if (refs.btnAssetsCancel instanceof HTMLButtonElement) {
