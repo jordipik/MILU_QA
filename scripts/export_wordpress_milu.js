@@ -180,6 +180,28 @@ function splitMultiValues(value) {
         .filter(Boolean);
 }
 
+function formatExportTimestamp(date = new Date()) {
+    const year = String(date.getFullYear());
+    const month = String(date.getMonth() + 1).padStart(2, '0');
+    const day = String(date.getDate()).padStart(2, '0');
+    const hour = String(date.getHours()).padStart(2, '0');
+    const minute = String(date.getMinutes()).padStart(2, '0');
+    return `${year}${month}${day}.${hour}${minute}`;
+}
+
+function normalizeLibroPag(row) {
+    const libroPag = collapseSpaces(row?.libro_pag);
+    if (libroPag) return libroPag;
+
+    const engine = getEngineName(row);
+    const pageCandidate = collapseSpaces(row?.page4 || row?.['Source Page'] || row?.rebuild_source_page || row?.PAG);
+    if (!engine || !pageCandidate) return '';
+
+    const numericPage = String(pageCandidate).match(/\d+/)?.[0] || '';
+    if (!numericPage) return '';
+    return `${engine}-${numericPage.padStart(4, '0')}`;
+}
+
 function normalizeFgCode(rawValue) {
     const text = t(rawValue);
     if (!text) return '';
@@ -229,8 +251,8 @@ function normalizeEngineModelForLookup(rawValue) {
 
 function extractPrimaryFgCode(row) {
     return normalizeFgCode(pickMostFrequent([
-        row?.fg_code,
         row?.fg_fgs_final,
+        row?.fg_code,
         row?.['FG/FGS']
     ]));
 }
@@ -552,24 +574,24 @@ function buildMergedRow(rows, options = {}) {
     const engineBase = t(options.engine || joinUniqueSorted(engineValues));
     const engine = options.syntheticSource ? normalizeEngineForSynthetic(engineBase) : engineBase;
     const modelType = t(options.modelType || joinUniqueSorted(consolidatedRows.map((row) => deriveModelTypeToken(row))));
-    const fgCodeRaw = t(options.fgCode || pickMostFrequent(sourceRows.map((row) => extractPrimaryFgCode(row))));
-    const fgCode = normalizeFgCode(fgCodeRaw);
-    const resolvedFgDescription = t(options.fgDescription || lookupFgDescriptionByCodeAndModel(fgCode, engine));
+    const fgCode = t(options.fgCode || pickMostFrequent(sourceRows.map((row) => row.fg_fgs_final || row.fg_code || row['FG/FGS'])));
+    const fgCodeLookup = normalizeFgCode(fgCode);
+    const resolvedFgDescription = t(options.fgDescription || pickMostFrequent(sourceRows.map((row) => row.fgs_description)) || lookupFgDescriptionByCodeAndModel(fgCodeLookup, engine));
     const fgDescription = resolvedFgDescription || deriveFgDescription();
-    const fgCodeDescription = t(options.fgCodeDescription || [fgCode, fgDescription].filter(Boolean).join(' '));
+    const fgCodeDescription = t(options.fgCodeDescription || pickMostFrequent(sourceRows.map((row) => row.fgs_code_description)) || [fgCode, fgDescription].filter(Boolean).join(' '));
     const expCategorias = t(options.expCategorias || deriveExpCategorias(consolidatedRows));
     const expImagenes = t(options.expImagenes || deriveExpImagenes(consolidatedRows));
 
     const id = t(options.id || pickMostFrequent(sourceRows.map((row) => getSourceId(row))));
-    const fechaVersion = t(options.fechaVersion || pickMostFrequent(sourceRows.map((row) => row.fecha_version)));
+    const fechaVersion = t(options.fechaVersion || pickMostFrequent(sourceRows.map((row) => row.fecha_version)) || formatExportTimestamp());
     const pos = t(options.pos || pickMostFrequent(sourceRows.map((row) => getPos(row))));
     const type = t(options.type || pickMostFrequent(sourceRows.map((row) => row.type)));
     const nsn = t(options.nsn || pickMostFrequent(sourceRows.map((row) => row.nsn)));
-    const gesaNorm = t(options.gesaNorm || pickMostFrequent(sourceRows.map((row) => row.GESA_NORM)));
-    const gesaNormalizado = t(options.gesaNormalizado || pickMostFrequent(sourceRows.map((row) => row.GESA_NORMALIZADO)));
+    const gesaNorm = t(options.gesaNorm || pickMostFrequent(sourceRows.map((row) => row.norma_final || row.GESA_NORM)));
+    const gesaNormalizado = t(options.gesaNormalizado || pickMostFrequent(sourceRows.map((row) => row.normalizado_final || row.GESA_NORMALIZADO)));
     const weightTxt = t(options.weightTxt || pickMostFrequent(sourceRows.map((row) => row.weight_txt)) || weight);
-    const tipoArticulo = t(options.tipoArticulo || pickMostFrequent(sourceRows.map((row) => row.TIPOARTICULO)));
-    const pag = t(options.pag || joinUniqueSorted(consolidatedRows.flatMap((row) => splitMultiValues(row.PAG || getSourcePage(row)))));
+    const tipoArticulo = t(options.tipoArticulo || 'piezas');
+    const pag = t(options.pag || joinUniqueSorted(consolidatedRows.flatMap((row) => splitMultiValues(normalizeLibroPag(row)))));
     const bomNo = t(options.bomNo || pickMostFrequent(sourceRows.map((row) => row.BOM_no || row['BOM-No.'])));
     const esquemaGeneral = t(options.esquemaGeneral || joinUniqueSorted(consolidatedRows.flatMap((row) => [
         ...splitMultiValues(row.esquema_general),
