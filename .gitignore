@@ -22,6 +22,7 @@ data/snapshots/*/
 
 # Evitar versionar cambios de datos JSON locales.
 *.json
+!tests/fixtures/wordpress_export_columns_v104.json
 
 # Backups JSON locales (ej: .json.backup, .json.backup-*, .json.backup.*)
 *.json.backup*

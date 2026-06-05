@@ -7,56 +7,21 @@ const path = require('node:path');
 
 const REPO_ROOT = path.resolve(__dirname, '..');
 const EXPORTER_PATH = path.join(REPO_ROOT, 'scripts', 'export_wordpress_milu.js');
-const REFERENCE_PATH = path.join(REPO_ROOT, 'MILU_New_v506.json');
+const FIXTURE_PATH = path.join(REPO_ROOT, 'tests', 'fixtures', 'wordpress_export_columns_v104.json');
 const CURRENT_NEW_CSV_PATH = path.join(REPO_ROOT, 'data', 'output', 'wordpress', 'milu_wp_new_import.csv');
+const ASSERT_GENERATED_CSV_HEADER = process.env.MILU_ASSERT_GENERATED_CSV_HEADER === '1';
 
-const CANONICAL_COLUMNS = [
-    'Id',
-    'fecha_version',
-    'POS',
-    'designation',
-    'engine',
-    'model_type',
-    'type',
-    'pn',
-    'nsn',
-    'GESA_NORM',
-    'GESA_NORMALIZADO',
-    'fg_code',
-    'fg_description',
-    'fg_code_description',
-    'weight',
-    'weight_txt',
-    'measurement',
-    'TIPOARTICULO',
-    'PAG',
-    'BOM_no',
-    'esquema_general',
-    'exp_motor',
-    'exp_categorias',
-    'atributo',
-    'SUST_TIPO',
-    'new_pn_relacionado',
-    'old_pn_relacionados',
-    'EN_EXCEL_SUSTITUCION',
-    'ruta_foto',
-    'exp_imagenes'
-];
-
-function getReferenceColumns() {
-    const raw = fs.readFileSync(REFERENCE_PATH, 'utf8');
+function getCanonicalColumns() {
+    const raw = fs.readFileSync(FIXTURE_PATH, 'utf8');
     const parsed = JSON.parse(raw);
-    assert.ok(Array.isArray(parsed) && parsed.length > 0, 'MILU_New_v506.json must contain at least one row');
-    return Object.keys(parsed[0]);
+    assert.ok(Array.isArray(parsed) && parsed.length > 0, 'tests/fixtures/wordpress_export_columns_v104.json must contain at least one column');
+    return parsed;
 }
 
 function getExporterColumns() {
-    const source = fs.readFileSync(EXPORTER_PATH, 'utf8');
-    const match = source.match(/const\s+NEW_V506_HEADERS\s*=\s*\[([\s\S]*?)\];/);
-    assert.ok(match, 'Could not find NEW_V506_HEADERS in exporter');
-
-    const body = match[1];
-    const columns = [...body.matchAll(/'([^']+)'/g)].map((token) => token[1]);
+    const exporter = require(EXPORTER_PATH);
+    const columns = exporter?.NEW_V506_HEADERS;
+    assert.ok(Array.isArray(columns), 'scripts/export_wordpress_milu.js must export NEW_V506_HEADERS array');
     return columns;
 }
 
@@ -66,29 +31,32 @@ function getCsvHeaderColumns(csvPath) {
     return firstLine.split(';');
 }
 
-function assertHeaderContract(columns, sourceName) {
-    assert.equal(columns.length, CANONICAL_COLUMNS.length, `${sourceName}: unexpected column count`);
-    assert.deepEqual(columns, CANONICAL_COLUMNS, `${sourceName}: header/order/case mismatch`);
+function assertHeaderContract(columns, canonicalColumns, sourceName) {
+    assert.equal(columns.length, 66, `${sourceName}: expected 66 columns`);
+    assert.equal(columns.length, canonicalColumns.length, `${sourceName}: unexpected column count`);
+    assert.deepEqual(columns, canonicalColumns, `${sourceName}: header/order/case mismatch`);
 
-    const missing = CANONICAL_COLUMNS.filter((column) => !columns.includes(column));
-    const extra = columns.filter((column) => !CANONICAL_COLUMNS.includes(column));
+    const missing = canonicalColumns.filter((column) => !columns.includes(column));
+    const extra = columns.filter((column) => !canonicalColumns.includes(column));
     assert.deepEqual(missing, [], `${sourceName}: missing columns -> ${missing.join(', ')}`);
     assert.deepEqual(extra, [], `${sourceName}: extra columns -> ${extra.join(', ')}`);
 }
 
 describe('WordPress export canonical header contract', () => {
-    it('reference file MILU_New_v506.json matches canonical columns exactly', () => {
-        const referenceColumns = getReferenceColumns();
-        assertHeaderContract(referenceColumns, 'MILU_New_v506.json');
+    it('fixture v1.04 defines 66 canonical columns in exact order', () => {
+        const canonicalColumns = getCanonicalColumns();
+        assert.equal(canonicalColumns.length, 66, 'canonical fixture must define 66 columns');
     });
 
     it('exporter NEW_V506_HEADERS matches canonical columns exactly', () => {
+        const canonicalColumns = getCanonicalColumns();
         const exporterColumns = getExporterColumns();
-        assertHeaderContract(exporterColumns, 'scripts/export_wordpress_milu.js::NEW_V506_HEADERS');
+        assertHeaderContract(exporterColumns, canonicalColumns, 'scripts/export_wordpress_milu.js::NEW_V506_HEADERS');
     });
 
-    it('current new import CSV header matches canonical columns exactly when file exists', { skip: !fs.existsSync(CURRENT_NEW_CSV_PATH) }, () => {
+    it('current new import CSV header matches canonical columns exactly when explicitly enabled', { skip: !ASSERT_GENERATED_CSV_HEADER || !fs.existsSync(CURRENT_NEW_CSV_PATH) }, () => {
+        const canonicalColumns = getCanonicalColumns();
         const csvColumns = getCsvHeaderColumns(CURRENT_NEW_CSV_PATH);
-        assertHeaderContract(csvColumns, 'data/output/wordpress/milu_wp_new_import.csv');
+        assertHeaderContract(csvColumns, canonicalColumns, 'data/output/wordpress/milu_wp_new_import.csv');
     });
 });

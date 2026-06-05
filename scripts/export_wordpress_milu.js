@@ -8,6 +8,19 @@ const REPO_ROOT = path.resolve(__dirname, '..');
 const OUTPUT_DIR = path.join(REPO_ROOT, 'data', '05-wordpress');
 const AUDIT_OUTPUT_DIR = path.join(REPO_ROOT, 'data', 'output', 'wordpress');
 const FG_FGS_CATALOG_PATH = path.join(REPO_ROOT, 'EXCEL_FG-FGS.json');
+const OLD_RELATION_SLOT_COUNT = 18;
+
+function buildOldRelationHeaders() {
+    const headers = [];
+    for (let i = 1; i <= OLD_RELATION_SLOT_COUNT; i += 1) {
+        const suffix = String(i).padStart(2, '0');
+        headers.push(`old_number_${suffix}`);
+        headers.push(`old_ruta_${suffix}`);
+    }
+    return headers;
+}
+
+const OLD_RELATION_HEADERS = buildOldRelationHeaders();
 
 const NEW_V506_HEADERS = [
     'Id',
@@ -37,6 +50,7 @@ const NEW_V506_HEADERS = [
     'SUST_TIPO',
     'new_pn_relacionado',
     'old_pn_relacionados',
+    ...OLD_RELATION_HEADERS,
     'EN_EXCEL_SUSTITUCION',
     'ruta_foto',
     'exp_imagenes'
@@ -118,6 +132,69 @@ function splitCommaList(value) {
         .split(',')
         .map((item) => collapseSpaces(item))
         .filter(Boolean);
+}
+
+function normalizeOldRouteValue(value) {
+    return collapseSpaces(value).replace(/\s+/g, '-');
+}
+
+function buildOldPnFields(rowOrGroup) {
+    const sourceRows = Array.isArray(rowOrGroup)
+        ? rowOrGroup
+        : Array.isArray(rowOrGroup?.sourceRows)
+            ? rowOrGroup.sourceRows
+            : rowOrGroup && typeof rowOrGroup === 'object'
+                ? [rowOrGroup]
+                : [];
+
+    const consolidatedRows = Array.isArray(rowOrGroup?.consolidatedRows)
+        ? rowOrGroup.consolidatedRows
+        : sourceRows;
+
+    const candidates = [];
+    const seen = new Set();
+
+    const pushToken = (raw) => {
+        const token = collapseSpaces(raw);
+        if (!token) return;
+        const tokenKey = key(token);
+        if (seen.has(tokenKey)) return;
+        seen.add(tokenKey);
+        candidates.push(token);
+    };
+
+    const pushList = (raw) => {
+        for (const token of splitCsvValues(raw)) {
+            pushToken(token);
+        }
+    };
+
+    pushList(rowOrGroup?.old_pn_relacionados);
+    pushList(rowOrGroup?.supersededList);
+    pushList(rowOrGroup?.subst_pnlist_final);
+    pushList(rowOrGroup?.sust_superseded_list);
+
+    for (const row of sourceRows) {
+        pushList(row?.old_pn_relacionados);
+        pushList(row?.subst_pnlist_final);
+        pushList(row?.sust_superseded_list);
+    }
+
+    for (const row of consolidatedRows) {
+        pushList(row?.old_pn_relacionados);
+        pushList(row?.subst_pnlist_final);
+        pushList(row?.sust_superseded_list);
+    }
+
+    const limited = candidates.slice(0, OLD_RELATION_SLOT_COUNT);
+    const fields = {};
+    for (let i = 1; i <= OLD_RELATION_SLOT_COUNT; i += 1) {
+        const suffix = String(i).padStart(2, '0');
+        const value = limited[i - 1] || '';
+        fields[`old_number_${suffix}`] = value;
+        fields[`old_ruta_${suffix}`] = value ? normalizeOldRouteValue(value) : '';
+    }
+    return fields;
 }
 
 function pickMostFrequent(values) {
@@ -570,6 +647,12 @@ function buildMergedRow(rows, options = {}) {
     const weight = t(options.weight || pickMostFrequent(sourceRows.map((row) => getWeight(row))));
     const newPn = t(options.newPn || pickMostFrequent(sourceRows.map((row) => getNewPartNumber(row))));
     const supersededList = t(options.supersededList || pickMostFrequent(sourceRows.map((row) => getSupersededListValue(row))));
+    const oldPnFields = buildOldPnFields({
+        sourceRows,
+        consolidatedRows,
+        old_pn_relacionados: supersededList,
+        supersededList
+    });
     const engineValues = consolidatedRows.map((row) => getEngineName(row));
     const engineBase = t(options.engine || joinUniqueSorted(engineValues));
     const engine = options.syntheticSource ? normalizeEngineForSynthetic(engineBase) : engineBase;
@@ -634,6 +717,7 @@ function buildMergedRow(rows, options = {}) {
         SUST_TIPO: hierarchy,
         new_pn_relacionado: newPn,
         old_pn_relacionados: supersededList,
+        ...oldPnFields,
         EN_EXCEL_SUSTITUCION: enExcelSustitucion,
         ruta_foto: rutaFoto,
         exp_imagenes: expImagenes,
@@ -1167,6 +1251,8 @@ if (require.main === module) {
 }
 
 module.exports = {
+    NEW_V506_HEADERS,
+    buildOldPnFields,
     buildQaSummary,
     decideByQa,
     buildMergedRow,

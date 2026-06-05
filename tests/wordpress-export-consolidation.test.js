@@ -5,6 +5,7 @@ const assert = require('node:assert/strict');
 
 const {
     buildMergedRow,
+    buildOldPnFields,
     getConsolidationRows,
     hasImportableRow
 } = require('../scripts/export_wordpress_milu.js');
@@ -215,5 +216,84 @@ describe('WordPress consolidation behavior (canonical V1.04)', () => {
         ];
         const out = buildMergedRow([rows[0]], { sku: 'PN-001', hierarchy: 'New', consolidatedRows: getConsolidationRows(rows) });
         assert.equal(out.PAG, '12V4000M40A-0208, 20V4000M93L-1400, 20V4000M93L-1780');
+    });
+
+    it('19) old_number/old_ruta fills first 3 slots and leaves the rest empty', () => {
+        const out = buildMergedRow([
+            makeImportRow({
+                subst_pnlist_final: '200439016200, 635D01023/1, 0009976290'
+            })
+        ], {
+            sku: 'PN-001',
+            hierarchy: 'New'
+        });
+
+        assert.equal(out.old_number_01, '200439016200');
+        assert.equal(out.old_ruta_01, '200439016200');
+        assert.equal(out.old_number_02, '635D01023/1');
+        assert.equal(out.old_ruta_02, '635D01023/1');
+        assert.equal(out.old_number_03, '0009976290');
+        assert.equal(out.old_ruta_03, '0009976290');
+        assert.equal(out.old_number_04, '');
+        assert.equal(out.old_ruta_04, '');
+        assert.equal(out.old_number_18, '');
+        assert.equal(out.old_ruta_18, '');
+    });
+
+    it('20) old_number/old_ruta exports maximum 18 values', () => {
+        const many = [];
+        for (let i = 1; i <= 20; i += 1) {
+            many.push(`PN${String(i).padStart(3, '0')}`);
+        }
+
+        const out = buildMergedRow([
+            makeImportRow({
+                subst_pnlist_final: many.join(', ')
+            })
+        ], {
+            sku: 'PN-001',
+            hierarchy: 'New'
+        });
+
+        assert.equal(out.old_number_01, 'PN001');
+        assert.equal(out.old_number_18, 'PN018');
+        assert.equal(out.old_ruta_18, 'PN018');
+        assert.equal(out.old_number_19, undefined);
+    });
+
+    it('21) old fields deduplicate repeated PN values with stable order', () => {
+        const fields = buildOldPnFields({
+            old_pn_relacionados: 'A1, A1, A2, A1, A3, A2'
+        });
+
+        assert.equal(fields.old_number_01, 'A1');
+        assert.equal(fields.old_number_02, 'A2');
+        assert.equal(fields.old_number_03, 'A3');
+        assert.equal(fields.old_number_04, '');
+    });
+
+    it('22) old_ruta is generated from old_number with URL-safe spacing normalization', () => {
+        const fields = buildOldPnFields({
+            old_pn_relacionados: 'OLD PN 100,   SECOND  PN'
+        });
+
+        assert.equal(fields.old_number_01, 'OLD PN 100');
+        assert.equal(fields.old_ruta_01, 'OLD-PN-100');
+        assert.equal(fields.old_number_02, 'SECOND PN');
+        assert.equal(fields.old_ruta_02, 'SECOND-PN');
+    });
+
+    it('23) compatibility: old_pn_relacionados remains in merged row', () => {
+        const out = buildMergedRow([
+            makeImportRow({
+                subst_pnlist_final: 'X-1, X-2'
+            })
+        ], {
+            sku: 'PN-001',
+            hierarchy: 'New'
+        });
+
+        assert.equal(out.old_pn_relacionados, 'X-1, X-2');
+        assert.equal(typeof out.old_pn_relacionados, 'string');
     });
 });

@@ -5,15 +5,14 @@ VERSION: V1.04
 
 ## Purpose
 
-This document is the official functional contract for WordPress export in MILU.
-From V1.04 onward, expected behavior is defined here first.
-Code must implement this specification.
-
-Any future export change must update this document.
+This document defines the canonical WordPress CSV contract for MILU V1.04.
+Implementation, tests, and QA validation must conform to this contract.
 
 ## Canonical Column Contract
 
-The export MUST publish exactly these 30 columns in this exact order:
+The export MUST publish exactly 66 columns in this exact order.
+
+### Core fields (1-30)
 
 1. Id
 2. fecha_version
@@ -42,123 +41,108 @@ The export MUST publish exactly these 30 columns in this exact order:
 25. SUST_TIPO
 26. new_pn_relacionado
 27. old_pn_relacionados
-28. EN_EXCEL_SUSTITUCION
-29. ruta_foto
-30. exp_imagenes
+28. old_number_01
+29. old_ruta_01
+30. old_number_02
+31. old_ruta_02
+32. old_number_03
+33. old_ruta_03
+34. old_number_04
+35. old_ruta_04
+36. old_number_05
+37. old_ruta_05
+38. old_number_06
+39. old_ruta_06
+40. old_number_07
+41. old_ruta_07
+42. old_number_08
+43. old_ruta_08
+44. old_number_09
+45. old_ruta_09
+46. old_number_10
+47. old_ruta_10
+48. old_number_11
+49. old_ruta_11
+50. old_number_12
+51. old_ruta_12
+52. old_number_13
+53. old_ruta_13
+54. old_number_14
+55. old_ruta_14
+56. old_number_15
+57. old_ruta_15
+58. old_number_16
+59. old_ruta_16
+60. old_number_17
+61. old_ruta_17
+62. old_number_18
+63. old_ruta_18
+64. EN_EXCEL_SUSTITUCION
+65. ruta_foto
+66. exp_imagenes
 
-## WordPress Field Dictionary
+## Field Dictionary
 
-Notes:
-- Generator references are for current implementation mapping in scripts/export_wordpress_milu.js.
-- Line references are approximate and may shift after refactors.
-- Mandatory means mandatory in schema, not necessarily non-empty in every row.
+### Existing supersession fields
 
-| Field | Type | Example | Generator (file:line) | Source in engine_*.json | Principal/Hermanos | Consolidation rule | Fallback | Mandatory |
-|---|---|---|---|---|---|---|---|---|
-| Id | string | RB-12V4000M40A-001989 | buildMergedRow (~498) | ID, rebuild_legacy_engine_id | Principal | Canonical single value | Most frequent non-empty | Yes |
-| fecha_version | string | 20260131.2339 | buildMergedRow (~498) | fecha_version | Principal | Canonical single value | Most frequent | Yes |
-| POS | string | 240 | buildMergedRow/getPos (~498/~297) | POS, pos_final | Principal | Canonical single value | Most frequent | Yes |
-| designation | string | UNION | buildMergedRow/getDesignation (~498/~299) | designation_final, designation_gesa, DESIGNATION | Principal | Canonical single value | Most frequent by priority | Yes |
-| engine | string list | 12V4000M40A | buildMergedRow/getEngineName (~498/~293) | engine_model, model, engine, __engine_file | Hermanos | Unique sorted list from all siblings | If empty, derive from file | Yes |
-| model_type | string list | 12VM40A, 16VM61 | buildMergedRow/deriveModelTypeToken (~498/~214) | model_type_final plus engine/model derivation | Hermanos | Unique sorted list from all siblings | Derived token from engine/model | Yes |
-| type | string |  | buildMergedRow (~498) | type | Principal | Canonical single value | Most frequent | Yes |
-| pn | string | 135M27020/1 | buildMergedRow/getPn (~498/~272) | pn_final, PART NO., pn_excel, pn, sku | Principal | Canonical PN (normalized grouping key) | Alias resolution via getExportField | Yes |
-| nsn | string | 5365123031710 | buildMergedRow (~498) | nsn | Principal | Canonical single value | Most frequent | Yes |
-| GESA_NORM | string | ISO4017 | buildMergedRow (~498) | GESA_NORM | Principal | Canonical single value | Most frequent | Yes |
-| GESA_NORMALIZADO | string | SI | buildMergedRow (~498) | GESA_NORMALIZADO | Principal | Canonical single value | Most frequent | Yes |
-| fg_code | string | 233 | buildMergedRow/extractPrimaryFgCode (~498/~206) | fg_code, fg_fgs_final, FG/FGS | Principal | Canonical single value | normalizeFgCode | Yes |
-| fg_description | string | BASE SKID WITH MOUNTS | buildMergedRow/lookupFgDescriptionByCodeAndModel (~498/~202) | EXCEL_FG-FGS.json + code/model | Principal | Canonical single value | Catalog lookup | Yes |
-| fg_code_description | string | 233 BASE SKID WITH MOUNTS | buildMergedRow (~498) | Derived from fg_code + fg_description | Principal | Canonical derived value | Join code + description | Yes |
-| weight | string | 0.051 KGM | buildMergedRow/getWeight (~498/~301) | weight_final, weight_gesa, WEIGHT | Principal | Canonical single value | Most frequent by priority | Yes |
-| weight_txt | string | 0.051 KGM | buildMergedRow (~498) | weight_txt | Principal | Canonical single value | weight when weight_txt missing | Yes |
-| measurement | string | M 18 X 1,5 | buildMergedRow/getMeasurement (~498/~299) | measure_final, measurement_final, dimensions_gesa, MEASUREMENT / STANDARD | Principal | Canonical single value | Most frequent by priority | Yes |
-| TIPOARTICULO | string | piezas | buildMergedRow (~498) | TIPOARTICULO | Principal | Canonical single value | Most frequent | Yes |
-| PAG | string list | 12V4000M40A-0231, 16V4000M61-0220 | buildMergedRow/getSourcePage (~498/~295) | PAG, Source Page, rebuild_source_page | Hermanos | Unique sorted list from all siblings | Source Page fallback when PAG missing | Yes |
-| BOM_no | string | XS526230.00022 | buildMergedRow (~498) | BOM_no, BOM-No. | Principal | Canonical single value | Most frequent | Yes |
-| esquema_general | string list | 12V4000M40A-0231-01.webp | buildMergedRow (~498) | esquema_general, esquemas | Hermanos | Unique sorted list from all siblings | Empty when none | Yes |
-| exp_motor | string list | 12V4000M40A, 16V4000M61 | buildMergedRow (~498) | exp_motor and/or engine-derived | Hermanos | Unique sorted list from all siblings | engine list fallback | Yes |
-| exp_categorias | string list | 12VM40A-233, 16VM61-233 | deriveExpCategorias/buildMergedRow (~237/~498) | model_type + fg_code derived from siblings | Hermanos | Unique sorted list from all siblings | Empty when no model/code | Yes |
-| atributo | string list | Accesories | buildMergedRow (~498) | atributo | Hermanos | Unique sorted list from all siblings | Empty when none | Yes |
-| SUST_TIPO | string | New | getHierarchy/buildMergedRow (~291/~498) | hierarchie_final, sust_hierarchie, SUST_TIPO | Principal | Canonical single value | Default New if missing | Yes |
-| new_pn_relacionado | string | 000910018001 | getNewPartNumber/buildMergedRow (~279/~498) | new_pn_final, sust_new_part_number, New Part Number | Principal | Canonical single value | Most frequent by priority | Yes |
-| old_pn_relacionados | string list | 0009979530, 000N03038/1 | getSupersededListValue/buildMergedRow (~284/~498) | subst_pnlist_final, sust_superseded_list | Principal | Canonical list from principal | Merge csv aliases | Yes |
-| EN_EXCEL_SUSTITUCION | string | SI | buildMergedRow (~498) | EN_EXCEL_SUSTITUCION | Principal | Canonical single value | Most frequent | Yes |
-| ruta_foto | string | https://.../0000530926.jpeg | buildMergedRow (~498) | ruta_foto, filename_foto | Principal | Canonical single value | filename_foto fallback | Yes |
-| exp_imagenes | string list | https://.../12V4000M40A-0229-02-1425.webp | deriveExpImagenes/buildMergedRow (~248/~498) | filename_foto, ruta_esquemas_pos, esquemas context | Hermanos | Unique sorted list of all PN assets | synthetic fallback sin_imagen only when needed | Yes |
+- old_pn_relacionados:
+	- Source priority: subst_pnlist_final, sust_superseded_list.
+	- Format: comma-separated list.
+	- Backward compatibility field, MUST remain present.
+
+### New V1.04 old relation slots
+
+- old_number_01 ... old_number_18:
+	- Source: canonical old PN list derived from old_pn_relacionados and equivalent aliases.
+	- Rule: stable order, deduplicated, max 18 entries.
+	- If not enough values: remaining slots are empty strings.
+
+- old_ruta_01 ... old_ruta_18:
+	- Source: derived from corresponding old_number_N.
+	- Rule in V1.04: URL-safe spacing normalization from old_number_N when no dedicated route builder exists.
+	- If old_number_N is empty: old_ruta_N is empty.
 
 ## Consolidation Rules
 
-Core rule:
-- 1 PN = 1 WordPress row.
-
-Behavior:
-- Rows marked ok/Copia NEVER generate rows.
-- Rows marked ok/Copia ONLY contribute information to consolidated fields.
-
-### Principal-only fields
-
-These fields come only from the principal row (qa_revision_estado=ok and qa_revision_accion=Importar):
-- POS
-- designation
-- pn
-- nsn
-- GESA_NORM
-- GESA_NORMALIZADO
-- weight
-- weight_txt
-- measurement
-- BOM_no
-- SUST_TIPO
-- new_pn_relacionado
-- old_pn_relacionados
-- EN_EXCEL_SUSTITUCION
-- ruta_foto
-
-### Sibling-consolidated fields
-
-These fields are accumulated from all siblings in the PN group:
-- model_type
-- engine
-- PAG
-- esquema_general
-- exp_motor
-- exp_categorias
-- atributo
-- exp_imagenes
-
-Mandatory consolidation rules for these fields:
-- Deduplication required.
-- Stable alphabetical ordering required.
-- No repeated values.
-- Traceability retained (source ids/pages available in audit metadata).
+- 1 PN = 1 output row.
+- Rows with qa_revision_accion=Copia do not generate standalone rows.
+- Copia rows contribute only to consolidated sibling fields.
+- old slots are derived from principal/supersession sources and emitted in all output types (New and Superseded) to keep one shared contract.
 
 ## Export Invariants
 
-1. A PN appears only once.
-2. There is never more than one row for the same PN.
-3. Sibling rows never generate rows.
-4. Sibling rows only contribute data.
-5. exp_imagenes contains all unique PN assets.
-6. If any sibling has esquema_pos, WordPress row must contain it.
-7. If any sibling has esquema, WordPress row must contain it.
-8. If any sibling has model_type, WordPress row must contain it.
-9. If any sibling has page, WordPress row must contain it.
-10. Column contract is immutable unless this spec is updated.
-
-## Export Scope
-
-Included in canonical New export:
-- qa_revision_estado = ok
-- qa_revision_accion = Importar
-
-Excluded from direct row generation:
-- qa_revision_accion = Copia (contributes consolidation only)
-- hierarchie_final = superseded (except dedicated superseded export)
-- Revisar rows
-- Error rows
-- Eliminar rows
+1. Header count is exactly 66.
+2. Header order is immutable unless this spec is updated.
+3. Header casing is exact and case-sensitive.
+4. old_pn_relacionados remains present.
+5. old_number_N and old_ruta_N always exist for N=01..18.
+6. old slots never exceed 18 populated entries.
+7. old slot values are deduplicated with stable order.
+8. Empty old slots are exported as empty strings.
+9. Engine JSON files are not modified by this contract extension.
+10. Endpoints are unchanged by this contract extension.
 
 ## Governance
 
-This document is the official source of truth.
-Any change in columns, order, semantics, or invariants MUST update this document first.
+- This document is the source of truth for export contract.
+- Any column/order/semantic update requires:
+	1. this spec update,
+	2. fixture update (tests/fixtures/wordpress_export_columns_v104.json),
+	3. contract test update.
+
+## Examples
+
+Input:
+
+- old_pn_relacionados = "200439016200, 635D01023/1, 0009976290"
+
+Output:
+
+- old_number_01 = "200439016200"
+- old_ruta_01 = "200439016200"
+- old_number_02 = "635D01023/1"
+- old_ruta_02 = "635D01023/1"
+- old_number_03 = "0009976290"
+- old_ruta_03 = "0009976290"
+- old_number_04 ... old_number_18 = ""
+- old_ruta_04 ... old_ruta_18 = ""
