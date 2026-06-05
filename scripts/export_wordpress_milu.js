@@ -9,6 +9,19 @@ const OUTPUT_DIR = path.join(REPO_ROOT, 'data', '05-wordpress');
 const AUDIT_OUTPUT_DIR = path.join(REPO_ROOT, 'data', 'output', 'wordpress');
 const FG_FGS_CATALOG_PATH = path.join(REPO_ROOT, 'EXCEL_FG-FGS.json');
 const OLD_RELATION_SLOT_COUNT = 18;
+const WP_UPLOADS_BASE = 'https://milu-naval.mystagingwebsite.com/wp-content/uploads';
+const POS_MODELS = [
+    '12V4000M40A',
+    '12V4000M53',
+    '12V4000M70',
+    '16V4000M61',
+    '16V4000M73L',
+    '16V4000M73',
+    '16V4000M90',
+    '20V4000M93L',
+    '20V4000M93'
+];
+const IMAGE_FILE_RE = /\.(?:webp|png|jpe?g|gif)$/i;
 
 function buildOldRelationHeaders() {
     const headers = [];
@@ -136,6 +149,131 @@ function splitCommaList(value) {
 
 function normalizeOldRouteValue(value) {
     return collapseSpaces(value).replace(/\s+/g, '-');
+}
+
+function inferModelFromText(rawValue) {
+    const text = t(rawValue).toUpperCase();
+    if (!text) return '';
+
+    for (const model of POS_MODELS) {
+        if (text.includes(model)) return model;
+    }
+
+    const shortTokens = text.match(/\b\d+VM\d+[A-Z]?\b/g) || [];
+    for (const token of shortTokens) {
+        const mapped = token.replace(/^([0-9]+)VM(\d+[A-Z]?)$/i, '$1V4000M$2');
+        if (POS_MODELS.includes(mapped)) return mapped;
+    }
+
+    return '';
+}
+
+function inferModelFromAssetName(rawValue) {
+    const fileName = path.basename(String(rawValue || '').split('?')[0].split('#')[0]).toUpperCase();
+    if (!fileName) return '';
+    for (const model of POS_MODELS) {
+        if (fileName.startsWith(`${model}-`) || fileName.startsWith(`${model}_`)) return model;
+    }
+    return '';
+}
+
+function inferModelFromContext(context = {}) {
+    const candidates = [
+        context.engine_model,
+        context.exp_motor,
+        context.model_type,
+        context.__engine_file,
+        context.engine
+    ];
+    for (const candidate of candidates) {
+        const model = inferModelFromText(candidate);
+        if (model) return model;
+    }
+    return '';
+}
+
+function isMonthlyUploadsUrl(value) {
+    return /\/wp-content\/uploads\/2026\/(?:01|02)\//i.test(value);
+}
+
+function isPosFolderUrl(value) {
+    return POS_MODELS.some((model) => value.includes(`/wp-content/uploads/${model}-POS/`));
+}
+
+function buildModelWarning(input, context, code = 'URL_MODEL_NOT_FOUND') {
+    return {
+        code,
+        input: t(input),
+        context_engine_model: t(context?.engine_model),
+        context_exp_motor: t(context?.exp_motor),
+        context_model_type: t(context?.model_type),
+        context_engine_file: t(context?.__engine_file)
+    };
+}
+
+function normalizeWordPressAssetUrl(url, context = {}) {
+    const original = t(url);
+    if (!original) {
+        return { value: '', warning: null };
+    }
+
+    if (original.toLowerCase().includes('sin_imagen.jpeg')) {
+        return { value: original, warning: null };
+    }
+
+    if (isPosFolderUrl(original)) {
+        return { value: original, warning: null };
+    }
+
+    const basename = path.basename(original.split('?')[0].split('#')[0]);
+    if (!basename) {
+        return { value: original, warning: null };
+    }
+
+    const modelFromName = inferModelFromAssetName(basename);
+    const modelFromContext = inferModelFromContext(context);
+    const model = modelFromName || modelFromContext;
+
+    const isMonthly = isMonthlyUploadsUrl(original);
+    const isFilenameOnly = !/^https?:\/\//i.test(original) && !original.includes('/');
+    const looksLikeAsset = IMAGE_FILE_RE.test(basename);
+
+    if (isMonthly || (isFilenameOnly && looksLikeAsset)) {
+        if (!model) {
+            return { value: original, warning: buildModelWarning(original, context) };
+        }
+        return {
+            value: `${WP_UPLOADS_BASE}/${model}-POS/${basename}`,
+            warning: null
+        };
+    }
+
+    return { value: original, warning: null };
+}
+
+function normalizeWordPressAssetList(value, context = {}) {
+    const warnings = [];
+    const tokens = splitCsvValues(value);
+    if (tokens.length === 0) {
+        const one = normalizeWordPressAssetUrl(value, context);
+        if (one.warning) warnings.push(one.warning);
+        return { value: one.value, warnings };
+    }
+
+    const out = [];
+    const seen = new Set();
+    for (const token of tokens) {
+        const normalized = normalizeWordPressAssetUrl(token, context);
+        if (normalized.warning) warnings.push(normalized.warning);
+        const next = t(normalized.value);
+        if (!next) continue;
+        const tokenKey = key(next);
+        if (seen.has(tokenKey)) continue;
+        seen.add(tokenKey);
+        out.push(next);
+    }
+
+    return { value: out.join(', '), warnings };
 }
 
 function buildOldPnFields(rowOrGroup) {
@@ -689,6 +827,31 @@ function buildMergedRow(rows, options = {}) {
     const enExcelSustitucion = t(options.enExcelSustitucion || pickMostFrequent(sourceRows.map((row) => row.EN_EXCEL_SUSTITUCION)));
     const rutaFoto = t(options.rutaFoto || pickMostFrequent(sourceRows.map((row) => row.ruta_foto || row.filename_foto)));
 
+    const urlContext = {
+        engine_model: pickMostFrequent(sourceRows.map((row) => row.engine_model)) || engineBase,
+        exp_motor: expMotor,
+        model_type: modelType,
+        __engine_file: pickMostFrequent(sourceRows.map((row) => row.__engine_file)),
+        engine
+    };
+
+    const rutaFotoNorm = normalizeWordPressAssetUrl(rutaFoto, urlContext);
+    const expImagenesNorm = normalizeWordPressAssetList(expImagenes, urlContext);
+    const oldRutaWarnings = [];
+    for (let i = 1; i <= OLD_RELATION_SLOT_COUNT; i += 1) {
+        const suffix = String(i).padStart(2, '0');
+        const field = `old_ruta_${suffix}`;
+        const norm = normalizeWordPressAssetUrl(oldPnFields[field], urlContext);
+        oldPnFields[field] = norm.value;
+        if (norm.warning) oldRutaWarnings.push(norm.warning);
+    }
+
+    const urlWarnings = [
+        ...expImagenesNorm.warnings,
+        ...oldRutaWarnings,
+        ...(rutaFotoNorm.warning ? [rutaFotoNorm.warning] : [])
+    ];
+
     return {
         Id: id,
         fecha_version: fechaVersion,
@@ -719,8 +882,8 @@ function buildMergedRow(rows, options = {}) {
         old_pn_relacionados: supersededList,
         ...oldPnFields,
         EN_EXCEL_SUSTITUCION: enExcelSustitucion,
-        ruta_foto: rutaFoto,
-        exp_imagenes: expImagenes,
+        ruta_foto: rutaFotoNorm.value,
+        exp_imagenes: expImagenesNorm.value,
         sku,
         pn: sku,
         pn_final: sku,
@@ -731,7 +894,7 @@ function buildMergedRow(rows, options = {}) {
         fg_description: fgDescription,
         fg_code_description: fgCodeDescription,
         exp_categorias: expCategorias,
-        exp_imagenes: expImagenes,
+        exp_imagenes: expImagenesNorm.value,
         designation_final: designation,
         DESIGNATION: designation,
         measure_final: measurement,
@@ -766,6 +929,7 @@ function buildMergedRow(rows, options = {}) {
         synthetic_child_id: t(options.syntheticChildId || ''),
         synthetic_child_pn: t(options.syntheticChildPn || ''),
         synthetic_child_engine: t(options.syntheticChildEngine || ''),
+        url_normalization_warnings_json: JSON.stringify(urlWarnings),
         dedupe_trace: ''
     };
 }
@@ -1187,8 +1351,35 @@ function run(options = {}) {
             rule_synthetic_superseded: 'SUP sintetico desde sust_superseded_list/subst_pnlist_final para NEW exportables',
             rule_orphan_superseded: 'SUP real huerfano genera NEW sintetico minimo cuando no existe PN new real',
             rule_dedupe: 'Dedupe por PN dentro de NEW y SUP: real > sintetico > mayor completitud'
+        },
+        warnings: {
+            URL_MODEL_NOT_FOUND: {
+                total: 0,
+                examples: []
+            }
         }
     };
+
+    const warningRows = [...importRows, ...supersededRows, ...pendingRows, ...discardedRows];
+    for (const row of warningRows) {
+        const raw = t(row.url_normalization_warnings_json);
+        if (!raw) continue;
+        let parsed = [];
+        try {
+            parsed = JSON.parse(raw);
+        } catch (_) {
+            parsed = [];
+        }
+        if (!Array.isArray(parsed)) continue;
+
+        for (const warning of parsed) {
+            if (!warning || warning.code !== 'URL_MODEL_NOT_FOUND') continue;
+            report.warnings.URL_MODEL_NOT_FOUND.total += 1;
+            if (report.warnings.URL_MODEL_NOT_FOUND.examples.length < 10) {
+                report.warnings.URL_MODEL_NOT_FOUND.examples.push(warning);
+            }
+        }
+    }
 
     const summary = [
         '# MILU WordPress Export Summary (QA only)',
@@ -1253,6 +1444,8 @@ if (require.main === module) {
 module.exports = {
     NEW_V506_HEADERS,
     buildOldPnFields,
+    normalizeWordPressAssetUrl,
+    normalizeWordPressAssetList,
     buildQaSummary,
     decideByQa,
     buildMergedRow,

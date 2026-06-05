@@ -6,6 +6,8 @@ const assert = require('node:assert/strict');
 const {
     buildMergedRow,
     buildOldPnFields,
+    normalizeWordPressAssetUrl,
+    normalizeWordPressAssetList,
     getConsolidationRows,
     hasImportableRow
 } = require('../scripts/export_wordpress_milu.js');
@@ -140,16 +142,16 @@ describe('WordPress consolidation behavior (canonical V1.04)', () => {
         const values = splitOut(out.exp_imagenes);
         assert.equal(values.length, 10);
         assert.deepEqual(values, [
-            'esq_01.png',
-            'esq_12.png',
-            'img_01.jpg',
-            'img_02.jpg',
-            'img_03.jpg',
-            'img_04.jpg',
-            'img_05.jpg',
-            'img_06.jpg',
-            'img_07.jpg',
-            'img_08.jpg'
+            'https://milu-naval.mystagingwebsite.com/wp-content/uploads/12V4000M53-POS/esq_01.png',
+            'https://milu-naval.mystagingwebsite.com/wp-content/uploads/12V4000M53-POS/esq_12.png',
+            'https://milu-naval.mystagingwebsite.com/wp-content/uploads/12V4000M53-POS/img_01.jpg',
+            'https://milu-naval.mystagingwebsite.com/wp-content/uploads/12V4000M53-POS/img_02.jpg',
+            'https://milu-naval.mystagingwebsite.com/wp-content/uploads/12V4000M53-POS/img_03.jpg',
+            'https://milu-naval.mystagingwebsite.com/wp-content/uploads/12V4000M53-POS/img_04.jpg',
+            'https://milu-naval.mystagingwebsite.com/wp-content/uploads/12V4000M53-POS/img_05.jpg',
+            'https://milu-naval.mystagingwebsite.com/wp-content/uploads/12V4000M53-POS/img_06.jpg',
+            'https://milu-naval.mystagingwebsite.com/wp-content/uploads/12V4000M53-POS/img_07.jpg',
+            'https://milu-naval.mystagingwebsite.com/wp-content/uploads/12V4000M53-POS/img_08.jpg'
         ]);
     });
 
@@ -295,5 +297,70 @@ describe('WordPress consolidation behavior (canonical V1.04)', () => {
 
         assert.equal(out.old_pn_relacionados, 'X-1, X-2');
         assert.equal(typeof out.old_pn_relacionados, 'string');
+    });
+
+    it('24) URL /2026/02 with 12V4000M40A filename becomes /12V4000M40A-POS/', () => {
+        const out = normalizeWordPressAssetUrl(
+            'https://milu-naval.mystagingwebsite.com/wp-content/uploads/2026/02/12V4000M40A-0208-01-70.webp',
+            {}
+        );
+        assert.equal(out.warning, null);
+        assert.equal(
+            out.value,
+            'https://milu-naval.mystagingwebsite.com/wp-content/uploads/12V4000M40A-POS/12V4000M40A-0208-01-70.webp'
+        );
+    });
+
+    it('25) URL /2026/01 with 20V4000M93L filename becomes /20V4000M93L-POS/', () => {
+        const out = normalizeWordPressAssetUrl(
+            'https://milu-naval.mystagingwebsite.com/wp-content/uploads/2026/01/20V4000M93L-1374-01-400.webp',
+            {}
+        );
+        assert.equal(out.warning, null);
+        assert.equal(
+            out.value,
+            'https://milu-naval.mystagingwebsite.com/wp-content/uploads/20V4000M93L-POS/20V4000M93L-1374-01-400.webp'
+        );
+    });
+
+    it('26) URL already normalized /<MODEL>-POS/ is unchanged', () => {
+        const url = 'https://milu-naval.mystagingwebsite.com/wp-content/uploads/12V4000M53-POS/12V4000M53-0110-01.webp';
+        const out = normalizeWordPressAssetUrl(url, {});
+        assert.equal(out.warning, null);
+        assert.equal(out.value, url);
+    });
+
+    it('27) exp_imagenes list normalizes each item and keeps stable order', () => {
+        const out = normalizeWordPressAssetList(
+            'https://milu-naval.mystagingwebsite.com/wp-content/uploads/2026/02/12V4000M40A-0208-01-70.webp, https://milu-naval.mystagingwebsite.com/wp-content/uploads/2026/01/20V4000M93L-1374-01-400.webp',
+            {}
+        );
+        assert.deepEqual(out.warnings, []);
+        assert.equal(
+            out.value,
+            'https://milu-naval.mystagingwebsite.com/wp-content/uploads/12V4000M40A-POS/12V4000M40A-0208-01-70.webp, https://milu-naval.mystagingwebsite.com/wp-content/uploads/20V4000M93L-POS/20V4000M93L-1374-01-400.webp'
+        );
+    });
+
+    it('28) sin_imagen.jpeg is never transformed', () => {
+        const url = 'https://milu-naval.mystagingwebsite.com/wp-content/uploads/2026/01/sin_imagen.jpeg';
+        const out = normalizeWordPressAssetUrl(url, { engine_model: '12V4000M40A' });
+        assert.equal(out.warning, null);
+        assert.equal(out.value, url);
+    });
+
+    it('29) bare filename with model is converted using context when needed', () => {
+        const out = normalizeWordPressAssetUrl('12V4000M53-0110-01.webp', { engine_model: '12V4000M53' });
+        assert.equal(out.warning, null);
+        assert.equal(
+            out.value,
+            'https://milu-naval.mystagingwebsite.com/wp-content/uploads/12V4000M53-POS/12V4000M53-0110-01.webp'
+        );
+    });
+
+    it('30) bare filename without model emits URL_MODEL_NOT_FOUND warning and keeps original', () => {
+        const out = normalizeWordPressAssetUrl('asset-sin-modelo.webp', {});
+        assert.equal(out.value, 'asset-sin-modelo.webp');
+        assert.equal(out.warning?.code, 'URL_MODEL_NOT_FOUND');
     });
 });

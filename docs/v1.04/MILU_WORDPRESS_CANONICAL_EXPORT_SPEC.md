@@ -130,6 +130,28 @@ The export MUST publish exactly 66 columns in this exact order.
 	2. fixture update (tests/fixtures/wordpress_export_columns_v104.json),
 	3. contract test update.
 
+## WordPress Asset URL Policy
+
+Policy for POS assets exported to WordPress:
+
+- POS image assets must use folder-by-model paths:
+	- /wp-content/uploads/<MODEL>-POS/<filename>
+
+Not allowed for POS exported assets:
+
+- /wp-content/uploads/2026/01/
+- /wp-content/uploads/2026/02/
+
+Normalization rules:
+
+1. Detect monthly URLs in image-related output fields.
+2. Resolve target model from filename first.
+3. If missing, resolve model from row context (engine_model, exp_motor, model_type, __engine_file).
+4. Rebuild URL to /wp-content/uploads/<MODEL>-POS/<basename>.
+5. Keep already-normalized /<MODEL>-POS/ URLs unchanged.
+6. Keep sin_imagen.jpeg unchanged.
+7. If model cannot be resolved, keep original value and register warning URL_MODEL_NOT_FOUND.
+
 ## Examples
 
 Input:
