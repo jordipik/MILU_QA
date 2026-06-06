@@ -53,6 +53,26 @@ Notas operativas:
 - Endpoints legacy de export estan desactivados con 410 en flujo oficial.
 - Si faltan estados QA coherentes, PN termina en pending/discard.
 
+## Regla oficial orphan_superseded_new
+
+Cuando un registro real es `Superseded` y su `new_pn_final` no existe como PN propio en ningún `engine_*.json`, el algoritmo crea un registro sintético NEW mínimo a partir del Superseded.
+
+### Criterio de detección orphan
+- Se construye `allRealPnKeys`: conjunto de todos los `pn_final` exactos de todos los engines.
+- Para cada fila Superseded real (`hierarchie_final = Superseded`) con `new_pn_final` relleno:
+  - Si `key(new_pn_final)` **no está** en `allRealPnKeys` → se genera sintético (`orphan_superseded_new`).
+  - Si **sí está** → no se genera (el New real ya existe).
+- La comprobación es por coincidencia exacta normalizada (`toLowerCase().trim()`).
+
+### Caso conocido: falso orphan por sufijo de variante
+Si el PN real tiene un sufijo adicional (espacio, `/`, `-` + variante), el match exacto falla y se genera un sintético innecesario. Ejemplo detectado:
+- `X00E50200664/76` (orphan) vs `X00E50200664/76 MPU23-04` (real en engine) — resuelto manualmente.
+- `X59418100009` (orphan) vs `X59418100009/87` (real en engine) — identificado como falso orphan.
+Ver script de auditoría: `node -e "..."` en el historial de sesión.
+
+### Marcado visual de orphans
+Desde 2026-06-06, todos los registros `synthetic_source = orphan_superseded_new` llevan `*` al final de la `designation` (ej. `STRAP 75 X20 *`). Esto permite identificar en la UI y en el export que la información de ese New ha sido copiada/inferida del registro Superseded padre y **no** procede de un registro propio en el manual.
+
 ## TODO pendiente
 - Publicar validacion automatica de contenido export antes de descarga.
 

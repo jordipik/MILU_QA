@@ -679,8 +679,9 @@ function updateStatusFilters() {
 
 function refreshFilterChoices() {
     const allRows = Object.keys(TAB_CONFIG).flatMap((tabKey) => getTabRows(tabKey));
+    const currentTabRows = getTabRows(state.currentTab);
     const motors = [...new Set(allRows.flatMap((row) => splitCsv(row.exp_motor || row.motores)))].sort((a, b) => a.localeCompare(b, 'es', { sensitivity: 'base' }));
-    const syntheticSources = [...new Set(allRows.map((row) => text(row.synthetic_source)).filter(Boolean))].sort((a, b) => a.localeCompare(b, 'es', { sensitivity: 'base' }));
+    const syntheticSources = [...new Set(currentTabRows.map((row) => text(row.synthetic_source)).filter(Boolean))].sort((a, b) => a.localeCompare(b, 'es', { sensitivity: 'base' }));
 
     const motorSelect = $('ewpMotorFilter');
     const qaSelect = $('ewpQaFilter');

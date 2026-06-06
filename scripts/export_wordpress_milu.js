@@ -1091,11 +1091,12 @@ function makeSyntheticNewFromOrphanSuperseded(supersededRow, newPn) {
     const childPn = getPn(supersededRow);
     const childId = getSourceId(supersededRow);
     const childEngine = getEngineName(supersededRow);
-    const designation = pickMostFrequent([
+    const designationBase = pickMostFrequent([
         supersededRow['Denomination (New Part Number)'],
         supersededRow.designation_final,
         supersededRow.DESIGNATION
     ]);
+    const designation = designationBase ? `${designationBase} *` : '*';
 
     return buildMergedRow([supersededRow], {
         sku: newPn,

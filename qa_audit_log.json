@@ -3118,5 +3118,39 @@
         }
       }
     }
+  },
+  {
+    "id": "1780739099147-ssxpd9q2",
+    "timestamp": "2026-06-06T09:44:59.147Z",
+    "kind": "change-applied",
+    "type": "qa-row-patch",
+    "module": "qa_milu",
+    "action": "save-side-form",
+    "description": "Guardar ficha lateral ID RB-12V4000M40A-002470",
+    "target": {
+      "revisionKey": "id=RB-12V4000M40A-002470"
+    },
+    "changeId": "1780739097722-oxev2u99",
+    "data": {
+      "target": {
+        "revisionKey": "id=RB-12V4000M40A-002470",
+        "engineFile": "engine_12V4000M40A.json",
+        "id": "RB-12V4000M40A-002470"
+      },
+      "changes": {
+        "pn_final": {
+          "before": "X00E50200664/76 MPU23-04",
+          "after": "X00E50200664/76"
+        },
+        "fg_fgs_final": {
+          "before": "508-00",
+          "after": ""
+        },
+        "bom_final": {
+          "before": "X00E50200664",
+          "after": ""
+        }
+      }
+    }
   }
 ]

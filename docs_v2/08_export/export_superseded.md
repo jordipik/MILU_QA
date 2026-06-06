@@ -40,6 +40,16 @@ No se usa `ruta_esquemas_pos` ni `esquemas_circulos_all` para construir `exp_ima
 ## Riesgos / problemas conocidos
 - `sust_status` no debe usarse para clasificacion superseded/new.
 
+## Generación de New sintético desde Superseded real (orphan)
+
+Cuando un Superseded real tiene `new_pn_final` pero ese PN no existe en los engines, se genera automáticamente un New sintético (`orphan_superseded_new`). Ver detalles completos en [export_new.md](export_new.md) y [wordpress_export.md](wordpress_export.md).
+
+Puntos clave desde la perspectiva Superseded:
+- La herencia de datos es unidireccional: del Superseded al New sintético.
+- La lista `sust_superseded_list` / `subst_pnlist_final` del Superseded se propaga íntegra al sintético como `old_pn_relacionados`.
+- Si el `new_pn_final` del Superseded coincide (exacto) con un PN ya existente en los engines, **no** se genera sintético (el New real prevalece).
+- Falsos orphans por sufijo de variante (ej. `X00E50200664/76` vs `X00E50200664/76 MPU23-04`) deben revisarse manualmente o ajustando la normalización de PN en `allRealPnKeys`.
+
 ## TODO pendiente
 - Añadir validaciones de consistencia cruzada entre `sust_hierarchie` y listas de sustitucion.
 
