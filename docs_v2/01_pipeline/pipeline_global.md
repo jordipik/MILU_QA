@@ -212,7 +212,7 @@ Comandos validados:
 | `esquemas_circulos_all` | todos los matches de circulo derivados |
 | `esquemas_circulos` | match principal de circulo derivado |
 | `ruta_esquemas_pos` | URL principal derivada |
-| `exp_imagenes` | agregacion exportable de imagenes |
+| `exp_imagenes` | agregacion exportable con prioridad `filename_foto -> esquemas_circulos -> esquemas (fallback) -> sin_imagen` |
 
 ## Nombres y directorios oficiales de assets
 - Esquema general: `BOOK-PAGE-XX.png` (ej: `12V4000M40A-0012-01.png`).
@@ -224,8 +224,12 @@ Comandos validados:
 
 ## Relacion con export WordPress
 - Export depende de assets y rutas consistentes en JSON.
-- `exp_imagenes` depende de la sincronizacion de assets.
-- la imagen de circulo es exportable cuando `ruta_esquemas_pos` queda resuelta.
+- `exp_imagenes` se construye en export con prioridad oficial:
+  1. `filename_foto`
+  2. `esquemas_circulos`
+  3. `esquemas` (solo fallback)
+  4. `sin_imagen.jpeg` (fallback final)
+- Para esa construccion no se usan `ruta_esquemas_pos` ni `esquemas_circulos_all`.
 - Es posible reparar JSON de assets sin regenerar imagenes (modo solo-sync).
 
 ## TODO pendiente

@@ -23,6 +23,15 @@ Documentar generacion de salida para piezas superseded.
 ## Campos afectados
 - `SUST_TIPO`, `new_pn_relacionado`, `old_pn_relacionados`, `EN_EXCEL_SUSTITUCION`.
 
+## Regla oficial de exp_imagenes
+El campo `exp_imagenes` en Superseded usa la misma regla oficial del export WordPress:
+1. `filename_foto`
+2. `esquemas_circulos`
+3. `esquemas` (solo si aun no hay imagen)
+4. `sin_imagen.jpeg` (si sigue vacio)
+
+No se usa `ruta_esquemas_pos` ni `esquemas_circulos_all` para construir `exp_imagenes`.
+
 ## Flujo paso a paso
 1. Se evalua tipo export por PN.
 2. Si `sust_hierarchie === 'Superseded'`, clasifica como superseded.

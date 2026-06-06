@@ -590,7 +590,7 @@ function normalizeRow(raw = {}) {
         atributo: pick(expField(raw, 'categoria', ''), raw.atributo, raw.exp_categorias, raw.categoria),
         SUST_TIPO: pick(expField(raw, 'hierarchie_final', ''), raw.SUST_TIPO, raw.sust_hierarchie),
         new_pn_relacionado: pick(expField(raw, 'new_pn_final', ''), raw.new_pn_relacionado, raw.pn_new, raw.sust_new_part_number),
-        old_pn_relacionados: pick(expField(raw, 'subst_pnlist_final', ''), raw.old_pn_relacionados, raw.sust_superseded_list, raw.source_ids),
+        old_pn_relacionados: pick(expField(raw, 'subst_pnlist_final', ''), raw.old_pn_relacionados, raw.sust_superseded_list),
         EN_EXCEL_SUSTITUCION: pick(raw.EN_EXCEL_SUSTITUCION),
         ruta_foto: pick(expField(raw, 'ruta_foto', ''), raw.ruta_foto),
         exp_imagenes: pick(expField(raw, 'ruta_esquemas_pos', ''), raw.exp_imagenes),

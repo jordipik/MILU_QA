@@ -29,6 +29,19 @@ Documentar extremo a extremo la ejecucion de export oficial QA-only.
 ## Campos afectados
 - Campos de salida WordPress normalizados desde `_final`, QA, SUST y assets.
 
+## Regla oficial de exp_imagenes
+Prioridad obligatoria en `scripts/export_wordpress_milu.js`:
+1. `filename_foto`
+2. `esquemas_circulos`
+3. `esquemas` (solo si aun no hay ninguna imagen)
+4. `sin_imagen.jpeg` (solo si sigue vacio)
+
+Notas operativas:
+- `exp_imagenes` se construye dinamicamente en export.
+- Para esta construccion solo se usan `filename_foto`, `esquemas_circulos` y `esquemas`.
+- No se reutiliza el valor previo de `exp_imagenes` del engine.
+- No se usan `ruta_esquemas_pos` ni `esquemas_circulos_all`.
+
 ## Flujo paso a paso
 1. UI verifica backend (`GET /health`).
 2. Usuario lanza `POST /export/run-wordpress`.

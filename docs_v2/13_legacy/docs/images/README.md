@@ -48,7 +48,8 @@ DocumentaciÃ³n tÃ©cnica completa del pipeline de imÃ¡genes, esquemas de po
 
 ### 6. **[wordpress_image_export.md](wordpress_image_export.md)** â€” ExportaciÃ³n a WordPress
    - Campo `exp_imagenes` (calculado en depuracion_json.py)
-   - Regla de prioridad: ruta_foto â†’ ruta_esquemas_pos â†’ sin_imagen
+   - Regla oficial de prioridad: filename_foto â†’ esquemas_circulos â†’ esquemas (fallback) â†’ sin_imagen
+   - `exp_imagenes` no depende de `ruta_esquemas_pos` ni de `esquemas_circulos_all`
    - URLs base de WordPress
    - SincronizaciÃ³n de imÃ¡genes
    - GeneraciÃ³n de manifiestos para exportaciÃ³n

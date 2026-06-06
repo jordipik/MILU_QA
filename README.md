@@ -115,6 +115,17 @@ Para persistencia: servidor levantado → respuesta HTTP → payload del fronten
 	- si archivo existe y JSON esta desincronizado: reparar JSON
 	- si POS no detecta match nuevo pero hay assets validos: reutilizar assets
 
+## Export WordPress: regla oficial de imagenes
+
+`exp_imagenes` se construye en export con esta prioridad:
+
+1. `filename_foto`
+2. `esquemas_circulos`
+3. `esquemas` (solo fallback)
+4. `sin_imagen.jpeg` (fallback final)
+
+Para construir `exp_imagenes` no se usan `ruta_esquemas_pos` ni `esquemas_circulos_all`.
+
 ## Convenciones
 
 - Backend: CommonJS. Frontend: módulos ES.

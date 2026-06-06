@@ -150,6 +150,18 @@ Carpeta: `data/05-wordpress/`.
 
 Detalle de outputs de imagen y manifest: [docs/images/wordpress_image_export.md](images/wordpress_image_export.md).
 
+### 10.1 Regla oficial de exp_imagenes
+Prioridad obligatoria:
+1. `filename_foto`
+2. `esquemas_circulos`
+3. `esquemas` (solo si aun no hay ninguna imagen)
+4. `sin_imagen.jpeg` (solo si sigue vacio)
+
+Restriccion de fuentes para construir `exp_imagenes`:
+- solo `filename_foto`, `esquemas_circulos`, `esquemas`
+- no usar `ruta_esquemas_pos`
+- no usar `esquemas_circulos_all`
+
 ---
 
 ## 11. Endpoints legacy (desactivados)

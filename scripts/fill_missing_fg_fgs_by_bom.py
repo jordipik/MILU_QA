@@ -57,7 +57,7 @@ def extract_fg_code_from_final(value):
 
 
 def read_json_array(file_path, label):
-    data = json.loads(file_path.read_text(encoding='utf8'))
+    data = json.loads(file_path.read_text(encoding='utf-8-sig'))
     if not isinstance(data, list):
         raise ValueError(f'{label} no contiene un array JSON.')
     return data
@@ -160,7 +160,7 @@ def build_catalog_from_current_final(repo_root):
 
 def load_catalog(repo_root, catalog_path):
     if catalog_path.exists():
-        data = json.loads(catalog_path.read_text(encoding='utf8'))
+        data = json.loads(catalog_path.read_text(encoding='utf-8-sig'))
         if not isinstance(data, dict):
             raise ValueError(f'Catalogo invalido: {catalog_path}')
         entries = {
@@ -194,6 +194,67 @@ def load_catalog(repo_root, catalog_path):
         'conflicts': transient['conflicts'],
         'raw': transient,
     }
+
+
+def normalize_fg_fgs_final_format(value):
+    raw = normalize_spaces(value)
+    if not raw:
+        return ''
+
+    # Canonical format: NNN-SS (example: 208 05 -> 208-05)
+    m = re.match(r'^(\d{1,3})\D+(\d{1,2})$', raw)
+    if m:
+        left = f'{int(m.group(1)):03d}'
+        right = f'{int(m.group(2)):02d}'
+        return f'{left}-{right}'
+
+    m = re.match(r'^(\d{3})-(\d{2})$', raw)
+    if m:
+        return raw
+
+    return raw
+
+
+def build_local_pn_index(rows):
+    index = defaultdict(list)
+    for row in rows:
+        pn_key = normalize_bom(row.get('pn_final') or row.get('PART NO.'))
+        if not pn_key:
+            continue
+        index[pn_key].append(row)
+    return index
+
+
+def resolve_fg_from_bom_via_local_pn(rows_by_pn, start_bom_key, max_hops=2):
+    current_key = normalize_bom(start_bom_key)
+    visited = set()
+
+    for hop in range(max_hops):
+        if not current_key or current_key in visited:
+            break
+        visited.add(current_key)
+
+        candidate_rows = rows_by_pn.get(current_key) or []
+        for candidate in candidate_rows:
+            fg = normalize_fg_fgs_final_format(candidate.get('fg_fgs_final'))
+            if fg:
+                return {
+                    'fg_fgs_final': fg,
+                    'hop': hop + 1,
+                    'source_id': text(candidate.get('ID')),
+                }
+
+        # No recursive search: advance at most one BOM->PN jump per iteration,
+        # capped by max_hops=2.
+        next_key = ''
+        for candidate in candidate_rows:
+            candidate_bom = normalize_bom(candidate.get('bom_final'))
+            if candidate_bom and candidate_bom not in visited:
+                next_key = candidate_bom
+                break
+        current_key = next_key
+
+    return None
 
 
 def derive_fg_values(row, next_fg_fgs_final, fg_master_index, fallback_engine):
@@ -232,6 +293,7 @@ def make_engine_summary(engine_file):
         'without_bom': 0,
         'bom_found': 0,
         'bom_not_found': 0,
+        'resolved_via_local_pn': 0,
         'fillable': 0,
         'untouched_existing': 0,
         'bom_conflict_rows': 0,
@@ -247,6 +309,7 @@ def make_engine_summary(engine_file):
 def process_engine_file(repo_root, engine_file, catalog, fg_master_index, write=False, backup=False):
     engine_path = repo_root / engine_file
     rows = read_json_array(engine_path, engine_file)
+    rows_by_pn = build_local_pn_index(rows)
     summary = make_engine_summary(engine_file)
     fallback_engine = normalize_engine_token(engine_file)
     book_counter = Counter()
@@ -284,14 +347,19 @@ def process_engine_file(repo_root, engine_file, catalog, fg_master_index, write=
 
         mapped_fg = catalog['entries'].get(bom_key)
         if not mapped_fg:
-            summary['bom_not_found'] += 1
-            add_example(summary['examples_bom_not_found'], {
-                'id': text(row.get('ID')),
-                'pn_final': text(row.get('pn_final') or row.get('PART NO.')),
-                'bom_final': bom_raw,
-                'status': 'BOM_NOT_FOUND',
-            })
-            continue
+            local_pn_hit = resolve_fg_from_bom_via_local_pn(rows_by_pn, bom_key, max_hops=2)
+            if local_pn_hit:
+                mapped_fg = local_pn_hit['fg_fgs_final']
+                summary['resolved_via_local_pn'] += 1
+            else:
+                summary['bom_not_found'] += 1
+                add_example(summary['examples_bom_not_found'], {
+                    'id': text(row.get('ID')),
+                    'pn_final': text(row.get('pn_final') or row.get('PART NO.')),
+                    'bom_final': bom_raw,
+                    'status': 'BOM_NOT_FOUND',
+                })
+                continue
 
         summary['bom_found'] += 1
         summary['fillable'] += 1
@@ -349,6 +417,7 @@ def build_report(summary, report_path):
         f'- registros sin BOM: {totals["without_bom"]}',
         f'- BOM encontrados: {totals["bom_found"]}',
         f'- BOM no encontrados: {totals["bom_not_found"]}',
+        f'- resueltos por fallback local BOM->PN (max 2 hops): {totals["resolved_via_local_pn"]}',
         f'- registros rellenables: {totals["fillable"]}',
         f'- registros que no se tocarían porque ya tenían valor: {totals["untouched_existing"]}',
         f'- conflictos BOM → FG/FGS (filas afectadas): {totals["bom_conflict_rows"]}',
@@ -444,6 +513,7 @@ def main(argv=None):
         'without_bom': 0,
         'bom_found': 0,
         'bom_not_found': 0,
+        'resolved_via_local_pn': 0,
         'fillable': 0,
         'untouched_existing': 0,
         'bom_conflict_rows': 0,

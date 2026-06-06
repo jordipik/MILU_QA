@@ -165,6 +165,15 @@ Metricas de auditoria requeridas:
 - `total_orphan_superseded_generated_new`
 - `duplicates_avoided`
 
+## Regla oficial de exp_imagenes
+Prioridad obligatoria:
+1. `filename_foto`
+2. `esquemas_circulos`
+3. `esquemas` (solo si aun no hay ninguna imagen)
+4. `sin_imagen.jpeg` (solo si sigue vacio)
+
+Para construir `exp_imagenes` no se usan `ruta_esquemas_pos` ni `esquemas_circulos_all`.
+
 ## Legacy archivado
 La logica compleja anterior se mantiene solo como referencia en:
 - `legacy/export_complex_ai/`

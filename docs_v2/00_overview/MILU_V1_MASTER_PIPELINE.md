@@ -221,6 +221,14 @@ PDF
 - si un BOM aparece en paginas consecutivas, se mantiene en un unico bloque continuo.
 - `esquemas_circulos`, `esquemas_circulos_all`, `ruta_esquemas_pos` se derivan de `esquemas + POS`.
 
+Regla oficial de export para `exp_imagenes`:
+1. `filename_foto`
+2. `esquemas_circulos`
+3. `esquemas` (solo si aun no hay imagen)
+4. `sin_imagen.jpeg` (solo si sigue vacio)
+
+La construccion de `exp_imagenes` en WordPress export no usa `ruta_esquemas_pos` ni `esquemas_circulos_all`.
+
 ## Riesgos historicos (legacy assets)
 - Mezcla de deteccion de esquemas base, POS y sincronizacion JSON en un mismo flujo.
 - Regeneracion innecesaria sin comprobar reutilizacion de archivos existentes.

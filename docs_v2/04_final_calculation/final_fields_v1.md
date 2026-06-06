@@ -39,3 +39,12 @@
 ## Legacy
 `POST /calculate-final-fields` ejecuta `copy_gesa_fields_to_final.py` y responde con `legacy: true`.
 No es la ruta oficial para documentar FINAL_FIELDS_V1 runtime.
+
+## Alcance respecto a exp_imagenes
+- `FINAL_FIELDS_V1` no calcula `exp_imagenes`.
+- `exp_imagenes` se construye en export WordPress con prioridad oficial:
+	1. `filename_foto`
+	2. `esquemas_circulos`
+	3. `esquemas` (solo fallback)
+	4. `sin_imagen.jpeg` (fallback final)
+- Para esa construccion no se usan `ruta_esquemas_pos` ni `esquemas_circulos_all`.

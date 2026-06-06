@@ -23,6 +23,15 @@ Documentar generacion de salida NEW para WordPress.
 ## Campos afectados
 - Campos WordPress de salida (`pn`, `designation`, `measurement`, `weight`, `exp_motor`, `exp_categorias`, `ruta_foto`, `exp_imagenes`, etc.).
 
+### Regla oficial de exp_imagenes
+En salida NEW, `exp_imagenes` sigue esta prioridad:
+1. `filename_foto`
+2. `esquemas_circulos`
+3. `esquemas` (solo fallback si no hay imagen previa)
+4. `sin_imagen.jpeg` (solo fallback final)
+
+La construccion se realiza de forma dinamica en `scripts/export_wordpress_milu.js` y no depende de `ruta_esquemas_pos` ni de `esquemas_circulos_all`.
+
 ## Flujo paso a paso
 1. Agrupacion por PN (`pn_final`).
 2. Seleccion de filas QA importables (`ok/importar`).

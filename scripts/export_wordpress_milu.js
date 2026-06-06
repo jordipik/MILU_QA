@@ -363,20 +363,32 @@ function buildExpImagenesFromBaseAssets(groupRows, principalRow) {
         }
     };
 
-    const ordered = [];
-    appendNormalized(ordered, buckets.filename_foto, 'photo');
-    appendNormalized(ordered, buckets.esquemas_circulos);
-    appendNormalized(ordered, buckets.esquemas);
-
-    const seenBase = new Set();
     const deduped = [];
-    for (const item of ordered) {
-        const basename = normalizeAssetBasename(item);
-        const dedupeKey = basename || key(item);
-        if (!dedupeKey) continue;
-        if (seenBase.has(dedupeKey)) continue;
-        seenBase.add(dedupeKey);
-        deduped.push(item);
+    const seenBase = new Set();
+    const appendUnique = (sourceList, assetType = 'pos') => {
+        const normalizedList = [];
+        appendNormalized(normalizedList, sourceList, assetType);
+        for (const item of normalizedList) {
+            const basename = normalizeAssetBasename(item);
+            const dedupeKey = basename || key(item);
+            if (!dedupeKey) continue;
+            if (seenBase.has(dedupeKey)) continue;
+            seenBase.add(dedupeKey);
+            deduped.push(item);
+        }
+    };
+
+    // Official priority for exp_imagenes:
+    // 1) filename_foto, 2) esquemas_circulos,
+    // 3) esquemas only if nothing was selected yet,
+    // 4) sin_imagen.jpeg only if still empty.
+    appendUnique(buckets.filename_foto, 'photo');
+    appendUnique(buckets.esquemas_circulos, 'pos');
+    if (deduped.length === 0) {
+        appendUnique(buckets.esquemas, 'pos');
+    }
+    if (deduped.length === 0) {
+        deduped.push(buildSinImagenUrl(context));
     }
 
     deduped.sort((a, b) => a.localeCompare(b, 'es', { sensitivity: 'base', numeric: true }));
@@ -384,8 +396,7 @@ function buildExpImagenesFromBaseAssets(groupRows, principalRow) {
 
     return {
         value: capped.length > 0 ? capped.join(', ') : buildSinImagenUrl(context),
-        warnings,
-        used_legacy_ruta_esquemas_pos: false
+        warnings
     };
 }
 
@@ -873,7 +884,11 @@ function buildMergedRow(rows, options = {}) {
         ? options.consolidatedRows
         : sourceRows;
     const sku = t(options.sku || pickMostFrequent(sourceRows.map((row) => getPn(row))));
-    const hierarchy = t(options.hierarchy || pickMostFrequent(sourceRows.map((row) => getHierarchy(row))) || 'New');
+    const hierarchy = t(
+        (options.hierarchy !== undefined && options.hierarchy !== null)
+            ? options.hierarchy
+            : pickMostFrequent(sourceRows.map((row) => getHierarchy(row)))
+    );
     const agg = buildAggregates(consolidatedRows);
     const qaSummary = buildQaSummary(sourceRows);
 
@@ -1302,7 +1317,7 @@ function run(options = {}) {
             if (realNewRows.length > 0) {
                 const mergedNew = buildMergedRow(realNewRows, {
                     sku,
-                    hierarchy: 'New',
+                    hierarchy: pickMostFrequent(realNewRows.map((row) => getHierarchy(row))),
                     decision: decisionMeta.decision,
                     reason: decisionMeta.reason,
                     qaValidated: decisionMeta.qa_validated,
@@ -1377,7 +1392,7 @@ function run(options = {}) {
         } else if (decisionMeta.decision === 'discard') {
             const mergedDiscard = buildMergedRow(selectedRows, {
                 sku,
-                hierarchy: 'New',
+                hierarchy: pickMostFrequent(selectedRows.map((row) => getHierarchy(row))),
                 decision: decisionMeta.decision,
                 reason: decisionMeta.reason,
                 qaValidated: decisionMeta.qa_validated
@@ -1388,7 +1403,7 @@ function run(options = {}) {
         } else {
             const mergedPending = buildMergedRow(selectedRows, {
                 sku,
-                hierarchy: isSupersededRow(selectedRows[0]) ? 'Superseded' : 'New',
+                hierarchy: pickMostFrequent(selectedRows.map((row) => getHierarchy(row))) || (isSupersededRow(selectedRows[0]) ? 'Superseded' : ''),
                 decision: decisionMeta.decision,
                 reason: decisionMeta.reason,
                 qaValidated: decisionMeta.qa_validated
@@ -1400,7 +1415,7 @@ function run(options = {}) {
 
         const compactedForTrace = buildMergedRow(selectedRows, {
             sku,
-            hierarchy: isSupersededRow(selectedRows[0]) ? 'Superseded' : 'New',
+            hierarchy: pickMostFrequent(selectedRows.map((row) => getHierarchy(row))) || (isSupersededRow(selectedRows[0]) ? 'Superseded' : ''),
             decision: decisionMeta.decision,
             reason: decisionMeta.reason,
             qaValidated: decisionMeta.qa_validated,
