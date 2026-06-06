@@ -6,6 +6,9 @@ const assert = require('node:assert/strict');
 const {
     buildMergedRow,
     buildOldPnFields,
+    buildExpImagenesFromBaseAssets,
+    buildWordPressAssetUrlFromFilename,
+    inferModelFromAssetFilename,
     normalizeWordPressAssetUrl,
     normalizeWordPressAssetList,
     getConsolidationRows,
@@ -32,8 +35,11 @@ function makeImportRow(overrides = {}) {
         esquema_general: 'ESQ-A',
         esquemas: 'ESQ-ALT-A',
         exp_motor: 'MOTOR-A',
-        filename_foto: 'img_03.jpg',
-        ruta_esquemas_pos: 'esq_03.png',
+        filename_foto: '12V4000M53-0200-01.jpg',
+        esquemas_circulos: '12V4000M53-0200-01-10.webp',
+        esquemas: '12V4000M53-0200-01.webp',
+        ruta_esquemas_pos: 'legacy_ignored_a.webp',
+        exp_imagenes: 'legacy_old_a.webp',
         ...overrides
     };
 }
@@ -57,8 +63,11 @@ function makeCopyRow(overrides = {}) {
         esquema_general: 'ESQ-B',
         esquemas: 'ESQ-ALT-B',
         exp_motor: 'MOTOR-B',
-        filename_foto: 'img_01.jpg',
-        ruta_esquemas_pos: 'esq_01.png',
+        filename_foto: '16V4000M73-0300-01.jpg',
+        esquemas_circulos: '16V4000M73-0300-01-10.webp',
+        esquemas: '16V4000M73-0300-01.webp',
+        ruta_esquemas_pos: 'legacy_ignored_b.webp',
+        exp_imagenes: 'legacy_old_b.webp',
         ...overrides
     };
 }
@@ -98,7 +107,7 @@ describe('WordPress consolidation behavior (canonical V1.04)', () => {
     it('5) esquema_general consolidates esquema_general + esquemas across siblings', () => {
         const rows = [makeImportRow(), makeCopyRow()];
         const out = buildMergedRow([rows[0]], { sku: 'PN-001', hierarchy: 'New', consolidatedRows: getConsolidationRows(rows) });
-        assert.equal(out.esquema_general, 'ESQ-A, ESQ-ALT-A, ESQ-ALT-B, ESQ-B');
+        assert.equal(out.esquema_general, '12V4000M53-0200-01.webp, 16V4000M73-0300-01.webp, ESQ-A, ESQ-B');
     });
 
     it('6) exp_motor consolidates values across siblings', () => {
@@ -115,25 +124,29 @@ describe('WordPress consolidation behavior (canonical V1.04)', () => {
 
     it('8) exp_imagenes consolidates siblings, dedupes, sorts and caps to 10', () => {
         const importRow = makeImportRow({
-            filename_foto: 'img_12.jpg',
-            ruta_esquemas_pos: 'esq_12.png'
+            filename_foto: '12V4000M53-0212-01.jpg',
+            esquemas_circulos: '12V4000M53-0212-01-10.webp',
+            esquemas: '12V4000M53-0212-01.webp',
+            ruta_esquemas_pos: ''
         });
         const copyRow = makeCopyRow({
-            filename_foto: 'img_01.jpg',
-            ruta_esquemas_pos: 'esq_01.png'
+            filename_foto: '16V4000M73-0201-01.jpg',
+            esquemas_circulos: '16V4000M73-0201-01-10.webp',
+            esquemas: '16V4000M73-0201-01.webp',
+            ruta_esquemas_pos: ''
         });
 
         const extraRows = [
-            makeCopyRow({ filename_foto: 'img_02.jpg', ruta_esquemas_pos: '' }),
-            makeCopyRow({ filename_foto: 'img_03.jpg', ruta_esquemas_pos: '' }),
-            makeCopyRow({ filename_foto: 'img_04.jpg', ruta_esquemas_pos: '' }),
-            makeCopyRow({ filename_foto: 'img_05.jpg', ruta_esquemas_pos: '' }),
-            makeCopyRow({ filename_foto: 'img_06.jpg', ruta_esquemas_pos: '' }),
-            makeCopyRow({ filename_foto: 'img_07.jpg', ruta_esquemas_pos: '' }),
-            makeCopyRow({ filename_foto: 'img_08.jpg', ruta_esquemas_pos: '' }),
-            makeCopyRow({ filename_foto: 'img_09.jpg', ruta_esquemas_pos: '' }),
-            makeCopyRow({ filename_foto: 'img_10.jpg', ruta_esquemas_pos: '' }),
-            makeCopyRow({ filename_foto: 'img_11.jpg', ruta_esquemas_pos: '' })
+            makeCopyRow({ filename_foto: '16V4000M73-0202-01.jpg', esquemas_circulos: '', esquemas: '', ruta_esquemas_pos: '' }),
+            makeCopyRow({ filename_foto: '16V4000M73-0203-01.jpg', esquemas_circulos: '', esquemas: '', ruta_esquemas_pos: '' }),
+            makeCopyRow({ filename_foto: '16V4000M73-0204-01.jpg', esquemas_circulos: '', esquemas: '', ruta_esquemas_pos: '' }),
+            makeCopyRow({ filename_foto: '16V4000M73-0205-01.jpg', esquemas_circulos: '', esquemas: '', ruta_esquemas_pos: '' }),
+            makeCopyRow({ filename_foto: '16V4000M73-0206-01.jpg', esquemas_circulos: '', esquemas: '', ruta_esquemas_pos: '' }),
+            makeCopyRow({ filename_foto: '16V4000M73-0207-01.jpg', esquemas_circulos: '', esquemas: '', ruta_esquemas_pos: '' }),
+            makeCopyRow({ filename_foto: '16V4000M73-0208-01.jpg', esquemas_circulos: '', esquemas: '', ruta_esquemas_pos: '' }),
+            makeCopyRow({ filename_foto: '16V4000M73-0209-01.jpg', esquemas_circulos: '', esquemas: '', ruta_esquemas_pos: '' }),
+            makeCopyRow({ filename_foto: '16V4000M73-0210-01.jpg', esquemas_circulos: '', esquemas: '', ruta_esquemas_pos: '' }),
+            makeCopyRow({ filename_foto: '16V4000M73-0211-01.jpg', esquemas_circulos: '', esquemas: '', ruta_esquemas_pos: '' })
         ];
 
         const allRows = [importRow, copyRow, ...extraRows];
@@ -142,16 +155,16 @@ describe('WordPress consolidation behavior (canonical V1.04)', () => {
         const values = splitOut(out.exp_imagenes);
         assert.equal(values.length, 10);
         assert.deepEqual(values, [
-            'https://milu-naval.mystagingwebsite.com/wp-content/uploads/12V4000M53-POS/esq_01.png',
-            'https://milu-naval.mystagingwebsite.com/wp-content/uploads/12V4000M53-POS/esq_12.png',
-            'https://milu-naval.mystagingwebsite.com/wp-content/uploads/12V4000M53-POS/img_01.jpg',
-            'https://milu-naval.mystagingwebsite.com/wp-content/uploads/12V4000M53-POS/img_02.jpg',
-            'https://milu-naval.mystagingwebsite.com/wp-content/uploads/12V4000M53-POS/img_03.jpg',
-            'https://milu-naval.mystagingwebsite.com/wp-content/uploads/12V4000M53-POS/img_04.jpg',
-            'https://milu-naval.mystagingwebsite.com/wp-content/uploads/12V4000M53-POS/img_05.jpg',
-            'https://milu-naval.mystagingwebsite.com/wp-content/uploads/12V4000M53-POS/img_06.jpg',
-            'https://milu-naval.mystagingwebsite.com/wp-content/uploads/12V4000M53-POS/img_07.jpg',
-            'https://milu-naval.mystagingwebsite.com/wp-content/uploads/12V4000M53-POS/img_08.jpg'
+            '/srv/htdocs/wp-content/uploads/2026/fotos/12V4000M53-0212-01.jpg',
+            '/srv/htdocs/wp-content/uploads/2026/fotos/16V4000M73-0201-01.jpg',
+            '/srv/htdocs/wp-content/uploads/2026/fotos/16V4000M73-0202-01.jpg',
+            '/srv/htdocs/wp-content/uploads/2026/fotos/16V4000M73-0203-01.jpg',
+            '/srv/htdocs/wp-content/uploads/2026/fotos/16V4000M73-0204-01.jpg',
+            '/srv/htdocs/wp-content/uploads/2026/fotos/16V4000M73-0205-01.jpg',
+            '/srv/htdocs/wp-content/uploads/2026/fotos/16V4000M73-0206-01.jpg',
+            '/srv/htdocs/wp-content/uploads/2026/fotos/16V4000M73-0207-01.jpg',
+            '/srv/htdocs/wp-content/uploads/2026/fotos/16V4000M73-0208-01.jpg',
+            '/srv/htdocs/wp-content/uploads/2026/fotos/16V4000M73-0209-01.jpg'
         ]);
     });
 
@@ -342,11 +355,11 @@ describe('WordPress consolidation behavior (canonical V1.04)', () => {
         );
     });
 
-    it('28) sin_imagen.jpeg is never transformed', () => {
+    it('28) sin_imagen.jpeg is normalized to non-monthly path', () => {
         const url = 'https://milu-naval.mystagingwebsite.com/wp-content/uploads/2026/01/sin_imagen.jpeg';
         const out = normalizeWordPressAssetUrl(url, { engine_model: '12V4000M40A' });
         assert.equal(out.warning, null);
-        assert.equal(out.value, url);
+        assert.equal(out.value, 'https://milu-naval.mystagingwebsite.com/wp-content/uploads/sin_imagen.jpeg');
     });
 
     it('29) bare filename with model is converted using context when needed', () => {
@@ -362,5 +375,130 @@ describe('WordPress consolidation behavior (canonical V1.04)', () => {
         const out = normalizeWordPressAssetUrl('asset-sin-modelo.webp', {});
         assert.equal(out.value, 'asset-sin-modelo.webp');
         assert.equal(out.warning?.code, 'URL_MODEL_NOT_FOUND');
+    });
+
+    it('31) exp_imagenes is constructed from esquemas_circulos', () => {
+        const out = buildMergedRow([
+            makeImportRow({
+                filename_foto: '',
+                esquemas_circulos: '12V4000M40A-0208-01-70.webp',
+                esquemas: '',
+                ruta_esquemas_pos: ''
+            })
+        ], { sku: 'PN-BASE-001', hierarchy: 'New' });
+
+        assert.match(out.exp_imagenes, /12V4000M40A-POS\/12V4000M40A-0208-01-70\.webp/);
+    });
+
+    it('32) exp_imagenes is constructed from filename_foto', () => {
+        const out = buildMergedRow([
+            makeImportRow({
+                filename_foto: '12V4000M53-0110-01.webp',
+                esquemas_circulos: '',
+                esquemas: '',
+                ruta_esquemas_pos: ''
+            })
+        ], { sku: 'PN-BASE-002', hierarchy: 'New' });
+
+        assert.equal(
+            out.exp_imagenes,
+            '/srv/htdocs/wp-content/uploads/2026/fotos/12V4000M53-0110-01.webp'
+        );
+    });
+
+    it('33) ruta_esquemas_pos is not used when esquemas_circulos exists', () => {
+        const out = buildMergedRow([
+            makeImportRow({
+                filename_foto: '',
+                esquemas_circulos: '12V4000M53-0110-01-10.webp',
+                esquemas: '',
+                ruta_esquemas_pos: 'legacy_should_not_win.webp'
+            })
+        ], { sku: 'PN-BASE-003', hierarchy: 'New' });
+
+        assert.match(out.exp_imagenes, /12V4000M53-0110-01-10\.webp/);
+        assert.ok(!out.exp_imagenes.includes('legacy_should_not_win.webp'));
+    });
+
+    it('34) old exp_imagenes field is ignored as source', () => {
+        const out = buildMergedRow([
+            makeImportRow({
+                filename_foto: '12V4000M53-0120-01.webp',
+                esquemas_circulos: '',
+                esquemas: '',
+                exp_imagenes: 'https://legacy.invalid/old_source.webp',
+                ruta_esquemas_pos: ''
+            })
+        ], { sku: 'PN-BASE-004', hierarchy: 'New' });
+
+        assert.ok(!out.exp_imagenes.includes('legacy.invalid'));
+        assert.match(out.exp_imagenes, /\/srv\/htdocs\/wp-content\/uploads\/2026\/fotos\/12V4000M53-0120-01\.webp/);
+    });
+
+    it('35) Copia contributes esquemas_circulos to consolidated exp_imagenes', () => {
+        const rows = [
+            makeImportRow({ filename_foto: '', esquemas_circulos: '', esquemas: '', ruta_esquemas_pos: '' }),
+            makeCopyRow({ filename_foto: '', esquemas_circulos: '16V4000M73-0622-01-645.webp', esquemas: '', ruta_esquemas_pos: '' })
+        ];
+        const out = buildMergedRow([rows[0]], { sku: 'PN-BASE-005', hierarchy: 'New', consolidatedRows: getConsolidationRows(rows) });
+
+        assert.match(out.exp_imagenes, /16V4000M73-POS\/16V4000M73-0622-01-645\.webp/);
+    });
+
+    it('36) model inference from asset filename works', () => {
+        assert.equal(inferModelFromAssetFilename('20V4000M93L-1374-01-400.webp'), '20V4000M93L');
+    });
+
+    it('37) helper builds /<MODEL>-POS/ URL from filename', () => {
+        const out = buildWordPressAssetUrlFromFilename('12V4000M40A-0208-01-70.webp', {});
+        assert.equal(out.warning, null);
+        assert.equal(
+            out.value,
+            'https://milu-naval.mystagingwebsite.com/wp-content/uploads/12V4000M40A-POS/12V4000M40A-0208-01-70.webp'
+        );
+    });
+
+    it('38) fallback sin_imagen only when no base assets exist', () => {
+        const built = buildExpImagenesFromBaseAssets([
+            makeImportRow({
+                filename_foto: '',
+                esquemas_circulos: '',
+                esquemas: '',
+                ruta_esquemas_pos: '',
+                exp_imagenes: ''
+            })
+        ]);
+        assert.equal(
+            built.value,
+            'https://milu-naval.mystagingwebsite.com/wp-content/uploads/sin_imagen.jpeg'
+        );
+    });
+
+    it('39) regression sample: no real asset loss against legacy fallback source', () => {
+        const rows = [
+            makeImportRow({
+                filename_foto: '12V4000M53-0099-01.webp',
+                esquemas_circulos: '12V4000M53-0099-01-70.webp',
+                esquemas: '',
+                ruta_esquemas_pos: 'https://milu-naval.mystagingwebsite.com/wp-content/uploads/12V4000M53-POS/12V4000M53-0099-01-70.webp'
+            })
+        ];
+
+        const built = buildExpImagenesFromBaseAssets(rows, rows[0]);
+        const values = splitOut(built.value);
+        assert.ok(values.some((v) => v.includes('12V4000M53-0099-01-70.webp')));
+        assert.ok(values.some((v) => v.includes('/srv/htdocs/wp-content/uploads/2026/fotos/12V4000M53-0099-01.webp')));
+    });
+
+    it('40) ruta_foto source field is ignored and filename_foto drives ruta_foto output', () => {
+        const out = buildMergedRow([
+            makeImportRow({
+                filename_foto: '12V4000M53-0777-01.webp',
+                ruta_foto: 'https://legacy.invalid/should-not-be-used.webp'
+            })
+        ], { sku: 'PN-BASE-006', hierarchy: 'New' });
+
+        assert.equal(out.ruta_foto, '/srv/htdocs/wp-content/uploads/2026/fotos/12V4000M53-0777-01.webp');
+        assert.ok(!out.ruta_foto.includes('legacy.invalid'));
     });
 });

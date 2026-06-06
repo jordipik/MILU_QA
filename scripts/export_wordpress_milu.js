@@ -10,6 +10,7 @@ const AUDIT_OUTPUT_DIR = path.join(REPO_ROOT, 'data', 'output', 'wordpress');
 const FG_FGS_CATALOG_PATH = path.join(REPO_ROOT, 'EXCEL_FG-FGS.json');
 const OLD_RELATION_SLOT_COUNT = 18;
 const WP_UPLOADS_BASE = 'https://milu-naval.mystagingwebsite.com/wp-content/uploads';
+const WP_PHOTOS_FIXED_BASE = '/srv/htdocs/wp-content/uploads/2026/fotos';
 const POS_MODELS = [
     '12V4000M40A',
     '12V4000M53',
@@ -136,6 +137,10 @@ function collapseSpaces(value) {
     return t(value).replace(/\s+/g, ' ');
 }
 
+function normalizeAssetBasename(value) {
+    return path.basename(String(value || '').split('?')[0].split('#')[0]).trim().toLowerCase();
+}
+
 function uniq(values) {
     return [...new Set(values.filter(Boolean))];
 }
@@ -168,7 +173,7 @@ function inferModelFromText(rawValue) {
     return '';
 }
 
-function inferModelFromAssetName(rawValue) {
+function inferModelFromAssetFilename(rawValue) {
     const fileName = path.basename(String(rawValue || '').split('?')[0].split('#')[0]).toUpperCase();
     if (!fileName) return '';
     for (const model of POS_MODELS) {
@@ -211,6 +216,11 @@ function buildModelWarning(input, context, code = 'URL_MODEL_NOT_FOUND') {
     };
 }
 
+function buildSinImagenUrl(context = {}) {
+    void context;
+    return `${WP_UPLOADS_BASE}/sin_imagen.jpeg`;
+}
+
 function normalizeWordPressAssetUrl(url, context = {}) {
     const original = t(url);
     if (!original) {
@@ -218,7 +228,7 @@ function normalizeWordPressAssetUrl(url, context = {}) {
     }
 
     if (original.toLowerCase().includes('sin_imagen.jpeg')) {
-        return { value: original, warning: null };
+        return { value: buildSinImagenUrl(context), warning: null };
     }
 
     if (isPosFolderUrl(original)) {
@@ -230,7 +240,7 @@ function normalizeWordPressAssetUrl(url, context = {}) {
         return { value: original, warning: null };
     }
 
-    const modelFromName = inferModelFromAssetName(basename);
+    const modelFromName = inferModelFromAssetFilename(basename);
     const modelFromContext = inferModelFromContext(context);
     const model = modelFromName || modelFromContext;
 
@@ -274,6 +284,113 @@ function normalizeWordPressAssetList(value, context = {}) {
     }
 
     return { value: out.join(', '), warnings };
+}
+
+function splitAssetList(value) {
+    return String(value == null ? '' : value)
+        .split(/[|,;]+/)
+        .map((item) => collapseSpaces(item))
+        .filter(Boolean);
+}
+
+function buildWordPressAssetUrlFromFilename(filename, context = {}, options = {}) {
+    const original = collapseSpaces(filename);
+    const assetType = t(options.assetType || 'pos').toLowerCase();
+    if (!original) {
+        return { value: '', warning: null };
+    }
+
+    const basename = path.basename(original.split('?')[0].split('#')[0]);
+    if (!basename) {
+        return { value: '', warning: null };
+    }
+
+    if (assetType === 'photo') {
+        return {
+            value: `${WP_PHOTOS_FIXED_BASE}/${basename}`,
+            warning: null
+        };
+    }
+
+    if (/^https?:\/\//i.test(original)) {
+        return normalizeWordPressAssetUrl(original, context);
+    }
+
+    const model = inferModelFromAssetFilename(basename) || inferModelFromContext(context);
+    if (!model) {
+        return { value: basename, warning: buildModelWarning(basename, context) };
+    }
+
+    return {
+        value: `${WP_UPLOADS_BASE}/${model}-POS/${basename}`,
+        warning: null
+    };
+}
+
+function buildExpImagenesFromBaseAssets(groupRows, principalRow) {
+    const rows = Array.isArray(groupRows) ? groupRows : [];
+    const warnings = [];
+    const context = {
+        engine_model: pickMostFrequent(rows.map((row) => row?.engine_model)) || t(principalRow?.engine_model),
+        exp_motor: pickMostFrequent(rows.map((row) => row?.exp_motor)) || t(principalRow?.exp_motor),
+        model_type: pickMostFrequent(rows.map((row) => row?.model_type_final)) || t(principalRow?.model_type_final),
+        __engine_file: pickMostFrequent(rows.map((row) => row?.__engine_file)) || t(principalRow?.__engine_file),
+        engine: pickMostFrequent(rows.map((row) => row?.engine)) || t(principalRow?.engine)
+    };
+
+    const buckets = {
+        filename_foto: [],
+        esquemas_circulos: [],
+        esquemas: [],
+        legacy_ruta_esquemas_pos: []
+    };
+
+    for (const row of rows) {
+        buckets.filename_foto.push(...splitAssetList(row?.filename_foto));
+        buckets.esquemas_circulos.push(...splitAssetList(row?.esquemas_circulos));
+        buckets.esquemas.push(...splitAssetList(row?.esquemas));
+        // Compatibility fallback only: avoids real asset loss while migration is in progress.
+        buckets.legacy_ruta_esquemas_pos.push(...splitAssetList(row?.ruta_esquemas_pos));
+    }
+
+    const appendNormalized = (collector, sourceList, assetType = 'pos') => {
+        for (const candidate of sourceList) {
+            const normalized = buildWordPressAssetUrlFromFilename(candidate, context, { assetType });
+            if (normalized.warning) warnings.push(normalized.warning);
+            if (!t(normalized.value)) continue;
+            collector.push(normalized.value);
+        }
+    };
+
+    const ordered = [];
+    appendNormalized(ordered, buckets.filename_foto, 'photo');
+    appendNormalized(ordered, buckets.esquemas_circulos);
+    appendNormalized(ordered, buckets.esquemas);
+
+    const baseHasAny = ordered.length > 0;
+    if (!baseHasAny) {
+        appendNormalized(ordered, buckets.legacy_ruta_esquemas_pos);
+    }
+
+    const seenBase = new Set();
+    const deduped = [];
+    for (const item of ordered) {
+        const basename = normalizeAssetBasename(item);
+        const dedupeKey = basename || key(item);
+        if (!dedupeKey) continue;
+        if (seenBase.has(dedupeKey)) continue;
+        seenBase.add(dedupeKey);
+        deduped.push(item);
+    }
+
+    deduped.sort((a, b) => a.localeCompare(b, 'es', { sensitivity: 'base', numeric: true }));
+    const capped = deduped.slice(0, 10);
+
+    return {
+        value: capped.length > 0 ? capped.join(', ') : buildSinImagenUrl(context),
+        warnings,
+        used_legacy_ruta_esquemas_pos: !baseHasAny && buckets.legacy_ruta_esquemas_pos.length > 0
+    };
 }
 
 function buildOldPnFields(rowOrGroup) {
@@ -506,20 +623,8 @@ function deriveExpCategorias(rows) {
     return joinUniqueSorted(values);
 }
 
-function deriveExpImagenes(rows) {
-    const SIN_IMAGEN = 'https://milu-naval.mystagingwebsite.com/wp-content/uploads/2026/01/sin_imagen.jpeg';
-    const images = [];
-    for (const row of rows) {
-        const fileName = t(row?.filename_foto);
-        const rutaFoto = splitMultiValues(row?.ruta_foto);
-        const esquemaPath = t(row?.ruta_esquemas_pos);
-        if (fileName) images.push(fileName);
-        if (rutaFoto.length > 0) images.push(...rutaFoto);
-        if (esquemaPath) images.push(esquemaPath);
-    }
-    const merged = joinUniqueSorted(images, 10);
-    if (merged) return merged;
-    return SIN_IMAGEN;
+function deriveExpImagenes(rows, principalRow) {
+    return buildExpImagenesFromBaseAssets(rows, principalRow).value;
 }
 
 function mergeCsvField(a, b) {
@@ -801,7 +906,8 @@ function buildMergedRow(rows, options = {}) {
     const fgDescription = resolvedFgDescription || deriveFgDescription();
     const fgCodeDescription = t(options.fgCodeDescription || pickMostFrequent(sourceRows.map((row) => row.fgs_code_description)) || [fgCode, fgDescription].filter(Boolean).join(' '));
     const expCategorias = t(options.expCategorias || deriveExpCategorias(consolidatedRows));
-    const expImagenes = t(options.expImagenes || deriveExpImagenes(consolidatedRows));
+    const expImagenesBuilt = buildExpImagenesFromBaseAssets(consolidatedRows, sourceRows[0]);
+    const expImagenes = t(options.expImagenes || expImagenesBuilt.value);
 
     const id = t(options.id || pickMostFrequent(sourceRows.map((row) => getSourceId(row))));
     const fechaVersion = t(options.fechaVersion || pickMostFrequent(sourceRows.map((row) => row.fecha_version)) || formatExportTimestamp());
@@ -825,7 +931,7 @@ function buildMergedRow(rows, options = {}) {
     })) || engine);
     const atributo = t(options.atributo || joinUniqueSorted(consolidatedRows.flatMap((row) => splitMultiValues(row.atributo))));
     const enExcelSustitucion = t(options.enExcelSustitucion || pickMostFrequent(sourceRows.map((row) => row.EN_EXCEL_SUSTITUCION)));
-    const rutaFoto = t(options.rutaFoto || pickMostFrequent(sourceRows.map((row) => row.ruta_foto || row.filename_foto)));
+    const rutaFoto = t(options.rutaFoto || pickMostFrequent(sourceRows.map((row) => row.filename_foto)));
 
     const urlContext = {
         engine_model: pickMostFrequent(sourceRows.map((row) => row.engine_model)) || engineBase,
@@ -835,7 +941,7 @@ function buildMergedRow(rows, options = {}) {
         engine
     };
 
-    const rutaFotoNorm = normalizeWordPressAssetUrl(rutaFoto, urlContext);
+    const rutaFotoNorm = buildWordPressAssetUrlFromFilename(rutaFoto, urlContext, { assetType: 'photo' });
     const expImagenesNorm = normalizeWordPressAssetList(expImagenes, urlContext);
     const oldRutaWarnings = [];
     for (let i = 1; i <= OLD_RELATION_SLOT_COUNT; i += 1) {
@@ -847,6 +953,7 @@ function buildMergedRow(rows, options = {}) {
     }
 
     const urlWarnings = [
+        ...expImagenesBuilt.warnings,
         ...expImagenesNorm.warnings,
         ...oldRutaWarnings,
         ...(rutaFotoNorm.warning ? [rutaFotoNorm.warning] : [])
@@ -1444,6 +1551,11 @@ if (require.main === module) {
 module.exports = {
     NEW_V506_HEADERS,
     buildOldPnFields,
+    splitAssetList,
+    normalizeAssetBasename,
+    inferModelFromAssetFilename,
+    buildWordPressAssetUrlFromFilename,
+    buildExpImagenesFromBaseAssets,
     normalizeWordPressAssetUrl,
     normalizeWordPressAssetList,
     buildQaSummary,

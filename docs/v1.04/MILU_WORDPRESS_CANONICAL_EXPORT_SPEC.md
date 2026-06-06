@@ -149,8 +149,35 @@ Normalization rules:
 3. If missing, resolve model from row context (engine_model, exp_motor, model_type, __engine_file).
 4. Rebuild URL to /wp-content/uploads/<MODEL>-POS/<basename>.
 5. Keep already-normalized /<MODEL>-POS/ URLs unchanged.
-6. Keep sin_imagen.jpeg unchanged.
+6. Normalize sin_imagen.jpeg to fixed global path: /wp-content/uploads/sin_imagen.jpeg.
 7. If model cannot be resolved, keep original value and register warning URL_MODEL_NOT_FOUND.
+
+## exp_imagenes Derivation Policy (V1.04)
+
+`exp_imagenes` is a derived export field and must be built during export.
+
+Canonical asset source fields (in this order):
+
+1. filename_foto
+2. esquemas_circulos
+3. esquemas
+
+Photo routing policy:
+
+- `filename_foto` is always emitted to `/srv/htdocs/wp-content/uploads/2026/fotos/<filename>`.
+- Model-based folder routing is not used for photos.
+
+Deprecated as primary source:
+
+- ruta_esquemas_pos
+- exp_imagenes
+- esquemas_circulos_all
+- ruta_foto
+
+Compatibility migration rule:
+
+- `ruta_esquemas_pos` can be used only as fallback when canonical base sources provide no assets.
+- `exp_imagenes` and `esquemas_circulos_all` must not be used as source input.
 
 ## Examples
 
