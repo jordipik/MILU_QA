@@ -597,6 +597,7 @@ function normalizeRow(raw = {}) {
         EN_EXCEL_SUSTITUCION: pick(raw.EN_EXCEL_SUSTITUCION),
         ruta_foto: pick(expField(raw, 'ruta_foto', ''), raw.ruta_foto),
         exp_imagenes: pick(expField(raw, 'ruta_esquemas_pos', ''), raw.exp_imagenes),
+        synthetic_source: pick(raw.synthetic_source),
 
         designation_final: designationValue,
         measure_final: measureValue,
@@ -636,7 +637,7 @@ function getVisibleRows() {
                 const motors = splitCsv(row.exp_motor || row.motores).map(normKey);
                 if (!motors.includes(normKey(state.filters.motor))) return false;
             }
-            if (state.filters.qaEstado && normKey(expField(row, 'qa_revision_estado', '')) !== normKey(state.filters.qaEstado)) return false;
+            if (state.filters.qaEstado && normKey(row.synthetic_source || '') !== normKey(state.filters.qaEstado)) return false;
             return true;
         })
         .sort((a, b) => String(a.pn || '').localeCompare(String(b.pn || ''), 'es', { numeric: true, sensitivity: 'base' }));
@@ -696,7 +697,7 @@ function updateStatusFilters() {
 function refreshFilterChoices() {
     const allRows = Object.keys(TAB_CONFIG).flatMap((tabKey) => getTabRows(tabKey));
     const motors = [...new Set(allRows.flatMap((row) => splitCsv(row.exp_motor || row.motores)))].sort((a, b) => a.localeCompare(b, 'es', { sensitivity: 'base' }));
-    const qaEstados = [...new Set(allRows.map((row) => text(expField(row, 'qa_revision_estado', ''))).filter(Boolean))].sort((a, b) => a.localeCompare(b, 'es', { sensitivity: 'base' }));
+    const syntheticSources = [...new Set(allRows.map((row) => text(row.synthetic_source)).filter(Boolean))].sort((a, b) => a.localeCompare(b, 'es', { sensitivity: 'base' }));
 
     const motorSelect = $('ewpMotorFilter');
     const qaSelect = $('ewpQaFilter');
@@ -709,8 +710,8 @@ function refreshFilterChoices() {
 
     if (qaSelect instanceof HTMLSelectElement) {
         const current = qaSelect.value;
-        qaSelect.innerHTML = '<option value="">Todos los estados QA</option>' + qaEstados.map((estado) => `<option value="${escapeHtml(estado)}">${escapeHtml(estado)}</option>`).join('');
-        qaSelect.value = qaEstados.includes(current) ? current : '';
+        qaSelect.innerHTML = '<option value="">Todos los synthetic_source</option>' + syntheticSources.map((source) => `<option value="${escapeHtml(source)}">${escapeHtml(source)}</option>`).join('');
+        qaSelect.value = syntheticSources.includes(current) ? current : '';
     }
 }
 
@@ -798,6 +799,7 @@ function renderDetail() {
         { label: TAB_CONFIG[state.currentTab].detailLabel, row: selectedRow }
     ];
     const diffFields = new Set();
+    const hasSyntheticSource = sourceRows.some((source) => text(source?.row?.synthetic_source));
 
     if (sourceRows.length >= 2) {
         const firstRow = sourceRows[0].row;
@@ -808,27 +810,34 @@ function renderDetail() {
             const lastValue = normalizeComparisonValue(lastRow?.[field]);
             if (firstValue !== lastValue) diffFields.add(field);
         }
+
+        if (hasSyntheticSource) {
+            const firstValue = normalizeComparisonValue(firstRow?.synthetic_source);
+            const lastValue = normalizeComparisonValue(lastRow?.synthetic_source);
+            if (firstValue !== lastValue) diffFields.add('synthetic_source');
+        }
     }
 
     const visibleFields = state.onlyDiff
         ? QA_EXPORT_FIELDS.filter((field) => diffFields.has(field))
         : [...QA_EXPORT_FIELDS];
+    const detailFields = hasSyntheticSource ? ['synthetic_source', ...visibleFields] : visibleFields;
 
     title.textContent = selectedRow.pn || '-';
     meta.textContent = `${selectedRow.designation || selectedRow.designation_final || '-'} · ${selectedRow.exp_motor || selectedRow.motores || 'Sin motor'} · ${Number(selectedRow.apariciones || 0)} apariciones`;
     count.textContent = sourceRows.length >= 2
-        ? `${sourceRows.length} registros comparados · ${visibleFields.length} campo${visibleFields.length === 1 ? '' : 's'}${state.onlyDiff ? ' no coincidente' + (visibleFields.length === 1 ? '' : 's') : ''}`
+        ? `${sourceRows.length} registros comparados · ${detailFields.length} campo${detailFields.length === 1 ? '' : 's'}${state.onlyDiff ? ' no coincidente' + (detailFields.length === 1 ? '' : 's') : ''}`
         : '1 registro visible';
 
     sources.innerHTML = sourceRows.map((source) => `<span class="ewx-source-pill">${escapeHtml(source.label)}</span>`).join('');
     head.innerHTML = ['<th>Campo</th>', ...sourceRows.map((source) => `<th>${escapeHtml(source.label)}</th>`)].join('');
 
-    if (!visibleFields.length) {
+    if (!detailFields.length) {
         body.innerHTML = `<tr><td colspan="${sourceRows.length + 1}" class="ewx-empty-table">No hay campos no coincidentes para este PN.</td></tr>`;
         return;
     }
 
-    body.innerHTML = visibleFields.map((field) => {
+    body.innerHTML = detailFields.map((field) => {
         const valueCells = sourceRows.map((source, index) => {
             const rawValue = formatValue(source.row?.[field]);
             const displayValue = rawValue || '-';

@@ -880,7 +880,8 @@ function isQaPendingOrReviewRow(row) {
 function parseArgs(argv) {
     const args = Array.isArray(argv) ? argv : [];
     return {
-        dryRun: args.includes('--dry-run')
+        dryRun: args.includes('--dry-run'),
+        writeAuditMirror: args.includes('--audit-mirror')
     };
 }
 
@@ -1188,10 +1189,7 @@ function writeOutputs(dirPath, payload) {
     const {
         importRows,
         supersededRows,
-        pendingRows,
-        discardedRows,
         traceBySku,
-        report,
         summary,
         headers,
         supersededHeaders
@@ -1202,47 +1200,35 @@ function writeOutputs(dirPath, payload) {
         'milu_wp_new_import.json',
         'milu_wp_superseded_import.csv',
         'milu_wp_superseded_import.json',
-        'milu_wp_pending_review.csv',
-        'milu_wp_pending_review.json',
+        'milu_wp_trace.json',
+        'milu_wp_export_summary.md',
+        // Legacy aliases kept here only to ensure cleanup from previous runs.
         'milu_wp_import.csv',
         'milu_wp_import.json',
         'milu_wp_superseded.csv',
         'milu_wp_superseded.json',
+        'milu_wp_pending_review.csv',
+        'milu_wp_pending_review.json',
         'milu_wp_pending.csv',
         'milu_wp_pending.json',
         'milu_wp_discarded.csv',
         'milu_wp_discarded.json',
-        'milu_wp_trace.json',
-        'milu_wp_export_summary.md',
         'milu_wp_export_report.json'
     ].forEach((name) => removeIfExists(path.join(dirPath, name)));
 
-    writeCsv(path.join(dirPath, 'milu_wp_import.csv'), importRows, headers);
-    writeCsv(path.join(dirPath, 'milu_wp_superseded.csv'), supersededRows, supersededHeaders);
-    writeCsv(path.join(dirPath, 'milu_wp_pending.csv'), pendingRows, headers);
-    writeCsv(path.join(dirPath, 'milu_wp_discarded.csv'), discardedRows, headers);
-
-    writeJson(path.join(dirPath, 'milu_wp_import.json'), importRows);
-    writeJson(path.join(dirPath, 'milu_wp_superseded.json'), supersededRows);
-    writeJson(path.join(dirPath, 'milu_wp_pending.json'), pendingRows);
-    writeJson(path.join(dirPath, 'milu_wp_discarded.json'), discardedRows);
-
     writeJson(path.join(dirPath, 'milu_wp_new_import.json'), importRows);
     writeJson(path.join(dirPath, 'milu_wp_superseded_import.json'), supersededRows);
-    writeJson(path.join(dirPath, 'milu_wp_pending_review.json'), pendingRows);
 
     writeCsv(path.join(dirPath, 'milu_wp_new_import.csv'), importRows, headers);
     writeCsv(path.join(dirPath, 'milu_wp_superseded_import.csv'), supersededRows, supersededHeaders);
-    writeCsv(path.join(dirPath, 'milu_wp_pending_review.csv'), pendingRows, headers);
 
     writeJson(path.join(dirPath, 'milu_wp_trace.json'), traceBySku);
     fs.writeFileSync(path.join(dirPath, 'milu_wp_export_summary.md'), `${summary}\n`, 'utf8');
-    writeJson(path.join(dirPath, 'milu_wp_export_report.json'), report);
 }
 
 function run(options = {}) {
     const dryRun = Boolean(options.dryRun);
-    const writeAuditMirror = options.writeAuditMirror !== false;
+    const writeAuditMirror = Boolean(options.writeAuditMirror);
 
     const fgUpdateSummary = runUpdateFgFgs({
         all: true,

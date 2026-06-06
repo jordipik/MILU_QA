@@ -3054,13 +3054,13 @@ app.post('/export/run-wordpress', async (_req, res) => {
     try {
         const result = await withExportLock('run-wordpress', async () => {
             const wordpressRun = await runNodeScript(path.join('scripts', 'export_wordpress_milu.js'));
-            const importRows = readJsonFileSafe(path.join(WORDPRESS_OUTPUT_DIR, 'milu_wp_import.json'), []);
-            const pendingRows = readFirstJsonFileSafe(WORDPRESS_OUTPUT_DIR, ['milu_wp_pending.json', 'milu_wp_pending_review.json'], []);
-            const discardedRows = readJsonFileSafe(path.join(WORDPRESS_OUTPUT_DIR, 'milu_wp_discarded.json'), []);
+            const importRows = readFirstJsonFileSafe(WORDPRESS_OUTPUT_DIR, ['milu_wp_new_import.json', 'milu_wp_import.json'], []);
+            const supersededRows = readFirstJsonFileSafe(WORDPRESS_OUTPUT_DIR, ['milu_wp_superseded_import.json', 'milu_wp_superseded.json'], []);
             const summary = {
                 import: Array.isArray(importRows) ? importRows.length : 0,
-                pending: Array.isArray(pendingRows) ? pendingRows.length : 0,
-                discard: Array.isArray(discardedRows) ? discardedRows.length : 0
+                superseded: Array.isArray(supersededRows) ? supersededRows.length : 0,
+                pending: 0,
+                discard: 0
             };
             return { wordpress: wordpressRun, summary };
         });
@@ -3074,7 +3074,7 @@ app.post('/export/run-wordpress', async (_req, res) => {
 app.get('/export/preview', async (_req, res) => {
     try {
         const summaryPath = path.join(WORDPRESS_OUTPUT_DIR, 'milu_wp_export_summary.md');
-        const importRows = readJsonFileSafe(path.join(WORDPRESS_OUTPUT_DIR, 'milu_wp_import.json'), []);
+        const importRows = readFirstJsonFileSafe(WORDPRESS_OUTPUT_DIR, ['milu_wp_new_import.json', 'milu_wp_import.json'], []);
         const pendingRows = readFirstJsonFileSafe(WORDPRESS_OUTPUT_DIR, ['milu_wp_pending.json', 'milu_wp_pending_review.json'], []);
         const discardRows = readJsonFileSafe(path.join(WORDPRESS_OUTPUT_DIR, 'milu_wp_discarded.json'), []);
         const allRows = [
@@ -3113,7 +3113,7 @@ app.get('/export/preview', async (_req, res) => {
 app.get('/export/wordpress-decisions', async (_req, res) => {
     try {
         const wpDir = path.join(__dirname, 'data', '05-wordpress');
-        const importRows = readJsonFileSafe(path.join(wpDir, 'milu_wp_import.json'), []);
+        const importRows = readFirstJsonFileSafe(wpDir, ['milu_wp_new_import.json', 'milu_wp_import.json'], []);
         const pendingRows = readFirstJsonFileSafe(wpDir, ['milu_wp_pending.json', 'milu_wp_pending_review.json'], []);
         const discardRows = readJsonFileSafe(path.join(wpDir, 'milu_wp_discarded.json'), []);
 
@@ -4152,8 +4152,8 @@ function parseCsvText(content, maxRows = 500) {
 
 function getWordpressStatusSnapshot() {
     const fileCandidates = {
-        new: ['milu_wp_import.json', 'milu_wp_new_import.json'],
-        superseded: ['milu_wp_superseded.json', 'milu_wp_superseded_import.json'],
+        new: ['milu_wp_new_import.json', 'milu_wp_import.json'],
+        superseded: ['milu_wp_superseded_import.json', 'milu_wp_superseded.json'],
         pending: ['milu_wp_pending.json', 'milu_wp_pending_review.json'],
         discarded: ['milu_wp_discarded.json']
     };
@@ -4183,17 +4183,7 @@ function getWordpressStatusSnapshot() {
         }
     }
 
-    const reportPath = path.join(WORDPRESS_OUTPUT_DIR, 'milu_wp_export_report.json');
-    const report = readJsonFileSafe(reportPath, null);
-
-    if (report?.totals && typeof report.totals === 'object') {
-        counts.new = toNumber(report.totals.new, counts.new);
-        counts.superseded = toNumber(report.totals.superseded, counts.superseded);
-        counts.pending = toNumber(report.totals.pending, toNumber(report.totals.pending_review, counts.pending));
-        counts.discarded = toNumber(report.totals.discard, counts.discarded);
-    }
-
-    let lastGeneratedAt = String(report?.generated_at || '').trim() || null;
+    let lastGeneratedAt = null;
     if (!lastGeneratedAt) {
         const files = listExportFolder(WORDPRESS_EXPORT_FOLDER);
         for (const item of files) {
@@ -4207,7 +4197,7 @@ function getWordpressStatusSnapshot() {
         counts,
         files: resolvedFiles,
         last_generated_at: lastGeneratedAt,
-        report: report || null
+        report: null
     };
 }
 
