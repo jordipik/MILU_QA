@@ -81,7 +81,8 @@ const QA_EXPORT_FIELDS = [
     'old_pn_relacionados',
     'EN_EXCEL_SUSTITUCION',
     'ruta_foto',
-    'exp_imagenes'
+    'exp_imagenes',
+    'vinculo'
 ];
 
 const VOLATILE_FIELDS = new Set(['Id', 'fecha_version']);
@@ -142,6 +143,7 @@ const state = {
         discarded: []
     },
     miluNewData: [],
+    miluSupersededData: [],
     allData: []
 };
 
@@ -591,6 +593,7 @@ function normalizeRow(raw = {}) {
         SUST_TIPO: pick(expField(raw, 'hierarchie_final', ''), raw.SUST_TIPO, raw.sust_hierarchie),
         new_pn_relacionado: pick(expField(raw, 'new_pn_final', ''), raw.new_pn_relacionado, raw.pn_new, raw.sust_new_part_number),
         old_pn_relacionados: pick(expField(raw, 'subst_pnlist_final', ''), raw.old_pn_relacionados, raw.sust_superseded_list),
+        vinculo: pick(expField(raw, 'vinculo', ''), raw.vinculo),
         EN_EXCEL_SUSTITUCION: pick(raw.EN_EXCEL_SUSTITUCION),
         ruta_foto: pick(expField(raw, 'ruta_foto', ''), raw.ruta_foto),
         exp_imagenes: pick(expField(raw, 'ruta_esquemas_pos', ''), raw.exp_imagenes),
@@ -617,6 +620,11 @@ function getSelectedRow() {
 function getMiluNewMatch(pn) {
     if (!pn || !Array.isArray(state.miluNewData)) return null;
     return state.miluNewData.find((row) => normKey(row?.pn) === normKey(pn)) || null;
+}
+
+function getMiluSupersededMatch(pn) {
+    if (!pn || !Array.isArray(state.miluSupersededData)) return null;
+    return state.miluSupersededData.find((row) => normKey(row?.pn) === normKey(pn)) || null;
 }
 
 function getVisibleRows() {
@@ -779,9 +787,14 @@ function renderDetail() {
         return;
     }
 
-    const miluNewRaw = getMiluNewMatch(selectedRow.pn);
+    const miluReferenceRaw = state.currentTab === 'superseded'
+        ? getMiluSupersededMatch(selectedRow.pn)
+        : getMiluNewMatch(selectedRow.pn);
+    const miluReferenceLabel = state.currentTab === 'superseded'
+        ? 'MILU_Superseded_v506'
+        : 'MILU_New_v506';
     const sourceRows = [
-        ...(miluNewRaw ? [{ label: 'MILU_New_v506', row: normalizeRow(miluNewRaw) }] : []),
+        ...(miluReferenceRaw ? [{ label: miluReferenceLabel, row: normalizeRow(miluReferenceRaw) }] : []),
         { label: TAB_CONFIG[state.currentTab].detailLabel, row: selectedRow }
     ];
     const diffFields = new Set();
@@ -871,19 +884,21 @@ async function loadAllData() {
         const backendAvailable = !staticMode && statusPayload?.ok !== false;
         const shouldLoadStaticJsonFiles = true;
 
-        const [newPayload, supersededPayload, pendingPayload, discardedPayload, miluNewPayload] = shouldLoadStaticJsonFiles
+        const [newPayload, supersededPayload, pendingPayload, discardedPayload, miluNewPayload, miluSupersededPayload] = shouldLoadStaticJsonFiles
             ? await Promise.all([
                 fetchExportRows(TAB_CONFIG.new.jsonCandidates, backendAvailable),
                 fetchExportRows(TAB_CONFIG.superseded.jsonCandidates, backendAvailable),
                 fetchExportRows(TAB_CONFIG.pending.jsonCandidates, backendAvailable),
                 fetchExportRows(TAB_CONFIG.discarded.jsonCandidates, backendAvailable),
-                fetchFirstAvailableStaticJson(['MILU_New_v506.json', 'MILU_New_v507.json'])
+                fetchFirstAvailableStaticJson(['MILU_New_v506.json', 'MILU_New_v507.json']),
+                fetchFirstAvailableStaticJson(['MILU_Superseded_v506.json', 'MILU_Superseded_v507.json'])
             ])
             : [
                 { name: '', rows: [] },
                 { name: '', rows: [] },
                 { name: '', rows: [] },
                 { name: '', rows: [] },
+                [],
                 []
             ];
 
@@ -898,6 +913,7 @@ async function loadAllData() {
         state.data.pending = (pendingPayload.rows || []).map(normalizeRow);
         state.data.discarded = (discardedPayload.rows || []).map(normalizeRow);
         state.miluNewData = Array.isArray(miluNewPayload) ? miluNewPayload : [];
+        state.miluSupersededData = Array.isArray(miluSupersededPayload) ? miluSupersededPayload : [];
 
         // Export view should reflect real rows from 05-wordpress without synthetic overlays.
         state.allData = [];

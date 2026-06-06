@@ -160,6 +160,18 @@ function normalizeOldRouteValue(value) {
     return `${WP_PRODUCT_OLD_BASE}${slug}`;
 }
 
+function normalizeProductSlug(value) {
+    const token = collapseSpaces(value);
+    if (!token) return '';
+    return token.replace(/\//g, '-');
+}
+
+function buildProductVinculo(value) {
+    const slug = normalizeProductSlug(value);
+    if (!slug) return '';
+    return `milu-naval.mystagingwebsite.com/producto/${slug}`;
+}
+
 function inferModelFromText(rawValue) {
     const text = t(rawValue).toUpperCase();
     if (!text) return '';
@@ -897,6 +909,7 @@ function buildMergedRow(rows, options = {}) {
     const weight = t(options.weight || pickMostFrequent(sourceRows.map((row) => getWeight(row))));
     const newPn = t(options.newPn || pickMostFrequent(sourceRows.map((row) => getNewPartNumber(row))));
     const supersededList = t(options.supersededList || pickMostFrequent(sourceRows.map((row) => getSupersededListValue(row))));
+    const vinculo = t(options.vinculo || (key(hierarchy) === 'superseded' ? buildProductVinculo(newPn) : ''));
     const oldPnFields = buildOldPnFields({
         sourceRows,
         consolidatedRows,
@@ -995,6 +1008,7 @@ function buildMergedRow(rows, options = {}) {
         new_pn_relacionado: newPn,
         old_pn_relacionados: supersededList,
         ...oldPnFields,
+        vinculo,
         EN_EXCEL_SUSTITUCION: enExcelSustitucion,
         ruta_foto: rutaFotoNorm.value,
         exp_imagenes: expImagenesNorm.value,
@@ -1179,7 +1193,8 @@ function writeOutputs(dirPath, payload) {
         traceBySku,
         report,
         summary,
-        headers
+        headers,
+        supersededHeaders
     } = payload;
 
     [
@@ -1203,7 +1218,7 @@ function writeOutputs(dirPath, payload) {
     ].forEach((name) => removeIfExists(path.join(dirPath, name)));
 
     writeCsv(path.join(dirPath, 'milu_wp_import.csv'), importRows, headers);
-    writeCsv(path.join(dirPath, 'milu_wp_superseded.csv'), supersededRows, headers);
+    writeCsv(path.join(dirPath, 'milu_wp_superseded.csv'), supersededRows, supersededHeaders);
     writeCsv(path.join(dirPath, 'milu_wp_pending.csv'), pendingRows, headers);
     writeCsv(path.join(dirPath, 'milu_wp_discarded.csv'), discardedRows, headers);
 
@@ -1217,7 +1232,7 @@ function writeOutputs(dirPath, payload) {
     writeJson(path.join(dirPath, 'milu_wp_pending_review.json'), pendingRows);
 
     writeCsv(path.join(dirPath, 'milu_wp_new_import.csv'), importRows, headers);
-    writeCsv(path.join(dirPath, 'milu_wp_superseded_import.csv'), supersededRows, headers);
+    writeCsv(path.join(dirPath, 'milu_wp_superseded_import.csv'), supersededRows, supersededHeaders);
     writeCsv(path.join(dirPath, 'milu_wp_pending_review.csv'), pendingRows, headers);
 
     writeJson(path.join(dirPath, 'milu_wp_trace.json'), traceBySku);
@@ -1434,6 +1449,7 @@ function run(options = {}) {
     discardedRows.sort(sortBySku);
 
     const headers = [...NEW_V506_HEADERS];
+    const supersededHeaders = [...NEW_V506_HEADERS, 'vinculo'];
 
     const report = {
         generated_at: new Date().toISOString(),
@@ -1536,7 +1552,8 @@ function run(options = {}) {
         traceBySku,
         report,
         summary,
-        headers
+        headers,
+        supersededHeaders
     };
 
     if (!dryRun) {
