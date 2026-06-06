@@ -11,6 +11,7 @@ const FG_FGS_CATALOG_PATH = path.join(REPO_ROOT, 'EXCEL_FG-FGS.json');
 const OLD_RELATION_SLOT_COUNT = 18;
 const WP_UPLOADS_BASE = 'https://milu-naval.mystagingwebsite.com/wp-content/uploads';
 const WP_PHOTOS_FIXED_BASE = '/srv/htdocs/wp-content/uploads/2026/fotos';
+const WP_PRODUCT_OLD_BASE = 'https://milu-naval.com/producto/';
 const POS_MODELS = [
     '12V4000M40A',
     '12V4000M53',
@@ -153,7 +154,10 @@ function splitCommaList(value) {
 }
 
 function normalizeOldRouteValue(value) {
-    return collapseSpaces(value).replace(/\s+/g, '-');
+    const token = collapseSpaces(value);
+    if (!token) return '';
+    const slug = token.replace(/\//g, '-');
+    return `${WP_PRODUCT_OLD_BASE}${slug}`;
 }
 
 function inferModelFromText(rawValue) {
@@ -341,16 +345,13 @@ function buildExpImagenesFromBaseAssets(groupRows, principalRow) {
     const buckets = {
         filename_foto: [],
         esquemas_circulos: [],
-        esquemas: [],
-        legacy_ruta_esquemas_pos: []
+        esquemas: []
     };
 
     for (const row of rows) {
         buckets.filename_foto.push(...splitAssetList(row?.filename_foto));
         buckets.esquemas_circulos.push(...splitAssetList(row?.esquemas_circulos));
         buckets.esquemas.push(...splitAssetList(row?.esquemas));
-        // Compatibility fallback only: avoids real asset loss while migration is in progress.
-        buckets.legacy_ruta_esquemas_pos.push(...splitAssetList(row?.ruta_esquemas_pos));
     }
 
     const appendNormalized = (collector, sourceList, assetType = 'pos') => {
@@ -366,11 +367,6 @@ function buildExpImagenesFromBaseAssets(groupRows, principalRow) {
     appendNormalized(ordered, buckets.filename_foto, 'photo');
     appendNormalized(ordered, buckets.esquemas_circulos);
     appendNormalized(ordered, buckets.esquemas);
-
-    const baseHasAny = ordered.length > 0;
-    if (!baseHasAny) {
-        appendNormalized(ordered, buckets.legacy_ruta_esquemas_pos);
-    }
 
     const seenBase = new Set();
     const deduped = [];
@@ -389,7 +385,7 @@ function buildExpImagenesFromBaseAssets(groupRows, principalRow) {
     return {
         value: capped.length > 0 ? capped.join(', ') : buildSinImagenUrl(context),
         warnings,
-        used_legacy_ruta_esquemas_pos: !baseHasAny && buckets.legacy_ruta_esquemas_pos.length > 0
+        used_legacy_ruta_esquemas_pos: false
     };
 }
 
@@ -427,18 +423,15 @@ function buildOldPnFields(rowOrGroup) {
     pushList(rowOrGroup?.old_pn_relacionados);
     pushList(rowOrGroup?.supersededList);
     pushList(rowOrGroup?.subst_pnlist_final);
-    pushList(rowOrGroup?.sust_superseded_list);
 
     for (const row of sourceRows) {
         pushList(row?.old_pn_relacionados);
         pushList(row?.subst_pnlist_final);
-        pushList(row?.sust_superseded_list);
     }
 
     for (const row of consolidatedRows) {
         pushList(row?.old_pn_relacionados);
         pushList(row?.subst_pnlist_final);
-        pushList(row?.sust_superseded_list);
     }
 
     const limited = candidates.slice(0, OLD_RELATION_SLOT_COUNT);
@@ -526,7 +519,7 @@ function normalizeLibroPag(row) {
     if (libroPag) return libroPag;
 
     const engine = getEngineName(row);
-    const pageCandidate = collapseSpaces(row?.page4 || row?.['Source Page'] || row?.rebuild_source_page || row?.PAG);
+    const pageCandidate = collapseSpaces(row?.['Source Page']);
     if (!engine || !pageCandidate) return '';
 
     const numericPage = String(pageCandidate).match(/\d+/)?.[0] || '';
@@ -648,13 +641,12 @@ function getNewPartNumber(row) {
 
 function getSupersededListValue(row) {
     return pickMostFrequent([
-        row.subst_pnlist_final,
-        row.sust_superseded_list
+        row.subst_pnlist_final
     ]);
 }
 
 function getHierarchy(row) {
-    return t(getExportField(row, 'hierarchie_final', row?.sust_hierarchie));
+    return t(getExportField(row, 'hierarchie_final'));
 }
 
 function getDesignation(row) {
@@ -683,19 +675,19 @@ function getWeight(row) {
 }
 
 function getEngineName(row) {
-    return t(row.engine_model || row.model || row.engine || row.__engine_file);
+    return t(row.engine_model);
 }
 
 function getSourceId(row) {
-    return t(row.ID || row.rebuild_legacy_engine_id);
+    return t(row.ID);
 }
 
 function getSourcePage(row) {
-    return t(row['Source Page'] || row.rebuild_source_page);
+    return t(row['Source Page']);
 }
 
 function getPos(row) {
-    return t(row.POS || row.pos_final);
+    return t(row.pos_final);
 }
 
 function isSupersededRow(row) {
@@ -791,7 +783,7 @@ function decideByQa(rows, qaSummary) {
 function buildAggregates(rows) {
     const engines = uniq(rows.map((row) => getEngineName(row))).join(', ');
     const sourceIds = uniq(rows.map((row) => getSourceId(row))).join(', ');
-    const sourcePages = uniq(rows.map((row) => getSourcePage(row))).join(', ');
+    const sourcePages = joinUniqueSorted(rows.flatMap((row) => splitMultiValues(row?.pages)));
 
     return { engines, sourceIds, sourcePages };
 }
@@ -802,7 +794,7 @@ function buildTraceEntry(sku, rows, merged, decisionMeta, qaSummary) {
         engine_model: getEngineName(row),
         source_file: t(row.__engine_file),
         source_page: getSourcePage(row),
-        pos: t(row.POS || row.pos_final),
+        pos: t(row.pos_final),
         bom: t(row['BOM-No.']),
         designation_final: getDesignation(row),
         measure_final: getMeasurement(row),

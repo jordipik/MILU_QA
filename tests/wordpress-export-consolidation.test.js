@@ -23,6 +23,7 @@ function makeImportRow(overrides = {}) {
         qa_revision_accion: 'importar',
         DESIGNATION: 'Principal designation',
         libro_pag: '12V4000M53-0010',
+        pages: '12V4000M53-0010',
         atributo: 'AT-A',
         engine_model: '12V4000M53',
         Model: '12V4000M53',
@@ -51,6 +52,7 @@ function makeCopyRow(overrides = {}) {
         qa_revision_estado: 'ok',
         qa_revision_accion: 'Copia',
         libro_pag: '16V4000M73-0020',
+        pages: '16V4000M73-0020',
         atributo: 'AT-B',
         engine_model: '16V4000M73',
         Model: '16V4000M73',
@@ -188,6 +190,66 @@ describe('WordPress consolidation behavior (canonical V1.04)', () => {
         assert.equal(hasImportableRow(mixed), true);
     });
 
+    it('10b) source_pages consolidates pages from engine rows', () => {
+        const rows = [
+            makeImportRow({ pages: '12V4000M53-0010' }),
+            makeCopyRow({ pages: '16V4000M73-0020' })
+        ];
+        const out = buildMergedRow([rows[0]], { sku: 'PN-001', hierarchy: 'New', consolidatedRows: getConsolidationRows(rows) });
+
+        assert.equal(out.source_pages, '12V4000M53-0010, 16V4000M73-0020');
+    });
+
+    it('10c) source_pages uses pages only (no Source Page/libro_pag fallback)', () => {
+        const rows = [
+            makeImportRow({ pages: '', 'Source Page': '777', libro_pag: '12V4000M53-0777' })
+        ];
+        const out = buildMergedRow([rows[0]], { sku: 'PN-001', hierarchy: 'New', consolidatedRows: getConsolidationRows(rows) });
+
+        assert.equal(out.source_pages, '');
+    });
+
+    it('10d) engine uses engine_model only (no model/engine/__engine_file fallback)', () => {
+        const row = makeImportRow({
+            engine_model: '',
+            model: '16V4000M73',
+            engine: '16V4000M73',
+            __engine_file: 'engine_16V4000M73.json',
+            filename_foto: '',
+            esquemas_circulos: '',
+            esquemas: ''
+        });
+        const out = buildMergedRow([row], { sku: 'PN-001', hierarchy: 'New' });
+
+        assert.equal(out.engine, '');
+    });
+
+    it('10e) Id uses ID only (no rebuild_legacy_engine_id fallback)', () => {
+        const row = makeImportRow({
+            ID: '',
+            rebuild_legacy_engine_id: 'RB-LEGACY-123',
+            filename_foto: '',
+            esquemas_circulos: '',
+            esquemas: ''
+        });
+        const out = buildMergedRow([row], { sku: 'PN-001', hierarchy: 'New' });
+
+        assert.equal(out.Id, '');
+    });
+
+    it('10f) POS uses pos_final only (no POS fallback)', () => {
+        const row = makeImportRow({
+            pos_final: '',
+            POS: '123',
+            filename_foto: '',
+            esquemas_circulos: '',
+            esquemas: ''
+        });
+        const out = buildMergedRow([row], { sku: 'PN-001', hierarchy: 'New' });
+
+        assert.equal(out.POS, '');
+    });
+
     it('11) fecha_version is generated with timestamp format when missing', () => {
         const out = buildMergedRow([makeImportRow({ fecha_version: '' })], { sku: 'PN-001', hierarchy: 'New' });
         assert.match(out.fecha_version, /^\d{8}\.\d{4}$/);
@@ -244,11 +306,11 @@ describe('WordPress consolidation behavior (canonical V1.04)', () => {
         });
 
         assert.equal(out.old_number_01, '200439016200');
-        assert.equal(out.old_ruta_01, '200439016200');
+        assert.equal(out.old_ruta_01, 'https://milu-naval.com/producto/200439016200');
         assert.equal(out.old_number_02, '635D01023/1');
-        assert.equal(out.old_ruta_02, '635D01023/1');
+        assert.equal(out.old_ruta_02, 'https://milu-naval.com/producto/635D01023-1');
         assert.equal(out.old_number_03, '0009976290');
-        assert.equal(out.old_ruta_03, '0009976290');
+        assert.equal(out.old_ruta_03, 'https://milu-naval.com/producto/0009976290');
         assert.equal(out.old_number_04, '');
         assert.equal(out.old_ruta_04, '');
         assert.equal(out.old_number_18, '');
@@ -272,7 +334,7 @@ describe('WordPress consolidation behavior (canonical V1.04)', () => {
 
         assert.equal(out.old_number_01, 'PN001');
         assert.equal(out.old_number_18, 'PN018');
-        assert.equal(out.old_ruta_18, 'PN018');
+        assert.equal(out.old_ruta_18, 'https://milu-naval.com/producto/PN018');
         assert.equal(out.old_number_19, undefined);
     });
 
@@ -287,15 +349,17 @@ describe('WordPress consolidation behavior (canonical V1.04)', () => {
         assert.equal(fields.old_number_04, '');
     });
 
-    it('22) old_ruta is generated from old_number with URL-safe spacing normalization', () => {
+    it('22) old_ruta is generated as product URL + old_number with slash to hyphen', () => {
         const fields = buildOldPnFields({
-            old_pn_relacionados: 'OLD PN 100,   SECOND  PN'
+            old_pn_relacionados: 'OLD PN 100,   SECOND  PN, AAA/BBB'
         });
 
         assert.equal(fields.old_number_01, 'OLD PN 100');
-        assert.equal(fields.old_ruta_01, 'OLD-PN-100');
+        assert.equal(fields.old_ruta_01, 'https://milu-naval.com/producto/OLD PN 100');
         assert.equal(fields.old_number_02, 'SECOND PN');
-        assert.equal(fields.old_ruta_02, 'SECOND-PN');
+        assert.equal(fields.old_ruta_02, 'https://milu-naval.com/producto/SECOND PN');
+        assert.equal(fields.old_number_03, 'AAA/BBB');
+        assert.equal(fields.old_ruta_03, 'https://milu-naval.com/producto/AAA-BBB');
     });
 
     it('23) compatibility: old_pn_relacionados remains in merged row', () => {
@@ -310,6 +374,21 @@ describe('WordPress consolidation behavior (canonical V1.04)', () => {
 
         assert.equal(out.old_pn_relacionados, 'X-1, X-2');
         assert.equal(typeof out.old_pn_relacionados, 'string');
+    });
+
+    it('23b) old_pn_relacionados uses subst_pnlist_final only (no sust_superseded_list fallback)', () => {
+        const out = buildMergedRow([
+            makeImportRow({
+                subst_pnlist_final: '',
+                sust_superseded_list: 'LEGACY-OLD-1, LEGACY-OLD-2'
+            })
+        ], {
+            sku: 'PN-001',
+            hierarchy: 'New'
+        });
+
+        assert.equal(out.old_pn_relacionados, '');
+        assert.equal(out.old_number_01, '');
     });
 
     it('24) URL /2026/02 with 12V4000M40A filename becomes /12V4000M40A-POS/', () => {
@@ -488,6 +567,22 @@ describe('WordPress consolidation behavior (canonical V1.04)', () => {
         const values = splitOut(built.value);
         assert.ok(values.some((v) => v.includes('12V4000M53-0099-01-70.webp')));
         assert.ok(values.some((v) => v.includes('/srv/htdocs/wp-content/uploads/2026/fotos/12V4000M53-0099-01.webp')));
+    });
+
+    it('39b) ruta_esquemas_pos alone never contributes to exp_imagenes', () => {
+        const built = buildExpImagenesFromBaseAssets([
+            makeImportRow({
+                filename_foto: '',
+                esquemas_circulos: '',
+                esquemas: '',
+                ruta_esquemas_pos: 'legacy_only_should_not_be_used.webp'
+            })
+        ]);
+
+        assert.equal(
+            built.value,
+            'https://milu-naval.mystagingwebsite.com/wp-content/uploads/sin_imagen.jpeg'
+        );
     });
 
     it('40) ruta_foto source field is ignored and filename_foto drives ruta_foto output', () => {

@@ -83,10 +83,18 @@ The export MUST publish exactly 66 columns in this exact order.
 
 ## Field Dictionary
 
+### Hierarchy field
+
+- SUST_TIPO:
+	- Source: `hierarchie_final` only.
+	- No fallback: `sust_hierarchie` is not used for export derivation.
+	- If `hierarchie_final` is empty, `SUST_TIPO` must be exported as empty string.
+
 ### Existing supersession fields
 
 - old_pn_relacionados:
-	- Source priority: subst_pnlist_final, sust_superseded_list.
+	- Source: subst_pnlist_final only.
+	- No fallback: sust_superseded_list is not used for export derivation.
 	- Format: comma-separated list.
 	- Backward compatibility field, MUST remain present.
 
@@ -99,7 +107,8 @@ The export MUST publish exactly 66 columns in this exact order.
 
 - old_ruta_01 ... old_ruta_18:
 	- Source: derived from corresponding old_number_N.
-	- Rule in V1.04: URL-safe spacing normalization from old_number_N when no dedicated route builder exists.
+	- Rule in V1.04: `https://milu-naval.com/producto/` + old_number_N.
+	- Normalization: replace `/` with `-` in the old_number_N token when building the URL slug.
 	- If old_number_N is empty: old_ruta_N is empty.
 
 ## Consolidation Rules
