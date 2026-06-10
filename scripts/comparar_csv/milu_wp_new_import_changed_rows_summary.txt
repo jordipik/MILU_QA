@@ -1,0 +1,46 @@
+CSV comparison summary
+======================
+
+New rows: 5487
+Old rows: 5500
+Matched rows: 5487
+New records: 0
+Deleted records: 13
+Changed/new rows exported: 134
+Changed/deleted keys total: 147
+Ignored columns: fecha_version
+
+Changed fields by column:
+- exp_imagenes: 82
+- pn: 53
+- designation: 51
+- fg_code_description: 33
+- fg_code: 21
+- exp_categorias: 19
+- fg_description: 19
+- PAG: 10
+- esquema_general: 10
+- exp_motor: 10
+- model_type: 10
+- old_number_01: 1
+- old_number_02: 1
+- old_number_03: 1
+- old_number_04: 1
+- old_number_05: 1
+- old_number_06: 1
+- old_number_07: 1
+- old_number_08: 1
+- old_number_09: 1
+- old_number_10: 1
+- old_number_11: 1
+- old_ruta_01: 1
+- old_ruta_02: 1
+- old_ruta_03: 1
+- old_ruta_04: 1
+- old_ruta_05: 1
+- old_ruta_06: 1
+- old_ruta_07: 1
+- old_ruta_08: 1
+- old_ruta_09: 1
+- old_ruta_10: 1
+- old_ruta_11: 1

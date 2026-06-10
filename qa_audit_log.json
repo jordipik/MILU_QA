@@ -3152,5 +3152,3585 @@
         }
       }
     }
+  },
+  {
+    "id": "1781040565031-xl10sclf",
+    "timestamp": "2026-06-09T21:29:25.031Z",
+    "kind": "change-applied",
+    "type": "qa-row-patch",
+    "module": "qa_milu",
+    "action": "save-side-form",
+    "description": "Guardar ficha lateral ID RB-12V4000M40A-000715",
+    "target": {
+      "revisionKey": "id=RB-12V4000M40A-000715"
+    },
+    "changeId": "1781040563727-sxgmbecr",
+    "data": {
+      "target": {
+        "revisionKey": "id=RB-12V4000M40A-000715",
+        "engineFile": "engine_12V4000M40A.json",
+        "id": "RB-12V4000M40A-000715"
+      },
+      "changes": {
+        "pn_final": {
+          "before": "5110250202 ZR175/60",
+          "after": "5110250202"
+        },
+        "designation_final": {
+          "before": "COMPRESSOR WHEEL GRAD",
+          "after": "COMPRESSOR WHEEL"
+        },
+        "fg_fgs_final": {
+          "before": "101-01",
+          "after": ""
+        },
+        "bom_final": {
+          "before": "X00039514",
+          "after": ""
+        }
+      }
+    }
+  },
+  {
+    "id": "1781040580164-of830v8h",
+    "timestamp": "2026-06-09T21:29:40.164Z",
+    "kind": "change-applied",
+    "type": "qa-row-patch",
+    "module": "qa_milu",
+    "action": "save-side-form",
+    "description": "Guardar ficha lateral ID RB-12V4000M40A-000771",
+    "target": {
+      "revisionKey": "id=RB-12V4000M40A-000771"
+    },
+    "changeId": "1781040578792-f3qw9was",
+    "data": {
+      "target": {
+        "revisionKey": "id=RB-12V4000M40A-000771",
+        "engineFile": "engine_12V4000M40A.json",
+        "id": "RB-12V4000M40A-000771"
+      },
+      "changes": {
+        "pn_final": {
+          "before": "5110250202 ZR175/60",
+          "after": "5110250202"
+        },
+        "designation_final": {
+          "before": "COMPRESSOR WHEEL GRAD",
+          "after": "COMPRESSOR WHEEL"
+        },
+        "fg_fgs_final": {
+          "before": "101-89",
+          "after": ""
+        },
+        "bom_final": {
+          "before": "X00039517",
+          "after": ""
+        },
+        "qa_revision_accion": {
+          "before": "copia",
+          "after": "importar"
+        }
+      }
+    }
+  },
+  {
+    "id": "1781040584817-w9dl9mvy",
+    "timestamp": "2026-06-09T21:29:44.817Z",
+    "kind": "change-applied",
+    "type": "qa-row-patch",
+    "module": "qa_milu",
+    "action": "inline-accion",
+    "description": "Cambio rapido accion ID RB-12V4000M40A-000771",
+    "target": {
+      "revisionKey": "id=RB-12V4000M40A-000771"
+    },
+    "changeId": "1781040584433-9udxf5su",
+    "data": {
+      "target": {
+        "revisionKey": "id=RB-12V4000M40A-000771",
+        "engineFile": "engine_12V4000M40A.json",
+        "id": "RB-12V4000M40A-000771"
+      },
+      "changes": {
+        "qa_revision_accion": {
+          "before": "importar",
+          "after": "copia"
+        }
+      }
+    }
+  },
+  {
+    "id": "1781040668502-dgnx936s",
+    "timestamp": "2026-06-09T21:31:08.502Z",
+    "kind": "change-applied",
+    "type": "qa-row-patch",
+    "module": "qa_milu",
+    "action": "save-side-form",
+    "description": "Guardar ficha lateral ID RB-12V4000M40A-000823",
+    "target": {
+      "revisionKey": "id=RB-12V4000M40A-000823"
+    },
+    "changeId": "1781040667186-8ca72f47",
+    "data": {
+      "target": {
+        "revisionKey": "id=RB-12V4000M40A-000823",
+        "engineFile": "engine_12V4000M40A.json",
+        "id": "RB-12V4000M40A-000823"
+      },
+      "changes": {
+        "pn_final": {
+          "before": "5260900104 12/16V4000",
+          "after": "5260900104"
+        },
+        "designation_final": {
+          "before": "SILENCER AIR INTAKE MAR.",
+          "after": "SILENCER AIR INTAKE"
+        },
+        "fg_fgs_final": {
+          "before": "122-05",
+          "after": ""
+        },
+        "bom_final": {
+          "before": "X00010987",
+          "after": ""
+        }
+      }
+    }
+  },
+  {
+    "id": "1781040890630-br5w00wv",
+    "timestamp": "2026-06-09T21:34:50.630Z",
+    "kind": "change-applied",
+    "type": "qa-row-patch",
+    "module": "qa_milu",
+    "action": "inline-accion",
+    "description": "Cambio rapido accion ID RB-12V4000M40A-000823",
+    "target": {
+      "revisionKey": "id=RB-12V4000M40A-000823"
+    },
+    "changeId": "1781040890308-lvcqlko6",
+    "data": {
+      "target": {
+        "revisionKey": "id=RB-12V4000M40A-000823",
+        "engineFile": "engine_12V4000M40A.json",
+        "id": "RB-12V4000M40A-000823"
+      },
+      "changes": {
+        "qa_revision_accion": {
+          "before": "importar",
+          "after": "copia"
+        }
+      }
+    }
+  },
+  {
+    "id": "1781040936552-fnw15fkt",
+    "timestamp": "2026-06-09T21:35:36.552Z",
+    "kind": "change-applied",
+    "type": "qa-row-patch",
+    "module": "qa_milu",
+    "action": "save-side-form",
+    "description": "Guardar ficha lateral ID RB-12V4000M53-001007",
+    "target": {
+      "revisionKey": "id=RB-12V4000M53-001007"
+    },
+    "changeId": "1781040933324-8rcz2r6p",
+    "data": {
+      "target": {
+        "revisionKey": "id=RB-12V4000M53-001007",
+        "engineFile": "engine_12V4000M53.json",
+        "id": "RB-12V4000M53-001007"
+      },
+      "changes": {
+        "pn_final": {
+          "before": "5260900104 12/16V4000",
+          "after": "5260900104"
+        },
+        "fg_fgs_final": {
+          "before": "122-05",
+          "after": ""
+        },
+        "bom_final": {
+          "before": "X00010987",
+          "after": ""
+        },
+        "qa_revision_accion": {
+          "before": "copia",
+          "after": "importar"
+        }
+      }
+    }
+  },
+  {
+    "id": "1781040947261-1vhld9va",
+    "timestamp": "2026-06-09T21:35:47.261Z",
+    "kind": "change-applied",
+    "type": "qa-row-patch",
+    "module": "qa_milu",
+    "action": "save-side-form",
+    "description": "Guardar ficha lateral ID RB-12V4000M53-004122",
+    "target": {
+      "revisionKey": "id=RB-12V4000M53-004122"
+    },
+    "changeId": "1781040943983-w9swllmp",
+    "data": {
+      "target": {
+        "revisionKey": "id=RB-12V4000M53-004122",
+        "engineFile": "engine_12V4000M53.json",
+        "id": "RB-12V4000M53-004122"
+      },
+      "changes": {
+        "pn_final": {
+          "before": "5260900104 12/16V4000",
+          "after": "5260900104"
+        },
+        "fg_fgs_final": {
+          "before": "122-05",
+          "after": ""
+        },
+        "bom_final": {
+          "before": "X00010987",
+          "after": ""
+        },
+        "qa_revision_accion": {
+          "before": "copia",
+          "after": "importar"
+        }
+      }
+    }
+  },
+  {
+    "id": "1781040955089-zk0ebbuy",
+    "timestamp": "2026-06-09T21:35:55.089Z",
+    "kind": "change-applied",
+    "type": "qa-row-patch",
+    "module": "qa_milu",
+    "action": "save-side-form",
+    "description": "Guardar ficha lateral ID RB-12V4000M70-000912",
+    "target": {
+      "revisionKey": "id=RB-12V4000M70-000912"
+    },
+    "changeId": "1781040952684-h9vrr0w9",
+    "data": {
+      "target": {
+        "revisionKey": "id=RB-12V4000M70-000912",
+        "engineFile": "engine_12V4000M70.json",
+        "id": "RB-12V4000M70-000912"
+      },
+      "changes": {
+        "pn_final": {
+          "before": "5260900104 12/16V4000",
+          "after": "5260900104"
+        },
+        "fg_fgs_final": {
+          "before": "122-05",
+          "after": ""
+        },
+        "bom_final": {
+          "before": "X00010987",
+          "after": ""
+        },
+        "qa_revision_accion": {
+          "before": "copia",
+          "after": "importar"
+        }
+      }
+    }
+  },
+  {
+    "id": "1781040963975-h5urib50",
+    "timestamp": "2026-06-09T21:36:03.975Z",
+    "kind": "change-applied",
+    "type": "qa-row-patch",
+    "module": "qa_milu",
+    "action": "save-side-form",
+    "description": "Guardar ficha lateral ID RB-12V4000M70-003458",
+    "target": {
+      "revisionKey": "id=RB-12V4000M70-003458"
+    },
+    "changeId": "1781040961255-cke7pi1l",
+    "data": {
+      "target": {
+        "revisionKey": "id=RB-12V4000M70-003458",
+        "engineFile": "engine_12V4000M70.json",
+        "id": "RB-12V4000M70-003458"
+      },
+      "changes": {
+        "pn_final": {
+          "before": "5260900104 12/16V4000",
+          "after": "5260900104"
+        },
+        "fg_fgs_final": {
+          "before": "122-05",
+          "after": ""
+        },
+        "bom_final": {
+          "before": "X00010987",
+          "after": ""
+        },
+        "qa_revision_accion": {
+          "before": "copia",
+          "after": "importar"
+        }
+      }
+    }
+  },
+  {
+    "id": "1781040976249-9s443b3g",
+    "timestamp": "2026-06-09T21:36:16.249Z",
+    "kind": "change-applied",
+    "type": "qa-row-patch",
+    "module": "qa_milu",
+    "action": "save-side-form",
+    "description": "Guardar ficha lateral ID RB-16V4000M73-001034",
+    "target": {
+      "revisionKey": "id=RB-16V4000M73-001034"
+    },
+    "changeId": "1781040971125-p6rukj53",
+    "data": {
+      "target": {
+        "revisionKey": "id=RB-16V4000M73-001034",
+        "engineFile": "engine_16V4000M73.json",
+        "id": "RB-16V4000M73-001034"
+      },
+      "changes": {
+        "pn_final": {
+          "before": "5260900104 12/16V4000",
+          "after": "5260900104"
+        },
+        "fg_fgs_final": {
+          "before": "122-05",
+          "after": ""
+        },
+        "bom_final": {
+          "before": "X00010987",
+          "after": ""
+        },
+        "qa_revision_accion": {
+          "before": "copia",
+          "after": "importar"
+        }
+      }
+    }
+  },
+  {
+    "id": "1781040988209-gv3s4xmw",
+    "timestamp": "2026-06-09T21:36:28.209Z",
+    "kind": "change-applied",
+    "type": "qa-row-patch",
+    "module": "qa_milu",
+    "action": "save-side-form",
+    "description": "Guardar ficha lateral ID RB-16V4000M73-004208",
+    "target": {
+      "revisionKey": "id=RB-16V4000M73-004208"
+    },
+    "changeId": "1781040983039-6r93ugg2",
+    "data": {
+      "target": {
+        "revisionKey": "id=RB-16V4000M73-004208",
+        "engineFile": "engine_16V4000M73.json",
+        "id": "RB-16V4000M73-004208"
+      },
+      "changes": {
+        "pn_final": {
+          "before": "5260900104 12/16V4000",
+          "after": "5260900104"
+        },
+        "fg_fgs_final": {
+          "before": "122-05",
+          "after": ""
+        },
+        "bom_final": {
+          "before": "X00010987",
+          "after": ""
+        },
+        "qa_revision_accion": {
+          "before": "copia",
+          "after": "importar"
+        }
+      }
+    }
+  },
+  {
+    "id": "1781040996976-g1na45h7",
+    "timestamp": "2026-06-09T21:36:36.976Z",
+    "kind": "change-applied",
+    "type": "qa-row-patch",
+    "module": "qa_milu",
+    "action": "save-side-form",
+    "description": "Guardar ficha lateral ID RB-16V4000M73-007382",
+    "target": {
+      "revisionKey": "id=RB-16V4000M73-007382"
+    },
+    "changeId": "1781040992384-6ywpe1ab",
+    "data": {
+      "target": {
+        "revisionKey": "id=RB-16V4000M73-007382",
+        "engineFile": "engine_16V4000M73.json",
+        "id": "RB-16V4000M73-007382"
+      },
+      "changes": {
+        "pn_final": {
+          "before": "5260900104 12/16V4000",
+          "after": "5260900104"
+        },
+        "fg_fgs_final": {
+          "before": "122-05",
+          "after": ""
+        },
+        "bom_final": {
+          "before": "X00010987",
+          "after": ""
+        },
+        "qa_revision_accion": {
+          "before": "copia",
+          "after": "importar"
+        }
+      }
+    }
+  },
+  {
+    "id": "1781041005776-b64zqy3b",
+    "timestamp": "2026-06-09T21:36:45.776Z",
+    "kind": "change-applied",
+    "type": "qa-row-patch",
+    "module": "qa_milu",
+    "action": "save-side-form",
+    "description": "Guardar ficha lateral ID RB-16V4000M73-010565",
+    "target": {
+      "revisionKey": "id=RB-16V4000M73-010565"
+    },
+    "changeId": "1781041000811-agkq9808",
+    "data": {
+      "target": {
+        "revisionKey": "id=RB-16V4000M73-010565",
+        "engineFile": "engine_16V4000M73.json",
+        "id": "RB-16V4000M73-010565"
+      },
+      "changes": {
+        "pn_final": {
+          "before": "5260900104 12/16V4000",
+          "after": "5260900104"
+        },
+        "fg_fgs_final": {
+          "before": "122-05",
+          "after": ""
+        },
+        "bom_final": {
+          "before": "X00010987",
+          "after": ""
+        },
+        "qa_revision_accion": {
+          "before": "copia",
+          "after": "importar"
+        }
+      }
+    }
+  },
+  {
+    "id": "1781041007976-9atvf29a",
+    "timestamp": "2026-06-09T21:36:47.976Z",
+    "kind": "change-applied",
+    "type": "qa-row-patch",
+    "module": "qa_milu",
+    "action": "inline-accion",
+    "description": "Cambio rapido accion ID RB-12V4000M53-001007",
+    "target": {
+      "revisionKey": "id=RB-12V4000M53-001007"
+    },
+    "changeId": "1781041007201-m1b13rz9",
+    "data": {
+      "target": {
+        "revisionKey": "id=RB-12V4000M53-001007",
+        "engineFile": "engine_12V4000M53.json",
+        "id": "RB-12V4000M53-001007"
+      },
+      "changes": {
+        "qa_revision_accion": {
+          "before": "importar",
+          "after": "copia"
+        }
+      }
+    }
+  },
+  {
+    "id": "1781041010302-rzmhc28o",
+    "timestamp": "2026-06-09T21:36:50.302Z",
+    "kind": "change-applied",
+    "type": "qa-row-patch",
+    "module": "qa_milu",
+    "action": "inline-accion",
+    "description": "Cambio rapido accion ID RB-12V4000M53-004122",
+    "target": {
+      "revisionKey": "id=RB-12V4000M53-004122"
+    },
+    "changeId": "1781041009522-leiwi6se",
+    "data": {
+      "target": {
+        "revisionKey": "id=RB-12V4000M53-004122",
+        "engineFile": "engine_12V4000M53.json",
+        "id": "RB-12V4000M53-004122"
+      },
+      "changes": {
+        "qa_revision_accion": {
+          "before": "importar",
+          "after": "copia"
+        }
+      }
+    }
+  },
+  {
+    "id": "1781041012322-7hip59r4",
+    "timestamp": "2026-06-09T21:36:52.323Z",
+    "kind": "change-applied",
+    "type": "qa-row-patch",
+    "module": "qa_milu",
+    "action": "inline-accion",
+    "description": "Cambio rapido accion ID RB-12V4000M70-000912",
+    "target": {
+      "revisionKey": "id=RB-12V4000M70-000912"
+    },
+    "changeId": "1781041011699-xyvqj280",
+    "data": {
+      "target": {
+        "revisionKey": "id=RB-12V4000M70-000912",
+        "engineFile": "engine_12V4000M70.json",
+        "id": "RB-12V4000M70-000912"
+      },
+      "changes": {
+        "qa_revision_accion": {
+          "before": "importar",
+          "after": "copia"
+        }
+      }
+    }
+  },
+  {
+    "id": "1781041014053-1k11vyn4",
+    "timestamp": "2026-06-09T21:36:54.053Z",
+    "kind": "change-applied",
+    "type": "qa-row-patch",
+    "module": "qa_milu",
+    "action": "inline-accion",
+    "description": "Cambio rapido accion ID RB-12V4000M70-003458",
+    "target": {
+      "revisionKey": "id=RB-12V4000M70-003458"
+    },
+    "changeId": "1781041013449-bfinpomq",
+    "data": {
+      "target": {
+        "revisionKey": "id=RB-12V4000M70-003458",
+        "engineFile": "engine_12V4000M70.json",
+        "id": "RB-12V4000M70-003458"
+      },
+      "changes": {
+        "qa_revision_accion": {
+          "before": "importar",
+          "after": "copia"
+        }
+      }
+    }
+  },
+  {
+    "id": "1781041017607-9rjiaer1",
+    "timestamp": "2026-06-09T21:36:57.607Z",
+    "kind": "change-applied",
+    "type": "qa-row-patch",
+    "module": "qa_milu",
+    "action": "inline-accion",
+    "description": "Cambio rapido accion ID RB-16V4000M73-001034",
+    "target": {
+      "revisionKey": "id=RB-16V4000M73-001034"
+    },
+    "changeId": "1781041016356-bodijr96",
+    "data": {
+      "target": {
+        "revisionKey": "id=RB-16V4000M73-001034",
+        "engineFile": "engine_16V4000M73.json",
+        "id": "RB-16V4000M73-001034"
+      },
+      "changes": {
+        "qa_revision_accion": {
+          "before": "importar",
+          "after": "copia"
+        }
+      }
+    }
+  },
+  {
+    "id": "1781041019029-b76kspw2",
+    "timestamp": "2026-06-09T21:36:59.029Z",
+    "kind": "change-applied",
+    "type": "qa-row-patch",
+    "module": "qa_milu",
+    "action": "inline-accion",
+    "description": "Cambio rapido accion ID RB-16V4000M73-004208",
+    "target": {
+      "revisionKey": "id=RB-16V4000M73-004208"
+    },
+    "changeId": "1781041017501-8xutnbpx",
+    "data": {
+      "target": {
+        "revisionKey": "id=RB-16V4000M73-004208",
+        "engineFile": "engine_16V4000M73.json",
+        "id": "RB-16V4000M73-004208"
+      },
+      "changes": {
+        "qa_revision_accion": {
+          "before": "importar",
+          "after": "copia"
+        }
+      }
+    }
+  },
+  {
+    "id": "1781041020445-ojmjq3u7",
+    "timestamp": "2026-06-09T21:37:00.445Z",
+    "kind": "change-applied",
+    "type": "qa-row-patch",
+    "module": "qa_milu",
+    "action": "inline-accion",
+    "description": "Cambio rapido accion ID RB-16V4000M73-007382",
+    "target": {
+      "revisionKey": "id=RB-16V4000M73-007382"
+    },
+    "changeId": "1781041018919-3ut4v9ee",
+    "data": {
+      "target": {
+        "revisionKey": "id=RB-16V4000M73-007382",
+        "engineFile": "engine_16V4000M73.json",
+        "id": "RB-16V4000M73-007382"
+      },
+      "changes": {
+        "qa_revision_accion": {
+          "before": "importar",
+          "after": "copia"
+        }
+      }
+    }
+  },
+  {
+    "id": "1781041023164-mpvppan2",
+    "timestamp": "2026-06-09T21:37:03.164Z",
+    "kind": "change-applied",
+    "type": "qa-row-patch",
+    "module": "qa_milu",
+    "action": "inline-accion",
+    "description": "Cambio rapido accion ID RB-16V4000M73-010565",
+    "target": {
+      "revisionKey": "id=RB-16V4000M73-010565"
+    },
+    "changeId": "1781041021825-ecjbnobv",
+    "data": {
+      "target": {
+        "revisionKey": "id=RB-16V4000M73-010565",
+        "engineFile": "engine_16V4000M73.json",
+        "id": "RB-16V4000M73-010565"
+      },
+      "changes": {
+        "qa_revision_accion": {
+          "before": "importar",
+          "after": "copia"
+        }
+      }
+    }
+  },
+  {
+    "id": "1781041084031-z7ul0t2d",
+    "timestamp": "2026-06-09T21:38:04.031Z",
+    "kind": "change-applied",
+    "type": "qa-row-patch",
+    "module": "qa_milu",
+    "action": "inline-accion",
+    "description": "Cambio rapido accion ID RB-12V4000M40A-001208",
+    "target": {
+      "revisionKey": "id=RB-12V4000M40A-001208"
+    },
+    "changeId": "1781041083663-isyxl7j0",
+    "data": {
+      "target": {
+        "revisionKey": "id=RB-12V4000M40A-001208",
+        "engineFile": "engine_12V4000M40A.json",
+        "id": "RB-12V4000M40A-001208"
+      },
+      "changes": {
+        "qa_revision_accion": {
+          "before": "importar",
+          "after": "copia"
+        }
+      }
+    }
+  },
+  {
+    "id": "1781041095564-qkxahou8",
+    "timestamp": "2026-06-09T21:38:15.564Z",
+    "kind": "change-applied",
+    "type": "qa-row-patch",
+    "module": "qa_milu",
+    "action": "save-side-form",
+    "description": "Guardar ficha lateral ID RB-12V4000M40A-001208",
+    "target": {
+      "revisionKey": "id=RB-12V4000M40A-001208"
+    },
+    "changeId": "1781041094230-2h4tre8k",
+    "data": {
+      "target": {
+        "revisionKey": "id=RB-12V4000M40A-001208",
+        "engineFile": "engine_12V4000M40A.json",
+        "id": "RB-12V4000M40A-001208"
+      },
+      "changes": {
+        "pn_final": {
+          "before": "5249970635 40X50X5.5",
+          "after": "5249970635"
+        },
+        "fg_fgs_final": {
+          "before": "183-05",
+          "after": ""
+        },
+        "bom_final": {
+          "before": "5241800911",
+          "after": ""
+        },
+        "qa_revision_accion": {
+          "before": "copia",
+          "after": "importar"
+        }
+      }
+    }
+  },
+  {
+    "id": "1781041104114-0azzjsgr",
+    "timestamp": "2026-06-09T21:38:24.114Z",
+    "kind": "change-applied",
+    "type": "qa-row-patch",
+    "module": "qa_milu",
+    "action": "save-side-form",
+    "description": "Guardar ficha lateral ID RB-12V4000M70-001456",
+    "target": {
+      "revisionKey": "id=RB-12V4000M70-001456"
+    },
+    "changeId": "1781041101804-f663atmb",
+    "data": {
+      "target": {
+        "revisionKey": "id=RB-12V4000M70-001456",
+        "engineFile": "engine_12V4000M70.json",
+        "id": "RB-12V4000M70-001456"
+      },
+      "changes": {
+        "pn_final": {
+          "before": "5249970635 40X50X5.5",
+          "after": "5249970635"
+        },
+        "fg_fgs_final": {
+          "before": "183-07",
+          "after": ""
+        },
+        "bom_final": {
+          "before": "5241800911",
+          "after": ""
+        },
+        "qa_revision_accion": {
+          "before": "copia",
+          "after": "importar"
+        }
+      }
+    }
+  },
+  {
+    "id": "1781041111360-a1z2kp6f",
+    "timestamp": "2026-06-09T21:38:31.360Z",
+    "kind": "change-applied",
+    "type": "qa-row-patch",
+    "module": "qa_milu",
+    "action": "save-side-form",
+    "description": "Guardar ficha lateral ID RB-12V4000M70-003947",
+    "target": {
+      "revisionKey": "id=RB-12V4000M70-003947"
+    },
+    "changeId": "1781041108898-dcme6kdm",
+    "data": {
+      "target": {
+        "revisionKey": "id=RB-12V4000M70-003947",
+        "engineFile": "engine_12V4000M70.json",
+        "id": "RB-12V4000M70-003947"
+      },
+      "changes": {
+        "pn_final": {
+          "before": "5249970635 40X50X5.5",
+          "after": "5249970635"
+        },
+        "fg_fgs_final": {
+          "before": "183-07",
+          "after": ""
+        },
+        "bom_final": {
+          "before": "5241800911",
+          "after": ""
+        },
+        "qa_revision_accion": {
+          "before": "copia",
+          "after": "importar"
+        }
+      }
+    }
+  },
+  {
+    "id": "1781041117491-itlro9ah",
+    "timestamp": "2026-06-09T21:38:37.491Z",
+    "kind": "change-applied",
+    "type": "qa-row-patch",
+    "module": "qa_milu",
+    "action": "save-side-form",
+    "description": "Guardar ficha lateral ID RB-16V4000M61-001259",
+    "target": {
+      "revisionKey": "id=RB-16V4000M61-001259"
+    },
+    "changeId": "1781041115218-swz5mr22",
+    "data": {
+      "target": {
+        "revisionKey": "id=RB-16V4000M61-001259",
+        "engineFile": "engine_16V4000M61.json",
+        "id": "RB-16V4000M61-001259"
+      },
+      "changes": {
+        "pn_final": {
+          "before": "5249970635 40X50X5.5",
+          "after": "5249970635"
+        },
+        "fg_fgs_final": {
+          "before": "183-05",
+          "after": ""
+        },
+        "bom_final": {
+          "before": "5241800911",
+          "after": ""
+        },
+        "qa_revision_accion": {
+          "before": "copia",
+          "after": "importar"
+        }
+      }
+    }
+  },
+  {
+    "id": "1781041123590-07o8bhxo",
+    "timestamp": "2026-06-09T21:38:43.590Z",
+    "kind": "change-applied",
+    "type": "qa-row-patch",
+    "module": "qa_milu",
+    "action": "save-side-form",
+    "description": "Guardar ficha lateral ID RB-16V4000M61-004326",
+    "target": {
+      "revisionKey": "id=RB-16V4000M61-004326"
+    },
+    "changeId": "1781041121343-0gg67d0l",
+    "data": {
+      "target": {
+        "revisionKey": "id=RB-16V4000M61-004326",
+        "engineFile": "engine_16V4000M61.json",
+        "id": "RB-16V4000M61-004326"
+      },
+      "changes": {
+        "pn_final": {
+          "before": "5249970635 40X50X5.5",
+          "after": "5249970635"
+        },
+        "fg_fgs_final": {
+          "before": "183-05",
+          "after": ""
+        },
+        "bom_final": {
+          "before": "5241800911",
+          "after": ""
+        },
+        "qa_revision_accion": {
+          "before": "copia",
+          "after": "importar"
+        }
+      }
+    }
+  },
+  {
+    "id": "1781041126280-5lrqx3j2",
+    "timestamp": "2026-06-09T21:38:46.280Z",
+    "kind": "change-applied",
+    "type": "qa-row-patch",
+    "module": "qa_milu",
+    "action": "inline-accion",
+    "description": "Cambio rapido accion ID RB-12V4000M40A-001208",
+    "target": {
+      "revisionKey": "id=RB-12V4000M40A-001208"
+    },
+    "changeId": "1781041125880-a6i7hlhs",
+    "data": {
+      "target": {
+        "revisionKey": "id=RB-12V4000M40A-001208",
+        "engineFile": "engine_12V4000M40A.json",
+        "id": "RB-12V4000M40A-001208"
+      },
+      "changes": {
+        "qa_revision_accion": {
+          "before": "importar",
+          "after": "copia"
+        }
+      }
+    }
+  },
+  {
+    "id": "1781041127983-uzu3a4jp",
+    "timestamp": "2026-06-09T21:38:47.983Z",
+    "kind": "change-applied",
+    "type": "qa-row-patch",
+    "module": "qa_milu",
+    "action": "inline-accion",
+    "description": "Cambio rapido accion ID RB-12V4000M70-001456",
+    "target": {
+      "revisionKey": "id=RB-12V4000M70-001456"
+    },
+    "changeId": "1781041127379-nw4ll8ok",
+    "data": {
+      "target": {
+        "revisionKey": "id=RB-12V4000M70-001456",
+        "engineFile": "engine_12V4000M70.json",
+        "id": "RB-12V4000M70-001456"
+      },
+      "changes": {
+        "qa_revision_accion": {
+          "before": "importar",
+          "after": "copia"
+        }
+      }
+    }
+  },
+  {
+    "id": "1781041130115-ldyvprk5",
+    "timestamp": "2026-06-09T21:38:50.115Z",
+    "kind": "change-applied",
+    "type": "qa-row-patch",
+    "module": "qa_milu",
+    "action": "inline-accion",
+    "description": "Cambio rapido accion ID RB-12V4000M70-003947",
+    "target": {
+      "revisionKey": "id=RB-12V4000M70-003947"
+    },
+    "changeId": "1781041129531-de0k1a0r",
+    "data": {
+      "target": {
+        "revisionKey": "id=RB-12V4000M70-003947",
+        "engineFile": "engine_12V4000M70.json",
+        "id": "RB-12V4000M70-003947"
+      },
+      "changes": {
+        "qa_revision_accion": {
+          "before": "importar",
+          "after": "copia"
+        }
+      }
+    }
+  },
+  {
+    "id": "1781041132127-xceijdp7",
+    "timestamp": "2026-06-09T21:38:52.127Z",
+    "kind": "change-applied",
+    "type": "qa-row-patch",
+    "module": "qa_milu",
+    "action": "inline-accion",
+    "description": "Cambio rapido accion ID RB-16V4000M61-001259",
+    "target": {
+      "revisionKey": "id=RB-16V4000M61-001259"
+    },
+    "changeId": "1781041131546-n7t8ir4a",
+    "data": {
+      "target": {
+        "revisionKey": "id=RB-16V4000M61-001259",
+        "engineFile": "engine_16V4000M61.json",
+        "id": "RB-16V4000M61-001259"
+      },
+      "changes": {
+        "qa_revision_accion": {
+          "before": "importar",
+          "after": "copia"
+        }
+      }
+    }
+  },
+  {
+    "id": "1781041134368-9mazsbpu",
+    "timestamp": "2026-06-09T21:38:54.368Z",
+    "kind": "change-applied",
+    "type": "qa-row-patch",
+    "module": "qa_milu",
+    "action": "inline-accion",
+    "description": "Cambio rapido accion ID RB-16V4000M61-004326",
+    "target": {
+      "revisionKey": "id=RB-16V4000M61-004326"
+    },
+    "changeId": "1781041133791-1jlb7fcv",
+    "data": {
+      "target": {
+        "revisionKey": "id=RB-16V4000M61-004326",
+        "engineFile": "engine_16V4000M61.json",
+        "id": "RB-16V4000M61-004326"
+      },
+      "changes": {
+        "qa_revision_accion": {
+          "before": "importar",
+          "after": "copia"
+        }
+      }
+    }
+  },
+  {
+    "id": "1781041217069-0hakgt6p",
+    "timestamp": "2026-06-09T21:40:17.069Z",
+    "kind": "change-applied",
+    "type": "qa-row-patch",
+    "module": "qa_milu",
+    "action": "save-side-form",
+    "description": "Guardar ficha lateral ID RB-12V4000M40A-001681",
+    "target": {
+      "revisionKey": "id=RB-12V4000M40A-001681"
+    },
+    "changeId": "1781041215831-c6ceim34",
+    "data": {
+      "target": {
+        "revisionKey": "id=RB-12V4000M40A-001681",
+        "engineFile": "engine_12V4000M40A.json",
+        "id": "RB-12V4000M40A-001681"
+      },
+      "changes": {
+        "pn_final": {
+          "before": "8592030250 B9-30-10",
+          "after": "8592030250"
+        },
+        "designation_final": {
+          "before": "CONTACTOR 220V 50HZ",
+          "after": "CONTACTOR"
+        },
+        "fg_fgs_final": {
+          "before": "202-40",
+          "after": ""
+        },
+        "bom_final": {
+          "before": "0012030596",
+          "after": ""
+        }
+      }
+    }
+  },
+  {
+    "id": "1781041235221-7oa3dla7",
+    "timestamp": "2026-06-09T21:40:35.221Z",
+    "kind": "change-applied",
+    "type": "qa-row-patch",
+    "module": "qa_milu",
+    "action": "save-side-form",
+    "description": "Guardar ficha lateral ID RB-16V4000M61-001626",
+    "target": {
+      "revisionKey": "id=RB-16V4000M61-001626"
+    },
+    "changeId": "1781041233194-bms5ff6p",
+    "data": {
+      "target": {
+        "revisionKey": "id=RB-16V4000M61-001626",
+        "engineFile": "engine_16V4000M61.json",
+        "id": "RB-16V4000M61-001626"
+      },
+      "changes": {
+        "pn_final": {
+          "before": "8592030250 B9-30-10",
+          "after": "8592030250"
+        },
+        "fg_fgs_final": {
+          "before": "202-40",
+          "after": ""
+        },
+        "bom_final": {
+          "before": "0002035896",
+          "after": ""
+        },
+        "qa_revision_accion": {
+          "before": "copia",
+          "after": "importar"
+        }
+      }
+    }
+  },
+  {
+    "id": "1781041245521-adf6c65u",
+    "timestamp": "2026-06-09T21:40:45.521Z",
+    "kind": "change-applied",
+    "type": "qa-row-patch",
+    "module": "qa_milu",
+    "action": "save-side-form",
+    "description": "Guardar ficha lateral ID RB-16V4000M61-004693",
+    "target": {
+      "revisionKey": "id=RB-16V4000M61-004693"
+    },
+    "changeId": "1781041243463-0oaq8mot",
+    "data": {
+      "target": {
+        "revisionKey": "id=RB-16V4000M61-004693",
+        "engineFile": "engine_16V4000M61.json",
+        "id": "RB-16V4000M61-004693"
+      },
+      "changes": {
+        "pn_final": {
+          "before": "8592030250 B9-30-10",
+          "after": "8592030250"
+        },
+        "fg_fgs_final": {
+          "before": "202-40",
+          "after": ""
+        },
+        "bom_final": {
+          "before": "0002035896",
+          "after": ""
+        },
+        "qa_revision_accion": {
+          "before": "copia",
+          "after": "importar"
+        }
+      }
+    }
+  },
+  {
+    "id": "1781041263559-kaoo0slj",
+    "timestamp": "2026-06-09T21:41:03.559Z",
+    "kind": "change-applied",
+    "type": "qa-row-patch",
+    "module": "qa_milu",
+    "action": "save-side-form",
+    "description": "Guardar ficha lateral ID RB-16V4000M73L-002210",
+    "target": {
+      "revisionKey": "id=RB-16V4000M73L-002210"
+    },
+    "changeId": "1781041258028-3w8iuvq5",
+    "data": {
+      "target": {
+        "revisionKey": "id=RB-16V4000M73L-002210",
+        "engineFile": "engine_16V4000M73L.json",
+        "id": "RB-16V4000M73L-002210"
+      },
+      "changes": {
+        "pn_final": {
+          "before": "8592030250 B9-30-10",
+          "after": "8592030250"
+        },
+        "fg_fgs_final": {
+          "before": "360-05",
+          "after": ""
+        },
+        "bom_final": {
+          "before": "0012030896",
+          "after": ""
+        },
+        "qa_revision_accion": {
+          "before": "copia",
+          "after": "importar"
+        }
+      }
+    }
+  },
+  {
+    "id": "1781041275242-vr096k13",
+    "timestamp": "2026-06-09T21:41:15.242Z",
+    "kind": "change-applied",
+    "type": "qa-row-patch",
+    "module": "qa_milu",
+    "action": "save-side-form",
+    "description": "Guardar ficha lateral ID RB-16V4000M73L-005472",
+    "target": {
+      "revisionKey": "id=RB-16V4000M73L-005472"
+    },
+    "changeId": "1781041270271-h2edjutn",
+    "data": {
+      "target": {
+        "revisionKey": "id=RB-16V4000M73L-005472",
+        "engineFile": "engine_16V4000M73L.json",
+        "id": "RB-16V4000M73L-005472"
+      },
+      "changes": {
+        "pn_final": {
+          "before": "8592030250 B9-30-10",
+          "after": "8592030250"
+        },
+        "fg_fgs_final": {
+          "before": "360-05",
+          "after": ""
+        },
+        "bom_final": {
+          "before": "0012030896",
+          "after": ""
+        },
+        "qa_revision_accion": {
+          "before": "copia",
+          "after": "importar"
+        }
+      }
+    }
+  },
+  {
+    "id": "1781041284154-q79fqqfm",
+    "timestamp": "2026-06-09T21:41:24.154Z",
+    "kind": "change-applied",
+    "type": "qa-row-patch",
+    "module": "qa_milu",
+    "action": "save-side-form",
+    "description": "Guardar ficha lateral ID RB-16V4000M73L-007988",
+    "target": {
+      "revisionKey": "id=RB-16V4000M73L-007988"
+    },
+    "changeId": "1781041279557-v0g0n4fs",
+    "data": {
+      "target": {
+        "revisionKey": "id=RB-16V4000M73L-007988",
+        "engineFile": "engine_16V4000M73L.json",
+        "id": "RB-16V4000M73L-007988"
+      },
+      "changes": {
+        "pn_final": {
+          "before": "8592030250 B9-30-10",
+          "after": "8592030250"
+        },
+        "fg_fgs_final": {
+          "before": "360-05",
+          "after": ""
+        },
+        "bom_final": {
+          "before": "0012030896",
+          "after": ""
+        },
+        "qa_revision_accion": {
+          "before": "copia",
+          "after": "importar"
+        }
+      }
+    }
+  },
+  {
+    "id": "1781041295881-jws9xrfv",
+    "timestamp": "2026-06-09T21:41:35.881Z",
+    "kind": "change-applied",
+    "type": "qa-row-patch",
+    "module": "qa_milu",
+    "action": "save-side-form",
+    "description": "Guardar ficha lateral ID RB-16V4000M73L-010494",
+    "target": {
+      "revisionKey": "id=RB-16V4000M73L-010494"
+    },
+    "changeId": "1781041291448-c2iz2eia",
+    "data": {
+      "target": {
+        "revisionKey": "id=RB-16V4000M73L-010494",
+        "engineFile": "engine_16V4000M73L.json",
+        "id": "RB-16V4000M73L-010494"
+      },
+      "changes": {
+        "pn_final": {
+          "before": "8592030250 B9-30-10",
+          "after": "8592030250"
+        },
+        "fg_fgs_final": {
+          "before": "360-05",
+          "after": ""
+        },
+        "bom_final": {
+          "before": "0012030896",
+          "after": ""
+        },
+        "qa_revision_accion": {
+          "before": "copia",
+          "after": "importar"
+        }
+      }
+    }
+  },
+  {
+    "id": "1781041302239-hrvl5y6a",
+    "timestamp": "2026-06-09T21:41:42.239Z",
+    "kind": "change-applied",
+    "type": "qa-row-patch",
+    "module": "qa_milu",
+    "action": "save-side-form",
+    "description": "Guardar ficha lateral ID RB-20V4000M93L-002298",
+    "target": {
+      "revisionKey": "id=RB-20V4000M93L-002298"
+    },
+    "changeId": "1781041299347-89o33r69",
+    "data": {
+      "target": {
+        "revisionKey": "id=RB-20V4000M93L-002298",
+        "engineFile": "engine_20V4000M93L.json",
+        "id": "RB-20V4000M93L-002298"
+      },
+      "changes": {
+        "pn_final": {
+          "before": "8592030250 B9-30-10",
+          "after": "8592030250"
+        },
+        "fg_fgs_final": {
+          "before": "202-40",
+          "after": ""
+        },
+        "bom_final": {
+          "before": "0002039496",
+          "after": ""
+        },
+        "qa_revision_accion": {
+          "before": "copia",
+          "after": "importar"
+        }
+      }
+    }
+  },
+  {
+    "id": "1781041310023-ui3mv0nx",
+    "timestamp": "2026-06-09T21:41:50.023Z",
+    "kind": "change-applied",
+    "type": "qa-row-patch",
+    "module": "qa_milu",
+    "action": "save-side-form",
+    "description": "Guardar ficha lateral ID RB-20V4000M93L-005904",
+    "target": {
+      "revisionKey": "id=RB-20V4000M93L-005904"
+    },
+    "changeId": "1781041307175-ww8qib5w",
+    "data": {
+      "target": {
+        "revisionKey": "id=RB-20V4000M93L-005904",
+        "engineFile": "engine_20V4000M93L.json",
+        "id": "RB-20V4000M93L-005904"
+      },
+      "changes": {
+        "pn_final": {
+          "before": "8592030250 B9-30-10",
+          "after": "8592030250"
+        },
+        "fg_fgs_final": {
+          "before": "202-40",
+          "after": ""
+        },
+        "bom_final": {
+          "before": "0002039496",
+          "after": ""
+        },
+        "qa_revision_accion": {
+          "before": "copia",
+          "after": "importar"
+        }
+      }
+    }
+  },
+  {
+    "id": "1781041312632-r5xxli34",
+    "timestamp": "2026-06-09T21:41:52.632Z",
+    "kind": "change-applied",
+    "type": "qa-row-patch",
+    "module": "qa_milu",
+    "action": "inline-accion",
+    "description": "Cambio rapido accion ID RB-16V4000M61-001626",
+    "target": {
+      "revisionKey": "id=RB-16V4000M61-001626"
+    },
+    "changeId": "1781041312059-s49dmasf",
+    "data": {
+      "target": {
+        "revisionKey": "id=RB-16V4000M61-001626",
+        "engineFile": "engine_16V4000M61.json",
+        "id": "RB-16V4000M61-001626"
+      },
+      "changes": {
+        "qa_revision_accion": {
+          "before": "importar",
+          "after": "copia"
+        }
+      }
+    }
+  },
+  {
+    "id": "1781041314750-tou8cgf4",
+    "timestamp": "2026-06-09T21:41:54.750Z",
+    "kind": "change-applied",
+    "type": "qa-row-patch",
+    "module": "qa_milu",
+    "action": "inline-accion",
+    "description": "Cambio rapido accion ID RB-16V4000M61-004693",
+    "target": {
+      "revisionKey": "id=RB-16V4000M61-004693"
+    },
+    "changeId": "1781041314159-itjta70y",
+    "data": {
+      "target": {
+        "revisionKey": "id=RB-16V4000M61-004693",
+        "engineFile": "engine_16V4000M61.json",
+        "id": "RB-16V4000M61-004693"
+      },
+      "changes": {
+        "qa_revision_accion": {
+          "before": "importar",
+          "after": "copia"
+        }
+      }
+    }
+  },
+  {
+    "id": "1781041317127-403f0vqh",
+    "timestamp": "2026-06-09T21:41:57.127Z",
+    "kind": "change-applied",
+    "type": "qa-row-patch",
+    "module": "qa_milu",
+    "action": "inline-accion",
+    "description": "Cambio rapido accion ID RB-16V4000M73L-002210",
+    "target": {
+      "revisionKey": "id=RB-16V4000M73L-002210"
+    },
+    "changeId": "1781041316081-y74118is",
+    "data": {
+      "target": {
+        "revisionKey": "id=RB-16V4000M73L-002210",
+        "engineFile": "engine_16V4000M73L.json",
+        "id": "RB-16V4000M73L-002210"
+      },
+      "changes": {
+        "qa_revision_accion": {
+          "before": "importar",
+          "after": "copia"
+        }
+      }
+    }
+  },
+  {
+    "id": "1781041319412-7rinqh3r",
+    "timestamp": "2026-06-09T21:41:59.412Z",
+    "kind": "change-applied",
+    "type": "qa-row-patch",
+    "module": "qa_milu",
+    "action": "inline-accion",
+    "description": "Cambio rapido accion ID RB-16V4000M73L-005472",
+    "target": {
+      "revisionKey": "id=RB-16V4000M73L-005472"
+    },
+    "changeId": "1781041318322-d9dplq76",
+    "data": {
+      "target": {
+        "revisionKey": "id=RB-16V4000M73L-005472",
+        "engineFile": "engine_16V4000M73L.json",
+        "id": "RB-16V4000M73L-005472"
+      },
+      "changes": {
+        "qa_revision_accion": {
+          "before": "importar",
+          "after": "copia"
+        }
+      }
+    }
+  },
+  {
+    "id": "1781041321800-8yurhm2i",
+    "timestamp": "2026-06-09T21:42:01.800Z",
+    "kind": "change-applied",
+    "type": "qa-row-patch",
+    "module": "qa_milu",
+    "action": "inline-accion",
+    "description": "Cambio rapido accion ID RB-16V4000M73L-007988",
+    "target": {
+      "revisionKey": "id=RB-16V4000M73L-007988"
+    },
+    "changeId": "1781041320702-9rmqa2kj",
+    "data": {
+      "target": {
+        "revisionKey": "id=RB-16V4000M73L-007988",
+        "engineFile": "engine_16V4000M73L.json",
+        "id": "RB-16V4000M73L-007988"
+      },
+      "changes": {
+        "qa_revision_accion": {
+          "before": "importar",
+          "after": "copia"
+        }
+      }
+    }
+  },
+  {
+    "id": "1781041324044-1ztpn24c",
+    "timestamp": "2026-06-09T21:42:04.044Z",
+    "kind": "change-applied",
+    "type": "qa-row-patch",
+    "module": "qa_milu",
+    "action": "inline-accion",
+    "description": "Cambio rapido accion ID RB-16V4000M73L-010494",
+    "target": {
+      "revisionKey": "id=RB-16V4000M73L-010494"
+    },
+    "changeId": "1781041322864-ka6zmm9i",
+    "data": {
+      "target": {
+        "revisionKey": "id=RB-16V4000M73L-010494",
+        "engineFile": "engine_16V4000M73L.json",
+        "id": "RB-16V4000M73L-010494"
+      },
+      "changes": {
+        "qa_revision_accion": {
+          "before": "importar",
+          "after": "copia"
+        }
+      }
+    }
+  },
+  {
+    "id": "1781041325854-dlvcop70",
+    "timestamp": "2026-06-09T21:42:05.854Z",
+    "kind": "change-applied",
+    "type": "qa-row-patch",
+    "module": "qa_milu",
+    "action": "inline-accion",
+    "description": "Cambio rapido accion ID RB-20V4000M93L-002298",
+    "target": {
+      "revisionKey": "id=RB-20V4000M93L-002298"
+    },
+    "changeId": "1781041325140-jlig30zo",
+    "data": {
+      "target": {
+        "revisionKey": "id=RB-20V4000M93L-002298",
+        "engineFile": "engine_20V4000M93L.json",
+        "id": "RB-20V4000M93L-002298"
+      },
+      "changes": {
+        "qa_revision_accion": {
+          "before": "importar",
+          "after": "copia"
+        }
+      }
+    }
+  },
+  {
+    "id": "1781041327849-39zt00tx",
+    "timestamp": "2026-06-09T21:42:07.849Z",
+    "kind": "change-applied",
+    "type": "qa-row-patch",
+    "module": "qa_milu",
+    "action": "inline-accion",
+    "description": "Cambio rapido accion ID RB-20V4000M93L-005904",
+    "target": {
+      "revisionKey": "id=RB-20V4000M93L-005904"
+    },
+    "changeId": "1781041327069-cbhsrj2d",
+    "data": {
+      "target": {
+        "revisionKey": "id=RB-20V4000M93L-005904",
+        "engineFile": "engine_20V4000M93L.json",
+        "id": "RB-20V4000M93L-005904"
+      },
+      "changes": {
+        "qa_revision_accion": {
+          "before": "importar",
+          "after": "copia"
+        }
+      }
+    }
+  },
+  {
+    "id": "1781041507043-0we78ilo",
+    "timestamp": "2026-06-09T21:45:07.043Z",
+    "kind": "change-applied",
+    "type": "qa-row-patch",
+    "module": "qa_milu",
+    "action": "inline-accion",
+    "description": "Cambio rapido accion ID RB-20V4000M93-000024",
+    "target": {
+      "revisionKey": "id=RB-20V4000M93-000024"
+    },
+    "changeId": "1781041505394-g7s6h8ho",
+    "data": {
+      "target": {
+        "revisionKey": "id=RB-20V4000M93-000024",
+        "engineFile": "engine_20V4000M93.json",
+        "id": "RB-20V4000M93-000024"
+      },
+      "changes": {
+        "qa_revision_accion": {
+          "before": "importar",
+          "after": "eliminar"
+        }
+      }
+    }
+  },
+  {
+    "id": "1781041550716-5ohnjvfj",
+    "timestamp": "2026-06-09T21:45:50.716Z",
+    "kind": "change-applied",
+    "type": "qa-row-patch",
+    "module": "qa_milu",
+    "action": "inline-accion",
+    "description": "Cambio rapido accion ID RB-12V4000M70-005577",
+    "target": {
+      "revisionKey": "id=RB-12V4000M70-005577"
+    },
+    "changeId": "1781041550053-gmg2lkwt",
+    "data": {
+      "target": {
+        "revisionKey": "id=RB-12V4000M70-005577",
+        "engineFile": "engine_12V4000M70.json",
+        "id": "RB-12V4000M70-005577"
+      },
+      "changes": {
+        "qa_revision_accion": {
+          "before": "importar",
+          "after": "copia"
+        }
+      }
+    }
+  },
+  {
+    "id": "1781041559327-01qzqa5t",
+    "timestamp": "2026-06-09T21:45:59.327Z",
+    "kind": "change-applied",
+    "type": "qa-row-patch",
+    "module": "qa_milu",
+    "action": "save-side-form",
+    "description": "Guardar ficha lateral ID RB-12V4000M70-005577",
+    "target": {
+      "revisionKey": "id=RB-12V4000M70-005577"
+    },
+    "changeId": "1781041557017-1p4velbm",
+    "data": {
+      "target": {
+        "revisionKey": "id=RB-12V4000M70-005577",
+        "engineFile": "engine_12V4000M70.json",
+        "id": "RB-12V4000M70-005577"
+      },
+      "changes": {
+        "pn_final": {
+          "before": "0015334741 M4-187X14",
+          "after": "0015334741"
+        },
+        "fg_fgs_final": {
+          "before": "517-10",
+          "after": ""
+        },
+        "bom_final": {
+          "before": "X00E50203604",
+          "after": ""
+        },
+        "qa_revision_accion": {
+          "before": "copia",
+          "after": "importar"
+        }
+      }
+    }
+  },
+  {
+    "id": "1781041562655-2oj36vvm",
+    "timestamp": "2026-06-09T21:46:02.655Z",
+    "kind": "change-applied",
+    "type": "qa-row-patch",
+    "module": "qa_milu",
+    "action": "inline-accion",
+    "description": "Cambio rapido accion ID RB-12V4000M70-005577",
+    "target": {
+      "revisionKey": "id=RB-12V4000M70-005577"
+    },
+    "changeId": "1781041561988-h75tcav6",
+    "data": {
+      "target": {
+        "revisionKey": "id=RB-12V4000M70-005577",
+        "engineFile": "engine_12V4000M70.json",
+        "id": "RB-12V4000M70-005577"
+      },
+      "changes": {
+        "qa_revision_accion": {
+          "before": "importar",
+          "after": "copia"
+        }
+      }
+    }
+  },
+  {
+    "id": "1781043725481-3u4lfsmw",
+    "timestamp": "2026-06-09T22:22:05.481Z",
+    "kind": "change-applied",
+    "type": "qa-row-patch",
+    "module": "qa_milu",
+    "action": "inline-accion",
+    "description": "Cambio rapido accion ID RB-16V4000M73L-001493",
+    "target": {
+      "revisionKey": "id=RB-16V4000M73L-001493"
+    },
+    "changeId": "1781043724307-l0zk10jg",
+    "data": {
+      "target": {
+        "revisionKey": "id=RB-16V4000M73L-001493",
+        "engineFile": "engine_16V4000M73L.json",
+        "id": "RB-16V4000M73L-001493"
+      },
+      "changes": {
+        "qa_revision_accion": {
+          "before": "importar",
+          "after": "copia"
+        }
+      }
+    }
+  },
+  {
+    "id": "1781043757565-94oi3cf1",
+    "timestamp": "2026-06-09T22:22:37.565Z",
+    "kind": "change-applied",
+    "type": "qa-row-patch",
+    "module": "qa_milu",
+    "action": "inline-accion",
+    "description": "Cambio rapido accion ID RB-12V4000M53-002945",
+    "target": {
+      "revisionKey": "id=RB-12V4000M53-002945"
+    },
+    "changeId": "1781043756731-mbv683ma",
+    "data": {
+      "target": {
+        "revisionKey": "id=RB-12V4000M53-002945",
+        "engineFile": "engine_12V4000M53.json",
+        "id": "RB-12V4000M53-002945"
+      },
+      "changes": {
+        "qa_revision_accion": {
+          "before": "importar",
+          "after": "copia"
+        }
+      }
+    }
+  },
+  {
+    "id": "1781043802073-93jxm7sj",
+    "timestamp": "2026-06-09T22:23:22.073Z",
+    "kind": "change-applied",
+    "type": "qa-row-patch",
+    "module": "qa_milu",
+    "action": "save-side-form",
+    "description": "Guardar ficha lateral ID RB-12V4000M53-002739",
+    "target": {
+      "revisionKey": "id=RB-12V4000M53-002739"
+    },
+    "changeId": "1781043799892-eew78990",
+    "data": {
+      "target": {
+        "revisionKey": "id=RB-12V4000M53-002739",
+        "engineFile": "engine_12V4000M53.json",
+        "id": "RB-12V4000M53-002739"
+      },
+      "changes": {
+        "designation_final": {
+          "before": "IDENTIFICATION PLATE GELB, 40",
+          "after": "IDENTIFICATION PLATE"
+        },
+        "fg_fgs_final": {
+          "before": "507-98",
+          "after": ""
+        },
+        "bom_final": {
+          "before": "X00E50700472",
+          "after": ""
+        }
+      }
+    }
+  },
+  {
+    "id": "1781043833999-2c9d5675",
+    "timestamp": "2026-06-09T22:23:53.999Z",
+    "kind": "change-applied",
+    "type": "qa-row-patch",
+    "module": "qa_milu",
+    "action": "save-side-form",
+    "description": "Guardar ficha lateral ID RB-16V4000M90-002631",
+    "target": {
+      "revisionKey": "id=RB-16V4000M90-002631"
+    },
+    "changeId": "1781043832959-o97j8be0",
+    "data": {
+      "target": {
+        "revisionKey": "id=RB-16V4000M90-002631",
+        "engineFile": "engine_16V4000M90.json",
+        "id": "RB-16V4000M90-002631"
+      },
+      "changes": {
+        "designation_final": {
+          "before": "CABLE D",
+          "after": "CABLE"
+        },
+        "fg_fgs_final": {
+          "before": "511-20",
+          "after": ""
+        },
+        "bom_final": {
+          "before": "5265304035",
+          "after": ""
+        }
+      }
+    }
+  },
+  {
+    "id": "1781043934458-id0j79z9",
+    "timestamp": "2026-06-09T22:25:34.458Z",
+    "kind": "change-applied",
+    "type": "qa-row-patch",
+    "module": "qa_milu",
+    "action": "save-side-form",
+    "description": "Guardar ficha lateral ID RB-16V4000M90-002637",
+    "target": {
+      "revisionKey": "id=RB-16V4000M90-002637"
+    },
+    "changeId": "1781043933365-gs50itc1",
+    "data": {
+      "target": {
+        "revisionKey": "id=RB-16V4000M90-002637",
+        "engineFile": "engine_16V4000M90.json",
+        "id": "RB-16V4000M90-002637"
+      },
+      "changes": {
+        "designation_final": {
+          "before": "CABLE D",
+          "after": "CABLE"
+        },
+        "fg_fgs_final": {
+          "before": "511-20",
+          "after": ""
+        },
+        "bom_final": {
+          "before": "5265304135",
+          "after": ""
+        }
+      }
+    }
+  },
+  {
+    "id": "1781043973777-gneqp6oh",
+    "timestamp": "2026-06-09T22:26:13.777Z",
+    "kind": "change-applied",
+    "type": "qa-row-patch",
+    "module": "qa_milu",
+    "action": "save-side-form",
+    "description": "Guardar ficha lateral ID RB-12V4000M40A-002602",
+    "target": {
+      "revisionKey": "id=RB-12V4000M40A-002602"
+    },
+    "changeId": "1781043972652-cn4tsofu",
+    "data": {
+      "target": {
+        "revisionKey": "id=RB-12V4000M40A-002602",
+        "engineFile": "engine_12V4000M40A.json",
+        "id": "RB-12V4000M40A-002602"
+      },
+      "changes": {
+        "designation_final": {
+          "before": "JUNCTION BOX / 50HZ / 2A",
+          "after": "JUNCTION BOX"
+        },
+        "fg_fgs_final": {
+          "before": "508-00",
+          "after": ""
+        },
+        "bom_final": {
+          "before": "XK00E500.746010-06",
+          "after": ""
+        }
+      }
+    }
+  },
+  {
+    "id": "1781044002292-ox62e1s4",
+    "timestamp": "2026-06-09T22:26:42.292Z",
+    "kind": "change-applied",
+    "type": "qa-row-patch",
+    "module": "qa_milu",
+    "action": "save-side-form",
+    "description": "Guardar ficha lateral ID RB-12V4000M40A-002353",
+    "target": {
+      "revisionKey": "id=RB-12V4000M40A-002353"
+    },
+    "changeId": "1781044001285-0tz4gder",
+    "data": {
+      "target": {
+        "revisionKey": "id=RB-12V4000M40A-002353",
+        "engineFile": "engine_12V4000M40A.json",
+        "id": "RB-12V4000M40A-002353"
+      },
+      "changes": {
+        "designation_final": {
+          "before": "GASKET FOR DISPLAY PANEL / PAN",
+          "after": "GASKET FOR DISPLAY PANEL"
+        },
+        "fg_fgs_final": {
+          "before": "508-00",
+          "after": ""
+        },
+        "bom_final": {
+          "before": "5185302185",
+          "after": ""
+        }
+      }
+    }
+  },
+  {
+    "id": "1781044038801-fzi9iq6u",
+    "timestamp": "2026-06-09T22:27:18.801Z",
+    "kind": "change-applied",
+    "type": "qa-row-patch",
+    "module": "qa_milu",
+    "action": "save-side-form",
+    "description": "Guardar ficha lateral ID RB-12V4000M70-000797",
+    "target": {
+      "revisionKey": "id=RB-12V4000M70-000797"
+    },
+    "changeId": "1781044037005-otbqzt0c",
+    "data": {
+      "target": {
+        "revisionKey": "id=RB-12V4000M70-000797",
+        "engineFile": "engine_12V4000M70.json",
+        "id": "RB-12V4000M70-000797"
+      },
+      "changes": {
+        "designation_final": {
+          "before": "COMPRESSOR WHEEL GRAD",
+          "after": "COMPRESSOR WHEEL"
+        },
+        "fg_fgs_final": {
+          "before": "100-00",
+          "after": ""
+        },
+        "bom_final": {
+          "before": "X52610100073",
+          "after": ""
+        }
+      }
+    }
+  },
+  {
+    "id": "1781044070086-ahpsz5ma",
+    "timestamp": "2026-06-09T22:27:50.086Z",
+    "kind": "change-applied",
+    "type": "qa-row-patch",
+    "module": "qa_milu",
+    "action": "save-side-form",
+    "description": "Guardar ficha lateral ID RB-12V4000M70-000772",
+    "target": {
+      "revisionKey": "id=RB-12V4000M70-000772"
+    },
+    "changeId": "1781044068447-yirpqdpv",
+    "data": {
+      "target": {
+        "revisionKey": "id=RB-12V4000M70-000772",
+        "engineFile": "engine_12V4000M70.json",
+        "id": "RB-12V4000M70-000772"
+      },
+      "changes": {
+        "designation_final": {
+          "before": "TURBINE WHEEL HOCH 2",
+          "after": "TURBINE WHEEL"
+        },
+        "fg_fgs_final": {
+          "before": "100-00",
+          "after": ""
+        },
+        "bom_final": {
+          "before": "X52610100073",
+          "after": ""
+        }
+      }
+    }
+  },
+  {
+    "id": "1781044116858-tqm0255z",
+    "timestamp": "2026-06-09T22:28:36.858Z",
+    "kind": "change-applied",
+    "type": "qa-row-patch",
+    "module": "qa_milu",
+    "action": "save-side-form",
+    "description": "Guardar ficha lateral ID RB-12V4000M53-001472",
+    "target": {
+      "revisionKey": "id=RB-12V4000M53-001472"
+    },
+    "changeId": "1781044114479-epdk70zb",
+    "data": {
+      "target": {
+        "revisionKey": "id=RB-12V4000M53-001472",
+        "engineFile": "engine_12V4000M53.json",
+        "id": "RB-12V4000M53-001472"
+      },
+      "changes": {
+        "designation_final": {
+          "before": "RESTRICTOR W/26MM OPENING",
+          "after": "RESTRICTOR"
+        },
+        "fg_fgs_final": {
+          "before": "183-15",
+          "after": ""
+        },
+        "bom_final": {
+          "before": "X59318300024",
+          "after": ""
+        }
+      }
+    }
+  },
+  {
+    "id": "1781044152294-kcx488wb",
+    "timestamp": "2026-06-09T22:29:12.294Z",
+    "kind": "change-applied",
+    "type": "qa-row-patch",
+    "module": "qa_milu",
+    "action": "inline-accion",
+    "description": "Cambio rapido accion ID RB-20V4000M93L-002081",
+    "target": {
+      "revisionKey": "id=RB-20V4000M93L-002081"
+    },
+    "changeId": "1781044151324-vyhgl7rm",
+    "data": {
+      "target": {
+        "revisionKey": "id=RB-20V4000M93L-002081",
+        "engineFile": "engine_20V4000M93L.json",
+        "id": "RB-20V4000M93L-002081"
+      },
+      "changes": {
+        "qa_revision_accion": {
+          "before": "importar",
+          "after": "copia"
+        }
+      }
+    }
+  },
+  {
+    "id": "1781044204499-pesmrbpu",
+    "timestamp": "2026-06-09T22:30:04.499Z",
+    "kind": "change-applied",
+    "type": "qa-row-patch",
+    "module": "qa_milu",
+    "action": "save-side-form",
+    "description": "Guardar ficha lateral ID RB-12V4000M40A-002703",
+    "target": {
+      "revisionKey": "id=RB-12V4000M40A-002703"
+    },
+    "changeId": "1781044203410-nkp7yypb",
+    "data": {
+      "target": {
+        "revisionKey": "id=RB-12V4000M40A-002703",
+        "engineFile": "engine_12V4000M40A.json",
+        "id": "RB-12V4000M40A-002703"
+      },
+      "changes": {
+        "designation_final": {
+          "before": "GOVERNOR (LXBXH)",
+          "after": "GOVERNOR"
+        },
+        "fg_fgs_final": {
+          "before": "508-10",
+          "after": ""
+        },
+        "bom_final": {
+          "before": "510.00327",
+          "after": ""
+        }
+      }
+    }
+  },
+  {
+    "id": "1781044224933-to8ffcnl",
+    "timestamp": "2026-06-09T22:30:24.933Z",
+    "kind": "change-applied",
+    "type": "qa-row-patch",
+    "module": "qa_milu",
+    "action": "save-side-form",
+    "description": "Guardar ficha lateral ID RB-12V4000M40A-002704",
+    "target": {
+      "revisionKey": "id=RB-12V4000M40A-002704"
+    },
+    "changeId": "1781044224170-d8rk8laj",
+    "data": {
+      "target": {
+        "revisionKey": "id=RB-12V4000M40A-002704",
+        "engineFile": "engine_12V4000M40A.json",
+        "id": "RB-12V4000M40A-002704"
+      },
+      "changes": {
+        "designation_final": {
+          "before": "HOUSING F/MONTRG SYST + GOV (LXBXH)",
+          "after": "HOUSING F/MONTRG SYST + GOV"
+        },
+        "bom_final": {
+          "before": "5275307654",
+          "after": ""
+        }
+      }
+    }
+  },
+  {
+    "id": "1781044253353-7e47wyy1",
+    "timestamp": "2026-06-09T22:30:53.353Z",
+    "kind": "change-applied",
+    "type": "qa-row-patch",
+    "module": "qa_milu",
+    "action": "save-side-form",
+    "description": "Guardar ficha lateral ID RB-12V4000M40A-002043",
+    "target": {
+      "revisionKey": "id=RB-12V4000M40A-002043"
+    },
+    "changeId": "1781044252353-nr0c4r91",
+    "data": {
+      "target": {
+        "revisionKey": "id=RB-12V4000M40A-002043",
+        "engineFile": "engine_12V4000M40A.json",
+        "id": "RB-12V4000M40A-002043"
+      },
+      "changes": {
+        "designation_final": {
+          "before": "PLUG-IN BOARD MIT URLADER",
+          "after": "PLUG-IN BOARD"
+        },
+        "fg_fgs_final": {
+          "before": "500-00",
+          "after": ""
+        },
+        "bom_final": {
+          "before": "XK00E500.746010-14",
+          "after": ""
+        }
+      }
+    }
+  },
+  {
+    "id": "1781044281400-ss9dg3ry",
+    "timestamp": "2026-06-09T22:31:21.400Z",
+    "kind": "change-applied",
+    "type": "qa-row-patch",
+    "module": "qa_milu",
+    "action": "save-side-form",
+    "description": "Guardar ficha lateral ID RB-20V4000M93L-002288",
+    "target": {
+      "revisionKey": "id=RB-20V4000M93L-002288"
+    },
+    "changeId": "1781044279031-l2o2gght",
+    "data": {
+      "target": {
+        "revisionKey": "id=RB-20V4000M93L-002288",
+        "engineFile": "engine_20V4000M93L.json",
+        "id": "RB-20V4000M93L-002288"
+      },
+      "changes": {
+        "designation_final": {
+          "before": "SCREW-IN HTG ELEM. 440V",
+          "after": "SCREW-IN HTG ELEM."
+        },
+        "fg_fgs_final": {
+          "before": "202-40",
+          "after": ""
+        },
+        "bom_final": {
+          "before": "0002039496",
+          "after": ""
+        }
+      }
+    }
+  },
+  {
+    "id": "1781044306664-e5bvqkk9",
+    "timestamp": "2026-06-09T22:31:46.664Z",
+    "kind": "change-applied",
+    "type": "qa-row-patch",
+    "module": "qa_milu",
+    "action": "save-side-form",
+    "description": "Guardar ficha lateral ID RB-16V4000M61-001627",
+    "target": {
+      "revisionKey": "id=RB-16V4000M61-001627"
+    },
+    "changeId": "1781044305019-4e6a07om",
+    "data": {
+      "target": {
+        "revisionKey": "id=RB-16V4000M61-001627",
+        "engineFile": "engine_16V4000M61.json",
+        "id": "RB-16V4000M61-001627"
+      },
+      "changes": {
+        "designation_final": {
+          "before": "OVERCURRENT TRIP A",
+          "after": "OVERCURRENT TRIP"
+        },
+        "fg_fgs_final": {
+          "before": "202-40",
+          "after": ""
+        },
+        "bom_final": {
+          "before": "0002035896",
+          "after": ""
+        }
+      }
+    }
+  },
+  {
+    "id": "1781044567381-r9qykk8o",
+    "timestamp": "2026-06-09T22:36:07.381Z",
+    "kind": "change-applied",
+    "type": "qa-row-patch",
+    "module": "qa_milu",
+    "action": "inline-accion",
+    "description": "Cambio rapido accion ID RB-16V4000M90-000020",
+    "target": {
+      "revisionKey": "id=RB-16V4000M90-000020"
+    },
+    "changeId": "1781044566843-rtnlg5dj",
+    "data": {
+      "target": {
+        "revisionKey": "id=RB-16V4000M90-000020",
+        "engineFile": "engine_16V4000M90.json",
+        "id": "RB-16V4000M90-000020"
+      },
+      "changes": {
+        "qa_revision_accion": {
+          "before": "importar",
+          "after": "copia"
+        }
+      }
+    }
+  },
+  {
+    "id": "1781044592528-x9g2p6uw",
+    "timestamp": "2026-06-09T22:36:32.528Z",
+    "kind": "change-applied",
+    "type": "qa-row-patch",
+    "module": "qa_milu",
+    "action": "save-side-form",
+    "description": "Guardar ficha lateral ID RB-20V4000M93-000051",
+    "target": {
+      "revisionKey": "id=RB-20V4000M93-000051"
+    },
+    "changeId": "1781044587530-j569o435",
+    "data": {
+      "target": {
+        "revisionKey": "id=RB-20V4000M93-000051",
+        "engineFile": "engine_20V4000M93.json",
+        "id": "RB-20V4000M93-000051"
+      },
+      "changes": {
+        "designation_final": {
+          "before": "CRANKCASE k",
+          "after": "CRANKCASE"
+        },
+        "fg_fgs_final": {
+          "before": "011-05",
+          "after": ""
+        },
+        "bom_final": {
+          "before": "XS596010.00013",
+          "after": ""
+        }
+      }
+    }
+  },
+  {
+    "id": "1781044600063-ljfjt6is",
+    "timestamp": "2026-06-09T22:36:40.063Z",
+    "kind": "change-applied",
+    "type": "qa-row-patch",
+    "module": "qa_milu",
+    "action": "inline-accion",
+    "description": "Cambio rapido accion ID RB-16V4000M90-000019",
+    "target": {
+      "revisionKey": "id=RB-16V4000M90-000019"
+    },
+    "changeId": "1781044599586-psyuysj0",
+    "data": {
+      "target": {
+        "revisionKey": "id=RB-16V4000M90-000019",
+        "engineFile": "engine_16V4000M90.json",
+        "id": "RB-16V4000M90-000019"
+      },
+      "changes": {
+        "qa_revision_accion": {
+          "before": "importar",
+          "after": "copia"
+        }
+      }
+    }
+  },
+  {
+    "id": "1781044625369-on3renxq",
+    "timestamp": "2026-06-09T22:37:05.369Z",
+    "kind": "change-applied",
+    "type": "qa-row-patch",
+    "module": "qa_milu",
+    "action": "save-side-form",
+    "description": "Guardar ficha lateral ID RB-12V4000M53-002830",
+    "target": {
+      "revisionKey": "id=RB-12V4000M53-002830"
+    },
+    "changeId": "1781044622769-rwi32i76",
+    "data": {
+      "target": {
+        "revisionKey": "id=RB-12V4000M53-002830",
+        "engineFile": "engine_12V4000M53.json",
+        "id": "RB-12V4000M53-002830"
+      },
+      "changes": {
+        "designation_final": {
+          "before": "TEMPERATURE SENSOR 2-POL. CODE",
+          "after": "TEMPERATURE SENSOR"
+        },
+        "fg_fgs_final": {
+          "before": "507-98",
+          "after": ""
+        },
+        "bom_final": {
+          "before": "XS00E500.01614",
+          "after": ""
+        }
+      }
+    }
+  },
+  {
+    "id": "1781044643422-257x5wyr",
+    "timestamp": "2026-06-09T22:37:23.422Z",
+    "kind": "change-applied",
+    "type": "qa-row-patch",
+    "module": "qa_milu",
+    "action": "save-side-form",
+    "description": "Guardar ficha lateral ID RB-12V4000M70-005192",
+    "target": {
+      "revisionKey": "id=RB-12V4000M70-005192"
+    },
+    "changeId": "1781044641270-27wuyc14",
+    "data": {
+      "target": {
+        "revisionKey": "id=RB-12V4000M70-005192",
+        "engineFile": "engine_12V4000M70.json",
+        "id": "RB-12V4000M70-005192"
+      },
+      "changes": {
+        "designation_final": {
+          "before": "MONITORING SYSTEM IN ENGINE ROOM (LXBXH)",
+          "after": "MONITORING SYSTEM IN ENGINE ROOM"
+        },
+        "fg_fgs_final": {
+          "before": "511-10",
+          "after": ""
+        },
+        "bom_final": {
+          "before": "X00029932",
+          "after": ""
+        }
+      }
+    }
+  },
+  {
+    "id": "1781044667269-t5bk9n8p",
+    "timestamp": "2026-06-09T22:37:47.269Z",
+    "kind": "change-applied",
+    "type": "qa-row-patch",
+    "module": "qa_milu",
+    "action": "save-side-form",
+    "description": "Guardar ficha lateral ID RB-12V4000M40A-002608",
+    "target": {
+      "revisionKey": "id=RB-12V4000M40A-002608"
+    },
+    "changeId": "1781044666514-5otg5oki",
+    "data": {
+      "target": {
+        "revisionKey": "id=RB-12V4000M40A-002608",
+        "engineFile": "engine_12V4000M40A.json",
+        "id": "RB-12V4000M40A-002608"
+      },
+      "changes": {
+        "designation_final": {
+          "before": "HOUSING RAL9010",
+          "after": "HOUSING"
+        },
+        "bom_final": {
+          "before": "5105302438",
+          "after": ""
+        }
+      }
+    }
+  },
+  {
+    "id": "1781044683078-e5skkg06",
+    "timestamp": "2026-06-09T22:38:03.078Z",
+    "kind": "change-applied",
+    "type": "qa-row-patch",
+    "module": "qa_milu",
+    "action": "inline-accion",
+    "description": "Cambio rapido accion ID RB-16V4000M73-000350",
+    "target": {
+      "revisionKey": "id=RB-16V4000M73-000350"
+    },
+    "changeId": "1781044681722-9gr87zdn",
+    "data": {
+      "target": {
+        "revisionKey": "id=RB-16V4000M73-000350",
+        "engineFile": "engine_16V4000M73.json",
+        "id": "RB-16V4000M73-000350"
+      },
+      "changes": {
+        "qa_revision_accion": {
+          "before": "importar",
+          "after": "copia"
+        }
+      }
+    }
+  },
+  {
+    "id": "1781044739741-rukee97v",
+    "timestamp": "2026-06-09T22:38:59.741Z",
+    "kind": "change-applied",
+    "type": "qa-row-patch",
+    "module": "qa_milu",
+    "action": "save-side-form",
+    "description": "Guardar ficha lateral ID RB-20V4000M93-000341",
+    "target": {
+      "revisionKey": "id=RB-20V4000M93-000341"
+    },
+    "changeId": "1781044735229-qxwa01vk",
+    "data": {
+      "target": {
+        "revisionKey": "id=RB-20V4000M93-000341",
+        "engineFile": "engine_20V4000M93.json",
+        "id": "RB-20V4000M93-000341"
+      },
+      "changes": {
+        "designation_final": {
+          "before": "CRANKSHAFT NH",
+          "after": "CRANKSHAFT"
+        },
+        "fg_fgs_final": {
+          "before": "030-00",
+          "after": ""
+        },
+        "bom_final": {
+          "before": "X59603100002",
+          "after": ""
+        }
+      }
+    }
+  },
+  {
+    "id": "1781044769080-4xxk66h5",
+    "timestamp": "2026-06-09T22:39:29.080Z",
+    "kind": "change-applied",
+    "type": "qa-row-patch",
+    "module": "qa_milu",
+    "action": "save-side-form",
+    "description": "Guardar ficha lateral ID RB-12V4000M70-005076",
+    "target": {
+      "revisionKey": "id=RB-12V4000M70-005076"
+    },
+    "changeId": "1781044767183-7svg80m6",
+    "data": {
+      "target": {
+        "revisionKey": "id=RB-12V4000M70-005076",
+        "engineFile": "engine_12V4000M70.json",
+        "id": "RB-12V4000M70-005076"
+      },
+      "changes": {
+        "designation_final": {
+          "before": "TERMINAL BOX (BXLXH)/RAL",
+          "after": "TERMINAL BOX"
+        },
+        "fg_fgs_final": {
+          "before": "507-97",
+          "after": ""
+        },
+        "bom_final": {
+          "before": "X00E50200632",
+          "after": ""
+        }
+      }
+    }
+  },
+  {
+    "id": "1781044789790-vla1chws",
+    "timestamp": "2026-06-09T22:39:49.790Z",
+    "kind": "change-applied",
+    "type": "qa-row-patch",
+    "module": "qa_milu",
+    "action": "save-side-form",
+    "description": "Guardar ficha lateral ID RB-12V4000M70-005459",
+    "target": {
+      "revisionKey": "id=RB-12V4000M70-005459"
+    },
+    "changeId": "1781044787889-81axkged",
+    "data": {
+      "target": {
+        "revisionKey": "id=RB-12V4000M70-005459",
+        "engineFile": "engine_12V4000M70.json",
+        "id": "RB-12V4000M70-005459"
+      },
+      "changes": {
+        "designation_final": {
+          "before": "INSTALLATION MATRL IP68 M.DICHTUNG",
+          "after": "INSTALLATION MATRL"
+        },
+        "fg_fgs_final": {
+          "before": "511-10",
+          "after": ""
+        },
+        "bom_final": {
+          "before": "X00E50200482",
+          "after": ""
+        }
+      }
+    }
+  },
+  {
+    "id": "1781044813452-ez2va5ol",
+    "timestamp": "2026-06-09T22:40:13.452Z",
+    "kind": "change-applied",
+    "type": "qa-row-patch",
+    "module": "qa_milu",
+    "action": "save-side-form",
+    "description": "Guardar ficha lateral ID RB-16V4000M73L-002314",
+    "target": {
+      "revisionKey": "id=RB-16V4000M73L-002314"
+    },
+    "changeId": "1781044809601-9cjtoaaq",
+    "data": {
+      "target": {
+        "revisionKey": "id=RB-16V4000M73L-002314",
+        "engineFile": "engine_16V4000M73L.json",
+        "id": "RB-16V4000M73L-002314"
+      },
+      "changes": {
+        "designation_final": {
+          "before": "CONTROL UNIT FOR OIL PRIMING PUM / 50HZ / 2A",
+          "after": "CONTROL UNIT FOR OIL PRIMING PUM"
+        },
+        "fg_fgs_final": {
+          "before": "507-97",
+          "after": ""
+        },
+        "bom_final": {
+          "before": "XS00E510.00183",
+          "after": ""
+        }
+      }
+    }
+  },
+  {
+    "id": "1781044826771-2ea3217t",
+    "timestamp": "2026-06-09T22:40:26.771Z",
+    "kind": "change-applied",
+    "type": "qa-row-patch",
+    "module": "qa_milu",
+    "action": "save-side-form",
+    "description": "Guardar ficha lateral ID RB-12V4000M70-005108",
+    "target": {
+      "revisionKey": "id=RB-12V4000M70-005108"
+    },
+    "changeId": "1781044824962-aqung7lj",
+    "data": {
+      "target": {
+        "revisionKey": "id=RB-12V4000M70-005108",
+        "engineFile": "engine_12V4000M70.json",
+        "id": "RB-12V4000M70-005108"
+      },
+      "changes": {
+        "designation_final": {
+          "before": "CONTROL UNIT FOR OIL PRIMING PUM / 60HZ / 2A",
+          "after": "CONTROL UNIT FOR OIL PRIMING PUM"
+        },
+        "fg_fgs_final": {
+          "before": "507-97",
+          "after": ""
+        },
+        "bom_final": {
+          "before": "XS00E510.00186",
+          "after": ""
+        }
+      }
+    }
+  },
+  {
+    "id": "1781044839207-mp6bwh5v",
+    "timestamp": "2026-06-09T22:40:39.207Z",
+    "kind": "change-applied",
+    "type": "qa-row-patch",
+    "module": "qa_milu",
+    "action": "save-side-form",
+    "description": "Guardar ficha lateral ID RB-12V4000M40A-002684",
+    "target": {
+      "revisionKey": "id=RB-12V4000M40A-002684"
+    },
+    "changeId": "1781044838156-r48gld1z",
+    "data": {
+      "target": {
+        "revisionKey": "id=RB-12V4000M40A-002684",
+        "engineFile": "engine_12V4000M40A.json",
+        "id": "RB-12V4000M40A-002684"
+      },
+      "changes": {
+        "designation_final": {
+          "before": "AUDIBLE ALARM FOR MONITORING (BXLXH)",
+          "after": "AUDIBLE ALARM FOR MONITORING"
+        },
+        "fg_fgs_final": {
+          "before": "508-00",
+          "after": ""
+        },
+        "bom_final": {
+          "before": "5005310289",
+          "after": ""
+        }
+      }
+    }
+  },
+  {
+    "id": "1781044855097-xrdud74k",
+    "timestamp": "2026-06-09T22:40:55.097Z",
+    "kind": "change-applied",
+    "type": "qa-row-patch",
+    "module": "qa_milu",
+    "action": "save-side-form",
+    "description": "Guardar ficha lateral ID RB-16V4000M61-002602",
+    "target": {
+      "revisionKey": "id=RB-16V4000M61-002602"
+    },
+    "changeId": "1781044853397-jnm27ejd",
+    "data": {
+      "target": {
+        "revisionKey": "id=RB-16V4000M61-002602",
+        "engineFile": "engine_16V4000M61.json",
+        "id": "RB-16V4000M61-002602"
+      },
+      "changes": {
+        "designation_final": {
+          "before": "HOUSING WITHOUT INTERLOCK (LXBXH)",
+          "after": "HOUSING WITHOUT INTERLOCK"
+        },
+        "fg_fgs_final": {
+          "before": "510-10",
+          "after": ""
+        },
+        "bom_final": {
+          "before": "X00E50200176",
+          "after": ""
+        }
+      }
+    }
+  },
+  {
+    "id": "1781044871978-cy408tyc",
+    "timestamp": "2026-06-09T22:41:11.978Z",
+    "kind": "change-applied",
+    "type": "qa-row-patch",
+    "module": "qa_milu",
+    "action": "save-side-form",
+    "description": "Guardar ficha lateral ID RB-16V4000M61-002460",
+    "target": {
+      "revisionKey": "id=RB-16V4000M61-002460"
+    },
+    "changeId": "1781044870453-wcn8ozng",
+    "data": {
+      "target": {
+        "revisionKey": "id=RB-16V4000M61-002460",
+        "engineFile": "engine_16V4000M61.json",
+        "id": "RB-16V4000M61-002460"
+      },
+      "changes": {
+        "designation_final": {
+          "before": "HOUSING WITHOUT INTERLOCK (LXBXH)",
+          "after": "HOUSING WITHOUT INTERLOCK"
+        },
+        "bom_final": {
+          "before": "X00E50205154",
+          "after": ""
+        }
+      }
+    }
+  },
+  {
+    "id": "1781044886417-1nbdsvub",
+    "timestamp": "2026-06-09T22:41:26.417Z",
+    "kind": "change-applied",
+    "type": "qa-row-patch",
+    "module": "qa_milu",
+    "action": "save-side-form",
+    "description": "Guardar ficha lateral ID RB-12V4000M40A-002688",
+    "target": {
+      "revisionKey": "id=RB-12V4000M40A-002688"
+    },
+    "changeId": "1781044885422-z05owv4j",
+    "data": {
+      "target": {
+        "revisionKey": "id=RB-12V4000M40A-002688",
+        "engineFile": "engine_12V4000M40A.json",
+        "id": "RB-12V4000M40A-002688"
+      },
+      "changes": {
+        "designation_final": {
+          "before": "HOUSING WITH INTERLOCK (LXBXH)",
+          "after": "HOUSING WITH INTERLOCK"
+        },
+        "fg_fgs_final": {
+          "before": "508-00",
+          "after": ""
+        },
+        "bom_final": {
+          "before": "X00E50203517",
+          "after": ""
+        }
+      }
+    }
+  },
+  {
+    "id": "1781044905646-ndgaeogi",
+    "timestamp": "2026-06-09T22:41:45.646Z",
+    "kind": "change-applied",
+    "type": "qa-row-patch",
+    "module": "qa_milu",
+    "action": "save-side-form",
+    "description": "Guardar ficha lateral ID RB-12V4000M53-003095",
+    "target": {
+      "revisionKey": "id=RB-12V4000M53-003095"
+    },
+    "changeId": "1781044903486-aokkmhp1",
+    "data": {
+      "target": {
+        "revisionKey": "id=RB-12V4000M53-003095",
+        "engineFile": "engine_12V4000M53.json",
+        "id": "RB-12V4000M53-003095"
+      },
+      "changes": {
+        "designation_final": {
+          "before": "COVER PLATE -X52-STARTER",
+          "after": "COVER PLATE "
+        },
+        "fg_fgs_final": {
+          "before": "508-95",
+          "after": ""
+        },
+        "bom_final": {
+          "before": "B00E50201528/S0002",
+          "after": ""
+        }
+      }
+    }
+  },
+  {
+    "id": "1781044921411-w2i3vgo6",
+    "timestamp": "2026-06-09T22:42:01.411Z",
+    "kind": "change-applied",
+    "type": "qa-row-patch",
+    "module": "qa_milu",
+    "action": "save-side-form",
+    "description": "Guardar ficha lateral ID RB-12V4000M53-003094",
+    "target": {
+      "revisionKey": "id=RB-12V4000M53-003094"
+    },
+    "changeId": "1781044919171-xdmca0sk",
+    "data": {
+      "target": {
+        "revisionKey": "id=RB-12V4000M53-003094",
+        "engineFile": "engine_12V4000M53.json",
+        "id": "RB-12V4000M53-003094"
+      },
+      "changes": {
+        "designation_final": {
+          "before": "COVER PLATE -X51-POWER",
+          "after": "COVER PLATE"
+        },
+        "fg_fgs_final": {
+          "before": "508-95",
+          "after": ""
+        },
+        "bom_final": {
+          "before": "B00E50201528/S0002",
+          "after": ""
+        }
+      }
+    }
+  },
+  {
+    "id": "1781044938181-44z6jkt2",
+    "timestamp": "2026-06-09T22:42:18.181Z",
+    "kind": "change-applied",
+    "type": "qa-row-patch",
+    "module": "qa_milu",
+    "action": "save-side-form",
+    "description": "Guardar ficha lateral ID RB-16V4000M61-002672",
+    "target": {
+      "revisionKey": "id=RB-16V4000M61-002672"
+    },
+    "changeId": "1781044937049-3r7ngjji",
+    "data": {
+      "target": {
+        "revisionKey": "id=RB-16V4000M61-002672",
+        "engineFile": "engine_16V4000M61.json",
+        "id": "RB-16V4000M61-002672"
+      },
+      "changes": {
+        "designation_final": {
+          "before": "HOUSING 9003 GLATT",
+          "after": "HOUSING"
+        },
+        "bom_final": {
+          "before": "X00E50205165",
+          "after": ""
+        }
+      }
+    }
+  },
+  {
+    "id": "1781044956069-qjbua7lc",
+    "timestamp": "2026-06-09T22:42:36.069Z",
+    "kind": "change-applied",
+    "type": "qa-row-patch",
+    "module": "qa_milu",
+    "action": "save-side-form",
+    "description": "Guardar ficha lateral ID RB-16V4000M61-002452",
+    "target": {
+      "revisionKey": "id=RB-16V4000M61-002452"
+    },
+    "changeId": "1781044954352-38cc93op",
+    "data": {
+      "target": {
+        "revisionKey": "id=RB-16V4000M61-002452",
+        "engineFile": "engine_16V4000M61.json",
+        "id": "RB-16V4000M61-002452"
+      },
+      "changes": {
+        "designation_final": {
+          "before": "MONITORING SYSTEM IN ENGINE ROOM 9003 GLATT",
+          "after": "MONITORING SYSTEM IN ENGINE ROOM"
+        },
+        "fg_fgs_final": {
+          "before": "510-10",
+          "after": ""
+        },
+        "bom_final": {
+          "before": "XS00E500.01233",
+          "after": ""
+        }
+      }
+    }
+  },
+  {
+    "id": "1781044974177-e1hejr6x",
+    "timestamp": "2026-06-09T22:42:54.177Z",
+    "kind": "change-applied",
+    "type": "qa-row-patch",
+    "module": "qa_milu",
+    "action": "save-side-form",
+    "description": "Guardar ficha lateral ID RB-16V4000M61-002453",
+    "target": {
+      "revisionKey": "id=RB-16V4000M61-002453"
+    },
+    "changeId": "1781044972961-c4d97pcg",
+    "data": {
+      "target": {
+        "revisionKey": "id=RB-16V4000M61-002453",
+        "engineFile": "engine_16V4000M61.json",
+        "id": "RB-16V4000M61-002453"
+      },
+      "changes": {
+        "designation_final": {
+          "before": "HOUSING 9003 GLATT",
+          "after": "HOUSING"
+        },
+        "bom_final": {
+          "before": "X00E50205154",
+          "after": ""
+        }
+      }
+    }
+  },
+  {
+    "id": "1781044986872-pkd4usd6",
+    "timestamp": "2026-06-09T22:43:06.872Z",
+    "kind": "change-applied",
+    "type": "qa-row-patch",
+    "module": "qa_milu",
+    "action": "save-side-form",
+    "description": "Guardar ficha lateral ID RB-16V4000M61-002523",
+    "target": {
+      "revisionKey": "id=RB-16V4000M61-002523"
+    },
+    "changeId": "1781044985148-r7bfrg14",
+    "data": {
+      "target": {
+        "revisionKey": "id=RB-16V4000M61-002523",
+        "engineFile": "engine_16V4000M61.json",
+        "id": "RB-16V4000M61-002523"
+      },
+      "changes": {
+        "designation_final": {
+          "before": "CONTROL UNIT FOR GEARBOX MONITOR 9003 GLATT",
+          "after": "CONTROL UNIT FOR GEARBOX MONITOR"
+        },
+        "fg_fgs_final": {
+          "before": "510-10",
+          "after": ""
+        },
+        "bom_final": {
+          "before": "XS00E500.01234",
+          "after": ""
+        }
+      }
+    }
+  },
+  {
+    "id": "1781044997822-7h96hl97",
+    "timestamp": "2026-06-09T22:43:17.822Z",
+    "kind": "change-applied",
+    "type": "qa-row-patch",
+    "module": "qa_milu",
+    "action": "save-side-form",
+    "description": "Guardar ficha lateral ID RB-16V4000M61-002524",
+    "target": {
+      "revisionKey": "id=RB-16V4000M61-002524"
+    },
+    "changeId": "1781044996693-cih2sjf5",
+    "data": {
+      "target": {
+        "revisionKey": "id=RB-16V4000M61-002524",
+        "engineFile": "engine_16V4000M61.json",
+        "id": "RB-16V4000M61-002524"
+      },
+      "changes": {
+        "designation_final": {
+          "before": "HOUSING FOR GEARBOX MONITOR GLATT",
+          "after": "HOUSING FOR GEARBOX MONITOR"
+        },
+        "bom_final": {
+          "before": "X00E50205156",
+          "after": ""
+        }
+      }
+    }
+  },
+  {
+    "id": "1781045015274-sb5aih6t",
+    "timestamp": "2026-06-09T22:43:35.274Z",
+    "kind": "change-applied",
+    "type": "qa-row-patch",
+    "module": "qa_milu",
+    "action": "save-side-form",
+    "description": "Guardar ficha lateral ID RB-16V4000M61-002562",
+    "target": {
+      "revisionKey": "id=RB-16V4000M61-002562"
+    },
+    "changeId": "1781045013604-y6wzbnez",
+    "data": {
+      "target": {
+        "revisionKey": "id=RB-16V4000M61-002562",
+        "engineFile": "engine_16V4000M61.json",
+        "id": "RB-16V4000M61-002562"
+      },
+      "changes": {
+        "designation_final": {
+          "before": "CONTROL UNIT FOR OIL PRIMING PUM GLATT",
+          "after": "CONTROL UNIT FOR OIL PRIMING PUM"
+        },
+        "fg_fgs_final": {
+          "before": "510-10",
+          "after": ""
+        },
+        "bom_final": {
+          "before": "XS00E500.01235",
+          "after": ""
+        }
+      }
+    }
+  },
+  {
+    "id": "1781045030587-b2gbo1wy",
+    "timestamp": "2026-06-09T22:43:50.587Z",
+    "kind": "change-applied",
+    "type": "qa-row-patch",
+    "module": "qa_milu",
+    "action": "save-side-form",
+    "description": "Guardar ficha lateral ID RB-16V4000M61-002563",
+    "target": {
+      "revisionKey": "id=RB-16V4000M61-002563"
+    },
+    "changeId": "1781045029395-a4rb3b3p",
+    "data": {
+      "target": {
+        "revisionKey": "id=RB-16V4000M61-002563",
+        "engineFile": "engine_16V4000M61.json",
+        "id": "RB-16V4000M61-002563"
+      },
+      "changes": {
+        "designation_final": {
+          "before": "CONTROL UNIT FOR OIL PRIMING PUM / RAL9003 GLATT",
+          "after": "CONTROL UNIT FOR OIL PRIMING PUM"
+        },
+        "bom_final": {
+          "before": "X00E50205158",
+          "after": ""
+        }
+      }
+    }
+  },
+  {
+    "id": "1781045048970-5ezaq7x1",
+    "timestamp": "2026-06-09T22:44:08.970Z",
+    "kind": "change-applied",
+    "type": "qa-row-patch",
+    "module": "qa_milu",
+    "action": "save-side-form",
+    "description": "Guardar ficha lateral ID RB-16V4000M61-001982",
+    "target": {
+      "revisionKey": "id=RB-16V4000M61-001982"
+    },
+    "changeId": "1781045047162-b9y3q5ur",
+    "data": {
+      "target": {
+        "revisionKey": "id=RB-16V4000M61-001982",
+        "engineFile": "engine_16V4000M61.json",
+        "id": "RB-16V4000M61-001982"
+      },
+      "changes": {
+        "designation_final": {
+          "before": "CONTROL UNIT F/EXH FLAP CONTROL / RAL 9003 GLATT",
+          "after": "CONTROL UNIT F/EXH FLAP CONTROL"
+        },
+        "fg_fgs_final": {
+          "before": "507-97",
+          "after": ""
+        },
+        "bom_final": {
+          "before": "XS00E500.01236",
+          "after": ""
+        }
+      }
+    }
+  },
+  {
+    "id": "1781045071025-xtukpr4r",
+    "timestamp": "2026-06-09T22:44:31.025Z",
+    "kind": "change-applied",
+    "type": "qa-row-patch",
+    "module": "qa_milu",
+    "action": "save-side-form",
+    "description": "Guardar ficha lateral ID RB-16V4000M61-001983",
+    "target": {
+      "revisionKey": "id=RB-16V4000M61-001983"
+    },
+    "changeId": "1781045069873-c6280ykl",
+    "data": {
+      "target": {
+        "revisionKey": "id=RB-16V4000M61-001983",
+        "engineFile": "engine_16V4000M61.json",
+        "id": "RB-16V4000M61-001983"
+      },
+      "changes": {
+        "designation_final": {
+          "before": "HOUSING FOR CONTROL UNIT RAL 9003 GLATT",
+          "after": "HOUSING FOR CONTROL UNIT"
+        },
+        "bom_final": {
+          "before": "X00E50205162",
+          "after": ""
+        }
+      }
+    }
+  },
+  {
+    "id": "1781045091525-swxl53p5",
+    "timestamp": "2026-06-09T22:44:51.525Z",
+    "kind": "change-applied",
+    "type": "qa-row-patch",
+    "module": "qa_milu",
+    "action": "save-side-form",
+    "description": "Guardar ficha lateral ID RB-12V4000M53-006352",
+    "target": {
+      "revisionKey": "id=RB-12V4000M53-006352"
+    },
+    "changeId": "1781045089280-tz37dz8u",
+    "data": {
+      "target": {
+        "revisionKey": "id=RB-12V4000M53-006352",
+        "engineFile": "engine_12V4000M53.json",
+        "id": "RB-12V4000M53-006352"
+      },
+      "changes": {
+        "designation_final": {
+          "before": "CONTROL UNIT FOR OIL PRIMING PUM / RAL 9006",
+          "after": "CONTROL UNIT FOR OIL PRIMING PUM"
+        },
+        "fg_fgs_final": {
+          "before": "510-10",
+          "after": ""
+        },
+        "bom_final": {
+          "before": "XS00E500.01361",
+          "after": ""
+        }
+      }
+    }
+  },
+  {
+    "id": "1781045102655-h8gavjjo",
+    "timestamp": "2026-06-09T22:45:02.655Z",
+    "kind": "change-applied",
+    "type": "qa-row-patch",
+    "module": "qa_milu",
+    "action": "save-side-form",
+    "description": "Guardar ficha lateral ID RB-12V4000M53-006353",
+    "target": {
+      "revisionKey": "id=RB-12V4000M53-006353"
+    },
+    "changeId": "1781045101163-zywsfcj0",
+    "data": {
+      "target": {
+        "revisionKey": "id=RB-12V4000M53-006353",
+        "engineFile": "engine_12V4000M53.json",
+        "id": "RB-12V4000M53-006353"
+      },
+      "changes": {
+        "designation_final": {
+          "before": "CONTROL UNIT FOR OIL PRIMING PUM / RAL9006",
+          "after": "CONTROL UNIT FOR OIL PRIMING PUM"
+        },
+        "bom_final": {
+          "before": "X00E50205800",
+          "after": ""
+        }
+      }
+    }
+  },
+  {
+    "id": "1781045118892-40m6wmtf",
+    "timestamp": "2026-06-09T22:45:18.892Z",
+    "kind": "change-applied",
+    "type": "qa-row-patch",
+    "module": "qa_milu",
+    "action": "save-side-form",
+    "description": "Guardar ficha lateral ID RB-12V4000M70-005159",
+    "target": {
+      "revisionKey": "id=RB-12V4000M70-005159"
+    },
+    "changeId": "1781045117003-w3dad97f",
+    "data": {
+      "target": {
+        "revisionKey": "id=RB-12V4000M70-005159",
+        "engineFile": "engine_12V4000M70.json",
+        "id": "RB-12V4000M70-005159"
+      },
+      "changes": {
+        "designation_final": {
+          "before": "PLUG-IN BOARD MIT URLADER",
+          "after": "PLUG-IN BOARD MIT"
+        },
+        "fg_fgs_final": {
+          "before": "508-95",
+          "after": ""
+        },
+        "bom_final": {
+          "before": "X00021242",
+          "after": ""
+        }
+      }
+    }
+  },
+  {
+    "id": "1781045128646-ljqyo4ck",
+    "timestamp": "2026-06-09T22:45:28.646Z",
+    "kind": "change-applied",
+    "type": "qa-row-patch",
+    "module": "qa_milu",
+    "action": "save-side-form",
+    "description": "Guardar ficha lateral ID RB-12V4000M70-005159",
+    "target": {
+      "revisionKey": "id=RB-12V4000M70-005159"
+    },
+    "changeId": "1781045127892-smbapdv1",
+    "data": {
+      "target": {
+        "revisionKey": "id=RB-12V4000M70-005159",
+        "engineFile": "engine_12V4000M70.json",
+        "id": "RB-12V4000M70-005159"
+      },
+      "changes": {
+        "designation_final": {
+          "before": "PLUG-IN BOARD MIT",
+          "after": "PLUG-IN BOARD"
+        }
+      }
+    }
+  },
+  {
+    "id": "1781045148196-9qbael40",
+    "timestamp": "2026-06-09T22:45:48.196Z",
+    "kind": "change-applied",
+    "type": "qa-row-patch",
+    "module": "qa_milu",
+    "action": "save-side-form",
+    "description": "Guardar ficha lateral ID RB-12V4000M70-002512",
+    "target": {
+      "revisionKey": "id=RB-12V4000M70-002512"
+    },
+    "changeId": "1781045146199-jou165mz",
+    "data": {
+      "target": {
+        "revisionKey": "id=RB-12V4000M70-002512",
+        "engineFile": "engine_12V4000M70.json",
+        "id": "RB-12V4000M70-002512"
+      },
+      "changes": {
+        "designation_final": {
+          "before": "GOVERNOR (LXBXH)",
+          "after": "GOVERNOR"
+        },
+        "fg_fgs_final": {
+          "before": "508-95",
+          "after": ""
+        },
+        "bom_final": {
+          "before": "500.00025",
+          "after": ""
+        }
+      }
+    }
+  },
+  {
+    "id": "1781045169124-m7nabj85",
+    "timestamp": "2026-06-09T22:46:09.124Z",
+    "kind": "change-applied",
+    "type": "qa-row-patch",
+    "module": "qa_milu",
+    "action": "save-side-form",
+    "description": "Guardar ficha lateral ID RB-12V4000M53-000333",
+    "target": {
+      "revisionKey": "id=RB-12V4000M53-000333"
+    },
+    "changeId": "1781045166471-3e1n7zqr",
+    "data": {
+      "target": {
+        "revisionKey": "id=RB-12V4000M53-000333",
+        "engineFile": "engine_12V4000M53.json",
+        "id": "RB-12V4000M53-000333"
+      },
+      "changes": {
+        "designation_final": {
+          "before": "CRANKSHAFT LH",
+          "after": "CRANKSHAFT"
+        },
+        "fg_fgs_final": {
+          "before": "030-00",
+          "after": ""
+        },
+        "bom_final": {
+          "before": "X59403100001",
+          "after": ""
+        }
+      }
+    }
+  },
+  {
+    "id": "1781045186182-h9yazj2v",
+    "timestamp": "2026-06-09T22:46:26.182Z",
+    "kind": "change-applied",
+    "type": "qa-row-patch",
+    "module": "qa_milu",
+    "action": "save-side-form",
+    "description": "Guardar ficha lateral ID RB-20V4000M93L-005131",
+    "target": {
+      "revisionKey": "id=RB-20V4000M93L-005131"
+    },
+    "changeId": "1781045183764-swd44gkq",
+    "data": {
+      "target": {
+        "revisionKey": "id=RB-20V4000M93L-005131",
+        "engineFile": "engine_20V4000M93L.json",
+        "id": "RB-20V4000M93L-005131"
+      },
+      "changes": {
+        "designation_final": {
+          "before": "SOOT FILTER GL ACCEPTANCE k",
+          "after": "SOOT FILTER GL ACCEPTANCE"
+        },
+        "fg_fgs_final": {
+          "before": "146-01",
+          "after": ""
+        },
+        "bom_final": {
+          "before": "XK535140.747457-01",
+          "after": ""
+        }
+      }
+    }
+  },
+  {
+    "id": "1781045202260-faglnz16",
+    "timestamp": "2026-06-09T22:46:42.260Z",
+    "kind": "change-applied",
+    "type": "qa-row-patch",
+    "module": "qa_milu",
+    "action": "save-side-form",
+    "description": "Guardar ficha lateral ID RB-20V4000M93L-007147",
+    "target": {
+      "revisionKey": "id=RB-20V4000M93L-007147"
+    },
+    "changeId": "1781045200015-vc4pzdj8",
+    "data": {
+      "target": {
+        "revisionKey": "id=RB-20V4000M93L-007147",
+        "engineFile": "engine_20V4000M93L.json",
+        "id": "RB-20V4000M93L-007147"
+      },
+      "changes": {
+        "designation_final": {
+          "before": "GENSET GL ACCEPTANCE k",
+          "after": "GENSET GL ACCEPTANCE"
+        },
+        "fg_fgs_final": {
+          "before": "660-00",
+          "after": ""
+        },
+        "bom_final": {
+          "before": "XK535660.747457-01",
+          "after": ""
+        }
+      }
+    }
+  },
+  {
+    "id": "1781045213298-av0i81rq",
+    "timestamp": "2026-06-09T22:46:53.298Z",
+    "kind": "change-applied",
+    "type": "qa-row-patch",
+    "module": "qa_milu",
+    "action": "inline-accion",
+    "description": "Cambio rapido accion ID RB-16V4000M73-000058",
+    "target": {
+      "revisionKey": "id=RB-16V4000M73-000058"
+    },
+    "changeId": "1781045212063-or6emx1g",
+    "data": {
+      "target": {
+        "revisionKey": "id=RB-16V4000M73-000058",
+        "engineFile": "engine_16V4000M73.json",
+        "id": "RB-16V4000M73-000058"
+      },
+      "changes": {
+        "qa_revision_accion": {
+          "before": "importar",
+          "after": "copia"
+        }
+      }
+    }
+  },
+  {
+    "id": "1781045230556-zvhynx3m",
+    "timestamp": "2026-06-09T22:47:10.556Z",
+    "kind": "change-applied",
+    "type": "qa-row-patch",
+    "module": "qa_milu",
+    "action": "inline-accion",
+    "description": "Cambio rapido accion ID RB-16V4000M73-000031",
+    "target": {
+      "revisionKey": "id=RB-16V4000M73-000031"
+    },
+    "changeId": "1781045229096-gcm8oh48",
+    "data": {
+      "target": {
+        "revisionKey": "id=RB-16V4000M73-000031",
+        "engineFile": "engine_16V4000M73.json",
+        "id": "RB-16V4000M73-000031"
+      },
+      "changes": {
+        "qa_revision_accion": {
+          "before": "importar",
+          "after": "copia"
+        }
+      }
+    }
+  },
+  {
+    "id": "1781045244297-06rcwdgg",
+    "timestamp": "2026-06-09T22:47:24.297Z",
+    "kind": "change-applied",
+    "type": "qa-row-patch",
+    "module": "qa_milu",
+    "action": "save-side-form",
+    "description": "Guardar ficha lateral ID RB-12V4000M53-006309",
+    "target": {
+      "revisionKey": "id=RB-12V4000M53-006309"
+    },
+    "changeId": "1781045242060-wt4lm43h",
+    "data": {
+      "target": {
+        "revisionKey": "id=RB-12V4000M53-006309",
+        "engineFile": "engine_12V4000M53.json",
+        "id": "RB-12V4000M53-006309"
+      },
+      "changes": {
+        "designation_final": {
+          "before": "FILTER ELEMENT - 70806164",
+          "after": "FILTER ELEMENT"
+        },
+        "fg_fgs_final": {
+          "before": "083-05",
+          "after": ""
+        },
+        "bom_final": {
+          "before": "X00027853",
+          "after": ""
+        }
+      }
+    }
+  },
+  {
+    "id": "1781045265005-hudbtvpl",
+    "timestamp": "2026-06-09T22:47:45.005Z",
+    "kind": "change-applied",
+    "type": "qa-row-patch",
+    "module": "qa_milu",
+    "action": "save-side-form",
+    "description": "Guardar ficha lateral ID RB-20V4000M93-000052",
+    "target": {
+      "revisionKey": "id=RB-20V4000M93-000052"
+    },
+    "changeId": "1781045261601-7badfmak",
+    "data": {
+      "target": {
+        "revisionKey": "id=RB-20V4000M93-000052",
+        "engineFile": "engine_20V4000M93.json",
+        "id": "RB-20V4000M93-000052"
+      },
+      "changes": {
+        "designation_final": {
+          "before": "CRANKCASE k",
+          "after": "CRANKCASE"
+        },
+        "bom_final": {
+          "before": "X59601100004",
+          "after": ""
+        }
+      }
+    }
+  },
+  {
+    "id": "1781045282561-dnaov0ce",
+    "timestamp": "2026-06-09T22:48:02.561Z",
+    "kind": "change-applied",
+    "type": "qa-row-patch",
+    "module": "qa_milu",
+    "action": "save-side-form",
+    "description": "Guardar ficha lateral ID RB-20V4000M93L-003085",
+    "target": {
+      "revisionKey": "id=RB-20V4000M93L-003085"
+    },
+    "changeId": "1781045279043-j4reqhlh",
+    "data": {
+      "target": {
+        "revisionKey": "id=RB-20V4000M93L-003085",
+        "engineFile": "engine_20V4000M93L.json",
+        "id": "RB-20V4000M93L-003085"
+      },
+      "changes": {
+        "designation_final": {
+          "before": "GEARBOX k",
+          "after": "GEARBOX"
+        },
+        "fg_fgs_final": {
+          "before": "342-10",
+          "after": ""
+        },
+        "bom_final": {
+          "before": "XK596340.747457-02",
+          "after": ""
+        }
+      }
+    }
+  },
+  {
+    "id": "1781045291873-vspi21jx",
+    "timestamp": "2026-06-09T22:48:11.873Z",
+    "kind": "change-applied",
+    "type": "qa-row-patch",
+    "module": "qa_milu",
+    "action": "save-side-form",
+    "description": "Guardar ficha lateral ID RB-16V4000M90-002074",
+    "target": {
+      "revisionKey": "id=RB-16V4000M90-002074"
+    },
+    "changeId": "1781045290887-7w9ohxow",
+    "data": {
+      "target": {
+        "revisionKey": "id=RB-16V4000M90-002074",
+        "engineFile": "engine_16V4000M90.json",
+        "id": "RB-16V4000M90-002074"
+      },
+      "changes": {
+        "designation_final": {
+          "before": "GEARBOX k",
+          "after": "GEARBOX"
+        },
+        "fg_fgs_final": {
+          "before": "342-10",
+          "after": ""
+        },
+        "bom_final": {
+          "before": "XK527340.748478-01",
+          "after": ""
+        }
+      }
+    }
+  },
+  {
+    "id": "1781045306360-vchitwdl",
+    "timestamp": "2026-06-09T22:48:26.360Z",
+    "kind": "change-applied",
+    "type": "qa-row-patch",
+    "module": "qa_milu",
+    "action": "save-side-form",
+    "description": "Guardar ficha lateral ID RB-20V4000M93L-007153",
+    "target": {
+      "revisionKey": "id=RB-20V4000M93L-007153"
+    },
+    "changeId": "1781045304102-9wr17102",
+    "data": {
+      "target": {
+        "revisionKey": "id=RB-20V4000M93L-007153",
+        "engineFile": "engine_20V4000M93L.json",
+        "id": "RB-20V4000M93L-007153"
+      },
+      "changes": {
+        "designation_final": {
+          "before": "EMERGENCY ALTERNATOR GL ACCEPTANCE k",
+          "after": "EMERGENCY ALTERNATOR GL ACCEPTANCE"
+        },
+        "fg_fgs_final": {
+          "before": "660-00",
+          "after": ""
+        },
+        "bom_final": {
+          "before": "XK825660.747457-01",
+          "after": ""
+        }
+      }
+    }
+  },
+  {
+    "id": "1781045320827-u9krzo7n",
+    "timestamp": "2026-06-09T22:48:40.827Z",
+    "kind": "change-applied",
+    "type": "qa-row-patch",
+    "module": "qa_milu",
+    "action": "inline-accion",
+    "description": "Cambio rapido accion ID RB-16V4000M61-001615",
+    "target": {
+      "revisionKey": "id=RB-16V4000M61-001615"
+    },
+    "changeId": "1781045320080-33p5yzh6",
+    "data": {
+      "target": {
+        "revisionKey": "id=RB-16V4000M61-001615",
+        "engineFile": "engine_16V4000M61.json",
+        "id": "RB-16V4000M61-001615"
+      },
+      "changes": {
+        "qa_revision_accion": {
+          "before": "importar",
+          "after": "copia"
+        }
+      }
+    }
   }
 ]

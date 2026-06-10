@@ -1,0 +1,20 @@
+AUDIT ESQUEMAS_CIRCULOS
+========================================
+Total referencias revisadas : 5397
+Existentes                  : 5397
+Faltantes                   : 0
+
+Faltantes por motor:
+
+Existentes por motor:
+  12V4000M53: 5397
+
+Top 10 archivos faltantes:
+
+Top 10 PN con referencias faltantes:
+
+Output:
+  - data\output\audit_esquemas_circulos\audit_esquemas_circulos_missing.csv
+  - data\output\audit_esquemas_circulos\audit_esquemas_circulos_existing.csv
+  - data\output\audit_esquemas_circulos\audit_esquemas_circulos_summary.json
+  - data\output\audit_esquemas_circulos\audit_esquemas_circulos_summary.txt

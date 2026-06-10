@@ -10,7 +10,7 @@ const AUDIT_OUTPUT_DIR = path.join(REPO_ROOT, 'data', 'output', 'wordpress');
 const FG_FGS_CATALOG_PATH = path.join(REPO_ROOT, 'EXCEL_FG-FGS.json');
 const OLD_RELATION_SLOT_COUNT = 18;
 const WP_UPLOADS_BASE = 'https://milu-naval.mystagingwebsite.com/wp-content/uploads';
-const WP_PHOTOS_FIXED_BASE = '/srv/htdocs/wp-content/uploads/2026/fotos';
+const WP_PHOTOS_FIXED_BASE = '/srv/htdocs/wp-content/uploads/fotos';
 const WP_PRODUCT_OLD_BASE = 'https://milu-naval.com/producto/';
 const POS_MODELS = [
     '12V4000M40A',
@@ -337,8 +337,9 @@ function buildWordPressAssetUrlFromFilename(filename, context = {}, options = {}
         return { value: basename, warning: buildModelWarning(basename, context) };
     }
 
+    const folder = assetType === 'esquema' ? `${model}_esquemas` : `${model}-POS`;
     return {
-        value: `${WP_UPLOADS_BASE}/${model}-POS/${basename}`,
+        value: `${WP_UPLOADS_BASE}/${folder}/${basename}`,
         warning: null
     };
 }
@@ -397,7 +398,7 @@ function buildExpImagenesFromBaseAssets(groupRows, principalRow) {
     appendUnique(buckets.filename_foto, 'photo');
     appendUnique(buckets.esquemas_circulos, 'pos');
     if (deduped.length === 0) {
-        appendUnique(buckets.esquemas, 'pos');
+        appendUnique(buckets.esquemas, 'esquema');
     }
     if (deduped.length === 0) {
         deduped.push(buildSinImagenUrl(context));
