@@ -4,6 +4,17 @@ const path = require('path');
 const rootDir = path.resolve(__dirname, '..');
 const deployDir = path.join(rootDir, 'deploy_ftp');
 const reportPath = path.join(rootDir, 'deploy_ftp_report.md');
+const reportInsideDeploy = path.join(deployDir, 'deploy_report.md');
+
+const MAX_FILE_SIZE_BYTES = 50 * 1024 * 1024; // 50 MB
+const SIZE_WHITELIST = new Set([]); // añadir filenames si se necesita superar el límite
+
+const REQUIRED_PAGES = [
+    'milu_shell.html',
+    'analista_02.html',
+    'import_pdf.html',
+    'recompute_simple.html'
+];
 
 const EXCLUDED_DIRS = new Set([
     '.git',
@@ -53,6 +64,7 @@ const copiedFiles = [];
 const excludedItems = [];
 const missingReferences = [];
 const backendMatches = [];
+const oversizedFiles = [];
 const dependencyGraph = new Map();
 const EXCLUSION_RULE_SUMMARY = [
     'Directorios excluidos: .git, .github, .venv, .vscode, dist, zz_old, zz_copias, json_originales, node_modules, docs_legacy, docs_v2, __pycache__, scripts, server, tests, legacy, reports, python_lib',
@@ -370,6 +382,15 @@ function copyFileToDeploy(relPath) {
     const src = path.join(rootDir, relPath);
     const dst = path.join(deployDir, relPath);
 
+    const sizeStat = fs.statSync(src);
+    const basename = path.basename(relPath);
+    if (sizeStat.size > MAX_FILE_SIZE_BYTES && !SIZE_WHITELIST.has(basename)) {
+        const sizeMB = (sizeStat.size / (1024 * 1024)).toFixed(1);
+        oversizedFiles.push({ path: relPath, sizeMB });
+        excludedItems.push({ path: relPath, reason: `oversized:${sizeMB}MB`, source: 'size-check' });
+        return;
+    }
+
     fs.mkdirSync(path.dirname(dst), { recursive: true });
     fs.copyFileSync(src, dst);
     copiedFiles.push(relPath);
@@ -543,12 +564,31 @@ function buildReport(seedPages) {
     }
     lines.push('');
 
+    lines.push('## Páginas críticas');
+    lines.push('');
+    for (const page of REQUIRED_PAGES) {
+        const inDeploy = fs.existsSync(path.join(deployDir, page));
+        lines.push(`- ${page}: ${inDeploy ? 'OK' : 'FALTA'}`);
+    }
+    lines.push('');
+
+    if (oversizedFiles.length > 0) {
+        lines.push('## Archivos omitidos por tamaño (>50MB)');
+        lines.push('');
+        for (const item of oversizedFiles) {
+            lines.push(`- ${item.path} (${item.sizeMB} MB)`);
+        }
+        lines.push('');
+    }
+
     lines.push('## Notas');
     lines.push('');
     lines.push('- engine_*.json se excluye por defecto en este build FTP.');
     lines.push('- Endpoints backend (localhost/api/export/save/recompute/qa_revision_sync.php) no funcionaran en hosting FTP estatico sin backend adicional.');
 
-    fs.writeFileSync(reportPath, lines.join('\n'), 'utf8');
+    const reportContent = lines.join('\n');
+    fs.writeFileSync(reportPath, reportContent, 'utf8');
+    fs.writeFileSync(reportInsideDeploy, reportContent, 'utf8');
 }
 
 function main() {
@@ -579,8 +619,16 @@ function main() {
     console.log(`Excluded records: ${excludedItems.length}`);
     console.log(`Missing refs: ${missingReferences.length}`);
     console.log(`Backend refs: ${backendMatches.length}`);
+    if (oversizedFiles.length > 0) {
+        console.warn(`WARN: ${oversizedFiles.length} archivo(s) omitidos por tamaño >50MB`);
+        for (const f of oversizedFiles) console.warn(`  - ${f.path} (${f.sizeMB} MB)`);
+    }
+    const missingRequired = REQUIRED_PAGES.filter((p) => !fs.existsSync(path.join(deployDir, p)));
+    if (missingRequired.length > 0) {
+        console.warn(`WARN: páginas críticas faltantes en deploy_ftp/: ${missingRequired.join(', ')}`);
+    }
     console.log('Deploy folder rebuilt: deploy_ftp/');
-    console.log('Report generated: deploy_ftp_report.md');
+    console.log('Report generated: deploy_ftp_report.md + deploy_ftp/deploy_report.md');
 }
 
 main();
