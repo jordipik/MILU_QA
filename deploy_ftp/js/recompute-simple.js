@@ -12,21 +12,44 @@ const refs = {
     logPanel: document.getElementById('recomputeSimpleLogPanel'),
     btnImportPdf: document.getElementById('btnImportPdf'),
     btnSust: document.getElementById('btnSust'),
+    btnFillMissingFgFgs: document.getElementById('btnFillMissingFgFgs'),
+    chkFillMissingDryRun: document.getElementById('chkFillMissingDryRun'),
+    chkFillMissingBackup: document.getElementById('chkFillMissingBackup'),
     btnAssets: document.getElementById('btnAssets'),
+    btnAssetsCancel: document.getElementById('btnAssetsCancel'),
     btnHermanos: document.getElementById('btnHermanos'),
+    btnSchemesByBomDryRun: document.getElementById('btnSchemesByBomDryRun'),
+    btnSchemesByBomWrite: document.getElementById('btnSchemesByBomWrite'),
+    btnSchemesPosDryRun: document.getElementById('btnSchemesPosDryRun'),
+    btnSchemesPosWrite: document.getElementById('btnSchemesPosWrite'),
+    manualPickerPage: document.getElementById('manualPickerPage'),
+    manualPickerPos: document.getElementById('manualPickerPos'),
+    manualPickerBase: document.getElementById('manualPickerBase'),
+    btnManualOverridePicker: document.getElementById('btnManualOverridePicker'),
     btnFinal: document.getElementById('btnFinal'),
     btnErrors: document.getElementById('btnErrors'),
     btnStatuses: document.getElementById('btnStatuses'),
     btnClearPdfFinal: document.getElementById('btnClearPdfFinal'),
-    btnClearLog: document.getElementById('btnClearLog')
+    btnClearLog: document.getElementById('btnClearLog'),
+    assetsProgressWrap: document.getElementById('assetsProgressWrap'),
+    assetsProgressLabel: document.getElementById('assetsProgressLabel'),
+    assetsProgressPercent: document.getElementById('assetsProgressPercent'),
+    assetsProgressBar: document.getElementById('assetsProgressBar'),
+    assetsProgressMeta: document.getElementById('assetsProgressMeta')
 };
 
 const engineFileByModel = new Map();
 const actionButtons = [
     refs.btnImportPdf,
     refs.btnSust,
+    refs.btnFillMissingFgFgs,
     refs.btnAssets,
     refs.btnHermanos,
+    refs.btnSchemesByBomDryRun,
+    refs.btnSchemesByBomWrite,
+    refs.btnSchemesPosDryRun,
+    refs.btnSchemesPosWrite,
+    refs.btnManualOverridePicker,
     refs.btnFinal,
     refs.btnErrors,
     refs.btnStatuses,
@@ -34,6 +57,9 @@ const actionButtons = [
 ].filter((node) => node instanceof HTMLButtonElement);
 
 let logLines = [];
+let currentAssetsJobId = '';
+let assetsLastLogSeq = 0;
+let assetsCancelRequested = false;
 
 function normalizeText(value) {
     return String(value == null ? '' : value).trim();
@@ -96,6 +122,85 @@ function setBusy(isBusy) {
     actionButtons.forEach((button) => {
         button.disabled = Boolean(isBusy);
     });
+}
+
+function setAssetsProgressVisible(visible) {
+    if (!(refs.assetsProgressWrap instanceof HTMLElement)) return;
+    refs.assetsProgressWrap.hidden = !visible;
+}
+
+function setAssetsCancelEnabled(enabled) {
+    if (refs.btnAssetsCancel instanceof HTMLButtonElement) {
+        refs.btnAssetsCancel.disabled = !enabled;
+    }
+}
+
+function updateAssetsProgress({ percent = 0, label = '', meta = '' } = {}) {
+    const safePercent = Number.isFinite(Number(percent)) ? Math.max(0, Math.min(100, Number(percent))) : 0;
+    if (refs.assetsProgressPercent instanceof HTMLElement) {
+        refs.assetsProgressPercent.textContent = `${safePercent}%`;
+    }
+    if (refs.assetsProgressBar instanceof HTMLElement) {
+        refs.assetsProgressBar.style.width = `${safePercent}%`;
+    }
+    if (refs.assetsProgressLabel instanceof HTMLElement) {
+        refs.assetsProgressLabel.textContent = label || 'Procesando ASSETS...';
+    }
+    if (refs.assetsProgressMeta instanceof HTMLElement) {
+        refs.assetsProgressMeta.textContent = meta || '';
+    }
+}
+
+function resetAssetsProgressUi() {
+    currentAssetsJobId = '';
+    assetsLastLogSeq = 0;
+    assetsCancelRequested = false;
+    setAssetsCancelEnabled(false);
+    updateAssetsProgress({ percent: 0, label: 'Preparando ASSETS...', meta: 'Esperando inicio...' });
+    setAssetsProgressVisible(false);
+}
+
+function delay(ms) {
+    return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
+async function getJson(endpoint, options = {}) {
+    const response = await fetch(endpoint, {
+        method: 'GET',
+        headers: { 'Content-Type': 'application/json' }
+    });
+
+    const raw = await response.text();
+    let data = null;
+    try {
+        data = raw ? JSON.parse(raw) : null;
+    } catch (_error) {
+        data = { ok: false, error: raw || `HTTP ${response.status}` };
+    }
+
+    if (!response.ok || !data || data.ok === false) {
+        throw new Error(normalizeText(data?.error) || `HTTP ${response.status}`);
+    }
+
+    return data;
+}
+
+async function cancelAssetsJob() {
+    if (!currentAssetsJobId) return;
+    if (assetsCancelRequested) return;
+
+    assetsCancelRequested = true;
+    setAssetsCancelEnabled(false);
+    setStatus('Cancelando ASSETS...', 'warning');
+    appendLog('[ASSETS] Cancelación solicitada por usuario.');
+
+    try {
+        await postJson(`/api/recompute-simple/enrich-assets/jobs/${encodeURIComponent(currentAssetsJobId)}/cancel`, {});
+    } catch (error) {
+        const message = String(error?.message || error || 'No se pudo cancelar ASSETS');
+        appendLog(`[ASSETS][WARN] ${message}`);
+        setStatus(message, 'warning');
+    }
 }
 
 function currentScopeLabel() {
@@ -730,6 +835,42 @@ function renderResponseSummary(actionLabel, endpoint, responseData) {
         return;
     }
 
+    if (endpoint === '/api/recompute-simple/fill-missing-fg-fgs') {
+        const summary = data?.summary || {};
+        const cards = [
+            { label: 'Procesados', value: String(Number(summary?.recordsProcessed) || 0) },
+            { label: 'Ya tenian FG/FGS', value: String(Number(summary?.alreadyHadFgFgs) || 0) },
+            { label: 'Vacios', value: String(Number(summary?.missingFgFgs) || 0) },
+            { label: 'Con BOM', value: String(Number(summary?.withBom) || 0) },
+            { label: 'Sin BOM', value: String(Number(summary?.withoutBom) || 0) },
+            { label: 'BOM encontrado', value: String(Number(summary?.bomFound) || 0) },
+            { label: 'BOM no encontrado', value: String(Number(summary?.bomNotFound) || 0) },
+            { label: 'Rellenables', value: String(Number(summary?.recordsFillable) || 0) },
+            { label: 'Actualizados', value: String(Number(summary?.recordsUpdated) || 0) },
+            { label: 'Conflictos', value: String(Number(summary?.conflicts) || 0) }
+        ];
+
+        const rows = [[
+            String(data?.engine || '-'),
+            data?.dryRun ? 'si' : 'no',
+            String(data?.reportPath || '-')
+        ]];
+
+        const note = data?.dryRun
+            ? 'Simulacion dry-run: no se escribieron cambios en engine_*.json.'
+            : 'Modo write ejecutado.';
+
+        renderResultPanel(
+            actionLabel,
+            endpoint,
+            cards,
+            ['Engine', 'Dry run', 'Report path'],
+            rows,
+            note
+        );
+        return;
+    }
+
     if (endpoint === '/api/recompute-simple/recompute-hermanos') {
         const siblings = data?.result || {};
         const cards = [
@@ -763,6 +904,206 @@ function renderResponseSummary(actionLabel, endpoint, responseData) {
             ['Libro', 'Escaneados', 'Grupos PN', 'PN con cambios', 'Actualizados'],
             rows,
             warning
+        );
+        return;
+    }
+
+    if (endpoint === '/api/recompute-simple/generate-missing-esquema-pos') {
+        const output = data?.result || {};
+        const perEngine = Array.isArray(output?.results) ? output.results : [];
+        const cards = [
+            { label: 'Motores', value: String(Number(perEngine.length) || 0) },
+            { label: 'Registros sin esquema', value: String(perEngine.reduce((acc, item) => acc + Number(item?.rows_missing_before || 0), 0)) },
+            { label: 'Procesados', value: String(perEngine.reduce((acc, item) => acc + Number(item?.processed || 0), 0)) },
+            { label: 'Generados', value: String(perEngine.reduce((acc, item) => acc + Number(item?.generated || 0), 0)) },
+            { label: 'Ya existentes', value: String(perEngine.reduce((acc, item) => acc + Number(item?.already_exists || 0), 0)) },
+            { label: 'Vinculados', value: String(perEngine.reduce((acc, item) => acc + Number(item?.linked || 0), 0)) },
+            { label: 'Errores', value: String(perEngine.reduce((acc, item) => acc + Number(item?.errors || 0), 0)) }
+        ];
+
+        const rows = perEngine.map((item) => [
+            String(item?.engine || ''),
+            String(Number(item?.rows_missing_before) || 0),
+            String(Number(item?.processed) || 0),
+            String(Number(item?.generated) || 0),
+            String(Number(item?.already_exists) || 0),
+            String(Number(item?.linked) || 0),
+            String(Number(item?.errors) || 0),
+            item?.json_updated ? 'si' : 'no'
+        ]);
+
+        const warning = output?.reportPath
+            ? `Reporte: ${String(output.reportPath)}`
+            : '';
+
+        renderResultPanel(
+            actionLabel,
+            endpoint,
+            cards,
+            ['Engine', 'Sin esquema', 'Procesados', 'Generados', 'Existentes', 'Vinculados', 'Errores', 'JSON actualizado'],
+            rows,
+            warning
+        );
+        return;
+    }
+
+    if (endpoint === '/api/recompute-simple/generate-schemes') {
+        const output = data?.result || {};
+        const cards = [
+            { label: 'Procesados', value: String(Number(output?.processed) || 0) },
+            { label: 'generatedBase', value: String(Number(output?.generatedBase) || 0) },
+            { label: 'alreadyExistsBase', value: String(Number(output?.alreadyExistsBase) || 0) },
+            { label: 'generatedPos', value: String(Number(output?.generatedPos) || 0) },
+            { label: 'alreadyExistsPos', value: String(Number(output?.alreadyExistsPos) || 0) },
+            { label: 'linked', value: String(Number(output?.linked) || 0) },
+            { label: 'changedRows', value: String(Number(output?.changedRows) || 0) },
+            { label: 'notFound', value: String(Number(output?.notFound) || 0) },
+            { label: 'errors', value: String(Number(output?.errors) || 0) }
+        ];
+
+        const perEngine = Array.isArray(output?.perEngine) ? output.perEngine : [];
+        const rows = perEngine.map((item) => [
+            String(item?.engine || ''),
+            String(Number(item?.processed) || 0),
+            String(Number(item?.generatedBase) || 0),
+            String(Number(item?.alreadyExistsBase) || 0),
+            String(Number(item?.generatedPos) || 0),
+            String(Number(item?.alreadyExistsPos) || 0),
+            String(Number(item?.linked) || 0),
+            String(Number(item?.changedRows) || 0),
+            String(Number(item?.notFound) || 0),
+            String(Number(item?.errors) || 0)
+        ]);
+
+        renderResultPanel(
+            actionLabel,
+            endpoint,
+            cards,
+            ['Engine', 'Procesados', 'generatedBase', 'alreadyExistsBase', 'generatedPos', 'alreadyExistsPos', 'linked', 'changedRows', 'notFound', 'errors'],
+            rows,
+            output?.dryRun ? 'Dry run activo: no se escribieron cambios en engine_*.json.' : ''
+        );
+        return;
+    }
+
+    if (endpoint === '/api/recompute-simple/rebuild-schemes-by-bom') {
+        const output = data?.result || {};
+        const engineReports = Array.isArray(output?.engine_reports) ? output.engine_reports : [];
+        const records = engineReports.flatMap((report) => Array.isArray(report?.records) ? report.records : []);
+
+        const statusCounts = records.reduce((acc, record) => {
+            const key = normalizeText(record?.status) || 'ERROR';
+            acc[key] = (acc[key] || 0) + 1;
+            return acc;
+        }, {});
+
+        const totals = output?.totals || {};
+        const cards = [
+            { label: 'Registros procesados', value: String(Number(totals?.records_processed) || records.length || 0) },
+            { label: 'Registros cambiados', value: String(Number(totals?.records_changed) || 0) },
+            { label: 'OK', value: String(Number(statusCounts.OK) || 0) },
+            { label: 'MISS_NO_BOM', value: String(Number(statusCounts.MISS_NO_BOM) || 0) },
+            { label: 'MISS_BOM_NOT_FOUND', value: String(Number(statusCounts.MISS_BOM_NOT_FOUND) || 0) },
+            { label: 'MISS_NO_PAGE_FOR_GROUP', value: String(Number(statusCounts.MISS_NO_PAGE_FOR_GROUP) || 0) },
+            { label: 'Esquemas encontrados', value: String(Number(totals?.schemes_found) || 0) },
+            { label: 'Esquemas generados', value: String(Number(totals?.schemes_generated) || 0) }
+        ];
+
+        const rows = engineReports.map((item) => {
+            const itemRecords = Array.isArray(item?.records) ? item.records : [];
+            const itemStatus = itemRecords.reduce((acc, record) => {
+                const key = normalizeText(record?.status) || 'ERROR';
+                acc[key] = (acc[key] || 0) + 1;
+                return acc;
+            }, {});
+
+            return [
+                String(item?.engine || ''),
+                String(Number(item?.records_processed) || itemRecords.length || 0),
+                String(Number(item?.records_changed) || 0),
+                String(Number(itemStatus.OK) || 0),
+                String(Number(itemStatus.MISS_NO_BOM) || 0),
+                String(Number(itemStatus.MISS_BOM_NOT_FOUND) || 0),
+                String(Number(item?.schemes_found) || 0),
+                String(Number(item?.schemes_generated) || 0)
+            ];
+        });
+
+        const reportPath = normalizeText(output?.report_path || data?.notes?.reportPath);
+        renderResultPanel(
+            actionLabel,
+            endpoint,
+            cards,
+            ['Engine', 'Procesados', 'Cambiados', 'OK', 'MISS_NO_BOM', 'MISS_BOM_NOT_FOUND', 'Schemes found', 'Schemes generated'],
+            rows,
+            reportPath ? `Reporte: ${reportPath}` : ''
+        );
+        return;
+    }
+
+    if (endpoint === '/api/recompute-simple/rebuild-schemes-circles-from-esquemas') {
+        const output = data?.result || {};
+        const totalsByStatus = output?.totals_by_status || {};
+        const perEngine = Array.isArray(output?.engine_reports) ? output.engine_reports : [];
+        const cards = [
+            { label: 'Registros procesados', value: String(Number(output?.records_processed) || 0) },
+            { label: 'Registros cambiados', value: String(Number(output?.records_changed) || 0) },
+            { label: 'OK', value: String(Number(output?.records_ok) || 0) },
+            { label: 'OK_PARTIAL', value: String(Number(output?.records_ok_partial) || 0) },
+            { label: 'MISS_NO_ESQUEMAS', value: String(Number(totalsByStatus?.MISS_NO_ESQUEMAS) || 0) },
+            { label: 'MISS_NO_POS', value: String(Number(totalsByStatus?.MISS_NO_POS) || 0) },
+            { label: 'MISS_POS_NOT_FOUND_IN_SCHEME', value: String(Number(totalsByStatus?.MISS_POS_NOT_FOUND_IN_SCHEME) || 0) },
+            { label: 'Errores (MISS/ERROR)', value: String(Number(output?.records_error_total) || 0) }
+        ];
+
+        const rows = perEngine.map((item) => {
+            const status = item?.status_counts || {};
+            return [
+                String(item?.engine || ''),
+                String(Number(item?.records_processed) || 0),
+                String(Number(item?.json_updated ? 1 : 0)),
+                String(Number(status?.OK) || 0),
+                String(Number(status?.OK_PARTIAL) || 0),
+                String(Number(status?.MISS_NO_ESQUEMAS) || 0),
+                String(Number(status?.MISS_NO_POS) || 0),
+                String(Number(status?.MISS_POS_NOT_FOUND_IN_SCHEME) || 0)
+            ];
+        });
+
+        const reportPath = normalizeText(output?.report_path || data?.notes?.reportPath);
+        renderResultPanel(
+            actionLabel,
+            endpoint,
+            cards,
+            ['Engine', 'Procesados', 'JSON actualizado', 'OK', 'OK_PARTIAL', 'MISS_NO_ESQUEMAS', 'MISS_NO_POS', 'MISS_POS_NOT_FOUND_IN_SCHEME'],
+            rows,
+            reportPath ? `Reporte: ${reportPath}` : ''
+        );
+        return;
+    }
+
+    if (endpoint === '/api/recompute-simple/manual-override-picker') {
+        const cards = [
+            { label: 'Modo', value: String(data?.mode || 'embedded-express') },
+            { label: 'Engine', value: String(data?.context?.engine || '-') },
+            { label: 'ID', value: String(data?.context?.id || '-') },
+            { label: 'Página', value: String(data?.context?.page || '-') },
+            { label: 'POS', value: String(data?.context?.pos || '-') },
+            { label: 'Overrides JSON', value: String(data?.overridesJson || '-') }
+        ];
+
+        const rows = [[
+            String(data?.pickerUrl || '-'),
+            String(data?.rebuildEndpoint || '/api/recompute-simple/rebuild-schemes-circles-from-esquemas')
+        ]];
+
+        renderResultPanel(
+            actionLabel,
+            endpoint,
+            cards,
+            ['URL picker', 'Endpoint recompute POS'],
+            rows,
+            'Tras guardar override, ejecuta la tarjeta 9 en WRITE para regenerar esquemas_circulos.'
         );
         return;
     }
@@ -1117,16 +1458,125 @@ async function runAssets() {
                 : `Ejecutando ASSETS para ${scope.model}...`),
         ''
     );
-    const data = await postJson('/api/recompute-simple/enrich-assets', payload, { allowPartial: true });
-    renderResponseSummary('ASSETS', '/api/recompute-simple/enrich-assets', data);
 
-    const hadErrors = Array.isArray(data?.result?.errors) && data.result.errors.length > 0;
-    if (hadErrors) {
-        setStatus('ASSETS finalizado con incidencias parciales. Revisa el panel de resultados.', 'warning');
-        return;
+    try {
+        const startData = await postJson('/api/recompute-simple/enrich-assets/start', payload);
+        const jobId = normalizeText(startData?.jobId);
+        if (!jobId) {
+            throw new Error('No se recibió jobId para ASSETS.');
+        }
+
+        currentAssetsJobId = jobId;
+        assetsLastLogSeq = 0;
+        assetsCancelRequested = false;
+        setAssetsProgressVisible(true);
+        setAssetsCancelEnabled(true);
+        updateAssetsProgress({
+            percent: Number(startData?.progress?.percent) || 0,
+            label: 'ASSETS en ejecución',
+            meta: `Job ${jobId}`
+        });
+        appendLog(`[ASSETS] Job iniciado: ${jobId}`);
+
+        while (currentAssetsJobId === jobId) {
+            const statusData = await getJson(`/api/recompute-simple/enrich-assets/jobs/${encodeURIComponent(jobId)}`);
+            const job = statusData?.job || {};
+            const progress = job?.progress || {};
+
+            const meta = (progress?.totalRecords && Number(progress.totalRecords) > 0)
+                ? `Procesados ${Number(progress.processedRecords) || 0}/${Number(progress.totalRecords) || 0}`
+                : `Procesados ${Number(progress.processedRecords) || 0}`;
+
+            updateAssetsProgress({
+                percent: Number(progress?.percent) || 0,
+                label: normalizeText(progress?.lastMessage) || 'ASSETS en ejecución...',
+                meta
+            });
+
+            const logs = Array.isArray(job?.logs) ? job.logs : [];
+            logs
+                .filter((entry) => Number(entry?.seq || 0) > assetsLastLogSeq)
+                .forEach((entry) => {
+                    const seq = Number(entry?.seq || 0);
+                    if (seq > assetsLastLogSeq) assetsLastLogSeq = seq;
+                    const stream = normalizeText(entry?.stream || 'stdout').toUpperCase();
+                    appendLog(`[ASSETS][${stream}] ${String(entry?.line || '')}`);
+                });
+
+            if (job?.status === 'completed') {
+                const resultPayload = job?.result || null;
+                if (resultPayload) {
+                    renderResponseSummary('ASSETS', '/api/recompute-simple/enrich-assets', resultPayload);
+                    const hadErrors = Array.isArray(resultPayload?.result?.errors) && resultPayload.result.errors.length > 0;
+                    if (hadErrors) {
+                        setStatus('ASSETS finalizado con incidencias parciales. Revisa el panel de resultados.', 'warning');
+                    } else {
+                        setStatus('ASSETS finalizado correctamente.', 'ok');
+                    }
+                } else {
+                    setStatus('ASSETS finalizado, pero sin payload de resultado.', 'warning');
+                }
+                break;
+            }
+
+            if (job?.status === 'cancelled') {
+                renderResultEmpty('ASSETS cancelado por usuario.');
+                setStatus('ASSETS cancelado por usuario.', 'warning');
+                break;
+            }
+
+            if (job?.status === 'failed') {
+                throw new Error(normalizeText(job?.error) || 'ASSETS finalizó con error.');
+            }
+
+            await delay(1200);
+        }
+    } finally {
+        resetAssetsProgressUi();
+    }
+}
+
+async function runFillMissingFgFgsByBom() {
+    const scope = getScope();
+    if (scope.id) showIdIgnoredWarning('7 · COMPLETAR FG/FGS POR BOM');
+
+    const dryRun = refs.chkFillMissingDryRun instanceof HTMLInputElement
+        ? Boolean(refs.chkFillMissingDryRun.checked)
+        : true;
+    const backup = refs.chkFillMissingBackup instanceof HTMLInputElement
+        ? Boolean(refs.chkFillMissingBackup.checked)
+        : true;
+
+    const payload = {
+        engine: scope.isAll ? 'ALL' : scope.model,
+        dryRun,
+        backup
+    };
+
+    if (scope.isAll) {
+        setStatus(`Ejecutando 7 · COMPLETAR FG/FGS por BOM para todos los libros (${dryRun ? 'DRY RUN' : 'WRITE'})...`, '');
+    } else {
+        setStatus(`Ejecutando 7 · COMPLETAR FG/FGS por BOM para ${scope.model} (${dryRun ? 'DRY RUN' : 'WRITE'})...`, '');
     }
 
-    setStatus('ASSETS finalizado correctamente.', 'ok');
+    let data;
+    try {
+        data = await postJson('/api/recompute-simple/fill-missing-fg-fgs', payload);
+    } catch (error) {
+        const message = String(error?.message || error || 'Error desconocido');
+        if (/dangerous write disabled|SERVER_ENABLE_DANGEROUS_WRITE/i.test(message)) {
+            throw new Error('Write bloqueado por seguridad: activa SERVER_ENABLE_DANGEROUS_WRITE=true para ejecutar sin dry-run.');
+        }
+        throw error;
+    }
+
+    renderResponseSummary('7 · Completar FG/FGS por BOM', '/api/recompute-simple/fill-missing-fg-fgs', data);
+
+    if (data?.dryRun) {
+        setStatus('7 · COMPLETAR FG/FGS ejecutado en simulacion (dry-run).', 'ok');
+    } else {
+        setStatus('7 · COMPLETAR FG/FGS ejecutado en modo escritura.', 'ok');
+    }
 }
 
 async function runHermanos() {
@@ -1151,6 +1601,101 @@ async function runHermanos() {
     }
 
     setStatus('HERMANOS / COPIAS finalizado correctamente.', 'ok');
+}
+
+async function runRebuildSchemesByBom(dryRun = true) {
+    const scope = getScope();
+    const payload = {
+        engine: scope.isAll ? 'ALL' : scope.model,
+        id: scope.id,
+        dryRun: Boolean(dryRun)
+    };
+
+    if (scope.isAll) {
+        setStatus(`Ejecutando 8 · ESQUEMAS GENERALES para todos los libros (${dryRun ? 'DRY RUN' : 'WRITE'})...`, '');
+    } else if (scope.id) {
+        setStatus(`Ejecutando 8 · ESQUEMAS GENERALES para ${scope.model} (ID ${scope.id}) (${dryRun ? 'DRY RUN' : 'WRITE'})...`, '');
+    } else {
+        setStatus(`Ejecutando 8 · ESQUEMAS GENERALES para ${scope.model} (${dryRun ? 'DRY RUN' : 'WRITE'})...`, '');
+    }
+
+    const data = await postJson('/api/recompute-simple/rebuild-schemes-by-bom', payload, { allowPartial: true });
+    renderResponseSummary(
+        `8 · Esquemas generales (${dryRun ? 'DRY RUN' : 'WRITE'})`,
+        '/api/recompute-simple/rebuild-schemes-by-bom',
+        data
+    );
+
+    if (data?.ok === false) {
+        setStatus('8 · ESQUEMAS GENERALES completado con incidencias. Revisa el resumen y log.', 'warning');
+        return;
+    }
+    setStatus('8 · ESQUEMAS GENERALES finalizado correctamente.', 'ok');
+}
+
+async function runRebuildSchemesCircles(dryRun = true) {
+    const scope = getScope();
+    const payload = {
+        engine: scope.isAll ? 'ALL' : scope.model,
+        id: scope.id,
+        dryRun: Boolean(dryRun),
+        useManualOverrides: true,
+        overridesJson: 'rebuild_schemes_circles_manual_overrides.json'
+    };
+
+    if (scope.isAll) {
+        setStatus(`Ejecutando 9 · ESQUEMAS POS para todos los libros (${dryRun ? 'DRY RUN' : 'WRITE'})...`, '');
+    } else if (scope.id) {
+        setStatus(`Ejecutando 9 · ESQUEMAS POS para ${scope.model} (ID ${scope.id}) (${dryRun ? 'DRY RUN' : 'WRITE'})...`, '');
+    } else {
+        setStatus(`Ejecutando 9 · ESQUEMAS POS para ${scope.model} (${dryRun ? 'DRY RUN' : 'WRITE'})...`, '');
+    }
+
+    const data = await postJson('/api/recompute-simple/rebuild-schemes-circles-from-esquemas', payload, { allowPartial: true });
+    renderResponseSummary(
+        `9 · Esquemas POS (${dryRun ? 'DRY RUN' : 'WRITE'})`,
+        '/api/recompute-simple/rebuild-schemes-circles-from-esquemas',
+        data
+    );
+
+    if (data?.ok === false) {
+        setStatus('9 · ESQUEMAS POS completado con incidencias. Revisa el resumen y log.', 'warning');
+        return;
+    }
+    setStatus('9 · ESQUEMAS POS finalizado correctamente.', 'ok');
+}
+
+async function runManualOverridePicker() {
+    const scope = getScope();
+    const payload = {
+        engine: scope.isAll ? '' : scope.model,
+        id: scope.id,
+        page: refs.manualPickerPage instanceof HTMLInputElement ? normalizeText(refs.manualPickerPage.value) : '',
+        pos: refs.manualPickerPos instanceof HTMLInputElement ? normalizeText(refs.manualPickerPos.value) : '',
+        baseScheme: refs.manualPickerBase instanceof HTMLInputElement ? normalizeText(refs.manualPickerBase.value) : ''
+    };
+
+    if (!payload.engine) {
+        throw new Error('Para abrir el picker manual, selecciona un libro (no "Todos los libros").');
+    }
+
+    setStatus('Preparando 10 · NORMALIZAR OVERRIDES MANUALES...', '');
+    const data = await postJson('/api/recompute-simple/manual-override-picker', payload);
+    renderResponseSummary('10 · Normalizar overrides manuales', '/api/recompute-simple/manual-override-picker', data);
+
+    const pickerUrl = normalizeText(data?.pickerUrl);
+    if (!pickerUrl) {
+        throw new Error('No se recibió pickerUrl desde el backend.');
+    }
+
+    const popup = window.open(pickerUrl, '_blank', 'noopener,noreferrer');
+    if (!popup) {
+        setStatus('Picker preparado, pero el navegador bloqueó la ventana emergente.', 'warning');
+        appendLog('[AVISO] Popup bloqueado. Abre manualmente la URL del picker desde el resumen.');
+        return;
+    }
+
+    setStatus('Picker manual abierto. Marca círculo, guarda override y luego ejecuta la tarjeta 9 en WRITE.', 'ok');
 }
 
 async function runErrors() {
@@ -1290,12 +1835,36 @@ function bindEvents() {
         refs.btnSust.addEventListener('click', () => runAction(runUpdateSust));
     }
 
-    if (refs.btnAssets instanceof HTMLButtonElement) {
-        refs.btnAssets.addEventListener('click', () => runAction(runAssets));
+    if (refs.btnFillMissingFgFgs instanceof HTMLButtonElement) {
+        refs.btnFillMissingFgFgs.addEventListener('click', () => runAction(runFillMissingFgFgsByBom));
+    }
+
+    if (refs.btnAssetsCancel instanceof HTMLButtonElement) {
+        refs.btnAssetsCancel.addEventListener('click', cancelAssetsJob);
     }
 
     if (refs.btnHermanos instanceof HTMLButtonElement) {
         refs.btnHermanos.addEventListener('click', () => runAction(runHermanos));
+    }
+
+    if (refs.btnSchemesByBomDryRun instanceof HTMLButtonElement) {
+        refs.btnSchemesByBomDryRun.addEventListener('click', () => runAction(() => runRebuildSchemesByBom(true)));
+    }
+
+    if (refs.btnSchemesByBomWrite instanceof HTMLButtonElement) {
+        refs.btnSchemesByBomWrite.addEventListener('click', () => runAction(() => runRebuildSchemesByBom(false)));
+    }
+
+    if (refs.btnSchemesPosDryRun instanceof HTMLButtonElement) {
+        refs.btnSchemesPosDryRun.addEventListener('click', () => runAction(() => runRebuildSchemesCircles(true)));
+    }
+
+    if (refs.btnSchemesPosWrite instanceof HTMLButtonElement) {
+        refs.btnSchemesPosWrite.addEventListener('click', () => runAction(() => runRebuildSchemesCircles(false)));
+    }
+
+    if (refs.btnManualOverridePicker instanceof HTMLButtonElement) {
+        refs.btnManualOverridePicker.addEventListener('click', () => runAction(runManualOverridePicker));
     }
 
     if (refs.btnFinal instanceof HTMLButtonElement) {
@@ -1328,6 +1897,7 @@ async function init() {
     }
 
     bindEvents();
+    resetAssetsProgressUi();
     renderResultEmpty('Aún no hay ejecuciones. Lanza una acción para ver resumen y detalle por tabla.');
     appendLog('Inicializando recompute simple...');
     await loadEngines();

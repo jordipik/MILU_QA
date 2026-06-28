@@ -92,8 +92,9 @@ const TAB_CONFIG = {
     new: {
         label: 'New',
         detailLabel: 'Export WordPress New',
-        jsonCandidates: ['milu_wp_import.json', 'milu_wp_new_import.json'],
-        csvCandidates: ['milu_wp_import.csv', 'milu_wp_new_import.csv']
+        // Prioritize the real export naming from data/05-wordpress.
+        jsonCandidates: ['milu_wp_new_import.json', 'milu_wp_import.json'],
+        csvCandidates: ['milu_wp_new_import.csv', 'milu_wp_import.csv']
     },
     superseded: {
         label: 'Superseded',
@@ -283,7 +284,7 @@ async function fetchFirstAvailableExportFile(candidates) {
         }
     }
 
-    return { name: '', rows: [], errors };
+    return { name: '', rows: [], errors, candidates: [...(candidates || [])] };
 }
 
 async function fetchFirstAvailableStaticJson(candidates) {
@@ -304,30 +305,46 @@ async function fetchFirstAvailableStaticJson(candidates) {
 }
 
 async function fetchFirstAvailableStaticJsonFile(candidates) {
+    const errors = [];
     for (const name of candidates || []) {
         const urls = buildStaticJsonUrlCandidates(name);
         for (const url of urls) {
             try {
                 const response = await fetch(url);
-                if (!response.ok) continue;
+                if (!response.ok) {
+                    errors.push(`${url}: HTTP ${response.status}`);
+                    continue;
+                }
                 const payload = await response.json();
                 if (Array.isArray(payload)) return { name: url, rows: payload };
             } catch (_) {
-                // Continue with next candidate URL.
+                errors.push(`${url}: no disponible`);
             }
         }
     }
-    return { name: '', rows: [] };
+    return { name: '', rows: [], errors, candidates: [...(candidates || [])] };
 }
 
 async function fetchExportRows(candidates, backendAvailable) {
+    const allErrors = [];
     if (backendAvailable) {
         const backendPayload = await fetchFirstAvailableExportFile(candidates);
         if (backendPayload.name || (backendPayload.rows || []).length > 0) {
             return backendPayload;
         }
+        allErrors.push(...(backendPayload.errors || []));
     }
-    return fetchFirstAvailableStaticJsonFile(candidates);
+    const staticPayload = await fetchFirstAvailableStaticJsonFile(candidates);
+    if (staticPayload.name || (staticPayload.rows || []).length > 0) {
+        return staticPayload;
+    }
+    allErrors.push(...(staticPayload.errors || []));
+    return {
+        name: '',
+        rows: [],
+        errors: allErrors,
+        candidates: [...(candidates || [])]
+    };
 }
 
 // --- Synthetic computation helpers (ported from qa-milu.js) ---
@@ -908,21 +925,14 @@ async function loadAllData() {
         state.miluNewData = Array.isArray(miluNewPayload) ? miluNewPayload : [];
         state.miluSupersededData = Array.isArray(miluSupersededPayload) ? miluSupersededPayload : [];
 
-        // Load engine data for synthetic computation
-        setLoading(true, 'Cargando motores para calculo synthetic...');
-        const engineChunks = await Promise.all(SYNTH_ENGINE_FILES.map(async (fileName) => {
-            try {
-                const response = await fetch(fileName);
-                if (!response.ok) return [];
-                const data = await response.json();
-                if (!Array.isArray(data)) return [];
-                const engineModel = fileName.replace(/^engine_/, '').replace(/\.json$/, '');
-                return data.map(row => ({ ...row, engine_model: String(row?.engine_model ?? '').trim() || engineModel }));
-            } catch (_) {
-                return [];
-            }
-        }));
-        state.allData = engineChunks.flat();
+        // Export view should reflect real rows from 05-wordpress without synthetic overlays.
+        state.allData = [];
+
+        if (!state.sources.new && state.data.new.length === 0) {
+            const checked = (newPayload.candidates || TAB_CONFIG.new.jsonCandidates).join(', ');
+            const details = (newPayload.errors || []).slice(0, 6).join(' | ');
+            throw new Error(`No se encontro el export real New en 05-wordpress. Candidatos: ${checked}${details ? ` (${details})` : ''}`);
+        }
 
         renderAll();
         if (staticMode && state.data.new.length === 0 && state.data.superseded.length === 0 && state.data.pending.length === 0 && state.data.discarded.length === 0) {
@@ -1059,8 +1069,7 @@ async function downloadCurrentCsv() {
             const end = Math.min(start + chunkSize, rows.length);
             for (let i = start; i < end; i++) {
                 const row = rows[i];
-                const syntheticRow = buildSyntheticRowForPn(row?.pn);
-                const exportRow = syntheticRow || row;
+                const exportRow = row;
                 lines.push(headers.map((field) => toCsvCell(exportRow?.[field])).join(';'));
             }
 

@@ -3,7 +3,7 @@ const FALLBACK_ALIASES = {
     source_page: ["source_page", "Source Page", "page4"],
     measure_error: ["measure_error", "measurement_error"],
     is_gesa_excel: ["is_gesa_excel", "isgesa_excel", "gesa"],
-    ruta_esquemas_pos: ["ruta_esquemas_pos", "exp_imagenes"],
+    ruta_esquemas_pos: ["ruta_esquemas_pos"],
 };
 
 let registryState = {
@@ -77,7 +77,6 @@ function hydrateRegistryState(registryPayload) {
         if (newName === "measure_error") aliases.push("measurement_error");
         if (newName.startsWith("is_gesa_")) aliases.push(newName.replace("is_gesa_", "isgesa_"));
         if (newName === "is_gesa_excel") aliases.push("gesa");
-        if (newName === "ruta_esquemas_pos") aliases.push("exp_imagenes");
 
         const uniqueAliases = unique(aliases.filter(Boolean));
         aliasesByNew.set(newName, uniqueAliases);

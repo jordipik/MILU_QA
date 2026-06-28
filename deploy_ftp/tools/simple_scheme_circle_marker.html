@@ -1,0 +1,710 @@
+<!doctype html>
+<html lang="es">
+
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Simple Scheme Circle Marker</title>
+    <style>
+        :root {
+            --bg: #f2efe8;
+            --panel: #fffaf2;
+            --line: #d7ccbd;
+            --ink: #231d16;
+            --muted: #6b6256;
+            --accent: #bf3d1e;
+            --accent2: #1f6f56;
+        }
+
+        * {
+            box-sizing: border-box;
+        }
+
+        body {
+            margin: 0;
+            color: var(--ink);
+            font-family: "Segoe UI", Tahoma, Geneva, Verdana, sans-serif;
+            background:
+                radial-gradient(1000px 560px at 0% -10%, #eee2d1 0%, transparent 64%),
+                radial-gradient(900px 520px at 100% 0%, #e2ece3 0%, transparent 60%),
+                var(--bg);
+        }
+
+        .layout {
+            min-height: 100vh;
+            display: grid;
+            grid-template-columns: 340px 1fr;
+            gap: 14px;
+            padding: 14px;
+        }
+
+        .panel {
+            background: var(--panel);
+            border: 1px solid var(--line);
+            border-radius: 14px;
+            padding: 12px;
+            box-shadow: 0 10px 24px rgba(0, 0, 0, 0.08);
+        }
+
+        h1 {
+            margin: 0 0 8px;
+            font-size: 18px;
+        }
+
+        .hint {
+            margin: 0 0 10px;
+            color: var(--muted);
+            font-size: 12px;
+        }
+
+        .field {
+            display: flex;
+            flex-direction: column;
+            gap: 4px;
+            margin-bottom: 8px;
+        }
+
+        label {
+            color: var(--muted);
+            font-size: 12px;
+        }
+
+        input,
+        button,
+        textarea {
+            width: 100%;
+            border: 1px solid var(--line);
+            border-radius: 9px;
+            padding: 8px;
+            font: inherit;
+            color: var(--ink);
+            background: #fff;
+        }
+
+        button {
+            border: none;
+            color: #fff;
+            background: var(--accent);
+            cursor: pointer;
+            font-weight: 600;
+        }
+
+        button.secondary {
+            background: var(--accent2);
+        }
+
+        .row {
+            display: flex;
+            gap: 8px;
+            margin-bottom: 8px;
+        }
+
+        .row>* {
+            flex: 1;
+        }
+
+        .chip {
+            display: inline-block;
+            background: #efe6da;
+            border: 1px solid var(--line);
+            border-radius: 999px;
+            padding: 5px 10px;
+            font-size: 12px;
+            color: #3d3328;
+            margin-bottom: 8px;
+        }
+
+        .schema-list {
+            display: flex;
+            flex-direction: column;
+            gap: 4px;
+            margin-bottom: 10px;
+        }
+
+        .schema-item {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            padding: 6px 10px;
+            border: 1px solid var(--line);
+            border-radius: 8px;
+            font-size: 12px;
+            cursor: pointer;
+            background: #faf6f0;
+            transition: background 0.12s;
+        }
+
+        .schema-item:hover {
+            background: #efe6da;
+        }
+
+        .schema-item.active {
+            background: #d4edda;
+            border-color: var(--accent2);
+            font-weight: 600;
+        }
+
+        .schema-item .schema-thumb-mini {
+            width: 36px;
+            height: 28px;
+            object-fit: cover;
+            border-radius: 4px;
+            border: 1px solid var(--line);
+            flex-shrink: 0;
+            background: #ddd;
+        }
+
+        .schema-section-label {
+            font-size: 11px;
+            color: var(--muted);
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            margin-bottom: 4px;
+        }
+
+        textarea {
+            min-height: 180px;
+            white-space: pre;
+            resize: vertical;
+            font-family: Consolas, "Courier New", monospace;
+            font-size: 12px;
+        }
+
+        .stage-wrap {
+            overflow: auto;
+            min-height: 0;
+        }
+
+        .stage {
+            position: relative;
+            display: inline-block;
+            border: 1px solid var(--line);
+            border-radius: 10px;
+            background: #ddd;
+            user-select: none;
+            cursor: crosshair;
+        }
+
+        .stage img {
+            display: block;
+            max-width: none;
+            border-radius: 10px;
+        }
+
+        .circle {
+            position: absolute;
+            border: 3px solid #ff1d1d;
+            border-radius: 999px;
+            pointer-events: none;
+            box-shadow: 0 0 0 1px rgba(0, 0, 0, 0.15) inset;
+        }
+
+        @media (max-width: 980px) {
+            .layout {
+                grid-template-columns: 1fr;
+            }
+        }
+    </style>
+</head>
+
+<body>
+    <div class="layout">
+        <section class="panel">
+            <h1>Simple Circle Marker</h1>
+            <p class="hint">Clic normal: deja un solo circulo. Ctrl + clic: anade otro circulo.</p>
+
+            <div id="schemaLinkedSection" hidden>
+                <p class="schema-section-label">Esquemas vinculados al registro</p>
+                <div id="schemaLinkedList" class="schema-list"></div>
+            </div>
+
+            <div class="field">
+                <label for="imgFile">Imagen esquema</label>
+                <input id="imgFile" type="file" accept="image/*" />
+            </div>
+
+            <div class="field">
+                <label for="diameter">Diametro del circulo (px)</label>
+                <input id="diameter" type="number" value="35" min="4" max="300" />
+            </div>
+
+            <div class="field">
+                <label for="baseName">Base esquema</label>
+                <input id="baseName" placeholder="12V4000M40A-0072-01.webp" />
+            </div>
+
+            <div class="field">
+                <label for="engineValue">Engine (opcional)</label>
+                <input id="engineValue" placeholder="12V4000M40A" />
+            </div>
+
+            <div class="field">
+                <label for="idsInput">IDs (uno por circulo, coma o salto de linea)</label>
+                <textarea id="idsInput" style="min-height: 90px;"></textarea>
+            </div>
+
+            <div class="field">
+                <label for="posInput">POS (uno por circulo, coma o salto de linea)</label>
+                <textarea id="posInput" style="min-height: 90px;"></textarea>
+            </div>
+
+            <div class="row">
+                <button id="undoBtn" class="secondary" type="button">Deshacer ultimo</button>
+                <button id="clearBtn" type="button">Limpiar todo</button>
+            </div>
+
+            <div class="row">
+                <button id="saveGenerateBtn" type="button">Guardar imagen + actualizar JSON</button>
+            </div>
+            <div class="row">
+                <button id="saveGeneralSchemaBtn" class="secondary" type="button">Guardar esquema general en
+                    esquemas_circulos</button>
+            </div>
+            <div class="row">
+                <button id="saveJsonOnlyBtn" class="secondary" type="button">Guardar archivo sin imagen</button>
+            </div>
+            <div class="chip" id="statusChip">Estado: listo</div>
+
+            <div class="field">
+                <label for="outJson">Circulos (JSON)</label>
+                <textarea id="outJson"></textarea>
+            </div>
+        </section>
+
+        <section class="panel stage-wrap">
+            <div id="stage" class="stage" aria-label="image stage">
+                <img id="img" alt="preview" />
+            </div>
+        </section>
+    </div>
+
+    <script>
+        const imgFile = document.getElementById("imgFile");
+        const diameter = document.getElementById("diameter");
+        const undoBtn = document.getElementById("undoBtn");
+        const clearBtn = document.getElementById("clearBtn");
+        const saveGenerateBtn = document.getElementById("saveGenerateBtn");
+        const saveGeneralSchemaBtn = document.getElementById("saveGeneralSchemaBtn");
+        const saveJsonOnlyBtn = document.getElementById("saveJsonOnlyBtn");
+        const baseName = document.getElementById("baseName");
+        const engineValue = document.getElementById("engineValue");
+        const idsInput = document.getElementById("idsInput");
+        const posInput = document.getElementById("posInput");
+        const statusChip = document.getElementById("statusChip");
+        const outJson = document.getElementById("outJson");
+        const stage = document.getElementById("stage");
+        const img = document.getElementById("img");
+
+        let circles = [];
+        let currentObjectUrl = "";
+
+        function clamp(v, min, max) {
+            return Math.max(min, Math.min(max, v));
+        }
+
+        function stagePoint(evt) {
+            const r = stage.getBoundingClientRect();
+            return {
+                x: clamp(Math.round(evt.clientX - r.left), 0, img.width),
+                y: clamp(Math.round(evt.clientY - r.top), 0, img.height),
+            };
+        }
+
+        function normalizeCircle(centerX, centerY, d) {
+            const size = Math.max(4, Number(d) || 35);
+            const half = size / 2;
+            let x = Math.round(centerX - half);
+            let y = Math.round(centerY - half);
+            let w = Math.round(size);
+            let h = Math.round(size);
+
+            x = clamp(x, 0, img.width);
+            y = clamp(y, 0, img.height);
+            if (x + w > img.width) {
+                w = img.width - x;
+            }
+            if (y + h > img.height) {
+                h = img.height - y;
+            }
+            return { x, y, w, h };
+        }
+
+        function redraw() {
+            const prev = stage.querySelectorAll(".circle");
+            prev.forEach((el) => el.remove());
+
+            circles.forEach((c) => {
+                const el = document.createElement("div");
+                el.className = "circle";
+                el.style.left = `${c.x}px`;
+                el.style.top = `${c.y}px`;
+                el.style.width = `${c.w}px`;
+                el.style.height = `${c.h}px`;
+                stage.appendChild(el);
+            });
+
+            outJson.value = JSON.stringify(circles, null, 4);
+        }
+
+        function splitTokens(text) {
+            return String(text || "")
+                .split(/[\n,;]+/)
+                .map((x) => x.trim())
+                .filter(Boolean);
+        }
+
+        function applyQueryPrefill() {
+            const params = new URLSearchParams(window.location.search || "");
+            const base = String(params.get("base") || "").trim();
+            const engine = String(params.get("engine") || "").trim();
+            const id = String(params.get("id") || "").trim();
+            const pos = String(params.get("pos") || "").trim();
+            const d = String(params.get("diameter") || "").trim();
+            const schemas = String(params.get("schemas") || "").trim();
+
+            if (base) baseName.value = base;
+            if (engine) engineValue.value = engine;
+            if (id && !idsInput.value.trim()) idsInput.value = id;
+            if (pos && !posInput.value.trim()) posInput.value = pos;
+            if (d && /^\d+$/.test(d)) diameter.value = d;
+
+            if (schemas) {
+                const tokens = schemas.split(",").map(s => s.trim()).filter(Boolean);
+                renderSchemaLinkedList(tokens, engine || inferEngineFromBase(base), base);
+            }
+
+            // Auto-load the base image if available
+            if (base) {
+                const eng = engine || inferEngineFromBase(base);
+                const candidates = buildSchemaUrlCandidates(base, eng);
+                if (candidates.length) loadImageFromCandidates(candidates, base);
+            }
+        }
+
+        function buildSchemaUrlCandidates(fileName, engine) {
+            const eng = String(engine || "").trim();
+            const file = String(fileName || "").trim();
+            if (!file) return [];
+            const candidates = [];
+            if (eng) {
+                candidates.push(`/esquemas/${eng}_esquemas/${file}`);
+                candidates.push(`/esquemas/${eng}/${file}`);
+            }
+            // fallback: try to infer engine from filename
+            const m = file.match(/^(.+)-\d{4}-\d{2}\.[A-Za-z0-9]+$/);
+            const inferredEng = m ? m[1] : "";
+            if (inferredEng) {
+                candidates.push(`/esquemas/${inferredEng}_esquemas/${file}`);
+                candidates.push(`/esquemas/${inferredEng}/${file}`);
+            }
+            candidates.push(`/esquemas/${file}`);
+            return [...new Set(candidates)];
+        }
+
+        async function loadImageFromCandidates(urlCandidates, fileName) {
+            statusChip.textContent = "Estado: cargando imagen...";
+            try {
+                let blob = null;
+                let lastError = "HTTP 404";
+                for (const candidate of urlCandidates) {
+                    const res = await fetch(candidate);
+                    if (res.ok) {
+                        blob = await res.blob();
+                        break;
+                    }
+                    lastError = `HTTP ${res.status}`;
+                }
+                if (!blob) throw new Error(lastError);
+                if (currentObjectUrl) URL.revokeObjectURL(currentObjectUrl);
+                const objectUrl = URL.createObjectURL(blob);
+                currentObjectUrl = objectUrl;
+                img.onload = () => {
+                    stage.style.width = img.width + "px";
+                    stage.style.height = img.height + "px";
+                    circles = [];
+                    redraw();
+                    statusChip.textContent = "Estado: imagen cargada";
+                };
+                img.src = objectUrl;
+                baseName.value = fileName;
+                try {
+                    const ext = (String(fileName || "").split(".").pop() || "webp").toLowerCase();
+                    const mimeByExt = { webp: "image/webp", png: "image/png", jpg: "image/jpeg", jpeg: "image/jpeg" };
+                    const fileForInput = new File([blob], fileName, { type: mimeByExt[ext] || blob.type || "image/webp" });
+                    const transfer = new DataTransfer();
+                    transfer.items.add(fileForInput);
+                    imgFile.files = transfer.files;
+                } catch (_err) {
+                    // Algunos navegadores pueden restringir la asignacion de input.files.
+                }
+            } catch (err) {
+                statusChip.textContent = `Estado: error al cargar imagen (${err.message})`;
+            }
+        }
+
+        function renderSchemaLinkedList(tokens, engine, currentBase) {
+            const section = document.getElementById("schemaLinkedSection");
+            const list = document.getElementById("schemaLinkedList");
+            if (!section || !list || !tokens.length) return;
+
+            list.innerHTML = "";
+            tokens.forEach(token => {
+                const item = document.createElement("div");
+                item.className = "schema-item" + (token === currentBase ? " active" : "");
+                item.dataset.fileName = token;
+
+                const thumb = document.createElement("img");
+                thumb.className = "schema-thumb-mini";
+                thumb.alt = "";
+                const thumbCandidates = buildSchemaUrlCandidates(token, engine);
+                if (thumbCandidates.length) thumb.src = thumbCandidates[0];
+                thumb.onerror = () => { thumb.style.visibility = "hidden"; };
+
+                const label = document.createElement("span");
+                label.textContent = token;
+
+                item.appendChild(thumb);
+                item.appendChild(label);
+
+                item.addEventListener("click", () => {
+                    list.querySelectorAll(".schema-item").forEach(el => el.classList.remove("active"));
+                    item.classList.add("active");
+                    const eng = String(engineValue.value || "").trim() || inferEngineFromBase(token);
+                    const imgCandidates = buildSchemaUrlCandidates(token, eng);
+                    if (imgCandidates.length) loadImageFromCandidates(imgCandidates, token);
+                    else { baseName.value = token; statusChip.textContent = "Estado: URL desconocida, usa el selector de archivo"; }
+                });
+
+                list.appendChild(item);
+            });
+
+            section.hidden = false;
+        }
+
+        function inferEngineFromBase(base) {
+            const m = String(base || "").trim().match(/^(.+)-\d{4}-\d{2}\.[A-Za-z0-9]+$/);
+            return m ? m[1] : "";
+        }
+
+        function closeWindowAfterSuccess() {
+            setTimeout(() => {
+                window.close();
+                setTimeout(() => {
+                    if (!window.closed) {
+                        statusChip.textContent = `${statusChip.textContent} | Cierra esta pestaña manualmente`;
+                    }
+                }, 250);
+            }, 600);
+        }
+
+        function buildItemsFromForm() {
+            if (!circles.length) {
+                throw new Error("No hay circulos");
+            }
+
+            const base = String(baseName.value || "").trim();
+            if (!base) {
+                throw new Error("Falta Base esquema");
+            }
+
+            const ids = splitTokens(idsInput.value);
+            const poss = splitTokens(posInput.value);
+            if (ids.length !== circles.length) {
+                throw new Error(`IDs (${ids.length}) != circulos (${circles.length})`);
+            }
+            if (poss.length !== circles.length) {
+                throw new Error(`POS (${poss.length}) != circulos (${circles.length})`);
+            }
+
+            const engine = String(engineValue.value || "").trim() || inferEngineFromBase(base);
+            if (!engine) {
+                throw new Error("No se pudo inferir engine");
+            }
+
+            return {
+                engine,
+                base,
+                ids,
+                items: circles.map((c, i) => ({
+                    id: ids[i],
+                    base,
+                    engine,
+                    pos: poss[i],
+                    item: { px: [c.x, c.y, c.w, c.h] },
+                })),
+            };
+        }
+
+        async function saveGeneralSchemaField() {
+            const base = String(baseName.value || "").trim();
+            if (!base) {
+                statusChip.textContent = "Estado: falta Base esquema";
+                return;
+            }
+            const engine = String(engineValue.value || "").trim() || inferEngineFromBase(base);
+            if (!engine) {
+                statusChip.textContent = "Estado: falta engine";
+                return;
+            }
+            const ids = splitTokens(idsInput.value);
+            if (!ids.length) {
+                statusChip.textContent = "Estado: falta ID";
+                return;
+            }
+
+            statusChip.textContent = "Estado: guardando esquemas_circulos...";
+            const file = `engine_${engine}.json`;
+            try {
+                for (const id of ids) {
+                    const res = await fetch("/save-json", {
+                        method: "POST",
+                        headers: { "Content-Type": "application/json" },
+                        body: JSON.stringify({
+                            file,
+                            id,
+                            field: "esquemas_circulos",
+                            value: base,
+                        }),
+                    });
+                    const data = await res.json().catch(() => ({}));
+                    if (!res.ok || data?.ok === false) {
+                        throw new Error(data?.error || `HTTP ${res.status}`);
+                    }
+                }
+                statusChip.textContent = `Estado: OK (esquemas_circulos=${base})`;
+                closeWindowAfterSuccess();
+            } catch (err) {
+                statusChip.textContent = `Estado: error guardando esquemas_circulos (${String(err && err.message || err)})`;
+            }
+        }
+
+        async function saveJsonOnly() {
+            let form;
+            try {
+                form = buildItemsFromForm();
+            } catch (err) {
+                statusChip.textContent = `Estado: ${String(err && err.message || err)}`;
+                return;
+            }
+
+            statusChip.textContent = "Estado: guardando JSON sin imagen...";
+            try {
+                const res = await fetch("/api/apply-batch", {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({ items: form.items }),
+                });
+                if (res.status === 404) {
+                    throw new Error("Endpoint /api/apply-batch no disponible. Reinicia node server.js");
+                }
+                const data = await res.json();
+                if (!res.ok || !data.ok) {
+                    throw new Error(data.error || `HTTP ${res.status}`);
+                }
+                statusChip.textContent = `Estado: OK JSON (${data.count || form.items.length})`;
+                closeWindowAfterSuccess();
+            } catch (err) {
+                statusChip.textContent = `Estado: error JSON (${String(err && err.message || err)})`;
+            }
+        }
+
+        async function saveGenerateAll() {
+            let form;
+            try {
+                form = buildItemsFromForm();
+            } catch (err) {
+                statusChip.textContent = `Estado: ${String(err && err.message || err)}`;
+                return;
+            }
+
+            statusChip.textContent = "Estado: guardando y generando...";
+            try {
+                const res = await fetch("/api/apply-generate-batch", {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({ items: form.items }),
+                });
+                if (res.status === 404) {
+                    throw new Error("Endpoint /api/apply-generate-batch no disponible. Reinicia node server.js");
+                }
+                const data = await res.json();
+                if (!res.ok || !data.ok) {
+                    throw new Error(data.error || `HTTP ${res.status}`);
+                }
+                const firstImage = Array.isArray(data.image_files) && data.image_files.length ? data.image_files[0] : "";
+                statusChip.textContent = firstImage
+                    ? `Estado: OK (${data.count || form.items.length}) -> ${firstImage}`
+                    : `Estado: OK (${data.count || form.items.length} procesados)`;
+                closeWindowAfterSuccess();
+            } catch (err) {
+                statusChip.textContent = `Estado: error (${String(err && err.message || err)})`;
+            }
+        }
+
+        imgFile.addEventListener("change", () => {
+            const file = imgFile.files && imgFile.files[0];
+            if (!file) {
+                return;
+            }
+            const url = URL.createObjectURL(file);
+            img.onload = () => {
+                stage.style.width = img.width + "px";
+                stage.style.height = img.height + "px";
+                circles = [];
+                redraw();
+            };
+            img.src = url;
+        });
+
+        stage.addEventListener("click", (evt) => {
+            if (!img.src) {
+                return;
+            }
+            const p = stagePoint(evt);
+            const c = normalizeCircle(p.x, p.y, diameter.value);
+
+            if (evt.ctrlKey) {
+                circles.push(c);
+            } else {
+                circles = [c];
+            }
+            redraw();
+        });
+
+        undoBtn.addEventListener("click", () => {
+            if (!circles.length) {
+                return;
+            }
+            circles.pop();
+            redraw();
+        });
+
+        clearBtn.addEventListener("click", () => {
+            circles = [];
+            redraw();
+        });
+
+        diameter.addEventListener("input", () => {
+            if (!circles.length) {
+                return;
+            }
+            // Keep current centers while updating diameter.
+            circles = circles.map((c) => {
+                const cx = c.x + c.w / 2;
+                const cy = c.y + c.h / 2;
+                return normalizeCircle(cx, cy, diameter.value);
+            });
+            redraw();
+        });
+
+        saveGenerateBtn.addEventListener("click", saveGenerateAll);
+        saveGeneralSchemaBtn.addEventListener("click", saveGeneralSchemaField);
+        saveJsonOnlyBtn.addEventListener("click", saveJsonOnly);
+
+        applyQueryPrefill();
+
+        redraw();
+    </script>
+</body>
+
+</html>

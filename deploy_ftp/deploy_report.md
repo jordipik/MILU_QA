@@ -1,0 +1,509 @@
+# deploy_ftp report
+
+- Fecha: 2026-06-10T14:52:58.473Z
+- Carpeta destino: deploy_ftp/
+- Seed pages auditadas: 21
+- Archivos copiados: 77
+- Excluidos registrados: 0
+- Referencias faltantes: 0
+- Referencias backend detectadas: 157
+
+## Seed pages auditadas
+
+- analista_02.html
+- analytics_dashboard.html
+- analytics_engine_detail.html
+- analytics_export.html
+- analytics_images.html
+- analytics_pn_detail.html
+- analytics_pn.html
+- analytics_qa.html
+- analytics_search.html
+- auto_depuracion.html
+- export_wordpress.html
+- exportacion.html
+- import_pdf.html
+- index.html
+- milu_shell.html
+- qa_analista_registro.html
+- qa_auditoria.html
+- qa_imagenes.html
+- qa_lista_agrupada.html
+- qa_milu.html
+- recompute_simple.html
+
+## Archivos copiados
+
+- analista_02.html
+- analytics_dashboard.html
+- analytics_engine_detail.html
+- analytics_export.html
+- analytics_images.html
+- analytics_pn_detail.html
+- analytics_pn.html
+- analytics_qa.html
+- analytics_search.html
+- auto_depuracion.html
+- css/qa_imagenes.css
+- export_wordpress.html
+- exportacion.html
+- favicon.svg
+- import_pdf.html
+- index.html
+- js/analista-02.js
+- js/analytics/analytics-api.js
+- js/analytics/analytics-dashboard.js
+- js/analytics/analytics-engine-detail.js
+- js/analytics/analytics-export.js
+- js/analytics/analytics-images.js
+- js/analytics/analytics-pn-detail.js
+- js/analytics/analytics-pn.js
+- js/analytics/analytics-qa.js
+- js/analytics/analytics-search.js
+- js/cell-editor.js
+- js/change-control.js
+- js/column-view.js
+- js/confirm-typed-action.js
+- js/data-loader.js
+- js/error-recalc.js
+- js/export-preview-fields.js
+- js/export-wordpress.js
+- js/exportacion.js
+- js/fieldAdapter.js
+- js/helpers.js
+- js/import-pdf.js
+- js/pdf-viewer.js
+- js/pos-preload.js
+- js/qa_imagenes_filters.js
+- js/qa_imagenes_preview.js
+- js/qa_imagenes_resolver.js
+- js/qa_imagenes_stats.js
+- js/qa_imagenes_table.js
+- js/qa_imagenes.js
+- js/qa-analista-registro.js
+- js/qa-articulos-fields.js
+- js/qa-auditoria.js
+- js/qa-checks.js
+- js/qa-milu.js
+- js/qa-table.js
+- js/recompute-simple.js
+- js/record-editor.js
+- js/revision-sync.js
+- js/revision.js
+- js/schemas.js
+- js/state.js
+- js/toast.js
+- js/topbar.js
+- milu_shell.html
+- qa_analista_registro.html
+- qa_auditoria.html
+- qa_imagenes.html
+- qa_lista_agrupada.html
+- qa_milu.html
+- recompute_simple.html
+- styles/analista_02.css
+- styles/analytics.css
+- styles/export_wordpress.css
+- styles/exportacion.css
+- styles/pdf_shared.css
+- styles/qa_analista_registro.css
+- styles/qa_milu.css
+- styles/record-editor.css
+- tools/simple_scheme_circle_marker.html
+- version.json
+
+## Archivos excluidos
+
+### Reglas de exclusion aplicadas
+
+- Directorios excluidos: .git, .github, .venv, .vscode, dist, zz_old, zz_copias, json_originales, node_modules, docs_legacy, docs_v2, __pycache__, scripts, server, tests, legacy, reports, python_lib
+- Extensiones excluidas: .py, .ps1, .bat, .rar, .zip, .7z, .xlsx, .xls, .log, .md, .txt
+- Backups excluidos: *.backup* y *.bak*
+- engine_*.json excluido por defecto
+
+### Exclusiones detectadas durante auditoria
+
+- Ninguno
+
+## Referencias locales faltantes
+
+- Ninguna
+
+## Rutas problemáticas backend detectadas
+
+- js/analista-02.js:10549 | /api/ | const response = await fetch('/api/recompute-simple/recompute-hermanos', {
+- js/analista-02.js:10549 | /recompute | const response = await fetch('/api/recompute-simple/recompute-hermanos', {
+- js/analista-02.js:11386 | localhost:3000 | else if (!backendAllowed) copyPdfReadBackendBtn.title = 'Disponible solo en local (localhost:3000).';
+- js/analista-02.js:11393 | localhost:3000 | if (!allowCopyToFinal) copyPdfReadToFinalBtn.title = 'Disponible solo en local (localhost:3000).';
+- js/analista-02.js:11400 | localhost:3000 | if (!allowRecomputeErrors) pdfRecomputeErrorsBtn.title = 'Disponible solo en local (localhost:3000).';
+- js/analista-02.js:11407 | localhost:3000 | if (!allowRecomputeRevision) pdfRecomputeRevisionBtn.title = 'Disponible solo en local (localhost:3000).';
+- js/analista-02.js:11420 | /api/ | // del modal de recalculo. Llama al endpoint backend POST /api/pdf-preview/apply-to-engine,
+- js/analista-02.js:11473 | /api/ | console.log(`${TAG} endpoint=/api/pdf-preview/apply-to-engine payload=`, selectedModel ? { engine: selectedModel } : {});
+- js/analista-02.js:11474 | /api/ | const response = await fetch('/api/pdf-preview/apply-to-engine', {
+- js/analista-02.js:12364 | /api/ | meta.textContent = `Endpoint: POST /api/pdf-preview/apply-to-engine | not_found=${Number(stats.not_found) || rows.length} | visibles=${filteredRows.length}`;
+- js/analista-02.js:3504 | localhost:3000 | quickRecomputeBtn.title = allowRecompute ? '' : 'Disponible solo en local (localhost:3000).';
+- js/analista-02.js:3511 | localhost:3000 | recomputeAllBtn.title = allowRecompute ? '' : 'Disponible solo en local (localhost:3000).';
+- js/analista-02.js:3547 | localhost:3000 | recomputeRunBtn.title = allowRecompute ? '' : 'Disponible solo en local (localhost:3000).';
+- js/analista-02.js:3559 | localhost:3000 | : (allowRecompute ? '' : 'Disponible solo en local (localhost:3000).');
+- js/analista-02.js:3579 | localhost:3000 | : 'Disponible solo en local (localhost:3000).';
+- js/analista-02.js:3589 | localhost:3000 | : 'Disponible solo en local (localhost:3000).');
+- js/analista-02.js:5272 | localhost:3000 | return `${endpointLabel} solo esta disponible en entorno local con server.js (http://localhost:3000).`;
+- js/analista-02.js:5332 | localhost:3000 | `http://localhost:3000/${cleanEndpoint}`,
+- js/analista-02.js:6189 | localhost:3000 | `Error: ${lastError || `No se pudo ejecutar el recálculo (ultimo endpoint: ${lastTriedUrl || 'sin URL'}). Comprueba que server.js este activo en http://localhost:3000 y responde en /health.`}${idHint}`,
+- js/analista-02.js:6658 | localhost:3000 | `Error: ${lastError || `No se pudo ejecutar el recalculo PDF_AUTO (ultimo endpoint: ${lastTriedUrl || 'sin URL'}). Comprueba que server.js este activo en http://localhost:3000 y responde en /health.`}${idHint}`,
+- js/analytics/analytics-api.js:37 | /export/ | exportPending: (opts = {}) => getJson(`/export/pending?limit=${opts.limit ?? 100}&offset=${opts.offset ?? 0}`),
+- js/data-loader.js:252 | /save-json | * Guarda un cambio de celda en el servidor (POST /save-json).
+- js/data-loader.js:387 | /save-json | const sameOriginPhpCandidate = currentOrigin ? `${currentOrigin}/save-json.php` : '/save-json.php';
+- js/data-loader.js:388 | /save-json | const miluPhpCandidate = currentOrigin ? `${currentOrigin}/milu/save-json.php` : '/milu/save-json.php';
+- js/data-loader.js:397 | /save-json | const localPortCandidate = currentHostname ? `http://${currentHostname}:3000/save-json` : '';
+- js/data-loader.js:398 | /save-json | const sameOriginCandidate = currentOrigin ? `${currentOrigin}/save-json` : '/save-json';
+- js/data-loader.js:401 | /save-json | 'http://localhost:3000/save-json',
+- js/data-loader.js:401 | localhost:3000 | 'http://localhost:3000/save-json',
+- js/data-loader.js:407 | /save-json | // En alentio.es la app vive bajo /milu/, por lo que /save-json.php en raiz da 404.
+- js/data-loader.js:412 | /save-json | 'https://alentio.es/milu/save-json.php'
+- js/data-loader.js:420 | /save-json | 'https://milu.alentio.es/save-json.php'
+- js/data-loader.js:455 | localhost:3000 | 'http://localhost:3000/delete-json',
+- js/data-loader.js:473 | /save-json | // Para Express, se sustituye /save-json por /health.
+- js/data-loader.js:476 | /save-json | : saveUrl.replace(/\/save-json$/i, '/health');
+- js/export-wordpress.js:46 | /export/ | status: apiUrl('/export/status'),
+- js/export-wordpress.js:47 | /export/ | runWordpress: apiUrl('/export/run-wordpress'),
+- js/export-wordpress.js:48 | /export/ | file: (name) => `${apiUrl('/export/file')}?name=${encodeURIComponent(name)}`,
+- js/export-wordpress.js:50 | /export/ | ? `${apiUrl('/export/download')}?name=${encodeURIComponent(name)}`
+- js/export-wordpress.js:51 | /export/ | : apiUrl('/export/download')
+- js/exportacion.js:15 | /export/ | files: apiUrl('/export/files'),
+- js/exportacion.js:16 | /export/ | wordpressDecisions: apiUrl('/export/wordpress-decisions'),
+- js/exportacion.js:17 | /export/ | file: (folder, name) => `${apiUrl('/export/file')}?folder=${encodeURIComponent(folder)}&name=${encodeURIComponent(name)}`,
+- js/exportacion.js:18 | /export/ | download: (folder, name) => `${apiUrl('/export/download')}?folder=${encodeURIComponent(folder)}&name=${encodeURIComponent(name)}`,
+- js/exportacion.js:19 | /export/ | runWordpress: apiUrl('/export/run-wordpress'),
+- js/exportacion.js:20 | /export/ | status: apiUrl('/export/status')
+- js/qa-auditoria.js:14 | localhost:3000 | isLocalhost ? 'http://localhost:3000/audit-log' : '',
+- js/qa-milu.js:1725 | /export/ | const payload = await fetchExportJson(`/export/trace/${encodeURIComponent(normalizedSku)}`);
+- js/qa-milu.js:1771 | /export/ | const payload = await fetchExportJson('/export/preview');
+- js/qa-milu.js:327 | localhost:3000 | isLocalhost ? 'http://localhost:3000/audit-log' : '',
+- js/qa-milu.js:5056 | /api/ | const posIndexResponse = await fetch(apiUrl('/api/esquemas-pos-index'));
+- js/qa-milu.js:7676 | /export/ | await runExportPipeline('/export/run-wordpress', 'WordPress export');
+- js/qa-milu.js:8792 | localhost:3000 | showToast('La generación de esquema requiere backend local en localhost:3000.', 'warning');
+- js/qa-milu.js:8850 | /api/ | const response = await fetch(apiUrl('/api/esquemas/generate-one'), {
+- js/qa-milu.js:8904 | localhost:3000 | showToast('La generación de esquema POS requiere backend local en localhost:3000.', 'warning');
+- js/qa-milu.js:8962 | /api/ | const response = await fetch(apiUrl('/api/esquemas-pos/generate-one'), {
+- js/recompute-simple.js:1044 | /api/ | if (endpoint === '/api/recompute-simple/rebuild-schemes-circles-from-esquemas') {
+- js/recompute-simple.js:1044 | /recompute | if (endpoint === '/api/recompute-simple/rebuild-schemes-circles-from-esquemas') {
+- js/recompute-simple.js:1085 | /api/ | if (endpoint === '/api/recompute-simple/manual-override-picker') {
+- js/recompute-simple.js:1085 | /recompute | if (endpoint === '/api/recompute-simple/manual-override-picker') {
+- js/recompute-simple.js:1097 | /api/ | String(data?.rebuildEndpoint || '/api/recompute-simple/rebuild-schemes-circles-from-esquemas')
+- js/recompute-simple.js:1097 | /recompute | String(data?.rebuildEndpoint || '/api/recompute-simple/rebuild-schemes-circles-from-esquemas')
+- js/recompute-simple.js:1111 | /api/ | if (endpoint === '/api/pdf-preview/apply-to-engine') {
+- js/recompute-simple.js:1398 | /api/ | const data = await postJson('/api/recompute-simple/rebuild-json', payload, { allowPartial: true });
+- js/recompute-simple.js:1398 | /recompute | const data = await postJson('/api/recompute-simple/rebuild-json', payload, { allowPartial: true });
+- js/recompute-simple.js:1399 | /api/ | renderResponseSummary('IMPORTAR PDF', '/api/recompute-simple/rebuild-json', data);
+- js/recompute-simple.js:1399 | /recompute | renderResponseSummary('IMPORTAR PDF', '/api/recompute-simple/rebuild-json', data);
+- js/recompute-simple.js:1433 | /api/ | const gesaData = await postJson('/api/recompute-simple/update-gesa', payload);
+- js/recompute-simple.js:1433 | /recompute | const gesaData = await postJson('/api/recompute-simple/update-gesa', payload);
+- js/recompute-simple.js:1434 | /api/ | renderResponseSummary('Actualizar GESA', '/api/recompute-simple/update-gesa', gesaData);
+- js/recompute-simple.js:1434 | /recompute | renderResponseSummary('Actualizar GESA', '/api/recompute-simple/update-gesa', gesaData);
+- js/recompute-simple.js:1437 | /api/ | const sustData = await postJson('/api/recompute-simple/update-sust', payload);
+- js/recompute-simple.js:1437 | /recompute | const sustData = await postJson('/api/recompute-simple/update-sust', payload);
+- js/recompute-simple.js:1438 | /api/ | renderResponseSummary('Actualizar GESA + SUST', '/api/recompute-simple/update-sust', sustData);
+- js/recompute-simple.js:1438 | /recompute | renderResponseSummary('Actualizar GESA + SUST', '/api/recompute-simple/update-sust', sustData);
+- js/recompute-simple.js:1463 | /api/ | const startData = await postJson('/api/recompute-simple/enrich-assets/start', payload);
+- js/recompute-simple.js:1463 | /recompute | const startData = await postJson('/api/recompute-simple/enrich-assets/start', payload);
+- js/recompute-simple.js:1482 | /api/ | const statusData = await getJson(`/api/recompute-simple/enrich-assets/jobs/${encodeURIComponent(jobId)}`);
+- js/recompute-simple.js:1482 | /recompute | const statusData = await getJson(`/api/recompute-simple/enrich-assets/jobs/${encodeURIComponent(jobId)}`);
+- js/recompute-simple.js:1509 | /api/ | renderResponseSummary('ASSETS', '/api/recompute-simple/enrich-assets', resultPayload);
+- js/recompute-simple.js:1509 | /recompute | renderResponseSummary('ASSETS', '/api/recompute-simple/enrich-assets', resultPayload);
+- js/recompute-simple.js:1564 | /api/ | data = await postJson('/api/recompute-simple/fill-missing-fg-fgs', payload);
+- js/recompute-simple.js:1564 | /recompute | data = await postJson('/api/recompute-simple/fill-missing-fg-fgs', payload);
+- js/recompute-simple.js:1573 | /api/ | renderResponseSummary('7 · Completar FG/FGS por BOM', '/api/recompute-simple/fill-missing-fg-fgs', data);
+- js/recompute-simple.js:1573 | /recompute | renderResponseSummary('7 · Completar FG/FGS por BOM', '/api/recompute-simple/fill-missing-fg-fgs', data);
+- js/recompute-simple.js:1594 | /api/ | const data = await postJson('/api/recompute-simple/recompute-hermanos', payload, { allowPartial: true });
+- js/recompute-simple.js:1594 | /recompute | const data = await postJson('/api/recompute-simple/recompute-hermanos', payload, { allowPartial: true });
+- js/recompute-simple.js:1595 | /api/ | renderResponseSummary('Recalcular hermanos', '/api/recompute-simple/recompute-hermanos', data);
+- js/recompute-simple.js:1595 | /recompute | renderResponseSummary('Recalcular hermanos', '/api/recompute-simple/recompute-hermanos', data);
+- js/recompute-simple.js:1622 | /api/ | const data = await postJson('/api/recompute-simple/rebuild-schemes-by-bom', payload, { allowPartial: true });
+- js/recompute-simple.js:1622 | /recompute | const data = await postJson('/api/recompute-simple/rebuild-schemes-by-bom', payload, { allowPartial: true });
+- js/recompute-simple.js:1625 | /api/ | '/api/recompute-simple/rebuild-schemes-by-bom',
+- js/recompute-simple.js:1625 | /recompute | '/api/recompute-simple/rebuild-schemes-by-bom',
+- js/recompute-simple.js:1654 | /api/ | const data = await postJson('/api/recompute-simple/rebuild-schemes-circles-from-esquemas', payload, { allowPartial: true });
+- js/recompute-simple.js:1654 | /recompute | const data = await postJson('/api/recompute-simple/rebuild-schemes-circles-from-esquemas', payload, { allowPartial: true });
+- js/recompute-simple.js:1657 | /api/ | '/api/recompute-simple/rebuild-schemes-circles-from-esquemas',
+- js/recompute-simple.js:1657 | /recompute | '/api/recompute-simple/rebuild-schemes-circles-from-esquemas',
+- js/recompute-simple.js:1683 | /api/ | const data = await postJson('/api/recompute-simple/manual-override-picker', payload);
+- js/recompute-simple.js:1683 | /recompute | const data = await postJson('/api/recompute-simple/manual-override-picker', payload);
+- js/recompute-simple.js:1684 | /api/ | renderResponseSummary('10 · Normalizar overrides manuales', '/api/recompute-simple/manual-override-picker', data);
+- js/recompute-simple.js:1684 | /recompute | renderResponseSummary('10 · Normalizar overrides manuales', '/api/recompute-simple/manual-override-picker', data);
+- js/recompute-simple.js:1736 | /recompute | const data = await postJson('/recompute-qa-errors', payload);
+- js/recompute-simple.js:1737 | /recompute | renderResponseSummary('Recalcular errores', '/recompute-qa-errors', data);
+- js/recompute-simple.js:1763 | /api/ | const data = await postJson('/api/recompute-simple/update-states', payload, { allowPartial: true });
+- js/recompute-simple.js:1763 | /recompute | const data = await postJson('/api/recompute-simple/update-states', payload, { allowPartial: true });
+- js/recompute-simple.js:1764 | /api/ | renderResponseSummary('Recalcular estados', '/api/recompute-simple/update-states', data);
+- js/recompute-simple.js:1764 | /recompute | renderResponseSummary('Recalcular estados', '/api/recompute-simple/update-states', data);
+- js/recompute-simple.js:198 | /api/ | await postJson(`/api/recompute-simple/enrich-assets/jobs/${encodeURIComponent(currentAssetsJobId)}/cancel`, {});
+- js/recompute-simple.js:198 | /recompute | await postJson(`/api/recompute-simple/enrich-assets/jobs/${encodeURIComponent(currentAssetsJobId)}/cancel`, {});
+- js/recompute-simple.js:635 | /recompute | if (endpoint === '/recompute-qa-errors') {
+- js/recompute-simple.js:654 | /api/ | if (endpoint === '/api/recompute-simple/update-states') {
+- js/recompute-simple.js:654 | /recompute | if (endpoint === '/api/recompute-simple/update-states') {
+- js/recompute-simple.js:682 | /api/ | if (endpoint === '/api/recompute-simple/update-sust') {
+- js/recompute-simple.js:682 | /recompute | if (endpoint === '/api/recompute-simple/update-sust') {
+- js/recompute-simple.js:717 | /api/ | if (endpoint === '/api/recompute-simple/update-gesa') {
+- js/recompute-simple.js:717 | /recompute | if (endpoint === '/api/recompute-simple/update-gesa') {
+- js/recompute-simple.js:750 | /api/ | if (endpoint === '/api/recompute-simple/rebuild-json') {
+- js/recompute-simple.js:750 | /recompute | if (endpoint === '/api/recompute-simple/rebuild-json') {
+- js/recompute-simple.js:795 | /api/ | if (endpoint === '/api/recompute-simple/enrich-assets') {
+- js/recompute-simple.js:795 | /recompute | if (endpoint === '/api/recompute-simple/enrich-assets') {
+- js/recompute-simple.js:838 | /api/ | if (endpoint === '/api/recompute-simple/fill-missing-fg-fgs') {
+- js/recompute-simple.js:838 | /recompute | if (endpoint === '/api/recompute-simple/fill-missing-fg-fgs') {
+- js/recompute-simple.js:874 | /api/ | if (endpoint === '/api/recompute-simple/recompute-hermanos') {
+- js/recompute-simple.js:874 | /recompute | if (endpoint === '/api/recompute-simple/recompute-hermanos') {
+- js/recompute-simple.js:911 | /api/ | if (endpoint === '/api/recompute-simple/generate-missing-esquema-pos') {
+- js/recompute-simple.js:911 | /recompute | if (endpoint === '/api/recompute-simple/generate-missing-esquema-pos') {
+- js/recompute-simple.js:950 | /api/ | if (endpoint === '/api/recompute-simple/generate-schemes') {
+- js/recompute-simple.js:950 | /recompute | if (endpoint === '/api/recompute-simple/generate-schemes') {
+- js/recompute-simple.js:989 | /api/ | if (endpoint === '/api/recompute-simple/rebuild-schemes-by-bom') {
+- js/recompute-simple.js:989 | /recompute | if (endpoint === '/api/recompute-simple/rebuild-schemes-by-bom') {
+- js/record-editor.js:304 | /api/ | const response = await fetch('/api/record-editor/update-record', {
+- js/state.js:32 | /api/ | // Cargado en background desde /api/esquemas-pos-index al arrancar la app.
+- js/topbar.js:209 | /recompute | <a href="${appUrl('/recompute_simple.html')}" data-page="recompute" class="${pageConfig.active === 'RECOMPUTE' ? 'active' : ''}">RECOMPUTE</a>
+- recompute_simple.html:392 | /api/ | /api/recompute-simple/rebuild-json</strong></p>
+- recompute_simple.html:392 | /recompute | /api/recompute-simple/rebuild-json</strong></p>
+- recompute_simple.html:411 | /api/ | <p class="a2-step-desc">POST /api/recompute-simple/update-gesa</p>
+- recompute_simple.html:411 | /recompute | <p class="a2-step-desc">POST /api/recompute-simple/update-gesa</p>
+- recompute_simple.html:412 | /api/ | <p class="a2-step-desc">POST /api/recompute-simple/update-sust</p>
+- recompute_simple.html:412 | /recompute | <p class="a2-step-desc">POST /api/recompute-simple/update-sust</p>
+- recompute_simple.html:436 | /recompute | <p class="a2-step-desc">POST /recompute-qa-errors con scope/libro/id.</p>
+- recompute_simple.html:447 | /api/ | <p class="a2-step-desc">POST /api/recompute-simple/update-states.</p>
+- recompute_simple.html:447 | /recompute | <p class="a2-step-desc">POST /api/recompute-simple/update-states.</p>
+- recompute_simple.html:459 | /api/ | <p class="a2-step-desc">POST /api/recompute-simple/recompute-hermanos</p>
+- recompute_simple.html:459 | /recompute | <p class="a2-step-desc">POST /api/recompute-simple/recompute-hermanos</p>
+- recompute_simple.html:474 | /api/ | <p class="a2-step-desc">POST /api/recompute-simple/fill-missing-fg-fgs</p>
+- recompute_simple.html:474 | /recompute | <p class="a2-step-desc">POST /api/recompute-simple/fill-missing-fg-fgs</p>
+- recompute_simple.html:501 | /api/ | <p class="a2-step-desc">POST /api/recompute-simple/rebuild-schemes-by-bom</p>
+- recompute_simple.html:501 | /recompute | <p class="a2-step-desc">POST /api/recompute-simple/rebuild-schemes-by-bom</p>
+- recompute_simple.html:518 | /api/ | <p class="a2-step-desc">POST /api/recompute-simple/rebuild-schemes-circles-from-esquemas</p>
+- recompute_simple.html:518 | /recompute | <p class="a2-step-desc">POST /api/recompute-simple/rebuild-schemes-circles-from-esquemas</p>
+- recompute_simple.html:536 | /api/ | <p class="a2-step-desc">POST /api/recompute-simple/manual-override-picker</p>
+- recompute_simple.html:536 | /recompute | <p class="a2-step-desc">POST /api/recompute-simple/manual-override-picker</p>
+- recompute_simple.html:584 | /recompute | <script type="module" src="./js/recompute-simple.js"></script>
+- tools/simple_scheme_circle_marker.html:559 | /save-json | const res = await fetch("/save-json", {
+- tools/simple_scheme_circle_marker.html:592 | /api/ | const res = await fetch("/api/apply-batch", {
+- tools/simple_scheme_circle_marker.html:598 | /api/ | throw new Error("Endpoint /api/apply-batch no disponible. Reinicia node server.js");
+- tools/simple_scheme_circle_marker.html:622 | /api/ | const res = await fetch("/api/apply-generate-batch", {
+- tools/simple_scheme_circle_marker.html:628 | /api/ | throw new Error("Endpoint /api/apply-generate-batch no disponible. Reinicia node server.js");
+
+## Dependencias backend/datos dinámicos por página
+
+- analista_02.html
+  - total_refs=36
+  - tipos=/api/, /recompute, /save-json, localhost:3000
+  - js/analista-02.js:10549 | /api/
+  - js/analista-02.js:10549 | /recompute
+  - js/analista-02.js:11386 | localhost:3000
+  - js/analista-02.js:11393 | localhost:3000
+  - js/analista-02.js:11400 | localhost:3000
+  - js/analista-02.js:11407 | localhost:3000
+  - js/analista-02.js:11420 | /api/
+  - js/analista-02.js:11473 | /api/
+  - js/analista-02.js:11474 | /api/
+  - js/analista-02.js:12364 | /api/
+  - js/analista-02.js:3504 | localhost:3000
+  - js/analista-02.js:3511 | localhost:3000
+  - ... 24 mas
+- analytics_dashboard.html
+  - total_refs=1
+  - tipos=/export/
+  - js/analytics/analytics-api.js:37 | /export/
+- analytics_engine_detail.html
+  - total_refs=1
+  - tipos=/export/
+  - js/analytics/analytics-api.js:37 | /export/
+- analytics_export.html
+  - total_refs=1
+  - tipos=/export/
+  - js/analytics/analytics-api.js:37 | /export/
+- analytics_images.html
+  - total_refs=1
+  - tipos=/export/
+  - js/analytics/analytics-api.js:37 | /export/
+- analytics_pn_detail.html
+  - total_refs=1
+  - tipos=/export/
+  - js/analytics/analytics-api.js:37 | /export/
+- analytics_pn.html
+  - total_refs=1
+  - tipos=/export/
+  - js/analytics/analytics-api.js:37 | /export/
+- analytics_qa.html
+  - total_refs=1
+  - tipos=/export/
+  - js/analytics/analytics-api.js:37 | /export/
+- analytics_search.html
+  - total_refs=1
+  - tipos=/export/
+  - js/analytics/analytics-api.js:37 | /export/
+- export_wordpress.html
+  - total_refs=5
+  - tipos=/export/
+  - js/export-wordpress.js:46 | /export/
+  - js/export-wordpress.js:47 | /export/
+  - js/export-wordpress.js:48 | /export/
+  - js/export-wordpress.js:50 | /export/
+  - js/export-wordpress.js:51 | /export/
+- exportacion.html
+  - total_refs=35
+  - tipos=/api/, /export/, /recompute, /save-json, localhost:3000
+  - js/data-loader.js:252 | /save-json
+  - js/data-loader.js:387 | /save-json
+  - js/data-loader.js:388 | /save-json
+  - js/data-loader.js:397 | /save-json
+  - js/data-loader.js:398 | /save-json
+  - js/data-loader.js:401 | /save-json
+  - js/data-loader.js:401 | localhost:3000
+  - js/data-loader.js:407 | /save-json
+  - js/data-loader.js:412 | /save-json
+  - js/data-loader.js:420 | /save-json
+  - js/data-loader.js:455 | localhost:3000
+  - js/data-loader.js:473 | /save-json
+  - ... 23 mas
+- import_pdf.html
+  - total_refs=15
+  - tipos=/api/, /recompute, /save-json, localhost:3000
+  - js/data-loader.js:252 | /save-json
+  - js/data-loader.js:387 | /save-json
+  - js/data-loader.js:388 | /save-json
+  - js/data-loader.js:397 | /save-json
+  - js/data-loader.js:398 | /save-json
+  - js/data-loader.js:401 | /save-json
+  - js/data-loader.js:401 | localhost:3000
+  - js/data-loader.js:407 | /save-json
+  - js/data-loader.js:412 | /save-json
+  - js/data-loader.js:420 | /save-json
+  - js/data-loader.js:455 | localhost:3000
+  - js/data-loader.js:473 | /save-json
+  - ... 3 mas
+- index.html
+  - total_refs=29
+  - tipos=/api/, /export/, /recompute, /save-json, localhost:3000
+  - js/data-loader.js:252 | /save-json
+  - js/data-loader.js:387 | /save-json
+  - js/data-loader.js:388 | /save-json
+  - js/data-loader.js:397 | /save-json
+  - js/data-loader.js:398 | /save-json
+  - js/data-loader.js:401 | /save-json
+  - js/data-loader.js:401 | localhost:3000
+  - js/data-loader.js:407 | /save-json
+  - js/data-loader.js:412 | /save-json
+  - js/data-loader.js:420 | /save-json
+  - js/data-loader.js:455 | localhost:3000
+  - js/data-loader.js:473 | /save-json
+  - ... 17 mas
+- milu_shell.html
+  - total_refs=15
+  - tipos=/api/, /recompute, /save-json, localhost:3000
+  - js/data-loader.js:252 | /save-json
+  - js/data-loader.js:387 | /save-json
+  - js/data-loader.js:388 | /save-json
+  - js/data-loader.js:397 | /save-json
+  - js/data-loader.js:398 | /save-json
+  - js/data-loader.js:401 | /save-json
+  - js/data-loader.js:401 | localhost:3000
+  - js/data-loader.js:407 | /save-json
+  - js/data-loader.js:412 | /save-json
+  - js/data-loader.js:420 | /save-json
+  - js/data-loader.js:455 | localhost:3000
+  - js/data-loader.js:473 | /save-json
+  - ... 3 mas
+- qa_analista_registro.html
+  - total_refs=29
+  - tipos=/api/, /export/, /recompute, /save-json, localhost:3000
+  - js/data-loader.js:252 | /save-json
+  - js/data-loader.js:387 | /save-json
+  - js/data-loader.js:388 | /save-json
+  - js/data-loader.js:397 | /save-json
+  - js/data-loader.js:398 | /save-json
+  - js/data-loader.js:401 | /save-json
+  - js/data-loader.js:401 | localhost:3000
+  - js/data-loader.js:407 | /save-json
+  - js/data-loader.js:412 | /save-json
+  - js/data-loader.js:420 | /save-json
+  - js/data-loader.js:455 | localhost:3000
+  - js/data-loader.js:473 | /save-json
+  - ... 17 mas
+- qa_auditoria.html
+  - total_refs=1
+  - tipos=localhost:3000
+  - js/qa-auditoria.js:14 | localhost:3000
+- qa_imagenes.html
+  - total_refs=13
+  - tipos=/save-json, localhost:3000
+  - js/data-loader.js:252 | /save-json
+  - js/data-loader.js:387 | /save-json
+  - js/data-loader.js:388 | /save-json
+  - js/data-loader.js:397 | /save-json
+  - js/data-loader.js:398 | /save-json
+  - js/data-loader.js:401 | /save-json
+  - js/data-loader.js:401 | localhost:3000
+  - js/data-loader.js:407 | /save-json
+  - js/data-loader.js:412 | /save-json
+  - js/data-loader.js:420 | /save-json
+  - js/data-loader.js:455 | localhost:3000
+  - js/data-loader.js:473 | /save-json
+  - ... 1 mas
+- qa_lista_agrupada.html
+  - total_refs=15
+  - tipos=/api/, /recompute, /save-json, localhost:3000
+  - js/data-loader.js:252 | /save-json
+  - js/data-loader.js:387 | /save-json
+  - js/data-loader.js:388 | /save-json
+  - js/data-loader.js:397 | /save-json
+  - js/data-loader.js:398 | /save-json
+  - js/data-loader.js:401 | /save-json
+  - js/data-loader.js:401 | localhost:3000
+  - js/data-loader.js:407 | /save-json
+  - js/data-loader.js:412 | /save-json
+  - js/data-loader.js:420 | /save-json
+  - js/data-loader.js:455 | localhost:3000
+  - js/data-loader.js:473 | /save-json
+  - ... 3 mas
+- qa_milu.html
+  - total_refs=29
+  - tipos=/api/, /export/, /recompute, /save-json, localhost:3000
+  - js/data-loader.js:252 | /save-json
+  - js/data-loader.js:387 | /save-json
+  - js/data-loader.js:388 | /save-json
+  - js/data-loader.js:397 | /save-json
+  - js/data-loader.js:398 | /save-json
+  - js/data-loader.js:401 | /save-json
+  - js/data-loader.js:401 | localhost:3000
+  - js/data-loader.js:407 | /save-json
+  - js/data-loader.js:412 | /save-json
+  - js/data-loader.js:420 | /save-json
+  - js/data-loader.js:455 | localhost:3000
+  - js/data-loader.js:473 | /save-json
+  - ... 17 mas
+- recompute_simple.html
+  - total_refs=109
+  - tipos=/api/, /recompute, /save-json, localhost:3000
+  - js/data-loader.js:252 | /save-json
+  - js/data-loader.js:387 | /save-json
+  - js/data-loader.js:388 | /save-json
+  - js/data-loader.js:397 | /save-json
+  - js/data-loader.js:398 | /save-json
+  - js/data-loader.js:401 | /save-json
+  - js/data-loader.js:401 | localhost:3000
+  - js/data-loader.js:407 | /save-json
+  - js/data-loader.js:412 | /save-json
+  - js/data-loader.js:420 | /save-json
+  - js/data-loader.js:455 | localhost:3000
+  - js/data-loader.js:473 | /save-json
+  - ... 97 mas
+
+## Páginas críticas
+
+- milu_shell.html: OK
+- analista_02.html: OK
+- import_pdf.html: OK
+- recompute_simple.html: OK
+
+## Notas
+
+- engine_*.json se excluye por defecto en este build FTP.
+- Endpoints backend (localhost/api/export/save/recompute/qa_revision_sync.php) no funcionaran en hosting FTP estatico sin backend adicional.

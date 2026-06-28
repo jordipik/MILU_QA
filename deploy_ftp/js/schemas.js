@@ -232,44 +232,46 @@ function parsePosSchemaTokenIdentity(rawToken) {
 export function getPosSchemasForRow(row) {
     if (!row) return [];
     const book = String(val(row, 'engine_model', '') || '').trim();
-    const bookLower = book.toLowerCase();
-    const rowPage = normalizeNumericToken(val(row, 'Source Page', ''));
-    const rowPos = normalizePosToken(val(row, 'POS', ''));
+
     const itemsByLabel = new Map();
-    const matchesSelectedRow = (rawToken) => {
-        const parsed = parsePosSchemaTokenIdentity(rawToken);
-        if (!parsed) return true;
-        if (bookLower && parsed.book && parsed.book !== bookLower) return false;
-        if (rowPage && parsed.page && parsed.page !== rowPage) return false;
-        if (rowPos && parsed.pos && parsed.pos !== rowPos) return false;
-        return true;
+
+    const getExistingCandidates = (candidates) => {
+        if (!Array.isArray(candidates) || candidates.length === 0) return [];
+        if (!state?.esquemasPosFileSet || state.esquemasPosFileSet.size === 0) return candidates;
+
+        return candidates.filter((candidate) => {
+            const fileName = extractFileNameFromPath(candidate).toLowerCase();
+            return fileName && state.esquemasPosFileSet.has(fileName);
+        });
     };
+
     const mergeItem = (rawToken, preferredPath = '') => {
         const cleanToken = String(rawToken || '').trim();
         if (!cleanToken) return;
         const fileName = extractFileNameFromPath(cleanToken) || cleanToken;
         const label = stripFileExtension(fileName);
         if (!label) return;
-        const candidates = [
+        const allCandidates = [
             ...buildSchemaPosImageCandidates(book, preferredPath || cleanToken),
             ...buildSchemaPosImageCandidates(book, cleanToken)
         ];
+
+        const candidates = getExistingCandidates(allCandidates);
+        if (!candidates.length) return;
+
         if (!itemsByLabel.has(label)) itemsByLabel.set(label, { label, candidates: [] });
         const item = itemsByLabel.get(label);
         const existing = new Set(item.candidates);
         candidates.forEach(path => { if (!existing.has(path)) { existing.add(path); item.candidates.push(path); } });
     };
-    splitSchemaTokens(row?.ruta_esquemas_pos).forEach(r => {
-        if (matchesSelectedRow(r)) mergeItem(r, r);
-    });
-    // exp_imagenes suele contener la URL final publicada; se valida tambien
-    // contra la carpeta local esquemas_pos_circulos/<BOOK>-POS/ por basename.
-    splitSchemaTokens(row?.exp_imagenes).forEach(r => {
-        if (matchesSelectedRow(r)) mergeItem(r, r);
-    });
-    splitSchemaTokens(row?.esquemas_circulos).forEach(t => {
-        if (matchesSelectedRow(t)) mergeItem(t);
-    });
+
+    // Resolver esquema_pos sin filtrar por página/POS: lo único que cuenta es
+    // si existe el archivo candidato en el índice local de esquemas_pos.
+    splitSchemaTokens(row?.ruta_esquemas_pos).forEach(r => mergeItem(r, r));
+    splitSchemaTokens(row?.exp_imagenes).forEach(r => mergeItem(r, r));
+    splitSchemaTokens(row?.esquemas_circulos).forEach(t => mergeItem(t));
+    splitSchemaTokens(row?.esquemas_circulos_all).forEach(t => mergeItem(t));
+
     return [...itemsByLabel.values()]
         .filter(item => item.candidates.length > 0)
         .sort((a, b) => a.label.localeCompare(b.label, undefined, { numeric: true }));
@@ -355,45 +357,79 @@ function buildPosStrip(row, stripEl, metaEl, opts = {}) {
     }
 }
 
+function updateSchemaMarkerLink(row) {
+    const link = document.getElementById('schemasMarkerLink');
+    if (!link) return;
+
+    if (!row) {
+        link.hidden = true;
+        link.href = 'tools/simple_scheme_circle_marker.html';
+        return;
+    }
+
+    const engine = String(val(row, 'engine_model', '') || '').trim();
+    const id = String(val(row, 'ID', '') || '').trim();
+    const pos = String(val(row, 'POS', '') || val(row, 'pos_final', '') || '').trim();
+
+    const baseToken = splitSchemaTokens(row?.esquemas)[0] || '';
+    const base = extractFileNameFromPath(baseToken) || String(baseToken || '').trim();
+    const allSchemas = splitSchemaTokens(row?.esquemas)
+        .map(t => extractFileNameFromPath(t) || String(t || '').trim())
+        .filter(Boolean);
+
+    const params = new URLSearchParams();
+    if (base) params.set('base', base);
+    if (engine) params.set('engine', engine);
+    if (id) params.set('id', id);
+    if (pos) params.set('pos', pos);
+    if (allSchemas.length) params.set('schemas', allSchemas.join(','));
+
+    link.href = `tools/simple_scheme_circle_marker.html${params.toString() ? `?${params.toString()}` : ''}`;
+    link.hidden = false;
+}
+
 export function renderSelectedRowPosPanel(row) {
     const strip = document.getElementById('selectedPosStrip');
     const meta = document.getElementById('selectedPosMeta');
+    if (!strip || !meta) return;
+    updateSchemaMarkerLink(row);
+    buildPosStrip(row, strip, meta, { emptyText: 'Sin selección', showMeta: true });
+}
+
+export function renderSelectedRowPosTop(row) {
+    const strip = document.getElementById('selectedPosTopStrip');
+    const meta = document.getElementById('selectedPosTopMeta');
+    if (!strip || !meta) return;
+    strip.innerHTML = '';
+    if (!meta) return;
+    meta.textContent = '';
+    if (!row) {
+        const empty = document.createElement('span'); empty.className = 'schemas-images-empty'; empty.textContent = '';
+        strip.appendChild(empty); return;
+    }
+    const posItems = getPosSchemasForRow(row);
     if (!posItems.length || !posItems[0].candidates.length) {
         const empty = document.createElement('span'); empty.className = 'schemas-images-empty'; empty.textContent = '';
-
-        const getExistingCandidates = (candidates) => {
-            if (!Array.isArray(candidates) || candidates.length === 0) return [];
-            if (!state?.esquemasPosFileSet || state.esquemasPosFileSet.size === 0) return candidates;
-
-            return candidates.filter((candidate) => {
-                const fileName = extractFileNameFromPath(candidate).toLowerCase();
-                return fileName && state.esquemasPosFileSet.has(fileName);
-            });
-        };
-
+        strip.appendChild(empty); return;
+    }
+    const { candidates } = posItems[0];
+    const link = document.createElement('a');
+    link.className = 'schema-thumb pos-top-thumb'; link.href = candidates[0]; link.target = '_blank'; link.rel = 'noopener noreferrer'; link.title = 'Abrir imagen';
+    const img = document.createElement('img');
+    img.alt = 'Pos circulos'; img.loading = 'lazy'; img.decoding = 'async';
+    img.addEventListener('error', () => {
         const currentIndex = Number(img.dataset.schemaCandidateIndex || '0');
         missingSchemaImagePaths.add(candidates[currentIndex]);
         const ci = currentIndex + 1;
         if (ci >= candidates.length) {
             link.remove();
             if (!strip.querySelector('.schema-thumb') && !strip.querySelector('.schemas-images-empty')) {
-                const allCandidates = [
-                    strip.appendChild(empty);
+                const empty = document.createElement('span'); empty.className = 'schemas-images-empty'; empty.textContent = '';
+                strip.appendChild(empty);
             }
             return;
-
-            const candidates = getExistingCandidates(allCandidates);
-            if (!candidates.length) return;
-
         }
         link.href = candidates[ci]; setSchemaImageSource(img, candidates, ci);
     });
     link.appendChild(img); strip.appendChild(link); setSchemaImageSource(img, candidates, 0);
 }
-
-// Resolver esquema_pos sin filtrar por página/POS: lo único que cuenta es
-// si existe el archivo candidato en el índice local de esquemas_pos.
-splitSchemaTokens(row?.ruta_esquemas_pos).forEach(r => mergeItem(r, r));
-splitSchemaTokens(row?.exp_imagenes).forEach(r => mergeItem(r, r));
-splitSchemaTokens(row?.esquemas_circulos).forEach(t => mergeItem(t));
-splitSchemaTokens(row?.esquemas_circulos_all).forEach(t => mergeItem(t));

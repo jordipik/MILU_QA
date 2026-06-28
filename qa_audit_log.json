@@ -6732,5 +6732,1019 @@
         }
       }
     }
+  },
+  {
+    "id": "1781562019908-1fb0jaa9",
+    "timestamp": "2026-06-15T22:20:19.908Z",
+    "kind": "change-applied",
+    "type": "qa-row-patch",
+    "module": "qa_milu",
+    "action": "inline-estado",
+    "description": "Cambio rapido estado ID RB-12V4000M53-000523",
+    "target": {
+      "revisionKey": "id=RB-12V4000M53-000523"
+    },
+    "changeId": "1781562019330-9xb7o6pv",
+    "data": {
+      "target": {
+        "revisionKey": "id=RB-12V4000M53-000523",
+        "engineFile": "engine_12V4000M53.json",
+        "id": "RB-12V4000M53-000523"
+      },
+      "changes": {
+        "qa_revision_estado": {
+          "before": "pendiente",
+          "after": "ok"
+        }
+      }
+    }
+  },
+  {
+    "id": "1781562022235-bpcdvceg",
+    "timestamp": "2026-06-15T22:20:22.235Z",
+    "kind": "change-applied",
+    "type": "qa-row-patch",
+    "module": "qa_milu",
+    "action": "inline-accion",
+    "description": "Cambio rapido accion ID RB-12V4000M53-000523",
+    "target": {
+      "revisionKey": "id=RB-12V4000M53-000523"
+    },
+    "changeId": "1781562021600-yabeluzx",
+    "data": {
+      "target": {
+        "revisionKey": "id=RB-12V4000M53-000523",
+        "engineFile": "engine_12V4000M53.json",
+        "id": "RB-12V4000M53-000523"
+      },
+      "changes": {
+        "qa_revision_accion": {
+          "before": "revisar",
+          "after": "eliminar"
+        }
+      }
+    }
+  },
+  {
+    "id": "1781562024950-v7e2wkin",
+    "timestamp": "2026-06-15T22:20:24.950Z",
+    "kind": "change-applied",
+    "type": "qa-row-patch",
+    "module": "qa_milu",
+    "action": "inline-accion",
+    "description": "Cambio rapido accion ID RB-12V4000M53-001379",
+    "target": {
+      "revisionKey": "id=RB-12V4000M53-001379"
+    },
+    "changeId": "1781562024417-9ckk7598",
+    "data": {
+      "target": {
+        "revisionKey": "id=RB-12V4000M53-001379",
+        "engineFile": "engine_12V4000M53.json",
+        "id": "RB-12V4000M53-001379"
+      },
+      "changes": {
+        "qa_revision_accion": {
+          "before": "revisar",
+          "after": "eliminar"
+        }
+      }
+    }
+  },
+  {
+    "id": "1781562026370-edwby8pu",
+    "timestamp": "2026-06-15T22:20:26.370Z",
+    "kind": "change-applied",
+    "type": "qa-row-patch",
+    "module": "qa_milu",
+    "action": "inline-estado",
+    "description": "Cambio rapido estado ID RB-12V4000M53-001379",
+    "target": {
+      "revisionKey": "id=RB-12V4000M53-001379"
+    },
+    "changeId": "1781562025844-n1qonu9d",
+    "data": {
+      "target": {
+        "revisionKey": "id=RB-12V4000M53-001379",
+        "engineFile": "engine_12V4000M53.json",
+        "id": "RB-12V4000M53-001379"
+      },
+      "changes": {
+        "qa_revision_estado": {
+          "before": "pendiente",
+          "after": "ok"
+        }
+      }
+    }
+  },
+  {
+    "id": "1781562029346-u4zffhiw",
+    "timestamp": "2026-06-15T22:20:29.346Z",
+    "kind": "change-applied",
+    "type": "qa-row-patch",
+    "module": "qa_milu",
+    "action": "inline-accion",
+    "description": "Cambio rapido accion ID RB-12V4000M53-002691",
+    "target": {
+      "revisionKey": "id=RB-12V4000M53-002691"
+    },
+    "changeId": "1781562028779-vksiebkv",
+    "data": {
+      "target": {
+        "revisionKey": "id=RB-12V4000M53-002691",
+        "engineFile": "engine_12V4000M53.json",
+        "id": "RB-12V4000M53-002691"
+      },
+      "changes": {
+        "qa_revision_accion": {
+          "before": "revisar",
+          "after": "eliminar"
+        }
+      }
+    }
+  },
+  {
+    "id": "1781562031311-fpvbrvhg",
+    "timestamp": "2026-06-15T22:20:31.311Z",
+    "kind": "change-applied",
+    "type": "qa-row-patch",
+    "module": "qa_milu",
+    "action": "inline-estado",
+    "description": "Cambio rapido estado ID RB-12V4000M53-002691",
+    "target": {
+      "revisionKey": "id=RB-12V4000M53-002691"
+    },
+    "changeId": "1781562030799-57jcgsz0",
+    "data": {
+      "target": {
+        "revisionKey": "id=RB-12V4000M53-002691",
+        "engineFile": "engine_12V4000M53.json",
+        "id": "RB-12V4000M53-002691"
+      },
+      "changes": {
+        "qa_revision_estado": {
+          "before": "pendiente",
+          "after": "ok"
+        }
+      }
+    }
+  },
+  {
+    "id": "1781562040162-6pndcq6v",
+    "timestamp": "2026-06-15T22:20:40.162Z",
+    "kind": "change-applied",
+    "type": "qa-row-patch",
+    "module": "qa_milu",
+    "action": "inline-accion",
+    "description": "Cambio rapido accion ID RB-12V4000M53-002728",
+    "target": {
+      "revisionKey": "id=RB-12V4000M53-002728"
+    },
+    "changeId": "1781562039583-8f0ybuy2",
+    "data": {
+      "target": {
+        "revisionKey": "id=RB-12V4000M53-002728",
+        "engineFile": "engine_12V4000M53.json",
+        "id": "RB-12V4000M53-002728"
+      },
+      "changes": {
+        "qa_revision_accion": {
+          "before": "revisar",
+          "after": "eliminar"
+        }
+      }
+    }
+  },
+  {
+    "id": "1781562041624-kmgkin5p",
+    "timestamp": "2026-06-15T22:20:41.624Z",
+    "kind": "change-applied",
+    "type": "qa-row-patch",
+    "module": "qa_milu",
+    "action": "inline-estado",
+    "description": "Cambio rapido estado ID RB-12V4000M53-002728",
+    "target": {
+      "revisionKey": "id=RB-12V4000M53-002728"
+    },
+    "changeId": "1781562041109-l2nnxa1k",
+    "data": {
+      "target": {
+        "revisionKey": "id=RB-12V4000M53-002728",
+        "engineFile": "engine_12V4000M53.json",
+        "id": "RB-12V4000M53-002728"
+      },
+      "changes": {
+        "qa_revision_estado": {
+          "before": "pendiente",
+          "after": "ok"
+        }
+      }
+    }
+  },
+  {
+    "id": "1781562043570-td9zcrqf",
+    "timestamp": "2026-06-15T22:20:43.570Z",
+    "kind": "change-applied",
+    "type": "qa-row-patch",
+    "module": "qa_milu",
+    "action": "inline-accion",
+    "description": "Cambio rapido accion ID RB-12V4000M53-002886",
+    "target": {
+      "revisionKey": "id=RB-12V4000M53-002886"
+    },
+    "changeId": "1781562043032-wkran1j2",
+    "data": {
+      "target": {
+        "revisionKey": "id=RB-12V4000M53-002886",
+        "engineFile": "engine_12V4000M53.json",
+        "id": "RB-12V4000M53-002886"
+      },
+      "changes": {
+        "qa_revision_accion": {
+          "before": "revisar",
+          "after": "eliminar"
+        }
+      }
+    }
+  },
+  {
+    "id": "1781562044845-gknyifsh",
+    "timestamp": "2026-06-15T22:20:44.845Z",
+    "kind": "change-applied",
+    "type": "qa-row-patch",
+    "module": "qa_milu",
+    "action": "inline-estado",
+    "description": "Cambio rapido estado ID RB-12V4000M53-002886",
+    "target": {
+      "revisionKey": "id=RB-12V4000M53-002886"
+    },
+    "changeId": "1781562044317-10pvckew",
+    "data": {
+      "target": {
+        "revisionKey": "id=RB-12V4000M53-002886",
+        "engineFile": "engine_12V4000M53.json",
+        "id": "RB-12V4000M53-002886"
+      },
+      "changes": {
+        "qa_revision_estado": {
+          "before": "pendiente",
+          "after": "ok"
+        }
+      }
+    }
+  },
+  {
+    "id": "1781562048503-m1prwp88",
+    "timestamp": "2026-06-15T22:20:48.503Z",
+    "kind": "change-applied",
+    "type": "qa-row-patch",
+    "module": "qa_milu",
+    "action": "inline-accion",
+    "description": "Cambio rapido accion ID RB-12V4000M53-002918",
+    "target": {
+      "revisionKey": "id=RB-12V4000M53-002918"
+    },
+    "changeId": "1781562047982-ifj8vfrl",
+    "data": {
+      "target": {
+        "revisionKey": "id=RB-12V4000M53-002918",
+        "engineFile": "engine_12V4000M53.json",
+        "id": "RB-12V4000M53-002918"
+      },
+      "changes": {
+        "qa_revision_accion": {
+          "before": "revisar",
+          "after": "eliminar"
+        }
+      }
+    }
+  },
+  {
+    "id": "1781562052454-5t8sl47r",
+    "timestamp": "2026-06-15T22:20:52.454Z",
+    "kind": "change-applied",
+    "type": "qa-row-patch",
+    "module": "qa_milu",
+    "action": "inline-estado",
+    "description": "Cambio rapido estado ID RB-12V4000M53-002918",
+    "target": {
+      "revisionKey": "id=RB-12V4000M53-002918"
+    },
+    "changeId": "1781562051920-60mshw2s",
+    "data": {
+      "target": {
+        "revisionKey": "id=RB-12V4000M53-002918",
+        "engineFile": "engine_12V4000M53.json",
+        "id": "RB-12V4000M53-002918"
+      },
+      "changes": {
+        "qa_revision_estado": {
+          "before": "pendiente",
+          "after": "ok"
+        }
+      }
+    }
+  },
+  {
+    "id": "1781562053809-zepc5zp3",
+    "timestamp": "2026-06-15T22:20:53.809Z",
+    "kind": "change-applied",
+    "type": "qa-row-patch",
+    "module": "qa_milu",
+    "action": "inline-accion",
+    "description": "Cambio rapido accion ID RB-12V4000M53-002963",
+    "target": {
+      "revisionKey": "id=RB-12V4000M53-002963"
+    },
+    "changeId": "1781562053287-mbe4v7bt",
+    "data": {
+      "target": {
+        "revisionKey": "id=RB-12V4000M53-002963",
+        "engineFile": "engine_12V4000M53.json",
+        "id": "RB-12V4000M53-002963"
+      },
+      "changes": {
+        "qa_revision_accion": {
+          "before": "revisar",
+          "after": "eliminar"
+        }
+      }
+    }
+  },
+  {
+    "id": "1781562055883-j3wyp364",
+    "timestamp": "2026-06-15T22:20:55.883Z",
+    "kind": "change-applied",
+    "type": "qa-row-patch",
+    "module": "qa_milu",
+    "action": "inline-estado",
+    "description": "Cambio rapido estado ID RB-12V4000M53-002963",
+    "target": {
+      "revisionKey": "id=RB-12V4000M53-002963"
+    },
+    "changeId": "1781562055349-cswlba7u",
+    "data": {
+      "target": {
+        "revisionKey": "id=RB-12V4000M53-002963",
+        "engineFile": "engine_12V4000M53.json",
+        "id": "RB-12V4000M53-002963"
+      },
+      "changes": {
+        "qa_revision_estado": {
+          "before": "pendiente",
+          "after": "ok"
+        }
+      }
+    }
+  },
+  {
+    "id": "1781562057844-6hgpkow9",
+    "timestamp": "2026-06-15T22:20:57.844Z",
+    "kind": "change-applied",
+    "type": "qa-row-patch",
+    "module": "qa_milu",
+    "action": "inline-accion",
+    "description": "Cambio rapido accion ID RB-12V4000M53-003079",
+    "target": {
+      "revisionKey": "id=RB-12V4000M53-003079"
+    },
+    "changeId": "1781562057279-e3npwish",
+    "data": {
+      "target": {
+        "revisionKey": "id=RB-12V4000M53-003079",
+        "engineFile": "engine_12V4000M53.json",
+        "id": "RB-12V4000M53-003079"
+      },
+      "changes": {
+        "qa_revision_accion": {
+          "before": "revisar",
+          "after": "eliminar"
+        }
+      }
+    }
+  },
+  {
+    "id": "1781562059993-mx8ei9ju",
+    "timestamp": "2026-06-15T22:20:59.993Z",
+    "kind": "change-applied",
+    "type": "qa-row-patch",
+    "module": "qa_milu",
+    "action": "inline-estado",
+    "description": "Cambio rapido estado ID RB-12V4000M53-003079",
+    "target": {
+      "revisionKey": "id=RB-12V4000M53-003079"
+    },
+    "changeId": "1781562059480-m4reghl1",
+    "data": {
+      "target": {
+        "revisionKey": "id=RB-12V4000M53-003079",
+        "engineFile": "engine_12V4000M53.json",
+        "id": "RB-12V4000M53-003079"
+      },
+      "changes": {
+        "qa_revision_estado": {
+          "before": "pendiente",
+          "after": "ok"
+        }
+      }
+    }
+  },
+  {
+    "id": "1781562061376-w8i0ocd2",
+    "timestamp": "2026-06-15T22:21:01.376Z",
+    "kind": "change-applied",
+    "type": "qa-row-patch",
+    "module": "qa_milu",
+    "action": "inline-estado",
+    "description": "Cambio rapido estado ID RB-12V4000M53-003638",
+    "target": {
+      "revisionKey": "id=RB-12V4000M53-003638"
+    },
+    "changeId": "1781562060821-s9hcmm0d",
+    "data": {
+      "target": {
+        "revisionKey": "id=RB-12V4000M53-003638",
+        "engineFile": "engine_12V4000M53.json",
+        "id": "RB-12V4000M53-003638"
+      },
+      "changes": {
+        "qa_revision_estado": {
+          "before": "pendiente",
+          "after": "ok"
+        }
+      }
+    }
+  },
+  {
+    "id": "1781562062997-jedilqo3",
+    "timestamp": "2026-06-15T22:21:02.997Z",
+    "kind": "change-applied",
+    "type": "qa-row-patch",
+    "module": "qa_milu",
+    "action": "inline-estado",
+    "description": "Cambio rapido estado ID RB-12V4000M53-004494",
+    "target": {
+      "revisionKey": "id=RB-12V4000M53-004494"
+    },
+    "changeId": "1781562062472-9zos6n7h",
+    "data": {
+      "target": {
+        "revisionKey": "id=RB-12V4000M53-004494",
+        "engineFile": "engine_12V4000M53.json",
+        "id": "RB-12V4000M53-004494"
+      },
+      "changes": {
+        "qa_revision_estado": {
+          "before": "pendiente",
+          "after": "ok"
+        }
+      }
+    }
+  },
+  {
+    "id": "1781562071603-bld9b5dj",
+    "timestamp": "2026-06-15T22:21:11.603Z",
+    "kind": "change-applied",
+    "type": "qa-row-patch",
+    "module": "qa_milu",
+    "action": "inline-accion",
+    "description": "Cambio rapido accion ID RB-12V4000M53-003638",
+    "target": {
+      "revisionKey": "id=RB-12V4000M53-003638"
+    },
+    "changeId": "1781562071026-2uapjj9t",
+    "data": {
+      "target": {
+        "revisionKey": "id=RB-12V4000M53-003638",
+        "engineFile": "engine_12V4000M53.json",
+        "id": "RB-12V4000M53-003638"
+      },
+      "changes": {
+        "qa_revision_accion": {
+          "before": "revisar",
+          "after": "eliminar"
+        }
+      }
+    }
+  },
+  {
+    "id": "1781562073478-hhvltf5e",
+    "timestamp": "2026-06-15T22:21:13.478Z",
+    "kind": "change-applied",
+    "type": "qa-row-patch",
+    "module": "qa_milu",
+    "action": "inline-accion",
+    "description": "Cambio rapido accion ID RB-12V4000M53-004494",
+    "target": {
+      "revisionKey": "id=RB-12V4000M53-004494"
+    },
+    "changeId": "1781562072899-iv5pkrcg",
+    "data": {
+      "target": {
+        "revisionKey": "id=RB-12V4000M53-004494",
+        "engineFile": "engine_12V4000M53.json",
+        "id": "RB-12V4000M53-004494"
+      },
+      "changes": {
+        "qa_revision_accion": {
+          "before": "revisar",
+          "after": "eliminar"
+        }
+      }
+    }
+  },
+  {
+    "id": "1781562075629-8tz9570x",
+    "timestamp": "2026-06-15T22:21:15.629Z",
+    "kind": "change-applied",
+    "type": "qa-row-patch",
+    "module": "qa_milu",
+    "action": "inline-accion",
+    "description": "Cambio rapido accion ID RB-12V4000M53-005826",
+    "target": {
+      "revisionKey": "id=RB-12V4000M53-005826"
+    },
+    "changeId": "1781562075088-kns7okkl",
+    "data": {
+      "target": {
+        "revisionKey": "id=RB-12V4000M53-005826",
+        "engineFile": "engine_12V4000M53.json",
+        "id": "RB-12V4000M53-005826"
+      },
+      "changes": {
+        "qa_revision_accion": {
+          "before": "revisar",
+          "after": "eliminar"
+        }
+      }
+    }
+  },
+  {
+    "id": "1781562079266-andoxxay",
+    "timestamp": "2026-06-15T22:21:19.266Z",
+    "kind": "change-applied",
+    "type": "qa-row-patch",
+    "module": "qa_milu",
+    "action": "inline-accion",
+    "description": "Cambio rapido accion ID RB-12V4000M53-005863",
+    "target": {
+      "revisionKey": "id=RB-12V4000M53-005863"
+    },
+    "changeId": "1781562078741-so5c3fli",
+    "data": {
+      "target": {
+        "revisionKey": "id=RB-12V4000M53-005863",
+        "engineFile": "engine_12V4000M53.json",
+        "id": "RB-12V4000M53-005863"
+      },
+      "changes": {
+        "qa_revision_accion": {
+          "before": "revisar",
+          "after": "eliminar"
+        }
+      }
+    }
+  },
+  {
+    "id": "1781562080870-1z491pp1",
+    "timestamp": "2026-06-15T22:21:20.870Z",
+    "kind": "change-applied",
+    "type": "qa-row-patch",
+    "module": "qa_milu",
+    "action": "inline-accion",
+    "description": "Cambio rapido accion ID RB-12V4000M53-006021",
+    "target": {
+      "revisionKey": "id=RB-12V4000M53-006021"
+    },
+    "changeId": "1781562080325-fp27eivg",
+    "data": {
+      "target": {
+        "revisionKey": "id=RB-12V4000M53-006021",
+        "engineFile": "engine_12V4000M53.json",
+        "id": "RB-12V4000M53-006021"
+      },
+      "changes": {
+        "qa_revision_accion": {
+          "before": "revisar",
+          "after": "eliminar"
+        }
+      }
+    }
+  },
+  {
+    "id": "1781562083001-hcel57pp",
+    "timestamp": "2026-06-15T22:21:23.001Z",
+    "kind": "change-applied",
+    "type": "qa-row-patch",
+    "module": "qa_milu",
+    "action": "inline-accion",
+    "description": "Cambio rapido accion ID RB-12V4000M53-006053",
+    "target": {
+      "revisionKey": "id=RB-12V4000M53-006053"
+    },
+    "changeId": "1781562082472-e1azoy7i",
+    "data": {
+      "target": {
+        "revisionKey": "id=RB-12V4000M53-006053",
+        "engineFile": "engine_12V4000M53.json",
+        "id": "RB-12V4000M53-006053"
+      },
+      "changes": {
+        "qa_revision_accion": {
+          "before": "revisar",
+          "after": "eliminar"
+        }
+      }
+    }
+  },
+  {
+    "id": "1781562084673-kwgin1hu",
+    "timestamp": "2026-06-15T22:21:24.673Z",
+    "kind": "change-applied",
+    "type": "qa-row-patch",
+    "module": "qa_milu",
+    "action": "inline-estado",
+    "description": "Cambio rapido estado ID RB-12V4000M53-005826",
+    "target": {
+      "revisionKey": "id=RB-12V4000M53-005826"
+    },
+    "changeId": "1781562084148-tbe8k3x3",
+    "data": {
+      "target": {
+        "revisionKey": "id=RB-12V4000M53-005826",
+        "engineFile": "engine_12V4000M53.json",
+        "id": "RB-12V4000M53-005826"
+      },
+      "changes": {
+        "qa_revision_estado": {
+          "before": "pendiente",
+          "after": "ok"
+        }
+      }
+    }
+  },
+  {
+    "id": "1781562086537-gsbsnyjy",
+    "timestamp": "2026-06-15T22:21:26.537Z",
+    "kind": "change-applied",
+    "type": "qa-row-patch",
+    "module": "qa_milu",
+    "action": "inline-estado",
+    "description": "Cambio rapido estado ID RB-12V4000M53-005863",
+    "target": {
+      "revisionKey": "id=RB-12V4000M53-005863"
+    },
+    "changeId": "1781562086021-k5x0up5e",
+    "data": {
+      "target": {
+        "revisionKey": "id=RB-12V4000M53-005863",
+        "engineFile": "engine_12V4000M53.json",
+        "id": "RB-12V4000M53-005863"
+      },
+      "changes": {
+        "qa_revision_estado": {
+          "before": "pendiente",
+          "after": "ok"
+        }
+      }
+    }
+  },
+  {
+    "id": "1781562088305-l8tewwbm",
+    "timestamp": "2026-06-15T22:21:28.305Z",
+    "kind": "change-applied",
+    "type": "qa-row-patch",
+    "module": "qa_milu",
+    "action": "inline-estado",
+    "description": "Cambio rapido estado ID RB-12V4000M53-006021",
+    "target": {
+      "revisionKey": "id=RB-12V4000M53-006021"
+    },
+    "changeId": "1781562087796-0uluprry",
+    "data": {
+      "target": {
+        "revisionKey": "id=RB-12V4000M53-006021",
+        "engineFile": "engine_12V4000M53.json",
+        "id": "RB-12V4000M53-006021"
+      },
+      "changes": {
+        "qa_revision_estado": {
+          "before": "pendiente",
+          "after": "ok"
+        }
+      }
+    }
+  },
+  {
+    "id": "1781562089870-2p1jbo01",
+    "timestamp": "2026-06-15T22:21:29.870Z",
+    "kind": "change-applied",
+    "type": "qa-row-patch",
+    "module": "qa_milu",
+    "action": "inline-estado",
+    "description": "Cambio rapido estado ID RB-12V4000M53-006053",
+    "target": {
+      "revisionKey": "id=RB-12V4000M53-006053"
+    },
+    "changeId": "1781562089349-ajnyb5ga",
+    "data": {
+      "target": {
+        "revisionKey": "id=RB-12V4000M53-006053",
+        "engineFile": "engine_12V4000M53.json",
+        "id": "RB-12V4000M53-006053"
+      },
+      "changes": {
+        "qa_revision_estado": {
+          "before": "pendiente",
+          "after": "ok"
+        }
+      }
+    }
+  },
+  {
+    "id": "1781562092804-ix5lhaor",
+    "timestamp": "2026-06-15T22:21:32.804Z",
+    "kind": "change-applied",
+    "type": "qa-row-patch",
+    "module": "qa_milu",
+    "action": "inline-estado",
+    "description": "Cambio rapido estado ID RB-12V4000M53-006098",
+    "target": {
+      "revisionKey": "id=RB-12V4000M53-006098"
+    },
+    "changeId": "1781562092277-kvgjzzyv",
+    "data": {
+      "target": {
+        "revisionKey": "id=RB-12V4000M53-006098",
+        "engineFile": "engine_12V4000M53.json",
+        "id": "RB-12V4000M53-006098"
+      },
+      "changes": {
+        "qa_revision_estado": {
+          "before": "pendiente",
+          "after": "ok"
+        }
+      }
+    }
+  },
+  {
+    "id": "1781562094597-swhouhjn",
+    "timestamp": "2026-06-15T22:21:34.597Z",
+    "kind": "change-applied",
+    "type": "qa-row-patch",
+    "module": "qa_milu",
+    "action": "inline-estado",
+    "description": "Cambio rapido estado ID RB-12V4000M53-006214",
+    "target": {
+      "revisionKey": "id=RB-12V4000M53-006214"
+    },
+    "changeId": "1781562094087-zhfuob5x",
+    "data": {
+      "target": {
+        "revisionKey": "id=RB-12V4000M53-006214",
+        "engineFile": "engine_12V4000M53.json",
+        "id": "RB-12V4000M53-006214"
+      },
+      "changes": {
+        "qa_revision_estado": {
+          "before": "pendiente",
+          "after": "ok"
+        }
+      }
+    }
+  },
+  {
+    "id": "1781562096223-xfl4iu11",
+    "timestamp": "2026-06-15T22:21:36.223Z",
+    "kind": "change-applied",
+    "type": "qa-row-patch",
+    "module": "qa_milu",
+    "action": "inline-estado",
+    "description": "Cambio rapido estado ID RB-12V4000M70-000007",
+    "target": {
+      "revisionKey": "id=RB-12V4000M70-000007"
+    },
+    "changeId": "1781562095804-p6oxxhsu",
+    "data": {
+      "target": {
+        "revisionKey": "id=RB-12V4000M70-000007",
+        "engineFile": "engine_12V4000M70.json",
+        "id": "RB-12V4000M70-000007"
+      },
+      "changes": {
+        "qa_revision_estado": {
+          "before": "pendiente",
+          "after": "ok"
+        }
+      }
+    }
+  },
+  {
+    "id": "1781562098029-jlolitv4",
+    "timestamp": "2026-06-15T22:21:38.029Z",
+    "kind": "change-applied",
+    "type": "qa-row-patch",
+    "module": "qa_milu",
+    "action": "inline-estado",
+    "description": "Cambio rapido estado ID RB-12V4000M70-000228",
+    "target": {
+      "revisionKey": "id=RB-12V4000M70-000228"
+    },
+    "changeId": "1781562097570-f5d2k4wo",
+    "data": {
+      "target": {
+        "revisionKey": "id=RB-12V4000M70-000228",
+        "engineFile": "engine_12V4000M70.json",
+        "id": "RB-12V4000M70-000228"
+      },
+      "changes": {
+        "qa_revision_estado": {
+          "before": "pendiente",
+          "after": "ok"
+        }
+      }
+    }
+  },
+  {
+    "id": "1781562100128-yyg46k15",
+    "timestamp": "2026-06-15T22:21:40.128Z",
+    "kind": "change-applied",
+    "type": "qa-row-patch",
+    "module": "qa_milu",
+    "action": "inline-accion",
+    "description": "Cambio rapido accion ID RB-12V4000M53-006098",
+    "target": {
+      "revisionKey": "id=RB-12V4000M53-006098"
+    },
+    "changeId": "1781562099594-5c7etec0",
+    "data": {
+      "target": {
+        "revisionKey": "id=RB-12V4000M53-006098",
+        "engineFile": "engine_12V4000M53.json",
+        "id": "RB-12V4000M53-006098"
+      },
+      "changes": {
+        "qa_revision_accion": {
+          "before": "revisar",
+          "after": "eliminar"
+        }
+      }
+    }
+  },
+  {
+    "id": "1781562102100-dqun3uvq",
+    "timestamp": "2026-06-15T22:21:42.100Z",
+    "kind": "change-applied",
+    "type": "qa-row-patch",
+    "module": "qa_milu",
+    "action": "inline-accion",
+    "description": "Cambio rapido accion ID RB-12V4000M53-006214",
+    "target": {
+      "revisionKey": "id=RB-12V4000M53-006214"
+    },
+    "changeId": "1781562101575-f9ujcgfa",
+    "data": {
+      "target": {
+        "revisionKey": "id=RB-12V4000M53-006214",
+        "engineFile": "engine_12V4000M53.json",
+        "id": "RB-12V4000M53-006214"
+      },
+      "changes": {
+        "qa_revision_accion": {
+          "before": "revisar",
+          "after": "eliminar"
+        }
+      }
+    }
+  },
+  {
+    "id": "1781562103812-hi4clygs",
+    "timestamp": "2026-06-15T22:21:43.812Z",
+    "kind": "change-applied",
+    "type": "qa-row-patch",
+    "module": "qa_milu",
+    "action": "inline-accion",
+    "description": "Cambio rapido accion ID RB-12V4000M70-000007",
+    "target": {
+      "revisionKey": "id=RB-12V4000M70-000007"
+    },
+    "changeId": "1781562103393-gijn5w1x",
+    "data": {
+      "target": {
+        "revisionKey": "id=RB-12V4000M70-000007",
+        "engineFile": "engine_12V4000M70.json",
+        "id": "RB-12V4000M70-000007"
+      },
+      "changes": {
+        "qa_revision_accion": {
+          "before": "revisar",
+          "after": "eliminar"
+        }
+      }
+    }
+  },
+  {
+    "id": "1781562105572-ips1ikuf",
+    "timestamp": "2026-06-15T22:21:45.572Z",
+    "kind": "change-applied",
+    "type": "qa-row-patch",
+    "module": "qa_milu",
+    "action": "inline-accion",
+    "description": "Cambio rapido accion ID RB-12V4000M70-000228",
+    "target": {
+      "revisionKey": "id=RB-12V4000M70-000228"
+    },
+    "changeId": "1781562105113-w9mltw5y",
+    "data": {
+      "target": {
+        "revisionKey": "id=RB-12V4000M70-000228",
+        "engineFile": "engine_12V4000M70.json",
+        "id": "RB-12V4000M70-000228"
+      },
+      "changes": {
+        "qa_revision_accion": {
+          "before": "revisar",
+          "after": "eliminar"
+        }
+      }
+    }
+  },
+  {
+    "id": "1781562137265-nmqlzfv8",
+    "timestamp": "2026-06-15T22:22:17.265Z",
+    "kind": "change-applied",
+    "type": "qa-row-patch",
+    "module": "qa_milu",
+    "action": "inline-estado",
+    "description": "Cambio rapido estado ID RB-16V4000M73-001430",
+    "target": {
+      "revisionKey": "id=RB-16V4000M73-001430"
+    },
+    "changeId": "1781562136337-l4j63kcf",
+    "data": {
+      "target": {
+        "revisionKey": "id=RB-16V4000M73-001430",
+        "engineFile": "engine_16V4000M73.json",
+        "id": "RB-16V4000M73-001430"
+      },
+      "changes": {
+        "qa_revision_estado": {
+          "before": "pendiente",
+          "after": "ok"
+        }
+      }
+    }
+  },
+  {
+    "id": "1781562139602-yki95giz",
+    "timestamp": "2026-06-15T22:22:19.602Z",
+    "kind": "change-applied",
+    "type": "qa-row-patch",
+    "module": "qa_milu",
+    "action": "inline-estado",
+    "description": "Cambio rapido estado ID RB-16V4000M73-003647",
+    "target": {
+      "revisionKey": "id=RB-16V4000M73-003647"
+    },
+    "changeId": "1781562138638-j432w0oj",
+    "data": {
+      "target": {
+        "revisionKey": "id=RB-16V4000M73-003647",
+        "engineFile": "engine_16V4000M73.json",
+        "id": "RB-16V4000M73-003647"
+      },
+      "changes": {
+        "qa_revision_estado": {
+          "before": "pendiente",
+          "after": "ok"
+        }
+      }
+    }
+  },
+  {
+    "id": "1781562142110-udck4c9r",
+    "timestamp": "2026-06-15T22:22:22.110Z",
+    "kind": "change-applied",
+    "type": "qa-row-patch",
+    "module": "qa_milu",
+    "action": "inline-estado",
+    "description": "Cambio rapido estado ID RB-16V4000M73-003715",
+    "target": {
+      "revisionKey": "id=RB-16V4000M73-003715"
+    },
+    "changeId": "1781562141166-m2j7jny4",
+    "data": {
+      "target": {
+        "revisionKey": "id=RB-16V4000M73-003715",
+        "engineFile": "engine_16V4000M73.json",
+        "id": "RB-16V4000M73-003715"
+      },
+      "changes": {
+        "qa_revision_estado": {
+          "before": "pendiente",
+          "after": "ok"
+        }
+      }
+    }
   }
 ]

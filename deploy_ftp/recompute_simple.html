@@ -188,6 +188,10 @@
             grid-area: auto !important;
         }
 
+        .recompute-simple-wrap .a2-recompute-card[aria-label="Enriquecer assets multimedia sobre engine JSON"] {
+            grid-column: span 2;
+        }
+
         .recompute-simple-wrap .a2-recompute-card[aria-label="Enriquecer assets multimedia sobre engine JSON"] .a2-step-index {
             background: linear-gradient(135deg, #f7d56b, #e3a700);
             color: #17344f;
@@ -200,6 +204,24 @@
             border: 1px solid #d94d00;
         }
 
+        .recompute-simple-wrap .a2-recompute-card[aria-label="Recalcular esquemas generales por BOM"] .a2-step-index {
+            background: linear-gradient(135deg, #22c55e, #15803d);
+            color: #ffffff;
+            border: 1px solid #166534;
+        }
+
+        .recompute-simple-wrap .a2-recompute-card[aria-label="Recalcular esquemas POS desde esquemas"] .a2-step-index {
+            background: linear-gradient(135deg, #0ea5e9, #0369a1);
+            color: #ffffff;
+            border: 1px solid #075985;
+        }
+
+        .recompute-simple-wrap .a2-recompute-card[aria-label="Normalizar y abrir picker de overrides manuales"] .a2-step-index {
+            background: linear-gradient(135deg, #f97316, #c2410c);
+            color: #ffffff;
+            border: 1px solid #9a3412;
+        }
+
         @media (max-width: 1400px) {
             .recompute-simple-wrap .a2-recompute-compact {
                 grid-template-columns: repeat(3, minmax(0, 1fr));
@@ -210,11 +232,19 @@
             .recompute-simple-wrap .a2-recompute-compact {
                 grid-template-columns: repeat(2, minmax(0, 1fr));
             }
+
+            .recompute-simple-wrap .a2-recompute-card[aria-label="Enriquecer assets multimedia sobre engine JSON"] {
+                grid-column: span 2;
+            }
         }
 
         @media (max-width: 640px) {
             .recompute-simple-wrap .a2-recompute-compact {
                 grid-template-columns: 1fr;
+            }
+
+            .recompute-simple-wrap .a2-recompute-card[aria-label="Enriquecer assets multimedia sobre engine JSON"] {
+                grid-column: span 1;
             }
         }
 
@@ -222,6 +252,113 @@
             background: #7c3aed;
             color: #ffffff;
             border-color: #5b21b6;
+        }
+
+        .a2-assets-progress {
+            margin-top: 10px;
+            border: 1px solid #cfe0f2;
+            border-radius: 10px;
+            background: #f7fbff;
+            padding: 8px;
+            display: grid;
+            gap: 8px;
+        }
+
+        .a2-assets-progress-head {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 10px;
+            font-size: 11px;
+            color: #35516c;
+            font-weight: 700;
+            letter-spacing: 0.01em;
+        }
+
+        .a2-assets-progress-track {
+            width: 100%;
+            height: 10px;
+            border-radius: 999px;
+            border: 1px solid #c4d8ee;
+            background: #e8f1fb;
+            overflow: hidden;
+        }
+
+        .a2-assets-progress-bar {
+            width: 0%;
+            height: 100%;
+            background: linear-gradient(90deg, #0ea5e9, #0f766e);
+            transition: width 0.25s ease;
+        }
+
+        .a2-assets-progress-meta {
+            font-size: 11px;
+            color: #4a647d;
+            font-family: 'IBM Plex Mono', Consolas, monospace;
+        }
+
+        .a2-assets-progress-cancel {
+            justify-self: end;
+            border: 1px solid #b91c1c;
+            color: #fff;
+            background: linear-gradient(135deg, #ef4444, #b91c1c);
+            border-radius: 8px;
+            height: 30px;
+            padding: 0 10px;
+            font-size: 11px;
+            font-weight: 700;
+            cursor: pointer;
+        }
+
+        .a2-assets-progress-cancel:disabled {
+            cursor: not-allowed;
+            opacity: 0.55;
+        }
+
+        .a2-card-actions {
+            display: grid;
+            grid-template-columns: repeat(2, minmax(0, 1fr));
+            gap: 8px;
+            margin-top: 8px;
+        }
+
+        .a2-card-actions button {
+            margin: 0;
+            width: 100%;
+        }
+
+        .a2-card-actions button.is-secondary {
+            border: 1px solid #9bb0c4;
+            background: #ffffff;
+            color: #21445f;
+        }
+
+        .a2-inline-form {
+            display: grid;
+            grid-template-columns: repeat(2, minmax(0, 1fr));
+            gap: 8px;
+            margin-top: 8px;
+        }
+
+        .a2-inline-form input {
+            border: 1px solid #b7ccdf;
+            border-radius: 8px;
+            height: 32px;
+            padding: 0 8px;
+            font-size: 12px;
+            color: #18364f;
+            background: #ffffff;
+        }
+
+        .a2-inline-form input.a2-span-2 {
+            grid-column: span 2;
+        }
+
+        .a2-step-note {
+            margin: 6px 0 0;
+            font-size: 11px;
+            color: #4b647d;
+            font-family: 'IBM Plex Mono', Consolas, monospace;
         }
     </style>
 </head>
@@ -279,23 +416,9 @@
                 <button id="btnSust" type="button">ACTUALIZAR GESA + SUST</button>
             </article>
 
-            <article class="a2-recompute-card" aria-label="Enriquecer assets multimedia sobre engine JSON">
-                <h3>
-                    <span class="a2-step-index">3</span>
-                    <div>
-                        <span class="a2-step-title">ASSETS</span>
-                        <p class="a2-step-desc">POST /api/recompute-simple/enrich-assets</p>
-                        <p class="a2-step-desc">Actualiza filename_foto, ruta_foto, esquemas, esquemas_circulos,
-                            esquemas_circulos_all, ruta_esquemas_pos y exp_imagenes en engine_&lt;MODEL&gt;.json.</p>
-                        <p class="a2-step-desc">Usa fotos_articulos/, esquemas/ y esquemas_pos_circulos/.</p>
-                    </div>
-                </h3>
-                <button id="btnAssets" type="button">ASSETS</button>
-            </article>
-
             <article class="a2-recompute-card" aria-label="Calcular campos FINAL desde GESA">
                 <h3>
-                    <span class="a2-step-index">4</span>
+                    <span class="a2-step-index">3</span>
                     <div>
                         <span class="a2-step-title">Cálculo FINAL</span>
                         <p class="a2-step-desc">POST /copy-pdf-to-final-all-books</p>
@@ -307,7 +430,7 @@
 
             <article class="a2-recompute-card" aria-label="Recalcular errores">
                 <h3>
-                    <span class="a2-step-index">5</span>
+                    <span class="a2-step-index">4</span>
                     <div>
                         <span class="a2-step-title">Errores</span>
                         <p class="a2-step-desc">POST /recompute-qa-errors con scope/libro/id.</p>
@@ -318,7 +441,7 @@
 
             <article class="a2-recompute-card" aria-label="Recalcular estado y acción de revisión">
                 <h3>
-                    <span class="a2-step-index">6</span>
+                    <span class="a2-step-index">5</span>
                     <div>
                         <span class="a2-step-title">Estados</span>
                         <p class="a2-step-desc">POST /api/recompute-simple/update-states.</p>
@@ -330,7 +453,7 @@
 
             <article class="a2-recompute-card" aria-label="Recalcular copias y hermanos por PN">
                 <h3>
-                    <span class="a2-step-index">7</span>
+                    <span class="a2-step-index">6</span>
                     <div>
                         <span class="a2-step-title">HERMANOS / COPIAS</span>
                         <p class="a2-step-desc">POST /api/recompute-simple/recompute-hermanos</p>
@@ -341,6 +464,88 @@
                     </div>
                 </h3>
                 <button id="btnHermanos" type="button">RECALCULAR HERMANOS</button>
+            </article>
+
+            <article class="a2-recompute-card" aria-label="Completar FG/FGS por BOM en registros vacios">
+                <h3>
+                    <span class="a2-step-index">7</span>
+                    <div>
+                        <span class="a2-step-title">Completar FG/FGS por BOM</span>
+                        <p class="a2-step-desc">POST /api/recompute-simple/fill-missing-fg-fgs</p>
+                        <p class="a2-step-desc">Rellena solo los registros que tienen fg_fgs_final vacio usando
+                            bom_final
+                            como clave. No sobrescribe valores existentes.</p>
+                        <p class="a2-step-desc">Solo rellena fg_fgs_final vacio. No sobrescribe valores existentes. En
+                            modo
+                            escritura requiere SERVER_ENABLE_DANGEROUS_WRITE=true.</p>
+                    </div>
+                </h3>
+                <div class="a2-inline-form">
+                    <label style="display:flex;align-items:center;gap:8px;font-size:12px;color:#244864;">
+                        <input id="chkFillMissingDryRun" type="checkbox" checked />
+                        <span>Dry-run</span>
+                    </label>
+                    <label style="display:flex;align-items:center;gap:8px;font-size:12px;color:#244864;">
+                        <input id="chkFillMissingBackup" type="checkbox" checked />
+                        <span>Backup</span>
+                    </label>
+                </div>
+                <button id="btnFillMissingFgFgs" type="button">EJECUTAR FG/FGS FALTANTES</button>
+            </article>
+
+            <article class="a2-recompute-card" aria-label="Recalcular esquemas generales por BOM">
+                <h3>
+                    <span class="a2-step-index">8</span>
+                    <div>
+                        <span class="a2-step-title">ESQUEMAS GENERALES</span>
+                        <p class="a2-step-desc">POST /api/recompute-simple/rebuild-schemes-by-bom</p>
+                        <p class="a2-step-desc">Usa exclusivamente rebuild_schemes_by_bom.py para recalcular campo
+                            esquemas por BOM.</p>
+                        <p class="a2-step-desc">Soporta todos, libro o ID puntual (con libro).</p>
+                    </div>
+                </h3>
+                <div class="a2-card-actions">
+                    <button id="btnSchemesByBomDryRun" type="button" class="is-secondary">8 DRY RUN</button>
+                    <button id="btnSchemesByBomWrite" type="button">8 WRITE</button>
+                </div>
+            </article>
+
+            <article class="a2-recompute-card" aria-label="Recalcular esquemas POS desde esquemas">
+                <h3>
+                    <span class="a2-step-index">9</span>
+                    <div>
+                        <span class="a2-step-title">ESQUEMAS POS</span>
+                        <p class="a2-step-desc">POST /api/recompute-simple/rebuild-schemes-circles-from-esquemas</p>
+                        <p class="a2-step-desc">Usa exclusivamente rebuild_schemes_circles_from_esquemas.py partiendo
+                            de esquemas.</p>
+                        <p class="a2-step-desc">Aplica overrides manuales de
+                            rebuild_schemes_circles_manual_overrides.json si existen.</p>
+                    </div>
+                </h3>
+                <div class="a2-card-actions">
+                    <button id="btnSchemesPosDryRun" type="button" class="is-secondary">9 DRY RUN</button>
+                    <button id="btnSchemesPosWrite" type="button">9 WRITE</button>
+                </div>
+            </article>
+
+            <article class="a2-recompute-card" aria-label="Normalizar y abrir picker de overrides manuales">
+                <h3>
+                    <span class="a2-step-index">10</span>
+                    <div>
+                        <span class="a2-step-title">NORMALIZAR OVERRIDES MANUALES</span>
+                        <p class="a2-step-desc">POST /api/recompute-simple/manual-override-picker</p>
+                        <p class="a2-step-desc">Prepara y abre manual_override_picker.html para marcar círculo y
+                            guardar override por engine/página/base/ID/POS.</p>
+                    </div>
+                </h3>
+                <div class="a2-inline-form">
+                    <input id="manualPickerPage" type="search" placeholder="Página (opcional)" autocomplete="off" />
+                    <input id="manualPickerPos" type="search" placeholder="POS (opcional)" autocomplete="off" />
+                    <input id="manualPickerBase" class="a2-span-2" type="search"
+                        placeholder="Esquema base (ej: 12V4000M40A-0072-01.webp)" autocomplete="off" />
+                </div>
+                <button id="btnManualOverridePicker" type="button">ABRIR PICKER MANUAL</button>
+                <p class="a2-step-note">Sugerido: tras guardar override, ejecutar la tarjeta 9 en WRITE.</p>
             </article>
         </section>
 
