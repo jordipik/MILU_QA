@@ -1,0 +1,414 @@
+<!doctype html>
+<html lang="es">
+
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <link rel="icon" type="image/svg+xml" href="../../../assets/icons/favicon.svg" />
+    <title>MILU - Analista 02</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link
+        href="https://fonts.googleapis.com/css2?family=Manrope:wght@500;600;700;800&family=IBM+Plex+Mono:wght@400;500&display=swap"
+        rel="stylesheet">
+    <link rel="stylesheet" href="../styles/pdf_shared.css" />
+    <link rel="stylesheet" href="../styles/analista_02.css" />
+    <link rel="stylesheet" href="../styles/record-editor.css" />
+    <script>
+        (function () {
+            var saved = Number(localStorage.getItem('analista02:right-panel-width'));
+            var w = (saved > 0) ? saved : Math.round(window.innerWidth * 0.35);
+            if (!(saved > 0)) localStorage.setItem('analista02:right-panel-width', String(w));
+            document.documentElement.style.setProperty('--a2-right-width', w + 'px');
+        })();
+    </script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
+</head>
+
+<body>
+    <!-- Topbar generado dinámicamente por js/topbar.js -->
+    <script type="module">
+        import { initTopbar } from '../js/topbar.js';
+        initTopbar('analisis');
+    </script>
+
+    <main class="a2-layout">
+        <section class="a2-main">
+            <div class="a2-toolbar">
+                <div class="a2-toolbar-top">
+                    <select id="engineFilterSelect" aria-label="Filtro de libro"></select>
+                    <input id="recordIdInput" list="recordSearchList" type="search" placeholder="PART NO."
+                        autocomplete="off">
+                    <datalist id="recordSearchList"></datalist>
+                    <button id="loadRecordBtn" class="a2-meta-edit-btn a2-top-search-btn" type="button" title="Buscar"
+                        aria-label="Buscar"><svg xmlns="http://www.w3.org/2000/svg" width="14" height="14"
+                            viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"
+                            stroke-linecap="round" stroke-linejoin="round">
+                            <circle cx="11" cy="11" r="8" />
+                            <line x1="21" y1="21" x2="16.65" y2="16.65" />
+                        </svg></button>
+                    <div id="recordMeta" class="a2-meta">Sin registro cargado.</div>
+                    <button id="openRecordEditorBtn" class="a2-meta-edit-btn" type="button"
+                        title="Abrir editor de ficha técnica completo">EDITAR</button>
+                    <button id="deleteCurrentRecordBtn" class="a2-meta-edit-btn a2-meta-delete-btn" type="button"
+                        title="Eliminar el registro actual" aria-label="Eliminar registro actual">ELIMINAR</button>
+                </div>
+            </div>
+
+            <section class="a2-stats-row" aria-label="Estadisticas de revision">
+                <article class="a2-stat-card">
+                    <div class="a2-stat-head-row">
+                        <span class="a2-stat-label">TOTAL</span>
+                        <div class="a2-stat-mini-nav" aria-label="Navegacion de registros">
+                            <button id="statsPrevRecordBtn" class="a2-stat-mini-btn" type="button"
+                                title="Registro anterior" aria-label="Registro anterior">◀</button>
+                            <button id="statsNextRecordBtn" class="a2-stat-mini-btn" type="button"
+                                title="Registro siguiente" aria-label="Registro siguiente">▶</button>
+                        </div>
+                    </div>
+                    <div class="a2-stat-main" aria-live="polite">
+                        <span id="statsCurrentIndex" class="a2-stat-current">0</span>
+                        <span class="a2-stat-of">de</span>
+                        <span id="statsTotalAnalysed" class="a2-stat-total">0</span>
+                    </div>
+                    <div id="statsUniqueTotalAnalysed" class="a2-stat-unique" aria-live="polite">0 únicos</div>
+                </article>
+                <article class="a2-stat-card is-state-ok">
+                    <div class="a2-stat-head-row">
+                        <span class="a2-stat-label">OK</span>
+                        <div class="a2-stat-mini-nav" aria-label="Navegacion de estado OK">
+                            <button id="statsPrevEstadoOkBtn" class="a2-stat-mini-btn" type="button"
+                                title="Estado OK anterior" aria-label="Estado OK anterior">◀</button>
+                            <button id="statsNextEstadoOkBtn" class="a2-stat-mini-btn" type="button"
+                                title="Estado OK siguiente" aria-label="Estado OK siguiente">▶</button>
+                        </div>
+                    </div>
+                    <div class="a2-stat-main" aria-live="polite">
+                        <span id="statsCurrentEstadoOk" class="a2-stat-current">0</span>
+                        <span class="a2-stat-of">de</span>
+                        <span id="statsTotalEstadoOk" class="a2-stat-total">0</span>
+                    </div>
+                    <div id="statsUniqueTotalEstadoOk" class="a2-stat-unique" aria-live="polite">0 únicos</div>
+                </article>
+                <article class="a2-stat-card is-pending">
+                    <div class="a2-stat-head-row">
+                        <span class="a2-stat-label">Pendientes</span>
+                        <div class="a2-stat-mini-nav" aria-label="Navegacion de pendientes">
+                            <button id="statsPrevPendingBtn" class="a2-stat-mini-btn" type="button"
+                                title="Pendiente anterior" aria-label="Pendiente anterior">◀</button>
+                            <button id="statsNextPendingBtn" class="a2-stat-mini-btn" type="button"
+                                title="Pendiente siguiente" aria-label="Pendiente siguiente">▶</button>
+                        </div>
+                    </div>
+                    <div class="a2-stat-main" aria-live="polite">
+                        <span id="statsCurrentPending" class="a2-stat-current">0</span>
+                        <span class="a2-stat-of">de</span>
+                        <span id="statsTotalPending" class="a2-stat-total">0</span>
+                    </div>
+                    <div id="statsUniqueTotalPending" class="a2-stat-unique" aria-live="polite">0 únicos</div>
+                </article>
+                <article class="a2-stat-card is-error">
+                    <div class="a2-stat-head-row">
+                        <span class="a2-stat-label">Errores</span>
+                        <div class="a2-stat-mini-nav" aria-label="Navegacion de errores">
+                            <button id="statsPrevErrorSummaryBtn" class="a2-stat-mini-btn" type="button"
+                                title="Error anterior" aria-label="Error anterior">◀</button>
+                            <button id="statsNextErrorSummaryBtn" class="a2-stat-mini-btn" type="button"
+                                title="Error siguiente" aria-label="Error siguiente">▶</button>
+                        </div>
+                    </div>
+                    <div class="a2-stat-main" aria-live="polite">
+                        <span id="statsCurrentErrorRows" class="a2-stat-current">0</span>
+                        <span class="a2-stat-of">de</span>
+                        <span id="statsTotalErrorRows" class="a2-stat-total">0</span>
+                    </div>
+                </article>
+                <article class="a2-stat-card is-ok is-import-sep">
+                    <div class="a2-stat-head-row">
+                        <span class="a2-stat-label">Importar</span>
+                        <div class="a2-stat-mini-nav" aria-label="Navegacion de importar">
+                            <button id="statsPrevImportBtn" class="a2-stat-mini-btn" type="button"
+                                title="Importar anterior" aria-label="Importar anterior">◀</button>
+                            <button id="statsNextImportBtn" class="a2-stat-mini-btn" type="button"
+                                title="Importar siguiente" aria-label="Importar siguiente">▶</button>
+                        </div>
+                    </div>
+                    <div class="a2-stat-main" aria-live="polite">
+                        <span id="statsCurrentImportOk" class="a2-stat-current">0</span>
+                        <span class="a2-stat-of">de</span>
+                        <span id="statsTotalImportOk" class="a2-stat-total">0</span>
+                    </div>
+                    <div id="statsUniqueTotalImportOk" class="a2-stat-unique" aria-live="polite">0 únicos</div>
+                </article>
+                <article class="a2-stat-card is-copy">
+                    <div class="a2-stat-head-row">
+                        <span class="a2-stat-label">Copia</span>
+                        <div class="a2-stat-mini-nav" aria-label="Navegacion de copia">
+                            <button id="statsPrevCopyBtn" class="a2-stat-mini-btn" type="button" title="Copia anterior"
+                                aria-label="Copia anterior">◀</button>
+                            <button id="statsNextCopyBtn" class="a2-stat-mini-btn" type="button" title="Copia siguiente"
+                                aria-label="Copia siguiente">▶</button>
+                        </div>
+                    </div>
+                    <div class="a2-stat-main" aria-live="polite">
+                        <span id="statsCurrentCopyOk" class="a2-stat-current">0</span>
+                        <span class="a2-stat-of">de</span>
+                        <span id="statsTotalCopyOk" class="a2-stat-total">0</span>
+                    </div>
+                </article>
+                <article class="a2-stat-card is-review">
+                    <div class="a2-stat-head-row">
+                        <span class="a2-stat-label">Revisar</span>
+                        <div class="a2-stat-mini-nav" aria-label="Navegacion de revisar">
+                            <button id="statsPrevReviewBtn" class="a2-stat-mini-btn" type="button"
+                                title="Revisar anterior" aria-label="Revisar anterior">◀</button>
+                            <button id="statsNextReviewBtn" class="a2-stat-mini-btn" type="button"
+                                title="Revisar siguiente" aria-label="Revisar siguiente">▶</button>
+                        </div>
+                    </div>
+                    <div class="a2-stat-main" aria-live="polite">
+                        <span id="statsCurrentReviewOk" class="a2-stat-current">0</span>
+                        <span class="a2-stat-of">de</span>
+                        <span id="statsTotalReviewOk" class="a2-stat-total">0</span>
+                    </div>
+                    <div id="statsUniqueTotalReviewOk" class="a2-stat-unique" aria-live="polite">0 únicos</div>
+                </article>
+                <article class="a2-stat-card is-ko">
+                    <div class="a2-stat-head-row">
+                        <span class="a2-stat-label">Eliminar</span>
+                        <div class="a2-stat-mini-nav" aria-label="Navegacion de errores">
+                            <button id="statsPrevErrorBtn" class="a2-stat-mini-btn" type="button" title="Error anterior"
+                                aria-label="Error anterior">◀</button>
+                            <button id="statsNextErrorBtn" class="a2-stat-mini-btn" type="button"
+                                title="Error siguiente" aria-label="Error siguiente">▶</button>
+                        </div>
+                    </div>
+                    <div class="a2-stat-main" aria-live="polite">
+                        <span id="statsCurrentDeleteOk" class="a2-stat-current">0</span>
+                        <span class="a2-stat-of">de</span>
+                        <span id="statsTotalDeleteOk" class="a2-stat-total">0</span>
+                    </div>
+                    <div id="statsUniqueTotalDeleteOk" class="a2-stat-unique" aria-live="polite">0 únicos</div>
+                </article>
+            </section>
+
+            <div class="a2-review-actions" aria-label="Estado y acciones de revisión">
+                <div class="a2-review-status-group" aria-label="Estado de revisión manual">
+                    <label class="a2-review-select-wrap" for="statusEstadoSelect">
+                        <span>Estado</span>
+                        <select id="statusEstadoSelect" name="qa_revision_estado">
+                            <option value="pendiente">Pendiente</option>
+                            <option value="ok">OK</option>
+                        </select>
+                    </label>
+                    <div class="a2-review-quick-buttons" aria-label="Acciones rápidas de estado">
+                        <button id="statusEstadoOkBtn" class="a2-review-btn is-ok" type="button">OK</button>
+                        <button id="statusEstadoPendingBtn" class="a2-review-btn is-pending" type="button"
+                            title="Pendiente">PENDIENTE</button>
+                    </div>
+                </div>
+                <div class="a2-review-action-group" aria-label="Acciones de revisión">
+                    <label class="a2-review-select-wrap" for="statusAccionSelect">
+                        <span>Accion</span>
+                        <select id="statusAccionSelect" name="qa_revision_accion">
+                            <option value="importar">Importar</option>
+                            <option value="copia">Copia</option>
+                            <option value="revisar">Revisar</option>
+                            <option value="eliminar">Eliminar</option>
+                        </select>
+                    </label>
+                    <div class="a2-review-quick-buttons" aria-label="Acciones rápidas de revisión">
+                        <button id="statusAccionImportarBtn" class="a2-review-btn is-ok" type="button"
+                            title="Importar">IMPORTAR</button>
+                        <button id="statusAccionCopiaBtn" class="a2-review-btn is-copy" type="button"
+                            title="Copia">COPIA</button>
+                        <button id="statusAccionRevisarBtn" class="a2-review-btn is-review" type="button"
+                            title="Revisar">REVISAR</button>
+                        <button id="statusAccionEliminarBtn" class="a2-review-btn is-ko" type="button"
+                            title="Eliminar">ELIMINAR</button>
+                        <span class="a2-review-inline-label" aria-hidden="true">CALCULAR</span>
+                        <button id="propagateHermanosBtn" class="a2-review-btn" type="button"
+                            title="Propagar revisión OK+Importar a todos los hermanos con el mismo PN">HERMANOS</button>
+                        <button id="propagateHermanosBookBtn" class="a2-review-btn" type="button"
+                            title="Recorrer el libro actual y propagar hermanos para todos los registros en OK+Importar">HERMANOS
+                            LIBRO</button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Tabla comparativa refactorizada. Columnas basadas en el field registry:
+                 campo_excel | campo_gesa | campo_subst | campo_pdf | campo_final | campo_error -->
+            <section class="a2-compare-table-card" aria-label="Comparativa Excel, GESA, SUBST, PDF y Final">
+                <table class="a2-compare-table">
+                    <thead>
+                        <tr>
+                            <th>Campo</th>
+                            <th>Excel</th>
+                            <th>GESA</th>
+                            <th>SUBST</th>
+                            <th>PDF</th>
+                            <th>Final</th>
+                            <th id="errColHeader" class="err-col-header" title="Ver listado de checks">Error</th>
+                        </tr>
+                    </thead>
+                    <tbody id="comparisonBody">
+                        <tr>
+                            <td colspan="7">Selecciona un registro para ver la comparativa.</td>
+                        </tr>
+                    </tbody>
+                </table>
+                <div class="a2-compare-table-debug-footer">
+                    <button id="comparisonDebugBtn" type="button" class="a2-debug-toggle"
+                        title="Alternar vista de nombres técnicos de campos (field registry)">Debug</button>
+                </div>
+            </section>
+
+        </section>
+
+        <div id="a2Splitter" class="a2-splitter" role="separator" aria-orientation="vertical" tabindex="0"
+            aria-label="Ajustar ancho del panel PDF"></div>
+
+        <aside class="a2-right">
+            <div id="tabpanelPdf" class="pre-panel-wrap"
+                style="display:flex;flex-direction:column;flex:1;min-height:0;">
+                <div class="pdf-toolbar">
+                    <label class="pdf-zoom-wrap" for="pdfZoomSelect">
+                        <button id="pdfZoomOutBtn" class="pdf-zoom-btn" type="button"
+                            aria-label="Reducir zoom PDF">-</button>
+                        <select id="pdfZoomSelect" class="pdf-zoom-select" aria-label="Zoom del visor PDF">
+                            <option value="fit">Ajustar</option>
+                            <option value="height">Ajustar vertical</option>
+                            <option value="50">50%</option>
+                            <option value="75">75%</option>
+                            <option value="100">100%</option>
+                            <option value="125">125%</option>
+                            <option value="150">150%</option>
+                            <option value="200">200%</option>
+                        </select>
+                        <button id="pdfZoomInBtn" class="pdf-zoom-btn" type="button"
+                            aria-label="Aumentar zoom PDF">+</button>
+                    </label>
+                    <div class="pdf-quick-actions" aria-label="Acciones rápidas PDF">
+                        <button id="pdfLoadCurrentBtn" class="pdf-row-debug-btn is-step-load" type="button"
+                            title="Paso 0: cargar el PDF del registro actual"><span
+                                class="pdf-btn-label">PDF</span></button>
+                        <button id="detectHeadersBtn" class="pdf-row-debug-btn is-step-read" type="button"
+                            title="Paso 1: detectar cabeceras BOM"><span class="pdf-btn-label">CABECERAS</span></button>
+                        <button id="paintBodyByHeadersBtn" class="pdf-row-debug-btn is-step-read" type="button"
+                            title="Paso 2: pintar cuerpo por columnas detectadas"><span
+                                class="pdf-btn-label">TABLA</span></button>
+                        <button id="pdfExtractPageRowsBtn" class="pdf-row-debug-btn is-step-read" type="button"
+                            title="Debug: extraer preview de todas las filas detectadas en la pagina actual"><span
+                                class="pdf-btn-label">EXTRAER PAGINA</span></button>
+                        <button id="pdfPaintSelectedRowRedBtn" class="pdf-row-debug-btn is-step-mark" type="button"
+                            title="Pintar en rojo la fila del registro seleccionado"><span
+                                class="pdf-btn-label">FILA</span></button>
+                        <button id="detectTopBomFgBtn" class="pdf-row-debug-btn is-step-read" type="button"
+                            title="Paso 9: detectar BOM y FG/FGS en cabecera superior"><span
+                                class="pdf-btn-label">BOM</span></button>
+                        <button id="pdfClearOverlaysBtn" class="pdf-row-debug-btn is-step-clear" type="button"
+                            title="Limpiar todo lo pintado sobre el PDF"><span
+                                class="pdf-btn-label">LIMPIAR</span></button>
+                    </div>
+                </div>
+                <p id="pdfActionStatusText" class="pdf-action-status" aria-live="polite"></p>
+
+                <div id="pdfViewer" class="pdfviewer">
+                    <div class="pdfviewer-inner">
+                        <div id="pdfStatus" class="pdfstatus">Selecciona libro y pagina para ver el PDF</div>
+                        <canvas id="pdfCanvas" class="pdfcanvas"></canvas>
+                    </div>
+                </div>
+
+                <section id="headerDetectionPanel" class="header-detection-panel" hidden
+                    aria-label="Debug: detección de headers">
+                    <div class="header-detection-panel-head">
+                        <strong class="header-detection-panel-title">Headers detectados</strong>
+                        <span id="headerDetectionConfidence" class="header-detection-confidence"></span>
+                        <button id="headerDetectionCloseBtn" class="header-detection-close-btn" type="button"
+                            aria-label="Cerrar panel">✕</button>
+                    </div>
+                    <div id="headerDetectionBody" class="header-detection-body"></div>
+                </section>
+
+                <section id="bodyColumnHighlightPanel" class="header-detection-panel" hidden
+                    aria-label="Debug: pintado de cuerpo por columnas">
+                    <div class="header-detection-panel-head">
+                        <strong class="header-detection-panel-title">Cuerpo por Columnas</strong>
+                        <span id="bodyColumnHighlightStats" class="header-detection-confidence"></span>
+                        <button id="bodyColumnHighlightCloseBtn" class="header-detection-close-btn" type="button"
+                            aria-label="Cerrar panel">✕</button>
+                    </div>
+                    <div id="bodyColumnHighlightBody" class="header-detection-body"></div>
+                </section>
+
+                <section class="pdf-blue-texts-panel" aria-label="Textos azules del PDF">
+                    <div class="pdf-blue-texts-head">
+                        <strong class="pdf-blue-texts-title">Textos azules</strong>
+                        <div class="pdf-blue-texts-actions">
+                            <button id="pdfBlueTextsFillBtn" class="pdf-blue-texts-btn" type="button">Cargar
+                                azules</button>
+                            <button id="pdfBlueTextsCopyBtn" class="pdf-blue-texts-btn" type="button">Copiar</button>
+                        </div>
+                    </div>
+                    <textarea id="pdfBlueTextsArea" class="pdf-blue-texts-area"
+                        placeholder="Aquí puedes escribir o pegar los textos azules del PDF..."
+                        spellcheck="false"></textarea>
+                </section>
+
+                <div id="pdfMeta" class="pdf-meta-foot">Documento: -</div>
+                <span id="pdfLabel" hidden>-</span>
+            </div>
+        </aside>
+    </main>
+
+    <div id="checksModal" class="checks-modal" hidden aria-modal="true" role="dialog"
+        aria-labelledby="checksModalTitle">
+        <div class="checks-modal-backdrop"></div>
+        <div class="checks-modal-panel">
+            <header class="checks-modal-header">
+                <h2 id="checksModalTitle">Checks de la columna ERR</h2>
+                <button id="checksModalClose" class="checks-modal-close" type="button"
+                    aria-label="Cerrar">&times;</button>
+            </header>
+            <div id="checksModalBody" class="checks-modal-body"></div>
+        </div>
+    </div>
+
+    <div id="hermanosProgressModal" class="hermanos-progress-modal" hidden aria-modal="true" role="dialog"
+        aria-labelledby="hermanosProgressTitle">
+        <div class="hermanos-progress-backdrop"></div>
+        <div class="hermanos-progress-panel">
+            <header class="hermanos-progress-header">
+                <div>
+                    <h2 id="hermanosProgressTitle">Actualizando Hermanos</h2>
+                    <p class="hermanos-progress-subtitle">Proceso automático de propagación OK + Copia por libro.</p>
+                </div>
+                <button id="hermanosProgressCloseBtn" class="hermanos-progress-close" type="button"
+                    aria-label="Cerrar">&times;</button>
+            </header>
+            <div class="hermanos-progress-body">
+                <div class="hermanos-progress-track" role="progressbar" aria-valuemin="0" aria-valuemax="100"
+                    aria-valuenow="0" aria-label="Progreso de actualización de hermanos">
+                    <div id="hermanosProgressBar" class="hermanos-progress-fill" style="width:0%"></div>
+                </div>
+                <div class="hermanos-progress-meta">
+                    <span id="hermanosProgressCurrent">Iniciando...</span>
+                    <span id="hermanosProgressPercent">0%</span>
+                </div>
+                <div id="hermanosProgressStats" class="hermanos-progress-stats">
+                    Filas OK+Importar: 0 · PN únicos: 0 · PN procesados: 0 · Hermanos actualizados: 0
+                </div>
+                <div id="hermanosProgressLog" class="hermanos-progress-log" aria-live="polite"></div>
+                <div class="hermanos-progress-actions">
+                    <button id="hermanosProgressCancelBtn" type="button" class="hermanos-progress-cancel">Cancelar
+                        proceso</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script type="module" src="../js/analista-02.js"></script>
+</body>
+
+</html>

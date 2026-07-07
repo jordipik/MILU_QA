@@ -1,0 +1,51 @@
+<!DOCTYPE html>
+<html lang="es">
+
+<head>
+    <meta charset="UTF-8">
+    <title>MILU · Analytics QA</title>
+    <link rel="stylesheet" href="../styles/analytics.css">
+</head>
+
+<body class="analytics">
+    <nav class="analytics-nav">
+        <span class="brand">MILU · Analytics</span>
+        <a href="analytics_dashboard.html">Dashboard</a>
+        <a href="analytics_images.html">Imágenes</a>
+        <a href="analytics_qa.html" class="active">QA</a>
+        <a href="analytics_pn.html">PN</a>
+        <a href="analytics_export.html">Export</a>
+        <a href="analytics_search.html">Buscar</a>
+        <span class="right">read-only · sqlite_mirror</span>
+    </nav>
+    <main class="analytics-main">
+        <h1>Diagnóstico QA <span id="status" class="analytics-status"></span></h1>
+        <p class="lead">Distribuciones y conflictos del estado/acción de revisión QA. No edita nada.</p>
+
+        <div class="two-col">
+            <div>
+                <h2>Distribución por estado</h2>
+                <div id="by-estado" class="analytics-block"></div>
+            </div>
+            <div>
+                <h2>Distribución por acción</h2>
+                <div id="by-accion" class="analytics-block"></div>
+            </div>
+        </div>
+
+        <h2>Combinaciones estado/acción más frecuentes</h2>
+        <div id="combinations" class="analytics-block"></div>
+
+        <h2>Combinaciones ambiguas (filas)</h2>
+        <div id="ambiguous" class="kpi-grid"></div>
+
+        <h2>PN con más variantes estado|acción</h2>
+        <div id="pn-conflicts" class="analytics-block"></div>
+
+        <h2>Motores con más filas pendientes</h2>
+        <div id="top-engines-pending" class="analytics-block"></div>
+    </main>
+    <script type="module" src="../js/analytics/analytics-qa.js"></script>
+</body>
+
+</html>

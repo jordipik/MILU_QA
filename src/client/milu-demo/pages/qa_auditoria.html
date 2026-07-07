@@ -1,0 +1,229 @@
+<!doctype html>
+<html lang="es">
+
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <link rel="icon" type="image/svg+xml" href="../../../assets/icons/favicon.svg" />
+    <title>MILU - Auditoria</title>
+    <style>
+        :root {
+            --bg: #f4f7fb;
+            --card: #ffffff;
+            --ink: #1f2a3d;
+            --muted: #61708a;
+            --line: #d6deec;
+            --accent: #0066cc;
+            --danger: #b42318;
+        }
+
+        * {
+            box-sizing: border-box;
+        }
+
+        body {
+            margin: 0;
+            font-family: "Manrope", "Segoe UI", sans-serif;
+            color: var(--ink);
+            background: radial-gradient(circle at top right, #d9ebff 0%, var(--bg) 52%);
+        }
+
+        .wrap {
+            max-width: 1360px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+
+        .card {
+            background: var(--card);
+            border: 1px solid var(--line);
+            border-radius: 14px;
+            box-shadow: 0 12px 28px rgba(15, 30, 62, 0.08);
+            overflow: hidden;
+        }
+
+        .head {
+            padding: 16px 18px;
+            border-bottom: 1px solid var(--line);
+            display: flex;
+            gap: 10px;
+            flex-wrap: wrap;
+            align-items: center;
+            justify-content: space-between;
+        }
+
+        .title {
+            margin: 0;
+            font-size: 20px;
+            font-weight: 800;
+        }
+
+        .toolbar {
+            display: flex;
+            gap: 8px;
+            flex-wrap: wrap;
+            align-items: center;
+        }
+
+        input,
+        select,
+        button {
+            border: 1px solid var(--line);
+            border-radius: 8px;
+            padding: 8px 10px;
+            font: inherit;
+        }
+
+        button {
+            background: #eef4ff;
+            color: var(--ink);
+            cursor: pointer;
+            font-weight: 700;
+        }
+
+        button.primary {
+            background: var(--accent);
+            color: #fff;
+            border-color: #0057ad;
+        }
+
+        button.danger {
+            background: #fee4e2;
+            border-color: #fecdca;
+            color: var(--danger);
+        }
+
+        .meta {
+            padding: 10px 18px;
+            color: var(--muted);
+            border-bottom: 1px solid var(--line);
+            font-size: 13px;
+        }
+
+        .table-wrap {
+            overflow: auto;
+            max-height: calc(100vh - 220px);
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            min-width: 1160px;
+        }
+
+        th,
+        td {
+            padding: 9px 10px;
+            border-bottom: 1px solid var(--line);
+            text-align: left;
+            vertical-align: top;
+            font-size: 13px;
+        }
+
+        th {
+            position: sticky;
+            top: 0;
+            background: #f9fbff;
+            z-index: 1;
+            font-size: 12px;
+            text-transform: uppercase;
+            letter-spacing: 0.03em;
+            color: #4f5d75;
+        }
+
+        tr:hover td {
+            background: #f9fcff;
+        }
+
+        .mono {
+            font-family: Consolas, "Courier New", monospace;
+            font-size: 12px;
+        }
+
+        .muted {
+            color: var(--muted);
+        }
+    </style>
+</head>
+
+<body>
+    <div class="wrap">
+        <div class="card">
+            <div class="head">
+                <h1 class="title">Auditoria de cambios</h1>
+                <div class="toolbar">
+                    <input id="q" type="text" placeholder="Buscar por modulo, accion, descripcion..." />
+                    <select id="kind">
+                        <option value="">Todos los tipos</option>
+                        <option value="change-applied">change-applied</option>
+                        <option value="undo">undo</option>
+                        <option value="redo">redo</option>
+                    </select>
+                    <button id="refreshBtn" class="primary" type="button">Refrescar</button>
+                    <button id="clearBtn" class="danger" type="button">Limpiar auditoria</button>
+                </div>
+            </div>
+            <div class="meta">
+                <span id="status">Cargando...</span>
+            </div>
+            <div class="table-wrap">
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Fecha</th>
+                            <th>Descripcion</th>
+                            <th>Cambios especificos</th>
+                            <th>Accion</th>
+                            <th>Detalles</th>
+                        </tr>
+                    </thead>
+                    <tbody id="tbody">
+                        <tr>
+                            <td colspan="5" class="muted">Cargando...</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+            <style>
+                #tbody tr.audit-detail-row {
+                    display: none;
+                    background: #f5f5f5;
+                }
+
+                #tbody tr.audit-detail-row.expanded {
+                    display: table-row;
+                }
+
+                #tbody tr.audit-main-row {
+                    cursor: pointer;
+                }
+
+                #tbody tr.audit-main-row:hover {
+                    background: #f9f9f9;
+                }
+
+                .audit-detail-cell {
+                    padding: 12px;
+                    font-family: 'Courier New', monospace;
+                    font-size: 12px;
+                    white-space: pre-wrap;
+                    word-break: break-word;
+                    max-width: 800px;
+                }
+
+                .audit-expand-icon {
+                    display: inline-block;
+                    width: 16px;
+                    text-align: center;
+                    margin-right: 4px;
+                    font-weight: bold;
+                    color: #666;
+                }
+            </style>
+        </div>
+    </div>
+
+    <script type="module" src="../js/qa-auditoria.js"></script>
+</body>
+
+</html>

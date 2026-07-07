@@ -1,0 +1,92 @@
+<!doctype html>
+<html lang="es">
+
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <link rel="icon" type="image/svg+xml" href="../../../assets/icons/favicon.svg" />
+  <title>MILU | QA Imagenes y Esquemas</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link
+    href="https://fonts.googleapis.com/css2?family=Manrope:wght@500;600;700;800&family=IBM+Plex+Mono:wght@400;500&display=swap"
+    rel="stylesheet" />
+  <link rel="stylesheet" href="../styles/legacy-css/qa_imagenes.css" />
+</head>
+
+<body>
+  <div class="qa-shell">
+    <header class="qa-header">
+      <div>
+        <h1>QA Imagenes y Esquemas</h1>
+        <p>Auditoria visual de exportacion multimedia</p>
+      </div>
+      <div class="header-meta" id="headerMeta">
+        <span class="meta-pill">Registros: <strong id="metaRecords">-</strong></span>
+        <span class="meta-pill">Generado: <strong id="metaGenerated">-</strong></span>
+        <span class="meta-pill">Version: <strong id="metaVersion">-</strong></span>
+        <button id="btnRefresh" class="btn btn-primary">Refresh</button>
+        <button id="btnExportView" class="btn">Export view CSV</button>
+      </div>
+    </header>
+
+    <section id="kpiGrid" class="kpi-grid" aria-label="KPI dashboard"></section>
+
+    <section class="filters-card">
+      <div class="filters-head">
+        <h2>Filtros</h2>
+        <div class="filters-actions">
+          <button id="btnSaveFilters" class="btn">Guardar filtros</button>
+          <button id="btnClearFilters" class="btn">Limpiar filtros</button>
+        </div>
+      </div>
+      <div class="filters-grid" id="filtersGrid"></div>
+    </section>
+
+    <section class="tabs-card">
+      <div id="tabBar" class="tab-bar" role="tablist" aria-label="Vistas secundarias"></div>
+    </section>
+
+    <section class="main-grid">
+      <div class="table-card">
+        <div class="table-toolbar">
+          <div class="table-toolbar-left">
+            <span id="tableInfo" class="table-info">0 filas</span>
+            <span id="selectionInfo" class="table-info">0 seleccionadas</span>
+          </div>
+          <div class="table-toolbar-right">
+            <button id="btnSelectAllView" class="btn">Seleccionar vista</button>
+            <button id="btnClearSelection" class="btn">Quitar seleccion</button>
+          </div>
+        </div>
+
+        <div class="vtable" id="vtable">
+          <div id="tableHead" class="vtable-head"></div>
+          <div id="tableViewport" class="vtable-viewport">
+            <div id="tableInner" class="vtable-inner"></div>
+          </div>
+        </div>
+      </div>
+
+      <aside class="preview-card" id="previewCard">
+        <h3>Preview / Diagnostico</h3>
+        <div id="previewBody" class="preview-body">
+          <p class="preview-empty">Selecciona un registro para ver detalles.</p>
+        </div>
+      </aside>
+    </section>
+
+    <section class="utils-card">
+      <h2>Utilidades (modo preview)</h2>
+      <div class="utils-grid" id="utilsGrid"></div>
+    </section>
+
+    <section class="status-strip">
+      <span id="loadStatus">Cargando datos...</span>
+    </section>
+  </div>
+
+  <script type="module" src="../js/qa_imagenes.js"></script>
+</body>
+
+</html>

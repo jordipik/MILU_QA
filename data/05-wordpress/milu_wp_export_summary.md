@@ -1,26 +1,26 @@
 # MILU WordPress Export Summary (QA only)
 
-Generated at: 2026-06-10T11:19:22.998Z
+Generated at: 2026-07-02T11:34:20.350Z
 Dry run: no
 
 ## Totals
 - Engines processed: 9
-- Occurrences processed: 69681
-- PN unique: 5847
-- Importables (total): 8614
-- New: 5487
-- Superseded: 3127
+- Occurrences processed: 0
+- PN unique: 0
+- Importables (total): 0
+- New: 0
+- Superseded: 0
 - Pending review: 0
-- Discarded: 1
+- Discarded: 0
 
 ## Superseded Audit
-- Total New reales: 5126
-- Total New sinteticos: 451
-- Total Superseded reales: 721
-- Total Superseded sinteticos desde lista: 2406
-- Total Superseded omitidos por existir en JSON: 270
-- Total Superseded huerfanos que generan New sintetico: 451
-- Duplicados evitados: 90
+- Total New reales: 0
+- Total New sinteticos: 0
+- Total Superseded reales: 0
+- Total Superseded sinteticos desde lista: 0
+- Total Superseded omitidos por existir en JSON: 0
+- Total Superseded huerfanos que generan New sintetico: 0
+- Duplicados evitados: 0
 
 ## Official Rules
 - Rule 1: Base QA-only: solo ok/importar entra en export.

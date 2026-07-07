@@ -1,0 +1,407 @@
+'use strict';
+
+const express = require('express');
+const { requireAuth } = require('../auth/auth-router');
+const {
+    assignProjectToUser,
+    listUsers,
+    removeProjectFromUsers
+} = require('../auth/auth-store');
+const {
+    canAccessProject,
+    createProject,
+    deleteProject,
+    getProjectById,
+    listProjects
+} = require('./project-store');
+const {
+    readProjectWorkspace,
+    saveProjectWorkspace
+} = require('./project-workspace-store');
+const {
+    readProjectPdf,
+    readProjectPdfMeta,
+    saveProjectPdf
+} = require('./project-pdf-store');
+const {
+    checkWordPressPartNumbers,
+    connectWordPress,
+    createWordPressOAuthStart,
+    finishWordPressOAuth,
+    getWordPressAnalysisSummary,
+    getWordPressConnection,
+    listWordPressCustomers,
+    publicOAuthSites,
+    selectWordPressSite
+} = require('./project-wordpress-store');
+
+const router = express.Router();
+
+function sendProjectError(res, error) {
+    const status = Number(error?.status || 500);
+    return res.status(status).json({
+        ok: false,
+        error: String(error?.message || 'Error de proyectos')
+    });
+}
+
+router.get('/', requireAuth, (req, res) => {
+    try {
+        return res.json({
+            ok: true,
+            projects: listProjects(req.auth.user)
+        });
+    } catch (error) {
+        return sendProjectError(res, error);
+    }
+});
+
+router.post('/', requireAuth, (req, res) => {
+    try {
+        const project = createProject(req.auth.user, {
+            name: req.body?.name,
+            key: req.body?.key,
+            description: req.body?.description,
+            icon: req.body?.icon
+        });
+
+        return res.status(201).json({ ok: true, project });
+    } catch (error) {
+        return sendProjectError(res, error);
+    }
+});
+
+router.delete('/:projectId', requireAuth, (req, res) => {
+    try {
+        const project = deleteProject(req.auth.user, req.params.projectId);
+        removeProjectFromUsers(project.id);
+
+        return res.json({ ok: true, project });
+    } catch (error) {
+        return sendProjectError(res, error);
+    }
+});
+
+router.get('/:projectId/workspace', requireAuth, (req, res) => {
+    try {
+        const project = getProjectById(req.params.projectId);
+        if (!project) {
+            return res.status(404).json({ ok: false, error: 'Proyecto no encontrado.' });
+        }
+
+        if (!canAccessProject(req.auth.user, project)) {
+            return res.status(403).json({ ok: false, error: 'No tienes acceso a este proyecto.' });
+        }
+
+        return res.json({
+            ok: true,
+            project,
+            workspace: readProjectWorkspace(project.id)
+        });
+    } catch (error) {
+        return sendProjectError(res, error);
+    }
+});
+
+router.put('/:projectId/workspace', requireAuth, (req, res) => {
+    try {
+        const project = getProjectById(req.params.projectId);
+        if (!project) {
+            return res.status(404).json({ ok: false, error: 'Proyecto no encontrado.' });
+        }
+
+        if (!canAccessProject(req.auth.user, project)) {
+            return res.status(403).json({ ok: false, error: 'No tienes acceso a este proyecto.' });
+        }
+
+        return res.json({
+            ok: true,
+            project,
+            workspace: saveProjectWorkspace(project.id, req.body)
+        });
+    } catch (error) {
+        return sendProjectError(res, error);
+    }
+});
+
+router.get('/:projectId/pdf/meta', requireAuth, (req, res) => {
+    try {
+        const project = getProjectById(req.params.projectId);
+        if (!project) {
+            return res.status(404).json({ ok: false, error: 'Proyecto no encontrado.' });
+        }
+
+        if (!canAccessProject(req.auth.user, project)) {
+            return res.status(403).json({ ok: false, error: 'No tienes acceso a este proyecto.' });
+        }
+
+        return res.json({
+            ok: true,
+            project,
+            pdf: readProjectPdfMeta(project.id)
+        });
+    } catch (error) {
+        return sendProjectError(res, error);
+    }
+});
+
+router.get('/:projectId/pdf', requireAuth, (req, res) => {
+    try {
+        const project = getProjectById(req.params.projectId);
+        if (!project) {
+            return res.status(404).json({ ok: false, error: 'Proyecto no encontrado.' });
+        }
+
+        if (!canAccessProject(req.auth.user, project)) {
+            return res.status(403).json({ ok: false, error: 'No tienes acceso a este proyecto.' });
+        }
+
+        const pdf = readProjectPdf(project.id);
+        res.setHeader('Content-Type', 'application/pdf');
+        res.setHeader('Content-Length', String(pdf.buffer.length));
+        res.setHeader('X-File-Name', encodeURIComponent(pdf.meta?.fileName || 'documento.pdf'));
+        return res.end(pdf.buffer);
+    } catch (error) {
+        const status = Number(error?.status || 500);
+        return res.status(status).json({ ok: false, error: String(error?.message || 'Error leyendo PDF') });
+    }
+});
+
+router.put('/:projectId/pdf', requireAuth, express.raw({ type: 'application/pdf', limit: '120mb' }), (req, res) => {
+    try {
+        const project = getProjectById(req.params.projectId);
+        if (!project) {
+            return res.status(404).json({ ok: false, error: 'Proyecto no encontrado.' });
+        }
+
+        if (!canAccessProject(req.auth.user, project)) {
+            return res.status(403).json({ ok: false, error: 'No tienes acceso a este proyecto.' });
+        }
+
+        const fileName = decodeURIComponent(String(req.headers['x-file-name'] || 'documento.pdf'));
+        const pdf = saveProjectPdf(project.id, req.body, fileName);
+
+        return res.json({ ok: true, project, pdf });
+    } catch (error) {
+        return sendProjectError(res, error);
+    }
+});
+
+router.get('/:projectId/wordpress', requireAuth, (req, res) => {
+    try {
+        const project = getProjectById(req.params.projectId);
+        if (!project) {
+            return res.status(404).json({ ok: false, error: 'Proyecto no encontrado.' });
+        }
+
+        if (!canAccessProject(req.auth.user, project)) {
+            return res.status(403).json({ ok: false, error: 'No tienes acceso a este proyecto.' });
+        }
+
+        return res.json({
+            ok: true,
+            project,
+            connection: getWordPressConnection(project.id),
+            sites: publicOAuthSites(project.id)
+        });
+    } catch (error) {
+        return sendProjectError(res, error);
+    }
+});
+
+router.post('/:projectId/wordpress/oauth/start', requireAuth, (req, res) => {
+    try {
+        const project = getProjectById(req.params.projectId);
+        if (!project) {
+            return res.status(404).json({ ok: false, error: 'Proyecto no encontrado.' });
+        }
+
+        if (!canAccessProject(req.auth.user, project)) {
+            return res.status(403).json({ ok: false, error: 'No tienes acceso a este proyecto.' });
+        }
+
+        const authUrl = createWordPressOAuthStart(project.id, {
+            returnUrl: req.body?.returnUrl
+        }, req);
+
+        return res.json({ ok: true, project, authUrl });
+    } catch (error) {
+        return sendProjectError(res, error);
+    }
+});
+
+router.get('/wordpress/oauth/callback', async (req, res) => {
+    try {
+        if (req.query?.error) {
+            return res.status(400).send(`WordPress no autorizo la conexion: ${String(req.query.error)}`);
+        }
+
+        const result = await finishWordPressOAuth({
+            state: req.query?.state,
+            code: req.query?.code
+        });
+        const url = new URL(result.returnUrl);
+        url.searchParams.set('wordpress', 'connected');
+
+        return res.redirect(url.href);
+    } catch (error) {
+        return res.status(error.status || 500).send(`No se pudo conectar WordPress: ${String(error.message || error)}`);
+    }
+});
+
+router.post('/:projectId/wordpress/select-site', requireAuth, (req, res) => {
+    try {
+        const project = getProjectById(req.params.projectId);
+        if (!project) {
+            return res.status(404).json({ ok: false, error: 'Proyecto no encontrado.' });
+        }
+
+        if (!canAccessProject(req.auth.user, project)) {
+            return res.status(403).json({ ok: false, error: 'No tienes acceso a este proyecto.' });
+        }
+
+        const connection = selectWordPressSite(project.id, req.body?.siteId);
+
+        return res.json({ ok: true, project, connection, sites: publicOAuthSites(project.id) });
+    } catch (error) {
+        return sendProjectError(res, error);
+    }
+});
+
+router.post('/:projectId/wordpress/connect', requireAuth, async (req, res) => {
+    try {
+        const project = getProjectById(req.params.projectId);
+        if (!project) {
+            return res.status(404).json({ ok: false, error: 'Proyecto no encontrado.' });
+        }
+
+        if (!canAccessProject(req.auth.user, project)) {
+            return res.status(403).json({ ok: false, error: 'No tienes acceso a este proyecto.' });
+        }
+
+        const connection = await connectWordPress(project.id, {
+            siteUrl: req.body?.siteUrl,
+            username: req.body?.username,
+            applicationPassword: req.body?.applicationPassword
+        });
+
+        return res.status(201).json({ ok: true, project, connection });
+    } catch (error) {
+        return sendProjectError(res, error);
+    }
+});
+
+router.post('/:projectId/wordpress/check', requireAuth, async (req, res) => {
+    try {
+        const project = getProjectById(req.params.projectId);
+        if (!project) {
+            return res.status(404).json({ ok: false, error: 'Proyecto no encontrado.' });
+        }
+
+        if (!canAccessProject(req.auth.user, project)) {
+            return res.status(403).json({ ok: false, error: 'No tienes acceso a este proyecto.' });
+        }
+
+        const result = await checkWordPressPartNumbers(project.id, req.body?.partNumbers);
+
+        return res.json({ ok: true, project, ...result });
+    } catch (error) {
+        return sendProjectError(res, error);
+    }
+});
+
+router.get('/:projectId/wordpress/customers', requireAuth, async (req, res) => {
+    try {
+        const project = getProjectById(req.params.projectId);
+        if (!project) {
+            return res.status(404).json({ ok: false, error: 'Proyecto no encontrado.' });
+        }
+
+        if (!canAccessProject(req.auth.user, project)) {
+            return res.status(403).json({ ok: false, error: 'No tienes acceso a este proyecto.' });
+        }
+
+        const result = await listWordPressCustomers(project.id);
+
+        return res.json({ ok: true, project, ...result });
+    } catch (error) {
+        return sendProjectError(res, error);
+    }
+});
+
+router.get('/:projectId/wordpress/analysis/summary', requireAuth, async (req, res) => {
+    try {
+        const project = getProjectById(req.params.projectId);
+        if (!project) {
+            return res.status(404).json({ ok: false, error: 'Proyecto no encontrado.' });
+        }
+
+        if (!canAccessProject(req.auth.user, project)) {
+            return res.status(403).json({ ok: false, error: 'No tienes acceso a este proyecto.' });
+        }
+
+        const result = await getWordPressAnalysisSummary(project.id, {
+            start: req.query?.start,
+            end: req.query?.end
+        });
+
+        return res.json({ ok: true, project, ...result });
+    } catch (error) {
+        return sendProjectError(res, error);
+    }
+});
+
+router.get('/:projectId/members', requireAuth, (req, res) => {
+    try {
+        const project = getProjectById(req.params.projectId);
+        if (!project) {
+            return res.status(404).json({ ok: false, error: 'Proyecto no encontrado.' });
+        }
+
+        if (!canAccessProject(req.auth.user, project)) {
+            return res.status(403).json({ ok: false, error: 'No tienes acceso a este proyecto.' });
+        }
+
+        const users = listUsers();
+        const members = users.filter((user) => canAccessProject(user, project));
+        const isAdmin = Array.isArray(req.auth.user.roles) && req.auth.user.roles.includes('admin');
+        const assignableUsers = isAdmin
+            ? users.filter((user) => !members.some((member) => member.id === user.id))
+            : [];
+
+        return res.json({
+            ok: true,
+            project,
+            members,
+            assignableUsers
+        });
+    } catch (error) {
+        return sendProjectError(res, error);
+    }
+});
+
+router.post('/:projectId/members', requireAuth, (req, res) => {
+    try {
+        const project = getProjectById(req.params.projectId);
+        if (!project) {
+            return res.status(404).json({ ok: false, error: 'Proyecto no encontrado.' });
+        }
+
+        if (!Array.isArray(req.auth.user.roles) || !req.auth.user.roles.includes('admin')) {
+            return res.status(403).json({ ok: false, error: 'Solo un administrador puede asignar miembros.' });
+        }
+
+        const user = assignProjectToUser({
+            userId: req.body?.userId,
+            projectId: project.id
+        });
+
+        return res.status(201).json({ ok: true, user });
+    } catch (error) {
+        return sendProjectError(res, error);
+    }
+});
+
+module.exports = {
+    projectRouter: router
+};

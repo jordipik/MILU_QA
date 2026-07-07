@@ -1,0 +1,127 @@
+﻿<template id="projectCardTemplate">
+    <article class="project-card" role="button" tabindex="0" data-project-card>
+        <button class="project-card-delete" type="button" aria-label="Borrar proyecto" data-project-delete hidden>
+            Borrar
+        </button>
+
+        <span class="project-card-preview" aria-hidden="true">
+            <span class="project-card-preview-browser">
+                <span></span>
+                <span></span>
+                <span></span>
+            </span>
+
+            <iframe
+                class="project-card-preview-frame"
+                title="Vista previa del proyecto"
+                loading="lazy"
+                tabindex="-1"
+                data-project-preview-frame>
+            </iframe>
+        </span>
+
+        <span class="project-card-info">
+            <span class="project-card-icon" data-project-icon aria-hidden="true">M</span>
+
+            <span class="project-card-body">
+                <strong data-project-name>MILU QA</strong>
+                <small data-project-description>Demo operativo de revisión y control QA.</small>
+            </span>
+
+            <span class="project-card-arrow" aria-hidden="true">
+                Entrar al proyecto
+            </span>
+        </span>
+    </article>
+</template>
+<template id="projectGateTemplate">
+    <div class="project-gate" role="dialog" aria-modal="true" aria-labelledby="projectGateTitle">
+        <div class="project-gate-bg" aria-hidden="true">
+            <span class="project-gate-panel project-gate-panel-a"></span>
+            <span class="project-gate-panel project-gate-panel-b"></span>
+            <span class="project-gate-line project-gate-line-a"></span>
+            <span class="project-gate-line project-gate-line-b"></span>
+        </div>
+
+        <section class="project-gate-shell">
+            <header class="project-gate-header">
+                <div class="project-gate-brand">
+                    <span class="project-gate-logo" aria-hidden="true">A</span>
+
+                    <div>
+                        <p class="project-gate-kicker">Alentio Atlas</p>
+                        <h1 id="projectGateTitle">Selecciona proyecto</h1>
+                    </div>
+                </div>
+
+                <p class="project-gate-subtitle">
+                    Escoge el espacio de trabajo al que quieres entrar.
+                </p>
+
+                <div class="project-gate-session">
+                    <span data-project-gate-user>Usuario</span>
+                    <button type="button" data-project-gate-logout>
+                        Salir
+                    </button>
+                </div>
+            </header>
+
+           <section class="project-create" aria-label="Crear proyecto">
+                <button class="project-create-open" type="button" data-project-create-open>
+                    Crear proyecto
+                </button>
+
+                <div class="project-create-backdrop" data-project-create-backdrop hidden></div>
+
+                <form class="project-create-form" data-project-create-form hidden>
+                    <div class="project-create-head">
+                        <div>
+                            <h2>Crear proyecto</h2>
+                            <p>Añade un nuevo espacio de trabajo al panel.</p>
+                        </div>
+                    </div>
+
+                    <div class="project-create-fields">
+                        <label>
+                            <span>Nombre</span>
+                            <input name="name" type="text" maxlength="80" required data-project-create-name>
+                        </label>
+
+                        <label>
+                            <span>Clave</span>
+                            <input name="key" type="text" maxlength="48" required data-project-create-key>
+                        </label>
+
+                        <label>
+                            <span>Inicial</span>
+                            <input name="icon" type="text" maxlength="2" placeholder="A">
+                        </label>
+
+                        <label class="project-create-description">
+                            <span>Descripción</span>
+                            <textarea name="description" maxlength="180" rows="3"></textarea>
+                        </label>
+                    </div>
+
+                    <p class="project-create-error" data-project-create-error aria-live="polite"></p>
+
+                    <div class="project-create-actions">
+                        <button class="project-create-cancel" type="button" data-project-create-cancel>
+                            Cancelar
+                        </button>
+
+                        <button class="project-create-submit" type="submit" data-project-create-submit>
+                            Crear proyecto
+                        </button>
+                    </div>
+                </form>
+            </section>
+
+            <div class="project-gate-grid" data-project-list></div>
+
+            <p class="project-gate-empty" data-project-empty hidden>
+                Tu usuario todavía no tiene proyectos asignados.
+            </p>
+        </section>
+    </div>
+</template>

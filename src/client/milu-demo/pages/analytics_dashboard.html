@@ -1,0 +1,35 @@
+<!DOCTYPE html>
+<html lang="es">
+
+<head>
+    <meta charset="UTF-8">
+    <title>MILU · Analytics Dashboard</title>
+    <link rel="stylesheet" href="../styles/analytics.css">
+</head>
+
+<body class="analytics">
+    <nav class="analytics-nav">
+        <span class="brand">MILU · Analytics</span>
+        <a href="analytics_dashboard.html" class="active">Dashboard</a>
+        <a href="analytics_images.html">Imágenes</a>
+        <a href="analytics_qa.html">QA</a>
+        <a href="analytics_pn.html">PN</a>
+        <a href="analytics_export.html">Export</a>
+        <a href="analytics_search.html">Buscar</a>
+        <span class="right">read-only · sqlite_mirror</span>
+    </nav>
+    <main class="analytics-main">
+        <h1>Dashboard general <span id="status" class="analytics-status"></span></h1>
+        <p class="lead">KPIs globales del espejo SQLite. Los datos no son editables aquí; la fuente sigue siendo los
+            <code>engine_*.json</code>.</p>
+        <div id="kpis" class="kpi-grid"></div>
+
+        <h2>Por motor</h2>
+        <div id="engines" class="analytics-block"></div>
+
+        <p class="footnote" id="generated"></p>
+    </main>
+    <script type="module" src="../js/analytics/analytics-dashboard.js"></script>
+</body>
+
+</html>

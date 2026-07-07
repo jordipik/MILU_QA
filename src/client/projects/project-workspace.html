@@ -1,0 +1,711 @@
+<template id="miluProjectWorkspaceTemplate">
+    <header class="project-workspace-topbar" data-project-workspace-topbar>
+        <div class="project-workspace-topbar-brand">
+            <span>ALENTIO</span>
+            <div>
+                <strong data-project-topbar-name>Nuevo proyecto</strong>
+
+            </div>
+        </div>
+
+        <nav class="project-workspace-nav" aria-label="Acciones del proyecto">
+            <button type="button" data-project-pdf-button>Subir PDF</button>
+            <button type="button" data-project-wordpress-button>Conectar WordPress</button>
+            <button type="button" data-project-customers-button hidden>Clientes</button>
+            <button type="button" data-project-analysis-button hidden>Analisis</button>
+            <button type="button" data-project-export-json disabled>Exportar JSON</button>
+            <button type="button" data-project-export-csv disabled>Exportar CSV</button>
+        </nav>
+
+        <div class="project-workspace-session">
+            <span data-project-user-name>Usuario</span>
+            <button type="button" data-project-logout>Salir</button>
+        </div>
+    </header>
+
+    <main class="project-workspace" data-project-workspace>
+        <input type="file" accept="application/pdf,.pdf" hidden data-project-pdf-input>
+
+        <section class="project-workspace-hero" data-project-main-section>
+            <div class="project-workspace-brand">
+                <span class="project-workspace-icon" data-project-icon>P</span>
+                <div>
+                    <p>Alentio Atlas</p>
+                    <h1 data-project-name>Nuevo proyecto</h1>
+                </div>
+            </div>
+
+            <div class="project-workspace-status">
+                <strong data-project-pdf-name>Sin PDF cargado</strong>
+                <span data-project-pdf-status>Preparado para importar tablas.</span>
+            </div>
+        </section>
+
+        <section class="project-workspace-grid" aria-label="Resumen del proyecto" data-project-main-section>
+            <article>
+                <span>Filas</span>
+                <strong data-project-total-rows>0</strong>
+            </article>
+            <article>
+                <span>Con PN</span>
+                <strong data-project-pn-rows>0</strong>
+            </article>
+            <article>
+                <span>Paginas</span>
+                <strong data-project-pages>0</strong>
+            </article>
+            <article>
+                <span>Editadas</span>
+                <strong data-project-edited-rows>0</strong>
+            </article>
+        </section>
+
+        <section class="project-import-panel" aria-label="Importacion PDF" data-project-main-section>
+            <div class="project-import-split">
+                <div class="project-import-left">
+                    <div class="project-import-empty" data-project-import-empty>
+                        <strong>Sube un PDF para crear la primera tabla del proyecto.</strong>
+                        <span>La base detecta las columnas del PDF y mantiene la fila sincronizada con la pagina.</span>
+                    </div>
+
+                    <div class="project-import-table-wrap" data-project-import-table-wrap hidden>
+                        <table class="project-import-table">
+                            <thead>
+                                <tr data-project-import-head></tr>
+                            </thead>
+                            <tbody data-project-import-body></tbody>
+                        </table>
+                    </div>
+                </div>
+
+                <aside class="project-pdf-panel" data-project-pdf-panel>
+                    <div class="project-pdf-toolbar">
+                        <strong data-project-pdf-page-label>PDF</strong>
+                        <span data-project-active-row-label>Sin fila seleccionada</span>
+                    </div>
+
+                    <div class="project-pdf-viewer" data-project-pdf-viewer>
+                        <canvas data-project-pdf-canvas></canvas>
+                        <div class="project-pdf-highlight" data-project-pdf-highlight hidden></div>
+                    </div>
+                </aside>
+            </div>
+        </section>
+
+        <section class="project-wordpress-modal" data-project-wordpress-modal hidden>
+            <form class="project-wordpress-dialog" data-project-wordpress-form>
+                <header>
+                    <div>
+                        <strong>Conectar WordPress</strong>
+                        <span data-project-wordpress-status>Conecta una web para comprobar PN publicados.</span>
+                    </div>
+                    <button type="button" data-project-wordpress-close>x</button>
+                </header>
+
+                <div class="project-wordpress-sites" data-project-wordpress-sites hidden></div>
+
+                <details class="project-wordpress-manual">
+                    <summary>Conexion manual con application password</summary>
+
+                    <label>
+                        <span>URL de la web</span>
+                        <input name="siteUrl" type="url" placeholder="https://tuweb.com" data-project-wordpress-site>
+                    </label>
+
+                    <label>
+                        <span>Usuario</span>
+                        <input name="username" type="text" autocomplete="username" data-project-wordpress-user>
+                    </label>
+
+                    <label>
+                        <span>Application password</span>
+                        <input name="applicationPassword" type="password" autocomplete="current-password" data-project-wordpress-password>
+                    </label>
+                </details>
+
+                <div class="project-wordpress-actions">
+                    <button type="button" data-project-wordpress-login>Entrar con WordPress.com</button>
+                    <button type="submit" data-project-wordpress-connect>Conectar manual</button>
+                    <button type="button" data-project-wordpress-check disabled>Recomprobar</button>
+                </div>
+            </form>
+        </section>
+
+        <section class="project-customers-page" data-project-customers-modal hidden>
+            <div class="project-customers-dialog">
+                <header>
+                    <div>
+                        <strong data-project-customers-title>Clientes</strong>
+                        <span data-project-customers-status>Clientes de la web conectada.</span>
+                    </div>
+                    <button type="button" data-project-customers-close>Volver al proyecto</button>
+                </header>
+
+                <div class="project-customers-toolbar">
+                    <input type="search" placeholder="Buscar cliente..." data-project-customers-search>
+                    <button type="button" data-project-customers-export>Exportar CSV</button>
+                </div>
+
+                <div class="project-customers-table-wrap">
+                    <table class="project-customers-table">
+                        <thead>
+                            <tr>
+                                <th>Nombre</th>
+                                <th>Usuario</th>
+                                <th>N. pedidos</th>
+                                <th>Ultima actividad</th>
+                                <th>Registro</th>
+                                <th>Email</th>
+                                <th>Gasto total</th>
+                                <th>VMP</th>
+                                <th>Pais</th>
+                                <th>Ciudad</th>
+                                <th>Region</th>
+                                <th>Cod. Postal</th>
+                            </tr>
+                        </thead>
+                        <tbody data-project-customers-body></tbody>
+                    </table>
+                </div>
+            </div>
+        </section>
+
+        <section class="project-analysis-page" data-project-analysis-page hidden>
+            <div class="project-analysis-shell">
+                <header>
+                    <div>
+                        <strong data-project-analysis-title>Analisis</strong>
+                        <span data-project-analysis-status>Analisis de la web conectada.</span>
+                    </div>
+                    <button type="button" data-project-analysis-close>Volver al proyecto</button>
+                </header>
+
+                <nav class="project-analysis-tabs" aria-label="Secciones de analisis">
+                    <button type="button" class="is-active" data-project-analysis-tab="summary">Resumen</button>
+                    <button type="button" data-project-analysis-tab="products">Productos</button>
+                    <button type="button" data-project-analysis-tab="revenue">Ingresos</button>
+                    <button type="button" data-project-analysis-tab="orders">Pedidos</button>
+                    <button type="button" data-project-analysis-tab="visits">Visitas</button>
+                </nav>
+
+                <section class="project-analysis-content">
+                    <article data-project-analysis-panel="summary">
+                        <div class="project-analysis-summary-head">
+                            <div>
+                                <h2>Resumen</h2>
+                                <p data-project-analysis-summary-status>Selecciona un rango para cargar los datos.</p>
+                            </div>
+
+                            <form class="project-analysis-date-filter" data-project-analysis-summary-form>
+                                <button class="project-analysis-calendar-button" type="button" data-project-analysis-calendar-toggle>
+                                    <span class="project-analysis-calendar-glyph" aria-hidden="true"></span>
+                                    <strong data-project-analysis-range-label>Ultimo año</strong>
+                                </button>
+
+                                <div class="project-analysis-range-menu" data-project-analysis-range-menu hidden>
+                                    <button type="button" data-project-analysis-preset="last-day">Ultimo dia</button>
+                                    <button type="button" data-project-analysis-preset="last-7-days">Ultimos 7 dias</button>
+                                    <button type="button" data-project-analysis-preset="last-month">Ultimo mes</button>
+                                    <button type="button" data-project-analysis-preset="last-year">Ultimo año</button>
+                                    <button type="button" data-project-analysis-preset="custom">Personalizar rango</button>
+
+                                    <div class="project-analysis-custom-range" data-project-analysis-custom-range hidden>
+                                        <label>
+                                            <span>Desde</span>
+                                            <input type="date" name="start" data-project-analysis-start>
+                                        </label>
+                                        <label>
+                                            <span>Hasta</span>
+                                            <input type="date" name="end" data-project-analysis-end>
+                                        </label>
+                                        <button type="submit">Aplicar</button>
+                                    </div>
+                                </div>
+                            </form>
+                        </div>
+
+                        <div class="project-analysis-metrics">
+                            <span class="project-analysis-metric-card project-analysis-metric-sales">
+                                <i aria-hidden="true">EUR</i>
+                                <small>Ventas totales</small>
+                                <strong data-project-analysis-sales>-</strong>
+                            </span>
+                            <span class="project-analysis-metric-card project-analysis-metric-orders">
+                                <i aria-hidden="true">#</i>
+                                <small>Pedidos</small>
+                                <strong data-project-analysis-orders>-</strong>
+                            </span>
+                            <span class="project-analysis-metric-card project-analysis-metric-products">
+                                <i aria-hidden="true">TOP</i>
+                                <small>Productos vendidos</small>
+                                <strong data-project-analysis-products-sold>-</strong>
+                            </span>
+                        </div>
+
+                        <div class="project-analysis-summary-grid">
+                            <section class="project-analysis-chart-card project-analysis-chart-card-sales">
+                                <header>
+                                    <strong>Ventas</strong>
+                                    <small>Importe por dia</small>
+                                </header>
+                                <div class="project-analysis-chart"><canvas data-project-analysis-sales-chart></canvas></div>
+                            </section>
+
+                            <section class="project-analysis-chart-card project-analysis-chart-card-orders">
+                                <header>
+                                    <strong>Pedidos</strong>
+                                    <small>Volumen diario</small>
+                                </header>
+                                <div class="project-analysis-chart"><canvas data-project-analysis-orders-chart></canvas></div>
+                            </section>
+
+                            <section class="project-analysis-products-card">
+                                <header>
+                                    <strong>Top 3 productos mas vendidos</strong>
+                                    <small>Imagen, nombre y unidades</small>
+                                </header>
+                                <div class="project-analysis-products-top" data-project-analysis-products-body></div>
+                            </section>
+                        </div>
+                    </article>
+
+                    <article data-project-analysis-panel="products" hidden>
+                        <div class="project-analysis-summary-head">
+                            <div>
+                                <h2>Productos</h2>
+                                <p data-project-analysis-products-status>Ranking de productos vendidos en la web conectada.</p>
+                            </div>
+
+                            <form class="project-analysis-date-filter" data-project-analysis-products-form>
+                                <button class="project-analysis-calendar-button" type="button" data-project-analysis-products-calendar-toggle>
+                                    <span class="project-analysis-calendar-glyph" aria-hidden="true"></span>
+                                    <strong data-project-analysis-products-range-label>Ultimo año</strong>
+                                </button>
+
+                                <div class="project-analysis-range-menu" data-project-analysis-products-range-menu hidden>
+                                    <button type="button" data-project-analysis-products-preset="last-day">Ultimo dia</button>
+                                    <button type="button" data-project-analysis-products-preset="last-7-days">Ultimos 7 dias</button>
+                                    <button type="button" data-project-analysis-products-preset="last-month">Ultimo mes</button>
+                                    <button type="button" data-project-analysis-products-preset="last-year">Ultimo año</button>
+                                    <button type="button" data-project-analysis-products-preset="custom">Personalizar rango</button>
+
+                                    <div class="project-analysis-custom-range" data-project-analysis-products-custom-range hidden>
+                                        <label>
+                                            <span>Desde</span>
+                                            <input type="date" name="start" data-project-analysis-products-start>
+                                        </label>
+                                        <label>
+                                            <span>Hasta</span>
+                                            <input type="date" name="end" data-project-analysis-products-end>
+                                        </label>
+                                        <button type="submit">Aplicar</button>
+                                    </div>
+                                </div>
+                            </form>
+                        </div>
+
+                        <div class="project-analysis-products-insights">
+                            <span>
+                                <small>Producto lider</small>
+                                <strong data-project-analysis-products-leader>-</strong>
+                            </span>
+                            <span>
+                                <small>Unidades totales</small>
+                                <strong data-project-analysis-products-total>-</strong>
+                            </span>
+                            <span>
+                                <small>Peso del lider</small>
+                                <strong data-project-analysis-products-share>-</strong>
+                            </span>
+                        </div>
+
+                        <section class="project-analysis-chart-card project-analysis-products-hero">
+                            <header>
+                                <strong>Productos vendidos</strong>
+                                <small>Unidades por producto</small>
+                            </header>
+                            <div class="project-analysis-chart project-analysis-chart-large">
+                                <canvas data-project-analysis-products-chart></canvas>
+                            </div>
+                        </section>
+
+                        <section class="project-analysis-products-table-card">
+                            <header>
+                                <div>
+                                    <strong>Tabla de productos</strong>
+                                    <small>Ordenada de mayor a menor venta</small>
+                                </div>
+                            </header>
+                            <div class="project-analysis-products-table-wrap">
+                                <table class="project-analysis-products-table">
+                                    <thead>
+                                        <tr>
+                                            <th>Producto</th>
+                                            <th>Unidades</th>
+                                            <th>Ventas</th>
+                                            <th>Peso</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody data-project-analysis-products-table-body></tbody>
+                                </table>
+                            </div>
+                        </section>
+                    </article>
+
+                    <article data-project-analysis-panel="revenue" hidden>
+                        <div class="project-analysis-summary-head">
+                            <div>
+                                <h2>Ingresos</h2>
+                                <p data-project-analysis-revenue-status>Evolucion de ingresos de la web conectada.</p>
+                            </div>
+
+                            <form class="project-analysis-date-filter" data-project-analysis-revenue-form>
+                                <button class="project-analysis-calendar-button" type="button" data-project-analysis-revenue-calendar-toggle>
+                                    <span class="project-analysis-calendar-glyph" aria-hidden="true"></span>
+                                    <strong data-project-analysis-revenue-range-label>Ultimo año</strong>
+                                </button>
+
+                                <div class="project-analysis-range-menu" data-project-analysis-revenue-range-menu hidden>
+                                    <button type="button" data-project-analysis-revenue-preset="last-day">Ultimo dia</button>
+                                    <button type="button" data-project-analysis-revenue-preset="last-7-days">Ultimos 7 dias</button>
+                                    <button type="button" data-project-analysis-revenue-preset="last-month">Ultimo mes</button>
+                                    <button type="button" data-project-analysis-revenue-preset="last-year">Ultimo año</button>
+                                    <button type="button" data-project-analysis-revenue-preset="custom">Personalizar rango</button>
+
+                                    <div class="project-analysis-custom-range" data-project-analysis-revenue-custom-range hidden>
+                                        <label>
+                                            <span>Desde</span>
+                                            <input type="date" name="start" data-project-analysis-revenue-start>
+                                        </label>
+                                        <label>
+                                            <span>Hasta</span>
+                                            <input type="date" name="end" data-project-analysis-revenue-end>
+                                        </label>
+                                        <button type="submit">Aplicar</button>
+                                    </div>
+                                </div>
+                            </form>
+                        </div>
+
+                        <div class="project-analysis-revenue-metrics">
+                            <span class="project-analysis-revenue-card is-primary">
+                                <small>Ventas netas</small>
+                                <strong data-project-analysis-revenue-net>-</strong>
+                            </span>
+                            <span class="project-analysis-revenue-card">
+                                <small>Pedidos</small>
+                                <strong data-project-analysis-revenue-orders>-</strong>
+                            </span>
+                            <span class="project-analysis-revenue-card">
+                                <small>Ticket medio</small>
+                                <strong data-project-analysis-revenue-average>-</strong>
+                            </span>
+                            <span class="project-analysis-revenue-card">
+                                <small>Impuestos</small>
+                                <strong data-project-analysis-revenue-taxes>-</strong>
+                            </span>
+                            <span class="project-analysis-revenue-card">
+                                <small>Envio</small>
+                                <strong data-project-analysis-revenue-shipping>-</strong>
+                            </span>
+                            <span class="project-analysis-revenue-card">
+                                <small>Cupones</small>
+                                <strong data-project-analysis-revenue-coupons>-</strong>
+                            </span>
+                        </div>
+
+                        <section class="project-analysis-chart-card project-analysis-revenue-hero">
+                            <header>
+                                <strong>Ingresos</strong>
+                                <small>Ventas por fecha</small>
+                            </header>
+                            <div class="project-analysis-chart project-analysis-chart-large">
+                                <canvas data-project-analysis-revenue-chart></canvas>
+                            </div>
+                        </section>
+
+                        <div class="project-analysis-revenue-insights">
+                            <span>
+                                <small>Mejor dia</small>
+                                <strong data-project-analysis-revenue-best-day>-</strong>
+                            </span>
+                            <span>
+                                <small>Dias con ventas</small>
+                                <strong data-project-analysis-revenue-active-days>-</strong>
+                            </span>
+                            <span>
+                                <small>Intensidad</small>
+                                <strong data-project-analysis-revenue-intensity>-</strong>
+                            </span>
+                        </div>
+
+                        <section class="project-analysis-products-table-card">
+                            <header>
+                                <div>
+                                    <strong>Detalle diario</strong>
+                                    <small>Ingresos y pedidos por dia</small>
+                                </div>
+                            </header>
+                            <div class="project-analysis-products-table-wrap">
+                                <table class="project-analysis-products-table">
+                                    <thead>
+                                        <tr>
+                                            <th>Fecha</th>
+                                            <th>Pedidos</th>
+                                            <th>Ventas netas</th>
+                                            <th>Ticket medio</th>
+                                            <th>Rendimiento</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody data-project-analysis-revenue-table-body></tbody>
+                                </table>
+                            </div>
+                        </section>
+                    </article>
+
+                    <article data-project-analysis-panel="orders" hidden>
+                        <div class="project-analysis-summary-head">
+                            <div>
+                                <h2>Pedidos</h2>
+                                <p data-project-analysis-orders-status>Pedidos reales de la web conectada.</p>
+                            </div>
+
+                            <form class="project-analysis-date-filter" data-project-analysis-orders-form>
+                                <button class="project-analysis-calendar-button" type="button" data-project-analysis-orders-calendar-toggle>
+                                    <span class="project-analysis-calendar-glyph" aria-hidden="true"></span>
+                                    <strong data-project-analysis-orders-range-label>Ultimo año</strong>
+                                </button>
+
+                                <div class="project-analysis-range-menu" data-project-analysis-orders-range-menu hidden>
+                                    <button type="button" data-project-analysis-orders-preset="last-day">Ultimo dia</button>
+                                    <button type="button" data-project-analysis-orders-preset="last-7-days">Ultimos 7 dias</button>
+                                    <button type="button" data-project-analysis-orders-preset="last-month">Ultimo mes</button>
+                                    <button type="button" data-project-analysis-orders-preset="last-year">Ultimo año</button>
+                                    <button type="button" data-project-analysis-orders-preset="custom">Personalizar rango</button>
+
+                                    <div class="project-analysis-custom-range" data-project-analysis-orders-custom-range hidden>
+                                        <label>
+                                            <span>Desde</span>
+                                            <input type="date" name="start" data-project-analysis-orders-start>
+                                        </label>
+                                        <label>
+                                            <span>Hasta</span>
+                                            <input type="date" name="end" data-project-analysis-orders-end>
+                                        </label>
+                                        <button type="submit">Aplicar</button>
+                                    </div>
+                                </div>
+                            </form>
+                        </div>
+
+                        <div class="project-analysis-revenue-metrics">
+                            <span class="project-analysis-revenue-card is-primary">
+                                <small>Pedidos</small>
+                                <strong data-project-analysis-orders-total>-</strong>
+                            </span>
+                            <span class="project-analysis-revenue-card">
+                                <small>Ventas netas</small>
+                                <strong data-project-analysis-orders-net>-</strong>
+                            </span>
+                            <span class="project-analysis-revenue-card">
+                                <small>Valor medio</small>
+                                <strong data-project-analysis-orders-average>-</strong>
+                            </span>
+                            <span class="project-analysis-revenue-card">
+                                <small>Articulos / pedido</small>
+                                <strong data-project-analysis-orders-items-average>-</strong>
+                            </span>
+                        </div>
+
+                        <section class="project-analysis-chart-card project-analysis-revenue-hero">
+                            <header>
+                                <strong>Pedidos</strong>
+                                <small>Volumen por fecha</small>
+                            </header>
+                            <div class="project-analysis-chart project-analysis-chart-large">
+                                <canvas data-project-analysis-orders-page-chart></canvas>
+                            </div>
+                        </section>
+
+                        <section class="project-analysis-products-table-card">
+                            <header>
+                                <div>
+                                    <strong>Tabla de pedidos</strong>
+                                    <small>Cliente, estado, tipo y productos comprados</small>
+                                </div>
+                            </header>
+                            <div class="project-analysis-products-table-wrap">
+                                <table class="project-analysis-products-table project-analysis-orders-table">
+                                    <thead>
+                                        <tr>
+                                            <th>Fecha</th>
+                                            <th>Pedido</th>
+                                            <th>Estado</th>
+                                            <th>Cliente</th>
+                                            <th>Tipo</th>
+                                            <th>Producto(s)</th>
+                                            <th>Articulos</th>
+                                            <th>Ventas</th>
+                                            <th>Detalle</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody data-project-analysis-orders-table-body></tbody>
+                                </table>
+                            </div>
+                        </section>
+                    </article>
+
+                    <article data-project-analysis-panel="visits" hidden>
+                        <div class="project-analysis-summary-head">
+                            <div>
+                                <h2>Visitas</h2>
+                                <p data-project-analysis-visits-status>Trafico y rendimiento de la web conectada.</p>
+                            </div>
+
+                            <form class="project-analysis-date-filter" data-project-analysis-visits-form>
+                                <button class="project-analysis-calendar-button" type="button" data-project-analysis-visits-calendar-toggle>
+                                    <span class="project-analysis-calendar-glyph" aria-hidden="true"></span>
+                                    <strong data-project-analysis-visits-range-label>Ultimo aÃ±o</strong>
+                                </button>
+
+                                <div class="project-analysis-range-menu" data-project-analysis-visits-range-menu hidden>
+                                    <button type="button" data-project-analysis-visits-preset="last-day">Ultimo dia</button>
+                                    <button type="button" data-project-analysis-visits-preset="last-7-days">Ultimos 7 dias</button>
+                                    <button type="button" data-project-analysis-visits-preset="last-month">Ultimo mes</button>
+                                    <button type="button" data-project-analysis-visits-preset="last-year">Ultimo aÃ±o</button>
+                                    <button type="button" data-project-analysis-visits-preset="custom">Personalizar rango</button>
+
+                                    <div class="project-analysis-custom-range" data-project-analysis-visits-custom-range hidden>
+                                        <label>
+                                            <span>Desde</span>
+                                            <input type="date" name="start" data-project-analysis-visits-start>
+                                        </label>
+                                        <label>
+                                            <span>Hasta</span>
+                                            <input type="date" name="end" data-project-analysis-visits-end>
+                                        </label>
+                                        <button type="submit">Aplicar</button>
+                                    </div>
+                                </div>
+                            </form>
+                        </div>
+
+                        <div class="project-analysis-visits-metrics">
+                            <span class="project-analysis-visit-card is-primary">
+                                <small>Visitas</small>
+                                <strong data-project-analysis-visits-total>-</strong>
+                                <em>Periodo seleccionado</em>
+                            </span>
+                            <span class="project-analysis-visit-card">
+                                <small>Media diaria</small>
+                                <strong data-project-analysis-visits-average>-</strong>
+                                <em>Ritmo de trafico</em>
+                            </span>
+                            <span class="project-analysis-visit-card">
+                                <small>FPS</small>
+                                <strong data-project-analysis-visits-fps>-</strong>
+                                <em>Fluidez actual</em>
+                            </span>
+                            <span class="project-analysis-visit-card">
+                                <small>Carga</small>
+                                <strong data-project-analysis-visits-load>-</strong>
+                                <em>Tiempo inicial</em>
+                            </span>
+                        </div>
+
+                        <section class="project-analysis-chart-card project-analysis-revenue-hero">
+                            <header>
+                                <strong>Visitas</strong>
+                                <small>Actividad por fecha</small>
+                            </header>
+                            <div class="project-analysis-chart project-analysis-chart-large">
+                                <canvas data-project-analysis-visits-page-chart></canvas>
+                            </div>
+                        </section>
+
+                        <section class="project-analysis-visits-grid">
+                            <article class="project-analysis-performance-card">
+                                <header>
+                                    <strong>Rendimiento</strong>
+                                    <small>Lectura del navegador</small>
+                                </header>
+                                <div data-project-analysis-visits-performance></div>
+                            </article>
+
+                            <article class="project-analysis-performance-card">
+                                <header>
+                                    <strong>Salud visual</strong>
+                                    <small>Senales rapidas</small>
+                                </header>
+                                <div data-project-analysis-visits-health></div>
+                            </article>
+                        </section>
+
+                        <section class="project-analysis-map-card">
+                            <header>
+                                <div>
+                                    <strong>Mapa de visitas</strong>
+                                    <small>Intensidad por pais segun el periodo seleccionado</small>
+                                </div>
+                                <div class="project-analysis-map-legend" data-project-analysis-visits-map-legend></div>
+                            </header>
+                            <div class="project-analysis-world-map" data-project-analysis-visits-map>
+                                <svg
+                                    class="project-analysis-world-svg"
+                                    viewBox="0 0 1000 520"
+                                    role="img"
+                                    aria-label="Mapa mundial de visitas por pais"
+                                    data-project-analysis-visits-map-svg>
+                                </svg>
+                            </div>
+                        </section>
+
+                        <section class="project-analysis-products-table-card project-analysis-country-card">
+                            <header>
+                                <div>
+                                    <strong>Ranking por pais</strong>
+                                    <small>Origen de las visitas detectadas</small>
+                                </div>
+                            </header>
+                            <div class="project-analysis-products-table-wrap">
+                                <table class="project-analysis-products-table project-analysis-country-table">
+                                    <thead>
+                                        <tr>
+                                            <th>Pais</th>
+                                            <th>Codigo</th>
+                                            <th>Visitas</th>
+                                            <th>Peso</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody data-project-analysis-visits-country-body></tbody>
+                                </table>
+                            </div>
+                        </section>
+                    </article>
+                </section>
+            </div>
+        </section>
+
+        <section class="project-analysis-error-modal" data-project-analysis-error-modal hidden>
+            <div class="project-analysis-error-dialog">
+                <strong>Rango de fechas no valido</strong>
+                <p data-project-analysis-error-message>Revisa las fechas seleccionadas.</p>
+                <button type="button" data-project-analysis-error-close>Entendido</button>
+            </div>
+        </section>
+
+        <section class="project-analysis-order-modal" data-project-analysis-order-modal hidden>
+            <div class="project-analysis-order-dialog">
+                <header>
+                    <div>
+                        <small data-project-analysis-order-modal-status>Pedido</small>
+                        <strong data-project-analysis-order-modal-title>Detalle del pedido</strong>
+                    </div>
+                    <button type="button" data-project-analysis-order-modal-close aria-label="Cerrar">x</button>
+                </header>
+                <div class="project-analysis-order-summary" data-project-analysis-order-modal-summary></div>
+                <div class="project-analysis-order-items" data-project-analysis-order-modal-items></div>
+            </div>
+        </section>
+    </main>
+</template>

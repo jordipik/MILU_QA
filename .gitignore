@@ -11,6 +11,8 @@ esquemas_pos_circulos/
 fotos_articulos/
 fotos_motores/
 node_modules/
+.env
+.env.local
 
 # BD espejo SQLite (Fase E): regenerable desde JSON con `npm run db:import`.
 data/db/

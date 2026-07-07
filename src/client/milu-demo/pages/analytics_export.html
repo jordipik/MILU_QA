@@ -1,0 +1,37 @@
+<!DOCTYPE html>
+<html lang="es">
+
+<head>
+    <meta charset="UTF-8">
+    <title>MILU · Analytics Export</title>
+    <link rel="stylesheet" href="../styles/analytics.css">
+</head>
+
+<body class="analytics">
+    <nav class="analytics-nav">
+        <span class="brand">MILU · Analytics</span>
+        <a href="analytics_dashboard.html">Dashboard</a>
+        <a href="analytics_images.html">Imágenes</a>
+        <a href="analytics_qa.html">QA</a>
+        <a href="analytics_pn.html">PN</a>
+        <a href="analytics_export.html" class="active">Export</a>
+        <a href="analytics_search.html">Buscar</a>
+        <span class="right">read-only · sqlite_mirror</span>
+    </nav>
+    <main class="analytics-main">
+        <h1>Estado exportable <span id="status" class="analytics-status"></span></h1>
+        <p class="lead">Diagnóstico de candidatos a importar/descartar y pendientes. <strong>No ejecuta el
+                export.</strong> Solo observa.</p>
+
+        <div id="kpis" class="kpi-grid"></div>
+
+        <h2>Razones principales (estado/acción) en filas pendientes</h2>
+        <div id="top-reasons" class="analytics-block"></div>
+
+        <h2>Motores con más PN pendientes</h2>
+        <div id="top-engines" class="analytics-block"></div>
+    </main>
+    <script type="module" src="../js/analytics/analytics-export.js"></script>
+</body>
+
+</html>

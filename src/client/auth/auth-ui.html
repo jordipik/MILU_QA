@@ -1,0 +1,145 @@
+﻿<template id="miluLoginTemplate">
+    <div class="milu-auth-overlay" role="dialog" aria-modal="true" aria-labelledby="miluAuthTitle">
+        <div class="milu-auth-bg-shapes" aria-hidden="true">
+            <span class="auth-shape auth-panel auth-panel-a"></span>
+            <span class="auth-shape auth-panel auth-panel-b"></span>
+            <span class="auth-shape auth-line auth-line-a"></span>
+            <span class="auth-shape auth-line auth-line-b"></span>
+        </div>
+
+        <section class="milu-auth-dialog">
+            <div class="milu-auth-brand">
+                <span class="milu-auth-logo" aria-hidden="true">A</span>
+                <div>
+                    <p class="milu-auth-kicker">Alentio Atlas</p>
+                    <p class="milu-auth-brand-sub">Client Operations SaaS</p>
+                </div>
+            </div>
+
+            <h1 id="miluAuthTitle" class="milu-auth-title">Iniciar sesion</h1>
+
+            <p class="milu-auth-subtitle">
+                Accede a tu espacio de trabajo para gestionar clientes, datos y procesos.
+            </p>
+
+            <form class="milu-auth-form" novalidate>
+                <label class="milu-auth-field">
+                    <span>Usuario</span>
+                    <input
+                        name="username"
+                        autocomplete="username"
+                        required
+                        maxlength="40"
+                        placeholder="Usuario"
+                    />
+                </label>
+
+                <label class="milu-auth-field">
+                    <span>Contrasena</span>
+                    <input
+                        name="password"
+                        type="password"
+                        autocomplete="current-password"
+                        required
+                        minlength="8"
+                        placeholder="Contrasena"
+                    />
+                </label>
+
+                <p class="milu-auth-error" aria-live="polite"></p>
+
+                <div class="milu-auth-actions">
+                    <button class="milu-auth-submit" type="submit">Entrar</button>
+                    <button class="milu-auth-switch" type="button" data-auth-mode="register">
+                        Crear usuario
+                    </button>
+                </div>
+            </form>
+        </section>
+    </div>
+</template>
+
+<template id="miluRegisterTemplate">
+    <div class="milu-auth-overlay" role="dialog" aria-modal="true" aria-labelledby="miluAuthTitleRegister">
+        <div class="milu-auth-bg-shapes" aria-hidden="true">
+            <span class="auth-shape auth-panel auth-panel-a"></span>
+            <span class="auth-shape auth-panel auth-panel-b"></span>
+            <span class="auth-shape auth-line auth-line-a"></span>
+            <span class="auth-shape auth-line auth-line-b"></span>
+        </div>
+
+        <section class="milu-auth-dialog">
+            <div class="milu-auth-brand">
+                <span class="milu-auth-logo" aria-hidden="true">A</span>
+                <div>
+                    <p class="milu-auth-kicker">Alentio Atlas</p>
+                    <p class="milu-auth-brand-sub">Client Operations SaaS</p>
+                </div>
+            </div>
+
+            <h1 id="miluAuthTitleRegister" class="milu-auth-title">Crear usuario</h1>
+
+            <p class="milu-auth-subtitle">
+                Crea tu acceso para empezar a construir el entorno de trabajo de tu organizacion.
+            </p>
+
+            <form class="milu-auth-form" novalidate>
+                <label class="milu-auth-field">
+                    <span>Nombre</span>
+                    <input
+                        name="displayName"
+                        autocomplete="name"
+                        maxlength="80"
+                        placeholder="Tu nombre"
+                    />
+                </label>
+
+                <label class="milu-auth-field">
+                    <span>Usuario</span>
+                    <input
+                        name="username"
+                        autocomplete="username"
+                        required
+                        maxlength="40"
+                        placeholder="Usuario"
+                    />
+                </label>
+
+                <label class="milu-auth-field">
+                    <span>Contrasena</span>
+                    <input
+                        name="password"
+                        type="password"
+                        autocomplete="new-password"
+                        required
+                        minlength="8"
+                        placeholder="Minimo 8 caracteres"
+                    />
+                </label>
+
+                <label class="milu-auth-field">
+                    <span>Repetir contrasena</span>
+                    <input
+                        name="passwordConfirm"
+                        type="password"
+                        autocomplete="new-password"
+                        required
+                        minlength="8"
+                        placeholder="Repite la contrasena"
+                    />
+                </label>
+
+                <p class="milu-auth-error" aria-live="polite"></p>
+
+                <div class="milu-auth-actions">
+                    <button class="milu-auth-submit" type="submit">Registrarme</button>
+                    <button class="milu-auth-switch" type="button" data-auth-mode="login">
+                        Ya tengo usuario
+                    </button>
+                </div>
+            </form>
+        </section>
+    </div>
+</template>
+
+
