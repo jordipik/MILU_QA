@@ -137,6 +137,37 @@ async function fetchWordPressJson(connection, pathname, searchParams = {}) {
     return data;
 }
 
+async function fetchWordPressRequestJson(connection, pathname, options = {}) {
+    const url = new URL(pathname, `${connection.siteUrl}/`);
+    Object.entries(options.searchParams || {}).forEach(([key, value]) => {
+        if (value !== undefined && value !== null && value !== '') url.searchParams.set(key, String(value));
+    });
+
+    const headers = {
+        Accept: 'application/json',
+        ...(options.body ? { 'Content-Type': 'application/json' } : {})
+    };
+    if (connection.username && connection.applicationPassword) {
+        headers.Authorization = authHeader(connection.username, connection.applicationPassword);
+    }
+
+    const response = await fetch(url, {
+        method: options.method || 'GET',
+        headers,
+        body: options.body ? JSON.stringify(options.body) : undefined
+    });
+    const data = await response.json().catch(() => null);
+
+    if (!response.ok) {
+        const message = data?.message || `WordPress HTTP ${response.status}`;
+        const error = new Error(message);
+        error.status = response.status;
+        throw error;
+    }
+
+    return data;
+}
+
 async function fetchWordPressBridgeJson(connection, pathname, searchParams = {}) {
     const url = new URL(pathname, `${connection.siteUrl}/`);
     Object.entries(searchParams).forEach(([key, value]) => {
@@ -152,6 +183,40 @@ async function fetchWordPressBridgeJson(connection, pathname, searchParams = {})
     }
 
     const response = await fetch(url, { headers });
+    const data = await response.json().catch(() => null);
+
+    if (!response.ok) {
+        const message = data?.message || `WordPress bridge HTTP ${response.status}`;
+        const error = new Error(message);
+        error.status = response.status;
+        throw error;
+    }
+
+    return data;
+}
+
+async function fetchWordPressBridgeRequestJson(connection, pathname, options = {}) {
+    const url = new URL(pathname, `${connection.siteUrl}/`);
+    Object.entries(options.searchParams || {}).forEach(([key, value]) => {
+        if (value !== undefined && value !== null && value !== '') url.searchParams.set(key, String(value));
+    });
+
+    const headers = {
+        Accept: 'application/json',
+        ...(options.body ? { 'Content-Type': 'application/json' } : {})
+    };
+    const bridgeToken = String(process.env.WORDPRESS_BRIDGE_TOKEN || '').trim();
+    if (bridgeToken) headers['X-Alentio-Token'] = bridgeToken;
+    if (connection.accessToken) headers.Authorization = `Bearer ${connection.accessToken}`;
+    if (connection.username && connection.applicationPassword) {
+        headers.Authorization = authHeader(connection.username, connection.applicationPassword);
+    }
+
+    const response = await fetch(url, {
+        method: options.method || 'GET',
+        headers,
+        body: options.body ? JSON.stringify(options.body) : undefined
+    });
     const data = await response.json().catch(() => null);
 
     if (!response.ok) {
@@ -472,6 +537,169 @@ function normalizeAnalysisProduct(product) {
     };
 }
 
+function normalizeSeoIssue(issue) {
+    if (typeof issue === 'string') {
+        return {
+            level: 'warning',
+            message: issue
+        };
+    }
+
+    return {
+        level: String(issue?.level || issue?.severity || 'warning'),
+        message: String(issue?.message || issue?.text || issue?.label || '').trim()
+    };
+}
+
+function normalizeSeoItem(item) {
+    const issues = Array.isArray(item?.issues)
+        ? item.issues.map(normalizeSeoIssue).filter((issue) => issue.message)
+        : [];
+    const score = Number(item?.score ?? item?.seoScore ?? item?.seo_score ?? 0);
+    const clampedScore = Math.max(0, Math.min(100, Number.isFinite(score) ? score : 0));
+
+    return {
+        id: String(item?.id || item?.ID || ''),
+        type: String(item?.type || item?.postType || item?.post_type || 'product'),
+        title: String(item?.title?.rendered || item?.title || item?.name || item?.post_title || 'Sin titulo').replace(/<[^>]+>/g, '').trim(),
+        sku: String(item?.sku || ''),
+        url: String(item?.url || item?.link || item?.permalink || ''),
+        status: String(item?.status || item?.post_status || ''),
+        image: String(item?.image || item?.imageUrl || item?.image_url || item?.featured_image || ''),
+        score: clampedScore,
+        issues,
+        checks: item?.checks && typeof item.checks === 'object' ? item.checks : {},
+        editable: {
+            title: String(item?.editable?.title ?? item?.seoTitle ?? item?.seo_title ?? item?.title?.rendered ?? item?.title ?? item?.name ?? '').replace(/<[^>]+>/g, '').trim(),
+            slug: String(item?.editable?.slug ?? item?.slug ?? ''),
+            shortDescription: String(item?.editable?.shortDescription ?? item?.shortDescription ?? item?.short_description ?? item?.excerpt?.rendered ?? item?.excerpt ?? '').replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').trim(),
+            description: String(item?.editable?.description ?? item?.description ?? item?.content?.rendered ?? item?.content ?? '').replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').trim(),
+            metaTitle: String(item?.editable?.metaTitle ?? item?.metaTitle ?? item?.meta_title ?? item?.seoTitle ?? item?.seo_title ?? ''),
+            metaDescription: String(item?.editable?.metaDescription ?? item?.metaDescription ?? item?.meta_description ?? item?.seoDescription ?? item?.seo_description ?? ''),
+            focusKeyword: String(item?.editable?.focusKeyword ?? item?.focusKeyword ?? item?.focus_keyword ?? '')
+        }
+    };
+}
+
+function normalizeSeoAudit(data, source = 'bridge') {
+    const items = Array.isArray(data?.items)
+        ? data.items
+        : Array.isArray(data?.products)
+            ? data.products
+            : Array.isArray(data?.pages)
+                ? data.pages
+                : Array.isArray(data)
+                    ? data
+                    : [];
+    const normalizedItems = items.map(normalizeSeoItem);
+    const total = normalizedItems.length;
+    const good = normalizedItems.filter((item) => item.score >= 80 && !item.issues.some((issue) => issue.level === 'critical')).length;
+    const critical = normalizedItems.filter((item) => item.score < 55 || item.issues.some((issue) => issue.level === 'critical')).length;
+    const warning = Math.max(0, total - good - critical);
+    const averageScore = total
+        ? Math.round(normalizedItems.reduce((sum, item) => sum + Number(item.score || 0), 0) / total)
+        : 0;
+
+    return {
+        source: String(data?.source || source),
+        generatedAt: String(data?.generatedAt || data?.generated_at || new Date().toISOString()),
+        metrics: {
+            total: Number(data?.metrics?.total ?? total),
+            good: Number(data?.metrics?.good ?? good),
+            warning: Number(data?.metrics?.warning ?? warning),
+            critical: Number(data?.metrics?.critical ?? critical),
+            averageScore: Number(data?.metrics?.averageScore ?? data?.metrics?.average_score ?? averageScore)
+        },
+        items: normalizedItems.sort((a, b) => a.score - b.score || b.issues.length - a.issues.length)
+    };
+}
+
+function auditPublicPostForSeo(post) {
+    const title = String(post?.title?.rendered || post?.title || post?.name || 'Sin titulo').replace(/<[^>]+>/g, '').trim();
+    const excerpt = String(post?.excerpt || post?.excerpt?.rendered || post?.description || '').replace(/<[^>]+>/g, '').trim();
+    const content = String(post?.content || post?.content?.rendered || post?.description || '').replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').trim();
+    const image = String(post?.featured_image || post?.featuredImage || post?.images?.[0]?.src || post?.image || '');
+    const issues = [];
+
+    if (!title || title.length < 18) issues.push({ level: 'warning', message: 'Titulo demasiado corto.' });
+    if (title.length > 70) issues.push({ level: 'warning', message: 'Titulo demasiado largo.' });
+    if (!excerpt || excerpt.length < 70) issues.push({ level: 'warning', message: 'Meta descripcion o extracto corto.' });
+    if (excerpt.length > 170) issues.push({ level: 'warning', message: 'Meta descripcion demasiado larga.' });
+    if (!image) issues.push({ level: 'warning', message: 'No hay imagen destacada.' });
+    if (content.length < 180) issues.push({ level: 'critical', message: 'Contenido muy corto para posicionar.' });
+
+    const score = Math.max(20, 100 - issues.reduce((sum, issue) => sum + (issue.level === 'critical' ? 25 : 12), 0));
+
+    return {
+        id: post?.ID || post?.id || '',
+        type: post?.type || 'product',
+        title,
+        sku: post?.sku || '',
+        url: post?.URL || post?.link || post?.permalink || '',
+        status: post?.status || '',
+        image,
+        score,
+        issues,
+        checks: {
+            titleLength: title.length,
+            descriptionLength: excerpt.length,
+            contentLength: content.length,
+            hasImage: Boolean(image)
+        }
+    };
+}
+
+function auditWooProductForSeo(product) {
+    const title = String(product?.name || product?.title?.rendered || 'Sin titulo').replace(/<[^>]+>/g, '').trim();
+    const excerpt = String(product?.short_description || product?.excerpt?.rendered || '').replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').trim();
+    const content = String(product?.description || product?.content?.rendered || '').replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').trim();
+    const image = String(product?.images?.[0]?.src || product?.image || product?.featured_image || '');
+    const sku = String(product?.sku || '');
+    const metaData = Array.isArray(product?.meta_data) ? product.meta_data : [];
+    const metaValue = (key) => String(metaData.find((entry) => entry?.key === key)?.value || '');
+    const issues = [];
+
+    if (!title || title.length < 18) issues.push({ level: 'warning', message: 'Titulo demasiado corto.' });
+    if (title.length > 70) issues.push({ level: 'warning', message: 'Titulo demasiado largo.' });
+    if (!excerpt || excerpt.length < 70) issues.push({ level: 'warning', message: 'Meta descripcion o extracto corto.' });
+    if (excerpt.length > 170) issues.push({ level: 'warning', message: 'Meta descripcion demasiado larga.' });
+    if (!image) issues.push({ level: 'warning', message: 'No hay imagen destacada.' });
+    if (content.length < 180) issues.push({ level: 'critical', message: 'Contenido muy corto para posicionar.' });
+    if (sku && !normalizePartNumber(`${title} ${excerpt} ${content}`).includes(normalizePartNumber(sku))) {
+        issues.push({ level: 'info', message: 'El SKU no aparece claramente en el contenido.' });
+    }
+
+    const score = Math.max(20, 100 - issues.reduce((sum, issue) => sum + (issue.level === 'critical' ? 25 : issue.level === 'info' ? 6 : 12), 0));
+
+    return {
+        id: product?.id || product?.ID || '',
+        type: 'product',
+        title,
+        sku,
+        url: product?.permalink || product?.link || product?.url || '',
+        status: product?.status || '',
+        image,
+        score,
+        issues,
+        checks: {
+            titleLength: title.length,
+            descriptionLength: excerpt.length,
+            contentLength: content.length,
+            hasImage: Boolean(image),
+            hasSku: Boolean(sku)
+        },
+        editable: {
+            title,
+            slug: String(product?.slug || ''),
+            shortDescription: excerpt,
+            description: content,
+            metaTitle: metaValue('_yoast_wpseo_title') || metaValue('rank_math_title') || title,
+            metaDescription: metaValue('_yoast_wpseo_metadesc') || metaValue('rank_math_description') || excerpt,
+            focusKeyword: metaValue('_yoast_wpseo_focuskw') || metaValue('rank_math_focus_keyword') || sku
+        }
+    };
+}
+
 function normalizeAnalysisOrderItem(item) {
     const specs = Array.isArray(item?.specs)
         ? item.specs
@@ -695,6 +923,139 @@ async function getWordPressAnalysisSummary(projectId, input = {}) {
     };
 }
 
+async function getWordPressSeoAudit(projectId) {
+    const cleanId = cleanProjectId(projectId);
+    const connection = getPrivateWordPressConnection(cleanId);
+    if (!connection) {
+        const error = new Error('Este proyecto no tiene WordPress conectado.');
+        error.status = 400;
+        throw error;
+    }
+
+    try {
+        const data = await fetchWordPressBridgeJson(connection, '/wp-json/alentio/v1/seo-audit', {
+            limit: 2000,
+            post_type: 'product',
+            status: 'publish'
+        });
+        return {
+            connection: publicConnection(connection),
+            audit: normalizeSeoAudit(data, 'alentio-bridge')
+        };
+    } catch (bridgeError) {
+        const items = [];
+
+        if (connection.mode === 'wordpress-com-oauth') {
+            for (let page = 1; page <= 50; page += 1) {
+                const productPosts = await fetchWordPressComJson(connection.accessToken, `/sites/${encodeURIComponent(connection.siteId)}/posts/`, {
+                    type: 'product',
+                    status: 'publish',
+                    number: 100,
+                    page
+                });
+                const pageItems = Array.isArray(productPosts?.posts) ? productPosts.posts : [];
+                items.push(...pageItems.map(auditPublicPostForSeo));
+                if (pageItems.length < 100) break;
+            }
+        } else {
+            for (let page = 1; page <= 50; page += 1) {
+                const products = await fetchWordPressJson(connection, '/wp-json/wc/v3/products', {
+                    per_page: 100,
+                    page,
+                    status: 'publish'
+                });
+                const pageItems = Array.isArray(products) ? products : [];
+                items.push(...pageItems.map(auditWooProductForSeo));
+                if (pageItems.length < 100) break;
+            }
+        }
+
+        return {
+            connection: publicConnection(connection),
+            audit: normalizeSeoAudit({
+                source: 'fallback-public-rest',
+                items
+            }, 'fallback-public-rest')
+        };
+    }
+}
+
+function cleanSeoPatch(input) {
+    const text = (value, maxLength) => String(value || '').replace(/\s+/g, ' ').trim().slice(0, maxLength);
+
+    return {
+        title: text(input?.title, 180),
+        slug: text(input?.slug, 160).toLowerCase().replace(/[^a-z0-9._-]+/g, '-').replace(/^-+|-+$/g, ''),
+        shortDescription: text(input?.shortDescription, 600),
+        description: text(input?.description, 6000),
+        metaTitle: text(input?.metaTitle, 180),
+        metaDescription: text(input?.metaDescription, 320),
+        focusKeyword: text(input?.focusKeyword, 120)
+    };
+}
+
+async function updateWordPressSeoItem(projectId, itemId, input = {}) {
+    const cleanId = cleanProjectId(projectId);
+    const connection = getPrivateWordPressConnection(cleanId);
+    if (!connection) {
+        const error = new Error('Este proyecto no tiene WordPress conectado.');
+        error.status = 400;
+        throw error;
+    }
+
+    const id = String(itemId || '').replace(/[^a-zA-Z0-9_-]/g, '');
+    if (!id) {
+        const error = new Error('Producto SEO no valido.');
+        error.status = 400;
+        throw error;
+    }
+
+    const patch = cleanSeoPatch(input);
+
+    try {
+        const data = await fetchWordPressBridgeRequestJson(connection, `/wp-json/alentio/v1/seo-product/${encodeURIComponent(id)}`, {
+            method: 'POST',
+            body: patch
+        });
+        const item = normalizeSeoItem(data?.item || data?.product || data);
+        return {
+            connection: publicConnection(connection),
+            item,
+            source: 'alentio-bridge'
+        };
+    } catch (bridgeError) {
+        if (!connection.username || !connection.applicationPassword) {
+            throw bridgeError;
+        }
+    }
+
+    const metaData = [
+        { key: '_yoast_wpseo_title', value: patch.metaTitle || patch.title },
+        { key: '_yoast_wpseo_metadesc', value: patch.metaDescription || patch.shortDescription },
+        { key: '_yoast_wpseo_focuskw', value: patch.focusKeyword },
+        { key: 'rank_math_title', value: patch.metaTitle || patch.title },
+        { key: 'rank_math_description', value: patch.metaDescription || patch.shortDescription },
+        { key: 'rank_math_focus_keyword', value: patch.focusKeyword }
+    ].filter((entry) => entry.value);
+
+    const updatedProduct = await fetchWordPressRequestJson(connection, `/wp-json/wc/v3/products/${encodeURIComponent(id)}`, {
+        method: 'PUT',
+        body: {
+            ...(patch.title ? { name: patch.title } : {}),
+            ...(patch.slug ? { slug: patch.slug } : {}),
+            ...(patch.shortDescription ? { short_description: patch.shortDescription } : {}),
+            ...(patch.description ? { description: patch.description } : {}),
+            ...(metaData.length ? { meta_data: metaData } : {})
+        }
+    });
+
+    return {
+        connection: publicConnection(connection),
+        item: normalizeSeoItem(auditWooProductForSeo(updatedProduct)),
+        source: 'woocommerce-rest'
+    };
+}
+
 async function queryPartNumber(connection, partNumber) {
     const normalized = normalizePartNumber(partNumber);
     if (!normalized) return { exists: false, matches: [] };
@@ -816,6 +1177,8 @@ module.exports = {
     finishWordPressOAuth,
     getWordPressAnalysisSummary,
     getWordPressConnection,
+    getWordPressSeoAudit,
+    updateWordPressSeoItem,
     listWordPressCustomers,
     publicOAuthSites,
     selectWordPressSite

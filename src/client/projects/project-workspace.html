@@ -9,7 +9,8 @@
         </div>
 
         <nav class="project-workspace-nav" aria-label="Acciones del proyecto">
-            <button type="button" data-project-pdf-button>Subir PDF</button>
+            <button type="button" data-project-pdf-button>Subir archivo</button>
+            <button type="button" data-project-change-type-button hidden>Cambiar tipo</button>
             <button type="button" data-project-wordpress-button>Conectar WordPress</button>
             <button type="button" data-project-customers-button hidden>Clientes</button>
             <button type="button" data-project-analysis-button hidden>Analisis</button>
@@ -24,7 +25,7 @@
     </header>
 
     <main class="project-workspace" data-project-workspace>
-        <input type="file" accept="application/pdf,.pdf" hidden data-project-pdf-input>
+        <input type="file" accept="application/pdf,.pdf,.xlsx,.xls,.csv,.docx,.doc" hidden data-project-pdf-input>
 
         <section class="project-workspace-hero" data-project-main-section>
             <div class="project-workspace-brand">
@@ -36,8 +37,15 @@
             </div>
 
             <div class="project-workspace-status">
-                <strong data-project-pdf-name>Sin PDF cargado</strong>
-                <span data-project-pdf-status>Preparado para importar tablas.</span>
+                <div class="project-workspace-pdf-summary">
+                    <strong data-project-pdf-name>Sin documento cargado</strong>
+                    <span data-project-pdf-status>Preparado para importar tablas.</span>
+                </div>
+
+                <div class="project-workspace-pdf-actions" aria-label="Archivos guardados">
+                    <button type="button" data-project-save-file-button hidden disabled>Guardar</button>
+                    <button type="button" data-project-saved-files-button>Guardados</button>
+                </div>
             </div>
         </section>
 
@@ -60,12 +68,88 @@
             </article>
         </section>
 
-        <section class="project-import-panel" aria-label="Importacion PDF" data-project-main-section>
+        <section class="project-type-screen" data-project-type-screen data-project-main-section>
+            <div class="project-type-bg" aria-hidden="true">
+                <span class="project-type-orbit project-type-orbit-a"></span>
+                <span class="project-type-orbit project-type-orbit-b"></span>
+                <span class="project-type-node project-type-node-a"></span>
+                <span class="project-type-node project-type-node-b"></span>
+                <span class="project-type-node project-type-node-c"></span>
+            </div>
+
+            <div class="project-type-shell">
+                <p>Alentio Atlas Intake</p>
+                <h2>Que tipo de documento quieres leer?</h2>
+                <span>Elige el motor correcto antes de subir el archivo. Cada tipo abre su propio extractor y su vista de revision.</span>
+
+                <div class="project-type-options">
+                    <button type="button" data-project-type-choice="products">
+                        <i aria-hidden="true">PDF</i>
+                        <strong>Productos</strong>
+                        <span>Tablas de piezas, PN, cantidades, pesos y revision contra WordPress.</span>
+                    </button>
+
+                    <button type="button" data-project-type-choice="invoices">
+                        <i aria-hidden="true">FAC</i>
+                        <strong>Facturas</strong>
+                        <span>Numero, fechas, emisor, cliente, importes, pago y lineas detectadas.</span>
+                    </button>
+                </div>
+            </div>
+        </section>
+
+        <section class="project-start-screen" data-project-start-screen data-project-main-section>
+            <div class="project-start-bg" aria-hidden="true">
+                <canvas class="project-start-canvas" data-project-start-canvas></canvas>
+                <span class="project-start-glow project-start-glow-a"></span>
+                <span class="project-start-glow project-start-glow-b"></span>
+                <span class="project-start-glow project-start-glow-c"></span>
+                <span class="project-start-panel project-start-panel-a">
+                    <i></i><i></i><i></i>
+                </span>
+                <span class="project-start-panel project-start-panel-b">
+                    <i></i><i></i><i></i><i></i>
+                </span>
+                <span class="project-start-flow project-start-flow-a"></span>
+                <span class="project-start-flow project-start-flow-b"></span>
+            </div>
+
+            <div class="project-start-card">
+                <div class="project-start-orb" aria-hidden="true">
+                    <span>PDF</span>
+                    <i></i>
+                    <i></i>
+                    <i></i>
+                </div>
+
+                <p class="project-start-kicker">Alentio Atlas Workspace</p>
+                <strong>
+                    <span>Arranca tu</span>
+                    <em>control documental</em>
+                    <span>sin perder el ritmo</span>
+                </strong>
+                <span>Elige como quieres arrancar esta sesion. La tabla y el visor se abriran cuando exista un documento activo.</span>
+
+                <div class="project-start-mini" aria-hidden="true">
+                    <span><i></i>Extraccion</span>
+                    <span><i></i>Tabla</span>
+                    <span><i></i>Archivo</span>
+                </div>
+
+                <div class="project-start-actions">
+                    <button type="button" data-project-start-upload>Subir archivo</button>
+                    <button type="button" data-project-start-saved>Ver guardados</button>
+                    <button type="button" data-project-type-back>Cambiar tipo</button>
+                </div>
+            </div>
+        </section>
+
+        <section class="project-import-panel" aria-label="Importacion de documentos" data-project-main-section>
             <div class="project-import-split">
                 <div class="project-import-left">
                     <div class="project-import-empty" data-project-import-empty>
-                        <strong>Sube un PDF para crear la primera tabla del proyecto.</strong>
-                        <span>La base detecta las columnas del PDF y mantiene la fila sincronizada con la pagina.</span>
+                        <strong>Sube un archivo para crear la primera tabla del proyecto.</strong>
+                        <span>Word y Excel se convierten primero a PDF y despues se usa el extractor PDF del tipo elegido.</span>
                     </div>
 
                     <div class="project-import-table-wrap" data-project-import-table-wrap hidden>
@@ -76,12 +160,19 @@
                             <tbody data-project-import-body></tbody>
                         </table>
                     </div>
+
+                    <div class="project-invoice-view" data-project-invoice-view hidden></div>
                 </div>
 
                 <aside class="project-pdf-panel" data-project-pdf-panel>
                     <div class="project-pdf-toolbar">
                         <strong data-project-pdf-page-label>PDF</strong>
                         <span data-project-active-row-label>Sin fila seleccionada</span>
+                        <div class="project-pdf-page-navigation" data-project-pdf-page-navigation hidden>
+                            <button type="button" data-project-pdf-previous-page aria-label="Pagina anterior">&larr;</button>
+                            <span data-project-pdf-page-count>1 / 1</span>
+                            <button type="button" data-project-pdf-next-page aria-label="Pagina siguiente">&rarr;</button>
+                        </div>
                     </div>
 
                     <div class="project-pdf-viewer" data-project-pdf-viewer>
@@ -89,6 +180,40 @@
                         <div class="project-pdf-highlight" data-project-pdf-highlight hidden></div>
                     </div>
                 </aside>
+            </div>
+        </section>
+
+        <section class="project-save-modal" data-project-save-modal hidden>
+            <form class="project-save-dialog" data-project-saved-form>
+                <header>
+                    <div>
+                        <strong>Guardar archivo</strong>
+                        <span data-project-save-status>Elige un nombre para guardar esta tabla y su documento.</span>
+                    </div>
+                    <button type="button" data-project-save-close>x</button>
+                </header>
+
+                <div class="project-saved-form">
+                    <label>
+                        <span>Nombre del archivo</span>
+                        <input type="text" maxlength="120" placeholder="Ej. Libro 12V4000 revisado" data-project-saved-name>
+                    </label>
+                    <button type="submit" data-project-saved-submit>Guardar actual</button>
+                </div>
+            </form>
+        </section>
+
+        <section class="project-saved-modal" data-project-saved-modal hidden>
+            <div class="project-saved-dialog">
+                <header>
+                    <div>
+                        <strong>Guardados</strong>
+                        <span data-project-saved-status>Abre una extraccion guardada en este proyecto.</span>
+                    </div>
+                    <button type="button" data-project-saved-close>x</button>
+                </header>
+
+                <div class="project-saved-list" data-project-saved-list></div>
             </div>
         </section>
 
@@ -104,7 +229,7 @@
 
                 <div class="project-wordpress-sites" data-project-wordpress-sites hidden></div>
 
-                <details class="project-wordpress-manual">
+                <!-- <details class="project-wordpress-manual">
                     <summary>Conexion manual con application password</summary>
 
                     <label>
@@ -121,11 +246,11 @@
                         <span>Application password</span>
                         <input name="applicationPassword" type="password" autocomplete="current-password" data-project-wordpress-password>
                     </label>
-                </details>
+                </details> -->
 
                 <div class="project-wordpress-actions">
                     <button type="button" data-project-wordpress-login>Entrar con WordPress.com</button>
-                    <button type="submit" data-project-wordpress-connect>Conectar manual</button>
+                    <!-- <button type="submit" data-project-wordpress-connect>Conectar manual</button> -->
                     <button type="button" data-project-wordpress-check disabled>Recomprobar</button>
                 </div>
             </form>
@@ -186,6 +311,7 @@
                     <button type="button" data-project-analysis-tab="revenue">Ingresos</button>
                     <button type="button" data-project-analysis-tab="orders">Pedidos</button>
                     <button type="button" data-project-analysis-tab="visits">Visitas</button>
+                    <button type="button" data-project-analysis-tab="seo">SEO</button>
                 </nav>
 
                 <section class="project-analysis-content">
@@ -682,6 +808,93 @@
                             </div>
                         </section>
                     </article>
+
+                    <article data-project-analysis-panel="seo" hidden>
+                        <div class="project-analysis-summary-head">
+                            <div>
+                                <h2>Auditor SEO</h2>
+                                <p data-project-analysis-seo-status>Auditoria de todos los productos publicados en la web conectada.</p>
+                            </div>
+
+                            <button class="project-analysis-seo-refresh" type="button" data-project-analysis-seo-refresh>
+                                Actualizar auditoria
+                            </button>
+                        </div>
+
+                        <section class="project-analysis-seo-hero">
+                            <div class="project-analysis-seo-score">
+                                <span data-project-analysis-seo-score>--</span>
+                                <small>Score medio</small>
+                            </div>
+
+                            <div class="project-analysis-seo-metrics">
+                                <span class="is-good">
+                                    <small>Correctos</small>
+                                    <strong data-project-analysis-seo-good>-</strong>
+                                </span>
+                                <span class="is-warning">
+                                    <small>Mejorar</small>
+                                    <strong data-project-analysis-seo-warning>-</strong>
+                                </span>
+                                <span class="is-critical">
+                                    <small>Criticos</small>
+                                    <strong data-project-analysis-seo-critical>-</strong>
+                                </span>
+                                <span>
+                                    <small>Auditados</small>
+                                    <strong data-project-analysis-seo-total>-</strong>
+                                </span>
+                            </div>
+                        </section>
+
+                        <section class="project-analysis-seo-grid">
+                            <article class="project-analysis-performance-card">
+                                <header>
+                                    <strong>Prioridades</strong>
+                                    <small>Lo que mas bloquea el posicionamiento</small>
+                                </header>
+                                <div data-project-analysis-seo-priorities></div>
+                            </article>
+
+                            <article class="project-analysis-performance-card">
+                                <header>
+                                    <strong>Lectura rapida</strong>
+                                    <small>Estado general de la web</small>
+                                </header>
+                                <div data-project-analysis-seo-health></div>
+                            </article>
+                        </section>
+
+                        <section class="project-analysis-products-table-card project-analysis-seo-table-card">
+                            <header>
+                                <div>
+                                    <strong>Contenido auditado</strong>
+                                    <small>Ordenado por menor score para actuar primero</small>
+                                </div>
+                                <label class="project-analysis-seo-search">
+                                    <span>Buscar producto</span>
+                                    <input
+                                        type="search"
+                                        placeholder="Buscar por nombre, SKU, estado o problema..."
+                                        data-project-analysis-seo-search>
+                                </label>
+                            </header>
+                            <div class="project-analysis-products-table-wrap">
+                                <table class="project-analysis-products-table project-analysis-seo-table">
+                                    <thead>
+                                        <tr>
+                                            <th>Contenido</th>
+                                            <th>Publicacion</th>
+                                            <th>Score</th>
+                                            <th>Problemas</th>
+                                            <th>Accion</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody data-project-analysis-seo-table-body></tbody>
+                                </table>
+                            </div>
+                        </section>
+                    </article>
                 </section>
             </div>
         </section>
@@ -706,6 +919,78 @@
                 <div class="project-analysis-order-summary" data-project-analysis-order-modal-summary></div>
                 <div class="project-analysis-order-items" data-project-analysis-order-modal-items></div>
             </div>
+        </section>
+
+        <section class="project-analysis-seo-modal" data-project-analysis-seo-modal hidden>
+            <form class="project-analysis-seo-dialog" data-project-analysis-seo-form>
+                <header>
+                    <div>
+                        <small data-project-analysis-seo-modal-status>Editor SEO</small>
+                        <strong data-project-analysis-seo-modal-title>Producto</strong>
+                    </div>
+                    <button type="button" data-project-analysis-seo-modal-close aria-label="Cerrar">x</button>
+                </header>
+
+                <section class="project-analysis-seo-editor-score">
+                    <span>
+                        <small>Antes</small>
+                        <strong data-project-analysis-seo-before-score>--</strong>
+                    </span>
+                    <span>
+                        <small>Despues</small>
+                        <strong data-project-analysis-seo-after-score>--</strong>
+                    </span>
+                    <span>
+                        <small>Mejora</small>
+                        <strong data-project-analysis-seo-delta-score>--</strong>
+                    </span>
+                </section>
+
+                <div class="project-analysis-seo-editor-grid">
+                    <label>
+                        <span>Titulo del producto</span>
+                        <input name="title" type="text" maxlength="180" data-project-analysis-seo-field="title">
+                        <small data-project-analysis-seo-count="title"></small>
+                    </label>
+
+                    <label>
+                        <span>Slug URL</span>
+                        <input name="slug" type="text" maxlength="160" data-project-analysis-seo-field="slug">
+                        <small data-project-analysis-seo-count="slug"></small>
+                    </label>
+
+                    <label>
+                        <span>Meta titulo</span>
+                        <input name="metaTitle" type="text" maxlength="180" data-project-analysis-seo-field="metaTitle">
+                        <small data-project-analysis-seo-count="metaTitle"></small>
+                    </label>
+
+                    <label>
+                        <span>Palabra clave</span>
+                        <input name="focusKeyword" type="text" maxlength="120" data-project-analysis-seo-field="focusKeyword">
+                        <small data-project-analysis-seo-count="focusKeyword"></small>
+                    </label>
+
+                    <label class="is-wide">
+                        <span>Meta descripcion / extracto</span>
+                        <textarea name="shortDescription" maxlength="600" rows="4" data-project-analysis-seo-field="shortDescription"></textarea>
+                        <small data-project-analysis-seo-count="shortDescription"></small>
+                    </label>
+
+                    <label class="is-wide">
+                        <span>Contenido del producto</span>
+                        <textarea name="description" maxlength="6000" rows="7" data-project-analysis-seo-field="description"></textarea>
+                        <small data-project-analysis-seo-count="description"></small>
+                    </label>
+                </div>
+
+                <div class="project-analysis-seo-editor-issues" data-project-analysis-seo-editor-issues></div>
+
+                <footer>
+                    <a href="#" target="_blank" rel="noopener noreferrer" data-project-analysis-seo-editor-link>Ver en WordPress</a>
+                    <button type="submit" data-project-analysis-seo-save>Guardar en WordPress</button>
+                </footer>
+            </form>
         </section>
     </main>
 </template>

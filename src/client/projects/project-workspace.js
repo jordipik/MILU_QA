@@ -5,6 +5,7 @@ const TOKEN_KEY = 'milu:auth:token:v1';
 const PDFJS_URL = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js';
 const PDFJS_WORKER_URL = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
 const CHARTJS_URL = 'https://cdn.jsdelivr.net/npm/chart.js@4.4.7/dist/chart.umd.min.js';
+const ANIMEJS_URL = 'https://cdn.jsdelivr.net/npm/animejs@3.2.2/lib/anime.min.js';
 
 const TABLE_COLUMNS = [
     { key: 'page', label: 'Pagina', readonly: true },
@@ -25,6 +26,7 @@ const TABLE_COLUMNS = [
 let workspaceTemplatePromise = null;
 let pdfJsPromise = null;
 let chartJsPromise = null;
+let animeJsPromise = null;
 let activePdfDocument = null;
 let activePdfRenderTask = null;
 let activeWordPressConnection = null;
@@ -33,7 +35,31 @@ let activeWorkspaceProject = null;
 let activeWordPressAutoRun = null;
 let activeWordPressCustomers = [];
 let activeAnalysisSummary = null;
+let activeSeoAudit = null;
+let activeSeoEditorItem = null;
+let activeSeoUpdatedIds = new Set();
 let activeAnalysisCharts = {};
+let activeStartSplashCleanup = null;
+let activeInvoicePdfDocuments = new Map();
+let activeInvoicePdfFiles = new Map();
+let activeInvoiceExpandedIds = new Set();
+let activePdfRenderNonce = 0;
+let activePdfPageNumber = 1;
+
+function syncPdfPageNavigation(workspace, pageNumber = activePdfPageNumber) {
+    const navigation = workspace?.querySelector('[data-project-pdf-page-navigation]');
+    if (!navigation) return;
+    const total = Number(activePdfDocument?.numPages || 0);
+    const current = Math.max(1, Math.min(total || 1, Number(pageNumber || 1)));
+    activePdfPageNumber = current;
+    navigation.hidden = total <= 1;
+    const count = navigation.querySelector('[data-project-pdf-page-count]');
+    const previous = navigation.querySelector('[data-project-pdf-previous-page]');
+    const next = navigation.querySelector('[data-project-pdf-next-page]');
+    if (count) count.textContent = `${current} / ${Math.max(1, total)}`;
+    if (previous) previous.disabled = current <= 1;
+    if (next) next.disabled = !total || current >= total;
+}
 
 function apiUrl(pathname) {
     const pathnameCurrent = String(window.location.pathname || '/');
@@ -78,6 +104,7 @@ function hideMiluApplication() {
 }
 
 function showMiluApplication() {
+    stopSplashScene();
     document.body.classList.remove('project-shell-active');
     document.querySelectorAll('[data-project-workspace], [data-project-workspace-topbar]').forEach((node) => {
         node.remove();
@@ -146,8 +173,289 @@ async function fetchProjectJson(pathname, options = {}) {
     return data;
 }
 
+async function fetchProjectBlob(pathname, options = {}) {
+    const response = await fetch(apiUrl(pathname), {
+        ...options,
+        headers: {
+            'Content-Type': 'application/json',
+            ...authHeaders(),
+            ...(options.headers || {})
+        }
+    });
+
+    if (!response.ok) {
+        const data = await response.json().catch(() => ({}));
+        throw new Error(data.error || `HTTP ${response.status}`);
+    }
+
+    return {
+        blob: await response.blob(),
+        filename: getDownloadFilename(response.headers.get('Content-Disposition'))
+    };
+}
+
+function getDownloadFilename(contentDisposition) {
+    const header = String(contentDisposition || '');
+    const encoded = header.match(/filename\*=UTF-8''([^;]+)/i);
+    if (encoded) return decodeURIComponent(encoded[1]);
+    const quoted = header.match(/filename="([^"]+)"/i);
+    if (quoted) return quoted[1];
+    const plain = header.match(/filename=([^;]+)/i);
+    return plain ? plain[1].trim() : '';
+}
+
+function buildWorkspacePayload(workspaceState) {
+    const normalizedState = normalizeWorkspaceDocumentState(workspaceState);
+
+    return {
+        documentType: normalizedState.documentType || '',
+        documentKind: normalizedState.documentKind || '',
+        fileName: normalizedState.fileName || '',
+        pageCount: Number(normalizedState.pageCount || 0),
+        headerLabels: normalizedState.headerLabels || {},
+        columns: normalizedState.columns || [],
+        rows: normalizedState.rows || [],
+        preview: normalizedState.preview || null,
+        invoice: normalizedState.invoice || null,
+        invoices: Array.isArray(normalizedState.invoices) ? normalizedState.invoices : [],
+        activeInvoiceId: normalizedState.activeInvoiceId || '',
+        extractionReport: normalizedState.extractionReport || null,
+        updatedAt: normalizedState.updatedAt || ''
+    };
+}
+
+function toPdfFileName(fileName, fallback = 'documento.pdf') {
+    const value = safeText(fileName);
+    if (!value) return fallback;
+    if (/\.pdf$/i.test(value)) return value;
+    if (/\.[a-z0-9]+$/i.test(value)) return value.replace(/\.[a-z0-9]+$/i, '.pdf');
+    return `${value}.pdf`;
+}
+
+function normalizeInvoiceRecordForPdf(record) {
+    if (!record || typeof record !== 'object') return record;
+
+    const convertedPdfFileName = toPdfFileName(
+        record.convertedPdfFileName || record.pdfFileName || record.fileName || record.invoice?.fileName,
+        'factura.pdf'
+    );
+
+    return {
+        ...record,
+        fileName: convertedPdfFileName,
+        convertedPdfFileName,
+        documentKind: 'pdf',
+        preview: null,
+        invoice: record.invoice && typeof record.invoice === 'object'
+            ? {
+                ...record.invoice,
+                fileName: convertedPdfFileName
+            }
+            : record.invoice
+    };
+}
+
+function normalizeWorkspaceDocumentState(source) {
+    const state = {
+        ...(source || {})
+    };
+
+    if (state.documentType === 'invoices') {
+        const invoices = Array.isArray(state.invoices)
+            ? state.invoices.map((record) => normalizeInvoiceRecordForPdf(record))
+            : [];
+        const activeRecord = state.activeInvoiceId
+            ? invoices.find((record) => record.id === state.activeInvoiceId)
+            : null;
+        const fileName = activeRecord?.fileName
+            || toPdfFileName(state.convertedPdfFileName || state.fileName || state.invoice?.fileName, 'factura.pdf');
+
+        return {
+            ...state,
+            documentKind: 'pdf',
+            fileName,
+            preview: null,
+            invoices,
+            invoice: state.invoice && typeof state.invoice === 'object'
+                ? {
+                    ...state.invoice,
+                    fileName
+                }
+                : state.invoice
+        };
+    }
+
+    if (state.documentType === 'products' || state.documentType === 'product') {
+        return {
+            ...state,
+            documentType: 'products',
+            documentKind: 'pdf',
+            fileName: toPdfFileName(state.convertedPdfFileName || state.fileName, 'documento.pdf'),
+            preview: null
+        };
+    }
+
+    return state;
+}
+
+function getActiveInvoiceRecord(workspaceState) {
+    if (workspaceState?.documentType !== 'invoices' || !workspaceState.activeInvoiceId) return null;
+    const records = Array.isArray(workspaceState.invoices) ? workspaceState.invoices : [];
+    return records.find((record) => record.id === workspaceState.activeInvoiceId) || null;
+}
+
+function buildSavedWorkspacePayload(workspaceState) {
+    const payload = buildWorkspacePayload(workspaceState);
+    if (payload.documentType !== 'invoices') return payload;
+
+    const activeRecord = workspaceState.invoice ? getActiveInvoiceRecord(workspaceState) : null;
+    if (!activeRecord) {
+        return {
+            ...payload,
+            invoice: null,
+            activeInvoiceId: '',
+            rows: [],
+            columns: [],
+            headerLabels: {}
+        };
+    }
+
+    return {
+        ...payload,
+        fileName: activeRecord.fileName || payload.fileName,
+        pageCount: Number(activeRecord.pageCount || payload.pageCount || 0),
+        invoice: null,
+        invoices: [activeRecord],
+        activeInvoiceId: '',
+        rows: [],
+        columns: [],
+        headerLabels: {},
+        extractionReport: activeRecord.extractionReport || payload.extractionReport
+    };
+}
+
+function replaceWorkspaceState(target, source) {
+    const normalizedSource = normalizeWorkspaceDocumentState(source);
+    Object.keys(target).forEach((key) => {
+        delete target[key];
+    });
+    Object.assign(target, {
+        rows: [],
+        preview: null,
+        fileName: '',
+        pageCount: 0,
+        documentType: '',
+        documentKind: '',
+        headerLabels: {},
+        columns: [],
+        invoice: null,
+        invoices: [],
+        activeInvoiceId: '',
+        extractionReport: null,
+        ...(normalizedSource || {})
+    });
+}
+
+async function listSavedWorkspaces(project, documentType = '') {
+    const suffix = documentType ? `?type=${encodeURIComponent(documentType)}` : '';
+    const data = await fetchProjectJson(`/api/projects/${encodeURIComponent(project.id)}/saved-workspaces${suffix}`);
+    return Array.isArray(data.files) ? data.files : [];
+}
+
+async function saveSavedWorkspace(project, workspaceState, name) {
+    const savedWorkspace = buildSavedWorkspacePayload(workspaceState);
+    const payload = {
+        name,
+        workspace: savedWorkspace
+    };
+
+    const invoicePdfs = await buildInvoicePdfPayload(savedWorkspace);
+    if (invoicePdfs.length) {
+        payload.invoicePdfs = invoicePdfs;
+    }
+
+    const data = await fetchProjectJson(`/api/projects/${encodeURIComponent(project.id)}/saved-workspaces`, {
+        method: 'POST',
+        body: JSON.stringify(payload)
+    });
+
+    return data.file;
+}
+
+async function restoreSavedWorkspace(project, fileId) {
+    const data = await fetchProjectJson(`/api/projects/${encodeURIComponent(project.id)}/saved-workspaces/${encodeURIComponent(fileId)}/load`, {
+        method: 'POST',
+        body: '{}'
+    });
+
+    return data.workspace;
+}
+
 function safeText(value) {
     return String(value ?? '').replace(/\s+/g, ' ').trim();
+}
+
+function arrayBufferToBase64(buffer) {
+    const bytes = new Uint8Array(buffer || new ArrayBuffer(0));
+    const chunkSize = 0x8000;
+    let binary = '';
+
+    for (let index = 0; index < bytes.length; index += chunkSize) {
+        binary += String.fromCharCode(...bytes.subarray(index, index + chunkSize));
+    }
+
+    return btoa(binary);
+}
+
+function base64ToArrayBuffer(base64) {
+    const binary = atob(String(base64 || ''));
+    const bytes = new Uint8Array(binary.length);
+
+    for (let index = 0; index < binary.length; index += 1) {
+        bytes[index] = binary.charCodeAt(index);
+    }
+
+    return bytes.buffer;
+}
+
+async function buildInvoicePdfPayload(workspaceState) {
+    if (workspaceState?.documentType !== 'invoices') return [];
+
+    const records = Array.isArray(workspaceState.invoices) ? workspaceState.invoices : [];
+    const payload = [];
+
+    for (const record of records) {
+        let entry = activeInvoicePdfFiles.get(record.id);
+
+        if (!entry?.buffer && records.length === 1 && activeWorkspaceProject?.id) {
+            try {
+                const loaded = await loadProjectActivePdfDocument(activeWorkspaceProject);
+                const fileName = toPdfFileName(
+                    record.convertedPdfFileName || record.fileName || workspaceState.fileName || 'factura.pdf',
+                    'factura.pdf'
+                );
+
+                activeInvoicePdfDocuments.set(record.id, loaded.pdfDocument);
+                activeInvoicePdfFiles.set(record.id, {
+                    fileName,
+                    buffer: loaded.buffer.slice(0)
+                });
+                entry = activeInvoicePdfFiles.get(record.id);
+            } catch (error) {
+                console.warn('No se pudo adjuntar el PDF convertido al guardado:', error);
+            }
+        }
+
+        if (!entry?.buffer) continue;
+
+        payload.push({
+            id: record.id,
+            fileName: entry.fileName || record.fileName || 'factura.pdf',
+            data: arrayBufferToBase64(entry.buffer)
+        });
+    }
+
+    return payload;
 }
 
 function normalizePdfText(text) {
@@ -967,6 +1275,167 @@ async function ensureChartJs() {
     return chartJsPromise;
 }
 
+async function ensureAnimeJs() {
+    if (window.anime) return window.anime;
+
+    if (!animeJsPromise) {
+        animeJsPromise = new Promise((resolve, reject) => {
+            const script = document.createElement('script');
+            script.src = ANIMEJS_URL;
+            script.onload = () => resolve(window.anime);
+            script.onerror = () => reject(new Error('No se pudo cargar Anime.js'));
+            document.head.appendChild(script);
+        });
+    }
+
+    return animeJsPromise;
+}
+
+function drawStartCanvas(canvas) {
+    if (!canvas) return;
+
+    const context = canvas.getContext('2d');
+    if (!context) return;
+
+    let frameId = 0;
+    let width = 0;
+    let height = 0;
+    let dots = [];
+
+    const resize = () => {
+        const rect = canvas.getBoundingClientRect();
+        const ratio = Math.min(window.devicePixelRatio || 1, 2);
+        width = Math.max(1, Math.floor(rect.width));
+        height = Math.max(1, Math.floor(rect.height));
+        canvas.width = Math.floor(width * ratio);
+        canvas.height = Math.floor(height * ratio);
+        context.setTransform(ratio, 0, 0, ratio, 0, 0);
+        const count = Math.max(42, Math.min(92, Math.floor(width / 22)));
+        dots = Array.from({ length: count }, (_, index) => ({
+            x: Math.random() * width,
+            y: Math.random() * height,
+            radius: 1.1 + Math.random() * 2.4,
+            speed: 0.22 + Math.random() * 0.52,
+            phase: Math.random() * Math.PI * 2,
+            hue: index % 3
+        }));
+    };
+
+    const render = (time = 0) => {
+        context.clearRect(0, 0, width, height);
+        context.globalCompositeOperation = 'source-over';
+
+        dots.forEach((dot, index) => {
+            dot.x += dot.speed;
+            dot.y += Math.sin(time / 900 + dot.phase) * 0.12;
+            if (dot.x > width + 24) dot.x = -24;
+
+            for (let next = index + 1; next < dots.length; next += 1) {
+                const other = dots[next];
+                const distance = Math.hypot(dot.x - other.x, dot.y - other.y);
+                if (distance > 150) continue;
+                context.strokeStyle = `rgba(37, 99, 235, ${0.11 * (1 - distance / 150)})`;
+                context.lineWidth = 1;
+                context.beginPath();
+                context.moveTo(dot.x, dot.y);
+                context.lineTo(other.x, other.y);
+                context.stroke();
+            }
+
+            const colors = ['37, 99, 235', '6, 182, 212', '20, 184, 166'];
+            context.fillStyle = `rgba(${colors[dot.hue]}, 0.55)`;
+            context.beginPath();
+            context.arc(dot.x, dot.y, dot.radius, 0, Math.PI * 2);
+            context.fill();
+        });
+
+        frameId = window.requestAnimationFrame(render);
+    };
+
+    resize();
+    render();
+    window.addEventListener('resize', resize, { passive: true });
+
+    return () => {
+        window.cancelAnimationFrame(frameId);
+        window.removeEventListener('resize', resize);
+    };
+}
+
+function startSplashScene(workspace) {
+    const screen = workspace.querySelector('[data-project-start-screen]');
+    if (!screen || screen.hidden || screen.dataset.projectStartReady === 'true') return;
+    screen.dataset.projectStartReady = 'true';
+
+    const reduceMotion = window.matchMedia?.('(prefers-reduced-motion: reduce)').matches;
+    if (!reduceMotion) {
+        if (activeStartSplashCleanup) activeStartSplashCleanup();
+        activeStartSplashCleanup = drawStartCanvas(screen.querySelector('[data-project-start-canvas]')) || null;
+    }
+
+    ensureAnimeJs()
+        .then((anime) => {
+            if (!anime || reduceMotion) return;
+
+            anime({
+                targets: screen.querySelector('.project-start-card'),
+                opacity: [0, 1],
+                translateY: [34, 0],
+                scale: [0.94, 1],
+                duration: 900,
+                easing: 'easeOutExpo'
+            });
+
+            anime({
+                targets: screen.querySelectorAll('.project-start-panel, .project-start-flow, .project-start-glow'),
+                opacity: [0, 1],
+                translateY: (_, index) => [index % 2 ? -28 : 28, 0],
+                delay: anime.stagger(90),
+                duration: 1000,
+                easing: 'easeOutExpo'
+            });
+
+            anime({
+                targets: screen.querySelector('.project-start-orb'),
+                translateY: [-4, 7],
+                rotate: [-1.5, 1.5],
+                direction: 'alternate',
+                loop: true,
+                duration: 2600,
+                easing: 'easeInOutSine'
+            });
+
+            anime({
+                targets: screen.querySelectorAll('.project-start-panel-a, .project-start-panel-b'),
+                translateY: (_, index) => index ? [0, 18] : [0, -18],
+                rotate: (_, index) => index ? [8, 4] : [-8, -4],
+                direction: 'alternate',
+                loop: true,
+                duration: 5200,
+                easing: 'easeInOutSine'
+            });
+
+            anime({
+                targets: screen.querySelectorAll('.project-start-flow'),
+                scaleX: [0.72, 1.06],
+                opacity: [0.34, 0.78],
+                direction: 'alternate',
+                loop: true,
+                duration: 2400,
+                delay: anime.stagger(420),
+                easing: 'easeInOutSine'
+            });
+        })
+        .catch(() => {});
+}
+
+function stopSplashScene() {
+    if (activeStartSplashCleanup) {
+        activeStartSplashCleanup();
+        activeStartSplashCleanup = null;
+    }
+}
+
 function mergeDetectedColumns(currentColumns, newColumns) {
     const map = new Map();
 
@@ -1106,51 +1575,119 @@ async function parsePdfRows(file, onProgress) {
     };
 }
 
-function readLocalWorkspace(project) {
-    try {
-        const raw = localStorage.getItem(getProjectStorageKey(project));
-        if (!raw) return { rows: [], fileName: '', pageCount: 0, headerLabels: {}, columns: [] };
-        const parsed = JSON.parse(raw);
-        return {
-            rows: Array.isArray(parsed.rows) ? parsed.rows : [],
-            fileName: String(parsed.fileName || ''),
-            pageCount: Number(parsed.pageCount || 0),
-            headerLabels: parsed.headerLabels && typeof parsed.headerLabels === 'object' ? parsed.headerLabels : {},
-            columns: Array.isArray(parsed.columns) ? parsed.columns : []
-        };
-    } catch (_) {
-        return { rows: [], fileName: '', pageCount: 0, headerLabels: {}, columns: [] };
+function isPdfArrayBuffer(data) {
+    if (!data || !data.byteLength) return false;
+    const bytes = data instanceof Uint8Array
+        ? data
+        : new Uint8Array(data, 0, Math.min(5, data.byteLength));
+    return bytes.length >= 5
+        && bytes[0] === 0x25
+        && bytes[1] === 0x50
+        && bytes[2] === 0x44
+        && bytes[3] === 0x46
+        && bytes[4] === 0x2d;
+}
+
+async function loadPdfDocumentFromFile(file) {
+    const pdfjsLib = await ensurePdfJs();
+    const data = await file.arrayBuffer();
+    if (!isPdfArrayBuffer(data)) {
+        throw new Error(`El archivo "${file?.name || 'documento'}" no es un PDF real.`);
     }
+    return pdfjsLib.getDocument({ data: data.slice(0) }).promise;
+}
+
+async function loadProjectActivePdfDocument(project) {
+    const cacheKey = Date.now().toString(36);
+    const response = await fetch(apiUrl(`/api/projects/${encodeURIComponent(project.id)}/pdf?cache=${cacheKey}`), {
+        cache: 'no-store',
+        headers: {
+            'Cache-Control': 'no-cache',
+            ...authHeaders()
+        }
+    });
+
+    if (!response.ok) {
+        throw new Error(`HTTP ${response.status}`);
+    }
+
+    const data = await response.arrayBuffer();
+    if (!isPdfArrayBuffer(data)) {
+        throw new Error('El documento activo del proyecto no es un PDF convertido valido.');
+    }
+    const pdfjsLib = await ensurePdfJs();
+    const pdfDocument = await pdfjsLib.getDocument({ data: data.slice(0) }).promise;
+    return { pdfDocument, buffer: data };
+}
+
+const SUPPORTED_DOCUMENT_UPLOAD_PATTERN = /\.(pdf|xlsx|xls|csv|docx|doc)$/i;
+
+function getFileExtension(fileName) {
+    const match = String(fileName || '').toLowerCase().match(/\.([a-z0-9]+)$/);
+    return match ? match[1] : '';
+}
+
+function getUploadDocumentKind(file) {
+    const extension = getFileExtension(file?.name);
+    if (extension === 'pdf') return 'pdf';
+    if (['xlsx', 'xls', 'csv'].includes(extension)) return 'spreadsheet';
+    if (['docx', 'doc'].includes(extension)) return 'word';
+    return 'unknown';
+}
+
+function getUploadContentType(file) {
+    const extension = getFileExtension(file?.name);
+    if (extension === 'pdf') return file?.type || 'application/pdf';
+    if (extension === 'xlsx') return file?.type || 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet';
+    if (extension === 'xls') return file?.type || 'application/vnd.ms-excel';
+    if (extension === 'csv') return file?.type || 'text/csv';
+    if (extension === 'docx') return file?.type || 'application/vnd.openxmlformats-officedocument.wordprocessingml.document';
+    if (extension === 'doc') return file?.type || 'application/msword';
+    return file?.type || 'application/octet-stream';
+}
+
+function isPdfUpload(file) {
+    return getUploadDocumentKind(file) === 'pdf';
+}
+
+function readLocalWorkspace(project) {
+    return {
+        rows: [],
+        fileName: '',
+        pageCount: 0,
+        documentType: '',
+        documentKind: '',
+        headerLabels: {},
+        columns: [],
+        invoice: null,
+        invoices: [],
+        activeInvoiceId: '',
+        extractionReport: null,
+        updatedAt: ''
+    };
 }
 
 async function readSavedWorkspace(project) {
-    try {
-        const workspace = await fetchWorkspaceApi(project);
-        if (workspace && Array.isArray(workspace.rows)) {
-            localStorage.setItem(getProjectStorageKey(project), JSON.stringify(workspace));
-            return workspace;
-        }
-    } catch (_) {
-        // Si el backend no responde, usamos la ultima copia local.
-    }
-
     return readLocalWorkspace(project);
 }
 
 async function saveWorkspace(project, workspaceState) {
     const payload = {
+        documentType: workspaceState.documentType || '',
+        documentKind: workspaceState.documentKind || '',
         fileName: workspaceState.fileName || '',
         pageCount: Number(workspaceState.pageCount || 0),
         headerLabels: workspaceState.headerLabels || {},
         columns: workspaceState.columns || [],
         rows: workspaceState.rows || [],
+        invoice: workspaceState.invoice || null,
+        invoices: Array.isArray(workspaceState.invoices) ? workspaceState.invoices : [],
+        activeInvoiceId: workspaceState.activeInvoiceId || '',
+        extractionReport: workspaceState.extractionReport || null,
         updatedAt: new Date().toISOString()
     };
 
-    localStorage.setItem(getProjectStorageKey(project), JSON.stringify({
-        ...payload,
-        updatedAt: payload.updatedAt
-    }));
+    workspaceState.updatedAt = payload.updatedAt;
 
     try {
         await fetchWorkspaceApi(project, {
@@ -1162,12 +1699,34 @@ async function saveWorkspace(project, workspaceState) {
     }
 }
 
+function syncSaveFileButton(workspaceState) {
+    const button = document.querySelector('[data-project-save-file-button]');
+    if (!button) return;
+
+    const hasRows = Array.isArray(workspaceState?.rows) && workspaceState.rows.length;
+    const hasInvoice = Boolean(workspaceState?.documentType === 'invoices' && workspaceState?.invoice);
+    const hasInvoiceBatch = Boolean(
+        workspaceState?.documentType === 'invoices'
+        && Array.isArray(workspaceState?.invoices)
+        && workspaceState.invoices.length
+    );
+    const hasInvoiceBatchPdf = hasInvoiceBatch && activeInvoicePdfDocuments.size > 0;
+    const ready = Boolean(
+        (activePdfDocument || hasInvoiceBatchPdf)
+        && workspaceState?.fileName
+        && (hasRows || hasInvoice || hasInvoiceBatch)
+    );
+
+    button.hidden = !ready;
+    button.disabled = !ready;
+}
+
 async function saveProjectPdf(project, file) {
     const response = await fetch(apiUrl(`/api/projects/${encodeURIComponent(project.id)}/pdf`), {
         method: 'PUT',
         headers: {
-            'Content-Type': 'application/pdf',
-            'X-File-Name': encodeURIComponent(file.name || 'documento.pdf'),
+            'Content-Type': getUploadContentType(file),
+            'X-File-Name': encodeURIComponent(file.name || 'documento'),
             ...authHeaders()
         },
         body: file
@@ -1181,6 +1740,719 @@ async function saveProjectPdf(project, file) {
     return data.pdf;
 }
 
+async function extractProjectPdfWithBackend(project) {
+    const data = await fetchProjectJson(`/api/projects/${encodeURIComponent(project.id)}/pdf/extract`, {
+        method: 'POST',
+        body: '{}'
+    });
+
+    const workspace = data.extractor?.workspace || {};
+    const report = data.extractor?.report || null;
+    const rows = Array.isArray(workspace.rows) ? workspace.rows : [];
+    const convertedDocument = data.convertedDocument || null;
+    const resolvedFileName = toPdfFileName(
+        convertedDocument?.fileName || workspace.convertedPdfFileName || workspace.fileName || 'documento.pdf',
+        'documento.pdf'
+    );
+
+    return {
+        fileName: resolvedFileName,
+        pageCount: Number(workspace.pageCount || 0),
+        documentKind: 'pdf',
+        headerLabels: workspace.headerLabels && typeof workspace.headerLabels === 'object' ? workspace.headerLabels : {},
+        columns: Array.isArray(workspace.columns) ? workspace.columns : [],
+        rows,
+        extractionReport: report,
+        convertedDocument
+    };
+}
+
+async function extractProjectInvoiceWithBackend(project) {
+    const data = await fetchProjectJson(`/api/projects/${encodeURIComponent(project.id)}/pdf/extract-invoice`, {
+        method: 'POST',
+        body: '{}'
+    });
+
+    const workspace = data.extractor?.workspace || {};
+    const report = data.extractor?.report || null;
+    const convertedDocument = data.convertedDocument || null;
+    const resolvedFileName = toPdfFileName(
+        convertedDocument?.fileName || workspace.convertedPdfFileName || workspace.fileName || 'factura.pdf',
+        'factura.pdf'
+    );
+
+    return {
+        fileName: resolvedFileName,
+        pageCount: Number(workspace.pageCount || 0),
+        documentKind: 'pdf',
+        headerLabels: workspace.headerLabels && typeof workspace.headerLabels === 'object' ? workspace.headerLabels : {},
+        columns: Array.isArray(workspace.columns) ? workspace.columns : [],
+        rows: Array.isArray(workspace.rows) ? workspace.rows : [],
+        invoice: workspace.invoice || null,
+        preview: null,
+        extractionReport: report,
+        convertedDocument
+    };
+}
+
+const INVOICE_TABLE_COLUMNS = [
+    { key: 'code', label: 'Codigo', dynamic: true },
+    { key: 'description', label: 'Descripcion', dynamic: true },
+    { key: 'quantity', label: 'Cantidad', dynamic: true },
+    { key: 'unit', label: 'Unidad', dynamic: true },
+    { key: 'unitPrice', label: 'Precio ud.', dynamic: true },
+    { key: 'discount', label: 'Descuento', dynamic: true },
+    { key: 'taxRate', label: 'IVA %', dynamic: true },
+    { key: 'total', label: 'Total', dynamic: true }
+];
+
+const INVOICE_HEADER_LABELS = {
+    code: 'Codigo',
+    description: 'Descripcion',
+    quantity: 'Cantidad',
+    unit: 'Unidad',
+    unitPrice: 'Precio ud.',
+    discount: 'Descuento',
+    taxRate: 'IVA %',
+    total: 'Total'
+};
+
+function buildInvoiceRows(invoice) {
+    const invoiceLines = Array.isArray(invoice?.lineItems) ? invoice.lineItems : [];
+    return invoiceLines.map((item, index) => ({
+        id: item.id || `invoice-line-${index + 1}`,
+        page: item.sourceBox?.page || '',
+        cells: {
+            code: item.code || '',
+            description: item.description || '',
+            quantity: item.quantity ?? '',
+            unit: item.unit ?? '',
+            unitPrice: item.unitPrice ?? '',
+            discount: item.discount ?? '',
+            taxRate: item.taxRate ?? '',
+            total: item.total ?? ''
+        },
+        geometry: item.sourceBox ? {
+            page: item.sourceBox.page || 1,
+            y1: item.sourceBox.y1,
+            y2: item.sourceBox.y2,
+            pageHeight: item.sourceBox.pageHeight
+        } : null,
+        status: 'Pendiente'
+    }));
+}
+
+function buildInvoiceFromDocumentRows(result, file) {
+    const columns = Array.isArray(result?.columns) ? result.columns : [];
+    const rows = Array.isArray(result?.rows) ? result.rows : [];
+    const lineItems = rows.map((row, index) => {
+        const cells = row?.cells && typeof row.cells === 'object' ? row.cells : {};
+        const values = columns
+            .map((column) => safeText(cells[column.key]))
+            .filter(Boolean);
+        return {
+            id: row?.id || `document-line-${index + 1}`,
+            description: values.join(' | ') || `Linea ${index + 1}`,
+            code: safeText(cells.code || cells.article || cells.sku || cells.referencia),
+            quantity: safeText(cells.quantity || cells.qty || cells.cantidad),
+            unit: safeText(cells.unit || cells.um || cells.unidad),
+            unitPrice: safeText(cells.unitPrice || cells.price || cells.precio),
+            discount: safeText(cells.discount || cells.descuento || cells.dte),
+            taxRate: safeText(cells.taxRate || cells.iva || cells.vat || cells.tax),
+            total: safeText(cells.total || cells.importe),
+            sourceBox: null
+        };
+    });
+
+    return {
+        type: 'Documento importado',
+        fileName: result?.fileName || file?.name || '',
+        invoiceNumber: '',
+        detectedFields: rows.length,
+        fields: [],
+        amounts: {},
+        payment: {},
+        supplier: {},
+        customer: {},
+        lineItems,
+        language: null
+    };
+}
+
+function parseLooseInvoiceAmount(value) {
+    const text = safeText(value);
+    const matches = text.match(/[-+]?\d{1,3}(?:[.\s]\d{3})*(?:[,.]\d+)|[-+]?\d+(?:[,.]\d+)?/g);
+    if (!matches?.length) return null;
+    const raw = matches[matches.length - 1].replace(/\s/g, '');
+    const normalized = raw.includes(',') && raw.lastIndexOf(',') > raw.lastIndexOf('.')
+        ? raw.replace(/\./g, '').replace(',', '.')
+        : raw.replace(/,/g, '');
+    const number = Number(normalized);
+    return Number.isFinite(number) ? number : null;
+}
+
+function detectLooseInvoiceCurrency(text) {
+    if (/\bUSD\b|\$/i.test(text)) return 'USD';
+    if (/\bGBP\b|\u00a3/i.test(text)) return 'GBP';
+    if (/\bCNY\b|\bRMB\b|\u00a5|\u7f8e\u5143|\u4eba\u6c11\u5e01/i.test(text)) return 'CNY';
+    if (/\bEUR\b|\u20ac/i.test(text)) return 'EUR';
+    return '';
+}
+
+function extractLooseInvoiceDate(text) {
+    if (/[$\u20ac\u00a3\u00a5]|eur|usd|gbp|cny/i.test(text)) return '';
+    const match = safeText(text).match(/\b(\d{1,2}[./-]\d{1,2}[./-]\d{2,4}|\d{4}[./-]\d{1,2}[./-]\d{1,2})\b/);
+    return match ? match[1].replace(/\./g, '-') : '';
+}
+
+function getInvoiceRecordDocumentKind(record) {
+    if (record?.id && activeInvoicePdfDocuments.has(record.id)) return 'pdf';
+    if (record?.id && activeInvoicePdfFiles.has(record.id)) return 'pdf';
+
+    const explicitKind = safeText(record?.documentKind).toLowerCase();
+    const pdfName = safeText(record?.convertedPdfFileName || record?.pdfFileName || record?.fileName || record?.invoice?.fileName).toLowerCase();
+    if (explicitKind === 'pdf' || /\.pdf(?:$|\?)/.test(pdfName)) return 'pdf';
+
+    return 'pdf';
+}
+
+async function cacheProjectActivePdfForInvoiceRecord(project, record) {
+    const loadedPdf = await loadProjectActivePdfDocument(project);
+
+    if (record?.id) {
+        activeInvoicePdfDocuments.set(record.id, loadedPdf.pdfDocument);
+        activeInvoicePdfFiles.set(record.id, {
+            fileName: record.convertedPdfFileName || record.fileName || record.invoice?.fileName || 'factura.pdf',
+            buffer: loadedPdf.buffer.slice(0)
+        });
+    }
+
+    return loadedPdf.pdfDocument;
+}
+
+async function ensureInvoiceRecordPdfDocument(project, workspaceState, record) {
+    if (!record?.id) return null;
+
+    const cachedDocument = activeInvoicePdfDocuments.get(record.id);
+    if (cachedDocument) return cachedDocument;
+
+    const cachedFile = activeInvoicePdfFiles.get(record.id);
+    if (cachedFile?.buffer) {
+        const pdfjsLib = await ensurePdfJs();
+        const pdfDocument = await pdfjsLib.getDocument({ data: cachedFile.buffer.slice(0) }).promise;
+        activeInvoicePdfDocuments.set(record.id, pdfDocument);
+        return pdfDocument;
+    }
+
+    const records = Array.isArray(workspaceState?.invoices) ? workspaceState.invoices : [];
+    if (records.length > 1) return null;
+
+    try {
+        return await cacheProjectActivePdfForInvoiceRecord(project, record);
+    } catch (error) {
+        console.warn('No se pudo cargar el PDF de la factura:', error);
+        return null;
+    }
+}
+
+function enhanceImportedInvoice(invoice) {
+    const source = invoice && typeof invoice === 'object' ? invoice : {};
+    const lineItems = Array.isArray(source.lineItems) ? source.lineItems : [];
+    const rawText = [
+        source.fileName,
+        source.invoiceNumber,
+        ...(Array.isArray(source.fields) ? source.fields.map((field) => `${field?.label || ''} ${field?.value || ''}`) : []),
+        ...lineItems.map((line) => [line.description, line.quantity, line.unitPrice, line.total].map(safeText).filter(Boolean).join(' | '))
+    ].join('\n');
+    const rawLines = rawText.split(/\n/).map(safeText).filter(Boolean);
+    const currency = source.currency || detectLooseInvoiceCurrency(rawText) || 'EUR';
+    const fields = Array.isArray(source.fields) ? [...source.fields] : [];
+    const amounts = { ...(source.amounts || {}) };
+    const payment = { ...(source.payment || {}) };
+    const supplier = { ...(source.supplier || {}) };
+    const customer = { ...(source.customer || {}) };
+
+    const findLineBy = (regex) => rawLines.find((entry) => regex.test(entry)) || '';
+    const findValueAfterLabel = (regex) => {
+        for (const line of rawLines) {
+            const parts = line.split(/\s*\|\s*/).map(safeText).filter(Boolean);
+            const index = parts.findIndex((part) => regex.test(part));
+            if (index < 0) continue;
+
+            const sameCell = parts[index].match(/[:\uff1a]\s*(.+)$/);
+            if (sameCell?.[1]) return safeText(sameCell[1]);
+
+            for (let next = index + 1; next < parts.length; next += 1) {
+                const value = safeText(parts[next]);
+                if (value && !regex.test(value)) return value;
+            }
+        }
+
+        return '';
+    };
+
+    const assignAmount = (key, regex) => {
+        if (amounts[key] != null) return;
+        const line = findValueAfterLabel(regex) || findLineBy(regex);
+        const parsed = parseLooseInvoiceAmount(line || '');
+        if (parsed != null) amounts[key] = parsed;
+    };
+
+    assignAmount('subtotal', /subtotal|base\s*imponible|netto|\u672a\u7a0e|\u5c0f\u8ba1/i);
+    assignAmount('tax', /iva|vat|tax|impuesto|mwst|\u7a0e|\u589e\u503c\u7a0e/i);
+    assignAmount('total', /grand\s*total|^total\b|gesamtbetrag|amount\s*due|pendiente|\u5408\u8ba1|\u603b\u8ba1|\u5e94\u4ed8/i);
+
+    const numericTotal = Number(amounts.total);
+    const numericTax = Number(amounts.tax);
+    const hasExplicitTaxAmount = fields.some((field) => {
+        const section = safeText(field?.section).toLowerCase();
+        const label = safeText(field?.label).toLowerCase();
+        if (!/importe|amount/.test(section)) return false;
+        if (/nif|cif|tax\s*id|vat\s*(id|number|no)/.test(label)) return false;
+        return /iva|vat|tax|impuesto/.test(label) && parseLooseInvoiceAmount(field?.value) != null;
+    });
+    if (
+        !hasExplicitTaxAmount
+        || !Number.isFinite(numericTax)
+        || numericTax < 0
+        || numericTax > 10000000
+        || (Number.isFinite(numericTotal) && numericTotal >= 0 && numericTax > numericTotal * 2)
+    ) {
+        amounts.tax = 0;
+    }
+
+    if (!payment.iban) {
+        const iban = rawText.match(/\b[A-Z]{2}\d{2}(?:\s?[A-Z0-9]){8,34}\b/i);
+        if (iban) payment.iban = iban[0].replace(/\s+/g, '').toUpperCase();
+    }
+
+    if (!supplier.email && !customer.email) {
+        const email = rawText.match(/[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}/i)?.[0] || '';
+        if (email) supplier.email = email;
+    }
+
+    if (!supplier.name) {
+        supplier.name = findValueAfterLabel(/supplier|vendor|proveedor|emisor|razon\s*social|raz\u00f3n\s*social|company|empresa|lieferant|\u4f9b\u5e94\u5546|\u516c\u53f8/i);
+    }
+
+    if (!customer.name) {
+        customer.name = findValueAfterLabel(/customer|client|cliente|bill\s*to|receptor|kunde|\u5ba2\u6237/i);
+    }
+
+    const labeledNumber = findValueAfterLabel(/invoice\s*(no|number|num)?|factura|numero\s*de\s*factura|n\u00famero\s*de\s*factura|num\.?\s*factura|rechnung|rechnungsnummer|\u53d1\u7968|\u7f16\u53f7|\u53f7\u7801/i);
+    const invoiceNumber = source.invoiceNumber || labeledNumber || rawText.match(/(?:INV|F|US|RE)[-\s]?[A-Z0-9]{2,}|\b\d{4,}\b/i)?.[0] || '';
+    const date = source.date
+        || extractLooseInvoiceDate(findValueAfterLabel(/invoice\s*date|^date$|fecha|rechnungsdatum|datum|\u65e5\u671f|\u5f00\u7968\u65e5\u671f/i))
+        || extractLooseInvoiceDate(findLineBy(/date|fecha|datum|\u65e5\u671f/i));
+    const dueDate = source.dueDate
+        || extractLooseInvoiceDate(findValueAfterLabel(/due|vence|vencimiento|faellig|f\u00e4llig|zahlungsziel|\u5230\u671f|\u622a\u6b62/i))
+        || extractLooseInvoiceDate(findLineBy(/due|vence|vencimiento|faellig|f\u00e4llig|\u5230\u671f/i));
+    const isInvoiceLineDescriptionBlocked = (description) => {
+        const value = safeText(description);
+        if (!value || value === '-' || /^\s*0\s*$/.test(value)) return true;
+        const normalized = value
+            .normalize('NFD')
+            .replace(/[\u0300-\u036f]/g, '')
+            .toLowerCase()
+            .trim();
+        if (/^(subtotal|total|grand total|base imponible|iva|vat|tax|impuestos?|iban|payment|forma de pago|vencimiento|due|observaciones?|notes?)\b/.test(normalized)) return true;
+        if (/^(gross\s*wgt|net\s*wgt|expiry|non\s*imp\.?art|invoicing\s*policy|rolls\s*nr)\b/.test(normalized)) return true;
+        return !/[a-z\u00c0-\u024f\u4e00-\u9fff]{2,}/i.test(value);
+    };
+    const isInvoiceQuantityValue = (value) => {
+        const text = safeText(value);
+        if (!text || extractLooseInvoiceDate(text)) return false;
+        if (/[$\u20ac\u00a3\u00a5]|eur|usd|gbp|cny|rmb/i.test(text)) return false;
+        return /^\d+(?:[,.]\d+)?$/.test(text) && Number.isFinite(Number(text.replace(',', '.')));
+    };
+    const isInvoiceAmountValue = (value) => {
+        const text = safeText(value);
+        if (!text || extractLooseInvoiceDate(text)) return false;
+        const parsed = parseLooseInvoiceAmount(text);
+        return parsed != null && Number.isFinite(parsed) && parsed >= 0;
+    };
+    const isValidInvoiceLine = (item) => (
+        !isInvoiceLineDescriptionBlocked(item?.description)
+        && (
+            isInvoiceAmountValue(item?.unitPrice)
+            || isInvoiceAmountValue(item?.total)
+            || (isInvoiceQuantityValue(item?.quantity) && Boolean(item?.sourceBox))
+        )
+    );
+
+    let enhancedLines = lineItems.map((item, index) => {
+        const parts = safeText(item.description).split(/\s*\|\s*/).filter(Boolean);
+        if (parts.length < 3) return item;
+        const quantityIndex = parts.findIndex((part) => /^\d+(?:[,.]\d+)?$/.test(part));
+        const moneyIndexes = parts
+            .map((part, partIndex) => ({ part, partIndex }))
+            .filter(({ part, partIndex }) => partIndex !== quantityIndex && parseLooseInvoiceAmount(part) != null)
+            .map(({ partIndex }) => partIndex);
+        const descriptionIndex = parts.findIndex((part, partIndex) => (
+            partIndex !== quantityIndex
+            && !moneyIndexes.includes(partIndex)
+            && /[A-Za-z\u00c0-\u024f\u4e00-\u9fff]/.test(part)
+            && !isInvoiceLineDescriptionBlocked(part)
+        ));
+        if (descriptionIndex < 0) return item;
+        return {
+            ...item,
+            id: item.id || `invoice-line-${index + 1}`,
+            description: parts[descriptionIndex],
+            quantity: item.quantity || (quantityIndex >= 0 ? parts[quantityIndex] : ''),
+            unitPrice: item.unitPrice || (moneyIndexes.length > 1 ? parts[moneyIndexes[moneyIndexes.length - 2]] : ''),
+            total: item.total || (moneyIndexes.length ? parts[moneyIndexes[moneyIndexes.length - 1]] : '')
+        };
+    }).filter(isValidInvoiceLine).filter((item, index, items) => {
+        const signature = [item.description, item.quantity, item.unit, item.unitPrice, item.total]
+            .map(safeText)
+            .join('|')
+            .normalize('NFD')
+            .replace(/[\u0300-\u036f]/g, '')
+            .toLowerCase()
+            .replace(/[^a-z0-9|]+/g, '');
+        return items.findIndex((candidate) => [candidate.description, candidate.quantity, candidate.unit, candidate.unitPrice, candidate.total]
+            .map(safeText)
+            .join('|')
+            .normalize('NFD')
+            .replace(/[\u0300-\u036f]/g, '')
+            .toLowerCase()
+            .replace(/[^a-z0-9|]+/g, '') === signature) === index;
+    });
+
+    if (!enhancedLines.length) {
+        const goodsFields = fields.filter((field) => (
+            /mercancia|goods|items?|lineas?/i.test(safeText(field?.section))
+            && /descripcion|description|concepto|producto|article|item/i.test(safeText(field?.label))
+            && !isInvoiceLineDescriptionBlocked(field?.value)
+        ));
+        const descriptions = goodsFields
+            .flatMap((field) => safeText(field.value).split(/\s*;\s*/))
+            .map(safeText)
+            .filter((value, index, values) => value && values.indexOf(value) === index);
+        if (descriptions.length === 1) {
+            const explicitPriceField = fields.find((field) => (
+                /mercancia|goods|items?|lineas?/i.test(safeText(field?.section))
+                && /precio|price|importe|amount/i.test(safeText(field?.label))
+                && isInvoiceAmountValue(field?.value)
+            ));
+            const fallbackPrice = explicitPriceField?.value ?? amounts.subtotal ?? amounts.total;
+            if (isInvoiceAmountValue(fallbackPrice)) {
+                const parsedPrice = parseLooseInvoiceAmount(fallbackPrice);
+                enhancedLines = [{
+                    id: 'invoice-line-recovered-1',
+                    description: descriptions[0],
+                    quantity: '',
+                    unit: '',
+                    unitPrice: parsedPrice,
+                    total: parsedPrice,
+                    sourceBox: goodsFields[0]?.sourceBox || null
+                }];
+            }
+        }
+    }
+
+    return {
+        ...source,
+        invoiceNumber,
+        date,
+        dueDate,
+        currency,
+        language: source.language || source.detectedLanguage || '',
+        detectedLanguage: source.detectedLanguage || source.language || '',
+        amounts,
+        payment,
+        supplier,
+        customer,
+        fields,
+        lineItems: enhancedLines,
+        detectedFields: fields.length || source.detectedFields || 0
+    };
+}
+
+function getInvoiceRecordId(file, index) {
+    const base = safeText(file?.webkitRelativePath || file?.name || `factura-${index + 1}`);
+    return `invoice-${Date.now()}-${index + 1}-${base.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '').slice(0, 80)}`;
+}
+
+function getInvoiceDisplayParty(invoice, key) {
+    const party = invoice?.[key] && typeof invoice[key] === 'object' ? invoice[key] : {};
+    return safeText(party.name || party.email || party.taxId || party.address);
+}
+
+function getInvoiceLanguageLabel(language) {
+    if (typeof language === 'string') return safeText(language) || '-';
+    const data = language && typeof language === 'object' ? language : {};
+    const name = safeText(data.name || data.label || '');
+    const code = safeText(data.code || '').toUpperCase();
+    if (name && code && name.toUpperCase() !== code) return `${name} (${code})`;
+    return name || code || '-';
+}
+
+function getInvoiceRecordSummary(record) {
+    const invoice = enhanceImportedInvoice(record?.invoice || {});
+    if (record && record.invoice !== invoice) record.invoice = invoice;
+    const currency = invoice.currency || 'EUR';
+    const amounts = invoice.amounts || {};
+    const payment = invoice.payment || {};
+    const detectedIban = Array.isArray(invoice.fields)
+        ? invoice.fields.find((field) => /iban/i.test(`${field?.label || ''} ${field?.key || ''}`))?.value
+        : '';
+    const subtotal = amounts.subtotal == null ? '' : formatInvoiceAmount(amounts.subtotal, currency);
+    const taxes = amounts.tax == null ? '' : formatInvoiceAmount(amounts.tax, currency);
+    const total = amounts.total == null ? '' : formatInvoiceAmount(amounts.total, currency);
+    return {
+        fileName: record?.fileName || invoice.fileName || 'Factura',
+        invoiceNumber: invoice.invoiceNumber || '-',
+        date: invoice.date || '-',
+        dueDate: invoice.dueDate || '',
+        supplier: getInvoiceDisplayParty(invoice, 'supplier') || '-',
+        customer: getInvoiceDisplayParty(invoice, 'customer') || '-',
+        subtotal,
+        taxes,
+        total: total || '-',
+        language: getInvoiceLanguageLabel(invoice.language),
+        paymentMethod: safeText(payment.method || ''),
+        iban: safeText(payment.iban || detectedIban || ''),
+        fields: Number(invoice.detectedFields || invoice.fields?.length || 0),
+        lines: Number(invoice.lineItems?.length || 0)
+    };
+}
+
+async function importInvoiceFiles(project, workspace, workspaceState, files, onStatus, options = {}) {
+    const documentFiles = [...files].filter((file) => SUPPORTED_DOCUMENT_UPLOAD_PATTERN.test(file.name || ''));
+    if (!documentFiles.length) {
+        throw new Error('No se encontraron archivos compatibles en la seleccion.');
+    }
+
+    const shouldAppend = Boolean(options.append && workspaceState.documentType === 'invoices');
+    const existingRecords = shouldAppend && Array.isArray(workspaceState.invoices)
+        ? [...workspaceState.invoices]
+        : [];
+    const records = [...existingRecords];
+    const previousReport = shouldAppend && workspaceState.extractionReport
+        ? workspaceState.extractionReport
+        : null;
+
+    if (!shouldAppend) {
+        activeInvoicePdfDocuments = new Map();
+        activeInvoicePdfFiles = new Map();
+    }
+
+    activeInvoiceExpandedIds = new Set();
+    const reports = [];
+    let totalPages = existingRecords.reduce((sum, record) => sum + Number(record?.pageCount || 0), 0);
+    let totalLines = existingRecords.reduce((sum, record) => {
+        if (Array.isArray(record?.rows)) return sum + record.rows.length;
+        if (Array.isArray(record?.invoice?.lineItems)) return sum + record.invoice.lineItems.length;
+        return sum;
+    }, 0);
+
+    for (const [index, file] of documentFiles.entries()) {
+        const actionLabel = shouldAppend ? 'Anadiendo' : 'Analizando';
+        onStatus?.(`${actionLabel} factura ${index + 1} de ${documentFiles.length}: ${file.name}`);
+        const isPdf = isPdfUpload(file);
+        let pdfBuffer = null;
+        let pdfDocument = null;
+        activePdfDocument = null;
+        await saveProjectPdf(project, file);
+        const invoiceResult = await extractProjectInvoiceWithBackend(project);
+
+        console.log('[FACTURA RESULTADO]', {
+            convertedDocument: invoiceResult?.convertedDocument,
+            hasData: Boolean(invoiceResult?.convertedDocument?.data),
+            dataLength: invoiceResult?.convertedDocument?.data?.length || 0,
+            fileName: invoiceResult?.convertedDocument?.fileName
+        });
+
+        const convertedDocument = invoiceResult.convertedDocument || null;
+        const resolvedPdfFileName = toPdfFileName(
+            convertedDocument?.fileName || invoiceResult.convertedPdfFileName || invoiceResult.fileName || file.name,
+            'factura.pdf'
+        );
+
+        try {
+            const convertedPdfBase64 =
+                invoiceResult?.convertedDocument?.data || '';
+
+            if (convertedPdfBase64) {
+                pdfBuffer = base64ToArrayBuffer(convertedPdfBase64);
+
+                if (!isPdfArrayBuffer(pdfBuffer)) {
+                    throw new Error(
+                        'El documento convertido recibido no es un PDF válido.'
+                    );
+                }
+
+                const pdfjsLib = await ensurePdfJs();
+
+                pdfDocument = await pdfjsLib
+                    .getDocument({
+                        data: pdfBuffer.slice(0)
+                    })
+                    .promise;
+            } else {
+                /*
+                * Compatibilidad con PDFs subidos directamente o con respuestas
+                * antiguas del backend.
+                */
+                const convertedPdf =
+                    await loadProjectActivePdfDocument(project);
+
+                pdfDocument = convertedPdf.pdfDocument;
+                pdfBuffer = convertedPdf.buffer;
+            }
+        } catch (error) {
+            if (!isPdf) {
+                console.warn(
+                    'No se pudo cargar el PDF convertido para el visor:',
+                    error
+                );
+            } else {
+                console.warn(
+                    'No se pudo cargar el PDF activo. Usando el PDF subido:',
+                    error
+                );
+
+                pdfBuffer = await file.arrayBuffer();
+                pdfDocument = await loadPdfDocumentFromFile(file);
+            }
+
+            if (!isPdf) {
+                console.warn('No se pudo cargar el PDF convertido para el visor:', error);
+            } else {
+                console.warn('No se pudo cargar el PDF activo del proyecto. Usando el PDF subido:', error);
+                pdfBuffer = await file.arrayBuffer();
+                pdfDocument = await loadPdfDocumentFromFile(file);
+            }
+        }
+
+        if (!pdfDocument || !pdfBuffer) {
+            throw new Error(`No se pudo convertir "${file.name}" a PDF para usar el extractor de facturas.`);
+        }
+
+        const invoice = enhanceImportedInvoice(invoiceResult.invoice || buildInvoiceFromDocumentRows(invoiceResult, file));
+        const rows = buildInvoiceRows(invoice);
+        const recordId = getInvoiceRecordId(file, records.length + index);
+
+        activeInvoicePdfDocuments.set(recordId, pdfDocument);
+        activeInvoicePdfFiles.set(recordId, {
+            fileName: resolvedPdfFileName,
+            buffer: pdfBuffer.slice(0)
+        });
+        const recordDocumentKind = 'pdf';
+        const recordFileName = resolvedPdfFileName;
+        totalPages += Number(invoiceResult.pageCount || pdfDocument?.numPages || 0);
+        totalLines += rows.length;
+        if (invoiceResult.extractionReport) reports.push(invoiceResult.extractionReport);
+
+        records.push({
+            id: recordId,
+            fileName: recordFileName,
+            originalFileName: file.name,
+            convertedPdfFileName: recordFileName,
+            relativePath: recordFileName,
+            originalPath: file.webkitRelativePath || file.name,
+            documentKind: recordDocumentKind,
+            pageCount: Number(invoiceResult.pageCount || pdfDocument?.numPages || 0),
+            invoice,
+            preview: null,
+            rows,
+            columns: INVOICE_TABLE_COLUMNS,
+            headerLabels: INVOICE_HEADER_LABELS,
+            extractionReport: invoiceResult.extractionReport || null
+        });
+    }
+
+    const allReports = records.map((record) => record?.extractionReport).filter(Boolean);
+    const avgPrecision = allReports.length
+        ? allReports.reduce((sum, report) => sum + Number(report?.precision || 0), 0) / allReports.length
+        : 0;
+    const previousProblems = Array.isArray(previousReport?.problems) ? previousReport.problems : [];
+    const previousEngines = Array.isArray(previousReport?.engines) ? previousReport.engines : [];
+    const processMs = Number(previousReport?.processMs || 0)
+        + reports.reduce((sum, report) => sum + Number(report?.processMs || 0), 0);
+
+    workspaceState.documentType = 'invoices';
+    workspaceState.documentKind = 'pdf';
+    workspaceState.preview = null;
+    workspaceState.fileName = `${records.length} facturas importadas`;
+    workspaceState.pageCount = totalPages;
+    workspaceState.headerLabels = {};
+    workspaceState.columns = [];
+    workspaceState.rows = [];
+    workspaceState.invoice = null;
+    workspaceState.invoices = records;
+    workspaceState.activeInvoiceId = '';
+    workspaceState.extractionReport = {
+        selectedEngine: 'invoice-batch',
+        tablesDetected: records.length,
+        rowsExtracted: totalLines,
+        precision: avgPrecision,
+        processMs: processMs || null,
+        problems: [
+            ...previousProblems,
+            ...reports.flatMap((report) => Array.isArray(report?.problems) ? report.problems : [])
+        ],
+        engines: [
+            ...previousEngines,
+            ...reports.flatMap((report) => Array.isArray(report?.engines) ? report.engines : [])
+        ]
+    };
+
+    activePdfDocument = null;
+    await saveWorkspace(project, workspaceState);
+    renderWorkspace(workspace, project, workspaceState);
+    syncWordPressUi(workspace, workspaceState);
+    onStatus?.(shouldAppend
+        ? `${documentFiles.length} facturas anadidas. Total: ${records.length}.`
+        : `${records.length} facturas analizadas. Selecciona una para revisar sus campos y marcas.`);
+}
+
+function samePdfFileName(left, right) {
+    return safeText(left).toLowerCase() === safeText(right).toLowerCase();
+}
+
+async function loadMatchingSavedWorkspacePdf(project, workspace, workspaceState) {
+    const expectedFileName = String(workspaceState.fileName || '').trim();
+    if (!expectedFileName) return false;
+
+    if (workspaceState.documentType !== 'invoices') {
+        clearInvoiceViewerState(workspace);
+    }
+
+    const rowCount = Number((workspaceState.rows || []).length);
+    const files = await listSavedWorkspaces(project);
+    const match = files.find((file) => samePdfFileName(file.fileName, expectedFileName) && Number(file.rows || 0) === rowCount)
+        || files.find((file) => samePdfFileName(file.fileName, expectedFileName));
+    if (!match) return false;
+
+    const response = await fetch(apiUrl(`/api/projects/${encodeURIComponent(project.id)}/saved-workspaces/${encodeURIComponent(match.id)}/pdf`), {
+        headers: authHeaders()
+    });
+    if (!response.ok) return false;
+
+    const data = await response.arrayBuffer();
+    const pdfjsLib = await ensurePdfJs();
+    activePdfDocument = await pdfjsLib.getDocument({ data }).promise;
+    syncSaveFileButton(workspaceState);
+
+    const pdfStatus = workspace.querySelector('[data-project-pdf-status]');
+    const pageLabel = workspace.querySelector('[data-project-pdf-page-label]');
+    if (pageLabel) pageLabel.textContent = 'PDF';
+    if (pdfStatus) {
+        pdfStatus.textContent = `PDF cargado desde guardados (${match.name || expectedFileName}). ${rowCount} filas disponibles.`;
+    }
+
+    if (workspaceState.documentType === 'invoices' && workspaceState.invoice) {
+        renderPdfFirstPage(workspace, workspaceState.invoice);
+    } else if (rowCount) {
+        setActiveTableRow(workspace, 0, workspaceState);
+    }
+
+    return true;
+}
+
 async function loadSavedProjectPdf(project, workspace, workspaceState) {
     if (!workspaceState.fileName && !(workspaceState.rows || []).length) return;
 
@@ -1188,6 +2460,10 @@ async function loadSavedProjectPdf(project, workspace, workspaceState) {
     const pageLabel = workspace.querySelector('[data-project-pdf-page-label]');
 
     try {
+        if (workspaceState.documentType !== 'invoices') {
+            clearInvoiceViewerState(workspace);
+        }
+
         if (pdfStatus && workspaceState.fileName) {
             pdfStatus.textContent = `Cargando PDF guardado: ${workspaceState.fileName}...`;
         }
@@ -1196,15 +2472,33 @@ async function loadSavedProjectPdf(project, workspace, workspaceState) {
             headers: authHeaders()
         });
         if (response.status === 404) {
+            if (await loadMatchingSavedWorkspacePdf(project, workspace, workspaceState)) return;
+            activePdfDocument = null;
+            syncSaveFileButton(workspaceState);
             if (pageLabel) pageLabel.textContent = 'PDF no cargado en esta sesion';
             return;
         }
 
         if (!response.ok) throw new Error(`HTTP ${response.status}`);
 
+        const loadedFileName = decodeURIComponent(response.headers.get('X-File-Name') || '').trim();
+        const expectedFileName = String(workspaceState.fileName || '').trim();
+        if (loadedFileName && expectedFileName && !samePdfFileName(loadedFileName, expectedFileName)) {
+            activePdfDocument = null;
+            clearPdfCellHighlights(workspace);
+            if (await loadMatchingSavedWorkspacePdf(project, workspace, workspaceState)) return;
+            syncSaveFileButton(workspaceState);
+            if (pageLabel) pageLabel.textContent = 'PDF no corresponde';
+            if (pdfStatus) {
+                pdfStatus.textContent = `La tabla es de ${expectedFileName}, pero el PDF activo es ${loadedFileName}. Abre el guardado correcto o vuelve a subir ese PDF.`;
+            }
+            return;
+        }
+
         const data = await response.arrayBuffer();
         const pdfjsLib = await ensurePdfJs();
         activePdfDocument = await pdfjsLib.getDocument({ data }).promise;
+        syncSaveFileButton(workspaceState);
 
         if (pageLabel) pageLabel.textContent = 'PDF';
         if (pdfStatus) {
@@ -1213,18 +2507,55 @@ async function loadSavedProjectPdf(project, workspace, workspaceState) {
                 : 'PDF guardado cargado.';
         }
 
-        if ((workspaceState.rows || []).length) {
+        if (workspaceState.documentType === 'invoices' && workspaceState.invoice) {
+            renderPdfFirstPage(workspace, workspaceState.invoice);
+        } else if ((workspaceState.rows || []).length) {
             setActiveTableRow(workspace, 0, workspaceState);
         }
     } catch (error) {
+        activePdfDocument = null;
+        syncSaveFileButton(workspaceState);
         if (pdfStatus) {
             pdfStatus.textContent = `No se pudo cargar el PDF guardado: ${String(error?.message || error)}`;
         }
     }
 }
 
+async function loadSavedInvoiceBatchPdfs(project, savedFileId, workspaceState) {
+    const records = Array.isArray(workspaceState?.invoices) ? workspaceState.invoices : [];
+    activePdfDocument = null;
+    activeInvoicePdfDocuments = new Map();
+    activeInvoicePdfFiles = new Map();
+
+    if (!records.length || !savedFileId) return;
+
+    const pdfjsLib = await ensurePdfJs();
+
+    for (const record of records) {
+        try {
+            const response = await fetch(apiUrl(`/api/projects/${encodeURIComponent(project.id)}/saved-workspaces/${encodeURIComponent(savedFileId)}/invoices/${encodeURIComponent(record.id)}/pdf`), {
+                headers: authHeaders()
+            });
+            if (!response.ok) continue;
+
+            const buffer = await response.arrayBuffer();
+            activeInvoicePdfFiles.set(record.id, {
+                fileName: record.fileName || 'factura.pdf',
+                buffer: buffer.slice(0)
+            });
+            activeInvoicePdfDocuments.set(record.id, await pdfjsLib.getDocument({ data: buffer.slice(0) }).promise);
+        } catch (error) {
+            console.warn('[project-workspace] No se pudo cargar PDF de factura guardada.', record.id, error);
+        }
+    }
+}
+
 function downloadFile(filename, content, type) {
     const blob = new Blob([content], { type });
+    downloadBlob(filename, blob);
+}
+
+function downloadBlob(filename, blob) {
     const link = document.createElement('a');
     link.href = URL.createObjectURL(blob);
     link.download = filename;
@@ -1404,13 +2735,36 @@ function getRowGeometry(row) {
     const y1 = Number(geometry.y1 || 0);
     const y2 = Number(geometry.y2 || 0);
     const pageHeight = Number(geometry.pageHeight || 0);
-    if (!pageHeight || !Number.isFinite(y1) || !Number.isFinite(y2)) return null;
+    if (pageHeight && Number.isFinite(y1) && Number.isFinite(y2) && y2 > y1) {
+        return {
+            page: Number(geometry.page || row.page || 1),
+            y1,
+            y2,
+            pageHeight
+        };
+    }
+
+    const cellGeometry = row?.cellGeometry && typeof row.cellGeometry === 'object'
+        ? Object.values(row.cellGeometry)
+            .filter((cell) => cell && typeof cell === 'object')
+            .map((cell) => ({
+                page: Number(cell.page || row?.page || 1),
+                y1: Number(cell.y1 || 0),
+                y2: Number(cell.y2 || 0),
+                pageHeight: Number(cell.pageHeight || 0)
+            }))
+            .filter((cell) => cell.pageHeight && Number.isFinite(cell.y1) && Number.isFinite(cell.y2) && cell.y2 > cell.y1)
+        : [];
+
+    if (!cellGeometry.length) return null;
+
+    const firstCell = cellGeometry[0];
 
     return {
-        page: Number(geometry.page || row.page || 1),
-        y1,
-        y2,
-        pageHeight
+        page: firstCell.page,
+        y1: Math.min(...cellGeometry.map((cell) => cell.y1)),
+        y2: Math.max(...cellGeometry.map((cell) => cell.y2)),
+        pageHeight: firstCell.pageHeight
     };
 }
 
@@ -1418,22 +2772,75 @@ function clearPdfCellHighlights(workspace) {
     workspace.querySelectorAll('.project-pdf-cell-highlight').forEach((node) => node.remove());
 }
 
+function clearInvoiceViewerState(workspace, { clearDocuments = true } = {}) {
+    workspace.querySelector('[data-project-invoice-thumbnail-gallery]')?.remove();
+    clearDocumentPreview(workspace);
+    activeInvoiceExpandedIds = new Set();
+
+    if (clearDocuments) {
+        activeInvoicePdfDocuments = new Map();
+        activeInvoicePdfFiles = new Map();
+    }
+
+    const canvas = workspace.querySelector('[data-project-pdf-canvas]');
+    if (canvas) {
+        canvas.hidden = false;
+        canvas.style.display = '';
+    }
+}
+
+function clearPdfViewer(workspace, message = 'Selecciona una factura') {
+    const canvas = workspace.querySelector('[data-project-pdf-canvas]');
+    const highlight = workspace.querySelector('[data-project-pdf-highlight]');
+    const pageLabel = workspace.querySelector('[data-project-pdf-page-label]');
+    const activeLabel = workspace.querySelector('[data-project-active-row-label]');
+
+    clearPdfCellHighlights(workspace);
+    clearDocumentPreview(workspace);
+    activePdfRenderNonce += 1;
+    if (activePdfRenderTask) {
+        try {
+            activePdfRenderTask.cancel();
+        } catch (_) {
+            // PDF.js puede lanzar si la tarea ya termino.
+        }
+        activePdfRenderTask = null;
+    }
+    clearInvoiceViewerState(workspace, { clearDocuments: false });
+    if (highlight) highlight.hidden = true;
+    if (pageLabel) pageLabel.textContent = 'PDF';
+    if (activeLabel) activeLabel.textContent = message;
+    if (canvas) {
+        const context = canvas.getContext('2d');
+        context?.clearRect(0, 0, canvas.width || 0, canvas.height || 0);
+        canvas.removeAttribute('width');
+        canvas.removeAttribute('height');
+        canvas.style.width = '';
+        canvas.style.height = '';
+        canvas.hidden = false;
+    }
+}
+
 function getPdfCellHighlightColor(key, index = 0) {
     const normalized = normalizePdfText(key)
-        .replace('/', ' ')
+        .replace(/[_/-]/g, ' ')
         .replace(/\s+/g, ' ')
         .trim();
 
     const colors = {
+        ITEM: {
+            border: '#2563eb',
+            background: 'rgba(37, 99, 235, 0.14)'
+        },
         POS: {
             border: '#2563eb',
             background: 'rgba(37, 99, 235, 0.14)'
         },
-        'PART NO': {
+        PARTNO: {
             border: '#16a34a',
             background: 'rgba(22, 163, 74, 0.14)'
         },
-        PARTNO: {
+        'PART NO': {
             border: '#16a34a',
             background: 'rgba(22, 163, 74, 0.14)'
         },
@@ -1441,11 +2848,11 @@ function getPdfCellHighlightColor(key, index = 0) {
             border: '#16a34a',
             background: 'rgba(22, 163, 74, 0.14)'
         },
-        DESIGNATION: {
+        DESCRIPTION: {
             border: '#dc2626',
             background: 'rgba(220, 38, 38, 0.12)'
         },
-        DESCRIPTION: {
+        DESIGNATION: {
             border: '#dc2626',
             background: 'rgba(220, 38, 38, 0.12)'
         },
@@ -1478,6 +2885,10 @@ function getPdfCellHighlightColor(key, index = 0) {
             background: 'rgba(79, 70, 229, 0.13)'
         },
         STANDARD: {
+            border: '#059669',
+            background: 'rgba(5, 150, 105, 0.13)'
+        },
+        NOTES: {
             border: '#059669',
             background: 'rgba(5, 150, 105, 0.13)'
         }
@@ -1534,7 +2945,135 @@ function renderPdfCellHighlights(workspace, row, canvas, scale) {
     });
 }
 
-async function renderPdfRow(workspace, row) {
+function getInvoiceFieldId(section, label, value, index) {
+    return `invoice-${safeText(section)}-${getInvoiceCanonicalLabel(label)}-${safeText(value).slice(0, 24)}`
+        .toLowerCase()
+        .replace(/[^a-z0-9_-]+/g, '-');
+}
+
+function getInvoiceCanonicalLabel(label) {
+    const key = safeText(label)
+        .normalize('NFD')
+        .replace(/[\u0300-\u036f]/g, '')
+        .toLowerCase();
+
+    if (/^numero$|^(numero|num|invoice).*factura|invoice.*(no|number)/.test(key)) return 'invoice-number';
+    if (/vencimiento|due/.test(key)) return 'due-date';
+    if (/fecha|data|date/.test(key)) return 'date';
+    if (/nif|cif|vat|dni|tax|iva/.test(key) && !/impuesto|subtotal|total/.test(key)) return 'tax-id';
+    if (/email|mail|e-mail/.test(key)) return 'email';
+    if (/telefono|telefon|phone|tel/.test(key)) return 'phone';
+    if (/iban/.test(key)) return 'iban';
+    if (/subtotal|base/.test(key)) return 'subtotal';
+    if (/impuesto|iva|vat|tax/.test(key)) return 'tax';
+    if (/total/.test(key)) return 'total';
+    if (/moneda|currency/.test(key)) return 'currency';
+    if (/tipo|type/.test(key)) return 'type';
+    if (/nombre|name/.test(key)) return 'name';
+    if (/direccion|address/.test(key)) return 'address';
+    return key.replace(/[^a-z0-9]+/g, '-');
+}
+
+function toggleInvoicePdfHighlight(workspace, fieldId, active) {
+    if (!fieldId) return;
+    workspace
+        .querySelectorAll(`.project-invoice-pdf-highlight[data-invoice-field-id="${CSS.escape(fieldId)}"]`)
+        .forEach((marker) => marker.classList.toggle('is-active', active));
+}
+
+function renderInvoicePdfHighlights(workspace, invoice, canvas, scale, pageNumber = 1) {
+    const viewer = workspace.querySelector('[data-project-pdf-viewer]');
+    if (!viewer || !canvas || !invoice) return;
+
+    const fields = Array.isArray(invoice.fields) ? invoice.fields : [];
+    fields.forEach((field, index) => {
+        const box = field?.sourceBox || null;
+        if (!box || Number(box.page || 1) !== Number(pageNumber || 1)) return;
+
+        const x1 = Number(box.x1 || 0);
+        const x2 = Number(box.x2 || 0);
+        const y1 = Number(box.y1 || 0);
+        const y2 = Number(box.y2 || 0);
+        if (!(x2 > x1) || !(y2 > y1)) return;
+
+        const marker = document.createElement('div');
+        marker.className = 'project-pdf-cell-highlight project-invoice-pdf-highlight';
+        marker.dataset.invoiceFieldId = getInvoiceFieldId(field.section, field.label, field.value, index);
+        marker.style.left = `${canvas.offsetLeft + (x1 * scale) - 3}px`;
+        marker.style.top = `${canvas.offsetTop + (y1 * scale) - 3}px`;
+        marker.style.width = `${Math.max(8, (x2 - x1) * scale) + 6}px`;
+        marker.style.height = `${Math.max(10, (y2 - y1) * scale) + 6}px`;
+        viewer.appendChild(marker);
+    });
+
+    (invoice.lineItems || []).forEach((item, index) => {
+        const box = item?.sourceBox || null;
+        if (!box || Number(box.page || 1) !== Number(pageNumber || 1)) return;
+        const x1 = Number(box.x1 || 0);
+        const x2 = Number(box.x2 || 0);
+        const y1 = Number(box.y1 || 0);
+        const y2 = Number(box.y2 || 0);
+        if (!(x2 > x1) || !(y2 > y1)) return;
+        const marker = document.createElement('div');
+        marker.className = 'project-pdf-cell-highlight project-invoice-pdf-highlight';
+        marker.dataset.invoiceFieldId = getInvoiceFieldId('Lineas', 'Descripcion', item.description, index);
+        marker.style.left = `${canvas.offsetLeft + (x1 * scale) - 3}px`;
+        marker.style.top = `${canvas.offsetTop + (y1 * scale) - 3}px`;
+        marker.style.width = `${Math.max(8, (x2 - x1) * scale) + 6}px`;
+        marker.style.height = `${Math.max(10, (y2 - y1) * scale) + 6}px`;
+        viewer.appendChild(marker);
+    });
+}
+
+function clearDocumentPreview(workspace) {
+    workspace.querySelector('[data-project-document-preview]')?.remove();
+}
+
+function renderInvoiceDocumentPreview(workspace, workspaceState) {
+    const canvas = workspace.querySelector('[data-project-pdf-canvas]');
+    const highlight = workspace.querySelector('[data-project-pdf-highlight]');
+    const pageLabel = workspace.querySelector('[data-project-pdf-page-label]');
+    const activeLabel = workspace.querySelector('[data-project-active-row-label]');
+    const viewer = workspace.querySelector('[data-project-pdf-viewer]');
+    if (!viewer) return;
+    const navigation = workspace.querySelector('[data-project-pdf-page-navigation]');
+    if (navigation) navigation.hidden = true;
+
+    const fileName = safeText(workspaceState?.fileName || workspaceState?.invoice?.fileName);
+    clearPdfCellHighlights(workspace);
+    workspace.querySelector('[data-project-invoice-thumbnail-gallery]')?.remove();
+    clearDocumentPreview(workspace);
+    if (highlight) highlight.hidden = true;
+    if (canvas) {
+        const context = canvas.getContext?.('2d');
+        if (context) context.clearRect(0, 0, canvas.width || 0, canvas.height || 0);
+        canvas.hidden = true;
+    }
+    if (pageLabel) pageLabel.textContent = 'PDF';
+    if (activeLabel) activeLabel.textContent = fileName || 'PDF convertido';
+
+    const preview = document.createElement('div');
+    preview.className = 'project-document-preview project-invoice-source-preview';
+    preview.dataset.projectDocumentPreview = '';
+
+    const title = document.createElement('div');
+    title.className = 'project-document-preview-title';
+    const badge = document.createElement('span');
+    badge.textContent = 'PDF';
+    const name = document.createElement('strong');
+    name.textContent = fileName || 'Documento PDF';
+    title.append(badge, name);
+
+    const message = document.createElement('p');
+    message.className = 'project-document-preview-empty';
+    message.textContent = 'No se pudo cargar el PDF convertido en el visor. Vuelve a subir el documento o abre un guardado que contenga el PDF.';
+
+    preview.append(title, message);
+    viewer.appendChild(preview);
+    viewer.scrollTop = 0;
+}
+
+async function renderPdfRow(workspace, row, workspaceState = null) {
     const canvas = workspace.querySelector('[data-project-pdf-canvas]');
     const highlight = workspace.querySelector('[data-project-pdf-highlight]');
     const pageLabel = workspace.querySelector('[data-project-pdf-page-label]');
@@ -1548,12 +3087,19 @@ async function renderPdfRow(workspace, row) {
 
     if (!activePdfDocument || !canvas || !geometry) {
         clearPdfCellHighlights(workspace);
+        clearDocumentPreview(workspace);
         if (highlight) highlight.hidden = true;
+        if (canvas) canvas.hidden = false;
         if (pageLabel) pageLabel.textContent = activePdfDocument ? 'PDF' : 'PDF no cargado en esta sesion';
         return;
     }
 
+    const renderNonce = activePdfRenderNonce + 1;
+    activePdfRenderNonce = renderNonce;
+    clearDocumentPreview(workspace);
+    if (canvas) canvas.hidden = false;
     const page = await activePdfDocument.getPage(geometry.page);
+    if (renderNonce !== activePdfRenderNonce) return;
     const parentWidth = Math.max(320, Number(viewer?.clientWidth || 640) - 28);
     const baseViewport = page.getViewport({ scale: 1 });
     const scale = parentWidth / Math.max(1, baseViewport.width);
@@ -1579,6 +3125,7 @@ async function renderPdfRow(workspace, row) {
     } catch (error) {
         if (String(error?.name || '') !== 'RenderingCancelledException') throw error;
     }
+    if (renderNonce !== activePdfRenderNonce) return;
 
     if (pageLabel) pageLabel.textContent = `Pagina ${geometry.page}`;
     if (highlight) {
@@ -1600,12 +3147,80 @@ async function renderPdfRow(workspace, row) {
     renderPdfCellHighlights(workspace, row, canvas, scale);
 }
 
+async function renderPdfFirstPage(workspace, invoice = null, requestedPage = 1) {
+    const canvas = workspace.querySelector('[data-project-pdf-canvas]');
+    const highlight = workspace.querySelector('[data-project-pdf-highlight]');
+    const pageLabel = workspace.querySelector('[data-project-pdf-page-label]');
+    const activeLabel = workspace.querySelector('[data-project-active-row-label]');
+    const viewer = workspace.querySelector('[data-project-pdf-viewer]');
+    const renderNonce = activePdfRenderNonce + 1;
+    activePdfRenderNonce = renderNonce;
+
+    clearPdfCellHighlights(workspace);
+    workspace.querySelector('[data-project-invoice-thumbnail-gallery]')?.remove();
+    clearDocumentPreview(workspace);
+    if (highlight) highlight.hidden = true;
+    if (activeLabel) activeLabel.textContent = 'Documento completo';
+    if (canvas) canvas.hidden = false;
+
+    if (!activePdfDocument || !canvas) {
+        syncPdfPageNavigation(workspace, 1);
+        if (pageLabel) pageLabel.textContent = activePdfDocument ? 'PDF' : 'PDF no cargado en esta sesion';
+        return;
+    }
+
+    const pageNumber = Math.max(1, Math.min(activePdfDocument.numPages, Number(requestedPage || 1)));
+    activePdfPageNumber = pageNumber;
+    syncPdfPageNavigation(workspace, pageNumber);
+    const page = await activePdfDocument.getPage(pageNumber);
+    if (renderNonce !== activePdfRenderNonce) return;
+    const parentWidth = Math.max(320, Number(viewer?.clientWidth || 640) - 28);
+    const baseViewport = page.getViewport({ scale: 1 });
+    const scale = parentWidth / Math.max(1, baseViewport.width);
+    const viewport = page.getViewport({ scale });
+    const context = canvas.getContext('2d');
+
+    if (activePdfRenderTask) {
+        try {
+            activePdfRenderTask.cancel();
+        } catch (_) {
+            // PDF.js puede lanzar si la tarea ya termino.
+        }
+    }
+
+    canvas.width = Math.floor(viewport.width);
+    canvas.height = Math.floor(viewport.height);
+    canvas.style.width = `${Math.floor(viewport.width)}px`;
+    canvas.style.height = `${Math.floor(viewport.height)}px`;
+
+    activePdfRenderTask = page.render({ canvasContext: context, viewport });
+    try {
+        await activePdfRenderTask.promise;
+    } catch (error) {
+        if (String(error?.name || '') !== 'RenderingCancelledException') throw error;
+    }
+    if (renderNonce !== activePdfRenderNonce) return;
+
+    if (pageLabel) pageLabel.textContent = `Pagina ${pageNumber}`;
+    if (viewer) viewer.scrollTop = 0;
+    renderInvoicePdfHighlights(workspace, invoice, canvas, scale, pageNumber);
+}
+
 function getRowDisplayName(row) {
     if (row?.pos || row?.partNo || row?.designation) {
         return `POS ${row.pos || '-'} - ${row.partNo || row.designation || 'fila activa'}`;
     }
 
-    const firstCells = Object.values(row?.cells || {}).filter(Boolean).slice(0, 2).join(' - ');
+    const cells = row?.cells && typeof row.cells === 'object' ? row.cells : {};
+    const item = safeText(cells.item || cells.pos || cells.position);
+    const partNo = safeText(cells.partNo || cells.part_no || cells.pn);
+    const description = safeText(cells.description || cells.designation || cells.desc);
+
+    if (item || partNo || description) {
+        return `POS ${item || '-'} - ${partNo || description || 'fila activa'}`;
+    }
+
+    const firstCells = Object.values(cells).filter(Boolean).slice(0, 2).join(' - ');
     return firstCells || 'fila activa';
 }
 
@@ -1615,7 +3230,853 @@ function setActiveTableRow(workspace, rowIndex, workspaceState) {
     workspace.querySelectorAll('[data-project-row-index]').forEach((tr) => {
         tr.classList.toggle('is-active', Number(tr.dataset.projectRowIndex) === index);
     });
-    renderPdfRow(workspace, rows[index]);
+    renderPdfRow(workspace, rows[index], workspaceState);
+}
+
+function hasWorkspaceDocument(workspaceState) {
+    return Boolean(
+        (Array.isArray(workspaceState?.rows) && workspaceState.rows.length)
+        || (workspaceState?.documentType === 'invoices' && workspaceState?.invoice)
+        || (workspaceState?.documentType === 'invoices' && Array.isArray(workspaceState?.invoices) && workspaceState.invoices.length)
+    );
+}
+
+function formatInvoiceAmount(value, currency = 'EUR') {
+    if (value == null || value === '') return '-';
+    const amount = Number(value);
+    if (!Number.isFinite(amount)) return String(value);
+
+    return `${amount.toLocaleString('es-ES', {
+        minimumFractionDigits: 2,
+        maximumFractionDigits: 2
+    })} ${currency || 'EUR'}`;
+}
+
+function parseInvoiceEditableValue(path, value) {
+    const text = safeText(value);
+    if (!Array.isArray(path) || !path.length) return text;
+    if (path[0] !== 'amounts') return text;
+
+    const normalized = text
+        .replace(/[^\d,.-]/g, '')
+        .replace(/\.(?=\d{3}(?:\D|$))/g, '')
+        .replace(',', '.');
+    const number = Number(normalized);
+    return Number.isFinite(number) ? number : null;
+}
+
+function setInvoicePathValue(invoice, path, value) {
+    if (!invoice || !Array.isArray(path) || !path.length) return;
+
+    let target = invoice;
+    for (let index = 0; index < path.length - 1; index += 1) {
+        const key = path[index];
+        if (target[key] == null) target[key] = typeof path[index + 1] === 'number' ? [] : {};
+        target = target[key];
+    }
+
+    target[path[path.length - 1]] = parseInvoiceEditableValue(path, value);
+}
+
+function syncActiveInvoiceRecord(workspaceState) {
+    if (workspaceState?.documentType !== 'invoices' || !workspaceState.activeInvoiceId) return;
+    const records = Array.isArray(workspaceState.invoices) ? workspaceState.invoices : [];
+    const record = records.find((item) => item.id === workspaceState.activeInvoiceId);
+    if (!record) return;
+
+    record.invoice = workspaceState.invoice || record.invoice || {};
+    record.rows = buildInvoiceRows(record.invoice);
+    record.columns = workspaceState.columns || record.columns || INVOICE_TABLE_COLUMNS;
+    record.headerLabels = workspaceState.headerLabels || record.headerLabels || INVOICE_HEADER_LABELS;
+    workspaceState.rows = record.rows;
+}
+
+function saveInvoiceFieldEdit(workspaceState) {
+    syncActiveInvoiceRecord(workspaceState);
+    if (!activeWorkspaceProject) return;
+    saveWorkspace(activeWorkspaceProject, workspaceState).catch((error) => {
+        console.warn('No se pudo guardar la edicion de factura:', error);
+    });
+}
+
+function appendInvoiceField(container, label, value, fieldId, editPath, workspaceState) {
+    if (!safeText(value)) return;
+    const field = document.createElement('span');
+    field.className = 'project-invoice-field';
+    if (fieldId) {
+        field.dataset.invoiceFieldId = fieldId;
+        field.addEventListener('mouseenter', () => toggleInvoicePdfHighlight(document, fieldId, true));
+        field.addEventListener('mouseleave', () => toggleInvoicePdfHighlight(document, fieldId, false));
+    }
+
+    const small = document.createElement('small');
+    small.textContent = label;
+    const strong = document.createElement('strong');
+    if (editPath) {
+        const input = document.createElement('input');
+        input.type = 'text';
+        input.value = safeText(value) || '-';
+        input.setAttribute('aria-label', label);
+        input.addEventListener('click', (event) => event.stopPropagation());
+        input.addEventListener('change', () => {
+            setInvoicePathValue(workspaceState.invoice, editPath, input.value);
+            saveInvoiceFieldEdit(workspaceState);
+        });
+        strong.appendChild(input);
+    } else {
+        strong.textContent = safeText(value) || '-';
+    }
+
+    field.append(small, strong);
+    container.appendChild(field);
+}
+
+function appendInvoiceSection(container, title, fields, workspaceState) {
+    const visibleFields = fields.filter((field) => safeText(field.value));
+    if (!visibleFields.length) return;
+
+    const section = document.createElement('section');
+    section.className = 'project-invoice-section';
+
+    const header = document.createElement('header');
+    header.textContent = title;
+    const body = document.createElement('div');
+    body.className = 'project-invoice-fields';
+
+    visibleFields.forEach((field) => {
+        appendInvoiceField(body, field.label, field.value, field.fieldId, field.editPath, workspaceState);
+    });
+    section.append(header, body);
+    container.appendChild(section);
+}
+
+function buildInvoiceDynamicSections(invoice) {
+    const sections = new Map();
+    let fieldCounter = 0;
+    const add = (section, label, value, sourceBox = null, editPath = null) => {
+        if (!safeText(value)) return;
+        const sectionName = safeText(section) || 'Factura';
+        if (!sections.has(sectionName)) sections.set(sectionName, []);
+        const fields = sections.get(sectionName);
+        const exists = fields.some((field) => (
+            getInvoiceCanonicalLabel(field.label) === getInvoiceCanonicalLabel(label)
+            && safeText(field.value).toLowerCase() === safeText(value).toLowerCase()
+        ));
+        if (!exists) {
+            const fieldId = sourceBox ? getInvoiceFieldId(sectionName, label, value, fieldCounter) : '';
+            fieldCounter += 1;
+            fields.push({ label, value, sourceBox, fieldId, editPath });
+        }
+    };
+
+    const isStructuredDuplicate = (field) => {
+        const section = safeText(field?.section).toLowerCase();
+        const label = safeText(field?.label)
+            .normalize('NFD')
+            .replace(/[\u0300-\u036f]/g, '')
+            .toLowerCase();
+        if (!label || /^col$/.test(label) || /gross\s*wgt|net\s*wgt|expiry|amounts/.test(label)) return true;
+        if (/^\d[\d.,/\s-]*.*(?:gross|qty|kg|mt|price|amount)/.test(label)) return true;
+        if (section === 'factura' && /^(tipo|numero|numero de factura|fecha|vencimiento|moneda|idioma detectado)$/.test(label)) return true;
+        if (section === 'emisor' && /^(nombre|direccion|nif \/ vat|email|telefono|proveedor \/ razon social)$/.test(label)) return true;
+        if (section === 'cliente' && /^(nombre|direccion|nif \/ vat|email|telefono)$/.test(label)) return true;
+        if (section === 'importes' && /subtotal|iva|impuesto|tax|total|pagado|pendiente/.test(label)) return true;
+        if (section === 'pago' && /iban|metodo|forma de pago/.test(label)) return true;
+        return false;
+    };
+
+    const sourceFor = (section, label) => {
+        const sectionKey = safeText(section).toLowerCase();
+        const canonical = getInvoiceCanonicalLabel(label);
+        return (invoice.fields || []).find((field) => (
+            safeText(field?.section).toLowerCase() === sectionKey
+            && getInvoiceCanonicalLabel(field?.label) === canonical
+            && field?.sourceBox
+        ))?.sourceBox || null;
+    };
+
+    (invoice.fields || []).forEach((field, index) => {
+        if (isStructuredDuplicate(field)) return;
+        add(field.section, field.label, field.value, field.sourceBox || null, ['fields', index, 'value']);
+    });
+
+    add('Factura', 'Tipo', invoice.type, sourceFor('Factura', 'Tipo'), ['type']);
+    add('Factura', 'Numero', invoice.invoiceNumber, sourceFor('Factura', 'Numero de factura'), ['invoiceNumber']);
+    add('Factura', 'Fecha', invoice.date, sourceFor('Factura', 'Fecha'), ['date']);
+    add('Factura', 'Vencimiento', invoice.dueDate, sourceFor('Factura', 'Vencimiento'), ['dueDate']);
+    add('Factura', 'Moneda', invoice.currency, sourceFor('Factura', 'Moneda'), ['currency']);
+    add('Factura', 'Idioma detectado', getInvoiceLanguageLabel(invoice.language));
+    add('Pago', 'Metodo de pago', invoice.payment?.method, sourceFor('Pago', 'Forma de pago'), ['payment', 'method']);
+    add('Pago', 'IBAN', invoice.payment?.iban, sourceFor('Pago', 'IBAN'), ['payment', 'iban']);
+    add('Importes', 'Subtotal', invoice.amounts?.subtotal == null ? '' : formatInvoiceAmount(invoice.amounts.subtotal, invoice.currency || 'EUR'), sourceFor('Importes', 'Subtotal'), ['amounts', 'subtotal']);
+    add('Importes', 'Impuestos', invoice.amounts?.tax == null ? '' : formatInvoiceAmount(invoice.amounts.tax, invoice.currency || 'EUR'), sourceFor('Importes', 'IVA / impuestos'), ['amounts', 'tax']);
+    add('Importes', 'Total', invoice.amounts?.total == null ? '' : formatInvoiceAmount(invoice.amounts.total, invoice.currency || 'EUR'), sourceFor('Importes', 'Total'), ['amounts', 'total']);
+    add('Importes', 'Pagado', invoice.amounts?.paid == null ? '' : formatInvoiceAmount(invoice.amounts.paid, invoice.currency || 'EUR'), null, ['amounts', 'paid']);
+    add('Importes', 'Pendiente', invoice.amounts?.due == null ? '' : formatInvoiceAmount(invoice.amounts.due, invoice.currency || 'EUR'), null, ['amounts', 'due']);
+
+    Object.entries(invoice.supplier || {}).forEach(([key, value]) => {
+        const labels = { name: 'Nombre', address: 'Direccion', taxId: 'NIF / VAT', email: 'Email', phone: 'Telefono' };
+        add('Emisor', labels[key] || key, value, sourceFor('Emisor', labels[key] || key), ['supplier', key]);
+    });
+    Object.entries(invoice.customer || {}).forEach(([key, value]) => {
+        const labels = { name: 'Nombre', address: 'Direccion', taxId: 'NIF / VAT', email: 'Email', phone: 'Telefono' };
+        add('Cliente', labels[key] || key, value, sourceFor('Cliente', labels[key] || key), ['customer', key]);
+    });
+
+    return [...sections.entries()];
+}
+
+function renderInvoiceView(workspace, workspaceState) {
+    const invoiceView = workspace.querySelector('[data-project-invoice-view]');
+    if (!invoiceView) return;
+
+    const invoice = workspaceState.invoice || {};
+    const currency = invoice.currency || 'EUR';
+    invoiceView.replaceChildren();
+
+    const hero = document.createElement('section');
+    hero.className = 'project-invoice-hero';
+    const kicker = document.createElement('small');
+    kicker.textContent = invoice.type || 'Factura detectada';
+    const title = document.createElement('strong');
+    title.textContent = invoice.invoiceNumber ? `Factura ${invoice.invoiceNumber}` : 'Factura sin numero detectado';
+    const subtitle = document.createElement('span');
+    const languageLabel = getInvoiceLanguageLabel(invoice.language);
+    const languageText = languageLabel === '-' ? '' : ` - Idioma: ${languageLabel}`;
+    subtitle.textContent = `${workspaceState.fileName || 'PDF'} - ${Number(workspaceState.pageCount || 0)} paginas - ${Number(invoice.detectedFields || 0)} campos detectados${languageText}`;
+    hero.append(kicker, title, subtitle);
+    if (Array.isArray(workspaceState.invoices) && workspaceState.invoices.length > 1) {
+        const backButton = document.createElement('button');
+        backButton.type = 'button';
+        backButton.className = 'project-invoice-back';
+        backButton.textContent = 'Volver al listado';
+        backButton.addEventListener('click', () => {
+            if (activeWorkspaceProject) showInvoiceBatchList(activeWorkspaceProject, workspace, workspaceState);
+        });
+        hero.appendChild(backButton);
+    }
+
+    const metrics = document.createElement('div');
+    metrics.className = 'project-invoice-metrics';
+    [
+        ['Total', invoice.amounts?.total == null ? '' : formatInvoiceAmount(invoice.amounts.total, currency)],
+        ['IVA / impuestos', invoice.amounts?.tax == null ? '' : formatInvoiceAmount(invoice.amounts.tax, currency)],
+        ['Vencimiento', invoice.dueDate || '']
+    ].filter(([, value]) => safeText(value)).forEach(([label, value]) => {
+        const item = document.createElement('span');
+        const small = document.createElement('small');
+        small.textContent = label;
+        const strong = document.createElement('strong');
+        strong.textContent = value;
+        item.append(small, strong);
+        metrics.appendChild(item);
+    });
+
+    const grid = document.createElement('div');
+    grid.className = 'project-invoice-grid';
+    buildInvoiceDynamicSections(invoice).forEach(([section, fields]) => {
+        appendInvoiceSection(grid, section, fields, workspaceState);
+    });
+
+    const lines = document.createElement('section');
+    lines.className = 'project-invoice-section project-invoice-lines';
+    const linesHeader = document.createElement('header');
+    linesHeader.textContent = 'Lineas de factura';
+    lines.appendChild(linesHeader);
+    const lineItems = Array.isArray(invoice.lineItems) ? invoice.lineItems : [];
+    if (lineItems.length) {
+        const table = document.createElement('table');
+        const thead = document.createElement('thead');
+        thead.innerHTML = '<tr><th>Codigo</th><th>Descripcion</th><th>Cantidad</th><th>Unidad</th><th>Precio ud.</th><th>Descuento</th><th>IVA %</th><th>Total</th></tr>';
+        const tbody = document.createElement('tbody');
+        lineItems.forEach((item, index) => {
+            const tr = document.createElement('tr');
+            const lineFieldId = item.sourceBox
+                ? getInvoiceFieldId('Lineas', 'Descripcion', item.description, index)
+                : '';
+            if (lineFieldId) {
+                tr.addEventListener('mouseenter', () => toggleInvoicePdfHighlight(document, lineFieldId, true));
+                tr.addEventListener('mouseleave', () => toggleInvoicePdfHighlight(document, lineFieldId, false));
+            }
+            [
+                ['code', item.code || '-'],
+                ['description', item.description || '-'],
+                ['quantity', item.quantity ?? '-'],
+                ['unit', item.unit || '-'],
+                ['unitPrice', formatInvoiceAmount(item.unitPrice, currency)],
+                ['discount', item.discount == null ? '-' : `${item.discount}%`],
+                ['taxRate', item.taxRate == null ? '-' : `${item.taxRate}%`],
+                ['total', formatInvoiceAmount(item.total, currency)]
+            ].forEach(([key, value]) => {
+                const td = document.createElement('td');
+                const input = document.createElement('input');
+                input.type = 'text';
+                input.value = String(value);
+                input.addEventListener('click', (event) => event.stopPropagation());
+                input.addEventListener('change', () => {
+                    setInvoicePathValue(workspaceState.invoice, ['lineItems', index, key], input.value);
+                    saveInvoiceFieldEdit(workspaceState);
+                });
+                td.appendChild(input);
+                tr.appendChild(td);
+            });
+            tbody.appendChild(tr);
+        });
+        table.append(thead, tbody);
+        lines.appendChild(table);
+    } else {
+        const empty = document.createElement('div');
+        empty.className = 'project-invoice-empty-lines';
+        empty.textContent = 'No se detectaron lineas de factura claras. Revisa el PDF de la derecha.';
+        lines.appendChild(empty);
+    }
+    grid.appendChild(lines);
+
+    invoiceView.append(hero, metrics, grid);
+}
+
+async function openInvoiceRecord(project, workspace, workspaceState, recordId) {
+    const record = (workspaceState.invoices || []).find((item) => item.id === recordId);
+    if (!record) return;
+
+    workspaceState.activeInvoiceId = record.id;
+    workspaceState.fileName = record.convertedPdfFileName || record.fileName || record.invoice?.fileName || 'Factura.pdf';
+    workspaceState.pageCount = Number(record.pageCount || 0);
+    workspaceState.headerLabels = record.headerLabels || INVOICE_HEADER_LABELS;
+    workspaceState.columns = record.columns || INVOICE_TABLE_COLUMNS;
+    workspaceState.documentKind = 'pdf';
+    record.invoice = enhanceImportedInvoice(record.invoice || null);
+    const rebuiltRows = buildInvoiceRows(record.invoice);
+    workspaceState.rows = rebuiltRows.length ? rebuiltRows : (Array.isArray(record.rows) ? record.rows : []);
+    record.rows = workspaceState.rows;
+    workspaceState.preview = null;
+    workspaceState.invoice = record.invoice || null;
+    workspaceState.extractionReport = record.extractionReport || workspaceState.extractionReport || null;
+    activePdfDocument = await ensureInvoiceRecordPdfDocument(project, workspaceState, record);
+    activePdfPageNumber = 1;
+
+    renderWorkspace(workspace, project, workspaceState);
+}
+
+function showInvoiceBatchList(project, workspace, workspaceState) {
+    const records = Array.isArray(workspaceState.invoices) ? workspaceState.invoices : [];
+    workspaceState.activeInvoiceId = '';
+    workspaceState.invoice = null;
+    workspaceState.rows = [];
+    workspaceState.preview = null;
+    workspaceState.columns = [];
+    workspaceState.headerLabels = {};
+    workspaceState.documentKind = 'pdf';
+    workspaceState.preview = null;
+    workspaceState.fileName = records.length ? `${records.length} facturas importadas` : '';
+    workspaceState.pageCount = records.reduce((sum, record) => sum + Number(record.pageCount || 0), 0);
+    activePdfDocument = null;
+    renderWorkspace(workspace, project, workspaceState);
+}
+
+function refreshInvoiceBatchState(workspaceState) {
+    const records = Array.isArray(workspaceState.invoices) ? workspaceState.invoices : [];
+    const totalLines = records.reduce((sum, record) => sum + Number(record.rows?.length || record.invoice?.lineItems?.length || 0), 0);
+    const reports = records.map((record) => record?.extractionReport).filter(Boolean);
+    const precision = reports.length
+        ? reports.reduce((sum, report) => sum + Number(report?.precision || 0), 0) / reports.length
+        : 0;
+
+    workspaceState.fileName = records.length ? `${records.length} facturas importadas` : '';
+    workspaceState.pageCount = records.reduce((sum, record) => sum + Number(record.pageCount || 0), 0);
+    workspaceState.extractionReport = {
+        ...(workspaceState.extractionReport || {}),
+        selectedEngine: 'invoice-batch',
+        tablesDetected: records.length,
+        rowsExtracted: totalLines,
+        precision,
+        problems: reports.flatMap((report) => Array.isArray(report?.problems) ? report.problems : []),
+        engines: reports.flatMap((report) => Array.isArray(report?.engines) ? report.engines : [])
+    };
+}
+
+function deleteInvoiceRecord(project, workspace, workspaceState, recordId) {
+    const records = Array.isArray(workspaceState.invoices) ? workspaceState.invoices : [];
+    const record = records.find((item) => item.id === recordId);
+    if (!record) return;
+
+    const name = getInvoiceRecordSummary(record).invoiceNumber || record.fileName || 'esta factura';
+    if (!window.confirm(`Eliminar ${name}?`)) return;
+
+    workspaceState.invoices = records.filter((item) => item.id !== recordId);
+    activeInvoicePdfDocuments.delete(recordId);
+    activeInvoicePdfFiles.delete(recordId);
+    activeInvoiceExpandedIds.delete(recordId);
+
+    if (workspaceState.activeInvoiceId === recordId) {
+        workspaceState.activeInvoiceId = '';
+        workspaceState.invoice = null;
+        workspaceState.rows = [];
+        workspaceState.preview = null;
+        workspaceState.columns = [];
+        workspaceState.headerLabels = {};
+        activePdfDocument = null;
+    }
+
+    refreshInvoiceBatchState(workspaceState);
+    saveWorkspace(project, workspaceState).catch((error) => {
+        console.warn('No se pudo guardar la eliminacion de factura:', error);
+    });
+    renderWorkspace(workspace, project, workspaceState);
+}
+
+function createInvoiceSpecList(specs) {
+    const list = document.createElement('div');
+    list.className = 'project-invoice-spec-list';
+
+    specs.filter((spec) => safeText(spec?.value)).forEach((spec) => {
+        const item = document.createElement('span');
+        item.className = 'project-invoice-spec-chip';
+        const label = document.createElement('small');
+        label.textContent = spec.label;
+        const value = document.createElement('strong');
+        value.textContent = spec.value;
+        item.append(label, value);
+        list.appendChild(item);
+    });
+
+    if (!list.childElementCount) {
+        const empty = document.createElement('span');
+        empty.className = 'project-invoice-spec-empty';
+        empty.textContent = '-';
+        list.appendChild(empty);
+    }
+
+    return list;
+}
+
+function createInvoiceLinesPanel(record) {
+    const wrapper = document.createElement('div');
+    wrapper.className = 'project-invoice-lines-panel';
+    const lines = Array.isArray(record?.invoice?.lineItems) ? record.invoice.lineItems : [];
+
+    if (!lines.length) {
+        const empty = document.createElement('p');
+        empty.textContent = 'Esta factura no tiene lineas detectadas.';
+        wrapper.appendChild(empty);
+        return wrapper;
+    }
+
+    const table = document.createElement('table');
+    const thead = document.createElement('thead');
+    thead.innerHTML = '<tr><th>Descripcion</th><th>Cantidad</th><th>Precio ud.</th><th>Total</th></tr>';
+    const tbody = document.createElement('tbody');
+
+    lines.forEach((line) => {
+        const tr = document.createElement('tr');
+        [
+            line.description || '-',
+            line.quantity || '-',
+            line.unitPrice || '-',
+            line.total || '-'
+        ].forEach((value) => {
+            const td = document.createElement('td');
+            td.textContent = safeText(value) || '-';
+            tr.appendChild(td);
+        });
+        tbody.appendChild(tr);
+    });
+
+    table.append(thead, tbody);
+    wrapper.appendChild(table);
+    return wrapper;
+}
+
+function toggleInvoiceLineDetails(row, record, button) {
+    if (!row || !record) return;
+
+    const existing = row.nextElementSibling?.classList?.contains('project-invoice-lines-detail-row')
+        ? row.nextElementSibling
+        : null;
+
+    if (existing) {
+        existing.remove();
+        activeInvoiceExpandedIds.delete(record.id);
+        if (button) {
+            button.textContent = '>';
+            button.setAttribute('aria-expanded', 'false');
+        }
+        return;
+    }
+
+    activeInvoiceExpandedIds.add(record.id);
+    if (button) {
+        button.textContent = 'v';
+        button.setAttribute('aria-expanded', 'true');
+    }
+
+    const detailRow = document.createElement('tr');
+    detailRow.className = 'project-invoice-lines-detail-row';
+    const detailCell = document.createElement('td');
+    detailCell.colSpan = 13;
+    detailCell.appendChild(createInvoiceLinesPanel(record));
+    detailRow.appendChild(detailCell);
+    row.after(detailRow);
+}
+
+function drawInvoiceDocumentThumbnail(canvas, record, index) {
+    const context = canvas?.getContext?.('2d');
+    if (!context) return;
+
+    const summary = getInvoiceRecordSummary(record);
+
+    canvas.width = 520;
+    canvas.height = 700;
+    canvas.style.width = '100%';
+    canvas.style.height = 'auto';
+
+    context.fillStyle = '#ffffff';
+    context.fillRect(0, 0, canvas.width, canvas.height);
+
+    const gradient = context.createLinearGradient(0, 0, canvas.width, 0);
+    gradient.addColorStop(0, '#f8fbff');
+    gradient.addColorStop(1, '#eefbff');
+    context.fillStyle = gradient;
+    context.fillRect(22, 22, canvas.width - 44, canvas.height - 44);
+
+    context.strokeStyle = '#dbeafe';
+    context.lineWidth = 6;
+    context.strokeRect(14, 14, canvas.width - 28, canvas.height - 28);
+
+    context.fillStyle = '#2563eb';
+    context.beginPath();
+    context.roundRect(42, 42, 96, 44, 20);
+    context.fill();
+    context.fillStyle = '#ffffff';
+    context.font = '700 24px Inter, Segoe UI, sans-serif';
+    context.fillText('PDF', 62, 72);
+
+    context.fillStyle = '#0f172a';
+    context.font = '800 28px Inter, Segoe UI, sans-serif';
+    context.fillText('PDF no disponible', 42, 168);
+
+    context.fillStyle = '#64748b';
+    context.font = '700 16px Inter, Segoe UI, sans-serif';
+    context.fillText((safeText(summary.fileName) || `Factura ${index + 1}`).slice(0, 46), 42, 205);
+
+    context.fillStyle = '#334155';
+    context.font = '700 18px Inter, Segoe UI, sans-serif';
+    context.fillText('Abre un guardado con PDF convertido', 42, 282);
+    context.fillText('o vuelve a importar este archivo.', 42, 312);
+
+    context.strokeStyle = '#bfdbfe';
+    context.lineWidth = 2;
+    context.beginPath();
+    context.moveTo(42, 372);
+    context.lineTo(canvas.width - 42, 372);
+    context.stroke();
+
+    context.fillStyle = '#0f766e';
+    context.font = '800 22px Inter, Segoe UI, sans-serif';
+    context.fillText(summary.total && summary.total !== '-' ? summary.total : `${summary.lines} lineas`, 42, 430);
+}
+
+async function renderInvoiceBatchPdfGallery(workspace, project, workspaceState, records) {
+    const viewer = workspace.querySelector('[data-project-pdf-viewer]');
+    const canvas = workspace.querySelector('[data-project-pdf-canvas]');
+    const highlight = workspace.querySelector('[data-project-pdf-highlight]');
+    const pageLabel = workspace.querySelector('[data-project-pdf-page-label]');
+    const activeLabel = workspace.querySelector('[data-project-active-row-label]');
+    if (!viewer) return;
+    const navigation = workspace.querySelector('[data-project-pdf-page-navigation]');
+    if (navigation) navigation.hidden = true;
+
+    const renderNonce = activePdfRenderNonce + 1;
+    activePdfRenderNonce = renderNonce;
+    if (activePdfRenderTask) {
+        try {
+            activePdfRenderTask.cancel();
+        } catch (_) {
+            // PDF.js puede lanzar si la tarea ya termino.
+        }
+        activePdfRenderTask = null;
+    }
+    clearPdfCellHighlights(workspace);
+    viewer.querySelector('[data-project-invoice-thumbnail-gallery]')?.remove();
+    if (canvas) {
+        const context = canvas.getContext('2d');
+        context?.clearRect(0, 0, canvas.width || 0, canvas.height || 0);
+        canvas.removeAttribute('width');
+        canvas.removeAttribute('height');
+        canvas.style.width = '';
+        canvas.style.height = '';
+        canvas.hidden = true;
+    }
+    if (highlight) highlight.hidden = true;
+    if (pageLabel) pageLabel.textContent = 'Facturas';
+    if (activeLabel) activeLabel.textContent = `${records.length} facturas importadas`;
+    viewer.scrollTop = 0;
+    viewer.scrollLeft = 0;
+
+    if (records.length === 1) {
+        const singleRecord = records[0];
+        const pdfDocument = await ensureInvoiceRecordPdfDocument(project, workspaceState, singleRecord);
+        if (renderNonce !== activePdfRenderNonce) return;
+
+        if (pdfDocument) {
+            activePdfDocument = pdfDocument;
+            if (canvas) canvas.hidden = false;
+            if (pageLabel) pageLabel.textContent = 'PDF';
+            if (activeLabel) activeLabel.textContent = singleRecord.fileName || singleRecord.invoice?.fileName || 'Factura';
+            await renderPdfFirstPage(workspace, singleRecord.invoice || null);
+            return;
+        }
+
+        renderInvoiceDocumentPreview(workspace, {
+            fileName: singleRecord.fileName || singleRecord.invoice?.fileName || 'factura.pdf',
+            invoice: singleRecord.invoice || null
+        });
+        return;
+    }
+
+    const gallery = document.createElement('div');
+    gallery.className = 'project-invoice-thumbnail-gallery';
+    gallery.dataset.projectInvoiceThumbnailGallery = '';
+    const minSize = records.length <= 2 ? 280 : records.length <= 8 ? 190 : records.length <= 20 ? 140 : 104;
+    gallery.style.setProperty('--invoice-thumb-min', `${minSize}px`);
+
+    records.forEach((record, index) => {
+        const summary = getInvoiceRecordSummary(record);
+        const card = document.createElement('button');
+        card.type = 'button';
+        card.className = 'project-invoice-thumb-card';
+        card.addEventListener('click', () => {
+            openInvoiceRecord(project, workspace, workspaceState, record.id).catch((error) => {
+                console.warn('No se pudo abrir la factura:', error);
+            });
+        });
+
+        const canvasThumb = document.createElement('canvas');
+        canvasThumb.dataset.invoiceThumbnailCanvas = record.id;
+        const label = document.createElement('span');
+        label.textContent = summary.invoiceNumber && summary.invoiceNumber !== '-'
+            ? summary.invoiceNumber
+            : `Factura ${index + 1}`;
+        const meta = document.createElement('small');
+        meta.textContent = summary.total && summary.total !== '-' ? summary.total : summary.fileName;
+
+        card.append(canvasThumb, label, meta);
+        gallery.appendChild(card);
+    });
+
+    viewer.appendChild(gallery);
+
+    for (const record of records) {
+        if (renderNonce !== activePdfRenderNonce) return;
+        if (!gallery.isConnected) return;
+        const pdfDocument = await ensureInvoiceRecordPdfDocument(project, workspaceState, record);
+        const canvasThumb = gallery.querySelector(`[data-invoice-thumbnail-canvas="${CSS.escape(record.id)}"]`);
+        if (!canvasThumb) continue;
+        if (!pdfDocument) {
+            drawInvoiceDocumentThumbnail(canvasThumb, record, records.indexOf(record));
+            continue;
+        }
+
+        try {
+            const page = await pdfDocument.getPage(1);
+            if (renderNonce !== activePdfRenderNonce) return;
+            const baseViewport = page.getViewport({ scale: 1 });
+            const cssWidth = Math.max(160, canvasThumb.getBoundingClientRect().width || minSize - 20);
+            const pixelRatio = Math.min(window.devicePixelRatio || 1, 3);
+            const viewport = page.getViewport({ scale: (cssWidth * pixelRatio) / Math.max(1, baseViewport.width) });
+            const context = canvasThumb.getContext('2d', { alpha: false });
+            canvasThumb.width = Math.ceil(viewport.width);
+            canvasThumb.height = Math.ceil(viewport.height);
+            canvasThumb.style.width = '100%';
+            canvasThumb.style.height = 'auto';
+            if (context) {
+                context.imageSmoothingEnabled = true;
+                context.imageSmoothingQuality = 'high';
+            }
+            await page.render({ canvasContext: context, viewport }).promise;
+            if (renderNonce !== activePdfRenderNonce) return;
+        } catch (_) {
+            const context = canvasThumb.getContext('2d');
+            canvasThumb.width = 220;
+            canvasThumb.height = 280;
+            context.fillStyle = '#eff6ff';
+            context.fillRect(0, 0, 220, 280);
+            context.fillStyle = '#2563eb';
+            context.font = '700 22px sans-serif';
+            context.fillText('PDF', 88, 148);
+        }
+    }
+}
+
+function renderInvoiceBatchList(workspace, project, workspaceState) {
+    const invoiceView = workspace.querySelector('[data-project-invoice-view]');
+    if (!invoiceView) return;
+
+    const records = Array.isArray(workspaceState.invoices) ? workspaceState.invoices : [];
+    invoiceView.replaceChildren();
+
+    const shell = document.createElement('section');
+    shell.className = 'project-invoice-batch';
+
+    const hero = document.createElement('div');
+    hero.className = 'project-invoice-batch-hero';
+    const heroText = document.createElement('div');
+    const kicker = document.createElement('small');
+    kicker.textContent = 'Lote de facturas';
+    const title = document.createElement('strong');
+    title.textContent = `${records.length} facturas analizadas`;
+    const subtitle = document.createElement('span');
+    const totalLines = records.reduce((sum, record) => sum + Number(record.rows?.length || record.invoice?.lineItems?.length || 0), 0);
+    subtitle.textContent = `${totalLines} lineas detectadas. Abre una factura para revisar sus campos y el PDF.`;
+    heroText.append(kicker, title, subtitle);
+
+    const actions = document.createElement('div');
+    actions.className = 'project-invoice-batch-actions';
+    const upload = document.createElement('button');
+    upload.type = 'button';
+    upload.textContent = 'Anadir factura';
+    upload.addEventListener('click', () => {
+        const input = workspace.querySelector('[data-project-pdf-input]');
+        openInvoiceUploadChoice(workspace, workspaceState, input, { append: true });
+    });
+    actions.appendChild(upload);
+    hero.append(heroText, actions);
+
+    const tableWrap = document.createElement('div');
+    tableWrap.className = 'project-invoice-batch-table-wrap';
+    const table = document.createElement('table');
+    table.className = 'project-invoice-batch-table';
+    const thead = document.createElement('thead');
+    thead.innerHTML = '<tr><th>Factura</th><th>Idioma</th><th>Fecha</th><th>Vencimiento</th><th>Cliente</th><th>Emisor</th><th>Subtotal</th><th>IVA</th><th>Total</th><th>IBAN</th><th>Lineas de factura</th><th></th><th></th></tr>';
+    const tbody = document.createElement('tbody');
+
+    records.forEach((record) => {
+        const summary = getInvoiceRecordSummary(record);
+        const tr = document.createElement('tr');
+        tr.className = 'project-invoice-summary-row';
+        tr.tabIndex = 0;
+        tr.dataset.invoiceRecordId = record.id;
+        tr.addEventListener('click', () => {
+            openInvoiceRecord(project, workspace, workspaceState, record.id).catch((error) => {
+                console.warn('No se pudo abrir la factura:', error);
+            });
+        });
+        tr.addEventListener('keydown', (event) => {
+            if (event.key === 'Enter' || event.key === ' ') {
+                event.preventDefault();
+                openInvoiceRecord(project, workspace, workspaceState, record.id).catch((error) => {
+                    console.warn('No se pudo abrir la factura:', error);
+                });
+            }
+        });
+
+    const titleCell = document.createElement('td');
+    const strong = document.createElement('strong');
+    strong.textContent = summary.invoiceNumber;
+    titleCell.appendChild(strong);
+    tr.appendChild(titleCell);
+
+        const languageCell = document.createElement('td');
+        languageCell.textContent = summary.language || '-';
+        tr.appendChild(languageCell);
+
+        const dateCell = document.createElement('td');
+        dateCell.textContent = summary.date || '-';
+        tr.appendChild(dateCell);
+
+        const dueDateCell = document.createElement('td');
+        dueDateCell.textContent = summary.dueDate || '-';
+        tr.appendChild(dueDateCell);
+
+        const customerCell = document.createElement('td');
+        customerCell.textContent = summary.customer;
+        tr.appendChild(customerCell);
+
+        const supplierCell = document.createElement('td');
+        supplierCell.textContent = summary.supplier;
+        tr.appendChild(supplierCell);
+
+        const subtotalCell = document.createElement('td');
+        subtotalCell.className = 'project-invoice-money-cell';
+        subtotalCell.textContent = summary.subtotal || '-';
+        tr.appendChild(subtotalCell);
+
+        const taxesCell = document.createElement('td');
+        taxesCell.className = 'project-invoice-money-cell';
+        taxesCell.textContent = summary.taxes || '-';
+        tr.appendChild(taxesCell);
+
+        const totalCell = document.createElement('td');
+        totalCell.className = 'project-invoice-money-cell project-invoice-money-total';
+        totalCell.textContent = summary.total || '-';
+        tr.appendChild(totalCell);
+
+        const ibanCell = document.createElement('td');
+        ibanCell.className = 'project-invoice-iban-cell';
+        ibanCell.textContent = summary.iban || '';
+        tr.appendChild(ibanCell);
+
+        const linesCell = document.createElement('td');
+        linesCell.className = 'project-invoice-lines-cell';
+        const lineToggle = document.createElement('button');
+        lineToggle.type = 'button';
+        lineToggle.className = 'project-invoice-lines-toggle';
+        lineToggle.textContent = activeInvoiceExpandedIds.has(record.id) ? 'v' : '>';
+        lineToggle.title = 'Ver lineas de factura';
+        lineToggle.setAttribute('aria-expanded', activeInvoiceExpandedIds.has(record.id) ? 'true' : 'false');
+        lineToggle.addEventListener('click', (event) => {
+            event.stopPropagation();
+            toggleInvoiceLineDetails(tr, record, lineToggle);
+        });
+        const lineCount = document.createElement('strong');
+        lineCount.textContent = String(summary.lines);
+        linesCell.append(lineToggle, lineCount);
+        tr.appendChild(linesCell);
+
+        const actionCell = document.createElement('td');
+        const button = document.createElement('button');
+        button.type = 'button';
+        button.textContent = 'Abrir';
+        button.addEventListener('click', (event) => {
+            event.stopPropagation();
+            openInvoiceRecord(project, workspace, workspaceState, record.id).catch((error) => {
+                console.warn('No se pudo abrir la factura:', error);
+            });
+        });
+        actionCell.appendChild(button);
+        tr.appendChild(actionCell);
+
+        const deleteCell = document.createElement('td');
+        const deleteButton = document.createElement('button');
+        deleteButton.type = 'button';
+        deleteButton.className = 'project-invoice-delete';
+        deleteButton.textContent = 'Eliminar';
+        deleteButton.addEventListener('click', (event) => {
+            event.stopPropagation();
+            deleteInvoiceRecord(project, workspace, workspaceState, record.id);
+        });
+        deleteCell.appendChild(deleteButton);
+        tr.appendChild(deleteCell);
+        tbody.appendChild(tr);
+
+        if (activeInvoiceExpandedIds.has(record.id)) {
+            const detailRow = document.createElement('tr');
+            detailRow.className = 'project-invoice-lines-detail-row';
+            const detailCell = document.createElement('td');
+            detailCell.colSpan = 13;
+            detailCell.appendChild(createInvoiceLinesPanel(record));
+            detailRow.appendChild(detailCell);
+            tbody.appendChild(detailRow);
+        }
+    });
+
+    table.append(thead, tbody);
+    tableWrap.appendChild(table);
+    shell.append(hero, tableWrap);
+    invoiceView.appendChild(shell);
+    renderInvoiceBatchPdfGallery(workspace, project, workspaceState, records).catch((error) => {
+        console.warn('No se pudo renderizar la galeria de facturas:', error);
+    });
 }
 
 function splitPartNumberFromDesignation(row) {
@@ -1659,7 +4120,12 @@ function splitRowMergedValues(row, workspaceState) {
 
 function renderWorkspace(workspace, project, workspaceState) {
     const body = workspace.querySelector('[data-project-import-body]');
+    const typeScreen = workspace.querySelector('[data-project-type-screen]');
+    const startScreen = workspace.querySelector('[data-project-start-screen]');
+    const summary = workspace.querySelector('.project-workspace-grid');
+    const importPanel = workspace.querySelector('.project-import-panel');
     const tableWrap = workspace.querySelector('[data-project-import-table-wrap]');
+    const invoiceView = workspace.querySelector('[data-project-invoice-view]');
     const empty = workspace.querySelector('[data-project-import-empty]');
     const fileName = workspace.querySelector('[data-project-pdf-name]');
     const totalRows = workspace.querySelector('[data-project-total-rows]');
@@ -1668,18 +4134,78 @@ function renderWorkspace(workspace, project, workspaceState) {
     const editedRows = workspace.querySelector('[data-project-edited-rows]');
     const exportJson = document.querySelector('[data-project-export-json]');
     const exportCsv = document.querySelector('[data-project-export-csv]');
+    const wordpressButton = document.querySelector('[data-project-wordpress-button]');
+    const changeTypeButton = document.querySelector('[data-project-change-type-button]');
+    const customerButton = getCustomerNodes(workspace).button;
+    const analysisButton = getAnalysisNodes(workspace).button;
     const rows = workspaceState.rows || [];
+    const documentType = workspaceState.documentType || '';
+    const isInvoice = documentType === 'invoices';
+    const isProduct = documentType === 'products';
+    const invoiceRecords = Array.isArray(workspaceState.invoices) ? workspaceState.invoices : [];
+    const isInvoiceBatchList = isInvoice && invoiceRecords.length && !workspaceState.invoice;
+    const hasDocument = hasWorkspaceDocument(workspaceState);
+    const hasType = Boolean(documentType);
 
-    if (fileName) fileName.textContent = workspaceState.fileName || 'Sin PDF cargado';
-    if (totalRows) totalRows.textContent = String(rows.length);
+    if (fileName) fileName.textContent = workspaceState.fileName || 'Sin documento cargado';
+    if (totalRows) totalRows.textContent = String(isInvoiceBatchList ? invoiceRecords.length : rows.length);
     if (pnRows) pnRows.textContent = String(rows.filter((row) => hasPartNumberValue(row, workspaceState)).length);
     if (pages) pages.textContent = String(workspaceState.pageCount || new Set(rows.map((row) => row.page)).size || 0);
     if (editedRows) editedRows.textContent = String(rows.filter((row) => row.edited).length);
-    if (exportJson) exportJson.disabled = rows.length === 0;
-    if (exportCsv) exportCsv.disabled = rows.length === 0;
+    if (wordpressButton) wordpressButton.hidden = !isProduct;
+    if (changeTypeButton) changeTypeButton.hidden = !hasType;
+    if (customerButton && !isProduct) customerButton.hidden = true;
+    if (analysisButton && !isProduct) analysisButton.hidden = true;
+    if (exportJson) {
+        exportJson.hidden = !isProduct;
+        exportJson.disabled = !hasDocument || !isProduct;
+    }
+    if (exportCsv) {
+        exportCsv.disabled = !hasDocument;
+        exportCsv.textContent = isInvoice ? 'Exportar Excel' : 'Exportar CSV';
+    }
+    syncSaveFileButton(workspaceState);
+    syncTopbarUploadAction(workspace);
+    const uploadButton = document.querySelector('[data-project-pdf-button]');
+    const customersOpen = !getCustomerNodes(workspace).page?.hidden;
+    const analysisOpen = !getAnalysisNodes(workspace).page?.hidden;
+    if (uploadButton && !customersOpen && !analysisOpen) {
+        uploadButton.textContent = isInvoice ? 'Subir facturas' : 'Subir archivo';
+    }
 
-    if (empty) empty.hidden = rows.length > 0;
-    if (tableWrap) tableWrap.hidden = rows.length === 0;
+    workspace.classList.toggle('is-workspace-active', hasDocument);
+    if (typeScreen) typeScreen.hidden = hasType;
+    if (startScreen) startScreen.hidden = !hasType || hasDocument;
+    if (summary) summary.hidden = !hasDocument || isInvoice;
+    if (importPanel) importPanel.hidden = !hasDocument;
+    if (!hasType) {
+        stopSplashScene();
+    } else if (!hasDocument) {
+        startSplashScene(workspace);
+    } else {
+        stopSplashScene();
+    }
+    if (empty) empty.hidden = true;
+    if (tableWrap) tableWrap.hidden = !hasDocument || isInvoice;
+    if (invoiceView) invoiceView.hidden = !hasDocument || !isInvoice;
+
+    if (!hasType || !hasDocument) return;
+
+    if (isInvoice) {
+        if (isInvoiceBatchList) {
+            renderInvoiceBatchList(workspace, project, workspaceState);
+            return;
+        }
+        renderInvoiceView(workspace, workspaceState);
+        if (activePdfDocument) renderPdfFirstPage(workspace, workspaceState.invoice);
+        else renderInvoiceDocumentPreview(workspace, workspaceState);
+        return;
+    }
+
+    if (isProduct) {
+        clearInvoiceViewerState(workspace);
+    }
+
     if (!body) return;
 
     renderTableHead(workspace, workspaceState);
@@ -1768,6 +4294,196 @@ function getWordPressNodes(workspace) {
         check: workspace.querySelector('[data-project-wordpress-check]'),
         sites: workspace.querySelector('[data-project-wordpress-sites]')
     };
+}
+
+function getSavedWorkspaceNodes(workspace) {
+    return {
+        saveButton: document.querySelector('[data-project-save-file-button]'),
+        listButton: document.querySelector('[data-project-saved-files-button]'),
+        saveModal: workspace.querySelector('[data-project-save-modal]'),
+        saveClose: workspace.querySelector('[data-project-save-close]'),
+        modal: workspace.querySelector('[data-project-saved-modal]'),
+        close: workspace.querySelector('[data-project-saved-close]'),
+        form: workspace.querySelector('[data-project-saved-form]'),
+        name: workspace.querySelector('[data-project-saved-name]'),
+        submit: workspace.querySelector('[data-project-saved-submit]'),
+        saveStatus: workspace.querySelector('[data-project-save-status]'),
+        status: workspace.querySelector('[data-project-saved-status]'),
+        list: workspace.querySelector('[data-project-saved-list]')
+    };
+}
+
+function setSavedWorkspaceStatus(workspace, message, isError = false) {
+    const { status } = getSavedWorkspaceNodes(workspace);
+    if (!status) return;
+    status.textContent = message;
+    status.classList.toggle('is-error', Boolean(isError));
+}
+
+function closeSavedWorkspaceModal(workspace) {
+    const { modal } = getSavedWorkspaceNodes(workspace);
+    if (modal) modal.hidden = true;
+}
+
+function setSaveWorkspaceStatus(workspace, message, isError = false) {
+    const { saveStatus } = getSavedWorkspaceNodes(workspace);
+    if (!saveStatus) return;
+    saveStatus.textContent = message;
+    saveStatus.classList.toggle('is-error', Boolean(isError));
+}
+
+function openSaveWorkspaceModal(workspace) {
+    const nodes = getSavedWorkspaceNodes(workspace);
+    if (!nodes.saveModal) return;
+    nodes.saveModal.hidden = false;
+    setSaveWorkspaceStatus(workspace, 'Elige un nombre para guardar este documento.');
+    requestAnimationFrame(() => nodes.name?.focus());
+}
+
+function closeSaveWorkspaceModal(workspace) {
+    const { saveModal } = getSavedWorkspaceNodes(workspace);
+    if (saveModal) saveModal.hidden = true;
+}
+
+function renderSavedWorkspaceList(workspace, project, workspaceState, files) {
+    const { list } = getSavedWorkspaceNodes(workspace);
+    if (!list) return;
+
+    const documentType = workspaceState?.documentType || '';
+    const typeLabel = documentType === 'invoices' ? 'facturas' : 'productos';
+
+    list.replaceChildren();
+    if (!files.length) {
+        const empty = document.createElement('div');
+        empty.className = 'project-saved-empty';
+        empty.textContent = `Todavia no hay guardados de ${typeLabel} en este proyecto.`;
+        list.appendChild(empty);
+        return;
+    }
+
+    files.forEach((file) => {
+        const card = document.createElement('article');
+        card.className = 'project-saved-card';
+
+        const icon = document.createElement('span');
+        icon.className = 'project-saved-card-icon';
+        icon.textContent = file.documentType === 'invoices' ? 'FAC' : 'PDF';
+
+        const body = document.createElement('span');
+        const name = document.createElement('strong');
+        name.textContent = file.name || 'Guardado sin nombre';
+        const meta = document.createElement('small');
+        const date = file.updatedAt || file.createdAt ? new Date(file.updatedAt || file.createdAt).toLocaleString('es-ES') : 'Sin fecha';
+        if (file.documentType === 'invoices') {
+            const invoiceCount = Number(file.invoiceCount || 0);
+            const invoiceLabel = invoiceCount === 1 ? '1 factura guardada' : `${invoiceCount} facturas guardadas`;
+            meta.textContent = `${invoiceLabel} - ${date}`;
+        } else {
+            meta.textContent = `${file.fileName || 'Documento'} - ${Number(file.rows || 0)} filas - ${date}`;
+        }
+        body.append(name, meta);
+
+        const button = document.createElement('button');
+        button.type = 'button';
+        button.textContent = 'Abrir';
+        button.addEventListener('click', async () => {
+            try {
+                button.disabled = true;
+                setSavedWorkspaceStatus(workspace, `Abriendo ${file.name || 'guardado'}...`);
+                const restored = await restoreSavedWorkspace(project, file.id);
+                replaceWorkspaceState(workspaceState, restored);
+                activePdfDocument = null;
+                clearPdfViewer(workspace, 'Cargando guardado...');
+                if (workspaceState.documentType === 'invoices' && Array.isArray(workspaceState.invoices) && workspaceState.invoices.length) {
+                    workspaceState.invoice = null;
+                    workspaceState.rows = [];
+                    workspaceState.columns = [];
+                    workspaceState.headerLabels = {};
+                    workspaceState.activeInvoiceId = '';
+                    workspaceState.fileName = `${workspaceState.invoices.length} facturas importadas`;
+                    workspaceState.pageCount = workspaceState.invoices.reduce((sum, record) => sum + Number(record.pageCount || 0), 0);
+                    await loadSavedInvoiceBatchPdfs(project, file.id, workspaceState);
+                } else {
+                    activeInvoicePdfDocuments = new Map();
+                    activeInvoicePdfFiles = new Map();
+                    clearDocumentPreview(workspace);
+                    workspace.querySelector('[data-project-invoice-thumbnail-gallery]')?.remove();
+                    clearInvoiceViewerState(workspace);
+                    workspaceState.invoice = null;
+                    workspaceState.invoices = [];
+                    workspaceState.activeInvoiceId = '';
+                    await loadSavedProjectPdf(project, workspace, workspaceState);
+                }
+                renderWorkspace(workspace, project, workspaceState);
+                syncWordPressUi(workspace, workspaceState);
+                scheduleWordPressAutoCheck(project, workspace, workspaceState);
+                closeSavedWorkspaceModal(workspace);
+            } catch (error) {
+                setSavedWorkspaceStatus(workspace, `No se pudo abrir: ${String(error?.message || error)}`, true);
+            } finally {
+                button.disabled = false;
+            }
+        });
+
+        card.append(icon, body, button);
+        list.appendChild(card);
+    });
+}
+
+async function refreshSavedWorkspaceList(project, workspace, workspaceState) {
+    const documentType = workspaceState?.documentType || '';
+    const typeLabel = documentType === 'invoices' ? 'facturas' : 'productos';
+    setSavedWorkspaceStatus(workspace, `Cargando guardados de ${typeLabel}...`);
+    const files = await listSavedWorkspaces(project, documentType);
+    renderSavedWorkspaceList(workspace, project, workspaceState, files);
+    setSavedWorkspaceStatus(workspace, files.length ? `${files.length} guardados de ${typeLabel} disponibles.` : `No hay guardados de ${typeLabel} todavia.`);
+}
+
+async function openSavedWorkspaceModal(project, workspace, workspaceState) {
+    const nodes = getSavedWorkspaceNodes(workspace);
+    if (!nodes.modal) return;
+    nodes.modal.hidden = false;
+
+    if (!workspaceState?.documentType) {
+        renderSavedWorkspaceList(workspace, project, workspaceState, []);
+        setSavedWorkspaceStatus(workspace, 'Elige primero si quieres trabajar con productos o facturas.', true);
+        return;
+    }
+
+    try {
+        await refreshSavedWorkspaceList(project, workspace, workspaceState);
+    } catch (error) {
+        setSavedWorkspaceStatus(workspace, `No se pudo cargar la lista: ${String(error?.message || error)}`, true);
+    }
+}
+
+async function saveWorkspaceSnapshotFromModal(project, workspace, workspaceState) {
+    const nodes = getSavedWorkspaceNodes(workspace);
+    const name = safeText(nodes.name?.value);
+    if (!name) {
+        setSaveWorkspaceStatus(workspace, 'Pon un nombre para guardar este archivo.', true);
+        nodes.name?.focus();
+        return;
+    }
+    if (!hasWorkspaceDocument(workspaceState)) {
+        setSaveWorkspaceStatus(workspace, 'Primero sube un documento y extrae su contenido.', true);
+        return;
+    }
+
+    try {
+        if (nodes.submit) nodes.submit.disabled = true;
+        setSaveWorkspaceStatus(workspace, 'Guardando archivo...');
+        await saveSavedWorkspace(project, workspaceState, name);
+        if (nodes.name) nodes.name.value = '';
+        closeSaveWorkspaceModal(workspace);
+        if (nodes.modal && !nodes.modal.hidden) {
+            await refreshSavedWorkspaceList(project, workspace, workspaceState);
+        }
+    } catch (error) {
+        setSaveWorkspaceStatus(workspace, `No se pudo guardar: ${String(error?.message || error)}`, true);
+    } finally {
+        if (nodes.submit) nodes.submit.disabled = false;
+    }
 }
 
 function getCustomerNodes(workspace) {
@@ -1878,6 +4594,30 @@ function getAnalysisNodes(workspace) {
         visitsMapSvg: workspace.querySelector('[data-project-analysis-visits-map-svg]'),
         visitsMapLegend: workspace.querySelector('[data-project-analysis-visits-map-legend]'),
         visitsCountryBody: workspace.querySelector('[data-project-analysis-visits-country-body]'),
+        seoStatus: workspace.querySelector('[data-project-analysis-seo-status]'),
+        seoRefresh: workspace.querySelector('[data-project-analysis-seo-refresh]'),
+        seoScore: workspace.querySelector('[data-project-analysis-seo-score]'),
+        seoGood: workspace.querySelector('[data-project-analysis-seo-good]'),
+        seoWarning: workspace.querySelector('[data-project-analysis-seo-warning]'),
+        seoCritical: workspace.querySelector('[data-project-analysis-seo-critical]'),
+        seoTotal: workspace.querySelector('[data-project-analysis-seo-total]'),
+        seoPriorities: workspace.querySelector('[data-project-analysis-seo-priorities]'),
+        seoHealth: workspace.querySelector('[data-project-analysis-seo-health]'),
+        seoSearch: workspace.querySelector('[data-project-analysis-seo-search]'),
+        seoTableBody: workspace.querySelector('[data-project-analysis-seo-table-body]'),
+        seoModal: workspace.querySelector('[data-project-analysis-seo-modal]'),
+        seoForm: workspace.querySelector('[data-project-analysis-seo-form]'),
+        seoModalClose: workspace.querySelector('[data-project-analysis-seo-modal-close]'),
+        seoModalStatus: workspace.querySelector('[data-project-analysis-seo-modal-status]'),
+        seoModalTitle: workspace.querySelector('[data-project-analysis-seo-modal-title]'),
+        seoBeforeScore: workspace.querySelector('[data-project-analysis-seo-before-score]'),
+        seoAfterScore: workspace.querySelector('[data-project-analysis-seo-after-score]'),
+        seoDeltaScore: workspace.querySelector('[data-project-analysis-seo-delta-score]'),
+        seoFields: [...workspace.querySelectorAll('[data-project-analysis-seo-field]')],
+        seoCounts: [...workspace.querySelectorAll('[data-project-analysis-seo-count]')],
+        seoEditorIssues: workspace.querySelector('[data-project-analysis-seo-editor-issues]'),
+        seoEditorLink: workspace.querySelector('[data-project-analysis-seo-editor-link]'),
+        seoSave: workspace.querySelector('[data-project-analysis-seo-save]'),
         orderModal: workspace.querySelector('[data-project-analysis-order-modal]'),
         orderModalClose: workspace.querySelector('[data-project-analysis-order-modal-close]'),
         orderModalStatus: workspace.querySelector('[data-project-analysis-order-modal-status]'),
@@ -1901,8 +4641,19 @@ function syncWordPressUi(workspace, workspaceState) {
     const nodes = getWordPressNodes(workspace);
     const connection = activeWordPressConnection;
     const rowCount = (workspaceState.rows || []).filter((row) => hasPartNumberValue(row, workspaceState)).length;
+    const isProduct = workspaceState.documentType === 'products';
+
+    if (!isProduct) {
+        if (nodes.button) nodes.button.hidden = true;
+        const customerButton = getCustomerNodes(workspace).button;
+        const analysisButton = getAnalysisNodes(workspace).button;
+        if (customerButton) customerButton.hidden = true;
+        if (analysisButton) analysisButton.hidden = true;
+        return;
+    }
 
     if (nodes.button) {
+        nodes.button.hidden = false;
         nodes.button.textContent = connection ? 'WordPress conectado' : 'Conectar WordPress';
     }
 
@@ -1991,6 +4742,164 @@ function renderCustomersTable(workspace) {
     }
 }
 
+function syncTopbarUploadAction(workspace) {
+    const button = document.querySelector('[data-project-pdf-button]');
+    if (!button) return;
+
+    const customersOpen = !getCustomerNodes(workspace).page?.hidden;
+    const analysisOpen = !getAnalysisNodes(workspace).page?.hidden;
+    button.textContent = customersOpen || analysisOpen ? 'Inicio' : 'Subir archivo';
+}
+
+function closeInvoiceUploadChoice(workspace) {
+    workspace?.querySelector('[data-project-invoice-upload-choice]')?.remove();
+}
+
+function openInvoiceUploadChoice(workspace, workspaceState, input, options = {}) {
+    if (!input) return;
+
+    closeInvoiceUploadChoice(workspace);
+    const uploadMode = options.append ? 'append' : 'replace';
+
+    const overlay = document.createElement('section');
+    overlay.className = 'project-invoice-upload-choice';
+    overlay.dataset.projectInvoiceUploadChoice = '';
+
+    const dialog = document.createElement('div');
+    dialog.className = 'project-invoice-upload-choice-dialog';
+    dialog.setAttribute('role', 'dialog');
+    dialog.setAttribute('aria-modal', 'true');
+
+    const kicker = document.createElement('small');
+    kicker.textContent = 'Importar facturas';
+    const title = document.createElement('strong');
+    title.textContent = options.append ? 'Anade facturas al lote actual' : 'Elige como quieres subirlas';
+    const copy = document.createElement('p');
+    copy.textContent = options.append
+        ? 'Las nuevas facturas se sumaran a las que ya tienes en pantalla.'
+        : 'Puedes seleccionar una factura, varios archivos a la vez o una carpeta completa.';
+
+    const actions = document.createElement('div');
+    actions.className = 'project-invoice-upload-choice-actions';
+
+    const filesButton = document.createElement('button');
+    filesButton.type = 'button';
+    filesButton.textContent = 'Seleccionar archivo(s)';
+    filesButton.addEventListener('click', () => {
+        closeInvoiceUploadChoice(workspace);
+        preparePdfInputForDocumentType(input, workspaceState, 'files', uploadMode);
+        input.click();
+    });
+
+    const folderButton = document.createElement('button');
+    folderButton.type = 'button';
+    folderButton.textContent = 'Seleccionar carpeta';
+    folderButton.addEventListener('click', () => {
+        closeInvoiceUploadChoice(workspace);
+        preparePdfInputForDocumentType(input, workspaceState, 'folder', uploadMode);
+        input.click();
+    });
+
+    const cancelButton = document.createElement('button');
+    cancelButton.type = 'button';
+    cancelButton.textContent = 'Cancelar';
+    cancelButton.addEventListener('click', () => closeInvoiceUploadChoice(workspace));
+
+    actions.append(filesButton, folderButton, cancelButton);
+    dialog.append(kicker, title, copy, actions);
+    overlay.appendChild(dialog);
+    overlay.addEventListener('click', (event) => {
+        if (event.target === overlay) closeInvoiceUploadChoice(workspace);
+    });
+    workspace.appendChild(overlay);
+}
+
+function preparePdfInputForDocumentType(input, workspaceState, mode = 'files', uploadMode = 'replace') {
+    if (!input) return;
+
+    input.accept = 'application/pdf,.pdf,.xlsx,.xls,.csv,.docx,.doc';
+    if (workspaceState?.documentType === 'invoices') {
+        input.multiple = true;
+        input.dataset.invoiceUploadMode = uploadMode === 'append' ? 'append' : 'replace';
+        if (mode === 'folder') {
+            input.setAttribute('webkitdirectory', '');
+            input.setAttribute('directory', '');
+            input.title = 'Selecciona una carpeta con facturas';
+        } else {
+            input.removeAttribute('webkitdirectory');
+            input.removeAttribute('directory');
+            input.title = 'Selecciona una o varias facturas';
+        }
+        return;
+    }
+
+    input.multiple = false;
+    delete input.dataset.invoiceUploadMode;
+    input.removeAttribute('webkitdirectory');
+    input.removeAttribute('directory');
+    input.title = 'Selecciona PDF, Excel, CSV o Word. Word y Excel se convertiran a PDF antes de analizarse.';
+}
+
+function showProjectHome(project, workspace, workspaceState) {
+    const customerPage = getCustomerNodes(workspace).page;
+    const analysisPage = getAnalysisNodes(workspace).page;
+
+    if (customerPage) customerPage.hidden = true;
+    if (analysisPage) analysisPage.hidden = true;
+    const hero = workspace.querySelector('.project-workspace-hero');
+    if (hero) hero.hidden = false;
+    renderWorkspace(workspace, project, workspaceState);
+    syncTopbarUploadAction(workspace);
+}
+
+function selectProjectDocumentType(project, workspace, workspaceState, documentType) {
+    const nextType = documentType === 'invoices' ? 'invoices' : 'products';
+    workspaceState.documentType = nextType;
+    workspaceState.documentKind = '';
+    workspaceState.fileName = '';
+    workspaceState.pageCount = 0;
+    workspaceState.headerLabels = {};
+    workspaceState.columns = [];
+    workspaceState.rows = [];
+    workspaceState.invoice = null;
+    workspaceState.invoices = [];
+    workspaceState.activeInvoiceId = '';
+    workspaceState.extractionReport = null;
+    activePdfDocument = null;
+    activeInvoicePdfDocuments = new Map();
+    activeInvoicePdfFiles = new Map();
+    renderWorkspace(workspace, project, workspaceState);
+    syncWordPressUi(workspace, workspaceState);
+}
+
+function clearProjectDocumentType(project, workspace, workspaceState) {
+    workspaceState.documentType = '';
+    workspaceState.documentKind = '';
+    workspaceState.fileName = '';
+    workspaceState.pageCount = 0;
+    workspaceState.headerLabels = {};
+    workspaceState.columns = [];
+    workspaceState.rows = [];
+    workspaceState.invoice = null;
+    workspaceState.invoices = [];
+    workspaceState.activeInvoiceId = '';
+    workspaceState.extractionReport = null;
+    activePdfDocument = null;
+    activeInvoicePdfDocuments = new Map();
+    activeInvoicePdfFiles = new Map();
+    renderWorkspace(workspace, project, workspaceState);
+    syncWordPressUi(workspace, workspaceState);
+}
+
+function returnToDocumentTypeChooser(project, workspace, workspaceState) {
+    const customerPage = getCustomerNodes(workspace).page;
+    const analysisPage = getAnalysisNodes(workspace).page;
+    if (customerPage) customerPage.hidden = true;
+    if (analysisPage) analysisPage.hidden = true;
+    closeInvoiceUploadChoice(workspace);
+    clearProjectDocumentType(project, workspace, workspaceState);
+}
+
 async function openCustomersView(project, workspace) {
     const nodes = getCustomerNodes(workspace);
     if (!nodes.page) return;
@@ -2000,6 +4909,8 @@ async function openCustomersView(project, workspace) {
     });
     getAnalysisNodes(workspace).page.hidden = true;
     nodes.page.hidden = false;
+    stopSplashScene();
+    syncTopbarUploadAction(workspace);
     if (nodes.title) nodes.title.textContent = `Clientes ${activeWordPressConnection?.siteName || ''}`.trim();
     if (nodes.status) nodes.status.textContent = 'Cargando clientes de WordPress...';
     if (nodes.body) nodes.body.replaceChildren();
@@ -2014,12 +4925,8 @@ async function openCustomersView(project, workspace) {
     }
 }
 
-function closeCustomersView(workspace) {
-    const { page } = getCustomerNodes(workspace);
-    if (page) page.hidden = true;
-    workspace.querySelectorAll('[data-project-main-section]').forEach((section) => {
-        section.hidden = false;
-    });
+function closeCustomersView(project, workspace, workspaceState) {
+    showProjectHome(project, workspace, workspaceState);
 }
 
 function setAnalysisSection(workspace, section) {
@@ -3269,6 +6176,452 @@ async function renderVisitsAnalysis(workspace) {
     await renderVisitMap(workspace, summary.countries);
 }
 
+function seoScoreClass(score) {
+    const value = Number(score || 0);
+    if (value >= 80) return 'is-good';
+    if (value >= 55) return 'is-warning';
+    return 'is-critical';
+}
+
+function seoLevelLabel(level) {
+    return {
+        critical: 'Critico',
+        warning: 'Mejora',
+        info: 'Info'
+    }[String(level || '').toLowerCase()] || 'Mejora';
+}
+
+function seoIssueSummary(items) {
+    const issueMap = new Map();
+    (Array.isArray(items) ? items : []).forEach((item) => {
+        (Array.isArray(item.issues) ? item.issues : []).forEach((issue) => {
+            const message = String(issue.message || '').trim();
+            if (!message) return;
+            const current = issueMap.get(message) || { count: 0, level: issue.level || 'warning' };
+            current.count += 1;
+            issueMap.set(message, current);
+        });
+    });
+
+    return [...issueMap.entries()]
+        .map(([message, value]) => ({ message, ...value }))
+        .sort((a, b) => b.count - a.count)
+        .slice(0, 4);
+}
+
+function getSeoEditableValue(item, key) {
+    const editable = item?.editable || {};
+    return editable[key] ?? '';
+}
+
+function getSeoEditorPayload(nodes) {
+    const payload = {};
+    (nodes.seoFields || []).forEach((field) => {
+        const key = field.dataset.projectAnalysisSeoField;
+        if (!key) return;
+        payload[key] = field.value.trim();
+    });
+
+    if (!payload.metaDescription && payload.shortDescription) {
+        payload.metaDescription = payload.shortDescription;
+    }
+
+    return payload;
+}
+
+function getSeoCountHint(key, value) {
+    const length = String(value || '').trim().length;
+    const suffix = `${length.toLocaleString('es-ES')} caracteres`;
+
+    if (key === 'title' || key === 'metaTitle') {
+        return `${suffix} - ideal 35-65`;
+    }
+    if (key === 'shortDescription' || key === 'metaDescription') {
+        return `${suffix} - ideal 90-160`;
+    }
+    if (key === 'description') {
+        return `${suffix} - mejor a partir de 300`;
+    }
+    if (key === 'slug') {
+        return `${suffix} - URL limpia`;
+    }
+    if (key === 'focusKeyword') {
+        return value ? 'Keyword definida' : 'Opcional, pero recomendable';
+    }
+
+    return suffix;
+}
+
+function calculateLocalSeoPreview(input, originalItem = {}) {
+    const title = String(input.title || '').trim();
+    const metaTitle = String(input.metaTitle || '').trim();
+    const description = String(input.description || '').replace(/<[^>]*>/g, ' ').replace(/\s+/g, ' ').trim();
+    const shortDescription = String(input.metaDescription || input.shortDescription || '').replace(/<[^>]*>/g, ' ').replace(/\s+/g, ' ').trim();
+    const slug = String(input.slug || '').trim();
+    const focusKeyword = String(input.focusKeyword || '').trim().toLowerCase();
+    const searchable = `${title} ${metaTitle} ${shortDescription} ${description}`.toLowerCase();
+    const issues = [];
+
+    if (title.length < 18) {
+        issues.push({ level: 'warning', message: 'Titulo demasiado corto.' });
+    } else if (title.length > 70) {
+        issues.push({ level: 'warning', message: 'Titulo demasiado largo.' });
+    }
+
+    if (metaTitle && metaTitle.length > 70) {
+        issues.push({ level: 'warning', message: 'Meta titulo demasiado largo.' });
+    }
+
+    if (shortDescription.length < 70) {
+        issues.push({ level: 'warning', message: 'Meta descripcion o extracto corto.' });
+    } else if (shortDescription.length > 170) {
+        issues.push({ level: 'warning', message: 'Meta descripcion demasiado larga.' });
+    }
+
+    if (description.length < 180) {
+        issues.push({ level: 'critical', message: 'Contenido muy corto para posicionar.' });
+    }
+
+    if (!slug || slug.length < 4) {
+        issues.push({ level: 'info', message: 'Slug poco descriptivo.' });
+    }
+
+    if (!originalItem.image) {
+        issues.push({ level: 'warning', message: 'Producto sin imagen destacada.' });
+    }
+
+    if (focusKeyword && !searchable.includes(focusKeyword)) {
+        issues.push({ level: 'warning', message: 'La palabra clave no aparece en el contenido.' });
+    }
+
+    const penalty = issues.reduce((total, issue) => {
+        if (issue.level === 'critical') return total + 25;
+        if (issue.level === 'warning') return total + 12;
+        return total + 6;
+    }, 0);
+
+    return {
+        score: Math.max(20, Math.min(100, 100 - penalty)),
+        issues
+    };
+}
+
+function renderSeoEditorPreview(workspace) {
+    const nodes = getAnalysisNodes(workspace);
+    if (!activeSeoEditorItem) return;
+
+    const payload = getSeoEditorPayload(nodes);
+    const preview = calculateLocalSeoPreview(payload, activeSeoEditorItem);
+    const before = Number(activeSeoEditorItem.score || 0);
+    const delta = preview.score - before;
+
+    if (nodes.seoAfterScore) nodes.seoAfterScore.textContent = `${preview.score}/100`;
+    if (nodes.seoDeltaScore) {
+        nodes.seoDeltaScore.textContent = delta === 0 ? '0' : `${delta > 0 ? '+' : ''}${delta}`;
+        nodes.seoDeltaScore.style.color = delta >= 0 ? '#059669' : '#dc2626';
+    }
+
+    (nodes.seoCounts || []).forEach((count) => {
+        const key = count.dataset.projectAnalysisSeoCount;
+        count.textContent = getSeoCountHint(key, payload[key] || '');
+    });
+
+    if (nodes.seoEditorIssues) {
+        nodes.seoEditorIssues.replaceChildren();
+        const issues = preview.issues.length ? preview.issues : [{ level: 'info', message: 'La vista previa no detecta bloqueos importantes.' }];
+        issues.slice(0, 8).forEach((issue) => {
+            const tag = document.createElement('em');
+            tag.className = String(issue.level || 'info').toLowerCase();
+            tag.textContent = issue.message;
+            nodes.seoEditorIssues.appendChild(tag);
+        });
+    }
+}
+
+function openSeoEditor(workspace, item) {
+    const nodes = getAnalysisNodes(workspace);
+    activeSeoEditorItem = item;
+
+    if (nodes.seoModalTitle) nodes.seoModalTitle.textContent = item.title || 'Producto';
+    if (nodes.seoModalStatus) nodes.seoModalStatus.textContent = `Score actual ${Number(item.score || 0)}/100`;
+    if (nodes.seoBeforeScore) nodes.seoBeforeScore.textContent = `${Number(item.score || 0)}/100`;
+    if (nodes.seoEditorLink) {
+        nodes.seoEditorLink.hidden = !item.url;
+        nodes.seoEditorLink.href = item.url || '#';
+    }
+
+    const values = {
+        title: getSeoEditableValue(item, 'title') || item.title || '',
+        slug: getSeoEditableValue(item, 'slug'),
+        metaTitle: getSeoEditableValue(item, 'metaTitle'),
+        focusKeyword: getSeoEditableValue(item, 'focusKeyword'),
+        shortDescription: getSeoEditableValue(item, 'shortDescription') || getSeoEditableValue(item, 'metaDescription'),
+        description: getSeoEditableValue(item, 'description')
+    };
+
+    (nodes.seoFields || []).forEach((field) => {
+        const key = field.dataset.projectAnalysisSeoField;
+        field.value = values[key] || '';
+    });
+
+    renderSeoEditorPreview(workspace);
+    if (nodes.seoModal) nodes.seoModal.hidden = false;
+}
+
+function closeSeoEditor(workspace) {
+    const nodes = getAnalysisNodes(workspace);
+    activeSeoEditorItem = null;
+    if (nodes.seoModal) nodes.seoModal.hidden = true;
+}
+
+function rebuildSeoMetrics(items) {
+    const total = items.length;
+    const averageScore = total
+        ? Math.round(items.reduce((sum, item) => sum + Number(item.score || 0), 0) / total)
+        : 0;
+
+    return {
+        total,
+        averageScore,
+        good: items.filter((item) => Number(item.score || 0) >= 80).length,
+        warning: items.filter((item) => Number(item.score || 0) >= 55 && Number(item.score || 0) < 80).length,
+        critical: items.filter((item) => Number(item.score || 0) < 55).length
+    };
+}
+
+function getSeoSearchText(item) {
+    const issues = (Array.isArray(item?.issues) ? item.issues : [])
+        .map((issue) => `${issue.level || ''} ${issue.message || ''}`)
+        .join(' ');
+
+    return [
+        item?.title,
+        item?.sku,
+        item?.status,
+        item?.type,
+        item?.score,
+        issues
+    ].filter(Boolean).join(' ').toLowerCase();
+}
+
+function getVisibleSeoItems(workspace, items) {
+    const nodes = getAnalysisNodes(workspace);
+    const query = String(nodes.seoSearch?.value || '').trim().toLowerCase();
+    const filteredItems = query
+        ? items.filter((item) => getSeoSearchText(item).includes(query))
+        : items;
+
+    return [...filteredItems].sort((a, b) => {
+        const aUpdated = activeSeoUpdatedIds.has(String(a.id)) ? 1 : 0;
+        const bUpdated = activeSeoUpdatedIds.has(String(b.id)) ? 1 : 0;
+
+        if (aUpdated !== bUpdated) return bUpdated - aUpdated;
+        return Number(a.score || 0) - Number(b.score || 0);
+    });
+}
+
+function replaceSeoAuditItem(updatedItem) {
+    if (!activeSeoAudit || !updatedItem) return;
+
+    const items = Array.isArray(activeSeoAudit.items) ? activeSeoAudit.items : [];
+    const updatedId = String(updatedItem.id);
+    let foundItem = false;
+    const nextItems = items.map((item) => {
+        if (String(item.id) !== updatedId) return item;
+        foundItem = true;
+        return { ...item, ...updatedItem };
+    });
+
+    if (!foundItem) {
+        nextItems.push(updatedItem);
+    }
+
+    activeSeoUpdatedIds.add(updatedId);
+
+    activeSeoAudit = {
+        ...activeSeoAudit,
+        items: nextItems,
+        metrics: {
+            ...(activeSeoAudit.metrics || {}),
+            ...rebuildSeoMetrics(nextItems)
+        }
+    };
+}
+
+async function saveSeoEditor(project, workspace) {
+    const nodes = getAnalysisNodes(workspace);
+    if (!activeSeoEditorItem) return;
+
+    const item = activeSeoEditorItem;
+    const beforeScore = Number(item.score || 0);
+    const payload = getSeoEditorPayload(nodes);
+
+    if (nodes.seoSave) nodes.seoSave.disabled = true;
+    if (nodes.seoModalStatus) nodes.seoModalStatus.textContent = 'Guardando cambios en WordPress...';
+
+    try {
+        const data = await fetchProjectJson(`/api/projects/${encodeURIComponent(project.id)}/wordpress/seo-audit/${encodeURIComponent(item.id)}`, {
+            method: 'PATCH',
+            body: JSON.stringify(payload)
+        });
+        const updatedItem = data.item || null;
+        const afterScore = Number(updatedItem?.score || beforeScore);
+        const delta = afterScore - beforeScore;
+
+        replaceSeoAuditItem(updatedItem);
+        activeSeoEditorItem = updatedItem || { ...item, ...payload, score: afterScore };
+        renderSeoAudit(workspace);
+
+        if (nodes.seoBeforeScore) nodes.seoBeforeScore.textContent = `${beforeScore}/100`;
+        if (nodes.seoAfterScore) nodes.seoAfterScore.textContent = `${afterScore}/100`;
+        if (nodes.seoDeltaScore) {
+            nodes.seoDeltaScore.textContent = delta === 0 ? '0' : `${delta > 0 ? '+' : ''}${delta}`;
+            nodes.seoDeltaScore.style.color = delta >= 0 ? '#059669' : '#dc2626';
+        }
+        if (nodes.seoModalStatus) {
+            nodes.seoModalStatus.textContent = delta > 0
+                ? `Guardado. Mejora de ${delta} puntos.`
+                : 'Guardado. El score se mantiene estable.';
+        }
+    } catch (error) {
+        if (nodes.seoModalStatus) nodes.seoModalStatus.textContent = cleanRemoteErrorMessage(error?.message || error);
+    } finally {
+        if (nodes.seoSave) nodes.seoSave.disabled = false;
+    }
+}
+
+function renderSeoAudit(workspace) {
+    const nodes = getAnalysisNodes(workspace);
+    const audit = activeSeoAudit || {};
+    const metrics = audit.metrics || {};
+    const items = Array.isArray(audit.items) ? audit.items : [];
+    const visibleItems = getVisibleSeoItems(workspace, items);
+    const averageScore = Number(metrics.averageScore || 0);
+
+    if (nodes.seoScore) {
+        nodes.seoScore.textContent = items.length ? `${averageScore}` : '--';
+        nodes.seoScore.className = seoScoreClass(averageScore);
+    }
+    if (nodes.seoGood) nodes.seoGood.textContent = Number(metrics.good || 0).toLocaleString('es-ES');
+    if (nodes.seoWarning) nodes.seoWarning.textContent = Number(metrics.warning || 0).toLocaleString('es-ES');
+    if (nodes.seoCritical) nodes.seoCritical.textContent = Number(metrics.critical || 0).toLocaleString('es-ES');
+    if (nodes.seoTotal) nodes.seoTotal.textContent = Number(metrics.total || items.length || 0).toLocaleString('es-ES');
+
+    const priorities = seoIssueSummary(items);
+    renderPerformanceList(nodes.seoPriorities, priorities.length
+        ? priorities.map((issue) => ({
+            label: seoLevelLabel(issue.level),
+            value: issue.message,
+            hint: `${issue.count.toLocaleString('es-ES')} contenidos afectados`
+        }))
+        : [{ label: 'Sin bloqueos', value: 'SEO limpio', hint: 'No hay problemas detectados en la auditoria actual' }]
+    );
+
+    renderPerformanceList(nodes.seoHealth, [
+        { label: 'Cobertura', value: `${Number(metrics.total || items.length || 0).toLocaleString('es-ES')} URLs`, hint: 'Productos o paginas revisadas' },
+        { label: 'Promedio', value: items.length ? `${averageScore}/100` : '-', hint: averageScore >= 80 ? 'Buen estado general' : 'Hay margen claro de mejora' },
+        { label: 'Riesgo', value: Number(metrics.critical || 0) ? 'Alto' : Number(metrics.warning || 0) ? 'Medio' : 'Bajo', hint: 'Basado en titulos, descripciones, imagenes y contenido' },
+        { label: 'Fuente', value: audit.source || '-', hint: 'Origen de la lectura SEO' }
+    ]);
+
+    if (!nodes.seoTableBody) return;
+    nodes.seoTableBody.replaceChildren();
+
+    visibleItems.forEach((item) => {
+        const isUpdated = activeSeoUpdatedIds.has(String(item.id));
+        const tr = document.createElement('tr');
+        if (isUpdated) tr.classList.add('is-seo-updated');
+
+        const titleCell = document.createElement('td');
+        const main = document.createElement('span');
+        main.className = 'project-analysis-product-row-main';
+        const image = document.createElement('i');
+        image.className = 'project-analysis-product-row-image';
+        if (item.image) {
+            image.style.backgroundImage = `url("${String(item.image).replace(/"/g, '%22')}")`;
+        } else {
+            image.textContent = String(item.title || 'S').slice(0, 1).toUpperCase();
+        }
+        const body = document.createElement('span');
+        const title = document.createElement('strong');
+        title.textContent = item.title || 'Sin titulo';
+        const meta = document.createElement('small');
+        meta.textContent = [item.sku ? `SKU ${item.sku}` : '', item.status || '', isUpdated ? 'Actualizado' : ''].filter(Boolean).join(' - ') || 'Contenido';
+        body.append(title, meta);
+        main.append(image, body);
+        titleCell.appendChild(main);
+
+        const typeCell = document.createElement('td');
+        typeCell.textContent = String(item.status || '').toLowerCase() === 'publish' ? 'Publicado' : (item.status || item.type || '-');
+
+        const scoreCell = document.createElement('td');
+        const score = document.createElement('span');
+        score.className = `project-analysis-seo-score-pill ${seoScoreClass(item.score)}`;
+        score.textContent = `${Number(item.score || 0)}/100`;
+        scoreCell.appendChild(score);
+
+        const issuesCell = document.createElement('td');
+        const issues = Array.isArray(item.issues) ? item.issues : [];
+        if (issues.length) {
+            const list = document.createElement('span');
+            list.className = 'project-analysis-seo-issues';
+            issues.slice(0, 4).forEach((issue) => {
+                const tag = document.createElement('em');
+                tag.className = String(issue.level || 'warning').toLowerCase();
+                tag.textContent = issue.message || 'Revisar';
+                list.appendChild(tag);
+            });
+            issuesCell.appendChild(list);
+        } else {
+            issuesCell.textContent = 'Sin problemas relevantes.';
+        }
+
+        const actionCell = document.createElement('td');
+        const button = document.createElement('button');
+        button.className = 'project-analysis-seo-open';
+        button.type = 'button';
+        button.textContent = 'Mejorar';
+        button.addEventListener('click', () => openSeoEditor(workspace, item));
+        actionCell.appendChild(button);
+
+        tr.append(titleCell, typeCell, scoreCell, issuesCell, actionCell);
+        nodes.seoTableBody.appendChild(tr);
+    });
+
+    if (!visibleItems.length) {
+        const tr = document.createElement('tr');
+        const td = document.createElement('td');
+        td.colSpan = 5;
+        td.textContent = items.length
+            ? 'No hay productos que coincidan con la busqueda.'
+            : 'Todavia no hay contenido SEO para mostrar.';
+        tr.appendChild(td);
+        nodes.seoTableBody.appendChild(tr);
+    }
+}
+
+async function loadSeoAudit(project, workspace) {
+    const nodes = getAnalysisNodes(workspace);
+    if (nodes.seoStatus) nodes.seoStatus.textContent = 'Auditando SEO de WordPress...';
+    if (nodes.seoRefresh) nodes.seoRefresh.disabled = true;
+
+    try {
+        const data = await fetchProjectJson(`/api/projects/${encodeURIComponent(project.id)}/wordpress/seo-audit`);
+        activeSeoAudit = data.audit || null;
+        renderSeoAudit(workspace);
+        if (nodes.seoStatus) {
+            const total = Number(activeSeoAudit?.metrics?.total || activeSeoAudit?.items?.length || 0);
+            nodes.seoStatus.textContent = `${total.toLocaleString('es-ES')} contenidos auditados.`;
+        }
+    } catch (error) {
+        activeSeoAudit = null;
+        renderSeoAudit(workspace);
+        if (nodes.seoStatus) nodes.seoStatus.textContent = cleanRemoteErrorMessage(error?.message || error);
+    } finally {
+        if (nodes.seoRefresh) nodes.seoRefresh.disabled = false;
+    }
+}
+
 async function loadAnalysisSummary(project, workspace) {
     const nodes = getAnalysisNodes(workspace);
     const start = nodes.start?.value || '';
@@ -3420,6 +6773,8 @@ function openAnalysisView(project, workspace) {
     });
     getCustomerNodes(workspace).page.hidden = true;
     nodes.page.hidden = false;
+    stopSplashScene();
+    syncTopbarUploadAction(workspace);
 
     if (nodes.title) nodes.title.textContent = `Analisis ${activeWordPressConnection?.siteName || ''}`.trim();
     if (nodes.status) nodes.status.textContent = 'Analisis de rendimiento de la web conectada.';
@@ -3432,12 +6787,8 @@ function openAnalysisView(project, workspace) {
     loadAnalysisSummary(project, workspace);
 }
 
-function closeAnalysisView(workspace) {
-    const { page } = getAnalysisNodes(workspace);
-    if (page) page.hidden = true;
-    workspace.querySelectorAll('[data-project-main-section]').forEach((section) => {
-        section.hidden = false;
-    });
+function closeAnalysisView(project, workspace, workspaceState) {
+    showProjectHome(project, workspace, workspaceState);
 }
 
 function exportCustomersCsv(project) {
@@ -3570,7 +6921,7 @@ async function autoCheckWordPressRows(project, workspace, workspaceState) {
             activeWordPressConnection = data.connection || activeWordPressConnection;
             await saveWorkspace(project, workspaceState);
         } catch (error) {
-            setWordPressStatus(workspace, `Se paro la comparacion WordPress: ${String(error?.message || error)}`, true);
+
             return;
         }
 
@@ -3698,16 +7049,71 @@ async function checkWordPressRows(project, workspace, workspaceState) {
 
 function bindWorkspaceActions(workspace, project, workspaceState) {
     const pdfButton = document.querySelector('[data-project-pdf-button]');
+    const changeTypeButton = document.querySelector('[data-project-change-type-button]');
+    const typeButtons = [...workspace.querySelectorAll('[data-project-type-choice]')];
+    const typeBackButton = workspace.querySelector('[data-project-type-back]');
+    const startUploadButton = workspace.querySelector('[data-project-start-upload]');
+    const startSavedButton = workspace.querySelector('[data-project-start-saved]');
     const pdfInput = workspace.querySelector('[data-project-pdf-input]');
     const pdfStatus = workspace.querySelector('[data-project-pdf-status]');
     const tableWrap = workspace.querySelector('[data-project-import-table-wrap]');
     const exportJson = document.querySelector('[data-project-export-json]');
     const exportCsv = document.querySelector('[data-project-export-csv]');
     const wordpressNodes = getWordPressNodes(workspace);
+    const savedNodes = getSavedWorkspaceNodes(workspace);
     const customerNodes = getCustomerNodes(workspace);
     const analysisNodes = getAnalysisNodes(workspace);
 
-    pdfButton?.addEventListener('click', () => pdfInput?.click());
+    pdfButton?.addEventListener('click', () => {
+        const customersOpen = !customerNodes.page?.hidden;
+        const analysisOpen = !analysisNodes.page?.hidden;
+        if (customersOpen || analysisOpen) {
+            showProjectHome(project, workspace, workspaceState);
+            return;
+        }
+        if (!workspaceState.documentType) {
+            renderWorkspace(workspace, project, workspaceState);
+            return;
+        }
+        if (workspaceState.documentType === 'invoices') {
+            openInvoiceUploadChoice(workspace, workspaceState, pdfInput, { append: false });
+            return;
+        }
+        preparePdfInputForDocumentType(pdfInput, workspaceState);
+        pdfInput?.click();
+    });
+    changeTypeButton?.addEventListener('click', () => {
+        returnToDocumentTypeChooser(project, workspace, workspaceState);
+    });
+    typeButtons.forEach((button) => {
+        button.addEventListener('click', () => {
+            selectProjectDocumentType(project, workspace, workspaceState, button.dataset.projectTypeChoice);
+        });
+    });
+    typeBackButton?.addEventListener('click', () => clearProjectDocumentType(project, workspace, workspaceState));
+    startUploadButton?.addEventListener('click', () => {
+        if (workspaceState.documentType === 'invoices') {
+            openInvoiceUploadChoice(workspace, workspaceState, pdfInput, { append: false });
+            return;
+        }
+        preparePdfInputForDocumentType(pdfInput, workspaceState);
+        pdfInput?.click();
+    });
+    startSavedButton?.addEventListener('click', () => openSavedWorkspaceModal(project, workspace, workspaceState));
+    savedNodes.saveButton?.addEventListener('click', () => openSaveWorkspaceModal(workspace));
+    savedNodes.listButton?.addEventListener('click', () => openSavedWorkspaceModal(project, workspace, workspaceState));
+    savedNodes.saveClose?.addEventListener('click', () => closeSaveWorkspaceModal(workspace));
+    savedNodes.saveModal?.addEventListener('click', (event) => {
+        if (event.target === savedNodes.saveModal) closeSaveWorkspaceModal(workspace);
+    });
+    savedNodes.close?.addEventListener('click', () => closeSavedWorkspaceModal(workspace));
+    savedNodes.modal?.addEventListener('click', (event) => {
+        if (event.target === savedNodes.modal) closeSavedWorkspaceModal(workspace);
+    });
+    savedNodes.form?.addEventListener('submit', (event) => {
+        event.preventDefault();
+        saveWorkspaceSnapshotFromModal(project, workspace, workspaceState);
+    });
     wordpressNodes.button?.addEventListener('click', () => openWordPressModal(workspace, workspaceState));
     wordpressNodes.login?.addEventListener('click', () => startWordPressOAuth(project, workspace));
     wordpressNodes.close?.addEventListener('click', () => closeWordPressModal(workspace));
@@ -3722,11 +7128,11 @@ function bindWorkspaceActions(workspace, project, workspaceState) {
         checkWordPressRows(project, workspace, workspaceState);
     });
     customerNodes.button?.addEventListener('click', () => openCustomersView(project, workspace));
-    customerNodes.close?.addEventListener('click', () => closeCustomersView(workspace));
+    customerNodes.close?.addEventListener('click', () => closeCustomersView(project, workspace, workspaceState));
     customerNodes.search?.addEventListener('input', () => renderCustomersTable(workspace));
     customerNodes.exportButton?.addEventListener('click', () => exportCustomersCsv(project));
     analysisNodes.button?.addEventListener('click', () => openAnalysisView(project, workspace));
-    analysisNodes.close?.addEventListener('click', () => closeAnalysisView(workspace));
+    analysisNodes.close?.addEventListener('click', () => closeAnalysisView(project, workspace, workspaceState));
     analysisNodes.summaryForm?.addEventListener('submit', (event) => {
         event.preventDefault();
         loadAnalysisSummary(project, workspace);
@@ -3746,6 +7152,23 @@ function bindWorkspaceActions(workspace, project, workspaceState) {
     analysisNodes.visitsForm?.addEventListener('submit', (event) => {
         event.preventDefault();
         loadVisitsAnalysis(project, workspace);
+    });
+    analysisNodes.seoRefresh?.addEventListener('click', () => {
+        loadSeoAudit(project, workspace);
+    });
+    analysisNodes.seoSearch?.addEventListener('input', () => {
+        renderSeoAudit(workspace);
+    });
+    analysisNodes.seoModalClose?.addEventListener('click', () => closeSeoEditor(workspace));
+    analysisNodes.seoModal?.addEventListener('click', (event) => {
+        if (event.target === analysisNodes.seoModal) closeSeoEditor(workspace);
+    });
+    analysisNodes.seoForm?.addEventListener('submit', (event) => {
+        event.preventDefault();
+        saveSeoEditor(project, workspace);
+    });
+    analysisNodes.seoFields.forEach((field) => {
+        field.addEventListener('input', () => renderSeoEditorPreview(workspace));
     });
     analysisNodes.calendarToggle?.addEventListener('click', () => toggleAnalysisRangeMenu(workspace));
     analysisNodes.presetButtons.forEach((button) => {
@@ -3836,6 +7259,8 @@ function bindWorkspaceActions(workspace, project, workspaceState) {
             } else if (section === 'visits') {
                 setDefaultVisitsAnalysisDates(workspace);
                 loadVisitsAnalysis(project, workspace);
+            } else if (section === 'seo') {
+                loadSeoAudit(project, workspace);
             }
         });
     });
@@ -3860,51 +7285,220 @@ function bindWorkspaceActions(workspace, project, workspaceState) {
         if (!file) return;
 
         try {
-            if (pdfStatus) pdfStatus.textContent = 'Preparando lectura del PDF...';
-            const result = await parsePdfRows(file, (message) => {
-                if (pdfStatus) pdfStatus.textContent = message;
-            });
+            if (!workspaceState.documentType) {
+                if (pdfStatus) pdfStatus.textContent = 'Primero elige si quieres leer productos o facturas.';
+                renderWorkspace(workspace, project, workspaceState);
+                return;
+            }
+
+            if (workspaceState.documentType === 'invoices') {
+                const appendInvoices = pdfInput.dataset.invoiceUploadMode === 'append';
+                await importInvoiceFiles(project, workspace, workspaceState, pdfInput.files || [], (message) => {
+                    if (pdfStatus) pdfStatus.textContent = message;
+                }, { append: appendInvoices });
+                return;
+            }
+
+            const documentKind = getUploadDocumentKind(file);
+            if (documentKind === 'unknown') {
+                throw new Error('Formato no soportado. Usa PDF, Excel, CSV o Word.');
+            }
+
+            const isPdf = documentKind === 'pdf';
+            if (pdfStatus) pdfStatus.textContent = 'Guardando documento en el proyecto...';
+            await saveProjectPdf(project, file);
+
+            let result = null;
+            if (pdfStatus) pdfStatus.textContent = isPdf ? 'Analizando PDF...' : 'Convirtiendo a PDF y analizando con el extractor...';
+
+            try {
+                const backendResult = await extractProjectPdfWithBackend(project);
+                const convertedDocument = backendResult.convertedDocument || null;
+                const resolvedDocumentKind = 'pdf';
+                const resolvedFileName = toPdfFileName(
+                    convertedDocument?.fileName || backendResult.convertedPdfFileName || backendResult.fileName || file.name,
+                    'documento.pdf'
+                );
+                let resultPdfDocument = null;
+
+                try {
+                    const loadedPdf = await loadProjectActivePdfDocument(project);
+                    resultPdfDocument = loadedPdf.pdfDocument || null;
+                } catch (loadError) {
+                    if (!isPdf) {
+                        console.warn('No se pudo cargar el PDF convertido del documento:', loadError);
+                    } else {
+                        console.warn('No se pudo cargar el PDF activo del proyecto. Usando el PDF subido:', loadError);
+                        resultPdfDocument = await loadPdfDocumentFromFile(file);
+                    }
+                }
+
+                if (!resultPdfDocument) {
+                    throw new Error(`No se pudo cargar el PDF ${isPdf ? 'subido' : 'convertido'} de "${file.name}".`);
+                }
+
+                if (backendResult.rows.length) {
+                    result = {
+                        ...backendResult,
+                        documentKind: resolvedDocumentKind,
+                        fileName: resolvedFileName,
+                        pdfDocument: resultPdfDocument,
+                        tablePages: backendResult.extractionReport?.tablesDetected || 0,
+                        skippedPages: Math.max(0, Number(backendResult.pageCount || 0) - Number(backendResult.extractionReport?.tablesDetected || 0)),
+                        source: 'backend'
+                    };
+                } else if (pdfStatus && isPdf) {
+                    const report = backendResult.extractionReport;
+                    const engines = Array.isArray(report?.engines)
+                        ? report.engines.map((engine) => `${engine.name}:${engine.status}`).join(', ')
+                        : 'sin motores utiles';
+                    pdfStatus.textContent = `Extractor avanzado sin filas (${engines}). Usando extractor local...`;
+                } else {
+                    result = {
+                        ...backendResult,
+                        documentKind: resolvedDocumentKind,
+                        fileName: resolvedFileName,
+                        pdfDocument: resultPdfDocument,
+                        tablePages: backendResult.extractionReport?.tablesDetected || 0,
+                        skippedPages: 0,
+                        source: 'backend'
+                    };
+                }
+            } catch (error) {
+                if (pdfStatus && isPdf) {
+                    pdfStatus.textContent = `Extractor avanzado no disponible (${String(error?.message || error)}). Usando extractor local...`;
+                } else {
+                    throw error;
+                }
+            }
+
+            if (!result) {
+                if (!isPdf) {
+                    throw new Error('No se detectaron filas utiles en el documento.');
+                }
+                result = await parsePdfRows(file, (message) => {
+                    if (pdfStatus) pdfStatus.textContent = message;
+                });
+                result.documentKind = 'pdf';
+                result.extractionReport = {
+                    selectedEngine: 'browser-pdfjs',
+                    tablesDetected: Number(result.tablePages || 0),
+                    rowsExtracted: Number(result.rows?.length || 0),
+                    precision: result.rows?.length ? 0.72 : 0,
+                    processMs: null,
+                    problems: result.skippedPages ? [`${result.skippedPages} paginas omitidas por no parecer tabla.`] : [],
+                    engines: [{
+                        name: 'browser-pdfjs',
+                        status: result.rows?.length ? 'ok' : 'empty',
+                        tablesDetected: Number(result.tablePages || 0),
+                        rowsExtracted: Number(result.rows?.length || 0),
+                        precision: result.rows?.length ? 0.72 : 0,
+                        processMs: null,
+                        problems: []
+                    }]
+                };
+            }
 
             activePdfDocument = result.pdfDocument;
-            workspaceState.fileName = result.fileName;
+            workspaceState.documentType = 'products';
+            workspaceState.documentKind = 'pdf';
+            workspaceState.fileName = toPdfFileName(result.fileName || file.name, 'documento.pdf');
             workspaceState.pageCount = result.pageCount;
             workspaceState.headerLabels = result.headerLabels || {};
             workspaceState.columns = result.columns || [];
-            workspaceState.rows = result.rows;
+            workspaceState.rows = result.rows || [];
+            workspaceState.preview = null;
+            workspaceState.invoice = null;
+            workspaceState.invoices = [];
+            workspaceState.activeInvoiceId = '';
+            workspaceState.extractionReport = result.extractionReport || null;
 
-            if (pdfStatus) pdfStatus.textContent = 'Guardando PDF en el proyecto...';
-            await saveProjectPdf(project, file);
-
-            saveWorkspace(project, workspaceState);
+            await saveWorkspace(project, workspaceState);
             renderWorkspace(workspace, project, workspaceState);
             syncWordPressUi(workspace, workspaceState);
             scheduleWordPressAutoCheck(project, workspace, workspaceState);
 
             if (pdfStatus) {
+                const engineLabel = workspaceState.extractionReport?.selectedEngine
+                    ? ` con ${workspaceState.extractionReport.selectedEngine}`
+                    : '';
+                const precisionLabel = Number.isFinite(Number(workspaceState.extractionReport?.precision))
+                    ? ` Precision aprox. ${Math.round(Number(workspaceState.extractionReport.precision) * 100)}%.`
+                    : '';
                 pdfStatus.textContent = result.rows.length
-                    ? `PDF importado: ${result.rows.length} filas en ${result.tablePages} paginas de tabla (${result.skippedPages} omitidas).`
-                    : `PDF leido, pero no se detectaron tablas utiles (${result.skippedPages} paginas omitidas).`;
+                    ? `${isPdf ? 'PDF' : 'Documento'} importado${engineLabel}: ${result.rows.length} filas detectadas.${isPdf ? ` ${result.tablePages} paginas de tabla (${result.skippedPages} omitidas).` : ''}${precisionLabel}`
+                    : `${isPdf ? 'PDF leido' : 'Documento leido'}, pero no se detectaron tablas utiles.`;
             }
         } catch (error) {
-            if (pdfStatus) pdfStatus.textContent = `Error importando PDF: ${String(error?.message || error)}`;
+            if (pdfStatus) pdfStatus.textContent = `Error importando documento: ${String(error?.message || error)}`;
         } finally {
             pdfInput.value = '';
+            delete pdfInput.dataset.invoiceUploadMode;
         }
+    });
+
+    workspace.querySelector('[data-project-pdf-previous-page]')?.addEventListener('click', () => {
+        if (!activePdfDocument || activePdfPageNumber <= 1) return;
+        renderPdfFirstPage(workspace, workspaceState.invoice || getActiveInvoiceRecord(workspaceState)?.invoice || null, activePdfPageNumber - 1)
+            .catch((error) => console.warn('No se pudo mostrar la pagina anterior:', error));
+    });
+
+    workspace.querySelector('[data-project-pdf-next-page]')?.addEventListener('click', () => {
+        if (!activePdfDocument || activePdfPageNumber >= activePdfDocument.numPages) return;
+        renderPdfFirstPage(workspace, workspaceState.invoice || getActiveInvoiceRecord(workspaceState)?.invoice || null, activePdfPageNumber + 1)
+            .catch((error) => console.warn('No se pudo mostrar la pagina siguiente:', error));
     });
 
     exportJson?.addEventListener('click', () => {
         const payload = {
             project,
+            documentType: workspaceState.documentType || '',
             fileName: workspaceState.fileName,
             pageCount: workspaceState.pageCount,
             columns: workspaceState.columns || [],
+            invoice: workspaceState.invoice || null,
+            invoices: workspaceState.invoices || [],
+            activeInvoiceId: workspaceState.activeInvoiceId || '',
+            extractionReport: workspaceState.extractionReport || null,
             exportedAt: new Date().toISOString(),
             rows: workspaceState.rows || []
         };
         downloadFile(`${projectFileBaseName(project)}-import.json`, `${JSON.stringify(payload, null, 2)}\n`, 'application/json;charset=utf-8');
     });
 
-    exportCsv?.addEventListener('click', () => {
+    exportCsv?.addEventListener('click', async () => {
+        if (workspaceState.documentType === 'invoices') {
+            const invoiceBatch = Array.isArray(workspaceState.invoices) ? workspaceState.invoices : [];
+            const hasSingleInvoice = workspaceState.invoice && typeof workspaceState.invoice === 'object';
+            const hasInvoiceBatch = !hasSingleInvoice && invoiceBatch.length > 0;
+            if (!hasSingleInvoice && !hasInvoiceBatch) {
+                const pdfStatus = workspace.querySelector('[data-project-pdf-status]');
+                if (pdfStatus) pdfStatus.textContent = 'Sube o abre facturas antes de exportarlas a Excel.';
+                return;
+            }
+            try {
+                exportCsv.disabled = true;
+                exportCsv.textContent = 'Generando Excel...';
+                const { blob, filename } = await fetchProjectBlob(`/api/projects/${encodeURIComponent(project.id)}/invoice/export-xlsx`, {
+                    method: 'POST',
+                    body: JSON.stringify({
+                        fileName: workspaceState.fileName || '',
+                        invoice: hasSingleInvoice ? workspaceState.invoice : null,
+                        invoices: hasInvoiceBatch ? invoiceBatch : [],
+                        extractionReport: workspaceState.extractionReport || null
+                    })
+                });
+                downloadBlob(filename || `${projectFileBaseName(project)}-${hasInvoiceBatch ? 'facturas' : 'factura'}.xlsx`, blob);
+            } catch (error) {
+                const pdfStatus = workspace.querySelector('[data-project-pdf-status]');
+                if (pdfStatus) pdfStatus.textContent = `No se pudo exportar Excel: ${String(error?.message || error)}`;
+            } finally {
+                exportCsv.disabled = !hasWorkspaceDocument(workspaceState);
+                exportCsv.textContent = 'Exportar Excel';
+            }
+            return;
+        }
+
         const exportColumns = getActiveColumns(workspaceState).filter((column) => column.key !== 'actions');
         const lines = [
             exportColumns.map((column) => getColumnLabel(column, workspaceState)).join(';'),
@@ -3925,6 +7519,9 @@ export async function mountProjectWorkspace(project, user) {
     ensureWorkspaceStylesheet();
     hideMiluApplication();
     activeWorkspaceProject = project;
+    activePdfDocument = null;
+    stopSplashScene();
+    localStorage.removeItem(getProjectStorageKey(project));
     if (activeWordPressAutoRun) {
         window.clearTimeout(activeWordPressAutoRun);
         activeWordPressAutoRun = null;
@@ -3971,6 +7568,6 @@ export async function mountProjectWorkspace(project, user) {
     renderWorkspace(mountedWorkspace, project, workspaceState);
     bindWorkspaceActions(mountedWorkspace, project, workspaceState);
     syncWordPressUi(mountedWorkspace, workspaceState);
-    loadSavedProjectPdf(project, mountedWorkspace, workspaceState);
+    await loadSavedProjectPdf(project, mountedWorkspace, workspaceState);
     scheduleWordPressAutoCheck(project, mountedWorkspace, workspaceState);
 }

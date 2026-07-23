@@ -19,10 +19,32 @@ const {
     saveProjectWorkspace
 } = require('./project-workspace-store');
 const {
+    listSavedWorkspaces,
+    readSavedWorkspace,
+    readSavedInvoiceWorkspacePdf,
+    readSavedWorkspacePdf,
+    restoreSavedWorkspace,
+    saveCurrentWorkspaceSnapshot
+} = require('./project-saved-workspace-store');
+const {
+    getContentType,
+    getDocumentKind,
     readProjectPdf,
+    readProjectPdfPath,
+    readProjectSourcePath,
     readProjectPdfMeta,
     saveProjectPdf
 } = require('./project-pdf-store');
+const {
+    extractProjectInvoicePdf,
+    extractProjectPdf
+} = require('./project-pdf-extractor');
+const {
+    extractProjectDocument
+} = require('./project-document-extractor');
+const {
+    exportInvoiceExcel
+} = require('./project-invoice-excel-exporter');
 const {
     checkWordPressPartNumbers,
     connectWordPress,
@@ -30,6 +52,8 @@ const {
     finishWordPressOAuth,
     getWordPressAnalysisSummary,
     getWordPressConnection,
+    getWordPressSeoAudit,
+    updateWordPressSeoItem,
     listWordPressCustomers,
     publicOAuthSites,
     selectWordPressSite
@@ -43,6 +67,15 @@ function sendProjectError(res, error) {
         ok: false,
         error: String(error?.message || 'Error de proyectos')
     });
+}
+
+function safeDownloadName(value, fallback = 'factura') {
+    return String(value || fallback)
+        .normalize('NFD')
+        .replace(/[\u0300-\u036f]/g, '')
+        .replace(/[^a-z0-9._-]+/gi, '-')
+        .replace(/^-+|-+$/g, '')
+        .slice(0, 80) || fallback;
 }
 
 router.get('/', requireAuth, (req, res) => {
@@ -157,9 +190,12 @@ router.get('/:projectId/pdf', requireAuth, (req, res) => {
         }
 
         const pdf = readProjectPdf(project.id);
-        res.setHeader('Content-Type', 'application/pdf');
+        res.setHeader('Cache-Control', 'no-store, max-age=0');
+        res.setHeader('Pragma', 'no-cache');
+        res.setHeader('Content-Type', pdf.meta?.contentType || getContentType(pdf.meta?.fileName));
         res.setHeader('Content-Length', String(pdf.buffer.length));
         res.setHeader('X-File-Name', encodeURIComponent(pdf.meta?.fileName || 'documento.pdf'));
+        res.setHeader('X-Document-Kind', pdf.meta?.kind || getDocumentKind(pdf.meta?.fileName || 'documento.pdf'));
         return res.end(pdf.buffer);
     } catch (error) {
         const status = Number(error?.status || 500);
@@ -167,7 +203,19 @@ router.get('/:projectId/pdf', requireAuth, (req, res) => {
     }
 });
 
-router.put('/:projectId/pdf', requireAuth, express.raw({ type: 'application/pdf', limit: '120mb' }), (req, res) => {
+router.put('/:projectId/pdf', requireAuth, express.raw({
+    type: [
+        'application/pdf',
+        'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+        'application/vnd.ms-excel',
+        'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+        'application/msword',
+        'text/csv',
+        'application/csv',
+        'application/octet-stream'
+    ],
+    limit: '120mb'
+}), (req, res) => {
     try {
         const project = getProjectById(req.params.projectId);
         if (!project) {
@@ -182,6 +230,298 @@ router.put('/:projectId/pdf', requireAuth, express.raw({ type: 'application/pdf'
         const pdf = saveProjectPdf(project.id, req.body, fileName);
 
         return res.json({ ok: true, project, pdf });
+    } catch (error) {
+        return sendProjectError(res, error);
+    }
+});
+
+router.post('/:projectId/pdf/extract', requireAuth, async (req, res) => {
+    try {
+        const project = getProjectById(req.params.projectId);
+        if (!project) {
+            return res.status(404).json({ ok: false, error: 'Proyecto no encontrado.' });
+        }
+
+        if (!canAccessProject(req.auth.user, project)) {
+            return res.status(403).json({ ok: false, error: 'No tienes acceso a este proyecto.' });
+        }
+
+        const pdfMeta = readProjectPdfMeta(project.id);
+        if (!pdfMeta) {
+            return res.status(404).json({ ok: false, error: 'Documento no encontrado.' });
+        }
+
+        const kind = pdfMeta.kind || getDocumentKind(pdfMeta.fileName);
+        let result = kind === 'pdf'
+            ? await extractProjectPdf({
+                projectId: project.id,
+                pdfPath: readProjectPdfPath(project.id),
+                fileName: pdfMeta.fileName
+            })
+            : await extractProjectDocument({
+                projectId: project.id,
+                documentPath: readProjectPdfPath(project.id),
+                fileName: pdfMeta.fileName,
+                documentType: 'product'
+            });
+
+        if (result?.convertedDocument?.buffer) {
+            saveProjectPdf(
+                project.id,
+                result.convertedDocument.buffer,
+                result.convertedDocument.fileName || 'documento.pdf'
+            );
+            result = {
+                ...result,
+                convertedDocument: {
+                    fileName: result.convertedDocument.fileName || 'documento.pdf',
+                    documentKind: 'pdf',
+                    originalFileName: result.convertedDocument.originalFileName || pdfMeta.fileName
+                }
+            };
+        }
+
+        return res.json({
+            ok: true,
+            project,
+            ...result
+        });
+    } catch (error) {
+        return sendProjectError(res, error);
+    }
+});
+
+router.post('/:projectId/pdf/extract-invoice', requireAuth, async (req, res) => {
+    try {
+        const project = getProjectById(req.params.projectId);
+        if (!project) {
+            return res.status(404).json({ ok: false, error: 'Proyecto no encontrado.' });
+        }
+
+        if (!canAccessProject(req.auth.user, project)) {
+            return res.status(403).json({ ok: false, error: 'No tienes acceso a este proyecto.' });
+        }
+
+        const pdfMeta = readProjectPdfMeta(project.id);
+        if (!pdfMeta) {
+            return res.status(404).json({ ok: false, error: 'Documento no encontrado.' });
+        }
+
+        const kind = pdfMeta.kind || getDocumentKind(pdfMeta.fileName);
+        let result = kind === 'pdf'
+            ? await extractProjectInvoicePdf({
+                projectId: project.id,
+                pdfPath: readProjectPdfPath(project.id),
+                fileName: pdfMeta.fileName
+            })
+            : await extractProjectDocument({
+                projectId: project.id,
+                documentPath: readProjectSourcePath(project.id),
+                fileName: pdfMeta.fileName,
+                documentType: 'invoice'
+            });
+
+        if (result?.convertedDocument?.buffer) {
+            const convertedBuffer = result.convertedDocument.buffer;
+            const convertedFileName =
+                result.convertedDocument.fileName || 'factura.pdf';
+
+            saveProjectPdf(
+                project.id,
+                convertedBuffer,
+                convertedFileName
+            );
+
+            result = {
+                ...result,
+                convertedDocument: {
+                    fileName: convertedFileName,
+                    documentKind: 'pdf',
+                    originalFileName:
+                        result.convertedDocument.originalFileName
+                        || pdfMeta.fileName,
+
+                    // Enviamos el mismo PDF que se acaba de analizar.
+                    data: convertedBuffer.toString('base64')
+                }
+            };
+        }
+
+        return res.json({
+            ok: true,
+            project,
+            ...result
+        });
+    } catch (error) {
+        return sendProjectError(res, error);
+    }
+});
+
+router.post('/:projectId/invoice/export-xlsx', requireAuth, async (req, res) => {
+    try {
+        const project = getProjectById(req.params.projectId);
+        if (!project) {
+            return res.status(404).json({ ok: false, error: 'Proyecto no encontrado.' });
+        }
+
+        if (!canAccessProject(req.auth.user, project)) {
+            return res.status(403).json({ ok: false, error: 'No tienes acceso a este proyecto.' });
+        }
+
+        const invoice = req.body?.invoice;
+        const invoices = Array.isArray(req.body?.invoices) ? req.body.invoices : [];
+        const hasSingleInvoice = invoice && typeof invoice === 'object';
+        const hasInvoiceBatch = invoices.length > 0;
+        if (!hasSingleInvoice && !hasInvoiceBatch) {
+            return res.status(400).json({ ok: false, error: 'No hay facturas para exportar.' });
+        }
+
+        const buffer = await exportInvoiceExcel({
+            project,
+            invoice: hasSingleInvoice ? invoice : null,
+            invoices: hasInvoiceBatch ? invoices : [],
+            fileName: req.body?.fileName || '',
+            extractionReport: req.body?.extractionReport || null
+        });
+        const invoiceNumber = hasSingleInvoice
+            ? invoice.invoiceNumber || invoice.number || 'factura'
+            : 'facturas';
+        const filename = `${safeDownloadName(project.name || 'proyecto')}-${safeDownloadName(invoiceNumber)}.xlsx`;
+
+        res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+        res.setHeader('Content-Disposition', `attachment; filename="${filename}"`);
+        res.setHeader('Content-Length', String(buffer.length));
+        return res.end(buffer);
+    } catch (error) {
+        return sendProjectError(res, error);
+    }
+});
+
+router.get('/:projectId/saved-workspaces', requireAuth, (req, res) => {
+    try {
+        const project = getProjectById(req.params.projectId);
+        if (!project) {
+            return res.status(404).json({ ok: false, error: 'Proyecto no encontrado.' });
+        }
+
+        if (!canAccessProject(req.auth.user, project)) {
+            return res.status(403).json({ ok: false, error: 'No tienes acceso a este proyecto.' });
+        }
+
+        return res.json({
+            ok: true,
+            project,
+            files: listSavedWorkspaces(project.id, req.query?.type)
+        });
+    } catch (error) {
+        return sendProjectError(res, error);
+    }
+});
+
+router.post('/:projectId/saved-workspaces', requireAuth, (req, res) => {
+    try {
+        const project = getProjectById(req.params.projectId);
+        if (!project) {
+            return res.status(404).json({ ok: false, error: 'Proyecto no encontrado.' });
+        }
+
+        if (!canAccessProject(req.auth.user, project)) {
+            return res.status(403).json({ ok: false, error: 'No tienes acceso a este proyecto.' });
+        }
+
+        const file = saveCurrentWorkspaceSnapshot(project.id, {
+            name: req.body?.name,
+            workspace: req.body?.workspace,
+            invoicePdfs: req.body?.invoicePdfs
+        });
+
+        return res.status(201).json({ ok: true, project, file });
+    } catch (error) {
+        return sendProjectError(res, error);
+    }
+});
+
+router.get('/:projectId/saved-workspaces/:fileId', requireAuth, (req, res) => {
+    try {
+        const project = getProjectById(req.params.projectId);
+        if (!project) {
+            return res.status(404).json({ ok: false, error: 'Proyecto no encontrado.' });
+        }
+
+        if (!canAccessProject(req.auth.user, project)) {
+            return res.status(403).json({ ok: false, error: 'No tienes acceso a este proyecto.' });
+        }
+
+        return res.json({
+            ok: true,
+            project,
+            ...readSavedWorkspace(project.id, req.params.fileId)
+        });
+    } catch (error) {
+        return sendProjectError(res, error);
+    }
+});
+
+router.get('/:projectId/saved-workspaces/:fileId/pdf', requireAuth, (req, res) => {
+    try {
+        const project = getProjectById(req.params.projectId);
+        if (!project) {
+            return res.status(404).json({ ok: false, error: 'Proyecto no encontrado.' });
+        }
+
+        if (!canAccessProject(req.auth.user, project)) {
+            return res.status(403).json({ ok: false, error: 'No tienes acceso a este proyecto.' });
+        }
+
+        const pdf = readSavedWorkspacePdf(project.id, req.params.fileId);
+        res.setHeader('Content-Type', 'application/pdf');
+        res.setHeader('Content-Length', String(pdf.buffer.length));
+        res.setHeader('X-File-Name', encodeURIComponent(pdf.meta?.fileName || 'documento.pdf'));
+        return res.end(pdf.buffer);
+    } catch (error) {
+        const status = Number(error?.status || 500);
+        return res.status(status).json({ ok: false, error: String(error?.message || 'Error leyendo PDF guardado') });
+    }
+});
+
+router.get('/:projectId/saved-workspaces/:fileId/invoices/:invoiceId/pdf', requireAuth, (req, res) => {
+    try {
+        const project = getProjectById(req.params.projectId);
+        if (!project) {
+            return res.status(404).json({ ok: false, error: 'Proyecto no encontrado.' });
+        }
+
+        if (!canAccessProject(req.auth.user, project)) {
+            return res.status(403).json({ ok: false, error: 'No tienes acceso a este proyecto.' });
+        }
+
+        const pdf = readSavedInvoiceWorkspacePdf(project.id, req.params.fileId, req.params.invoiceId);
+        res.setHeader('Content-Type', 'application/pdf');
+        res.setHeader('Content-Length', String(pdf.buffer.length));
+        res.setHeader('X-File-Name', encodeURIComponent(pdf.meta?.fileName || 'factura.pdf'));
+        return res.end(pdf.buffer);
+    } catch (error) {
+        const status = Number(error?.status || 500);
+        return res.status(status).json({ ok: false, error: String(error?.message || 'Error leyendo PDF de factura guardada') });
+    }
+});
+
+router.post('/:projectId/saved-workspaces/:fileId/load', requireAuth, (req, res) => {
+    try {
+        const project = getProjectById(req.params.projectId);
+        if (!project) {
+            return res.status(404).json({ ok: false, error: 'Proyecto no encontrado.' });
+        }
+
+        if (!canAccessProject(req.auth.user, project)) {
+            return res.status(403).json({ ok: false, error: 'No tienes acceso a este proyecto.' });
+        }
+
+        return res.json({
+            ok: true,
+            project,
+            ...restoreSavedWorkspace(project.id, req.params.fileId)
+        });
     } catch (error) {
         return sendProjectError(res, error);
     }
@@ -344,6 +684,44 @@ router.get('/:projectId/wordpress/analysis/summary', requireAuth, async (req, re
             start: req.query?.start,
             end: req.query?.end
         });
+
+        return res.json({ ok: true, project, ...result });
+    } catch (error) {
+        return sendProjectError(res, error);
+    }
+});
+
+router.get('/:projectId/wordpress/seo-audit', requireAuth, async (req, res) => {
+    try {
+        const project = getProjectById(req.params.projectId);
+        if (!project) {
+            return res.status(404).json({ ok: false, error: 'Proyecto no encontrado.' });
+        }
+
+        if (!canAccessProject(req.auth.user, project)) {
+            return res.status(403).json({ ok: false, error: 'No tienes acceso a este proyecto.' });
+        }
+
+        const result = await getWordPressSeoAudit(project.id);
+
+        return res.json({ ok: true, project, ...result });
+    } catch (error) {
+        return sendProjectError(res, error);
+    }
+});
+
+router.patch('/:projectId/wordpress/seo-audit/:itemId', requireAuth, async (req, res) => {
+    try {
+        const project = getProjectById(req.params.projectId);
+        if (!project) {
+            return res.status(404).json({ ok: false, error: 'Proyecto no encontrado.' });
+        }
+
+        if (!canAccessProject(req.auth.user, project)) {
+            return res.status(403).json({ ok: false, error: 'No tienes acceso a este proyecto.' });
+        }
+
+        const result = await updateWordPressSeoItem(project.id, req.params.itemId, req.body);
 
         return res.json({ ok: true, project, ...result });
     } catch (error) {

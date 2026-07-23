@@ -39,3 +39,26 @@ data/snapshots/*/
 # Cache de Python
 __pycache__/
 *.pyc
+
+# Entornos virtuales Python
+.venv/
+.venv-invoices/
+
+# Salidas OCR temporales
+paddle-output/
+
+# Facturas y documentos de prueba locales
+FacturaEjemplo.pdf
+
+# Documentos subidos o generados por la aplicación
+src/server/projects/data/pdfs/*
+!src/server/projects/data/pdfs/.gitkeep
+
+# Espacios de trabajo guardados localmente
+src/server/projects/data/saved-workspaces/*
+!src/server/projects/data/saved-workspaces/.gitkeep
+
+# Temporales generados durante conversiones
+*.tmp-*
+
+src/server/projects/pdf_extractors/tessdata/

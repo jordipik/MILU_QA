@@ -517,7 +517,7 @@ function stripLegacyQaFields(value) {
 }
 
 app.use(cors());
-app.use(bodyParser.json({ limit: '10mb' }));
+app.use(bodyParser.json({ limit: '120mb' }));
 app.use('/api/auth', authRouter);
 app.use('/api/projects', projectRouter);
 
