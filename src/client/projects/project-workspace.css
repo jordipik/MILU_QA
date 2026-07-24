@@ -1144,6 +1144,61 @@ body.project-shell-active * {
     text-transform: uppercase;
 }
 
+.project-invoice-line-actions {
+    width: 1%;
+    white-space: nowrap;
+}
+
+.project-invoice-line-delete {
+    min-height: 34px;
+    padding: 0 13px;
+    border: 1px solid rgba(239, 68, 68, 0.25);
+    border-radius: 11px;
+    color: #b91c1c;
+    background: linear-gradient(145deg, #fff7f7, #fee2e2);
+    box-shadow: 0 8px 18px rgba(239, 68, 68, 0.1);
+    font: inherit;
+    font-size: 11px;
+    font-weight: 950;
+    cursor: pointer;
+    transition: transform 160ms ease, color 160ms ease, background 160ms ease, box-shadow 160ms ease;
+}
+
+.project-invoice-line-delete::before {
+    content: "×";
+    margin-right: 6px;
+    font-size: 15px;
+    line-height: 1;
+}
+
+.project-invoice-line-delete:hover {
+    color: #ffffff;
+    background: linear-gradient(135deg, #ef4444, #f97316);
+    box-shadow: 0 12px 24px rgba(239, 68, 68, 0.24);
+    transform: translateY(-1px);
+}
+
+.project-invoice-line-delete-compact {
+    min-height: 30px;
+    padding-inline: 10px;
+    font-size: 10px;
+    white-space: nowrap;
+}
+
+.project-invoice-lines-panel .project-invoice-line-delete {
+    border-color: rgba(239, 68, 68, 0.28);
+    color: #b91c1c;
+    background: linear-gradient(145deg, #fff7f7, #fee2e2);
+    box-shadow: 0 8px 18px rgba(239, 68, 68, 0.12);
+}
+
+.project-invoice-lines-panel .project-invoice-line-delete:hover {
+    border-color: rgba(239, 68, 68, 0.5);
+    color: #ffffff;
+    background: linear-gradient(135deg, #ef4444, #f97316);
+    box-shadow: 0 12px 24px rgba(239, 68, 68, 0.24);
+}
+
 .project-invoice-empty-lines {
     padding: 16px;
     color: #64748b;
@@ -5383,7 +5438,7 @@ body.project-shell-active * {
     }
 
     .project-invoice-lines table {
-        min-width: 720px;
+        min-width: 840px;
     }
 
     .project-pdf-toolbar {
@@ -5460,5 +5515,214 @@ body.project-shell-active * {
     .project-workspace-header-menu-panel::before {
         animation: none !important;
         transition: none !important;
+    }
+}
+
+.project-delete-confirm {
+    position: fixed;
+    inset: 0;
+    z-index: 30000;
+    display: grid;
+    place-items: center;
+    padding: 20px;
+    background: rgba(15, 23, 42, 0.48);
+    backdrop-filter: blur(14px) saturate(0.78);
+    -webkit-backdrop-filter: blur(14px) saturate(0.78);
+    opacity: 0;
+    transition: opacity 180ms ease;
+}
+
+body.project-delete-confirm-open {
+    overflow: hidden !important;
+}
+
+.project-delete-confirm.is-visible {
+    opacity: 1;
+}
+
+.project-delete-confirm-dialog {
+    position: relative;
+    width: min(460px, 100%);
+    display: grid;
+    justify-items: center;
+    gap: 16px;
+    overflow: hidden;
+    padding: 30px;
+    border: 1px solid rgba(255, 255, 255, 0.92);
+    border-radius: 28px;
+    color: #0f172a;
+    background:
+        radial-gradient(circle at 100% 0, rgba(251, 146, 60, 0.18), transparent 34%),
+        linear-gradient(145deg, rgba(255, 255, 255, 0.99), rgba(255, 247, 237, 0.97));
+    box-shadow:
+        0 38px 100px rgba(15, 23, 42, 0.34),
+        inset 0 1px 0 #ffffff;
+    text-align: center;
+    opacity: 0;
+    transform: translateY(18px) scale(0.94);
+    transition: transform 220ms cubic-bezier(0.2, 0.8, 0.2, 1), opacity 180ms ease;
+}
+
+.project-delete-confirm.is-visible .project-delete-confirm-dialog {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+}
+
+.project-delete-confirm-icon {
+    width: 68px;
+    height: 68px;
+    display: grid;
+    place-items: center;
+    border: 1px solid rgba(248, 113, 113, 0.42);
+    border-radius: 22px;
+    color: #ffffff;
+    background: linear-gradient(135deg, #ef4444, #f97316);
+    box-shadow:
+        0 18px 38px rgba(239, 68, 68, 0.28),
+        0 0 0 11px rgba(254, 226, 226, 0.72);
+    font-size: 30px;
+    font-weight: 950;
+    animation: projectDeleteIconPulse 2.2s ease-in-out infinite;
+}
+
+.project-delete-confirm-copy small {
+    color: #dc2626;
+    font-size: 10px;
+    font-weight: 950;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+}
+
+.project-delete-confirm-copy h2 {
+    margin: 7px 0 8px;
+    font-size: clamp(24px, 5vw, 32px);
+    line-height: 1;
+    font-weight: 950;
+}
+
+.project-delete-confirm-copy p {
+    max-width: 360px;
+    margin: 0;
+    color: #64748b;
+    font-size: 14px;
+    line-height: 1.55;
+    font-weight: 750;
+    overflow-wrap: anywhere;
+}
+
+.project-delete-confirm-actions {
+    width: 100%;
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 10px;
+    margin-top: 2px;
+}
+
+.project-delete-confirm-actions button {
+    min-height: 48px;
+    padding: 0 16px;
+    border: 1px solid #cbd5e1;
+    border-radius: 15px;
+    color: #475569;
+    background: #ffffff;
+    box-shadow: 0 10px 22px rgba(15, 23, 42, 0.08);
+    font: inherit;
+    font-size: 13px;
+    font-weight: 950;
+    cursor: pointer;
+    transition: transform 160ms ease, box-shadow 160ms ease;
+}
+
+.project-delete-confirm-actions button[data-project-delete-accept] {
+    color: #ffffff;
+    border-color: rgba(239, 68, 68, 0.42);
+    background: linear-gradient(135deg, #ef4444, #f97316);
+    box-shadow: 0 14px 28px rgba(239, 68, 68, 0.24);
+}
+
+.project-delete-confirm-actions button:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 16px 30px rgba(15, 23, 42, 0.14);
+}
+
+.project-delete-confirm-actions button:focus-visible {
+    outline: 3px solid rgba(59, 130, 246, 0.24);
+    outline-offset: 2px;
+}
+
+@keyframes projectDeleteIconPulse {
+    0%, 100% {
+        transform: scale(1);
+    }
+    50% {
+        transform: scale(1.06) rotate(2deg);
+    }
+}
+
+.is-being-deleted {
+    position: relative;
+    z-index: 2;
+    pointer-events: none !important;
+    transform-origin: center;
+    animation: projectElementDelete 860ms cubic-bezier(0.4, 0, 0.8, 0.2) forwards;
+    animation-delay: var(--project-delete-delay, 0ms);
+}
+
+.is-being-deleted td,
+.is-being-deleted input {
+    border-color: rgba(239, 68, 68, 0.38) !important;
+    background: rgba(254, 226, 226, 0.92) !important;
+    transition: background 120ms ease, border-color 120ms ease;
+}
+
+@keyframes projectElementDelete {
+    0% {
+        opacity: 1;
+        filter: none;
+        transform: translateX(0) scale(1);
+    }
+    38% {
+        opacity: 1;
+        filter: saturate(1.35);
+        transform: translateX(-5px) scale(1.012);
+    }
+    62% {
+        opacity: 0.78;
+        filter: saturate(1.15) blur(0.5px);
+        transform: translateX(8px) scale(0.99);
+    }
+    100% {
+        opacity: 0;
+        filter: blur(3px);
+        transform: translateX(34px) scale(0.94);
+    }
+}
+
+@media (max-width: 540px) {
+    .project-delete-confirm {
+        padding: 14px;
+    }
+
+    .project-delete-confirm-dialog {
+        padding: 25px 18px 20px;
+        border-radius: 23px;
+    }
+
+    .project-delete-confirm-actions {
+        grid-template-columns: 1fr;
+    }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .project-delete-confirm,
+    .project-delete-confirm-dialog,
+    .project-delete-confirm-icon,
+    .project-delete-confirm-actions button {
+        animation: none !important;
+        transition: none !important;
+    }
+
+    .is-being-deleted {
+        animation: none !important;
     }
 }

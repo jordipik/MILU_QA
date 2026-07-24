@@ -93,6 +93,78 @@ function bindResponsiveHeaderMenu() {
         if (window.innerWidth > 1100) closeMenu();
     }, { signal });
 }
+
+function confirmDestructiveAction({
+    title = 'Confirmar eliminación',
+    message = 'Esta acción no se puede deshacer.',
+    confirmLabel = 'Eliminar'
+} = {}) {
+    return new Promise((resolve) => {
+        document.querySelector('[data-project-delete-confirm]')?.remove();
+        const overlay = document.createElement('div');
+        overlay.className = 'project-delete-confirm';
+        overlay.dataset.projectDeleteConfirm = '';
+        overlay.innerHTML = `
+            <section class="project-delete-confirm-dialog" role="alertdialog" aria-modal="true"
+                aria-labelledby="projectDeleteConfirmTitle" aria-describedby="projectDeleteConfirmMessage">
+                <div class="project-delete-confirm-icon" aria-hidden="true">!</div>
+                <div class="project-delete-confirm-copy">
+                    <small>Acción permanente</small>
+                    <h2 id="projectDeleteConfirmTitle"></h2>
+                    <p id="projectDeleteConfirmMessage"></p>
+                </div>
+                <div class="project-delete-confirm-actions">
+                    <button type="button" data-project-delete-cancel>Cancelar</button>
+                    <button type="button" data-project-delete-accept></button>
+                </div>
+            </section>
+        `;
+        overlay.querySelector('h2').textContent = title;
+        overlay.querySelector('p').textContent = message;
+        const cancelButton = overlay.querySelector('[data-project-delete-cancel]');
+        const acceptButton = overlay.querySelector('[data-project-delete-accept]');
+        acceptButton.textContent = confirmLabel;
+        let settled = false;
+
+        const finish = (accepted) => {
+            if (settled) return;
+            settled = true;
+            document.removeEventListener('keydown', onKeydown);
+            document.body.classList.remove('project-delete-confirm-open');
+            overlay.classList.remove('is-visible');
+            window.setTimeout(() => overlay.remove(), 180);
+            resolve(accepted);
+        };
+        const onKeydown = (event) => {
+            if (event.key === 'Escape') finish(false);
+        };
+
+        cancelButton.addEventListener('click', () => finish(false));
+        acceptButton.addEventListener('click', () => finish(true));
+        overlay.addEventListener('click', (event) => {
+            if (event.target === overlay) finish(false);
+        });
+        document.addEventListener('keydown', onKeydown);
+        document.body.classList.add('project-delete-confirm-open');
+        document.body.appendChild(overlay);
+        window.requestAnimationFrame(() => overlay.classList.add('is-visible'));
+        cancelButton.focus();
+    });
+}
+
+function animateDeletedElements(...elements) {
+    const targets = elements.flat().filter((element) => element instanceof HTMLElement);
+    if (!targets.length || window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
+        return Promise.resolve();
+    }
+    targets.forEach((element, index) => {
+        element.style.setProperty('--project-delete-delay', `${index * 70}ms`);
+        element.classList.add('is-being-deleted');
+    });
+    return new Promise((resolve) => {
+        window.setTimeout(resolve, 920 + Math.max(0, targets.length - 1) * 70);
+    });
+}
 let activePdfRenderNonce = 0;
 let activePdfPageNumber = 1;
 
@@ -3497,7 +3569,7 @@ function renderInvoiceView(workspace, workspaceState) {
     const languageText = languageLabel === '-' ? '' : ` - Idioma: ${languageLabel}`;
     subtitle.textContent = `${workspaceState.fileName || 'PDF'} - ${Number(workspaceState.pageCount || 0)} paginas - ${Number(invoice.detectedFields || 0)} campos detectados${languageText}`;
     hero.append(kicker, title, subtitle);
-    if (Array.isArray(workspaceState.invoices) && workspaceState.invoices.length > 1) {
+    if (Array.isArray(workspaceState.invoices) && workspaceState.invoices.length > 0) {
         const backButton = document.createElement('button');
         backButton.type = 'button';
         backButton.className = 'project-invoice-back project-invoice-header-back';
@@ -3539,7 +3611,7 @@ function renderInvoiceView(workspace, workspaceState) {
     if (lineItems.length) {
         const table = document.createElement('table');
         const thead = document.createElement('thead');
-        thead.innerHTML = '<tr><th>Codigo</th><th>Descripcion</th><th>Cantidad</th><th>Unidad</th><th>Precio ud.</th><th>Descuento</th><th>IVA %</th><th>Total</th></tr>';
+        thead.innerHTML = '<tr><th>Codigo</th><th>Descripcion</th><th>Cantidad</th><th>Unidad</th><th>Precio ud.</th><th>Descuento</th><th>IVA %</th><th>Total</th><th>Acciones</th></tr>';
         const tbody = document.createElement('tbody');
         lineItems.forEach((item, index) => {
             const tr = document.createElement('tr');
@@ -3572,6 +3644,33 @@ function renderInvoiceView(workspace, workspaceState) {
                 td.appendChild(input);
                 tr.appendChild(td);
             });
+            const actionsCell = document.createElement('td');
+            actionsCell.className = 'project-invoice-line-actions';
+            const deleteLineButton = document.createElement('button');
+            deleteLineButton.type = 'button';
+            deleteLineButton.className = 'project-invoice-line-delete';
+            deleteLineButton.textContent = 'Borrar línea';
+            deleteLineButton.setAttribute('aria-label', `Borrar línea ${index + 1} de la factura`);
+            deleteLineButton.addEventListener('click', async (event) => {
+                event.stopPropagation();
+                const description = safeText(item.description) || `línea ${index + 1}`;
+                const accepted = await confirmDestructiveAction({
+                    title: '¿Borrar esta línea?',
+                    message: `"${description}" se eliminará definitivamente de la factura.`,
+                    confirmLabel: 'Borrar línea'
+                });
+                if (!accepted) return;
+                await animateDeletedElements(tr);
+                const currentIndex = workspaceState.invoice.lineItems.indexOf(item);
+                if (currentIndex < 0) return;
+                workspaceState.invoice.lineItems.splice(currentIndex, 1);
+                saveInvoiceFieldEdit(workspaceState);
+                if (activeWorkspaceProject) {
+                    renderWorkspace(workspace, activeWorkspaceProject, workspaceState);
+                }
+            });
+            actionsCell.appendChild(deleteLineButton);
+            tr.appendChild(actionsCell);
             tbody.appendChild(tr);
         });
         table.append(thead, tbody);
@@ -3647,13 +3746,22 @@ function refreshInvoiceBatchState(workspaceState) {
     };
 }
 
-function deleteInvoiceRecord(project, workspace, workspaceState, recordId) {
+async function deleteInvoiceRecord(project, workspace, workspaceState, recordId, row = null) {
     const records = Array.isArray(workspaceState.invoices) ? workspaceState.invoices : [];
     const record = records.find((item) => item.id === recordId);
     if (!record) return;
 
     const name = getInvoiceRecordSummary(record).invoiceNumber || record.fileName || 'esta factura';
-    if (!window.confirm(`Eliminar ${name}?`)) return;
+    const accepted = await confirmDestructiveAction({
+        title: '¿Eliminar esta factura?',
+        message: `"${name}" y todas sus líneas se eliminarán definitivamente del lote.`,
+        confirmLabel: 'Eliminar factura'
+    });
+    if (!accepted) return;
+    const detailRow = row?.nextElementSibling?.classList?.contains('project-invoice-lines-detail-row')
+        ? row.nextElementSibling
+        : null;
+    await animateDeletedElements(row, detailRow);
 
     workspaceState.invoices = records.filter((item) => item.id !== recordId);
     activeInvoicePdfDocuments.delete(recordId);
@@ -3702,7 +3810,7 @@ function createInvoiceSpecList(specs) {
     return list;
 }
 
-function createInvoiceLinesPanel(record) {
+function createInvoiceLinesPanel(record, project, workspaceState) {
     const wrapper = document.createElement('div');
     wrapper.className = 'project-invoice-lines-panel';
     const lines = Array.isArray(record?.invoice?.lineItems) ? record.invoice.lineItems : [];
@@ -3716,10 +3824,10 @@ function createInvoiceLinesPanel(record) {
 
     const table = document.createElement('table');
     const thead = document.createElement('thead');
-    thead.innerHTML = '<tr><th>Descripcion</th><th>Cantidad</th><th>Precio ud.</th><th>Total</th></tr>';
+    thead.innerHTML = '<tr><th>Descripcion</th><th>Cantidad</th><th>Precio ud.</th><th>Total</th><th>Acciones</th></tr>';
     const tbody = document.createElement('tbody');
 
-    lines.forEach((line) => {
+    lines.forEach((line, lineIndex) => {
         const tr = document.createElement('tr');
         [
             line.description || '-',
@@ -3731,6 +3839,58 @@ function createInvoiceLinesPanel(record) {
             td.textContent = safeText(value) || '-';
             tr.appendChild(td);
         });
+        const actionsCell = document.createElement('td');
+        actionsCell.className = 'project-invoice-line-actions';
+        const deleteButton = document.createElement('button');
+        deleteButton.type = 'button';
+        deleteButton.className = 'project-invoice-line-delete project-invoice-line-delete-compact';
+        deleteButton.textContent = 'Borrar línea';
+        deleteButton.addEventListener('click', async (event) => {
+            event.stopPropagation();
+            const description = safeText(line.description) || `línea ${lineIndex + 1}`;
+            const accepted = await confirmDestructiveAction({
+                title: '¿Borrar esta línea?',
+                message: `"${description}" se eliminará definitivamente de la factura.`,
+                confirmLabel: 'Borrar línea'
+            });
+            if (!accepted) return;
+            await animateDeletedElements(tr);
+
+            const currentIndex = record.invoice.lineItems.indexOf(line);
+            if (currentIndex < 0) return;
+            record.invoice.lineItems.splice(currentIndex, 1);
+            record.rows = buildInvoiceRows(record.invoice);
+            if (workspaceState.activeInvoiceId === record.id) {
+                workspaceState.invoice = record.invoice;
+                workspaceState.rows = record.rows;
+            }
+            refreshInvoiceBatchState(workspaceState);
+            saveWorkspace(project, workspaceState).catch((error) => {
+                console.warn('No se pudo guardar la línea eliminada:', error);
+            });
+
+            tr.remove();
+            const remaining = record.invoice.lineItems.length;
+            const summaryRow = wrapper.closest('.project-invoice-lines-detail-row')?.previousElementSibling;
+            const lineCount = summaryRow?.querySelector('.project-invoice-lines-cell > strong');
+            if (lineCount) lineCount.textContent = String(remaining);
+            const batchSubtitle = wrapper.closest('.project-invoice-view')?.querySelector('.project-invoice-batch-hero span');
+            if (batchSubtitle) {
+                const totalLines = (workspaceState.invoices || []).reduce(
+                    (sum, invoiceRecord) => sum + Number(invoiceRecord.invoice?.lineItems?.length || 0),
+                    0
+                );
+                batchSubtitle.textContent = `${totalLines} lineas detectadas. Abre una factura para revisar sus campos y el PDF.`;
+            }
+            if (!remaining) {
+                wrapper.replaceChildren();
+                const empty = document.createElement('p');
+                empty.textContent = 'Esta factura no tiene lineas detectadas.';
+                wrapper.appendChild(empty);
+            }
+        });
+        actionsCell.appendChild(deleteButton);
+        tr.appendChild(actionsCell);
         tbody.appendChild(tr);
     });
 
@@ -3783,7 +3943,7 @@ async function toggleInvoiceLineDetails(project, workspace, workspaceState, row,
     detailRow.className = 'project-invoice-lines-detail-row';
     const detailCell = document.createElement('td');
     detailCell.colSpan = 13;
-    detailCell.appendChild(createInvoiceLinesPanel(record));
+    detailCell.appendChild(createInvoiceLinesPanel(record, project, workspaceState));
     detailRow.appendChild(detailCell);
     row.after(detailRow);
 
@@ -4160,7 +4320,7 @@ function renderInvoiceBatchList(workspace, project, workspaceState) {
         deleteButton.textContent = 'Eliminar';
         deleteButton.addEventListener('click', (event) => {
             event.stopPropagation();
-            deleteInvoiceRecord(project, workspace, workspaceState, record.id);
+            deleteInvoiceRecord(project, workspace, workspaceState, record.id, tr);
         });
         deleteCell.appendChild(deleteButton);
         tr.appendChild(deleteCell);
@@ -4178,7 +4338,7 @@ function renderInvoiceBatchList(workspace, project, workspaceState) {
             detailRow.className = 'project-invoice-lines-detail-row';
             const detailCell = document.createElement('td');
             detailCell.colSpan = 13;
-            detailCell.appendChild(createInvoiceLinesPanel(record));
+            detailCell.appendChild(createInvoiceLinesPanel(record, project, workspaceState));
             detailRow.appendChild(detailCell);
             tbody.appendChild(detailRow);
         }
