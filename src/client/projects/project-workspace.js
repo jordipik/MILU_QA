@@ -40,9 +40,59 @@ let activeSeoEditorItem = null;
 let activeSeoUpdatedIds = new Set();
 let activeAnalysisCharts = {};
 let activeStartSplashCleanup = null;
+let activeHeaderMenuController = null;
 let activeInvoicePdfDocuments = new Map();
 let activeInvoicePdfFiles = new Map();
 let activeInvoiceExpandedIds = new Set();
+let activeInvoiceBatchReviewId = '';
+
+function bindResponsiveHeaderMenu() {
+    activeHeaderMenuController?.abort();
+    activeHeaderMenuController = new AbortController();
+    const { signal } = activeHeaderMenuController;
+    const topbar = document.querySelector('[data-project-workspace-topbar]');
+    const toggle = topbar?.querySelector('[data-project-header-menu-toggle]');
+    const menu = topbar?.querySelector('[data-project-header-menu]');
+    if (!topbar || !toggle || !menu) return;
+
+    const closeMenu = () => {
+        menu.classList.remove('is-open');
+        document.body.classList.remove('project-header-menu-open');
+        toggle.setAttribute('aria-expanded', 'false');
+        toggle.setAttribute('aria-label', 'Abrir menú del proyecto');
+    };
+
+    const openMenu = () => {
+        menu.classList.add('is-open');
+        document.body.classList.add('project-header-menu-open');
+        toggle.setAttribute('aria-expanded', 'true');
+        toggle.setAttribute('aria-label', 'Cerrar menú del proyecto');
+    };
+
+    toggle.addEventListener('click', () => {
+        if (menu.classList.contains('is-open')) closeMenu();
+        else openMenu();
+    }, { signal });
+
+    menu.addEventListener('click', (event) => {
+        if (event.target === menu || event.target.closest('button')) closeMenu();
+    }, { signal });
+
+    document.addEventListener('click', (event) => {
+        if (!topbar.contains(event.target)) closeMenu();
+    }, { signal });
+
+    document.addEventListener('keydown', (event) => {
+        if (event.key === 'Escape') {
+            closeMenu();
+            toggle.focus();
+        }
+    }, { signal });
+
+    window.addEventListener('resize', () => {
+        if (window.innerWidth > 1100) closeMenu();
+    }, { signal });
+}
 let activePdfRenderNonce = 0;
 let activePdfPageNumber = 1;
 
@@ -2240,6 +2290,7 @@ async function importInvoiceFiles(project, workspace, workspaceState, files, onS
     }
 
     activeInvoiceExpandedIds = new Set();
+    activeInvoiceBatchReviewId = '';
     const reports = [];
     let totalPages = existingRecords.reduce((sum, record) => sum + Number(record?.pageCount || 0), 0);
     let totalLines = existingRecords.reduce((sum, record) => {
@@ -2776,6 +2827,7 @@ function clearInvoiceViewerState(workspace, { clearDocuments = true } = {}) {
     workspace.querySelector('[data-project-invoice-thumbnail-gallery]')?.remove();
     clearDocumentPreview(workspace);
     activeInvoiceExpandedIds = new Set();
+    activeInvoiceBatchReviewId = '';
 
     if (clearDocuments) {
         activeInvoicePdfDocuments = new Map();
@@ -3448,12 +3500,12 @@ function renderInvoiceView(workspace, workspaceState) {
     if (Array.isArray(workspaceState.invoices) && workspaceState.invoices.length > 1) {
         const backButton = document.createElement('button');
         backButton.type = 'button';
-        backButton.className = 'project-invoice-back';
+        backButton.className = 'project-invoice-back project-invoice-header-back';
         backButton.textContent = 'Volver al listado';
         backButton.addEventListener('click', () => {
             if (activeWorkspaceProject) showInvoiceBatchList(activeWorkspaceProject, workspace, workspaceState);
         });
-        hero.appendChild(backButton);
+        workspace.querySelector('.project-workspace-brand')?.appendChild(backButton);
     }
 
     const metrics = document.createElement('div');
@@ -3687,7 +3739,7 @@ function createInvoiceLinesPanel(record) {
     return wrapper;
 }
 
-function toggleInvoiceLineDetails(row, record, button) {
+async function toggleInvoiceLineDetails(project, workspace, workspaceState, row, record, button) {
     if (!row || !record) return;
 
     const existing = row.nextElementSibling?.classList?.contains('project-invoice-lines-detail-row')
@@ -3696,15 +3748,32 @@ function toggleInvoiceLineDetails(row, record, button) {
 
     if (existing) {
         existing.remove();
-        activeInvoiceExpandedIds.delete(record.id);
+        activeInvoiceExpandedIds = new Set();
+        if (activeInvoiceBatchReviewId === record.id) activeInvoiceBatchReviewId = '';
+        row.classList.remove('is-active');
         if (button) {
             button.textContent = '>';
             button.setAttribute('aria-expanded', 'false');
         }
+        activePdfDocument = null;
+        activePdfPageNumber = 1;
+        const records = Array.isArray(workspaceState.invoices) ? workspaceState.invoices : [];
+        await renderInvoiceBatchPdfGallery(workspace, project, workspaceState, records, {
+            forceThumbnails: true
+        });
         return;
     }
 
-    activeInvoiceExpandedIds.add(record.id);
+    row.closest('tbody')?.querySelectorAll('.project-invoice-lines-detail-row').forEach((detailRow) => {
+        detailRow.remove();
+    });
+    row.closest('tbody')?.querySelectorAll('.project-invoice-lines-toggle').forEach((toggle) => {
+        toggle.textContent = '>';
+        toggle.setAttribute('aria-expanded', 'false');
+    });
+
+    activeInvoiceExpandedIds = new Set([record.id]);
+    activeInvoiceBatchReviewId = record.id;
     if (button) {
         button.textContent = 'v';
         button.setAttribute('aria-expanded', 'true');
@@ -3717,6 +3786,42 @@ function toggleInvoiceLineDetails(row, record, button) {
     detailCell.appendChild(createInvoiceLinesPanel(record));
     detailRow.appendChild(detailCell);
     row.after(detailRow);
+
+    const viewer = workspace.querySelector('[data-project-pdf-viewer]');
+    const canvas = workspace.querySelector('[data-project-pdf-canvas]');
+    const pageLabel = workspace.querySelector('[data-project-pdf-page-label]');
+    const activeLabel = workspace.querySelector('[data-project-active-row-label]');
+    viewer?.querySelector('[data-project-invoice-thumbnail-gallery]')?.remove();
+    const selectedPdfDocument = await ensureInvoiceRecordPdfDocument(project, workspaceState, record);
+    if (activeInvoiceBatchReviewId !== record.id) return;
+    activePdfDocument = selectedPdfDocument;
+    activePdfPageNumber = 1;
+
+    if (activePdfDocument) {
+        if (canvas) canvas.hidden = false;
+        if (pageLabel) pageLabel.textContent = 'Pagina 1';
+        if (activeLabel) {
+            activeLabel.textContent = record.fileName || record.invoice?.fileName || 'Factura seleccionada';
+        }
+        await renderPdfFirstPage(workspace, record.invoice || null, 1);
+    } else {
+        renderInvoiceDocumentPreview(workspace, {
+            fileName: record.fileName || record.invoice?.fileName || 'factura.pdf',
+            invoice: record.invoice || null
+        });
+    }
+
+    row.classList.add('is-active');
+    row.closest('tbody')?.querySelectorAll('.project-invoice-summary-row').forEach((summaryRow) => {
+        if (summaryRow !== row) summaryRow.classList.remove('is-active');
+    });
+
+    if (window.matchMedia('(max-width: 1750px)').matches) {
+        workspace.querySelector('[data-project-pdf-panel]')?.scrollIntoView({
+            behavior: 'smooth',
+            block: 'start'
+        });
+    }
 }
 
 function drawInvoiceDocumentThumbnail(canvas, record, index) {
@@ -3776,7 +3881,7 @@ function drawInvoiceDocumentThumbnail(canvas, record, index) {
     context.fillText(summary.total && summary.total !== '-' ? summary.total : `${summary.lines} lineas`, 42, 430);
 }
 
-async function renderInvoiceBatchPdfGallery(workspace, project, workspaceState, records) {
+async function renderInvoiceBatchPdfGallery(workspace, project, workspaceState, records, options = {}) {
     const viewer = workspace.querySelector('[data-project-pdf-viewer]');
     const canvas = workspace.querySelector('[data-project-pdf-canvas]');
     const highlight = workspace.querySelector('[data-project-pdf-highlight]');
@@ -3813,7 +3918,7 @@ async function renderInvoiceBatchPdfGallery(workspace, project, workspaceState, 
     viewer.scrollTop = 0;
     viewer.scrollLeft = 0;
 
-    if (records.length === 1) {
+    if (records.length === 1 && !options.forceThumbnails) {
         const singleRecord = records[0];
         const pdfDocument = await ensureInvoiceRecordPdfDocument(project, workspaceState, singleRecord);
         if (renderNonce !== activePdfRenderNonce) return;
@@ -4026,7 +4131,9 @@ function renderInvoiceBatchList(workspace, project, workspaceState) {
         lineToggle.setAttribute('aria-expanded', activeInvoiceExpandedIds.has(record.id) ? 'true' : 'false');
         lineToggle.addEventListener('click', (event) => {
             event.stopPropagation();
-            toggleInvoiceLineDetails(tr, record, lineToggle);
+            toggleInvoiceLineDetails(project, workspace, workspaceState, tr, record, lineToggle).catch((error) => {
+                console.warn('No se pudo abrir la revision de la factura:', error);
+            });
         });
         const lineCount = document.createElement('strong');
         lineCount.textContent = String(summary.lines);
@@ -4057,6 +4164,13 @@ function renderInvoiceBatchList(workspace, project, workspaceState) {
         });
         deleteCell.appendChild(deleteButton);
         tr.appendChild(deleteCell);
+        const responsiveLabels = [
+            'Factura', 'Idioma', 'Fecha', 'Vencimiento', 'Cliente', 'Emisor',
+            'Subtotal', 'IVA', 'Total', 'IBAN', 'Lineas', 'Accion', 'Eliminar'
+        ];
+        [...tr.children].forEach((cell, index) => {
+            cell.dataset.label = responsiveLabels[index] || '';
+        });
         tbody.appendChild(tr);
 
         if (activeInvoiceExpandedIds.has(record.id)) {
@@ -4119,6 +4233,7 @@ function splitRowMergedValues(row, workspaceState) {
 }
 
 function renderWorkspace(workspace, project, workspaceState) {
+    workspace.querySelector('.project-invoice-header-back')?.remove();
     const body = workspace.querySelector('[data-project-import-body]');
     const typeScreen = workspace.querySelector('[data-project-type-screen]');
     const startScreen = workspace.querySelector('[data-project-start-screen]');
@@ -7555,6 +7670,7 @@ export async function mountProjectWorkspace(project, user) {
     if (pdfStatus) pdfStatus.textContent = project.description || 'Preparado para importar tablas.';
 
     document.body.appendChild(fragment);
+    bindResponsiveHeaderMenu();
 
     const mountedWorkspace = document.querySelector('[data-project-workspace]');
     const workspaceState = await readSavedWorkspace(project);

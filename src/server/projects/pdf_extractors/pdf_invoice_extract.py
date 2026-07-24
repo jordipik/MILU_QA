@@ -17,7 +17,22 @@ from tempfile import TemporaryDirectory
 
 EURO_TOKEN_RE = r"(?:EUR|EUROS?|\u20ac|€|â‚¬|�)"
 CURRENCY_TOKEN_RE = rf"(?:{EURO_TOKEN_RE}|USD|US\$|\$|DOLLARS?)"
-MONEY_RE = re.compile(rf"(?<!\w){CURRENCY_TOKEN_RE}?\s*(-?\d{{1,3}}(?:[.\s]\d{{3}})*(?:,\d{{2}})|-?\d+(?:[.,]\d{{2}}))\s*{CURRENCY_TOKEN_RE}?(?!\w)", re.I)
+MONEY_NUMBER_PATTERN = (
+    r"-?(?:"
+    r"\d{1,3}(?:[.,\s]\d{3})+(?:[.,]\d{1,2})?"
+    r"|"
+    r"\d+(?:[.,]\d{1,2})?"
+    r")"
+)
+
+MONEY_RE = re.compile(
+    rf"(?<![\w\d])"
+    rf"(?:{CURRENCY_TOKEN_RE}\s*)?"
+    rf"({MONEY_NUMBER_PATTERN})"
+    rf"(?:\s*{CURRENCY_TOKEN_RE})?"
+    rf"(?![\w\d])",
+    re.I,
+)
 MONTH_NAMES = (
     r"enero|febrero|marzo|abril|mayo|junio|julio|agosto|septiembre|setiembre|octubre|noviembre|diciembre|"
     r"gener|febrer|mar[cç]|abril|maig|juny|juliol|agost|setembre|octubre|novembre|desembre|"
@@ -323,14 +338,60 @@ PRIORITY_INVOICE_FIELD_SPECS = [
 def parse_amount(value):
     text = clean(value)
     text = re.sub(CURRENCY_TOKEN_RE, "", text, flags=re.I)
-    text = text.replace(" ", "")
-    if "," in text and "." in text:
-        text = text.replace(".", "").replace(",", ".")
-    elif "," in text:
-        text = text.replace(",", ".")
+    text = text.replace("\u00a0", "").replace(" ", "")
+    text = re.sub(r"[^0-9,.\-]", "", text)
+
+    if not text or text in {"-", ".", ","}:
+        return None
+
+    negative = text.startswith("-")
+    text = text.lstrip("-")
+
+    comma_count = text.count(",")
+    dot_count = text.count(".")
+
+    if comma_count and dot_count:
+        # El último separador suele ser el separador decimal.
+        if text.rfind(",") > text.rfind("."):
+            # Europeo: 1.234,56
+            text = text.replace(".", "").replace(",", ".")
+        else:
+            # Inglés/EE. UU.: 1,234.56
+            text = text.replace(",", "")
+
+    elif comma_count:
+        parts = text.split(",")
+
+        if comma_count > 1:
+            # 1,234,567 o 1,234,567,89
+            if len(parts[-1]) in {1, 2}:
+                text = "".join(parts[:-1]) + "." + parts[-1]
+            else:
+                text = "".join(parts)
+        elif len(parts[-1]) == 3 and len(parts[0]) <= 3:
+            # 1,653 normalmente representa miles.
+            text = "".join(parts)
+        else:
+            # 239,00
+            text = text.replace(",", ".")
+
+    elif dot_count:
+        parts = text.split(".")
+
+        if dot_count > 1:
+            # 1.234.567 o 1.234.567.89
+            if len(parts[-1]) in {1, 2}:
+                text = "".join(parts[:-1]) + "." + parts[-1]
+            else:
+                text = "".join(parts)
+        elif len(parts[-1]) == 3 and len(parts[0]) <= 3:
+            # 1.653 normalmente representa miles.
+            text = "".join(parts)
+
     try:
-        return round(float(text), 2)
-    except Exception:
+        amount = float(text)
+        return round(-amount if negative else amount, 2)
+    except (TypeError, ValueError):
         return None
 
 
@@ -1748,12 +1809,22 @@ def extract_table_line_items(pages):
                 quantity = first_existing(mapped, ["UNITATS", "UNIDADES", "UNITS", "QTY", "CANTIDAD", "QUANTITY"])
                 unit_price = first_existing(mapped, ["PREU", "PRICE", "PRECIO", "UNIT PRICE"])
                 total = first_existing(mapped, ["TOTAL", "SUBTOTAL", "IMPORTE", "AMOUNT"])
-                if description or total:
+                description = clean(description)
+                row_text = clean(" ".join(row))
+
+                if is_summary_line_text(description) or is_summary_line_text(row_text):
+                    continue
+
+                parsed_total = parse_amount(total) if total else None
+                parsed_quantity = parse_amount(quantity) if quantity else None
+                parsed_unit_price = parse_amount(unit_price) if unit_price else None
+
+                if description and parsed_total is not None:
                     items.append({
-                        "description": description or "Linea de factura",
-                        "quantity": parse_amount(quantity) if quantity else None,
-                        "unitPrice": parse_amount(unit_price) if unit_price else None,
-                        "total": parse_amount(total) if total else None,
+                        "description": description,
+                        "quantity": parsed_quantity,
+                        "unitPrice": parsed_unit_price,
+                        "total": parsed_total,
                     })
     return items[:200]
 
@@ -1768,6 +1839,7 @@ def extract_text_table_line_items(lines):
             in_table = True
             continue
         if in_table and any(token in upper for token in [
+            "MERCHANDISE SUBTOTAL", "SHIPPING", "FREIGHT", "SALES TAX", "AMOUNT DUE", "GRAND TOTAL", "BALANCE DUE",
             "OBSERVACIONES", "OBSERVACIONS", "TOTAL FACTURA", "BASE IMPONIBLE",
             "PENDIENTE", "VENCIMIENTO", "VENCIMENT", "FORMA DE PAGO",
             "FORMA DE PAGAMENT", "METODO DE PAGO", "MÉTODO DE PAGO",
@@ -2106,6 +2178,7 @@ def is_summary_line_text(value):
     if not key:
         return False
     summary_tokens = {
+        "SHIPPING", "FREIGHT", "DELIVERY", "TRANSPORT", "PORTES", "ENVIO", "SALESTAX", "AMOUNTDUE", "BALANCEDUE", "GRANDTOTAL", "MERCHANDISESUBTOTAL",
         "SUBTOTAL", "TOTAL", "TOTALEUR", "BASEIMPONIBLE", "IVA", "VAT",
         "PENDIENTE", "BALANCE", "DISCOUNTRATE", "VATRATE", "PAYMENTREFNO",
         "ACCOUNTNO", "BANK", "BRANCHCODE", "DUE", "VENCIMIENTO",
@@ -2130,81 +2203,450 @@ def is_summary_line_text(value):
         return True
     return False
 
+def is_product_table_header(line_text, columns):
+    header = normalize_header_key(line_text)
+
+    column_keys = {
+        column.get("key")
+        for column in columns
+        if column.get("key")
+    }
+
+    product_header_tokens = {
+        # Español / catalán
+        "DESCRIPCION",
+        "DESCRIPCIO",
+        "CONCEPTO",
+        "ARTICULO",
+        "ARTICLE",
+        "PRODUCTO",
+        "PRODUCTE",
+        "MERCANCIA",
+
+        # Inglés
+        "DESCRIPTION",
+        "PRODUCT",
+        "PRODUCTSERVICE",
+        "ITEM",
+        "GOODS",
+        "SERVICE",
+        "SKU",
+
+        # Otros frecuentes
+        "BEZEICHNUNG",
+        "BESCHREIBUNG",
+        "DESCRIZIONE",
+        "DESCRIPTIONARTICLE",
+    }
+
+    rejected_header_tokens = {
+        "GROSSWGT",
+        "NETWGT",
+        "GROSSWEIGHT",
+        "NETWEIGHT",
+        "PACKAGES",
+        "PACKAGE",
+        "PALLETS",
+        "ROLLS",
+        "AMOUNTS",
+        "BANKDETAILS",
+        "PAYMENTDETAILS",
+        "SHIPPINGDETAILS",
+        "TOTALWEIGHT",
+    }
+
+    if any(token in header for token in rejected_header_tokens):
+        return False
+
+    has_product_header = any(
+        token in header
+        for token in product_header_tokens
+    )
+
+    has_identity_column = bool(
+        {"description", "code"} & column_keys
+    )
+
+    has_commercial_column = bool(
+        {
+            "quantity",
+            "unit",
+            "unitPrice",
+            "total",
+            "discount",
+            "taxRate",
+        } & column_keys
+    )
+
+    return (
+        has_product_header
+        and has_identity_column
+        and has_commercial_column
+    )
+
+def product_table_group_score(items):
+    if not items:
+        return -1000
+
+    score = 0
+
+    for item in items:
+        description = normalize_header_key(
+            item.get("description")
+        )
+
+        if clean(item.get("code")):
+            score += 3
+
+        if item.get("quantity") is not None:
+            score += 4
+
+        if item.get("unitPrice") is not None:
+            score += 4
+
+        if item.get("total") is not None:
+            score += 5
+
+        if clean(item.get("unit")):
+            score += 1
+
+        if item.get("sourceBox"):
+            score += 2
+
+        if any(token in description for token in [
+            "GROSSWGT",
+            "NETWGT",
+            "GROSSWEIGHT",
+            "NETWEIGHT",
+            "PACKAGES",
+            "PALLETS",
+            "ROLLS",
+            "BANKDETAILS",
+            "AMOUNTS",
+        ]):
+            score -= 12
+
+    # Favorece calidad, no simplemente más filas.
+    score += min(len(items), 10)
+
+    return score
 
 def extract_word_column_line_items(pages):
-    items = []
+    table_groups = []
+
     for page in pages:
-        visual_lines = group_words_by_visual_line(page.get("words") or [])
+        visual_lines = group_words_by_visual_line(
+            page.get("words") or []
+        )
+
         active_columns = []
         table_started = False
         pending_description = []
+        pending_source_box = None
+        previous_y = None
+        current_items = []
+
         for line in visual_lines:
-            line_text = line.get("text") or ""
+            line_text = clean(line.get("text"))
             upper = strip_accents(line_text).upper()
-            detected_columns = detect_invoice_table_columns(line.get("words") or [])
+
+            line_y = float(line.get("y") or 0)
+            line_height = max(
+                float(line.get("height") or 0),
+                1,
+            )
+
+            detected_columns = detect_invoice_table_columns(
+                line.get("words") or []
+            )
+
+            # ============================================================
+            # Inicio de una tabla de productos
+            # ============================================================
             if detected_columns:
-                active_columns = detected_columns
-                table_started = True
+                if is_product_table_header(
+                    line_text,
+                    detected_columns,
+                ):
+                    # Si ya había una tabla válida en esta página,
+                    # la guardamos antes de comenzar la siguiente.
+                    if current_items:
+                        table_groups.append(current_items)
+
+                    active_columns = detected_columns
+                    table_started = True
+                    pending_description = []
+                    pending_source_box = None
+                    previous_y = line_y
+                    current_items = []
+                    continue
+
+                # Si ya estábamos dentro de una tabla y aparece otra
+                # cabecera distinta, termina la tabla actual.
+                if table_started:
+                    break
+
                 continue
+
             if not table_started or not active_columns:
                 continue
+
+            # ============================================================
+            # Final explícito de la tabla de productos
+            # ============================================================
             if is_summary_line_text(line_text):
                 break
-            if any(token in upper for token in ["NETTOBETRAG", "UMSATZSTEUER", "MEHRWERTSTEUER", "GESAMTBETRAG", "ZAHLUNGSHINWEIS"]):
+
+            if any(token in upper for token in [
+                "SUB TOTAL",
+                "SUBTOTAL",
+                "MERCHANDISE SUBTOTAL",
+                "BASE IMPONIBLE",
+                "NETTOBETRAG",
+                "UMSATZSTEUER",
+                "MEHRWERTSTEUER",
+                "SALES TAX",
+                "SHIPPING",
+                "FREIGHT",
+                "AMOUNT DUE",
+                "BALANCE DUE",
+                "GRAND TOTAL",
+                "GESAMTBETRAG",
+                "ZAHLUNGSHINWEIS",
+                "PAYMENT DETAILS",
+                "BANK DETAILS",
+                "BENEFICIARY",
+                "IBAN",
+                "SWIFT",
+                "OBSERVACIONES",
+                "TERMS AND CONDITIONS",
+            ]):
                 break
-            if any(token in upper for token in ["SUB TOTAL", "SUBTOTAL", "BASE IMPONIBLE", "TOTAL", "PAYMENT", "PAGO", "OBSERVACIONES", "TERMS"]):
-                if not MONEY_RE.findall(line_text) or "TOTAL" in upper:
-                    break
-            if any(token in upper for token in ["AMOUNTS", "EXPIRY", "GROSS WGT", "NET WGT", "INVOICING POLICY"]):
-                break
-            values, source_box = assign_words_to_columns(line.get("words") or [], active_columns, page)
-            description = normalize_invoice_item_text(values.get("description") or values.get("code") or "")
-            if values.get("code") and values.get("description"):
-                description = normalize_invoice_item_text(f"{values.get('code')} {values.get('description')}")
-            quantity_text = clean(values.get("quantity"))
+
+            # ============================================================
+            # Asignar cada palabra a su columna visual
+            # ============================================================
+            values, source_box = assign_words_to_columns(
+                line.get("words") or [],
+                active_columns,
+                page,
+            )
+
+            code = clean(values.get("code"))
+            raw_description = clean(
+                values.get("description")
+            )
+
+            description = normalize_invoice_item_text(
+                raw_description or code
+            )
+
+            if code and raw_description:
+                description = normalize_invoice_item_text(
+                    f"{code} {raw_description}"
+                )
+
+            # ============================================================
+            # Cantidad
+            # ============================================================
+            quantity_text = clean(
+                values.get("quantity")
+            )
+
             quantity = parse_amount(quantity_text)
+
             if quantity is None and quantity_text:
-                quantity_tokens = re.findall(r"-?\d+(?:[.,]\d+)?", quantity_text)
+                quantity_tokens = re.findall(
+                    r"-?\d+(?:[.,]\d+)?",
+                    quantity_text,
+                )
+
                 if quantity_tokens:
-                    quantity = parse_amount(quantity_tokens[-1])
-                    quantity_prefix = clean(quantity_text.rsplit(quantity_tokens[-1], 1)[0])
-                    if re.search(r"[A-Za-zÁÉÍÓÚÜÑáéíóúüñ]{2,}", quantity_prefix):
-                        description = normalize_invoice_item_text(f"{description} {quantity_prefix}")
-            unit_price = parse_amount(values.get("unitPrice"))
-            total = parse_amount(values.get("total"))
-            if total is None and any(column.get("key") == "total" for column in active_columns):
-                amounts = MONEY_RE.findall(line_text)
-                total = parse_amount(amounts[-1]) if amounts else None
-            price_for_detection = unit_price if unit_price is not None else total
-            has_structured_value = price_for_detection is not None or quantity is not None
-            if not has_structured_value:
-                if description and not is_summary_line_text(description):
-                    pending_description.append(description)
-                    pending_description = pending_description[-12:]
+                    quantity_token = quantity_tokens[-1]
+
+                    quantity = parse_amount(
+                        quantity_token
+                    )
+
+                    quantity_prefix = clean(
+                        quantity_text.rsplit(
+                            quantity_token,
+                            1,
+                        )[0]
+                    )
+
+                    if re.search(
+                        r"[A-Za-zÁÉÍÓÚÜÑáéíóúüñ]{2,}",
+                        quantity_prefix,
+                    ):
+                        description = normalize_invoice_item_text(
+                            f"{description} {quantity_prefix}"
+                        )
+
+            # ============================================================
+            # Importes de la línea
+            # ============================================================
+            unit_price = parse_amount(
+                values.get("unitPrice")
+            )
+
+            total = parse_amount(
+                values.get("total")
+            )
+
+            discount = parse_amount(
+                values.get("discount")
+            )
+
+            tax_rate = parse_amount(
+                values.get("taxRate")
+            )
+
+            has_commercial_value = any(
+                value is not None
+                for value in [
+                    quantity,
+                    unit_price,
+                    total,
+                ]
+            )
+
+            has_identity = bool(
+                code or description
+            )
+
+            # ============================================================
+            # Línea únicamente descriptiva
+            #
+            # Se guarda temporalmente porque puede ser:
+            # - continuación de la descripción;
+            # - código o referencia del producto;
+            # - composición;
+            # - pedido relacionado.
+            #
+            # No se crea todavía una línea independiente.
+            # ============================================================
+            if (
+                has_identity
+                and not has_commercial_value
+            ):
+                # Una separación vertical grande indica que el bloque
+                # anterior probablemente ya no pertenece al producto.
+                if (
+                    previous_y is not None
+                    and line_y - previous_y
+                    > line_height * 2.8
+                ):
+                    pending_description = []
+                    pending_source_box = None
+
+                pending_description.append(
+                    description
+                )
+
+                pending_description = (
+                    pending_description[-12:]
+                )
+
+                if pending_source_box is None:
+                    pending_source_box = source_box
+
+                previous_y = line_y
                 continue
+
+            # Una fila vacía no aporta nada.
+            if (
+                not has_identity
+                and not has_commercial_value
+            ):
+                previous_y = line_y
+                continue
+
+            # ============================================================
+            # Unir las descripciones anteriores con la fila económica
+            # ============================================================
             if pending_description:
-                useful_description = [part for part in pending_description if not re.match(
-                    r"^(?:D\.?D\.?T\.?|OUR\s+ORDER|ORDER\s*:)", part, re.I
-                )]
-                description = normalize_invoice_item_text(" ".join(useful_description + [description]))
+                useful_description = [
+                    part
+                    for part in pending_description
+                    if not re.search(
+                        r"^(?:"
+                        r"BANK\s+DETAILS"
+                        r"|BENEFICIARY"
+                        r"|IBAN"
+                        r"|SWIFT"
+                        r"|WARNING"
+                        r")",
+                        part,
+                        re.I,
+                    )
+                ]
+
+                if useful_description:
+                    description = (
+                        normalize_invoice_item_text(
+                            " ".join(
+                                useful_description
+                                + (
+                                    [description]
+                                    if description
+                                    else []
+                                )
+                            )
+                        )
+                    )
+
                 pending_description = []
+                pending_source_box = None
+
             if not description:
-                description = "Linea de factura"
-            if is_summary_line_text(description):
+                description = (
+                    code
+                    or "Línea de factura"
+                )
+
+            if is_summary_line_text(
+                description
+            ):
+                previous_y = line_y
                 continue
-            items.append({
-                "code": clean(values.get("code")),
+
+            # ============================================================
+            # Añadir línea de producto
+            # ============================================================
+            current_items.append({
+                "code": code,
                 "description": description[:220],
                 "quantity": quantity,
-                "unit": clean(values.get("unit")),
+                "unit": clean(
+                    values.get("unit")
+                ),
                 "unitPrice": unit_price,
-                "discount": parse_amount(values.get("discount")),
-                "taxRate": parse_amount(values.get("taxRate")),
+                "discount": discount,
+                "taxRate": tax_rate,
                 "total": total,
                 "sourceBox": source_box,
             })
-    return items[:200]
 
+            previous_y = line_y
+
+        # Guardar el grupo detectado en esta página.
+        if current_items:
+            table_groups.append(current_items)
+
+        # No añadimos pending_description al finalizar.
+        # Si no llegó una cantidad, precio o total, podría ser:
+        # texto legal, banco, transporte, notas o condiciones.
+
+    if not table_groups:
+        return []
+
+    best_group = max(
+        table_groups,
+        key=product_table_group_score,
+    )
+
+    return best_group[:200]
 
 def extract_multipage_split_line_items(pages):
     """Une columnas de una misma tabla que el documento reparte entre paginas."""
@@ -2252,6 +2694,7 @@ def extract_multipage_split_line_items(pages):
                 "total": total_value,
                 "sourceBox": source_box,
             })
+        
         if fragments:
             page_fragments.append(fragments)
 
@@ -2529,13 +2972,19 @@ def build_invoice(pages, file_name):
     if customer_phone_digits and customer_tax_digits and customer_phone_digits == customer_tax_digits:
         customer["phone"] = ""
 
-    line_items = choose_line_items(
+    structured_line_items = choose_line_items(
         extract_multipage_split_line_items(pages),
         extract_table_line_items(pages),
         extract_word_column_line_items(pages),
-        extract_text_table_line_items(lines),
-        extract_line_items(lines),
     )
+
+    if structured_line_items:
+        line_items = structured_line_items
+    else:
+        line_items = choose_line_items(
+            extract_text_table_line_items(lines),
+            extract_line_items(lines),
+        )
     if total is None and line_items:
         line_totals = [item.get("total") for item in line_items if item.get("total") is not None]
         if line_totals:

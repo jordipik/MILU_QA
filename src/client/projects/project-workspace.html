@@ -8,19 +8,37 @@
             </div>
         </div>
 
-        <nav class="project-workspace-nav" aria-label="Acciones del proyecto">
-            <button type="button" data-project-pdf-button>Subir archivo</button>
-            <button type="button" data-project-change-type-button hidden>Cambiar tipo</button>
-            <button type="button" data-project-wordpress-button>Conectar WordPress</button>
-            <button type="button" data-project-customers-button hidden>Clientes</button>
-            <button type="button" data-project-analysis-button hidden>Analisis</button>
-            <button type="button" data-project-export-json disabled>Exportar JSON</button>
-            <button type="button" data-project-export-csv disabled>Exportar CSV</button>
-        </nav>
+        <button class="project-workspace-menu-toggle" type="button"
+            aria-label="Abrir menú del proyecto" aria-expanded="false"
+            aria-controls="projectWorkspaceHeaderMenu" data-project-header-menu-toggle>
+            <span></span><span></span><span></span>
+        </button>
 
-        <div class="project-workspace-session">
-            <span data-project-user-name>Usuario</span>
-            <button type="button" data-project-logout>Salir</button>
+        <div class="project-workspace-header-menu" id="projectWorkspaceHeaderMenu" data-project-header-menu>
+            <div class="project-workspace-header-menu-panel">
+                <div class="project-workspace-header-menu-title">
+                    <span>AT</span>
+                    <div>
+                        <strong>Menú del proyecto</strong>
+                        <small>Acciones y configuración</small>
+                    </div>
+                </div>
+
+                <nav class="project-workspace-nav" aria-label="Acciones del proyecto">
+                    <button type="button" data-project-pdf-button>Subir archivo</button>
+                    <button type="button" data-project-change-type-button hidden>Cambiar tipo</button>
+                    <button type="button" data-project-wordpress-button>Conectar WordPress</button>
+                    <button type="button" data-project-customers-button hidden>Clientes</button>
+                    <button type="button" data-project-analysis-button hidden>Analisis</button>
+                    <button type="button" data-project-export-json disabled>Exportar JSON</button>
+                    <button type="button" data-project-export-csv disabled>Exportar CSV</button>
+                </nav>
+
+                <div class="project-workspace-session">
+                    <span data-project-user-name>Usuario</span>
+                    <button type="button" data-project-logout>Salir</button>
+                </div>
+            </div>
         </div>
     </header>
 
@@ -44,7 +62,7 @@
 
                 <div class="project-workspace-pdf-actions" aria-label="Archivos guardados">
                     <button type="button" data-project-save-file-button hidden disabled>Guardar</button>
-                    <button type="button" data-project-saved-files-button>Guardados</button>
+                    <button type="button" data-project-saved-files-button>Abrir</button>
                 </div>
             </div>
         </section>

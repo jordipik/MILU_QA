@@ -118,7 +118,16 @@ def sheet_xml(rows, merges=None, hyperlinks=None, widths=None):
 
     merge_xml = ""
     if merges:
-        merge_xml = f'<mergeCells count="{len(merges)}">{"".join(f"<mergeCell ref=\"{ref}\"/>" for ref in merges)}</mergeCells>'
+        merge_cells_xml = "".join(
+            f'<mergeCell ref="{ref}"/>'
+            for ref in merges
+        )
+
+        merge_xml = (
+            f'<mergeCells count="{len(merges)}">'
+            f'{merge_cells_xml}'
+            f'</mergeCells>'
+        )
 
     hyperlink_xml = ""
     if hyperlinks:
