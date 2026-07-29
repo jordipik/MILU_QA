@@ -24,7 +24,7 @@ function parseJsonOutput(output) {
     }
 }
 
-function runPythonExtractor({ pdfPath, projectId, fileName, scriptPath = PRODUCT_EXTRACTOR_SCRIPT }) {
+function runPythonExtractor({ pdfPath, projectId, fileName, scriptPath = PRODUCT_EXTRACTOR_SCRIPT, extraArgs = [] }) {
     return new Promise((resolve, reject) => {
         const pythonBin = process.env.PDF_EXTRACTOR_PYTHON || process.env.PYTHON_BIN || 'python';
         const args = [
@@ -34,7 +34,8 @@ function runPythonExtractor({ pdfPath, projectId, fileName, scriptPath = PRODUCT
             '--project',
             String(projectId || ''),
             '--file-name',
-            String(fileName || '')
+            String(fileName || ''),
+            ...extraArgs.map((value) => String(value))
         ];
 
         const child = spawn(pythonBin, args, {
@@ -115,7 +116,22 @@ async function extractProjectInvoicePdf(options) {
     };
 }
 
+async function extractProjectInvoiceLinesRegion(options) {
+    const result = await runPythonExtractor({
+        ...options,
+        scriptPath: INVOICE_EXTRACTOR_SCRIPT,
+        extraArgs: ['--line-region', JSON.stringify(options.region || {})]
+    });
+    return {
+        ok: true,
+        lineItems: result?.workspace?.invoice?.lineItems || [],
+        regionWords: Array.isArray(result?.regionWords) ? result.regionWords : [],
+        report: result?.report || null
+    };
+}
+
 module.exports = {
     extractProjectPdf,
-    extractProjectInvoicePdf
+    extractProjectInvoicePdf,
+    extractProjectInvoiceLinesRegion
 };

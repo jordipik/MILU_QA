@@ -263,7 +263,21 @@ function restoreSavedWorkspace(projectId, fileId) {
     };
 }
 
+function deleteSavedWorkspace(projectId, fileId) {
+    const record = readSavedRecord(projectId, fileId);
+    const jsonPath = savedJsonPath(projectId, fileId);
+    const pdfPath = savedPdfPath(projectId, fileId);
+    const invoiceDir = savedInvoicePdfDir(projectId, fileId);
+
+    if (fs.existsSync(jsonPath)) fs.unlinkSync(jsonPath);
+    if (fs.existsSync(pdfPath)) fs.unlinkSync(pdfPath);
+    if (fs.existsSync(invoiceDir)) fs.rmSync(invoiceDir, { recursive: true, force: true });
+
+    return publicMeta(record);
+}
+
 module.exports = {
+    deleteSavedWorkspace,
     listSavedWorkspaces,
     readSavedWorkspace,
     readSavedInvoiceWorkspacePdf,

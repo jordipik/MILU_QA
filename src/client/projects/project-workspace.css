@@ -91,6 +91,64 @@ body.project-shell-active * {
     opacity: 0.72;
 }
 
+.project-workspace-status .project-workspace-ai-toggle {
+    min-width: 220px;
+    min-height: 58px;
+    padding: 10px 22px;
+    border: 1px solid rgba(59, 130, 246, 0.34);
+    border-radius: 18px;
+    color: #1e3a5f;
+    background:
+        radial-gradient(circle at 18% 15%, rgba(255, 255, 255, 0.95), transparent 30%),
+        linear-gradient(135deg, #eff6ff, #dbeafe);
+    box-shadow: 0 10px 26px rgba(59, 130, 246, 0.16);
+    font: inherit;
+    cursor: pointer;
+    display: inline-flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 2px;
+    transition: transform 180ms ease, box-shadow 180ms ease, border-color 180ms ease,
+        filter 180ms ease;
+}
+
+.project-workspace-status .project-workspace-ai-toggle[hidden] {
+    display: none;
+}
+
+.project-workspace-status .project-workspace-ai-toggle span {
+    font-size: 13px;
+    font-weight: 950;
+    white-space: nowrap;
+}
+
+.project-workspace-status .project-workspace-ai-toggle strong {
+    font-size: 11px;
+    font-weight: 900;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+}
+
+.project-workspace-status .project-workspace-ai-toggle.is-enabled {
+    border-color: rgba(13, 148, 136, 0.42);
+    color: #115e59;
+    background:
+        radial-gradient(circle at 18% 15%, rgba(255, 255, 255, 0.95), transparent 28%),
+        linear-gradient(135deg, #ecfdf5, #ccfbf1);
+    box-shadow: 0 12px 30px rgba(13, 148, 136, 0.18);
+}
+
+.project-workspace-status .project-workspace-ai-toggle:hover {
+    transform: translateY(-2px) scale(1.015);
+    box-shadow: 0 15px 34px rgba(59, 130, 246, 0.22);
+    filter: saturate(1.08);
+}
+
+.project-workspace-status .project-workspace-ai-toggle.is-enabled:hover {
+    box-shadow: 0 15px 34px rgba(13, 148, 136, 0.24);
+}
+
 .project-workspace-session {
     display: flex;
     align-items: center;
@@ -994,6 +1052,34 @@ body.project-shell-active * {
     font-weight: 800;
 }
 
+.project-invoice-marks-toggle {
+    justify-self: start;
+    min-height: 40px;
+    padding: 0 17px;
+    border: 1px solid rgba(37, 99, 235, 0.28);
+    border-radius: 12px;
+    color: #1d4ed8;
+    background: rgba(255, 255, 255, 0.86);
+    box-shadow: 0 9px 22px rgba(37, 99, 235, 0.12);
+    font: inherit;
+    font-size: 12px;
+    font-weight: 950;
+    cursor: pointer;
+    transition: transform 160ms ease, color 160ms ease, background 160ms ease,
+        box-shadow 160ms ease;
+}
+
+.project-invoice-marks-toggle:hover {
+    transform: translateY(-1px);
+    box-shadow: 0 12px 26px rgba(37, 99, 235, 0.18);
+}
+
+.project-invoice-marks-toggle.is-active {
+    color: #fff;
+    border-color: #1d4ed8;
+    background: linear-gradient(135deg, #2563eb, #0891b2);
+}
+
 .project-invoice-back {
     justify-self: start;
     min-height: 34px;
@@ -1053,6 +1139,21 @@ body.project-shell-active * {
 
 .project-invoice-section {
     overflow: hidden;
+}
+
+.is-invoice-mark-mode .project-invoice-section[data-invoice-block],
+.is-invoice-mark-mode .project-invoice-metrics [data-invoice-block] {
+    border-color: var(--invoice-block-color) !important;
+    background:
+        linear-gradient(var(--invoice-block-background), var(--invoice-block-background)),
+        rgba(255, 255, 255, 0.94);
+    box-shadow: 0 0 0 2px color-mix(in srgb, var(--invoice-block-color) 24%, transparent),
+        0 14px 34px rgba(15, 23, 42, 0.08);
+}
+
+.is-invoice-mark-mode .project-invoice-section[data-invoice-block] > header {
+    color: var(--invoice-block-color);
+    box-shadow: inset 5px 0 0 var(--invoice-block-color);
 }
 
 .project-invoice-section header {
@@ -1121,6 +1222,105 @@ body.project-shell-active * {
 
 .project-invoice-lines {
     grid-column: 1 / -1;
+}
+
+.project-invoice-lines > header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+}
+
+.project-invoice-line-scan-button {
+    min-height: 36px;
+    padding: 0 15px;
+    border: 1px solid rgba(37, 99, 235, 0.24);
+    border-radius: 999px;
+    color: #ffffff;
+    background: linear-gradient(135deg, #2563eb, #06b6d4);
+    box-shadow: 0 12px 24px rgba(37, 99, 235, 0.2);
+    font: inherit;
+    font-size: 11px;
+    font-weight: 950;
+    cursor: pointer;
+    transition: transform 160ms ease, box-shadow 160ms ease;
+}
+
+.project-invoice-line-scan-button::before {
+    content: "⌗";
+    margin-right: 7px;
+    font-size: 14px;
+}
+
+.project-invoice-line-scan-button:hover,
+.project-invoice-line-scan-button.is-active {
+    transform: translateY(-1px);
+    box-shadow: 0 16px 30px rgba(37, 99, 235, 0.3);
+}
+
+.project-invoice-line-scan-button.is-active {
+    background: linear-gradient(135deg, #f97316, #ef4444);
+}
+
+.project-pdf-viewer.is-scanning-invoice-lines canvas {
+    cursor: crosshair;
+    touch-action: none;
+    user-select: none;
+}
+
+.project-invoice-line-scan-layer {
+    position: absolute;
+    inset: 0;
+    z-index: 8;
+    pointer-events: none;
+}
+
+.project-invoice-line-scan-hint {
+    position: sticky;
+    top: 12px;
+    z-index: 2;
+    width: min(520px, calc(100% - 24px));
+    margin: 12px auto 0;
+    padding: 12px 16px;
+    border: 1px solid rgba(147, 197, 253, 0.9);
+    border-radius: 14px;
+    color: #1e3a8a;
+    background: rgba(239, 246, 255, 0.96);
+    box-shadow: 0 16px 38px rgba(15, 23, 42, 0.18);
+    backdrop-filter: blur(14px);
+    font-size: 12px;
+    line-height: 1.4;
+    font-weight: 900;
+    text-align: center;
+}
+
+.project-invoice-line-scan-layer.is-loading .project-invoice-line-scan-hint::before {
+    content: "";
+    width: 13px;
+    height: 13px;
+    display: inline-block;
+    margin-right: 8px;
+    border: 2px solid rgba(37, 99, 235, 0.25);
+    border-top-color: #2563eb;
+    border-radius: 999px;
+    vertical-align: -2px;
+    animation: projectLineScanSpin 720ms linear infinite;
+}
+
+.project-invoice-line-scan-selection {
+    position: absolute;
+    z-index: 1;
+    border: 2px solid #2563eb;
+    border-radius: 6px;
+    background:
+        repeating-linear-gradient(-45deg, rgba(37, 99, 235, 0.13) 0 8px, rgba(6, 182, 212, 0.08) 8px 16px);
+    box-shadow:
+        0 0 0 1px rgba(255, 255, 255, 0.92),
+        0 12px 30px rgba(37, 99, 235, 0.2);
+}
+
+@keyframes projectLineScanSpin {
+    to { transform: rotate(360deg); }
 }
 
 .project-invoice-lines table {
@@ -1449,10 +1649,50 @@ body.project-shell-active * {
     background: #ffffff;
 }
 
+.project-invoice-lines-panel-toolbar {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 14px;
+    margin-bottom: 12px;
+    padding: 2px 2px 12px;
+    border-bottom: 1px solid rgba(226, 232, 240, 0.92);
+}
+
+.project-invoice-lines-panel-toolbar > span {
+    display: grid;
+    gap: 3px;
+    min-width: 0;
+}
+
+.project-invoice-lines-panel-toolbar strong {
+    color: #0f172a;
+    font-size: 13px;
+    font-weight: 950;
+}
+
+.project-invoice-lines-panel-toolbar small {
+    color: #64748b;
+    font-size: 11px;
+    font-weight: 750;
+}
+
 .project-invoice-lines-panel p {
     margin: 0;
     color: #64748b;
     font-weight: 850;
+}
+
+@media (max-width: 640px) {
+    .project-invoice-lines-panel-toolbar {
+        align-items: stretch;
+        flex-direction: column;
+    }
+
+    .project-invoice-lines-panel-toolbar .project-invoice-line-scan-button {
+        width: 100%;
+        justify-content: center;
+    }
 }
 
 .project-invoice-lines-panel table {
@@ -1625,6 +1865,24 @@ body.project-shell-active * {
     background: rgba(249, 115, 22, 0.18) !important;
     border-color: #f97316 !important;
     box-shadow: 0 0 0 2px #f97316, 0 0 28px rgba(249, 115, 22, 0.36) !important;
+}
+
+.is-invoice-mark-mode .project-invoice-pdf-highlight {
+    z-index: 7;
+    opacity: 1;
+    border-color: var(--invoice-block-color) !important;
+    background: var(--invoice-block-background) !important;
+    box-shadow: 0 0 0 2px var(--invoice-block-color),
+        0 0 18px color-mix(in srgb, var(--invoice-block-color) 22%, transparent) !important;
+}
+
+.is-invoice-mark-mode .project-invoice-pdf-highlight.is-active {
+    z-index: 9;
+    transform: scale(1.035);
+    border-color: var(--invoice-block-color) !important;
+    background: var(--invoice-block-background) !important;
+    box-shadow: 0 0 0 3px var(--invoice-block-color),
+        0 0 28px color-mix(in srgb, var(--invoice-block-color) 38%, transparent) !important;
 }
 
 .project-row-tool {
@@ -1869,6 +2127,46 @@ body.project-shell-active * {
     color: #64748b;
     font-size: 12px;
     font-weight: 750;
+}
+
+.project-saved-card-actions {
+    display: flex;
+    align-items: center;
+    justify-content: flex-end;
+    gap: 8px;
+}
+
+.project-saved-card .project-saved-delete {
+    border-color: rgba(239, 68, 68, 0.32);
+    color: #b91c1c;
+    background: linear-gradient(135deg, #fff1f2, #fee2e2);
+    box-shadow: 0 8px 18px rgba(239, 68, 68, 0.1);
+}
+
+.project-saved-card .project-saved-delete:hover {
+    border-color: rgba(220, 38, 38, 0.56);
+    color: #ffffff;
+    background: linear-gradient(135deg, #ef4444, #dc2626);
+    transform: translateY(-1px);
+}
+
+.project-saved-card button:disabled {
+    cursor: wait;
+    opacity: 0.58;
+}
+
+@media (max-width: 620px) {
+    .project-saved-card {
+        grid-template-columns: 42px minmax(0, 1fr);
+    }
+
+    .project-saved-card-actions {
+        grid-column: 1 / -1;
+    }
+
+    .project-saved-card-actions button {
+        flex: 1;
+    }
 }
 
 .project-wordpress-modal[hidden] {
@@ -5515,6 +5813,521 @@ body.project-shell-active * {
     .project-workspace-header-menu-panel::before {
         animation: none !important;
         transition: none !important;
+    }
+}
+
+.project-invoice-folder-review {
+    position: fixed;
+    inset: 0;
+    z-index: 30020;
+    display: grid;
+    place-items: center;
+    padding: 22px;
+    background: rgba(15, 23, 42, 0.58);
+    opacity: 0;
+    backdrop-filter: blur(14px) saturate(0.9);
+    transition: opacity 220ms ease;
+}
+
+.project-invoice-folder-review.is-visible { opacity: 1; }
+
+.project-invoice-folder-review-dialog {
+    width: min(610px, 100%);
+    max-height: min(680px, calc(100vh - 44px));
+    display: grid;
+    grid-template-rows: auto auto minmax(120px, 1fr) auto;
+    gap: 14px;
+    overflow: hidden;
+    padding: 22px;
+    border: 1px solid rgba(255, 255, 255, 0.82);
+    border-radius: 28px;
+    background:
+        radial-gradient(circle at 100% 0, rgba(34, 211, 238, 0.19), transparent 31%),
+        rgba(255, 255, 255, 0.97);
+    box-shadow: 0 30px 100px rgba(15, 23, 42, 0.38);
+    transform: translateY(20px) scale(0.97);
+    transition: transform 300ms cubic-bezier(0.2, 0.9, 0.25, 1.1);
+}
+
+.project-invoice-folder-review.is-visible .project-invoice-folder-review-dialog {
+    transform: translateY(0) scale(1);
+}
+
+.project-invoice-folder-review-dialog header {
+    display: grid;
+    grid-template-columns: auto minmax(0, 1fr);
+    align-items: center;
+    gap: 15px;
+}
+
+.project-invoice-folder-review-dialog header > span {
+    display: grid;
+    place-items: center;
+    width: 54px;
+    height: 54px;
+    border-radius: 17px;
+    color: #fff;
+    background: linear-gradient(145deg, #2563eb, #06b6d4);
+    box-shadow: 0 13px 28px rgba(37, 99, 235, 0.24);
+    font-size: 13px;
+    font-weight: 950;
+}
+
+.project-invoice-folder-review-dialog header div { min-width: 0; }
+.project-invoice-folder-review-dialog header small {
+    display: block;
+    color: #2563eb;
+    font-size: 11px;
+    font-weight: 950;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+}
+.project-invoice-folder-review-dialog header strong {
+    display: block;
+    overflow: hidden;
+    margin-top: 3px;
+    color: #0f172a;
+    font-size: 21px;
+    font-weight: 950;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+.project-invoice-folder-review-dialog header p {
+    margin: 5px 0 0;
+    color: #64748b;
+    font-size: 13px;
+    font-weight: 700;
+}
+
+.project-invoice-folder-review-summary {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 10px;
+}
+.project-invoice-folder-review-summary span {
+    padding: 9px 12px;
+    border: 1px solid #dbeafe;
+    border-radius: 14px;
+    color: #64748b;
+    background: rgba(239, 246, 255, 0.7);
+    font-size: 12px;
+    font-weight: 750;
+}
+.project-invoice-folder-review-summary b {
+    display: block;
+    color: #0f172a;
+    font-size: 16px;
+    font-weight: 950;
+}
+
+.project-invoice-folder-review-list {
+    max-height: 310px;
+    min-height: 0;
+    overflow: auto;
+    padding-right: 5px;
+}
+.project-invoice-folder-review-list article {
+    display: grid;
+    grid-template-columns: auto minmax(0, 1fr) auto;
+    align-items: center;
+    gap: 10px;
+    margin-bottom: 6px;
+    padding: 8px 11px;
+    border: 1px solid #e2e8f0;
+    border-radius: 14px;
+    background: #fff;
+    transition: border-color 160ms ease, transform 160ms ease, box-shadow 160ms ease;
+}
+.project-invoice-folder-review-list article:hover {
+    border-color: #93c5fd;
+    box-shadow: 0 8px 20px rgba(37, 99, 235, 0.09);
+    transform: translateX(3px);
+}
+.project-invoice-folder-review-list article > span {
+    min-width: 44px;
+    padding: 7px 5px;
+    border-radius: 10px;
+    color: #fff;
+    background: linear-gradient(145deg, #3b82f6, #14b8a6);
+    text-align: center;
+    font-size: 10px;
+    font-weight: 950;
+}
+.project-invoice-folder-review-list article div { display: grid; min-width: 0; gap: 2px; }
+.project-invoice-folder-review-list article strong,
+.project-invoice-folder-review-list article small {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+.project-invoice-folder-review-list article strong { color: #1e293b; font-size: 13px; }
+.project-invoice-folder-review-list article small { color: #94a3b8; font-size: 10px; }
+.project-invoice-folder-review-list article > b { color: #64748b; font-size: 11px; }
+.project-invoice-folder-review-list > p {
+    padding: 30px 15px;
+    color: #64748b;
+    text-align: center;
+    font-weight: 800;
+}
+
+.project-invoice-folder-review-dialog footer {
+    display: grid;
+    grid-template-columns: 0.8fr 1.15fr 1.4fr;
+    gap: 10px;
+}
+.project-invoice-folder-review-dialog footer button {
+    min-height: 44px;
+    border: 1px solid #bfdbfe;
+    border-radius: 14px;
+    color: #334155;
+    background: #fff;
+    font-weight: 900;
+    cursor: pointer;
+}
+.project-invoice-folder-review-dialog footer button[data-project-folder-accept] {
+    border: 0;
+    color: #fff;
+    background: linear-gradient(135deg, #2563eb, #06b6d4);
+    box-shadow: 0 12px 25px rgba(37, 99, 235, 0.2);
+}
+.project-invoice-folder-review-dialog footer button[data-project-folder-retry] {
+    color: #1d4ed8;
+    background: #eff6ff;
+}
+.project-invoice-folder-review-dialog footer button:disabled {
+    opacity: 0.45;
+    cursor: not-allowed;
+}
+
+.project-invoice-import-progress {
+    position: fixed;
+    inset: 0;
+    z-index: 30010;
+    display: grid;
+    place-items: center;
+    padding: 24px;
+    background:
+        radial-gradient(circle at 22% 18%, rgba(37, 99, 235, 0.24), transparent 34%),
+        radial-gradient(circle at 82% 76%, rgba(6, 182, 212, 0.22), transparent 38%),
+        rgba(15, 23, 42, 0.56);
+    opacity: 0;
+    backdrop-filter: blur(14px) saturate(1.15);
+    transition: opacity 240ms ease;
+}
+
+body.project-invoice-import-progress-open {
+    overflow: hidden !important;
+}
+
+.project-invoice-import-progress.is-visible { opacity: 1; }
+
+.project-invoice-import-progress-dialog {
+    position: relative;
+    isolation: isolate;
+    width: min(560px, 100%);
+    overflow: hidden;
+    padding: 30px;
+    border: 1px solid rgba(255, 255, 255, 0.78);
+    border-radius: 28px;
+    background: rgba(255, 255, 255, 0.95);
+    box-shadow: 0 30px 90px rgba(15, 23, 42, 0.34);
+    transform: translateY(18px) scale(0.96);
+    transition: transform 320ms cubic-bezier(0.2, 0.9, 0.25, 1.15);
+}
+
+.project-invoice-import-progress.is-visible .project-invoice-import-progress-dialog {
+    transform: translateY(0) scale(1);
+}
+
+.project-invoice-import-progress-glow {
+    position: absolute;
+    z-index: -1;
+    top: -130px;
+    right: -90px;
+    width: 310px;
+    height: 310px;
+    border-radius: 50%;
+    background: radial-gradient(circle, rgba(34, 211, 238, 0.3), rgba(59, 130, 246, 0.08) 56%, transparent 72%);
+    animation: project-import-glow 3.2s ease-in-out infinite alternate;
+}
+
+.project-invoice-import-progress-heading {
+    display: grid;
+    grid-template-columns: auto minmax(0, 1fr) auto;
+    align-items: center;
+    gap: 15px;
+}
+
+.project-invoice-import-progress-heading > span:not(.project-invoice-import-progress-icon) {
+    display: grid;
+    gap: 3px;
+}
+
+.project-invoice-import-progress-icon {
+    display: grid;
+    place-items: center;
+    width: 58px;
+    height: 58px;
+    border-radius: 19px;
+    color: #fff;
+    background: linear-gradient(145deg, #2563eb, #06b6d4);
+    box-shadow: 0 13px 28px rgba(37, 99, 235, 0.25);
+    font-size: 13px;
+    font-weight: 950;
+}
+
+.project-invoice-import-progress-heading small {
+    color: #2563eb;
+    font-size: 11px;
+    font-weight: 950;
+    letter-spacing: 0.13em;
+    text-transform: uppercase;
+}
+
+.project-invoice-import-progress-heading strong {
+    color: #0f172a;
+    font-size: clamp(20px, 4vw, 27px);
+    font-weight: 950;
+}
+
+.project-invoice-import-progress-heading b {
+    color: #0f766e;
+    font-size: 22px;
+    font-weight: 950;
+}
+
+.project-invoice-import-progress-track {
+    height: 13px;
+    margin-top: 27px;
+    overflow: hidden;
+    border: 1px solid rgba(191, 219, 254, 0.9);
+    border-radius: 999px;
+    background: #eaf2ff;
+    box-shadow: inset 0 2px 5px rgba(30, 64, 175, 0.08);
+}
+
+.project-invoice-import-progress-track i {
+    display: block;
+    width: 0;
+    height: 100%;
+    border-radius: inherit;
+    background: linear-gradient(90deg, #2563eb, #0ea5e9, #14b8a6);
+    background-size: 180% 100%;
+    box-shadow: 0 0 18px rgba(14, 165, 233, 0.48);
+    transition: width 500ms cubic-bezier(0.2, 0.8, 0.2, 1);
+    animation: project-import-bar 1.8s linear infinite;
+}
+
+.project-invoice-import-progress-stats {
+    display: flex;
+    justify-content: space-between;
+    gap: 16px;
+    margin-top: 13px;
+    color: #64748b;
+    font-size: 12px;
+}
+
+.project-invoice-import-progress-stats strong { color: #334155; font-weight: 900; }
+
+.project-invoice-import-progress-dialog > p {
+    min-height: 46px;
+    margin: 23px 0 0;
+    padding: 13px 15px;
+    overflow-wrap: anywhere;
+    border: 1px solid rgba(219, 234, 254, 0.9);
+    border-radius: 14px;
+    color: #475569;
+    background: rgba(248, 250, 252, 0.84);
+    font-size: 13px;
+    font-weight: 750;
+}
+
+.project-invoice-import-progress-pulse {
+    display: flex;
+    justify-content: center;
+    gap: 7px;
+    margin-top: 18px;
+}
+
+.project-invoice-import-progress-pulse i {
+    width: 7px;
+    height: 7px;
+    border-radius: 50%;
+    background: #0ea5e9;
+    animation: project-import-pulse 1.15s ease-in-out infinite;
+}
+
+.project-invoice-import-progress-pulse i:nth-child(2) { animation-delay: 140ms; }
+.project-invoice-import-progress-pulse i:nth-child(3) { animation-delay: 280ms; }
+.project-invoice-import-progress.is-finishing .project-invoice-import-progress-icon {
+    background: linear-gradient(145deg, #059669, #14b8a6);
+}
+.project-invoice-import-progress.is-error .project-invoice-import-progress-icon {
+    background: linear-gradient(145deg, #dc2626, #fb7185);
+}
+.project-invoice-import-progress.is-error .project-invoice-import-progress-pulse { display: none; }
+
+.project-invoice-import-progress-dialog > button {
+    width: 100%;
+    margin-top: 18px;
+    padding: 13px 18px;
+    border: 0;
+    border-radius: 14px;
+    color: #fff;
+    background: linear-gradient(135deg, #2563eb, #06b6d4);
+    font-weight: 900;
+    cursor: pointer;
+}
+
+.project-invoice-import-progress-dialog > button[data-project-invoice-import-cancel] {
+    width: auto;
+    min-width: 180px;
+    justify-self: center;
+    padding-inline: 24px;
+    border: 1px solid #fecaca;
+    color: #b91c1c;
+    background: #fff7f7;
+    box-shadow: none;
+    transition: color 160ms ease, background 160ms ease, border-color 160ms ease, transform 160ms ease;
+}
+
+.project-invoice-import-progress-dialog > button[data-project-invoice-import-cancel]:hover {
+    border-color: #f87171;
+    color: #fff;
+    background: #dc2626;
+    transform: translateY(-1px);
+}
+
+.project-invoice-import-progress.is-cancelling .project-invoice-import-progress-track i {
+    background: linear-gradient(90deg, #f59e0b, #f97316);
+}
+
+.project-invoice-import-progress.is-cancelling .project-invoice-import-progress-pulse i {
+    background: #f97316;
+}
+
+@keyframes project-import-glow {
+    to { transform: translate(-28px, 24px) scale(1.12); }
+}
+
+@keyframes project-import-bar {
+    to { background-position: -180% 0; }
+}
+
+@keyframes project-import-pulse {
+    0%, 100% { opacity: 0.3; transform: translateY(0) scale(0.8); }
+    50% { opacity: 1; transform: translateY(-5px) scale(1.08); }
+}
+
+@media (max-width: 640px) {
+    .project-invoice-folder-review { padding: 10px; }
+    .project-invoice-folder-review-dialog {
+        max-height: calc(100vh - 20px);
+        gap: 13px;
+        padding: 18px 14px;
+        border-radius: 21px;
+    }
+    .project-invoice-folder-review-dialog header > span { width: 50px; height: 50px; border-radius: 16px; }
+    .project-invoice-folder-review-dialog header strong { font-size: 19px; }
+    .project-invoice-folder-review-summary { grid-template-columns: 1fr; }
+    .project-invoice-folder-review-dialog footer { grid-template-columns: 1fr; }
+    .project-invoice-import-progress { padding: 14px; }
+    .project-invoice-import-progress-dialog { padding: 22px 18px; border-radius: 22px; }
+    .project-invoice-import-progress-heading {
+        grid-template-columns: auto minmax(0, 1fr);
+    }
+    .project-invoice-import-progress-heading b {
+        grid-column: 1 / -1;
+        justify-self: end;
+        margin-top: -8px;
+    }
+    .project-invoice-import-progress-stats {
+        flex-direction: column;
+        gap: 4px;
+    }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .project-invoice-import-progress,
+    .project-invoice-import-progress-dialog,
+    .project-invoice-import-progress-track i,
+    .project-invoice-import-progress-glow,
+    .project-invoice-import-progress-pulse i {
+        animation: none !important;
+        transition-duration: 1ms !important;
+    }
+}
+
+.project-invoice-enhancer-notice {
+    position: fixed;
+    right: 24px;
+    bottom: 24px;
+    z-index: 10040;
+    width: min(430px, calc(100vw - 32px));
+    display: grid;
+    grid-template-columns: 42px minmax(0, 1fr) 30px;
+    align-items: center;
+    gap: 13px;
+    padding: 16px;
+    border: 1px solid rgba(245, 158, 11, 0.34);
+    border-radius: 18px;
+    color: #334155;
+    background: rgba(255, 251, 235, 0.97);
+    box-shadow: 0 20px 55px rgba(15, 23, 42, 0.2);
+    backdrop-filter: blur(16px);
+    opacity: 0;
+    transform: translateY(18px) scale(0.97);
+    transition: opacity 220ms ease, transform 220ms ease;
+}
+
+.project-invoice-enhancer-notice.is-visible {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+}
+
+.project-invoice-enhancer-notice > span {
+    width: 42px;
+    height: 42px;
+    display: grid;
+    place-items: center;
+    border-radius: 13px;
+    color: #92400e;
+    background: linear-gradient(135deg, #fde68a, #fbbf24);
+    font-size: 20px;
+    font-weight: 950;
+}
+
+.project-invoice-enhancer-notice strong {
+    display: block;
+    margin-bottom: 3px;
+    color: #78350f;
+    font-size: 14px;
+    font-weight: 950;
+}
+
+.project-invoice-enhancer-notice p {
+    margin: 0;
+    color: #64748b;
+    font-size: 12px;
+    line-height: 1.45;
+    font-weight: 700;
+}
+
+.project-invoice-enhancer-notice button {
+    width: 30px;
+    height: 30px;
+    border: 0;
+    border-radius: 10px;
+    color: #92400e;
+    background: rgba(245, 158, 11, 0.12);
+    font-size: 20px;
+    cursor: pointer;
+}
+
+@media (max-width: 540px) {
+    .project-invoice-enhancer-notice {
+        right: 16px;
+        bottom: 16px;
     }
 }
 

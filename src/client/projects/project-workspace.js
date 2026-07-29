@@ -2,6 +2,7 @@ import { runTableParser } from '../milu-demo/js/pdf-table-parser.js';
 
 const WORKSPACE_TEMPLATE_URL = new URL('./project-workspace.html', import.meta.url).href;
 const TOKEN_KEY = 'milu:auth:token:v1';
+const INVOICE_IMPORT_AVERAGE_KEY = 'milu:invoice-import-average-ms:v1';
 const PDFJS_URL = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js';
 const PDFJS_WORKER_URL = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
 const CHARTJS_URL = 'https://cdn.jsdelivr.net/npm/chart.js@4.4.7/dist/chart.umd.min.js';
@@ -29,6 +30,7 @@ let chartJsPromise = null;
 let animeJsPromise = null;
 let activePdfDocument = null;
 let activePdfRenderTask = null;
+let activePdfRenderScale = 1;
 let activeWordPressConnection = null;
 let availableWordPressSites = [];
 let activeWorkspaceProject = null;
@@ -45,6 +47,88 @@ let activeInvoicePdfDocuments = new Map();
 let activeInvoicePdfFiles = new Map();
 let activeInvoiceExpandedIds = new Set();
 let activeInvoiceBatchReviewId = '';
+let activeInvoiceAiAvailable = false;
+let activeInvoiceAiEnabled = false;
+let activeInvoiceMarkMode = false;
+
+const INVOICE_BLOCK_COLORS = [
+    { border: '#2563eb', background: 'rgba(37, 99, 235, 0.13)' },
+    { border: '#0f766e', background: 'rgba(13, 148, 136, 0.13)' },
+    { border: '#c2410c', background: 'rgba(249, 115, 22, 0.13)' },
+    { border: '#7c3aed', background: 'rgba(124, 58, 237, 0.13)' },
+    { border: '#be123c', background: 'rgba(225, 29, 72, 0.12)' },
+    { border: '#0369a1', background: 'rgba(14, 165, 233, 0.13)' },
+    { border: '#4d7c0f', background: 'rgba(101, 163, 13, 0.13)' },
+    { border: '#a16207', background: 'rgba(234, 179, 8, 0.14)' }
+];
+
+function getInvoiceBlockColor(section = '') {
+    const key = safeText(section).normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase();
+    const fixed = {
+        factura: 0, fiscal: 3, emisor: 1, cliente: 2, importes: 4,
+        pago: 5, mercancia: 6, lineas: 7, 'lineas de factura': 7
+    };
+    if (Number.isInteger(fixed[key])) return INVOICE_BLOCK_COLORS[fixed[key]];
+    const hash = [...key].reduce((sum, character) => sum + character.charCodeAt(0), 0);
+    return INVOICE_BLOCK_COLORS[hash % INVOICE_BLOCK_COLORS.length];
+}
+
+function applyInvoiceBlockColor(element, section) {
+    if (!element) return;
+    const color = getInvoiceBlockColor(section);
+    element.style.setProperty('--invoice-block-color', color.border);
+    element.style.setProperty('--invoice-block-background', color.background);
+    element.dataset.invoiceBlock = section;
+}
+
+function syncInvoiceMarkMode(workspace) {
+    if (!workspace) return;
+    workspace.classList.toggle('is-invoice-mark-mode', activeInvoiceMarkMode);
+    const button = workspace.querySelector('[data-project-invoice-marks-toggle]');
+    if (!button) return;
+    button.classList.toggle('is-active', activeInvoiceMarkMode);
+    button.setAttribute('aria-pressed', String(activeInvoiceMarkMode));
+    button.textContent = activeInvoiceMarkMode ? 'Ocultar marcas' : 'Mostrar todas las marcas';
+}
+
+function syncInvoiceAiToggle(documentType = '') {
+    const button = document.querySelector('[data-project-invoice-ai-toggle]');
+    if (!button) return;
+    button.hidden = !(activeInvoiceAiAvailable && documentType === 'invoices');
+    button.classList.toggle('is-enabled', activeInvoiceAiEnabled);
+    button.setAttribute('aria-pressed', String(activeInvoiceAiEnabled));
+    button.innerHTML = activeInvoiceAiEnabled
+        ? '<span>Potenciador de facturas</span><strong>Activado</strong>'
+        : '<span>Potenciador de facturas</span><strong>Desactivado</strong>';
+    button.title = activeInvoiceAiEnabled
+        ? 'La IA se aplicará a las próximas facturas y consumirá tokens'
+        : 'Las próximas facturas usarán solo OCR y no consumirán tokens';
+}
+
+function showInvoiceEnhancerNotice(message) {
+    document.querySelector('[data-project-invoice-enhancer-notice]')?.remove();
+    const notice = document.createElement('aside');
+    notice.className = 'project-invoice-enhancer-notice';
+    notice.dataset.projectInvoiceEnhancerNotice = '';
+    notice.setAttribute('role', 'status');
+    notice.innerHTML = `
+        <span aria-hidden="true">!</span>
+        <div>
+            <strong>Potenciador no disponible</strong>
+            <p></p>
+        </div>
+        <button type="button" aria-label="Cerrar aviso">&times;</button>
+    `;
+    notice.querySelector('p').textContent = message;
+    const close = () => {
+        notice.classList.remove('is-visible');
+        window.setTimeout(() => notice.remove(), 240);
+    };
+    notice.querySelector('button').addEventListener('click', close);
+    document.body.appendChild(notice);
+    window.requestAnimationFrame(() => notice.classList.add('is-visible'));
+    window.setTimeout(close, 8000);
+}
 
 function bindResponsiveHeaderMenu() {
     activeHeaderMenuController?.abort();
@@ -150,6 +234,180 @@ function confirmDestructiveAction({
         window.requestAnimationFrame(() => overlay.classList.add('is-visible'));
         cancelButton.focus();
     });
+}
+
+function formatImportRemainingTime(milliseconds) {
+    if (!Number.isFinite(milliseconds) || milliseconds <= 0) return 'Calculando tiempo restante...';
+    const seconds = Math.max(1, Math.round(milliseconds / 1000));
+    if (seconds < 60) return `Quedan aproximadamente ${seconds} s`;
+    const minutes = Math.floor(seconds / 60);
+    const remainingSeconds = seconds % 60;
+    return `Quedan aproximadamente ${minutes} min${remainingSeconds ? ` ${remainingSeconds} s` : ''}`;
+}
+
+function createInvoiceImportProgress(total, { append = false } = {}) {
+    document.querySelector('[data-project-invoice-import-progress]')?.remove();
+    const overlay = document.createElement('div');
+    overlay.className = 'project-invoice-import-progress';
+    overlay.dataset.projectInvoiceImportProgress = '';
+    overlay.innerHTML = `
+        <section class="project-invoice-import-progress-dialog" role="dialog" aria-modal="true"
+            aria-labelledby="projectInvoiceImportProgressTitle">
+            <div class="project-invoice-import-progress-glow" aria-hidden="true"></div>
+            <div class="project-invoice-import-progress-heading">
+                <span class="project-invoice-import-progress-icon" aria-hidden="true">FAC</span>
+                <span>
+                    <small>${append ? 'Ampliando lote' : 'Importando facturas'}</small>
+                    <strong id="projectInvoiceImportProgressTitle">Analizando documentos</strong>
+                </span>
+                <b data-project-invoice-import-percent>0%</b>
+            </div>
+            <div class="project-invoice-import-progress-track" role="progressbar" aria-valuemin="0"
+                aria-valuemax="100" aria-valuenow="0">
+                <i data-project-invoice-import-bar></i>
+            </div>
+            <div class="project-invoice-import-progress-stats">
+                <strong data-project-invoice-import-count>Preparando 0 de ${total}</strong>
+                <span data-project-invoice-import-time>Calculando tiempo restante...</span>
+            </div>
+            <p data-project-invoice-import-file>Preparando el extractor de facturas…</p>
+            <div class="project-invoice-import-progress-pulse" aria-hidden="true">
+                <i></i><i></i><i></i>
+            </div>
+            <button type="button" data-project-invoice-import-cancel>Cancelar importación</button>
+            <button type="button" data-project-invoice-import-close hidden>Cerrar</button>
+        </section>
+    `;
+    document.body.appendChild(overlay);
+    document.body.classList.add('project-invoice-import-progress-open');
+    requestAnimationFrame(() => overlay.classList.add('is-visible'));
+
+    const bar = overlay.querySelector('[data-project-invoice-import-bar]');
+    const track = overlay.querySelector('[role="progressbar"]');
+    const percentNode = overlay.querySelector('[data-project-invoice-import-percent]');
+    const countNode = overlay.querySelector('[data-project-invoice-import-count]');
+    const timeNode = overlay.querySelector('[data-project-invoice-import-time]');
+    const fileNode = overlay.querySelector('[data-project-invoice-import-file]');
+    const cancelButton = overlay.querySelector('[data-project-invoice-import-cancel]');
+    const closeButton = overlay.querySelector('[data-project-invoice-import-close]');
+    const abortController = new AbortController();
+    const startedAt = performance.now();
+    const storedAverage = Number(localStorage.getItem(INVOICE_IMPORT_AVERAGE_KEY));
+    let closed = false;
+    let completedFiles = 0;
+    let currentFile = 0;
+    let currentFileStartedAt = startedAt;
+    let estimatedFileMs = Number.isFinite(storedAverage) && storedAverage >= 1000
+        ? Math.min(120000, storedAverage)
+        : 4000;
+    let displayedPercent = 0;
+
+    const paintProgress = (percent) => {
+        const safePercent = Math.max(displayedPercent, Math.min(100, Number(percent) || 0));
+        displayedPercent = safePercent;
+        bar.style.width = `${safePercent.toFixed(2)}%`;
+        const rounded = Math.floor(safePercent);
+        track.setAttribute('aria-valuenow', String(rounded));
+        percentNode.textContent = `${rounded}%`;
+    };
+
+    const progressTimer = window.setInterval(() => {
+        if (closed || !total || completedFiles >= total || !currentFile) return;
+        const elapsedCurrent = performance.now() - currentFileStartedAt;
+        const currentRatio = Math.min(0.94, elapsedCurrent / Math.max(estimatedFileMs, 1000));
+        paintProgress(Math.min(99, ((completedFiles + currentRatio) / total) * 100));
+
+        const remainingCurrent = Math.max(0, estimatedFileMs - elapsedCurrent);
+        const remainingFollowing = Math.max(0, total - completedFiles - 1) * estimatedFileMs;
+        timeNode.textContent = formatImportRemainingTime(remainingCurrent + remainingFollowing);
+    }, 120);
+
+    const setProgress = ({ completed = 0, current = 0, fileName = '', phase = 'processing' } = {}) => {
+        const safeCompleted = Math.max(0, Math.min(total, Number(completed) || 0));
+        const safeCurrent = Math.max(0, Math.min(total, Number(current) || 0));
+        const now = performance.now();
+        if (phase === 'processing' && safeCurrent !== currentFile) {
+            currentFile = safeCurrent;
+            currentFileStartedAt = now;
+        }
+        if (safeCompleted > completedFiles) {
+            completedFiles = safeCompleted;
+            const measuredAverage = Math.max(1000, (now - startedAt) / safeCompleted);
+            // Ajuste gradual para evitar saltos bruscos en el tiempo mostrado.
+            estimatedFileMs = Math.min(120000, (estimatedFileMs * 0.55) + (measuredAverage * 0.45));
+            try {
+                localStorage.setItem(INVOICE_IMPORT_AVERAGE_KEY, String(Math.round(estimatedFileMs)));
+            } catch (_) {
+                // La estimación sigue funcionando aunque el almacenamiento esté bloqueado.
+            }
+            paintProgress(total ? (safeCompleted / total) * 100 : 0);
+        }
+        countNode.textContent = safeCompleted >= total
+            ? `${total} de ${total} facturas completadas`
+            : `Procesando factura ${Math.max(1, safeCurrent)} de ${total}`;
+        fileNode.textContent = fileName || 'Analizando estructura, campos y líneas de factura…';
+
+        if (safeCompleted > 0 && safeCompleted < total) {
+            timeNode.textContent = formatImportRemainingTime(estimatedFileMs * (total - safeCompleted));
+        } else if (safeCompleted >= total) {
+            paintProgress(100);
+            timeNode.textContent = 'Proceso completado';
+            cancelButton.hidden = true;
+        } else {
+            timeNode.textContent = 'Calculando tiempo restante...';
+        }
+        overlay.classList.toggle('is-finishing', phase === 'complete');
+    };
+
+    const close = () => {
+        if (closed) return;
+        closed = true;
+        window.clearInterval(progressTimer);
+        document.body.classList.remove('project-invoice-import-progress-open');
+        overlay.classList.remove('is-visible');
+        window.setTimeout(() => overlay.remove(), 260);
+    };
+
+    closeButton.addEventListener('click', close);
+    cancelButton.addEventListener('click', () => {
+        if (abortController.signal.aborted) return;
+        abortController.abort();
+        cancelButton.disabled = true;
+        overlay.classList.add('is-cancelling');
+        overlay.querySelector('#projectInvoiceImportProgressTitle').textContent = 'Cancelando importación';
+        fileNode.textContent = 'Deteniendo el análisis actual y descartando el lote incompleto…';
+        timeNode.textContent = 'Espera un momento…';
+    });
+
+    return {
+        signal: abortController.signal,
+        update: setProgress,
+        complete(fileName = '') {
+            setProgress({ completed: total, current: total, fileName: fileName || 'Todas las facturas se han importado correctamente.', phase: 'complete' });
+            window.setTimeout(close, 1100);
+        },
+        fail(error) {
+            window.clearInterval(progressTimer);
+            cancelButton.hidden = true;
+            overlay.classList.add('is-error');
+            overlay.querySelector('#projectInvoiceImportProgressTitle').textContent = 'No se pudo completar la importación';
+            percentNode.textContent = 'Error';
+            timeNode.textContent = 'Revisa el documento indicado e inténtalo de nuevo.';
+            fileNode.textContent = String(error?.message || error);
+            closeButton.hidden = false;
+        },
+        cancelled() {
+            window.clearInterval(progressTimer);
+            cancelButton.hidden = true;
+            overlay.classList.remove('is-cancelling');
+            overlay.querySelector('#projectInvoiceImportProgressTitle').textContent = 'Importación cancelada';
+            percentNode.textContent = 'Cancelado';
+            timeNode.textContent = 'No se ha incorporado el lote incompleto.';
+            fileNode.textContent = 'Puedes seleccionar otra carpeta o volver a intentarlo cuando quieras.';
+            closeButton.hidden = false;
+        },
+        close
+    };
 }
 
 function animateDeletedElements(...elements) {
@@ -511,6 +769,13 @@ async function restoreSavedWorkspace(project, fileId) {
     });
 
     return data.workspace;
+}
+
+async function deleteSavedWorkspace(project, fileId) {
+    return fetchProjectJson(
+        `/api/projects/${encodeURIComponent(project.id)}/saved-workspaces/${encodeURIComponent(fileId)}`,
+        { method: 'DELETE' }
+    );
 }
 
 function safeText(value) {
@@ -1843,9 +2108,10 @@ function syncSaveFileButton(workspaceState) {
     button.disabled = !ready;
 }
 
-async function saveProjectPdf(project, file) {
+async function saveProjectPdf(project, file, options = {}) {
     const response = await fetch(apiUrl(`/api/projects/${encodeURIComponent(project.id)}/pdf`), {
         method: 'PUT',
+        signal: options.signal,
         headers: {
             'Content-Type': getUploadContentType(file),
             'X-File-Name': encodeURIComponent(file.name || 'documento'),
@@ -1889,10 +2155,11 @@ async function extractProjectPdfWithBackend(project) {
     };
 }
 
-async function extractProjectInvoiceWithBackend(project) {
+async function extractProjectInvoiceWithBackend(project, options = {}) {
     const data = await fetchProjectJson(`/api/projects/${encodeURIComponent(project.id)}/pdf/extract-invoice`, {
         method: 'POST',
-        body: '{}'
+        signal: options.signal,
+        body: JSON.stringify({ useAi: options.useAi === true })
     });
 
     const workspace = data.extractor?.workspace || {};
@@ -2011,6 +2278,107 @@ function parseLooseInvoiceAmount(value) {
         : raw.replace(/,/g, '');
     const number = Number(normalized);
     return Number.isFinite(number) ? number : null;
+}
+
+function calculateInvoiceLineItemsTotal(lineItems) {
+    if (!Array.isArray(lineItems) || !lineItems.length) return null;
+
+    let sum = 0;
+    let validLines = 0;
+    lineItems.forEach((item) => {
+        const explicitTotal = parseLooseInvoiceAmount(item?.total);
+        if (explicitTotal != null) {
+            sum += explicitTotal;
+            validLines += 1;
+            return;
+        }
+
+        const quantity = parseLooseInvoiceAmount(item?.quantity);
+        const unitPrice = parseLooseInvoiceAmount(item?.unitPrice);
+        if (quantity != null && unitPrice != null) {
+            sum += quantity * unitPrice;
+            validLines += 1;
+        }
+    });
+
+    return validLines ? Math.round((sum + Number.EPSILON) * 100) / 100 : null;
+}
+
+function reconcileScannedLineArithmetic(lineItems) {
+    if (!Array.isArray(lineItems)) return;
+    lineItems.forEach((item) => {
+        const quantity = parseLooseInvoiceAmount(item?.quantity);
+        let unitPrice = parseLooseInvoiceAmount(item?.unitPrice);
+        let total = parseLooseInvoiceAmount(item?.total);
+        const discount = parseLooseInvoiceAmount(item?.discount);
+        const discountFactor = discount != null && discount >= 0 && discount < 100
+            ? 1 - (discount / 100)
+            : 1;
+        if (quantity != null && quantity !== 0 && total != null && unitPrice == null && discountFactor > 0) {
+            unitPrice = total / quantity / discountFactor;
+            item.unitPrice = Math.round((unitPrice + Number.EPSILON) * 1000000) / 1000000;
+        }
+        if (quantity != null && unitPrice != null && total == null) {
+            total = quantity * unitPrice * discountFactor;
+            item.total = Math.round((total + Number.EPSILON) * 100) / 100;
+        }
+        item.taxRate = normalizeCoherentInvoiceTaxRate(item?.taxRate);
+    });
+}
+
+const COHERENT_INVOICE_TAX_RATES = [
+    0, 2.1, 2.5, 3, 4, 5, 5.5, 6, 7, 7.5, 7.7, 8, 8.1, 8.25, 9,
+    10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25,
+    26, 27
+];
+
+function normalizeCoherentInvoiceTaxRate(value, tolerance = 0.45) {
+    const parsed = parseLooseInvoiceAmount(value);
+    if (parsed == null || parsed < 0 || parsed > 30) return null;
+    const nearest = COHERENT_INVOICE_TAX_RATES.reduce((best, rate) => (
+        Math.abs(rate - parsed) < Math.abs(best - parsed) ? rate : best
+    ));
+    return Math.abs(nearest - parsed) <= tolerance ? nearest : null;
+}
+
+function reconcileScannedInvoiceTaxRates(invoice, lineItems) {
+    if (!invoice || !Array.isArray(lineItems)) return;
+    const subtotal = parseLooseInvoiceAmount(invoice.amounts?.subtotal);
+    const tax = parseLooseInvoiceAmount(invoice.amounts?.tax);
+    const total = parseLooseInvoiceAmount(invoice.amounts?.total);
+    const declaredRate = subtotal > 0 && tax != null && tax > 0
+        ? (tax / subtotal) * 100
+        : null;
+    const differenceTax = subtotal > 0 && total != null && total >= subtotal
+        ? Math.round((total - subtotal + Number.EPSILON) * 100) / 100
+        : null;
+    const differenceRate = subtotal > 0 && differenceTax != null
+        ? (differenceTax / subtotal) * 100
+        : null;
+    const inferredRate = normalizeCoherentInvoiceTaxRate(declaredRate, 0.65)
+        ?? normalizeCoherentInvoiceTaxRate(differenceRate, 0.65);
+    const coherentDetectedRates = lineItems
+        .map((item) => normalizeCoherentInvoiceTaxRate(item?.taxRate))
+        .filter((rate) => rate != null);
+    const majorityRate = coherentDetectedRates.length
+        ? coherentDetectedRates.sort((left, right) => (
+            coherentDetectedRates.filter((rate) => rate === right).length
+            - coherentDetectedRates.filter((rate) => rate === left).length
+        ))[0]
+        : null;
+    const fallbackRate = inferredRate ?? majorityRate;
+
+    lineItems.forEach((item) => {
+        const coherentRate = normalizeCoherentInvoiceTaxRate(item?.taxRate);
+        item.taxRate = inferredRate != null && (coherentRate == null || coherentRate === 0)
+            ? inferredRate
+            : coherentRate ?? fallbackRate ?? null;
+    });
+
+    if (!invoice.amounts || typeof invoice.amounts !== 'object') invoice.amounts = {};
+    if (inferredRate != null && differenceTax != null) {
+        invoice.amounts.tax = differenceTax;
+    }
 }
 
 function detectLooseInvoiceCurrency(text) {
@@ -2364,6 +2732,7 @@ async function importInvoiceFiles(project, workspace, workspaceState, files, onS
     activeInvoiceExpandedIds = new Set();
     activeInvoiceBatchReviewId = '';
     const reports = [];
+    let aiUnavailableCount = 0;
     let totalPages = existingRecords.reduce((sum, record) => sum + Number(record?.pageCount || 0), 0);
     let totalLines = existingRecords.reduce((sum, record) => {
         if (Array.isArray(record?.rows)) return sum + record.rows.length;
@@ -2372,14 +2741,30 @@ async function importInvoiceFiles(project, workspace, workspaceState, files, onS
     }, 0);
 
     for (const [index, file] of documentFiles.entries()) {
+        options.signal?.throwIfAborted?.();
         const actionLabel = shouldAppend ? 'Anadiendo' : 'Analizando';
         onStatus?.(`${actionLabel} factura ${index + 1} de ${documentFiles.length}: ${file.name}`);
+        options.onProgress?.({
+            completed: index,
+            current: index + 1,
+            total: documentFiles.length,
+            fileName: file.name,
+            phase: 'processing'
+        });
         const isPdf = isPdfUpload(file);
         let pdfBuffer = null;
         let pdfDocument = null;
         activePdfDocument = null;
-        await saveProjectPdf(project, file);
-        const invoiceResult = await extractProjectInvoiceWithBackend(project);
+        await saveProjectPdf(project, file, { signal: options.signal });
+        options.signal?.throwIfAborted?.();
+        const invoiceResult = await extractProjectInvoiceWithBackend(project, {
+            signal: options.signal,
+            useAi: options.useAi === true
+        });
+        if (options.useAi === true && invoiceResult.invoice?.aiRefinement?.applied !== true) {
+            aiUnavailableCount += 1;
+        }
+        options.signal?.throwIfAborted?.();
 
         console.log('[FACTURA RESULTADO]', {
             convertedDocument: invoiceResult?.convertedDocument,
@@ -2485,6 +2870,13 @@ async function importInvoiceFiles(project, workspace, workspaceState, files, onS
             headerLabels: INVOICE_HEADER_LABELS,
             extractionReport: invoiceResult.extractionReport || null
         });
+        options.onProgress?.({
+            completed: index + 1,
+            current: index + 1,
+            total: documentFiles.length,
+            fileName: file.name,
+            phase: index + 1 === documentFiles.length ? 'complete' : 'processed'
+        });
     }
 
     const allReports = records.map((record) => record?.extractionReport).filter(Boolean);
@@ -2524,12 +2916,14 @@ async function importInvoiceFiles(project, workspace, workspaceState, files, onS
     };
 
     activePdfDocument = null;
+    options.signal?.throwIfAborted?.();
     await saveWorkspace(project, workspaceState);
     renderWorkspace(workspace, project, workspaceState);
     syncWordPressUi(workspace, workspaceState);
     onStatus?.(shouldAppend
         ? `${documentFiles.length} facturas anadidas. Total: ${records.length}.`
         : `${records.length} facturas analizadas. Selecciona una para revisar sus campos y marcas.`);
+    return { aiUnavailableCount };
 }
 
 function samePdfFileName(left, right) {
@@ -3122,6 +3516,7 @@ function renderInvoicePdfHighlights(workspace, invoice, canvas, scale, pageNumbe
 
         const marker = document.createElement('div');
         marker.className = 'project-pdf-cell-highlight project-invoice-pdf-highlight';
+        applyInvoiceBlockColor(marker, field.section || 'Factura');
         marker.dataset.invoiceFieldId = getInvoiceFieldId(field.section, field.label, field.value, index);
         marker.style.left = `${canvas.offsetLeft + (x1 * scale) - 3}px`;
         marker.style.top = `${canvas.offsetTop + (y1 * scale) - 3}px`;
@@ -3140,6 +3535,7 @@ function renderInvoicePdfHighlights(workspace, invoice, canvas, scale, pageNumbe
         if (!(x2 > x1) || !(y2 > y1)) return;
         const marker = document.createElement('div');
         marker.className = 'project-pdf-cell-highlight project-invoice-pdf-highlight';
+        applyInvoiceBlockColor(marker, 'Lineas');
         marker.dataset.invoiceFieldId = getInvoiceFieldId('Lineas', 'Descripcion', item.description, index);
         marker.style.left = `${canvas.offsetLeft + (x1 * scale) - 3}px`;
         marker.style.top = `${canvas.offsetTop + (y1 * scale) - 3}px`;
@@ -3227,6 +3623,7 @@ async function renderPdfRow(workspace, row, workspaceState = null) {
     const parentWidth = Math.max(320, Number(viewer?.clientWidth || 640) - 28);
     const baseViewport = page.getViewport({ scale: 1 });
     const scale = parentWidth / Math.max(1, baseViewport.width);
+    activePdfRenderScale = scale;
     const viewport = page.getViewport({ scale });
     const context = canvas.getContext('2d');
 
@@ -3461,6 +3858,7 @@ function appendInvoiceSection(container, title, fields, workspaceState) {
 
     const section = document.createElement('section');
     section.className = 'project-invoice-section';
+    applyInvoiceBlockColor(section, title);
 
     const header = document.createElement('header');
     header.textContent = title;
@@ -3509,14 +3907,22 @@ function buildInvoiceDynamicSections(invoice) {
         return false;
     };
 
-    const sourceFor = (section, label) => {
+    const sourceFor = (section, label, expectedValue = '') => {
         const sectionKey = safeText(section).toLowerCase();
         const canonical = getInvoiceCanonicalLabel(label);
-        return (invoice.fields || []).find((field) => (
+        const candidates = (invoice.fields || []).filter((field) => (
             safeText(field?.section).toLowerCase() === sectionKey
             && getInvoiceCanonicalLabel(field?.label) === canonical
             && field?.sourceBox
-        ))?.sourceBox || null;
+        ));
+        if (!candidates.length) return null;
+        const expectedKey = normalizePdfText(expectedValue).replace(/[^A-Z0-9]+/g, '');
+        const exact = expectedKey
+            ? candidates.find((field) => (
+                normalizePdfText(field?.value).replace(/[^A-Z0-9]+/g, '') === expectedKey
+            ))
+            : null;
+        return (exact || candidates[0])?.sourceBox || null;
     };
 
     (invoice.fields || []).forEach((field, index) => {
@@ -3524,30 +3930,418 @@ function buildInvoiceDynamicSections(invoice) {
         add(field.section, field.label, field.value, field.sourceBox || null, ['fields', index, 'value']);
     });
 
-    add('Factura', 'Tipo', invoice.type, sourceFor('Factura', 'Tipo'), ['type']);
-    add('Factura', 'Numero', invoice.invoiceNumber, sourceFor('Factura', 'Numero de factura'), ['invoiceNumber']);
-    add('Factura', 'Fecha', invoice.date, sourceFor('Factura', 'Fecha'), ['date']);
-    add('Factura', 'Vencimiento', invoice.dueDate, sourceFor('Factura', 'Vencimiento'), ['dueDate']);
-    add('Factura', 'Moneda', invoice.currency, sourceFor('Factura', 'Moneda'), ['currency']);
-    add('Factura', 'Idioma detectado', getInvoiceLanguageLabel(invoice.language));
-    add('Pago', 'Metodo de pago', invoice.payment?.method, sourceFor('Pago', 'Forma de pago'), ['payment', 'method']);
-    add('Pago', 'IBAN', invoice.payment?.iban, sourceFor('Pago', 'IBAN'), ['payment', 'iban']);
-    add('Importes', 'Subtotal', invoice.amounts?.subtotal == null ? '' : formatInvoiceAmount(invoice.amounts.subtotal, invoice.currency || 'EUR'), sourceFor('Importes', 'Subtotal'), ['amounts', 'subtotal']);
-    add('Importes', 'Impuestos', invoice.amounts?.tax == null ? '' : formatInvoiceAmount(invoice.amounts.tax, invoice.currency || 'EUR'), sourceFor('Importes', 'IVA / impuestos'), ['amounts', 'tax']);
-    add('Importes', 'Total', invoice.amounts?.total == null ? '' : formatInvoiceAmount(invoice.amounts.total, invoice.currency || 'EUR'), sourceFor('Importes', 'Total'), ['amounts', 'total']);
-    add('Importes', 'Pagado', invoice.amounts?.paid == null ? '' : formatInvoiceAmount(invoice.amounts.paid, invoice.currency || 'EUR'), null, ['amounts', 'paid']);
-    add('Importes', 'Pendiente', invoice.amounts?.due == null ? '' : formatInvoiceAmount(invoice.amounts.due, invoice.currency || 'EUR'), null, ['amounts', 'due']);
+    add('Factura', 'Tipo', invoice.type, sourceFor('Factura', 'Tipo', invoice.type), ['type']);
+    add('Factura', 'Numero', invoice.invoiceNumber, sourceFor('Factura', 'Numero de factura', invoice.invoiceNumber), ['invoiceNumber']);
+    add('Factura', 'Fecha', invoice.date, sourceFor('Factura', 'Fecha', invoice.date), ['date']);
+    add('Factura', 'Vencimiento', invoice.dueDate, sourceFor('Factura', 'Vencimiento', invoice.dueDate), ['dueDate']);
+    add('Factura', 'Moneda', invoice.currency, sourceFor('Factura', 'Moneda', invoice.currency), ['currency']);
+    add('Factura', 'Idioma detectado', getInvoiceLanguageLabel(invoice.language), sourceFor('Factura', 'Idioma detectado'));
+    add('Pago', 'Metodo de pago', invoice.payment?.method, sourceFor('Pago', 'Forma de pago', invoice.payment?.method), ['payment', 'method']);
+    add('Pago', 'IBAN', invoice.payment?.iban, sourceFor('Pago', 'IBAN', invoice.payment?.iban), ['payment', 'iban']);
+    add('Importes', 'Subtotal', invoice.amounts?.subtotal == null ? '' : formatInvoiceAmount(invoice.amounts.subtotal, invoice.currency || 'EUR'), sourceFor('Importes', 'Subtotal', invoice.amounts?.subtotal), ['amounts', 'subtotal']);
+    add('Importes', 'Impuestos', invoice.amounts?.tax == null ? '' : formatInvoiceAmount(invoice.amounts.tax, invoice.currency || 'EUR'), sourceFor('Importes', 'IVA / impuestos', invoice.amounts?.tax), ['amounts', 'tax']);
+    add('Importes', 'Total', invoice.amounts?.total == null ? '' : formatInvoiceAmount(invoice.amounts.total, invoice.currency || 'EUR'), sourceFor('Importes', 'Total', invoice.amounts?.total), ['amounts', 'total']);
+    add('Importes', 'Pagado', invoice.amounts?.paid == null ? '' : formatInvoiceAmount(invoice.amounts.paid, invoice.currency || 'EUR'), sourceFor('Importes', 'Pagado', invoice.amounts?.paid), ['amounts', 'paid']);
+    add('Importes', 'Pendiente', invoice.amounts?.due == null ? '' : formatInvoiceAmount(invoice.amounts.due, invoice.currency || 'EUR'), sourceFor('Importes', 'Pendiente', invoice.amounts?.due), ['amounts', 'due']);
 
     Object.entries(invoice.supplier || {}).forEach(([key, value]) => {
         const labels = { name: 'Nombre', address: 'Direccion', taxId: 'NIF / VAT', email: 'Email', phone: 'Telefono' };
-        add('Emisor', labels[key] || key, value, sourceFor('Emisor', labels[key] || key), ['supplier', key]);
+        add('Emisor', labels[key] || key, value, sourceFor('Emisor', labels[key] || key, value), ['supplier', key]);
     });
     Object.entries(invoice.customer || {}).forEach(([key, value]) => {
         const labels = { name: 'Nombre', address: 'Direccion', taxId: 'NIF / VAT', email: 'Email', phone: 'Telefono' };
-        add('Cliente', labels[key] || key, value, sourceFor('Cliente', labels[key] || key), ['customer', key]);
+        add('Cliente', labels[key] || key, value, sourceFor('Cliente', labels[key] || key, value), ['customer', key]);
     });
 
     return [...sections.entries()];
+}
+
+const INVOICE_LINE_COLUMN_KEYS = [
+    'code', 'description', 'quantity', 'unit', 'unitPrice', 'discount', 'taxRate', 'total'
+];
+
+function classifyInvoiceLineHeader(label, fallbackIndex = 0) {
+    const key = safeText(label).normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase();
+    if (/code|codigo|sku|pos\.?|hs\s*code|编号|编码|货号/.test(key)) return 'code';
+    if (/description|descripcion|concept|product|service|article|artikel|leistung|goods|项目|描述|品名/.test(key)) return 'description';
+    if (/qty|quantity|cantidad|menge|uds?\.?|数量/.test(key)) return 'quantity';
+    if (/uom|unidad|einheit|unit(?!.*price)|单位/.test(key)) return 'unit';
+    if (/unit.*price|precio.*unit|einzelpreis|price|preu|单价/.test(key)) return 'unitPrice';
+    if (/disc|discount|descuento|dte\.?|rabatt|折扣/.test(key)) return 'discount';
+    if (/iva|vat|tax|mwst|ust|税率|税/.test(key)) return 'taxRate';
+    if (/total|importe|amount|betrag|line.*total|金额|合计/.test(key)) return 'total';
+    return INVOICE_LINE_COLUMN_KEYS[Math.min(fallbackIndex, INVOICE_LINE_COLUMN_KEYS.length - 1)];
+}
+
+function extractInvoiceLineHeaders(regionWords) {
+    const words = (Array.isArray(regionWords) ? regionWords : [])
+        .filter((word) => safeText(word?.text) && Number(word?.x2) > Number(word?.x1))
+        .sort((left, right) => Number(left.x1) - Number(right.x1));
+    if (!words.length) return [];
+    const heights = words.map((word) => Math.max(1, Number(word.y2) - Number(word.y1))).sort((a, b) => a - b);
+    const medianHeight = heights[Math.floor(heights.length / 2)] || 10;
+    const joinGap = Math.max(8, medianHeight * 1.35);
+    const columns = [];
+    words.forEach((word) => {
+        const previous = columns[columns.length - 1];
+        const gap = previous ? Number(word.x1) - previous.x2 : Infinity;
+        if (previous && gap <= joinGap) {
+            previous.words.push(safeText(word.text));
+            previous.x2 = Math.max(previous.x2, Number(word.x2));
+        } else {
+            columns.push({
+                words: [safeText(word.text)],
+                x1: Number(word.x1),
+                x2: Number(word.x2)
+            });
+        }
+    });
+    return columns.map((column) => column.words.join(' ').trim()).filter(Boolean);
+}
+
+function buildInvoiceLineColumnLabels(headers) {
+    const labels = {};
+    (headers || []).forEach((label, index) => {
+        const key = classifyInvoiceLineHeader(label, index);
+        if (!labels[key]) labels[key] = safeText(label);
+    });
+    return labels;
+}
+
+function findScannedInvoiceRowBox(item, regionWords) {
+    const words = (Array.isArray(regionWords) ? regionWords : []).filter((word) => (
+        safeText(word?.text)
+        && Number(word?.x2) > Number(word?.x1)
+        && Number(word?.y2) > Number(word?.y1)
+    ));
+    const descriptionKey = normalizePdfText(item?.description).replace(/[^A-Z0-9]+/g, '');
+    if (!descriptionKey || !words.length) return null;
+    const descriptionStart = descriptionKey.slice(0, Math.min(14, descriptionKey.length));
+    const match = words
+        .map((word) => ({
+            word,
+            key: normalizePdfText(word.text).replace(/[^A-Z0-9]+/g, '')
+        }))
+        .filter(({ key }) => (
+            key.length >= 3
+            && (
+                key.includes(descriptionKey)
+                || descriptionKey.includes(key)
+                || (descriptionStart.length >= 5 && key.includes(descriptionStart))
+            )
+        ))
+        .sort((left, right) => {
+            const leftDifference = Math.abs(left.key.length - descriptionKey.length);
+            const rightDifference = Math.abs(right.key.length - descriptionKey.length);
+            return leftDifference - rightDifference;
+        })[0]?.word;
+    if (!match) return null;
+
+    const matchCenter = (Number(match.y1) + Number(match.y2)) / 2;
+    const matchHeight = Math.max(1, Number(match.y2) - Number(match.y1));
+    const rowWords = words.filter((word) => {
+        const center = (Number(word.y1) + Number(word.y2)) / 2;
+        const height = Math.max(1, Number(word.y2) - Number(word.y1));
+        return Math.abs(center - matchCenter) <= Math.max(matchHeight, height) * 0.72;
+    });
+    if (!rowWords.length) return null;
+    return {
+        page: Number(match.page || 1),
+        x1: Math.min(...rowWords.map((word) => Number(word.x1))),
+        y1: Math.min(...rowWords.map((word) => Number(word.y1))),
+        x2: Math.max(...rowWords.map((word) => Number(word.x2))),
+        y2: Math.max(...rowWords.map((word) => Number(word.y2))),
+        pageWidth: Number(match.pageWidth || rowWords[0]?.pageWidth || 0),
+        pageHeight: Number(match.pageHeight || rowWords[0]?.pageHeight || 0)
+    };
+}
+
+async function renderInvoiceRegionForOcr(pageNumber, region, fallbackCanvas) {
+    if (!activePdfDocument || !region) return fallbackCanvas;
+    try {
+        const page = await activePdfDocument.getPage(pageNumber);
+        const baseViewport = page.getViewport({ scale: 1 });
+        const regionWidth = Math.max(1, (region.x2 - region.x1) * baseViewport.width);
+        const regionHeight = Math.max(1, (region.y2 - region.y1) * baseViewport.height);
+        const targetScale = 7;
+        const maxPixels = 26000000;
+        const pixelLimitedScale = Math.sqrt(maxPixels / Math.max(1, regionWidth * regionHeight));
+        const scale = Math.max(2.5, Math.min(targetScale, pixelLimitedScale));
+        const viewport = page.getViewport({ scale });
+        const cropX = region.x1 * viewport.width;
+        const cropY = region.y1 * viewport.height;
+        const cropWidth = Math.max(1, Math.round((region.x2 - region.x1) * viewport.width));
+        const cropHeight = Math.max(1, Math.round((region.y2 - region.y1) * viewport.height));
+        const highResolutionCanvas = document.createElement('canvas');
+        highResolutionCanvas.width = cropWidth;
+        highResolutionCanvas.height = cropHeight;
+        const context = highResolutionCanvas.getContext('2d', { alpha: false });
+        context.fillStyle = '#ffffff';
+        context.fillRect(0, 0, cropWidth, cropHeight);
+        const task = page.render({
+            canvasContext: context,
+            viewport,
+            transform: [1, 0, 0, 1, -cropX, -cropY],
+            background: '#ffffff'
+        });
+        await task.promise;
+        return highResolutionCanvas;
+    } catch (error) {
+        console.warn('No se pudo renderizar el recorte de alta precisión; se usa el recorte visible.', error);
+        return fallbackCanvas;
+    }
+}
+
+function startInvoiceLineRegionScan(workspace, workspaceState, triggerButton, options = {}) {
+    const viewer = workspace.querySelector('[data-project-pdf-viewer]');
+    const canvas = workspace.querySelector('[data-project-pdf-canvas]');
+    const targetInvoice = options.invoice || workspaceState.invoice;
+    if (!viewer || !canvas || canvas.hidden || !activeWorkspaceProject || !targetInvoice) return;
+
+    const existingLayer = viewer.querySelector('[data-invoice-line-scan-layer]');
+    if (existingLayer) {
+        existingLayer.cancelScan?.();
+        return;
+    }
+    const layer = document.createElement('div');
+    layer.className = 'project-invoice-line-scan-layer';
+    layer.dataset.invoiceLineScanLayer = '';
+    const hint = document.createElement('div');
+    hint.className = 'project-invoice-line-scan-hint';
+    hint.textContent = 'Paso 1 de 2: marca solamente los títulos de las columnas.';
+    const selection = document.createElement('div');
+    selection.className = 'project-invoice-line-scan-selection';
+    selection.hidden = true;
+    layer.append(hint, selection);
+    viewer.appendChild(layer);
+    viewer.classList.add('is-scanning-invoice-lines');
+    triggerButton.classList.add('is-active');
+    triggerButton.textContent = 'Cancelar escaneo';
+    if (window.matchMedia('(max-width: 1750px)').matches) {
+        workspace.querySelector('[data-project-pdf-panel]')?.scrollIntoView({
+            behavior: 'smooth',
+            block: 'start'
+        });
+    }
+
+    let start = null;
+    let finished = false;
+    let scanStage = 'headers';
+    let headerScanRegion = null;
+    const clamp = (value, min, max) => Math.max(min, Math.min(max, value));
+    const canvasPoint = (event) => {
+        const rect = canvas.getBoundingClientRect();
+        return {
+            x: clamp(event.clientX - rect.left, 0, rect.width),
+            y: clamp(event.clientY - rect.top, 0, rect.height),
+            width: rect.width,
+            height: rect.height
+        };
+    };
+    const cleanup = () => {
+        canvas.removeEventListener('pointerdown', onPointerDown);
+        canvas.removeEventListener('pointermove', onPointerMove);
+        canvas.removeEventListener('pointerup', onPointerUp);
+        canvas.removeEventListener('pointercancel', onPointerCancel);
+        viewer.classList.remove('is-scanning-invoice-lines');
+        triggerButton.classList.remove('is-active');
+        triggerButton.textContent = 'Escanear líneas';
+        layer.remove();
+    };
+    layer.cancelScan = cleanup;
+    const drawSelection = (from, to) => {
+        const left = Math.min(from.x, to.x);
+        const top = Math.min(from.y, to.y);
+        const width = Math.abs(to.x - from.x);
+        const height = Math.abs(to.y - from.y);
+        selection.hidden = false;
+        selection.style.left = `${canvas.offsetLeft + left}px`;
+        selection.style.top = `${canvas.offsetTop + top}px`;
+        selection.style.width = `${width}px`;
+        selection.style.height = `${height}px`;
+        return { left, top, width, height };
+    };
+    const onPointerDown = (event) => {
+        if (finished) return;
+        event.preventDefault();
+        start = canvasPoint(event);
+        canvas.setPointerCapture?.(event.pointerId);
+        hint.textContent = scanStage === 'headers'
+            ? 'Suelta cuando todos los títulos de las columnas estén dentro del rectángulo.'
+            : 'Suelta cuando todas las filas de contenido estén dentro del rectángulo.';
+        drawSelection(start, start);
+    };
+    const onPointerMove = (event) => {
+        if (!start || finished) return;
+        drawSelection(start, canvasPoint(event));
+    };
+    const onPointerCancel = () => {
+        start = null;
+        selection.hidden = true;
+    };
+    const onPointerUp = async (event) => {
+        if (!start || finished) return;
+        const end = canvasPoint(event);
+        const box = drawSelection(start, end);
+        if (box.width < 18 || box.height < 18) {
+            hint.textContent = 'La zona es demasiado pequeña. Inténtalo de nuevo.';
+            start = null;
+            selection.hidden = true;
+            return;
+        }
+        finished = true;
+        hint.textContent = scanStage === 'headers'
+            ? 'Leyendo los títulos originales de las columnas…'
+            : 'Analizando el contenido con las columnas seleccionadas…';
+        layer.classList.add('is-loading');
+        try {
+            const scaleX = canvas.width / end.width;
+            const scaleY = canvas.height / end.height;
+            const cropCanvas = document.createElement('canvas');
+            cropCanvas.width = Math.max(1, Math.round(box.width * scaleX));
+            cropCanvas.height = Math.max(1, Math.round(box.height * scaleY));
+            const cropContext = cropCanvas.getContext('2d');
+            cropContext.drawImage(
+                canvas,
+                Math.round(box.left * scaleX),
+                Math.round(box.top * scaleY),
+                cropCanvas.width,
+                cropCanvas.height,
+                0,
+                0,
+                cropCanvas.width,
+                cropCanvas.height
+            );
+            const normalizedRegion = {
+                page: activePdfPageNumber,
+                x1: box.left / end.width,
+                y1: box.top / end.height,
+                x2: (box.left + box.width) / end.width,
+                y2: (box.top + box.height) / end.height
+            };
+            const precisionCropCanvas = await renderInvoiceRegionForOcr(
+                activePdfPageNumber,
+                normalizedRegion,
+                cropCanvas
+            );
+            let analysisRegion = normalizedRegion;
+            let analysisCanvas = precisionCropCanvas;
+            if (scanStage === 'content' && headerScanRegion) {
+                analysisRegion = {
+                    page: activePdfPageNumber,
+                    x1: Math.min(headerScanRegion.x1, normalizedRegion.x1),
+                    y1: Math.min(headerScanRegion.y1, normalizedRegion.y1),
+                    x2: Math.max(headerScanRegion.x2, normalizedRegion.x2),
+                    y2: Math.max(headerScanRegion.y2, normalizedRegion.y2)
+                };
+                analysisCanvas = await renderInvoiceRegionForOcr(
+                    activePdfPageNumber,
+                    analysisRegion,
+                    precisionCropCanvas
+                );
+            }
+            const data = await fetchProjectJson(
+                `/api/projects/${encodeURIComponent(activeWorkspaceProject.id)}/pdf/extract-invoice-lines-region`,
+                {
+                    method: 'POST',
+                    body: JSON.stringify({
+                        imageData: analysisCanvas.toDataURL('image/png'),
+                        region: normalizedRegion
+                    })
+                }
+            );
+            if (scanStage === 'headers') {
+                const headers = extractInvoiceLineHeaders(data.regionWords);
+                if (!headers.length) {
+                    layer.classList.remove('is-loading');
+                    hint.textContent = 'No se pudieron leer los títulos. Marca de nuevo toda la fila de cabecera.';
+                    finished = false;
+                    start = null;
+                    selection.hidden = true;
+                    return;
+                }
+                headerScanRegion = normalizedRegion;
+                targetInvoice.lineColumnLabels = buildInvoiceLineColumnLabels(headers);
+                scanStage = 'content';
+                finished = false;
+                start = null;
+                selection.hidden = true;
+                layer.classList.remove('is-loading');
+                triggerButton.textContent = 'Paso 2: marcar contenido';
+                hint.textContent = `Paso 2 de 2: columnas leídas (${headers.join(' · ')}). Ahora marca solamente las filas de contenido.`;
+                return;
+            }
+            const detected = Array.isArray(data.lineItems)
+                ? data.lineItems.map((item) => {
+                    const cropBox = findScannedInvoiceRowBox(item, data.regionWords)
+                        || item?.sourceBox;
+                    if (!cropBox?.pageWidth || !cropBox?.pageHeight || !activePdfRenderScale) {
+                        return { ...item, sourceBox: null };
+                    }
+                    const pdfPageWidth = canvas.width / activePdfRenderScale;
+                    const pdfPageHeight = canvas.height / activePdfRenderScale;
+                    const cropX = analysisRegion.x1 * pdfPageWidth;
+                    const cropY = analysisRegion.y1 * pdfPageHeight;
+                    const cropWidth = (analysisRegion.x2 - analysisRegion.x1) * pdfPageWidth;
+                    const cropHeight = (analysisRegion.y2 - analysisRegion.y1) * pdfPageHeight;
+                    return {
+                        ...item,
+                        sourceBox: {
+                            page: activePdfPageNumber,
+                            x1: cropX + (Number(cropBox.x1 || 0) / Number(cropBox.pageWidth)) * cropWidth,
+                            y1: cropY + (Number(cropBox.y1 || 0) / Number(cropBox.pageHeight)) * cropHeight,
+                            x2: cropX + (Number(cropBox.x2 || 0) / Number(cropBox.pageWidth)) * cropWidth,
+                            y2: cropY + (Number(cropBox.y2 || 0) / Number(cropBox.pageHeight)) * cropHeight,
+                            pageWidth: canvas.width / activePdfRenderScale,
+                            pageHeight: canvas.height / activePdfRenderScale
+                        }
+                    };
+                })
+                : [];
+            if (!detected.length) {
+                layer.classList.remove('is-loading');
+                hint.textContent = 'No se encontraron líneas claras. Marca de nuevo todas las filas de contenido.';
+                finished = false;
+                start = null;
+                selection.hidden = true;
+                return;
+            }
+            // El escaneo manual sustituye por completo la extracción anterior:
+            // solo permanecen las líneas encontradas dentro del rectángulo.
+            reconcileScannedLineArithmetic(detected);
+            targetInvoice.lineItems = detected;
+            const scannedSubtotal = calculateInvoiceLineItemsTotal(detected);
+            if (scannedSubtotal != null) {
+                if (!targetInvoice.amounts || typeof targetInvoice.amounts !== 'object') {
+                    targetInvoice.amounts = {};
+                }
+                targetInvoice.amounts.subtotal = scannedSubtotal;
+                if (parseLooseInvoiceAmount(targetInvoice.amounts.total) == null) {
+                    targetInvoice.amounts.total = scannedSubtotal;
+                }
+            }
+            reconcileScannedInvoiceTaxRates(targetInvoice, detected);
+            cleanup();
+            if (typeof options.onComplete === 'function') {
+                await options.onComplete(detected, targetInvoice);
+            } else {
+                workspaceState.invoice = targetInvoice;
+                saveInvoiceFieldEdit(workspaceState);
+                renderWorkspace(workspace, activeWorkspaceProject, workspaceState);
+            }
+        } catch (error) {
+            layer.classList.remove('is-loading');
+            hint.textContent = `No se pudo analizar la zona: ${String(error?.message || error)}`;
+            finished = false;
+            start = null;
+            selection.hidden = true;
+        }
+    };
+
+    canvas.addEventListener('pointerdown', onPointerDown);
+    canvas.addEventListener('pointermove', onPointerMove);
+    canvas.addEventListener('pointerup', onPointerUp);
+    canvas.addEventListener('pointercancel', onPointerCancel);
 }
 
 function renderInvoiceView(workspace, workspaceState) {
@@ -3567,8 +4361,20 @@ function renderInvoiceView(workspace, workspaceState) {
     const subtitle = document.createElement('span');
     const languageLabel = getInvoiceLanguageLabel(invoice.language);
     const languageText = languageLabel === '-' ? '' : ` - Idioma: ${languageLabel}`;
-    subtitle.textContent = `${workspaceState.fileName || 'PDF'} - ${Number(workspaceState.pageCount || 0)} paginas - ${Number(invoice.detectedFields || 0)} campos detectados${languageText}`;
+    const aiText = invoice.aiRefinement?.applied
+        ? ` - IA validada (${Math.round(Number(invoice.aiRefinement.confidence || 0) * 100)}%)`
+        : '';
+    subtitle.textContent = `${workspaceState.fileName || 'PDF'} - ${Number(workspaceState.pageCount || 0)} paginas - ${Number(invoice.detectedFields || 0)} campos detectados${languageText}${aiText}`;
     hero.append(kicker, title, subtitle);
+    const marksButton = document.createElement('button');
+    marksButton.type = 'button';
+    marksButton.className = 'project-invoice-marks-toggle';
+    marksButton.dataset.projectInvoiceMarksToggle = '';
+    marksButton.addEventListener('click', () => {
+        activeInvoiceMarkMode = !activeInvoiceMarkMode;
+        syncInvoiceMarkMode(workspace);
+    });
+    hero.appendChild(marksButton);
     if (Array.isArray(workspaceState.invoices) && workspaceState.invoices.length > 0) {
         const backButton = document.createElement('button');
         backButton.type = 'button';
@@ -3588,6 +4394,7 @@ function renderInvoiceView(workspace, workspaceState) {
         ['Vencimiento', invoice.dueDate || '']
     ].filter(([, value]) => safeText(value)).forEach(([label, value]) => {
         const item = document.createElement('span');
+        applyInvoiceBlockColor(item, label === 'Vencimiento' ? 'Factura' : 'Importes');
         const small = document.createElement('small');
         small.textContent = label;
         const strong = document.createElement('strong');
@@ -3604,14 +4411,48 @@ function renderInvoiceView(workspace, workspaceState) {
 
     const lines = document.createElement('section');
     lines.className = 'project-invoice-section project-invoice-lines';
+    applyInvoiceBlockColor(lines, 'Lineas');
     const linesHeader = document.createElement('header');
-    linesHeader.textContent = 'Lineas de factura';
+    const linesTitle = document.createElement('span');
+    linesTitle.textContent = 'Lineas de factura';
+    const scanLinesButton = document.createElement('button');
+    scanLinesButton.type = 'button';
+    scanLinesButton.className = 'project-invoice-line-scan-button';
+    scanLinesButton.textContent = 'Escanear líneas';
+    scanLinesButton.addEventListener('click', () => {
+        startInvoiceLineRegionScan(workspace, workspaceState, scanLinesButton);
+    });
+    linesHeader.append(linesTitle, scanLinesButton);
     lines.appendChild(linesHeader);
     const lineItems = Array.isArray(invoice.lineItems) ? invoice.lineItems : [];
     if (lineItems.length) {
         const table = document.createElement('table');
         const thead = document.createElement('thead');
-        thead.innerHTML = '<tr><th>Codigo</th><th>Descripcion</th><th>Cantidad</th><th>Unidad</th><th>Precio ud.</th><th>Descuento</th><th>IVA %</th><th>Total</th><th>Acciones</th></tr>';
+        const headerRow = document.createElement('tr');
+        const defaultLineLabels = {
+            code: 'Codigo',
+            description: 'Descripcion',
+            quantity: 'Cantidad',
+            unit: 'Unidad',
+            unitPrice: 'Precio ud.',
+            discount: 'Descuento',
+            taxRate: 'IVA %',
+            total: 'Total'
+        };
+        const scannedLineColumnKeys = Object.keys(invoice.lineColumnLabels || {})
+            .filter((key) => INVOICE_LINE_COLUMN_KEYS.includes(key));
+        const displayLineColumnKeys = scannedLineColumnKeys.length
+            ? scannedLineColumnKeys
+            : INVOICE_LINE_COLUMN_KEYS;
+        displayLineColumnKeys.forEach((key) => {
+            const th = document.createElement('th');
+            th.textContent = safeText(invoice.lineColumnLabels?.[key]) || defaultLineLabels[key];
+            headerRow.appendChild(th);
+        });
+        const actionsHeader = document.createElement('th');
+        actionsHeader.textContent = 'Acciones';
+        headerRow.appendChild(actionsHeader);
+        thead.appendChild(headerRow);
         const tbody = document.createElement('tbody');
         lineItems.forEach((item, index) => {
             const tr = document.createElement('tr');
@@ -3622,16 +4463,17 @@ function renderInvoiceView(workspace, workspaceState) {
                 tr.addEventListener('mouseenter', () => toggleInvoicePdfHighlight(document, lineFieldId, true));
                 tr.addEventListener('mouseleave', () => toggleInvoicePdfHighlight(document, lineFieldId, false));
             }
-            [
-                ['code', item.code || '-'],
-                ['description', item.description || '-'],
-                ['quantity', item.quantity ?? '-'],
-                ['unit', item.unit || '-'],
-                ['unitPrice', formatInvoiceAmount(item.unitPrice, currency)],
-                ['discount', item.discount == null ? '-' : `${item.discount}%`],
-                ['taxRate', item.taxRate == null ? '-' : `${item.taxRate}%`],
-                ['total', formatInvoiceAmount(item.total, currency)]
-            ].forEach(([key, value]) => {
+            const lineValues = {
+                code: item.code || '-',
+                description: item.description || '-',
+                quantity: item.quantity ?? '-',
+                unit: item.unit || '-',
+                unitPrice: formatInvoiceAmount(item.unitPrice, currency),
+                discount: item.discount == null ? '-' : `${item.discount}%`,
+                taxRate: item.taxRate == null ? '-' : `${item.taxRate}%`,
+                total: formatInvoiceAmount(item.total, currency)
+            };
+            displayLineColumnKeys.map((key) => [key, lineValues[key]]).forEach(([key, value]) => {
                 const td = document.createElement('td');
                 const input = document.createElement('input');
                 input.type = 'text';
@@ -3681,9 +4523,10 @@ function renderInvoiceView(workspace, workspaceState) {
         empty.textContent = 'No se detectaron lineas de factura claras. Revisa el PDF de la derecha.';
         lines.appendChild(empty);
     }
-    grid.appendChild(lines);
+    grid.prepend(lines);
 
     invoiceView.append(hero, metrics, grid);
+    syncInvoiceMarkMode(workspace);
 }
 
 async function openInvoiceRecord(project, workspace, workspaceState, recordId) {
@@ -3810,10 +4653,56 @@ function createInvoiceSpecList(specs) {
     return list;
 }
 
-function createInvoiceLinesPanel(record, project, workspaceState) {
+function createInvoiceLinesPanel(record, project, workspace, workspaceState) {
     const wrapper = document.createElement('div');
     wrapper.className = 'project-invoice-lines-panel';
     const lines = Array.isArray(record?.invoice?.lineItems) ? record.invoice.lineItems : [];
+
+    const toolbar = document.createElement('div');
+    toolbar.className = 'project-invoice-lines-panel-toolbar';
+    const toolbarCopy = document.createElement('span');
+    const toolbarTitle = document.createElement('strong');
+    toolbarTitle.textContent = 'Líneas de factura';
+    const toolbarHint = document.createElement('small');
+    toolbarHint.textContent = 'Selecciona la tabla directamente sobre el PDF.';
+    toolbarCopy.append(toolbarTitle, toolbarHint);
+    const scanButton = document.createElement('button');
+    scanButton.type = 'button';
+    scanButton.className = 'project-invoice-line-scan-button';
+    scanButton.textContent = 'Escanear líneas';
+    scanButton.addEventListener('click', async (event) => {
+        event.stopPropagation();
+        try {
+            scanButton.disabled = true;
+            record.invoice = enhanceImportedInvoice(record.invoice || null);
+            const pdfDocument = await ensureInvoiceRecordPdfDocument(project, workspaceState, record);
+            if (!pdfDocument) throw new Error('No se pudo cargar el PDF de esta factura.');
+            activeInvoiceBatchReviewId = record.id;
+            activePdfDocument = pdfDocument;
+            activePdfPageNumber = 1;
+            await renderPdfFirstPage(workspace, record.invoice, 1);
+            scanButton.disabled = false;
+            startInvoiceLineRegionScan(workspace, workspaceState, scanButton, {
+                invoice: record.invoice,
+                onComplete: () => {
+                    record.rows = buildInvoiceRows(record.invoice);
+                    refreshInvoiceBatchState(workspaceState);
+                    renderWorkspace(workspace, project, workspaceState);
+                    saveWorkspace(project, workspaceState).catch((error) => {
+                        console.warn('No se pudo guardar el resultado del escáner de líneas.', error);
+                    });
+                }
+            });
+        } catch (error) {
+            scanButton.disabled = false;
+            const message = `No se pudo iniciar el escáner: ${String(error?.message || error)}`;
+            const pdfStatus = workspace.querySelector('[data-project-pdf-status]');
+            if (pdfStatus) pdfStatus.textContent = message;
+            console.warn(message, error);
+        }
+    });
+    toolbar.append(toolbarCopy, scanButton);
+    wrapper.appendChild(toolbar);
 
     if (!lines.length) {
         const empty = document.createElement('p');
@@ -3943,7 +4832,7 @@ async function toggleInvoiceLineDetails(project, workspace, workspaceState, row,
     detailRow.className = 'project-invoice-lines-detail-row';
     const detailCell = document.createElement('td');
     detailCell.colSpan = 13;
-    detailCell.appendChild(createInvoiceLinesPanel(record, project, workspaceState));
+    detailCell.appendChild(createInvoiceLinesPanel(record, project, workspace, workspaceState));
     detailRow.appendChild(detailCell);
     row.after(detailRow);
 
@@ -4077,6 +4966,37 @@ async function renderInvoiceBatchPdfGallery(workspace, project, workspaceState, 
     if (activeLabel) activeLabel.textContent = `${records.length} facturas importadas`;
     viewer.scrollTop = 0;
     viewer.scrollLeft = 0;
+
+    const expandedRecord = !options.forceThumbnails
+        ? records.find((record) => (
+            record.id === activeInvoiceBatchReviewId
+            && activeInvoiceExpandedIds.has(record.id)
+        ))
+        : null;
+    if (expandedRecord) {
+        const pdfDocument = await ensureInvoiceRecordPdfDocument(project, workspaceState, expandedRecord);
+        if (renderNonce !== activePdfRenderNonce) return;
+
+        activePdfDocument = pdfDocument;
+        activePdfPageNumber = 1;
+        if (pdfDocument) {
+            if (canvas) canvas.hidden = false;
+            if (pageLabel) pageLabel.textContent = 'Pagina 1';
+            if (activeLabel) {
+                activeLabel.textContent = expandedRecord.fileName
+                    || expandedRecord.invoice?.fileName
+                    || 'Factura seleccionada';
+            }
+            await renderPdfFirstPage(workspace, expandedRecord.invoice || null, 1);
+            return;
+        }
+
+        renderInvoiceDocumentPreview(workspace, {
+            fileName: expandedRecord.fileName || expandedRecord.invoice?.fileName || 'factura.pdf',
+            invoice: expandedRecord.invoice || null
+        });
+        return;
+    }
 
     if (records.length === 1 && !options.forceThumbnails) {
         const singleRecord = records[0];
@@ -4338,7 +5258,7 @@ function renderInvoiceBatchList(workspace, project, workspaceState) {
             detailRow.className = 'project-invoice-lines-detail-row';
             const detailCell = document.createElement('td');
             detailCell.colSpan = 13;
-            detailCell.appendChild(createInvoiceLinesPanel(record, project, workspaceState));
+            detailCell.appendChild(createInvoiceLinesPanel(record, project, workspace, workspaceState));
             detailRow.appendChild(detailCell);
             tbody.appendChild(detailRow);
         }
@@ -4421,6 +5341,7 @@ function renderWorkspace(workspace, project, workspaceState) {
     const isInvoiceBatchList = isInvoice && invoiceRecords.length && !workspaceState.invoice;
     const hasDocument = hasWorkspaceDocument(workspaceState);
     const hasType = Boolean(documentType);
+    syncInvoiceAiToggle(documentType);
 
     if (fileName) fileName.textContent = workspaceState.fileName || 'Sin documento cargado';
     if (totalRows) totalRows.textContent = String(isInvoiceBatchList ? invoiceRecords.length : rows.length);
@@ -4658,12 +5579,15 @@ function renderSavedWorkspaceList(workspace, project, workspaceState, files) {
         }
         body.append(name, meta);
 
-        const button = document.createElement('button');
-        button.type = 'button';
-        button.textContent = 'Abrir';
-        button.addEventListener('click', async () => {
+        const actions = document.createElement('span');
+        actions.className = 'project-saved-card-actions';
+
+        const openButton = document.createElement('button');
+        openButton.type = 'button';
+        openButton.textContent = 'Abrir';
+        openButton.addEventListener('click', async () => {
             try {
-                button.disabled = true;
+                openButton.disabled = true;
                 setSavedWorkspaceStatus(workspace, `Abriendo ${file.name || 'guardado'}...`);
                 const restored = await restoreSavedWorkspace(project, file.id);
                 replaceWorkspaceState(workspaceState, restored);
@@ -4696,11 +5620,54 @@ function renderSavedWorkspaceList(workspace, project, workspaceState, files) {
             } catch (error) {
                 setSavedWorkspaceStatus(workspace, `No se pudo abrir: ${String(error?.message || error)}`, true);
             } finally {
-                button.disabled = false;
+                openButton.disabled = false;
             }
         });
 
-        card.append(icon, body, button);
+        const deleteButton = document.createElement('button');
+        deleteButton.type = 'button';
+        deleteButton.className = 'project-saved-delete';
+        deleteButton.textContent = 'Eliminar';
+        deleteButton.addEventListener('click', async () => {
+            const savedName = file.name || 'Guardado sin nombre';
+            const itemLabel = file.documentType === 'invoices'
+                ? 'el guardado de facturas'
+                : 'el guardado de productos';
+            const accepted = await confirmDestructiveAction({
+                title: `¿Eliminar "${savedName}"?`,
+                message: `Se eliminará definitivamente ${itemLabel} y sus archivos asociados. Esta acción no se puede deshacer.`,
+                confirmLabel: 'Eliminar guardado'
+            });
+            if (!accepted) return;
+
+            try {
+                openButton.disabled = true;
+                deleteButton.disabled = true;
+                setSavedWorkspaceStatus(workspace, `Eliminando ${savedName}...`);
+                await deleteSavedWorkspace(project, file.id);
+                await animateDeletedElements(card);
+                const remainingFiles = files.filter((item) => item.id !== file.id);
+                renderSavedWorkspaceList(workspace, project, workspaceState, remainingFiles);
+                setSavedWorkspaceStatus(
+                    workspace,
+                    remainingFiles.length
+                        ? `${remainingFiles.length} guardados de ${typeLabel} disponibles.`
+                        : `No hay guardados de ${typeLabel} todavía.`
+                );
+            } catch (error) {
+                card.classList.remove('is-being-deleted');
+                openButton.disabled = false;
+                deleteButton.disabled = false;
+                setSavedWorkspaceStatus(
+                    workspace,
+                    `No se pudo eliminar: ${String(error?.message || error)}`,
+                    true
+                );
+            }
+        });
+
+        actions.append(openButton, deleteButton);
+        card.append(icon, body, actions);
         list.appendChild(card);
     });
 }
@@ -5030,6 +5997,145 @@ function closeInvoiceUploadChoice(workspace) {
     workspace?.querySelector('[data-project-invoice-upload-choice]')?.remove();
 }
 
+async function collectInvoiceFilesFromDirectory(directoryHandle, basePath = '') {
+    const files = [];
+    for await (const [name, handle] of directoryHandle.entries()) {
+        const relativePath = basePath ? `${basePath}/${name}` : name;
+        if (handle.kind === 'directory') {
+            files.push(...await collectInvoiceFilesFromDirectory(handle, relativePath));
+            continue;
+        }
+        if (handle.kind !== 'file') continue;
+        const file = await handle.getFile();
+        if (!SUPPORTED_DOCUMENT_UPLOAD_PATTERN.test(file.name || '')) continue;
+        try {
+            Object.defineProperty(file, 'webkitRelativePath', {
+                configurable: true,
+                value: relativePath
+            });
+        } catch (_) {
+            // La ruta es informativa; algunos navegadores no permiten redefinirla.
+        }
+        files.push(file);
+    }
+    return files;
+}
+
+function formatUploadFileSize(bytes) {
+    const size = Math.max(0, Number(bytes) || 0);
+    if (size < 1024) return `${size} B`;
+    if (size < 1024 * 1024) return `${(size / 1024).toFixed(1)} KB`;
+    return `${(size / (1024 * 1024)).toFixed(1)} MB`;
+}
+
+function confirmInvoiceFolderFiles(files, folderName = 'Carpeta seleccionada') {
+    return new Promise((resolve) => {
+        document.querySelector('[data-project-invoice-folder-review]')?.remove();
+        const overlay = document.createElement('section');
+        overlay.className = 'project-invoice-folder-review';
+        overlay.dataset.projectInvoiceFolderReview = '';
+        const totalSize = files.reduce((sum, file) => sum + Number(file.size || 0), 0);
+        overlay.innerHTML = `
+            <div class="project-invoice-folder-review-dialog" role="dialog" aria-modal="true"
+                aria-labelledby="projectInvoiceFolderReviewTitle">
+                <header>
+                    <span aria-hidden="true">DIR</span>
+                    <div>
+                        <small>Carpeta preparada</small>
+                        <strong id="projectInvoiceFolderReviewTitle"></strong>
+                        <p></p>
+                    </div>
+                </header>
+                <div class="project-invoice-folder-review-summary">
+                    <span><b>${files.length}</b> documentos compatibles</span>
+                    <span><b>${formatUploadFileSize(totalSize)}</b> tamaño total</span>
+                </div>
+                <div class="project-invoice-folder-review-list" data-project-invoice-folder-list></div>
+                <footer>
+                    <button type="button" data-project-folder-cancel>Cancelar</button>
+                    <button type="button" data-project-folder-retry>Elegir otra carpeta</button>
+                    <button type="button" data-project-folder-accept>Analizar ${files.length} facturas</button>
+                </footer>
+            </div>
+        `;
+        overlay.querySelector('header strong').textContent = folderName;
+        overlay.querySelector('header p').textContent = files.length
+            ? 'Estos son los documentos que se analizarán. Revisa la lista antes de continuar.'
+            : 'No se encontraron archivos PDF, Excel, CSV o Word compatibles.';
+        const list = overlay.querySelector('[data-project-invoice-folder-list]');
+        files.forEach((file, index) => {
+            const item = document.createElement('article');
+            const extension = (file.name.split('.').pop() || 'DOC').toUpperCase();
+            item.innerHTML = `
+                <span>${extension}</span>
+                <div><strong></strong><small></small></div>
+                <b>${formatUploadFileSize(file.size)}</b>
+            `;
+            item.querySelector('strong').textContent = file.name;
+            item.querySelector('small').textContent = file.webkitRelativePath || `Documento ${index + 1}`;
+            list.appendChild(item);
+        });
+        if (!files.length) {
+            const empty = document.createElement('p');
+            empty.textContent = 'La carpeta está vacía o no contiene formatos compatibles.';
+            list.appendChild(empty);
+            overlay.querySelector('[data-project-folder-accept]').disabled = true;
+        }
+
+        const finish = (result) => {
+            overlay.classList.remove('is-visible');
+            window.setTimeout(() => overlay.remove(), 220);
+            resolve(result);
+        };
+        overlay.querySelector('[data-project-folder-cancel]').addEventListener('click', () => finish('cancel'));
+        overlay.querySelector('[data-project-folder-retry]').addEventListener('click', () => finish('retry'));
+        overlay.querySelector('[data-project-folder-accept]').addEventListener('click', () => finish('accept'));
+        overlay.addEventListener('click', (event) => {
+            if (event.target === overlay) finish('cancel');
+        });
+        document.body.appendChild(overlay);
+        requestAnimationFrame(() => overlay.classList.add('is-visible'));
+    });
+}
+
+async function importSelectedInvoiceFiles(project, workspace, workspaceState, files, { append = false } = {}) {
+    const selectedFiles = [...files].filter((file) => SUPPORTED_DOCUMENT_UPLOAD_PATTERN.test(file.name || ''));
+    const pdfStatus = workspace.querySelector('[data-project-pdf-status]');
+    const previousPdfDocument = activePdfDocument;
+    const previousInvoicePdfDocuments = new Map(activeInvoicePdfDocuments);
+    const previousInvoicePdfFiles = new Map(activeInvoicePdfFiles);
+    const importProgress = createInvoiceImportProgress(selectedFiles.length, { append });
+    try {
+        const importResult = await importInvoiceFiles(project, workspace, workspaceState, selectedFiles, (message) => {
+            if (pdfStatus) pdfStatus.textContent = message;
+        }, {
+            append,
+            useAi: activeInvoiceAiEnabled,
+            signal: importProgress.signal,
+            onProgress: (progress) => importProgress.update(progress)
+        });
+        importProgress.complete();
+        if (importResult?.aiUnavailableCount > 0) {
+            window.setTimeout(() => {
+                showInvoiceEnhancerNotice(
+                    'No se ha podido utilizar el Potenciador de facturas. '
+                    + 'El documento se ha procesado correctamente con el análisis estándar.'
+                );
+            }, 1250);
+        }
+    } catch (error) {
+        if (error?.name === 'AbortError' || importProgress.signal.aborted) {
+            activePdfDocument = previousPdfDocument;
+            activeInvoicePdfDocuments = previousInvoicePdfDocuments;
+            activeInvoicePdfFiles = previousInvoicePdfFiles;
+            importProgress.cancelled();
+            return;
+        }
+        importProgress.fail(error);
+        throw error;
+    }
+}
+
 function openInvoiceUploadChoice(workspace, workspaceState, input, options = {}) {
     if (!input) return;
 
@@ -5069,8 +6175,33 @@ function openInvoiceUploadChoice(workspace, workspaceState, input, options = {})
     const folderButton = document.createElement('button');
     folderButton.type = 'button';
     folderButton.textContent = 'Seleccionar carpeta';
-    folderButton.addEventListener('click', () => {
+    folderButton.addEventListener('click', async () => {
         closeInvoiceUploadChoice(workspace);
+        if (typeof window.showDirectoryPicker === 'function') {
+            try {
+                while (true) {
+                    const directory = await window.showDirectoryPicker({ mode: 'read' });
+                    const files = await collectInvoiceFilesFromDirectory(directory, directory.name);
+                    const reviewResult = await confirmInvoiceFolderFiles(files, directory.name);
+                    if (reviewResult === 'cancel') return;
+                    if (reviewResult === 'retry') continue;
+                    await importSelectedInvoiceFiles(
+                        activeWorkspaceProject,
+                        workspace,
+                        workspaceState,
+                        files,
+                        { append: uploadMode === 'append' }
+                    );
+                    return;
+                }
+            } catch (error) {
+                if (error?.name !== 'AbortError') {
+                    const pdfStatus = workspace.querySelector('[data-project-pdf-status]');
+                    if (pdfStatus) pdfStatus.textContent = `No se pudo leer la carpeta: ${String(error?.message || error)}`;
+                }
+            }
+            return;
+        }
         preparePdfInputForDocumentType(input, workspaceState, 'folder', uploadMode);
         input.click();
     });
@@ -7568,9 +8699,13 @@ function bindWorkspaceActions(workspace, project, workspaceState) {
 
             if (workspaceState.documentType === 'invoices') {
                 const appendInvoices = pdfInput.dataset.invoiceUploadMode === 'append';
-                await importInvoiceFiles(project, workspace, workspaceState, pdfInput.files || [], (message) => {
-                    if (pdfStatus) pdfStatus.textContent = message;
-                }, { append: appendInvoices });
+                await importSelectedInvoiceFiles(
+                    project,
+                    workspace,
+                    workspaceState,
+                    pdfInput.files || [],
+                    { append: appendInvoices }
+                );
                 return;
             }
 
@@ -7794,6 +8929,9 @@ export async function mountProjectWorkspace(project, user) {
     ensureWorkspaceStylesheet();
     hideMiluApplication();
     activeWorkspaceProject = project;
+    activeInvoiceAiAvailable = Array.isArray(user?.roles) && user.roles.includes('admin');
+    activeInvoiceAiEnabled = false;
+    activeInvoiceMarkMode = false;
     activePdfDocument = null;
     stopSplashScene();
     localStorage.removeItem(getProjectStorageKey(project));
@@ -7817,6 +8955,7 @@ export async function mountProjectWorkspace(project, user) {
     const topbarName = fragment.querySelector('[data-project-topbar-name]');
     const userName = fragment.querySelector('[data-project-user-name]');
     const logoutButton = fragment.querySelector('[data-project-logout]');
+    const invoiceAiToggle = fragment.querySelector('[data-project-invoice-ai-toggle]');
     const icon = workspace.querySelector('[data-project-icon]');
     const name = workspace.querySelector('[data-project-name]');
     const pdfStatus = workspace.querySelector('[data-project-pdf-status]');
@@ -7824,6 +8963,11 @@ export async function mountProjectWorkspace(project, user) {
     if (topbarName) topbarName.textContent = project.name;
     if (userName) userName.textContent = user?.displayName || user?.username || 'Usuario';
     logoutButton?.addEventListener('click', logoutProjectSession);
+    invoiceAiToggle?.addEventListener('click', () => {
+        if (!activeInvoiceAiAvailable) return;
+        activeInvoiceAiEnabled = !activeInvoiceAiEnabled;
+        syncInvoiceAiToggle(workspaceState?.documentType || '');
+    });
 
     if (icon) icon.textContent = project.icon || project.name.slice(0, 1).toUpperCase();
     if (name) name.textContent = project.name;

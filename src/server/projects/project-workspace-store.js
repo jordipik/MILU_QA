@@ -203,12 +203,27 @@ function normalizeInvoice(value) {
             iban: String(payment.iban || '').slice(0, 80),
             method: String(payment.method || '').slice(0, 180)
         },
+        lineColumnLabels: value.lineColumnLabels && typeof value.lineColumnLabels === 'object'
+            ? Object.fromEntries(
+                Object.entries(value.lineColumnLabels)
+                    .slice(0, 12)
+                    .map(([key, label]) => [
+                        String(key || '').slice(0, 40),
+                        String(label || '').slice(0, 120)
+                    ])
+                    .filter(([key, label]) => key && label)
+            )
+            : {},
         lineItems: Array.isArray(value.lineItems)
             ? value.lineItems.slice(0, 500).map((item, index) => ({
                 id: String(item?.id || `line-${index + 1}`).slice(0, 80),
+                code: String(item?.code || '').slice(0, 120),
                 description: String(item?.description || '').slice(0, 500),
                 quantity: item?.quantity == null || item?.quantity === '' ? null : Number(item.quantity || 0),
+                unit: String(item?.unit || '').slice(0, 80),
                 unitPrice: item?.unitPrice == null || item?.unitPrice === '' ? null : Number(item.unitPrice || 0),
+                discount: item?.discount == null || item?.discount === '' ? null : Number(item.discount || 0),
+                taxRate: item?.taxRate == null || item?.taxRate === '' ? null : Number(item.taxRate || 0),
                 total: item?.total == null || item?.total === '' ? null : Number(item.total || 0),
                 sourceBox: normalizeSourceBox(item?.sourceBox)
             }))
@@ -223,6 +238,16 @@ function normalizeInvoice(value) {
             })).filter((field) => field.label && field.value)
             : [],
         rawTextSample: String(value.rawTextSample || '').slice(0, 5000),
+        aiRefinement: value.aiRefinement && typeof value.aiRefinement === 'object'
+            ? {
+                applied: Boolean(value.aiRefinement.applied),
+                model: String(value.aiRefinement.model || '').slice(0, 80),
+                confidence: Number(value.aiRefinement.confidence || 0),
+                warnings: Array.isArray(value.aiRefinement.warnings)
+                    ? value.aiRefinement.warnings.slice(0, 20).map((warning) => String(warning || '').slice(0, 240))
+                    : []
+            }
+            : null,
         detectedFields: Number(value.detectedFields || 0)
     };
 }

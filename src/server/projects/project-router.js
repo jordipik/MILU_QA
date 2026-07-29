@@ -1,6 +1,11 @@
 'use strict';
 
 const express = require('express');
+const fs = require('node:fs/promises');
+const os = require('node:os');
+const path = require('node:path');
+const { randomUUID } = require('node:crypto');
+const { PDFDocument } = require('pdf-lib');
 const { requireAuth } = require('../auth/auth-router');
 const {
     assignProjectToUser,
@@ -19,6 +24,7 @@ const {
     saveProjectWorkspace
 } = require('./project-workspace-store');
 const {
+    deleteSavedWorkspace,
     listSavedWorkspaces,
     readSavedWorkspace,
     readSavedInvoiceWorkspacePdf,
@@ -37,6 +43,7 @@ const {
 } = require('./project-pdf-store');
 const {
     extractProjectInvoicePdf,
+    extractProjectInvoiceLinesRegion,
     extractProjectPdf
 } = require('./project-pdf-extractor');
 const {
@@ -45,6 +52,9 @@ const {
 const {
     exportInvoiceExcel
 } = require('./project-invoice-excel-exporter');
+const {
+    refineInvoiceExtractionWithAi
+} = require('./project-invoice-ai-refiner');
 const {
     checkWordPressPartNumbers,
     connectWordPress,
@@ -321,6 +331,19 @@ router.post('/:projectId/pdf/extract-invoice', requireAuth, async (req, res) => 
                 documentType: 'invoice'
             });
 
+        const isAdmin = Array.isArray(req.auth.user.roles)
+            && req.auth.user.roles.includes('admin');
+        const applyAi = req.body?.useAi === true && isAdmin;
+        if (applyAi) {
+            const analysisPdfBuffer = result?.convertedDocument?.buffer
+                || readProjectPdf(project.id).buffer;
+            result = await refineInvoiceExtractionWithAi({
+                result,
+                pdfBuffer: analysisPdfBuffer,
+                fileName: result?.convertedDocument?.fileName || pdfMeta.fileName
+            });
+        }
+
         if (result?.convertedDocument?.buffer) {
             const convertedBuffer = result.convertedDocument.buffer;
             const convertedFileName =
@@ -354,6 +377,73 @@ router.post('/:projectId/pdf/extract-invoice', requireAuth, async (req, res) => 
         });
     } catch (error) {
         return sendProjectError(res, error);
+    }
+});
+
+router.post('/:projectId/pdf/extract-invoice-lines-region', requireAuth, async (req, res) => {
+    let temporaryPdfPath = '';
+    try {
+        const project = getProjectById(req.params.projectId);
+        if (!project) return res.status(404).json({ ok: false, error: 'Proyecto no encontrado.' });
+        if (!canAccessProject(req.auth.user, project)) {
+            return res.status(403).json({ ok: false, error: 'No tienes acceso a este proyecto.' });
+        }
+        const pdfMeta = readProjectPdfMeta(project.id);
+        let pdfPath = readProjectPdfPath(project.id);
+        if (!pdfMeta || !pdfPath) {
+            return res.status(404).json({ ok: false, error: 'Documento PDF no encontrado.' });
+        }
+        const input = req.body?.region || {};
+        const region = {
+            page: Math.max(1, Number.parseInt(input.page, 10) || 1),
+            x1: Number(input.x1),
+            y1: Number(input.y1),
+            x2: Number(input.x2),
+            y2: Number(input.y2)
+        };
+        const coordinates = [region.x1, region.y1, region.x2, region.y2];
+        if (coordinates.some((value) => !Number.isFinite(value) || value < 0 || value > 1)
+            || region.x2 - region.x1 < 0.01 || region.y2 - region.y1 < 0.01) {
+            return res.status(400).json({ ok: false, error: 'La zona seleccionada no es valida.' });
+        }
+        const imageMatch = String(req.body?.imageData || '').match(/^data:image\/png;base64,([A-Za-z0-9+/=]+)$/);
+        if (imageMatch) {
+            const imageBuffer = Buffer.from(imageMatch[1], 'base64');
+            if (!imageBuffer.length || imageBuffer.length > 25 * 1024 * 1024) {
+                return res.status(400).json({ ok: false, error: 'La captura seleccionada no es valida.' });
+            }
+            const document = await PDFDocument.create();
+            const image = await document.embedPng(imageBuffer);
+            // La captura del escáner se genera a alta resolución. Conservamos
+            // sus píxeles a 500 DPI para evitar que el PDF temporal la amplíe
+            // artificialmente y RapidOCR pierda nitidez o consuma memoria.
+            const regionDpi = 500;
+            const pageWidth = Math.max(1, image.width * 72 / regionDpi);
+            const pageHeight = Math.max(1, image.height * 72 / regionDpi);
+            const page = document.addPage([pageWidth, pageHeight]);
+            page.drawImage(image, { x: 0, y: 0, width: pageWidth, height: pageHeight });
+            temporaryPdfPath = path.join(os.tmpdir(), `invoice-region-${randomUUID()}.pdf`);
+            await fs.writeFile(temporaryPdfPath, await document.save());
+            pdfPath = temporaryPdfPath;
+            region.page = 1;
+            region.x1 = 0;
+            region.y1 = 0;
+            region.x2 = 1;
+            region.y2 = 1;
+        }
+        const result = await extractProjectInvoiceLinesRegion({
+            projectId: project.id,
+            pdfPath,
+            fileName: pdfMeta.fileName,
+            region
+        });
+        return res.json(result);
+    } catch (error) {
+        return sendProjectError(res, error);
+    } finally {
+        if (temporaryPdfPath) {
+            fs.unlink(temporaryPdfPath).catch(() => {});
+        }
     }
 });
 
@@ -522,6 +612,23 @@ router.post('/:projectId/saved-workspaces/:fileId/load', requireAuth, (req, res)
             project,
             ...restoreSavedWorkspace(project.id, req.params.fileId)
         });
+    } catch (error) {
+        return sendProjectError(res, error);
+    }
+});
+
+router.delete('/:projectId/saved-workspaces/:fileId', requireAuth, (req, res) => {
+    try {
+        const project = getProjectById(req.params.projectId);
+        if (!project) {
+            return res.status(404).json({ ok: false, error: 'Proyecto no encontrado.' });
+        }
+        if (!canAccessProject(req.auth.user, project)) {
+            return res.status(403).json({ ok: false, error: 'No tienes acceso a este proyecto.' });
+        }
+
+        const file = deleteSavedWorkspace(project.id, req.params.fileId);
+        return res.json({ ok: true, project, file });
     } catch (error) {
         return sendProjectError(res, error);
     }
