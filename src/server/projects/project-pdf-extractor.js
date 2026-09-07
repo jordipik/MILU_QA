@@ -7,6 +7,22 @@ const PRODUCT_EXTRACTOR_SCRIPT = path.join(__dirname, 'pdf_extractors', 'pdf_mul
 const INVOICE_EXTRACTOR_SCRIPT = path.join(__dirname, 'pdf_extractors', 'pdf_invoice_extract.py');
 const DEFAULT_TIMEOUT_MS = 180000;
 
+function resolvePythonBin() {
+    const configured = process.env.PDF_EXTRACTOR_PYTHON || process.env.PYTHON_BIN;
+    if (configured) return configured;
+
+    const repositoryRoot = path.resolve(__dirname, '..', '..', '..');
+    const virtualEnvironmentPython = process.platform === 'win32'
+        ? path.join(repositoryRoot, '.venv-invoices', 'Scripts', 'python.exe')
+        : path.join(repositoryRoot, '.venv-invoices', 'bin', 'python');
+
+    // existsSync is intentional here: spawning the repository's prepared OCR
+    // environment avoids silently falling back to an unrelated system Python.
+    return require('node:fs').existsSync(virtualEnvironmentPython)
+        ? virtualEnvironmentPython
+        : 'python';
+}
+
 function parseJsonOutput(output) {
     const text = String(output || '').trim();
     if (!text) {
@@ -26,7 +42,7 @@ function parseJsonOutput(output) {
 
 function runPythonExtractor({ pdfPath, projectId, fileName, scriptPath = PRODUCT_EXTRACTOR_SCRIPT, extraArgs = [] }) {
     return new Promise((resolve, reject) => {
-        const pythonBin = process.env.PDF_EXTRACTOR_PYTHON || process.env.PYTHON_BIN || 'python';
+        const pythonBin = resolvePythonBin();
         const args = [
             scriptPath,
             '--pdf',
@@ -110,6 +126,14 @@ async function extractProjectInvoicePdf(options) {
         ...options,
         scriptPath: INVOICE_EXTRACTOR_SCRIPT
     });
+    if (!result?.workspace?.invoice) {
+        const details = Array.isArray(result?.report?.problems)
+            ? result.report.problems.filter(Boolean).join(' ')
+            : '';
+        const error = new Error(details || 'No se pudo analizar la factura con ningun motor PDF/OCR.');
+        error.status = 502;
+        throw error;
+    }
     return {
         ok: true,
         extractor: result

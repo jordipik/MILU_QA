@@ -62,7 +62,7 @@ const invoiceSchema = {
                 additionalProperties: false,
                 required: [
                     'code', 'description', 'quantity', 'unit', 'unitPrice',
-                    'discount', 'taxRate', 'total'
+                    'discount', 'taxRate', 'total', 'origin'
                 ],
                 properties: {
                     code: nullableString,
@@ -72,7 +72,8 @@ const invoiceSchema = {
                     unitPrice: nullableNumber,
                     discount: nullableNumber,
                     taxRate: nullableNumber,
-                    total: nullableNumber
+                    total: nullableNumber,
+                    origin: nullableString
                 }
             }
         },
@@ -156,6 +157,7 @@ function sanitizeLineItems(items, currency) {
             discount,
             taxRate,
             total,
+            origin: cleanText(item.origin, 100),
             currency
         };
     }).filter(Boolean);
@@ -279,6 +281,8 @@ async function requestAiInvoice({ invoice, pdfBuffer, fileName }) {
                                 'No conviertas cabeceras, fechas, totales, impuestos ni datos bancarios en líneas.',
                                 'Comprueba cantidad × precio × descuento = total de línea.',
                                 'El IVA por línea debe estar entre 0 y 30. Conserva todos los idiomas y textos originales.',
+                                'Por cada articulo conserva codigo/modelo/folio, UMC, descripcion, precio unitario, precio total y origen solo si aparecen explicitamente.',
+                                'Prioriza proveedor, factura, cliente, mercancia, total, Incoterm, bultos, contenedores, exportador autorizado, peso y volumen CBM.',
                                 `Archivo: ${cleanText(fileName, 180)}`,
                                 `OCR candidato: ${JSON.stringify(invoice)}`
                             ].join('\n')

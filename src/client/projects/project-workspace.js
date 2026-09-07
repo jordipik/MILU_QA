@@ -2192,6 +2192,7 @@ const INVOICE_TABLE_COLUMNS = [
     { key: 'unitPrice', label: 'Precio ud.', dynamic: true },
     { key: 'discount', label: 'Descuento', dynamic: true },
     { key: 'taxRate', label: 'IVA %', dynamic: true },
+    { key: 'origin', label: 'Origen', dynamic: true },
     { key: 'total', label: 'Total', dynamic: true }
 ];
 
@@ -2203,6 +2204,7 @@ const INVOICE_HEADER_LABELS = {
     unitPrice: 'Precio ud.',
     discount: 'Descuento',
     taxRate: 'IVA %',
+    origin: 'Origen',
     total: 'Total'
 };
 
@@ -2219,6 +2221,7 @@ function buildInvoiceRows(invoice) {
             unitPrice: item.unitPrice ?? '',
             discount: item.discount ?? '',
             taxRate: item.taxRate ?? '',
+            origin: item.origin ?? '',
             total: item.total ?? ''
         },
         geometry: item.sourceBox ? {
@@ -2248,6 +2251,7 @@ function buildInvoiceFromDocumentRows(result, file) {
             unitPrice: safeText(cells.unitPrice || cells.price || cells.precio),
             discount: safeText(cells.discount || cells.descuento || cells.dte),
             taxRate: safeText(cells.taxRate || cells.iva || cells.vat || cells.tax),
+            origin: safeText(cells.origin || cells.origen || cells.countryOfOrigin),
             total: safeText(cells.total || cells.importe),
             sourceBox: null
         };
@@ -2660,6 +2664,44 @@ function enhanceImportedInvoice(invoice) {
     };
 }
 
+function normalizeInvoicePartyIdentity(value) {
+    return safeText(value)
+        .normalize('NFD')
+        .replace(/[\u0300-\u036f]/g, '')
+        .toUpperCase()
+        .replace(/[^A-Z0-9]/g, '');
+}
+
+function registerOrReconcileInvoiceSupplier(invoice, registry) {
+    const supplier = { ...(invoice?.supplier || {}) };
+    const taxKey = normalizeInvoicePartyIdentity(supplier.taxId);
+    const nameKey = normalizeInvoicePartyIdentity(supplier.name);
+    const identityKey = taxKey ? `tax:${taxKey}` : (nameKey.length >= 5 ? `name:${nameKey}` : '');
+    if (!identityKey) {
+        return { ...invoice, supplierValidation: { status: 'unidentified', key: '', conflicts: [] } };
+    }
+    const registered = registry.get(identityKey);
+    if (!registered) {
+        registry.set(identityKey, supplier);
+        return { ...invoice, supplier, supplierValidation: { status: 'registered', key: identityKey, conflicts: [] } };
+    }
+    const conflicts = ['name', 'taxId', 'address'].filter((field) => (
+        normalizeInvoicePartyIdentity(registered[field])
+        && normalizeInvoicePartyIdentity(supplier[field])
+        && normalizeInvoicePartyIdentity(registered[field]) !== normalizeInvoicePartyIdentity(supplier[field])
+    ));
+    const reconciled = Object.fromEntries(['name', 'taxId', 'address', 'email', 'phone'].map((field) => [
+        field,
+        registered[field] || supplier[field] || ''
+    ]));
+    registry.set(identityKey, reconciled);
+    return {
+        ...invoice,
+        supplier: reconciled,
+        supplierValidation: { status: conflicts.length ? 'conflict' : 'matched', key: identityKey, conflicts }
+    };
+}
+
 function getInvoiceRecordId(file, index) {
     const base = safeText(file?.webkitRelativePath || file?.name || `factura-${index + 1}`);
     return `invoice-${Date.now()}-${index + 1}-${base.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '').slice(0, 80)}`;
@@ -2720,6 +2762,10 @@ async function importInvoiceFiles(project, workspace, workspaceState, files, onS
         ? [...workspaceState.invoices]
         : [];
     const records = [...existingRecords];
+    const supplierRegistry = new Map();
+    existingRecords.forEach((record) => {
+        registerOrReconcileInvoiceSupplier(record?.invoice || {}, supplierRegistry);
+    });
     const previousReport = shouldAppend && workspaceState.extractionReport
         ? workspaceState.extractionReport
         : null;
@@ -2839,7 +2885,10 @@ async function importInvoiceFiles(project, workspace, workspaceState, files, onS
             throw new Error(`No se pudo convertir "${file.name}" a PDF para usar el extractor de facturas.`);
         }
 
-        const invoice = enhanceImportedInvoice(invoiceResult.invoice || buildInvoiceFromDocumentRows(invoiceResult, file));
+        const invoice = registerOrReconcileInvoiceSupplier(
+            enhanceImportedInvoice(invoiceResult.invoice || buildInvoiceFromDocumentRows(invoiceResult, file)),
+            supplierRegistry
+        );
         const rows = buildInvoiceRows(invoice);
         const recordId = getInvoiceRecordId(file, records.length + index);
 
@@ -3953,11 +4002,16 @@ function buildInvoiceDynamicSections(invoice) {
         add('Cliente', labels[key] || key, value, sourceFor('Cliente', labels[key] || key, value), ['customer', key]);
     });
 
-    return [...sections.entries()];
+    const priority = ['Emisor', 'Factura', 'Cliente', 'Mercancia', 'Datos adicionales', 'Importes', 'Fiscal', 'Pago', 'Aduanas', 'Comercio', 'Contacto'];
+    return [...sections.entries()].sort((left, right) => {
+        const leftIndex = priority.findIndex((name) => name.toLowerCase() === left[0].toLowerCase());
+        const rightIndex = priority.findIndex((name) => name.toLowerCase() === right[0].toLowerCase());
+        return (leftIndex < 0 ? 999 : leftIndex) - (rightIndex < 0 ? 999 : rightIndex);
+    });
 }
 
 const INVOICE_LINE_COLUMN_KEYS = [
-    'code', 'description', 'quantity', 'unit', 'unitPrice', 'discount', 'taxRate', 'total'
+    'code', 'description', 'quantity', 'unit', 'unitPrice', 'discount', 'taxRate', 'origin', 'total'
 ];
 
 function classifyInvoiceLineHeader(label, fallbackIndex = 0) {
@@ -3970,6 +4024,7 @@ function classifyInvoiceLineHeader(label, fallbackIndex = 0) {
     if (/disc|discount|descuento|dte\.?|rabatt|折扣/.test(key)) return 'discount';
     if (/iva|vat|tax|mwst|ust|税率|税/.test(key)) return 'taxRate';
     if (/total|importe|amount|betrag|line.*total|金额|合计/.test(key)) return 'total';
+    if (/origin|origen|country.*origin|ursprung|herkunft/.test(key)) return 'origin';
     return INVOICE_LINE_COLUMN_KEYS[Math.min(fallbackIndex, INVOICE_LINE_COLUMN_KEYS.length - 1)];
 }
 
@@ -4090,6 +4145,272 @@ async function renderInvoiceRegionForOcr(pageNumber, region, fallbackCanvas) {
         console.warn('No se pudo renderizar el recorte de alta precisión; se usa el recorte visible.', error);
         return fallbackCanvas;
     }
+}
+
+function scoreInvoiceRegionResult(data, stage = 'content') {
+    const words = Array.isArray(data?.regionWords)
+        ? data.regionWords
+        : [];
+
+    const lines = Array.isArray(data?.lineItems)
+        ? data.lineItems
+        : [];
+
+    let score = 0;
+
+    score += Math.min(words.length, 300) * 0.05;
+
+    if (stage === 'headers') {
+        const headers = extractInvoiceLineHeaders(words);
+
+        score += headers.length * 8;
+
+        headers.forEach((header) => {
+            const key = classifyInvoiceLineHeader(
+                header,
+                0
+            );
+
+            if (
+                [
+                    'code',
+                    'description',
+                    'quantity',
+                    'unit',
+                    'unitPrice',
+                    'total'
+                ].includes(key)
+            ) {
+                score += 5;
+            }
+        });
+
+        return score;
+    }
+
+    lines.forEach((item) => {
+        if (safeText(item?.description)) score += 5;
+        if (safeText(item?.code)) score += 2;
+
+        if (
+            item?.quantity !== null
+            && item?.quantity !== undefined
+        ) {
+            score += 3;
+        }
+
+        if (
+            item?.unitPrice !== null
+            && item?.unitPrice !== undefined
+        ) {
+            score += 4;
+        }
+
+        if (
+            item?.total !== null
+            && item?.total !== undefined
+        ) {
+            score += 5;
+        }
+    });
+
+    score += Math.min(lines.length, 100) * 2;
+
+    return score;
+}
+
+
+function createInvoiceOcrVariant(
+    sourceCanvas,
+    {
+        scale = 1,
+        contrast = 1,
+        grayscale = false
+    } = {}
+) {
+    const canvas = document.createElement('canvas');
+
+    canvas.width = Math.max(
+        1,
+        Math.round(sourceCanvas.width * scale)
+    );
+
+    canvas.height = Math.max(
+        1,
+        Math.round(sourceCanvas.height * scale)
+    );
+
+    const ctx = canvas.getContext(
+        '2d',
+        {
+            alpha: false,
+            willReadFrequently: true
+        }
+    );
+
+    ctx.fillStyle = '#ffffff';
+    ctx.fillRect(
+        0,
+        0,
+        canvas.width,
+        canvas.height
+    );
+
+    const filters = [];
+
+    if (grayscale) {
+        filters.push('grayscale(1)');
+    }
+
+    if (contrast !== 1) {
+        filters.push(`contrast(${contrast})`);
+    }
+
+    if (filters.length) {
+        ctx.filter = filters.join(' ');
+    }
+
+    ctx.drawImage(
+        sourceCanvas,
+        0,
+        0,
+        canvas.width,
+        canvas.height
+    );
+
+    ctx.filter = 'none';
+
+    return canvas;
+}
+
+
+async function scanInvoiceRegionWithRetries({
+    projectId,
+    canvas,
+    region,
+    stage
+}) {
+    const variants = [
+        {
+            name: 'original',
+            canvas
+        },
+
+        {
+            name: 'contraste',
+            canvas: createInvoiceOcrVariant(
+                canvas,
+                {
+                    contrast: 1.35,
+                    grayscale: true
+                }
+            )
+        },
+
+        {
+            name: 'ampliado',
+            canvas: createInvoiceOcrVariant(
+                canvas,
+                {
+                    scale: 1.35,
+                    contrast: 1.18,
+                    grayscale: true
+                }
+            )
+        }
+    ];
+
+    let best = null;
+
+    for (const variant of variants) {
+        try {
+            const data = await fetchProjectJson(
+                `/api/projects/${encodeURIComponent(projectId)}/pdf/extract-invoice-lines-region`,
+                {
+                    method: 'POST',
+                    body: JSON.stringify({
+                        imageData:
+                            variant.canvas.toDataURL(
+                                'image/png'
+                            ),
+
+                        region
+                    })
+                }
+            );
+
+            const score = scoreInvoiceRegionResult(
+                data,
+                stage
+            );
+
+            console.log(
+                '[OCR LÍNEAS]',
+                variant.name,
+                {
+                    score,
+                    words:
+                        data?.regionWords?.length || 0,
+                    lines:
+                        data?.lineItems?.length || 0
+                }
+            );
+
+            if (
+                !best
+                || score > best.score
+            ) {
+                best = {
+                    data,
+                    score,
+                    variant:
+                        variant.name
+                };
+            }
+
+            /*
+             * Si la lectura ya es suficientemente buena
+             * no gastamos tiempo en más OCR.
+             */
+            if (
+                stage === 'headers'
+                && extractInvoiceLineHeaders(
+                    data?.regionWords || []
+                ).length >= 4
+            ) {
+                break;
+            }
+
+            if (
+                stage === 'content'
+                && Array.isArray(data?.lineItems)
+                && data.lineItems.length >= 3
+                && score >= 30
+            ) {
+                break;
+            }
+
+        } catch (error) {
+            console.warn(
+                `[OCR LÍNEAS] Falló variante ${variant.name}`,
+                error
+            );
+        }
+    }
+
+    if (!best?.data) {
+        throw new Error(
+            'Ningún intento OCR pudo analizar la zona.'
+        );
+    }
+
+    console.log(
+        '[OCR LÍNEAS] mejor intento:',
+        best.variant,
+        best.score
+    );
+
+    return best.data;
 }
 
 function startInvoiceLineRegionScan(workspace, workspaceState, triggerButton, options = {}) {
@@ -4240,16 +4561,16 @@ function startInvoiceLineRegionScan(workspace, workspaceState, triggerButton, op
                     precisionCropCanvas
                 );
             }
-            const data = await fetchProjectJson(
-                `/api/projects/${encodeURIComponent(activeWorkspaceProject.id)}/pdf/extract-invoice-lines-region`,
-                {
-                    method: 'POST',
-                    body: JSON.stringify({
-                        imageData: analysisCanvas.toDataURL('image/png'),
-                        region: normalizedRegion
-                    })
-                }
-            );
+            hint.textContent = scanStage === 'headers'
+                ? 'Leyendo columnas y comprobando varios métodos OCR…'
+                : 'Analizando líneas y comprobando varios métodos OCR…';
+
+            const data = await scanInvoiceRegionWithRetries({
+                projectId: activeWorkspaceProject.id,
+                canvas: analysisCanvas,
+                region: normalizedRegion,
+                stage: scanStage
+            });
             if (scanStage === 'headers') {
                 const headers = extractInvoiceLineHeaders(data.regionWords);
                 if (!headers.length) {
@@ -4437,6 +4758,7 @@ function renderInvoiceView(workspace, workspaceState) {
             unitPrice: 'Precio ud.',
             discount: 'Descuento',
             taxRate: 'IVA %',
+            origin: 'Origen',
             total: 'Total'
         };
         const scannedLineColumnKeys = Object.keys(invoice.lineColumnLabels || {})
@@ -4471,6 +4793,7 @@ function renderInvoiceView(workspace, workspaceState) {
                 unitPrice: formatInvoiceAmount(item.unitPrice, currency),
                 discount: item.discount == null ? '-' : `${item.discount}%`,
                 taxRate: item.taxRate == null ? '-' : `${item.taxRate}%`,
+                origin: item.origin || '-',
                 total: formatInvoiceAmount(item.total, currency)
             };
             displayLineColumnKeys.map((key) => [key, lineValues[key]]).forEach(([key, value]) => {

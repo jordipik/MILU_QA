@@ -192,6 +192,15 @@ function normalizeInvoice(value) {
         currency: String(value.currency || '').slice(0, 16),
         supplier: normalizeInvoiceParty(value.supplier),
         customer: normalizeInvoiceParty(value.customer),
+        supplierValidation: value.supplierValidation && typeof value.supplierValidation === 'object'
+            ? {
+                status: String(value.supplierValidation.status || '').slice(0, 30),
+                key: String(value.supplierValidation.key || '').slice(0, 160),
+                conflicts: Array.isArray(value.supplierValidation.conflicts)
+                    ? value.supplierValidation.conflicts.slice(0, 10).map((field) => String(field || '').slice(0, 40))
+                    : []
+            }
+            : null,
         amounts: {
             subtotal: normalizeInvoiceAmount(amounts.subtotal),
             tax: normalizeInvoiceAmount(amounts.tax),
@@ -225,9 +234,28 @@ function normalizeInvoice(value) {
                 discount: item?.discount == null || item?.discount === '' ? null : Number(item.discount || 0),
                 taxRate: item?.taxRate == null || item?.taxRate === '' ? null : Number(item.taxRate || 0),
                 total: item?.total == null || item?.total === '' ? null : Number(item.total || 0),
+                origin: String(item?.origin || '').slice(0, 120),
                 sourceBox: normalizeSourceBox(item?.sourceBox)
             }))
             : [],
+        lineAnalysis: value.lineAnalysis && typeof value.lineAnalysis === 'object'
+            ? {
+                documentPageCount: Number(value.lineAnalysis.documentPageCount || 0),
+                pagesWithLines: Array.isArray(value.lineAnalysis.pagesWithLines)
+                    ? value.lineAnalysis.pagesWithLines.slice(0, 500).map(Number).filter(Number.isFinite)
+                    : [],
+                rowsByPage: value.lineAnalysis.rowsByPage && typeof value.lineAnalysis.rowsByPage === 'object'
+                    ? Object.fromEntries(Object.entries(value.lineAnalysis.rowsByPage).slice(0, 500).map(([page, rows]) => [
+                        String(page).slice(0, 10),
+                        Number(rows || 0)
+                    ]))
+                    : {},
+                lineTotal: normalizeInvoiceAmount(value.lineAnalysis.lineTotal),
+                documentTotal: normalizeInvoiceAmount(value.lineAnalysis.documentTotal),
+                totalSource: String(value.lineAnalysis.totalSource || '').slice(0, 20),
+                totalMatchesLines: Boolean(value.lineAnalysis.totalMatchesLines)
+            }
+            : null,
         fields: Array.isArray(value.fields)
             ? value.fields.slice(0, 300).map((field) => ({
                 section: String(field?.section || 'Factura').slice(0, 80),

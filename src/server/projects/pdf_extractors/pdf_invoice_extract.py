@@ -1,6 +1,7 @@
 ﻿#!/usr/bin/env python3
 import argparse
 import csv
+import functools
 import importlib.util
 import io
 import json
@@ -73,11 +74,13 @@ def clean(value):
     return re.sub(r"\s+", " ", text).strip()
 
 
+@functools.lru_cache(maxsize=20000)
 def strip_accents(value):
     text = unicodedata.normalize("NFKD", str(value or ""))
     return "".join(char for char in text if not unicodedata.combining(char))
 
 
+@functools.lru_cache(maxsize=20000)
 def normalize_key(value):
     return re.sub(r"[^A-Z0-9]+", "", strip_accents(clean(value)).upper())
 
@@ -87,6 +90,7 @@ def normalize_header_key(value):
     return re.sub(r"[^A-Z0-9\u3400-\u9fff\u3040-\u30ff\uac00-\ud7af]+", "", strip_accents(clean(value)).upper())
 
 
+@functools.lru_cache(maxsize=10000)
 def normalize_label_text(value):
     return re.sub(r"[\s:：#\-–—.]+", "", strip_accents(clean(value)).lower())
 
@@ -183,20 +187,32 @@ LANGUAGE_NAMES = {
 
 
 FIELD_SECTION_ORDER = [
-    "FACTURA",
     "EMISOR",
+    "FACTURA",
     "CLIENTE",
-    "FISCAL",
-    "CONTACTO",
-    "PAGO",
-    "IMPORTES",
     "MERCANCIA",
+    "DATOSADICIONALES",
+    "IMPORTES",
+    "FISCAL",
+    "PAGO",
     "ADUANAS",
     "COMERCIO",
+    "CONTACTO",
 ]
 
 
 PRIORITY_INVOICE_FIELD_SPECS = [
+    {
+        "section": "Importes",
+        "label": "Total de la factura",
+        "canonical": "total",
+        "aliases": [
+            "Total factura", "Importe total", "Total a pagar", "Total documento",
+            "Invoice total", "Grand total", "Total due", "Amount due",
+            "Gesamtbetrag", "Montant total", "Totale fattura", "Valor total",
+            "合计", "總計", "Итого",
+        ],
+    },
     {
         "section": "Factura",
         "label": "Numero de factura",
@@ -247,7 +263,7 @@ PRIORITY_INVOICE_FIELD_SPECS = [
         ],
     },
     {
-        "section": "Aduanas",
+        "section": "Mercancia",
         "label": "Fraccion arancelaria",
         "canonical": "tariffCode",
         "aliases": [
@@ -272,7 +288,7 @@ PRIORITY_INVOICE_FIELD_SPECS = [
         ],
     },
     {
-        "section": "Aduanas",
+        "section": "Mercancia",
         "label": "Pais de origen",
         "canonical": "countryOfOrigin",
         "aliases": [
@@ -284,7 +300,7 @@ PRIORITY_INVOICE_FIELD_SPECS = [
         ],
     },
     {
-        "section": "Aduanas",
+        "section": "Datos adicionales",
         "label": "Datos del exportador autorizado",
         "canonical": "authorizedExporter",
         "aliases": [
@@ -298,7 +314,7 @@ PRIORITY_INVOICE_FIELD_SPECS = [
         ],
     },
     {
-        "section": "Comercio",
+        "section": "Datos adicionales",
         "label": "Incoterm",
         "canonical": "incoterm",
         "aliases": [
@@ -330,6 +346,54 @@ PRIORITY_INVOICE_FIELD_SPECS = [
             "Valeur en douane", "Valore doganale", "Valor aduaneiro",
             "Zollwert", "Douanewaarde", "海关价值", "完税价格", "課税価格",
             "관세 가격", "القيمة الجمركية", "Таможенная стоимость",
+        ],
+    },
+    {
+        "section": "Datos adicionales",
+        "label": "Numero de bultos",
+        "canonical": "packageCount",
+        "aliases": [
+            "Numero de bultos", "Nº de bultos", "Bultos", "Paquetes", "Packages",
+            "Number of packages", "Packing", "Package count", "Pallets", "Pallet count",
+            "Number of pallets", "Bultos / pallets", "Packstücke", "Packstucke", "Colis",
+            "Colli", "件数", "包装件数", "包裹数",
+        ],
+    },
+    {
+        "section": "Datos adicionales",
+        "label": "Numero de contenedores",
+        "canonical": "containerCount",
+        "aliases": [
+            "Numero de contenedores", "Nº contenedores", "Contenedores",
+            "Number of containers", "Containers", "Container count",
+            "Anzahl Container", "Nombre de conteneurs", "集装箱数量", "貨櫃數量",
+        ],
+    },
+    {
+        "section": "Datos adicionales",
+        "label": "Numero de contenedor",
+        "canonical": "containerNumber",
+        "aliases": [
+            "Numero de contenedor", "Nº contenedor", "Container number", "Container no",
+            "Container #", "Containernummer", "Numero de conteneur", "集装箱号", "貨櫃號碼",
+        ],
+    },
+    {
+        "section": "Datos adicionales",
+        "label": "Peso",
+        "canonical": "weight",
+        "aliases": [
+            "Peso", "Peso bruto", "Peso neto", "Weight", "Gross weight", "Net weight",
+            "Gewicht", "Bruttogewicht", "Nettogewicht", "Poids", "重量", "毛重", "净重",
+        ],
+    },
+    {
+        "section": "Datos adicionales",
+        "label": "Volumen (CBM)",
+        "canonical": "volumeCbm",
+        "aliases": [
+            "Volumen", "Volumen CBM", "CBM", "Volume", "Cubic meters", "Cubic metres",
+            "Kubikmeter", "Volume m3", "体积", "立方米",
         ],
     },
 ]
@@ -534,6 +598,11 @@ def canonical_label(section, label):
         ("incoterm", ["INCOTERM", "INCOTERMS", "TRADETERM", "DELIVERYTERM", "TERMINOSDEENTREGA"]),
         ("tariffUnit", ["UNIDADDEMEDIDA", "UNIDADTARIFARIA", "UNIDADDEMEDIDATARIFARIA", "UNITOFMEASURE", "MEASUREUNIT", "TARIFFUNIT", "CUSTOMSUNIT"]),
         ("customsValue", ["VALORENADUANA", "VALORESADUANALES", "VALORADUANAL", "CUSTOMSVALUE", "CUSTOMSVALUATION", "VALUEFORCUSTOMS", "VALORDECLARADO", "DECLAREDVALUE"]),
+        ("packageCount", ["NUMERODEBULTOS", "BULTOS", "PAQUETES", "NUMBEROFPACKAGES", "PACKAGES", "PACKING", "PACKSTUCKE"]),
+        ("containerCount", ["NUMERODECONTENEDORES", "CONTENEDORES", "NUMBEROFCONTAINERS", "CONTAINERCOUNT"]),
+        ("containerNumber", ["NUMERODECONTENEDOR", "NOCONTENEDOR", "CONTAINERNUMBER", "CONTAINERNO"]),
+        ("weight", ["PESO", "PESOBRUTO", "PESONETO", "WEIGHT", "GROSSWEIGHT", "NETWEIGHT", "GEWICHT"]),
+        ("volumeCbm", ["VOLUMEN", "VOLUMENCBM", "VOLUME", "CBM", "CUBICMETERS", "CUBICMETRES"]),
     ]
     for canonical, tokens in checks:
         if any(token in key for token in tokens):
@@ -608,6 +677,11 @@ def prettify_field(field):
         "incoterm": "Incoterm",
         "tariffUnit": "Unidad de medida",
         "customsValue": "Valor en aduana",
+        "packageCount": "Numero de bultos",
+        "containerCount": "Numero de contenedores",
+        "containerNumber": "Numero de contenedor",
+        "weight": "Peso",
+        "volumeCbm": "Volumen (CBM)",
     }
     canonical = canonical_label(field.get("section"), field.get("label"))
     if canonical in labels:
@@ -698,6 +772,13 @@ def filter_invoice_fields(fields, invoice):
                     )
                 ):
                     continue
+        if section == "DATOSADICIONALES":
+            if canonical not in {"packageCount", "containerCount", "containerNumber", "authorizedExporter", "incoterm", "weight", "volumeCbm"}:
+                continue
+            normalized_value = priority_field_value(canonical, value, invoice_currency)
+            if not normalized_value:
+                continue
+            field = {**field, "value": normalized_value}
         if canonical == "iban":
             normalized_iban = normalize_iban(value)
             if not normalized_iban:
@@ -1133,18 +1214,31 @@ def read_with_rapidocr(pdf_path):
             else:
                 x1 = y1 = x2 = y2 = 0.0
 
-            words.append({
-                "text": text,
-                "x1": x1,
-                "y1": y1,
-                "x2": x2,
-                "y2": y2,
-                "confidence": (
-                    float(score)
-                    if score is not None
-                    else None
-                ),
-            })
+            # RapidOCR devuelve con frecuencia una caja para toda una fila de
+            # tabla. El parser de columnas necesita palabras independientes;
+            # aproximamos su posicion horizontal usando el desplazamiento de
+            # cada token dentro del texto reconocido.
+            token_matches = list(re.finditer(r"\S+", text))
+            if len(token_matches) > 1 and x2 > x1:
+                text_length = max(1, len(text))
+                for token_match in token_matches:
+                    words.append({
+                        "text": token_match.group(0),
+                        "x1": x1 + (x2 - x1) * token_match.start() / text_length,
+                        "y1": y1,
+                        "x2": x1 + (x2 - x1) * token_match.end() / text_length,
+                        "y2": y2,
+                        "confidence": float(score) if score is not None else None,
+                    })
+            else:
+                words.append({
+                    "text": text,
+                    "x1": x1,
+                    "y1": y1,
+                    "x2": x2,
+                    "y2": y2,
+                    "confidence": float(score) if score is not None else None,
+                })
 
             text_rows.append({
                 "text": text,
@@ -1189,6 +1283,146 @@ def read_with_rapidocr(pdf_path):
 
     return pages, page_count
 
+def score_ocr_page_quality(page):
+    """
+    Puntúa una lectura OCR/textual de una página.
+
+    No queremos elegir el motor que haya leído más texto,
+    sino el que tenga mejores palabras y geometría para
+    detectar tablas y columnas.
+    """
+    words = page.get("words") or []
+    text = clean(page.get("text") or "")
+
+    if not words:
+        return -1000
+
+    score = 0.0
+
+    # Número de palabras útiles.
+    valid_words = [
+        word for word in words
+        if clean(word.get("text"))
+        and float(word.get("x2") or 0) > float(word.get("x1") or 0)
+        and float(word.get("y2") or 0) > float(word.get("y1") or 0)
+    ]
+
+    score += min(len(valid_words), 500) * 0.025
+
+    # Texto reconocido.
+    score += min(len(text), 5000) / 500.0
+
+    # Números: muy importantes para una factura.
+    numeric_tokens = len(
+        re.findall(
+            r"\b\d+(?:[.,]\d+)?%?\b",
+            text
+        )
+    )
+    score += min(numeric_tokens, 150) * 0.08
+
+    # Palabras típicas de tabla/factura.
+    normalized = strip_accents(text).upper()
+
+    invoice_tokens = [
+        "INVOICE",
+        "FACTURA",
+        "DESCRIPTION",
+        "DESCRIPCION",
+        "ARTICLE",
+        "ARTICULO",
+        "ITEM",
+        "PRODUCT",
+        "QUANTITY",
+        "QTY",
+        "CANTIDAD",
+        "UNIT",
+        "PRICE",
+        "PRECIO",
+        "AMOUNT",
+        "IMPORTE",
+        "TOTAL",
+        "NCM",
+        "HS CODE",
+    ]
+
+    for token in invoice_tokens:
+        if token in normalized:
+            score += 1.5
+
+    # Una tabla es todavía más interesante si podemos detectar columnas.
+    try:
+        visual_lines = group_words_by_visual_line(valid_words)
+
+        detected_headers = 0
+
+        for line in visual_lines:
+            detected = detect_invoice_table_columns(
+                line.get("words") or [],
+                allow_partial=True
+            )
+
+            if detected:
+                detected_headers += len(detected)
+
+        score += min(detected_headers, 15) * 2.0
+
+    except Exception:
+        pass
+
+    # Confianza OCR si está disponible.
+    confidences = []
+
+    for word in valid_words:
+        confidence = word.get("confidence")
+
+        if confidence is None:
+            continue
+
+        try:
+            confidence = float(confidence)
+
+            # RapidOCR suele devolver 0..1.
+            # Tesseract normalmente 0..100.
+            if confidence > 1:
+                confidence /= 100.0
+
+            if 0 <= confidence <= 1:
+                confidences.append(confidence)
+
+        except Exception:
+            pass
+
+    if confidences:
+        avg_confidence = sum(confidences) / len(confidences)
+        score += avg_confidence * 10
+
+    return score
+
+
+def choose_best_page_words(page_candidates):
+    """
+    Elige la geometría de palabras más fiable entre
+    PyMuPDF / RapidOCR / Tesseract.
+    """
+
+    best_page = None
+    best_engine = ""
+    best_score = -999999
+
+    for engine_name, page in page_candidates:
+        if not page:
+            continue
+
+        quality = score_ocr_page_quality(page)
+
+        if quality > best_score:
+            best_score = quality
+            best_page = page
+            best_engine = engine_name
+
+    return best_page, best_engine, best_score
+
 def read_pdf(pdf_path):
     problems = []
     engines = []
@@ -1204,14 +1438,23 @@ def read_pdf(pdf_path):
         problems.append(f"PyMuPDF no pudo leer el PDF: {exc}")
         engines.append({"name": "pymupdf", "status": "error", "problems": [str(exc)]})
 
-    try:
-        pages, count = read_with_pdfplumber(pdf_path)
-        page_sets.append(("pdfplumber", pages))
-        page_count = max(page_count, count)
-        engines.append({"name": "pdfplumber", "status": "ok"})
-    except Exception as exc:
-        problems.append(f"pdfplumber no pudo leer el PDF: {exc}")
-        engines.append({"name": "pdfplumber", "status": "error", "problems": [str(exc)]})
+    native_text_chars = sum(
+        len(clean(page.get("text")))
+        for _, pages in page_sets
+        for page in pages
+    )
+    # PyMuPDF ya aporta texto, palabras y coordenadas. pdfplumber repite todo
+    # el documento y su deteccion exhaustiva de tablas es especialmente lenta
+    # en lotes; queda como respaldo cuando la lectura nativa no es suficiente.
+    if not page_sets or native_text_chars < 80:
+        try:
+            pages, count = read_with_pdfplumber(pdf_path)
+            page_sets.append(("pdfplumber", pages))
+            page_count = max(page_count, count)
+            engines.append({"name": "pdfplumber", "status": "ok"})
+        except Exception as exc:
+            problems.append(f"pdfplumber no pudo leer el PDF: {exc}")
+            engines.append({"name": "pdfplumber", "status": "error", "problems": [str(exc)]})
 
     text_chars = sum(len(clean(page.get("text"))) for _, pages in page_sets for page in pages)
     # Muchos PDFs de facturas son hibridos: una cabecera seleccionable hace creer
@@ -1223,14 +1466,20 @@ def read_pdf(pdf_path):
         or len(clean(page.get("text"))) < 180
         for page in native_pages
     )
-    # RapidOCR se ejecuta siempre. En PDFs digitales complementa el texto
-    # nativo; en documentos escaneados aporta la lectura principal.
-    always_run_rapid_ocr = os.environ.get("INVOICE_ALWAYS_RAPID_OCR", "1") != "0"
+    # El OCR sustituye la geometria palabra a palabra. En un PDF digital esa
+    # sustitucion degrada tablas perfectamente estructuradas (RapidOCR suele
+    # devolver cajas de linea completas) y puede dejar todas las lineas a cero.
+    # Se reserva para paginas escaneadas/hibridas; se puede forzar para
+    # diagnostico con INVOICE_ALWAYS_RAPID_OCR=1.
+    always_run_rapid_ocr = os.environ.get(
+        "INVOICE_ALWAYS_RAPID_OCR",
+        "0"
+    ) == "1"
+
     if always_run_rapid_ocr or needs_ocr:
-        rapid_worked = False
 
         # ========================================================
-        # Primero intentar RapidOCR
+        # RapidOCR
         # ========================================================
         try:
             rapid_pages, rapid_count = read_with_rapidocr(
@@ -1257,8 +1506,6 @@ def read_pdf(pdf_path):
                     "status": "ok",
                 })
 
-                rapid_worked = True
-
         except Exception as exc:
             message = (
                 f"RapidOCR no pudo leer el PDF: {exc}"
@@ -1272,43 +1519,87 @@ def read_pdf(pdf_path):
                 "problems": [str(exc)],
             })
 
-        # ========================================================
-        # Tesseract solo si RapidOCR falla
-        # ========================================================
-        if not rapid_worked:
-            try:
-                ocr_pages, ocr_count = read_with_ocr(
-                    pdf_path
-                )
+    # ========================================================
+    # Tesseract
+    # ========================================================
+    try:
+        ocr_pages, ocr_count = read_with_ocr(
+            pdf_path
+        )
 
-                ocr_text_chars = sum(
-                    len(clean(page.get("text")))
-                    for page in ocr_pages
-                )
+        ocr_text_chars = sum(
+            len(clean(page.get("text")))
+            for page in ocr_pages
+        )
 
-                if ocr_pages and ocr_text_chars > 0:
-                    page_sets.append(
-                        ("ocr", ocr_pages)
-                    )
+        if ocr_pages and ocr_text_chars > 0:
+            page_sets.append(
+                ("ocr", ocr_pages)
+            )
 
-                    page_count = max(
-                        page_count,
-                        ocr_count,
-                    )
+            page_count = max(
+                page_count,
+                ocr_count,
+            )
 
-                    engines.append({
-                        "name": "ocr",
-                        "status": "ok",
-                    })
+            engines.append({
+                "name": "ocr",
+                "status": "ok",
+            })
 
-            except Exception as exc:
-                problems.append(str(exc))
+    except Exception as exc:
+        problems.append(
+            f"Tesseract no pudo leer el PDF: {exc}"
+        )
 
-                engines.append({
-                    "name": "ocr",
-                    "status": "unavailable",
-                    "problems": [str(exc)],
-                })
+        engines.append({
+            "name": "ocr",
+            "status": "unavailable",
+            "problems": [str(exc)],
+        })
+
+    # ========================================================
+    # Tesseract
+    #
+    # IMPORTANTE:
+    # Se prueba aunque RapidOCR haya devuelto texto.
+    # Después elegiremos qué geometría es mejor.
+    # ========================================================
+    try:
+        ocr_pages, ocr_count = read_with_ocr(
+            pdf_path
+        )
+
+        ocr_text_chars = sum(
+            len(clean(page.get("text")))
+            for page in ocr_pages
+        )
+
+        if ocr_pages and ocr_text_chars > 0:
+            page_sets.append(
+                ("ocr", ocr_pages)
+            )
+
+            page_count = max(
+                page_count,
+                ocr_count,
+            )
+
+            engines.append({
+                "name": "ocr",
+                "status": "ok",
+            })
+
+    except Exception as exc:
+        problems.append(
+            f"Tesseract no pudo leer el PDF: {exc}"
+        )
+
+        engines.append({
+            "name": "ocr",
+            "status": "unavailable",
+            "problems": [str(exc)],
+        })
 
     if not page_sets:
         return ([], 0), "none", problems, engines
@@ -1322,10 +1613,14 @@ def read_pdf(pdf_path):
         width = 0
         height = 0
         image_coverage = 0
+        page_candidates = []
         for engine_name, pages in page_sets:
             page = next((item for item in pages if item["page"] == page_number), None)
             if not page:
                 continue
+            page_candidates.append(
+                (engine_name, page)
+            )
             for key in ["text", "blockText"]:
                 raw_text = str(page.get(key, "") or "").strip()
                 normalized_text = clean(raw_text)
@@ -1333,12 +1628,6 @@ def read_pdf(pdf_path):
                     texts.append(raw_text)
                     seen_texts.add(normalized_text)
             tables.extend(page.get("tables") or [])
-            candidate_words = page.get("words") or []
-            if engine_name == "rapidocr" and candidate_words:
-                words = list(candidate_words)
-
-            elif len(candidate_words) > len(words):
-                words = list(candidate_words)
             page_width = float(page.get("width") or 0)
             page_height = float(page.get("height") or 0)
             if page_width and page_width > float(width or 0):
@@ -1346,6 +1635,23 @@ def read_pdf(pdf_path):
             if page_height and page_height > float(height or 0):
                 height = page_height
             image_coverage = max(image_coverage, float(page.get("imageCoverage") or 0))
+            best_page, best_word_engine, best_word_score = (
+                choose_best_page_words(page_candidates)
+            )
+
+            if best_page:
+                words = list(
+                    best_page.get("words") or []
+                )
+
+                print(
+                    f"[INVOICE OCR] Página {page_number}: "
+                    f"geometría seleccionada={best_word_engine}, "
+                    f"score={best_word_score:.2f}, "
+                    f"words={len(words)}",
+                    file=sys.stderr,
+                    flush=True,
+                )
         merged.append({
             "page": page_number,
             "text": "\n".join(texts),
@@ -1459,6 +1765,8 @@ def looks_like_invoice_number(value):
         return False
     if DATE_RE.search(value):
         return False
+    if re.fullmatch(r"\d{1,2}(?:ST|ND|RD|TH)", value, re.I):
+        return False
     rejected = {
         "FACTURA", "INVOICE", "DOCUMENTODEFACTURA", "FECHA", "DATA", "DATE",
         "CLIENTE", "CLIENT", "TOTAL", "SUBTOTAL", "IVA", "VAT", "BASE",
@@ -1495,6 +1803,7 @@ def find_invoice_number(text, lines):
         first_match(re.compile(r"\b((?:FE|RE|INV|FAC)[-\s]+\d{2,})\s+(?:OF|DEL?|DATE)\s+\d{1,2}[/-]\d{1,2}[/-]\d{2,4}\b", re.I), text),
         first_match(re.compile(r"\bFactura(?:\s+[A-Za-zÁÉÍÓÚÜÑáéíóúüñ]+)?\s*#\s*([A-Z0-9][A-Z0-9./_-]{2,})", re.I), text),
         first_match(re.compile(r"(?:N[úu]m\.?\s*factura|N[ºo]\s*factura|No\.?\s*factura|Numero\s*factura|Número\s*factura|Factura\s*n[ºo.]?|Invoice\s*(?:no|number)?|Rechnungsnummer|Numéro\s*de\s*facture|Numero\s*fattura|Número\s*da\s*fatura)[:：\s#-]*([A-Z0-9][A-Z0-9./_-]{2,})", re.I), text),
+        first_match(re.compile(r"\b(?:INVOICE\s+)?NUMBER\s*[:#-]\s*([A-Z0-9][A-Z0-9./_-]{2,})", re.I), text),
         find_adjacent_value(lines, [
             "Numero de factura", "Número de factura", "Nº factura", "Num. factura", "Núm. factura",
             "Invoice number", "Invoice no", "Numéro de facture", "Numero fattura",
@@ -1591,22 +1900,48 @@ def find_amount_after_label(text, labels):
 
 
 def find_best_total(text, lines):
-    total_labels = ["total factura", "grand total", "total due", "importe total", "total (eur)", "gesamtbetrag", "endbetrag", "价税合计", "價稅合計", "总计", "總計", "应付金额", "應付金額", "总金额", "總金額", "total"]
+    strong_labels = {
+        "TOTALFACTURA", "TOTALDELAFACTURA", "INVOICETOTAL", "GRANDTOTAL",
+        "TOTALDUE", "AMOUNTDUE", "IMPORTETOTAL", "TOTALAPAGAR",
+        "TOTALDOCUMENTO", "TOTALEXCLVAT", "GESAMTBETRAG", "ENDBETRAG",
+        "MONTANTTOTAL", "TOTALEFATTURA", "VALORTOTAL", "价税合计",
+        "價稅合計", "总计", "總計", "应付金额", "應付金額", "ИТОГО",
+    }
     candidates = []
-    for line in lines:
+    total_lines = len(lines)
+    for index, line in enumerate(lines):
         key = normalize_header_key(line)
-        if not any(token in key for token in ["TOTAL", "GESAMTBETRAG", "ENDBETRAG", "价税合计", "價稅合計", "总计", "總計", "应付金额", "應付金額", "总金额", "總金額"]):
+        matched_label = next((label for label in strong_labels if label in key), None)
+        is_final_plain_total = key == "TOTAL" and index >= max(0, int(total_lines * 0.85))
+        if not matched_label and not is_final_plain_total:
             continue
-        if any(skip in key for skip in ["SUBTOTAL", "BASETOTAL", "TOTALBASE", "ZAHLUNGSHINWEIS", "RECHNUNGSNUMMER"]):
+        if any(skip in key for skip in [
+            "SUBTOTAL", "TOTALBASE", "TOTALUNITS", "TOTALPAIRS", "TOTALCASES",
+            "TOTALWEIGHT", "TOTALPRODUCT", "TOTALFAMILY",
+        ]):
             continue
-        amounts = MONEY_RE.findall(line)
-        if amounts:
-            parsed = parse_amount(amounts[-1])
-            if parsed is not None:
-                candidates.append(parsed)
-    if candidates:
-        return candidates[-1]
-    return find_amount_after_label(text, total_labels)
+
+        same_line_amounts = [parse_amount(value) for value in MONEY_RE.findall(line)]
+        same_line_amounts = [value for value in same_line_amounts if value is not None]
+        # Una linea extensa con varios identificadores no es una linea de total.
+        if same_line_amounts and (len(line) <= 140 or re.search(CURRENCY_TOKEN_RE, line, re.I)):
+            candidates.append((index, same_line_amounts[-1]))
+            continue
+
+        adjacent_amounts = []
+        for next_line in lines[index + 1:index + 4]:
+            if len(next_line) > 80:
+                break
+            if re.fullmatch(r"\s*(?:EUR|USD|US\$|€|\$)?\s*-?[\d., ]+\s*(?:EUR|USD|US\$|€|\$)?\s*", next_line, re.I):
+                amount = parse_amount(next_line)
+                if amount is not None:
+                    adjacent_amounts.append(amount)
+            elif adjacent_amounts:
+                break
+        if adjacent_amounts:
+            candidates.append((index, max(adjacent_amounts, key=abs)))
+
+    return candidates[-1][1] if candidates else None
 
 
 def guess_invoice_type(text):
@@ -1724,7 +2059,7 @@ def priority_field_value(canonical, value, currency="EUR"):
         return normalize_iban(value)
     if canonical == "phone":
         return normalize_phone(value)
-    if canonical in {"unitPrice", "customsValue"}:
+    if canonical in {"unitPrice", "customsValue", "total"}:
         match = MONEY_RE.search(value)
         if match:
             return format_amount(match.group(0), detect_currency(value) or currency or "EUR")
@@ -1732,7 +2067,7 @@ def priority_field_value(canonical, value, currency="EUR"):
         return format_amount(amount, currency or "EUR") if amount is not None else ""
     if canonical == "incoterm":
         match = re.search(r"\b(EXW|FCA|CPT|CIP|DAP|DPU|DDP|FAS|FOB|CFR|CIF)\b", value, re.I)
-        return match.group(1).upper() if match else value[:40]
+        return match.group(1).upper() if match else ""
     if canonical == "tariffCode":
         if re.search(r"\b[A-Z0-9][A-Z0-9.\s/-]{3,24}\b", value, re.I):
             return value[:60]
@@ -1741,9 +2076,28 @@ def priority_field_value(canonical, value, currency="EUR"):
         if MONEY_RE.search(value):
             return ""
         return value[:80] if re.search(r"\d", value) else ""
+    if canonical in {"packageCount", "containerCount"}:
+        match = re.search(r"\b\d{1,6}\b", value)
+        return match.group(0) if match else ""
+    if canonical == "containerNumber":
+        candidate = re.sub(r"[^A-Z0-9]", "", value.upper())
+        return candidate if re.fullmatch(r"[A-Z]{4}\d{7}", candidate) else ""
+    if canonical == "weight":
+        match = re.search(r"\b\d[\d., ]*\s*(?:KG|KGS|KGM|G|GR|LB|LBS|TON|TONS|MT)\b", value, re.I)
+        return clean(match.group(0)) if match else ""
+    if canonical == "volumeCbm":
+        match = re.search(r"\b\d[\d., ]*\s*(?:CBM|M3|M³|CUBIC\s*(?:METERS|METRES))\b", value, re.I)
+        if match:
+            return clean(match.group(0))
+        bare_volume = re.fullmatch(r"\d{1,6}(?:[.,]\d{1,6})?", value.strip())
+        return f"{bare_volume.group(0)} CBM" if bare_volume else ""
     if canonical in {"countryOfOrigin", "tariffUnit"}:
         if MONEY_RE.search(value) or DATE_RE.search(value):
             return ""
+        if canonical == "countryOfOrigin" and "/" in value:
+            final_part = clean(value.rsplit("/", 1)[-1])
+            if re.fullmatch(r"[A-Za-zÀ-ÖØ-öø-ÿ\u3400-\u9fff .'-]{2,60}", final_part):
+                return final_part
         return value[:80]
     if canonical in {"supplierBusinessName", "goodsDescription", "authorizedExporter"}:
         if len(value) < 2 or MONEY_RE.fullmatch(value):
@@ -2137,7 +2491,7 @@ def extract_header_supplier(pages):
     visual_lines = group_words_by_visual_line(page.get("words") or [])
     company_pattern = re.compile(
         r"(?:S\.?P\.?A\.?|S\.?L\.?|S\.?A\.?|S\.?R\.?L\.?|LTD\.?|LLC|"
-        r"INC\.?|GMBH|SAS|BV|COMPANY|CORP|CO\.?\s*,?\s*LTD\.?)\b|"
+        r"INC\.?|GMBH|SAS|BV|LTDA\.?|LDA\.?|S\.?R\.?O\.?|SLU|COMPANY|CORP|CO\.?\s*,?\s*LTD\.?)\b|"
         r"(?:有限公司|有限责任公司|公司)",
         re.I,
     )
@@ -2151,6 +2505,8 @@ def extract_header_supplier(pages):
         if float(line.get("y") or 0) > height * 0.34:
             continue
         if not company_pattern.search(text) or customer_markers.search(text):
+            continue
+        if re.search(r"\b(?:BANK|BANCO|CORRESPONDENT|BENEFICIARY|ACCOUNT|SWIFT|BIC)\b", text, re.I):
             continue
         preceding = " ".join(
             clean(item.get("text"))
@@ -2245,6 +2601,11 @@ def extract_layout_parties(pages):
 
     delivery = party_from_visual_lines(left_lines)
     recipient = party_from_visual_lines(right_lines)
+    marker_text = clean(marker_line.get("text")) if marker_line else ""
+    if re.search(r"\b(?:VENDOR|SUPPLIER|SELLER|PROVEEDOR|EMISOR|LIEFERANT)\b", marker_text, re.I) and re.search(
+        r"\b(?:CUSTOMER|CLIENT|CLIENTE|BUYER|KUNDE)\b", marker_text, re.I
+    ):
+        issuer = delivery
 
     # Segundo patron habitual: emisor y cliente son dos bloques independientes,
     # cada uno encabezado por una razon social y seguido por su direccion.
@@ -2278,7 +2639,7 @@ def extract_layout_parties(pages):
     unlabeled_supplier = next((party for party, is_customer in company_candidates if not is_customer and party.get("name")), None)
     if labeled_customer:
         recipient = labeled_customer
-    if unlabeled_supplier:
+    if unlabeled_supplier and not issuer.get("name"):
         issuer = unlabeled_supplier
 
     labeled_address_parts = []
@@ -2317,11 +2678,15 @@ def detect_invoice_table_columns(header_words, allow_partial=False):
     for index, key in enumerate(normalized):
         next_key = normalized[index + 1] if index + 1 < len(normalized) else ""
         prev_key = normalized[index - 1] if index > 0 else ""
-        if key in {"QTY", "QUANTITY", "CANTIDAD", "CANT", "UNIDADES", "UNITATS", "MENGE", "ANZAHL", "QUANTITE", "QUANTITA", "QUANTIDADE", "数量", "數量", "件数", "數目"}:
+        if key == "ITEM" and next_key in {"NAME", "DESCRIPTION", "DESCRIPCION"}:
+            add_column("description", "Descripcion", (word_center(index) + word_center(index + 1)) / 2)
+        elif key in {"CATALOGUE", "CATALOG", "CATALOGUENO", "CATALOGNO"}:
+            add_column("code", "Codigo", word_center(index))
+        elif key in {"QTY", "QUANTITY", "CANTIDAD", "CANT", "UNIDADES", "UNITATS", "MENGE", "ANZAHL", "QUANTITE", "QUANTITA", "QUANTIDADE", "数量", "數量", "件数", "數目"}:
             add_column("quantity", "Cantidad", word_center(index))
         elif key in {
             "CODE", "CODIGO", "SKU", "REF", "REFERENCIA", "ARTICLE",
-            "ARTICULO", "ARTIKEL", "ITEM", "PRODUCT", "CODICE", "HSCODE", "HSTARIF",
+            "ARTICULO", "ARTIKEL", "ITEM", "PRODUCT", "MODELO", "MODEL", "DIBUJO", "DRAWING", "CODICE", "HSCODE", "HSTARIF",
             "TARIFFCODE", "COMMODITYCODE", "商品编号", "商品編號", "货号",
             "貨號", "编号", "編號",
         }:
@@ -2339,7 +2704,7 @@ def detect_invoice_table_columns(header_words, allow_partial=False):
             "PRECIO", "PREU", "PRICE", "PRECIOUNITARIO", "PREUUNITARI",
             "UNITPRICE", "PRICEPERUNIT", "EINZELPREIS", "STUCKPREIS",
             "STUECKPREIS", "PRIXUNITAIRE", "PREZZOUNITARIO", "PREC0UNITARIO",
-            "UNITVALUE", "VALUEPERUNIT", "PRIX", "PREZZO", "PRECO",
+            "UNITVALUE", "VALUEPERUNIT", "UNITARIO", "UNITARIA", "PRIX", "PREZZO", "PRECO",
             "单价", "單價", "价格", "價格",
         }:
             if prev_key == "UNIT":
@@ -2372,17 +2737,39 @@ def detect_invoice_table_columns(header_words, allow_partial=False):
             # Columna separadora: se detecta para que su cifra no termine
             # absorbida por Precio unitario o Total.
             add_column("weight", "Peso", word_center(index))
+        elif key in {
+            "ORIGIN", "COUNTRYOFORIGIN", "ORIGINCOUNTRY", "ORIGEN",
+            "PAISDEORIGEN", "URSPRUNGSLAND", "HERKUNFTSLAND",
+            "PAYSORIGINE", "PAESEDIORIGINE", "原产国", "原產國", "原産国",
+        }:
+            add_column("origin", "Origen", word_center(index))
+        elif key in {"NCM", "TARIFF", "HSCODE"}:
+            add_column("_tariffSeparator", "", word_center(index))
+        elif key in {"CASES", "CARTONS", "PACKAGES", "BULTOS"}:
+            add_column("_packageSeparator", "", word_center(index))
         elif (key in {"UNIT", "UNITS", "UNIDAD", "UM", "UOM", "UUM", "EINHEIT", "UNITE", "UNITA", "UNIDADE", "单位", "單位"} or key.endswith("UM")) and next_key != "PRICE":
             add_column("unit", "Unidad", word_center(index))
 
     # Cabeceras escaneadas pueden perder PRICE/AMOUNT aunque conserven DESCRIPTION
     # y UM. Reconstruimos la distribucion estandar a partir de la columna de unidad.
     keys = {column["key"] for column in columns}
+    header_key = normalize_header_key(" ".join(word.get("text") or "" for word in words))
+    # En documentos comerciales anchos la descripción suele estar repartida
+    # entre varias columnas (modelo, color, material, cliente, NCM...). Si las
+    # columnas económicas están claras, agrupamos esa zona textual como una
+    # descripción sin inventar divisiones que la cabecera no proporciona.
+    if not ({"description", "code"} & keys) and {"unitPrice", "total"}.issubset(keys) and any(
+        token in header_key for token in {"NCM", "HS", "MODEL", "ARTICLE", "ITEM", "GOODS", "PURCHASEORDER"}
+    ):
+        first_financial_x = min(column["x"] for column in columns if column["key"] in {"quantity", "unitPrice", "total"})
+        add_column("description", "Descripcion", max(40.0, first_financial_x * 0.52))
+        columns.sort(key=lambda item: item["x"])
+        keys = {column["key"] for column in columns}
     unit_column = next((column for column in columns if column["key"] == "unit"), None)
     if "description" in keys and unit_column:
-        add_column("quantity", "Cantidad", unit_column["x"] + 63)
-        add_column("unitPrice", "Precio ud.", unit_column["x"] + 128)
-        add_column("total", "Total", unit_column["x"] + 210)
+        add_column("quantity", "Cantidad", unit_column["x"] + 63, 0.35)
+        add_column("unitPrice", "Precio ud.", unit_column["x"] + 128, 0.35)
+        add_column("total", "Total", unit_column["x"] + 210, 0.35)
 
     columns.sort(key=lambda item: item["x"])
     important = {column["key"] for column in columns}
@@ -2486,6 +2873,7 @@ def is_product_table_header(line_text, columns):
         "PRODUCTO",
         "PRODUCTE",
         "MERCANCIA",
+        "DIBUJO",
 
         # Inglés
         "DESCRIPTION",
@@ -2495,6 +2883,8 @@ def is_product_table_header(line_text, columns):
         "GOODS",
         "SERVICE",
         "SKU",
+        "DRAWING",
+        "NCM",
 
         # Otros frecuentes
         "BEZEICHNUNG",
@@ -2597,18 +2987,29 @@ def product_table_group_score(items):
 
 def extract_word_column_line_items(pages):
     table_groups = []
+    carried_columns = []
 
     for page in pages:
         visual_lines = group_words_by_visual_line(
             page.get("words") or []
         )
 
-        active_columns = []
-        table_started = False
+        page_has_table_header = any(
+            (lambda detected: bool(detected) and is_product_table_header(line.get("text") or "", detected))(
+                detect_invoice_table_columns(line.get("words") or [])
+            )
+            for line in visual_lines
+        )
+        # Si la página repite cabecera, esperamos a encontrarla antes de leer
+        # filas. Solo heredamos columnas cuando la tabla continúa sin cabecera.
+        active_columns = [] if page_has_table_header else list(carried_columns)
+        table_started = bool(active_columns)
         pending_description = []
         pending_source_box = None
         previous_y = None
         current_items = []
+        pending_header_columns = []
+        pending_header_y = None
 
         for line in visual_lines:
             line_text = clean(line.get("text"))
@@ -2623,6 +3024,37 @@ def extract_word_column_line_items(pages):
             detected_columns = detect_invoice_table_columns(
                 line.get("words") or []
             )
+            partial_columns = detect_invoice_table_columns(line.get("words") or [], allow_partial=True)
+            if partial_columns and not detected_columns:
+                if pending_header_columns and pending_header_y is not None and abs(line_y - pending_header_y) <= line_height * 2.5:
+                    merged_columns = {column.get("key"): column for column in pending_header_columns}
+                    for column in partial_columns:
+                        merged_columns.setdefault(column.get("key"), column)
+                    merged_partial = sorted(merged_columns.values(), key=lambda column: column.get("x") or 0)
+                    merged_keys = {column.get("key") for column in merged_partial}
+                    if ({"description", "code"} & merged_keys) and ({"quantity", "unit", "total", "unitPrice"} & merged_keys):
+                        detected_columns = merged_partial
+                        pending_header_columns = []
+                        pending_header_y = None
+                    else:
+                        pending_header_columns = partial_columns
+                        pending_header_y = line_y
+                        continue
+                else:
+                    pending_header_columns = partial_columns
+                    pending_header_y = line_y
+                    continue
+            if detected_columns and pending_header_columns and pending_header_y is not None and abs(line_y - pending_header_y) <= line_height * 2.5:
+                merged_columns = {column.get("key"): column for column in detected_columns}
+                for column in pending_header_columns:
+                    key = column.get("key")
+                    current = merged_columns.get(key)
+                    if current is None or key in {"unitPrice", "total", "taxRate", "discount"} or column.get("confidence", 0) > current.get("confidence", 0):
+                        merged_columns[key] = column
+                detected_columns = list(merged_columns.values())
+                detected_columns.sort(key=lambda column: column.get("x") or 0)
+                pending_header_columns = []
+                pending_header_y = None
 
             # ============================================================
             # Inicio de una tabla de productos
@@ -2638,6 +3070,7 @@ def extract_word_column_line_items(pages):
                         table_groups.append(current_items)
 
                     active_columns = detected_columns
+                    carried_columns = list(detected_columns)
                     table_started = True
                     pending_description = []
                     pending_source_box = None
@@ -2650,6 +3083,10 @@ def extract_word_column_line_items(pages):
                 if table_started:
                     break
 
+                # Puede ser la primera mitad de una cabecera de dos pisos
+                # (campos economicos arriba y articulo/descripcion debajo).
+                pending_header_columns = detected_columns
+                pending_header_y = line_y
                 continue
 
             if not table_started or not active_columns:
@@ -2716,14 +3153,14 @@ def extract_word_column_line_items(pages):
 
             quantity = parse_amount(quantity_text)
 
-            if quantity is None and quantity_text:
+            if quantity_text and not re.fullmatch(r"\s*\d+(?:[.,]\d+)?\s*", quantity_text):
                 quantity_tokens = re.findall(
                     r"-?\d+(?:[.,]\d+)?",
                     quantity_text,
                 )
 
                 if quantity_tokens:
-                    quantity_token = quantity_tokens[-1]
+                    quantity_token = quantity_tokens[-1].lstrip("-")
 
                     quantity = parse_amount(
                         quantity_token
@@ -2762,6 +3199,38 @@ def extract_word_column_line_items(pages):
             tax_rate = parse_amount(
                 values.get("taxRate")
             )
+
+            # Patrón comercial muy común: CAJAS, CANTIDAD, UMC, PRECIO y
+            # TOTAL cierran la fila. En OCR la geometría horizontal estimada
+            # puede juntar los dos últimos importes; el orden textual permite
+            # recuperarlos sin ambigüedad.
+            trailing_trade_values = re.search(
+                r"\b(\d[\d.,]*)\s+(\d[\d.,]*)\s+([A-Z]{1,6})\s+"
+                r"(\d[\d.,]*)\s+(\d[\d.,]*)\s*$",
+                line_text,
+                re.I,
+            )
+            if trailing_trade_values:
+                parsed_quantity = parse_amount(trailing_trade_values.group(2))
+                parsed_unit_price = parse_amount(trailing_trade_values.group(4))
+                parsed_total = parse_amount(trailing_trade_values.group(5))
+                if parsed_quantity is not None and parsed_unit_price is not None and parsed_total is not None:
+                    quantity = parsed_quantity
+                    values["unit"] = trailing_trade_values.group(3).upper()
+                    unit_price = parsed_unit_price
+                    total = parsed_total
+
+            # En documentos con coma decimal, cantidades como 50,000 KG son
+            # 50 kg, no cincuenta mil. Resolvemos la ambiguedad utilizando la
+            # igualdad cantidad × precio = total de la propia línea.
+            if quantity is not None and unit_price not in (None, 0) and total is not None:
+                expected = float(quantity) * float(unit_price)
+                tolerance = max(0.08, abs(float(total)) * 0.035)
+                if abs(expected - float(total)) > tolerance and abs(float(quantity)) >= 1000:
+                    decimal_quantity = float(quantity) / 1000
+                    decimal_expected = decimal_quantity * float(unit_price)
+                    if abs(decimal_expected - float(total)) <= tolerance:
+                        quantity = round(decimal_quantity, 3)
 
             # Los porcentajes comerciales no pueden absorber por error una
             # columna monetaria desplazada. Valores fuera de rango se
@@ -2941,6 +3410,7 @@ def extract_word_column_line_items(pages):
                 "discount": discount,
                 "taxRate": tax_rate,
                 "total": total,
+                "origin": clean(values.get("origin"))[:80],
                 "sourceBox": source_box,
             })
 
@@ -2956,6 +3426,14 @@ def extract_word_column_line_items(pages):
 
     if not table_groups:
         return []
+
+    # Muchas facturas comerciales imprimen la cabecera solo en la primera
+    # página y continúan directamente con filas en las siguientes. Conserva
+    # esas columnas y reúne todos los fragmentos coherentes del mismo bloque.
+    coherent_groups = [group for group in table_groups if product_table_group_score(group) > 0]
+    combined = [item for group in coherent_groups for item in group]
+    if len(coherent_groups) > 1 and len(combined) <= 500:
+        return combined
 
     best_group = max(
         table_groups,
@@ -3008,6 +3486,7 @@ def extract_multipage_split_line_items(pages):
                 "discount": parse_amount(values.get("discount")),
                 "taxRate": parse_amount(values.get("taxRate")),
                 "total": total_value,
+                "origin": clean(values.get("origin"))[:80],
                 "sourceBox": source_box,
             })
         
@@ -3027,7 +3506,7 @@ def extract_multipage_split_line_items(pages):
     merged = []
     for identity, financial in zip(base, supplement):
         item = dict(identity)
-        for key in ("unit", "unitPrice", "discount", "taxRate", "total"):
+        for key in ("unit", "unitPrice", "discount", "taxRate", "total", "origin"):
             if item.get(key) in (None, "") and financial.get(key) not in (None, ""):
                 item[key] = financial[key]
         merged.append(item)
@@ -3081,7 +3560,7 @@ def choose_line_items(*candidates):
 
 def filter_confident_automatic_line_items(items):
     """Prioriza no devolver filas antes que inventar conceptos automáticos."""
-    if not items or len(items) > 100:
+    if not items or len(items) > 500:
         return []
     rejected_tokens = {
         "RECHNUNGSNUMMER", "INVOICENUMBER", "INVOICENO", "KUNDENNUMMER",
@@ -3095,9 +3574,18 @@ def filter_confident_automatic_line_items(items):
     for item in items:
         description = clean(item.get("description"))
         description_key = normalize_header_key(description)
+        description_word_keys = {
+            normalize_header_key(word)
+            for word in re.findall(r"\S+", description)
+            if normalize_header_key(word)
+        }
         if (
             not description
-            or any(token in description_key for token in rejected_tokens)
+            or any(
+                token in description_word_keys
+                or (len(token) >= 8 and token in description_key)
+                for token in rejected_tokens
+            )
             or is_summary_line_text(description)
         ):
             continue
@@ -3117,9 +3605,9 @@ def filter_confident_automatic_line_items(items):
                 continue
         confident.append(item)
 
-    # Si la mayoría del candidato era ruido, descartamos el grupo completo.
-    if not confident or len(confident) / len(items) < 0.6:
-        return []
+    # En tablas de dos renglones por articulo, una línea contiene identidad y
+    # otra los importes. Conservamos las filas que sí superan la comprobación
+    # aritmética cuando hay al menos dos; exigir un 60 % vaciaba toda la tabla.
     return confident
 
 
@@ -3216,7 +3704,13 @@ def find_text_box(pages, value):
     candidates = []
     for page in pages:
         words = page.get("words") or []
-        normalized_words = [normalize_match_text(word.get("text")) for word in words]
+        # attach_source_boxes consulta la misma pagina para muchos campos. La
+        # normalizacion Unicode es relativamente costosa en facturas con miles
+        # de palabras, por lo que se calcula una sola vez por pagina.
+        normalized_words = page.get("_normalizedSearchWords")
+        if not isinstance(normalized_words, list) or len(normalized_words) != len(words):
+            normalized_words = [normalize_match_text(word.get("text")) for word in words]
+            page["_normalizedSearchWords"] = normalized_words
         for start in range(len(words)):
             combined = ""
             for end in range(start, min(len(words), start + 12)):
@@ -3237,6 +3731,11 @@ def find_text_box(pages, value):
                     page_area = max(1, float(box.get("pageWidth") or 0) * float(box.get("pageHeight") or 0))
                     box_area = max(1, (box["x2"] - box["x1"]) * (box["y2"] - box["y1"]))
                     if box_area / page_area <= 0.18:
+                        # El primer match exacto sigue el orden visual del PDF
+                        # y ya es la mejor respuesta posible. Evita recorrer
+                        # miles de palabras para cada marca de la factura.
+                        if combined == needle:
+                            return box
                         excess = max(0, len(combined) - len(needle))
                         exact_penalty = 0 if combined == needle else 1
                         candidates.append((exact_penalty, excess, box_area / page_area, box))
@@ -3311,7 +3810,15 @@ def attach_source_boxes(invoice, pages):
 
 def build_invoice(pages, file_name, manual_line_region=False):
     text = "\n".join(page["text"] for page in pages)
-    lines = [clean(line) for line in text.splitlines() if clean(line)]
+    all_lines = [clean(line) for line in text.splitlines() if clean(line)]
+    # Los datos de cabecera aparecen al principio y los totales/pago al final.
+    # Recorrer miles de filas de producto por cada uno de los cientos de alias
+    # multiplicaba el tiempo sin aportar candidatos nuevos.
+    lines = (
+        all_lines[:300] + all_lines[-200:]
+        if len(all_lines) > 600
+        else all_lines
+    )
     currency = detect_currency(text)
     language = detect_language(text)
 
@@ -3330,7 +3837,10 @@ def build_invoice(pages, file_name, manual_line_region=False):
         "Vervaldatum", "到期日", "支払期限", "만기일", "تاريخ الاستحقاق", "Срок оплаты",
     ])
 
-    total = find_best_total(text, lines)
+    # El total impreso en cualquiera de las paginas es la fuente principal.
+    # La suma de lineas se calcula despues solo para validarlo o como respaldo.
+    document_total = find_best_total(text, lines)
+    total = document_total
     subtotal = find_amount_after_label(text, [
         "subtotal", "goods total", "merchandise total", "items total",
         "base imponible", "net amount", "base", "taxable amount",
@@ -3410,6 +3920,13 @@ def build_invoice(pages, file_name, manual_line_region=False):
 
     for party in [supplier, customer]:
         party["taxId"] = normalize_tax_id(party.get("taxId"))
+        party_name = clean(party.get("name"))
+        if (
+            len(re.findall(r"\d+(?:[.,]\d+)?", party_name)) >= 3
+            or MONEY_RE.search(party_name)
+            or re.search(r"\b(?:BANK|CORRESPONDENT|BENEFICIARY|ACCOUNT|SWIFT|BIC)\b", party_name, re.I)
+        ):
+            party["name"] = ""
         if re.search(
             r"\b(?:CONCEPTO|DESCRIPTION|DESCRIPCION|PRECIO|PRICE|IMPORTE|TOTAL|QTY|"
             r"HS\s*CODE|UNIT\s*VALUE|CUSTOMS\s*VALUE|PORT\s+OF|COUNTRY\s+OF|"
@@ -3430,19 +3947,22 @@ def build_invoice(pages, file_name, manual_line_region=False):
             "phone": "",
         }
 
-    structured_line_items = choose_line_items(
+    structured_candidates = [
         extract_multipage_split_line_items(pages),
         extract_table_line_items(pages),
         extract_word_column_line_items(pages),
-    )
+    ]
+    if not manual_line_region:
+        structured_candidates = [filter_confident_automatic_line_items(candidate) for candidate in structured_candidates]
+    structured_line_items = choose_line_items(*structured_candidates)
 
     if structured_line_items:
         line_items = structured_line_items
     else:
-        line_items = choose_line_items(
-            extract_text_table_line_items(lines),
-            extract_line_items(lines),
-        )
+        fallback_candidates = [extract_text_table_line_items(all_lines), extract_line_items(all_lines)]
+        if not manual_line_region:
+            fallback_candidates = [filter_confident_automatic_line_items(candidate) for candidate in fallback_candidates]
+        line_items = choose_line_items(*fallback_candidates)
     if not manual_line_region:
         line_items = filter_confident_automatic_line_items(line_items)
 
@@ -3457,7 +3977,9 @@ def build_invoice(pages, file_name, manual_line_region=False):
         else None
     )
     if line_subtotal is not None and line_subtotal >= 0:
-        if total is None or line_subtotal <= total + max(0.02, abs(total) * 0.01):
+        if total is None:
+            total = line_subtotal
+        if subtotal is None and (total is None or line_subtotal <= total + max(0.02, abs(total) * 0.01)):
             subtotal = line_subtotal
 
     explicit_tax = find_explicit_tax_amount(lines)
@@ -3521,16 +4043,24 @@ def build_invoice(pages, file_name, manual_line_region=False):
     add_field(detected_fields, "Fiscal", "NIF / VAT cliente", customer.get("taxId"), 0.96)
 
     if line_items:
+        part_numbers = [clean(item.get("code")) for item in line_items if clean(item.get("code"))]
         descriptions = [clean(item.get("description")) for item in line_items if clean(item.get("description"))]
         quantities = [str(item.get("quantity")) for item in line_items if item.get("quantity") not in (None, "")]
+        units = [clean(item.get("unit")) for item in line_items if clean(item.get("unit"))]
         unit_prices = [
             format_amount(item.get("unitPrice"), currency or "EUR")
             for item in line_items
             if item.get("unitPrice") not in (None, "")
         ]
+        total_prices = [format_amount(item.get("total"), currency or "EUR") for item in line_items if item.get("total") not in (None, "")]
+        item_origins = [clean(item.get("origin")) for item in line_items if clean(item.get("origin"))]
+        add_field(detected_fields, "Mercancia", "Numero de parte / modelo / folio", "; ".join(part_numbers[:12]), 0.9)
         add_field(detected_fields, "Mercancia", "Descripcion de la mercancia", "; ".join(descriptions[:5]), 0.86)
         add_field(detected_fields, "Mercancia", "Cantidades", ", ".join(quantities[:12]), 0.82)
+        add_field(detected_fields, "Mercancia", "UMC", ", ".join(dict.fromkeys(units[:12])), 0.86)
         add_field(detected_fields, "Mercancia", "Precios unitarios", ", ".join(unit_prices[:8]), 0.82)
+        add_field(detected_fields, "Mercancia", "Precios totales", ", ".join(total_prices[:12]), 0.88)
+        add_field(detected_fields, "Mercancia", "Origen", ", ".join(dict.fromkeys(item_origins[:12])), 0.86)
 
     detected_field_count = sum(1 for value in [
         invoice_number, invoice_date, due_date, total, subtotal, tax,
@@ -3560,6 +4090,30 @@ def build_invoice(pages, file_name, manual_line_region=False):
             "method": find_label_value(text, ["Metodo de pago", "Payment method", "Forma de pago", "Forma de pagament"]),
         },
         "lineItems": line_items,
+        "lineAnalysis": {
+            "documentPageCount": len(pages),
+            "pagesWithLines": sorted({
+                int((item.get("sourceBox") or {}).get("page") or 0)
+                for item in line_items
+                if int((item.get("sourceBox") or {}).get("page") or 0) > 0
+            }),
+            "rowsByPage": {
+                str(page_number): sum(
+                    1 for item in line_items
+                    if int((item.get("sourceBox") or {}).get("page") or 0) == page_number
+                )
+                for page_number in range(1, len(pages) + 1)
+            },
+            "lineTotal": line_subtotal,
+            "documentTotal": document_total,
+            "totalSource": "document" if document_total is not None else ("lines" if line_subtotal is not None else "missing"),
+            "totalMatchesLines": (
+                document_total is not None
+                and line_subtotal is not None
+                and abs(float(document_total) - float(line_subtotal))
+                    <= max(0.05, abs(float(document_total)) * 0.01)
+            ),
+        },
         "fields": detected_fields,
         "rawTextSample": clean(text[:3000]),
         "detectedFields": detected_field_count,
