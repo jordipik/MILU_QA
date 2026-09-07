@@ -1501,141 +1501,139 @@ def read_pdf(pdf_path):
 
     if always_run_rapid_ocr or needs_ocr:
 
-    rapid_pages = []
-    rapid_quality = -1000
+        rapid_pages = []
+        rapid_quality = -1000
 
-    # ========================================================
-    # 1. RapidOCR primero
-    # ========================================================
-    try:
-        rapid_pages, rapid_count = read_with_rapidocr(
-            pdf_path
-        )
-
-        rapid_text_chars = sum(
-            len(clean(page.get("text")))
-            for page in rapid_pages
-        )
-
-        if rapid_pages and rapid_text_chars > 0:
-            page_sets.append(
-                ("rapidocr", rapid_pages)
-            )
-
-            page_count = max(
-                page_count,
-                rapid_count,
-            )
-
-            rapid_scores = [
-                score_ocr_page_quality(page)
-                for page in rapid_pages
-            ]
-
-            rapid_quality = (
-                sum(rapid_scores) / len(rapid_scores)
-                if rapid_scores
-                else -1000
-            )
-
-            engines.append({
-                "name": "rapidocr",
-                "status": "ok",
-                "quality": round(rapid_quality, 2),
-            })
-
-            print(
-                f"[INVOICE OCR] RapidOCR calidad media: "
-                f"{rapid_quality:.2f}",
-                file=sys.stderr,
-                flush=True,
-            )
-
-    except Exception as exc:
-        problems.append(
-            f"RapidOCR no pudo leer el PDF: {exc}"
-        )
-
-        engines.append({
-            "name": "rapidocr",
-            "status": "error",
-            "problems": [str(exc)],
-        })
-
-    # ========================================================
-    # 2. Tesseract SOLO si realmente hace falta
-    # ========================================================
-
-    run_tesseract = (
-        not rapid_pages
-        or rapid_quality < 12
-        or os.environ.get(
-            "INVOICE_ALWAYS_TESSERACT",
-            "0"
-        ) == "1"
-    )
-
-    if run_tesseract:
-
-        print(
-            "[INVOICE OCR] RapidOCR insuficiente; "
-            "probando Tesseract...",
-            file=sys.stderr,
-            flush=True,
-        )
-
+        # ========================================================
+        # 1. RapidOCR primero
+        # ========================================================
         try:
-            ocr_pages, ocr_count = read_with_ocr(
+            rapid_pages, rapid_count = read_with_rapidocr(
                 pdf_path
             )
 
-            ocr_text_chars = sum(
+            rapid_text_chars = sum(
                 len(clean(page.get("text")))
-                for page in ocr_pages
+                for page in rapid_pages
             )
 
-            if ocr_pages and ocr_text_chars > 0:
+            if rapid_pages and rapid_text_chars > 0:
                 page_sets.append(
-                    ("ocr", ocr_pages)
+                    ("rapidocr", rapid_pages)
                 )
 
                 page_count = max(
                     page_count,
-                    ocr_count,
+                    rapid_count,
+                )
+
+                rapid_scores = [
+                    score_ocr_page_quality(page)
+                    for page in rapid_pages
+                ]
+
+                rapid_quality = (
+                    sum(rapid_scores) / len(rapid_scores)
+                    if rapid_scores
+                    else -1000
+                )
+
+                engines.append({
+                    "name": "rapidocr",
+                    "status": "ok",
+                    "quality": round(rapid_quality, 2),
+                })
+
+                print(
+                    f"[INVOICE OCR] RapidOCR calidad media: "
+                    f"{rapid_quality:.2f}",
+                    file=sys.stderr,
+                    flush=True,
+                )
+
+        except Exception as exc:
+            problems.append(
+                f"RapidOCR no pudo leer el PDF: {exc}"
+            )
+
+            engines.append({
+                "name": "rapidocr",
+                "status": "error",
+                "problems": [str(exc)],
+            })
+
+        # ========================================================
+        # 2. Tesseract SOLO si realmente hace falta
+        # ========================================================
+        run_tesseract = (
+            not rapid_pages
+            or rapid_quality < 12
+            or os.environ.get(
+                "INVOICE_ALWAYS_TESSERACT",
+                "0"
+            ) == "1"
+        )
+
+        if run_tesseract:
+
+            print(
+                "[INVOICE OCR] RapidOCR insuficiente; "
+                "probando Tesseract...",
+                file=sys.stderr,
+                flush=True,
+            )
+
+            try:
+                ocr_pages, ocr_count = read_with_ocr(
+                    pdf_path
+                )
+
+                ocr_text_chars = sum(
+                    len(clean(page.get("text")))
+                    for page in ocr_pages
+                )
+
+                if ocr_pages and ocr_text_chars > 0:
+                    page_sets.append(
+                        ("ocr", ocr_pages)
+                    )
+
+                    page_count = max(
+                        page_count,
+                        ocr_count,
+                    )
+
+                    engines.append({
+                        "name": "ocr",
+                        "status": "ok",
+                    })
+
+            except Exception as exc:
+                problems.append(
+                    f"Tesseract no pudo leer el PDF: {exc}"
                 )
 
                 engines.append({
                     "name": "ocr",
-                    "status": "ok",
+                    "status": "unavailable",
+                    "problems": [str(exc)],
                 })
 
-        except Exception as exc:
-            problems.append(
-                f"Tesseract no pudo leer el PDF: {exc}"
-            )
-
+        else:
             engines.append({
                 "name": "ocr",
-                "status": "unavailable",
-                "problems": [str(exc)],
+                "status": "skipped",
+                "problems": [
+                    "RapidOCR obtuvo calidad suficiente."
+                ],
             })
 
-    else:
-
-        engines.append({
-            "name": "ocr",
-            "status": "skipped",
-            "problems": [
-                "RapidOCR obtuvo calidad suficiente."
-            ],
-        })
-
-        print(
-            "[INVOICE OCR] Tesseract omitido: "
-            "RapidOCR suficiente.",
-            file=sys.stderr,
-            flush=True,
-        )
+            print(
+                "[INVOICE OCR] Tesseract omitido: "
+                "RapidOCR suficiente.",
+                file=sys.stderr,
+                flush=True,
+            )
 
     if not page_sets:
         return ([], 0), "none", problems, engines
